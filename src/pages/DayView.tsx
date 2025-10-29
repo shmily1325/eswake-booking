@@ -336,7 +336,7 @@ export function DayView({ user }: DayViewProps) {
         {Array.from({ length: 20 }).map((_, i) => (
           <img
             key={i}
-            src="/logo.png"
+            src="/logo black.png"
             alt="ESWake"
             style={{
               width: '250px',

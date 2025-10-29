@@ -53,13 +53,15 @@ export function HomePage({ user }: HomePageProps) {
           marginBottom: '50px'
         }}>
           <img 
-            src="/logo.png" 
+            src="/logo_circle (black).png" 
             alt="ES Wake Logo"
             style={{
-              width: '120px',
-              height: '120px',
+              width: '140px',
+              height: '140px',
               objectFit: 'contain',
-              marginBottom: '20px'
+              marginBottom: '20px',
+              borderRadius: '50%',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
             }}
           />
           <h1 style={{ 

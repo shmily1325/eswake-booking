@@ -76,7 +76,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         {Array.from({ length: 12 }).map((_, i) => (
           <img
             key={i}
-            src="/logo.png"
+            src="/logo black.png"
             alt="ESWake"
             style={{
               width: '200px',
