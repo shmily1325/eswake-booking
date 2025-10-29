@@ -285,7 +285,7 @@ export function NewBookingDialog({
         const { data: insertedBookings, error: insertError } = await supabase
           .from('bookings')
           .insert(bookingsToInsert)
-          .select()
+          .select('*, boats(name, color), coaches(name)')
 
         if (insertError) {
           // 如果創建失敗，記錄為跳過
@@ -311,7 +311,10 @@ export function NewBookingDialog({
             changed_fields: null,
           }))
 
-          await supabase.from('audit_log').insert(auditLogs)
+          const { error: auditError } = await supabase.from('audit_log').insert(auditLogs)
+          if (auditError) {
+            console.error('Audit log insert error:', auditError)
+          }
           
           // 記錄成功
           results.success.push(displayDate)

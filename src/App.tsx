@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { DayView } from './pages/DayView'
+import { StudentHistory } from './pages/StudentHistory'
 import { LoginPage } from './components/LoginPage'
 import './App.css'
 
@@ -52,6 +53,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to={`/day?date=${today}`} replace />} />
         <Route path="/day" element={<DayView user={user} />} />
+        <Route path="/student-history" element={<StudentHistory user={user} />} />
       </Routes>
     </BrowserRouter>
   )

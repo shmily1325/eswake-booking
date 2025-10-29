@@ -210,7 +210,7 @@ export function EditBookingDialog({
       }
       if ((booking.notes || '') !== (notes || '')) changedFields.push('notes')
 
-      await supabase.from('audit_log').insert({
+      const { error: auditError } = await supabase.from('audit_log').insert({
         table_name: 'bookings',
         record_id: booking.id,
         action: 'UPDATE',
@@ -220,6 +220,9 @@ export function EditBookingDialog({
         new_data: { ...booking, ...updateData },
         changed_fields: changedFields,
       })
+      if (auditError) {
+        console.error('Audit log insert error:', auditError)
+      }
 
       // Success
       setLoading(false)
@@ -241,7 +244,7 @@ export function EditBookingDialog({
 
     try {
       // Log to audit_log before deleting
-      await supabase.from('audit_log').insert({
+      const { error: auditError } = await supabase.from('audit_log').insert({
         table_name: 'bookings',
         record_id: booking.id,
         action: 'DELETE',
@@ -251,6 +254,9 @@ export function EditBookingDialog({
         new_data: null,
         changed_fields: null,
       })
+      if (auditError) {
+        console.error('Audit log insert error:', auditError)
+      }
 
       const { error: deleteError } = await supabase
         .from('bookings')

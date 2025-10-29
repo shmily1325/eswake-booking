@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { NewBookingDialog } from '../components/NewBookingDialog'
@@ -31,7 +31,7 @@ interface Booking {
   coaches?: Coach // Join result from Supabase
 }
 
-// Generate time slots from 04:30 to 18:00, every 15 minutes
+// Generate time slots from 04:30 to 22:00, every 15 minutes
 const generateTimeSlots = () => {
   const slots: string[] = []
   
@@ -39,11 +39,13 @@ const generateTimeSlots = () => {
   slots.push('04:30')
   slots.push('04:45')
   
-  // Continue from 05:00 to 17:45
-  for (let hour = 5; hour < 18; hour++) {
+  // Continue from 05:00 to 22:00
+  for (let hour = 5; hour <= 22; hour++) {
     for (let min = 0; min < 60; min += 15) {
       const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`
       slots.push(timeStr)
+      // Stop at 22:00
+      if (hour === 22 && min === 0) break
     }
   }
   return slots
@@ -56,8 +58,7 @@ interface DayViewProps {
 }
 
 export function DayView({ user }: DayViewProps) {
-  const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0]
   
   const [boats, setBoats] = useState<Boat[]>([])
@@ -76,16 +77,16 @@ export function DayView({ user }: DayViewProps) {
     const currentDate = new Date(dateParam)
     currentDate.setDate(currentDate.getDate() + offset)
     const newDate = currentDate.toISOString().split('T')[0]
-    navigate(`/day?date=${newDate}`)
+    setSearchParams({ date: newDate })
   }
 
   const goToToday = () => {
     const today = new Date().toISOString().split('T')[0]
-    navigate(`/day?date=${today}`)
+    setSearchParams({ date: today })
   }
 
   const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    navigate(`/day?date=${e.target.value}`)
+    setSearchParams({ date: e.target.value })
   }
 
   useEffect(() => {
@@ -93,52 +94,61 @@ export function DayView({ user }: DayViewProps) {
   }, [dateParam])
 
   const fetchData = async () => {
-    setLoading(true)
+    // 如果 boats 已經存在，表示這是刷新數據，不是初次載入
+    const isInitialLoad = boats.length === 0
     
-    // Fetch boats
-    const { data: boatsData, error: boatsError } = await supabase
-      .from('boats')
-      .select('*')
+    if (isInitialLoad) {
+      setLoading(true)
+    }
     
-    if (boatsError) {
-      console.error('Error fetching boats:', boatsError)
-    } else {
-      // 自訂排序：G23/G21/黑豹/粉紅/彈簧床
-      const boatOrder = ['G23', 'G21', '黑豹', '粉紅', '彈簧床']
-      const sortedBoats = (boatsData || []).sort((a, b) => {
-        const indexA = boatOrder.indexOf(a.name)
-        const indexB = boatOrder.indexOf(b.name)
-        // 如果名稱不在列表中，放到最後
-        if (indexA === -1) return 1
-        if (indexB === -1) return -1
-        return indexA - indexB
-      })
-      setBoats(sortedBoats)
+    // 只在初次載入時獲取 boats 和 coaches
+    if (isInitialLoad) {
+      // Fetch boats
+      const { data: boatsData, error: boatsError } = await supabase
+        .from('boats')
+        .select('*')
+      
+      if (boatsError) {
+        console.error('Error fetching boats:', boatsError)
+      } else {
+        // 自訂排序：G23/G21/黑豹/粉紅/彈簧床
+        const boatOrder = ['G23', 'G21', '黑豹', '粉紅', '彈簧床']
+        const sortedBoats = (boatsData || []).sort((a, b) => {
+          const indexA = boatOrder.indexOf(a.name)
+          const indexB = boatOrder.indexOf(b.name)
+          // 如果名稱不在列表中，放到最後
+          if (indexA === -1) return 1
+          if (indexB === -1) return -1
+          return indexA - indexB
+        })
+        setBoats(sortedBoats)
+      }
+
+      // Fetch coaches
+      const { data: coachesData, error: coachesError } = await supabase
+        .from('coaches')
+        .select('*')
+      
+      if (coachesError) {
+        console.error('Error fetching coaches:', coachesError)
+      } else {
+        setCoaches(coachesData || [])
+      }
     }
 
-    // Fetch coaches
-    const { data: coachesData, error: coachesError } = await supabase
-      .from('coaches')
-      .select('*')
-    
-    if (coachesError) {
-      console.error('Error fetching coaches:', coachesError)
-    } else {
-      setCoaches(coachesData || [])
-    }
-
-    // Fetch bookings for the selected date with coach info
+    // 每次都獲取當日的 bookings
     const startOfDay = `${dateParam}T00:00:00`
     const endOfDay = `${dateParam}T23:59:59`
     
     const { data: bookingsData, error: bookingsError } = await supabase
       .from('bookings')
-      .select('*, coaches(id, name)')
+      .select('*, coaches:coach_id(id, name)')
       .gte('start_at', startOfDay)
       .lte('start_at', endOfDay)
     
     if (bookingsError) {
       console.error('Error fetching bookings:', bookingsError)
+      console.error('Error details:', bookingsError.details, bookingsError.hint)
     } else {
       setBookings(bookingsData || [])
     }
@@ -283,7 +293,24 @@ export function DayView({ user }: DayViewProps) {
           gap: '8px',
         }}>
           <h1 style={{ margin: 0, fontSize: '18px', whiteSpace: 'nowrap' }}>Daily Schedule</h1>
-          <UserMenu user={user} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <a
+              href="/student-history"
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#28a745',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              📊 學生記錄
+            </a>
+            <UserMenu user={user} />
+          </div>
         </div>
         
         <div style={{ 
