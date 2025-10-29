@@ -124,65 +124,73 @@ export function StudentHistory({ user }: StudentHistoryProps) {
       </div>
 
       {/* Search Form */}
-      <form onSubmit={handleSearch} style={{ marginBottom: '24px' }}>
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          alignItems: 'flex-end',
-          flexWrap: 'wrap',
-        }}>
-          <div style={{ flex: '1 1 300px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '6px',
-              fontSize: '15px',
-              fontWeight: '500',
-              color: '#000',
-            }}>
-              學生姓名
-            </label>
-            <input
-              type="text"
-              value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
-              placeholder="輸入學生姓名..."
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                fontSize: '16px',
-                boxSizing: 'border-box',
-              }}
-            />
-            <div style={{
-              marginTop: '4px',
-              fontSize: '12px',
-              color: '#666',
-            }}>
-              💡 可搜尋部分姓名
+      <div style={{
+        background: 'white',
+        borderRadius: '8px',
+        padding: '20px',
+        marginBottom: '15px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+      }}>
+        <form onSubmit={handleSearch}>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'flex-end',
+            flexWrap: 'wrap',
+          }}>
+            <div style={{ flex: '1 1 300px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333',
+              }}>
+                學生姓名
+              </label>
+              <input
+                type="text"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                placeholder="輸入學生姓名..."
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #dee2e6',
+                  fontSize: '15px',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{
+                marginTop: '4px',
+                fontSize: '12px',
+                color: '#666',
+              }}>
+                💡 可搜尋部分姓名
+              </div>
             </div>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+                minHeight: '40px',
+              }}
+            >
+              {loading ? '搜尋中...' : '🔍 搜尋'}
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '500',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1,
-              minHeight: '48px',
-            }}
-          >
-            {loading ? '搜尋中...' : '🔍 搜尋'}
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
 
       {/* Results */}
       {hasSearched && (

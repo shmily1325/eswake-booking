@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { UserMenu } from '../components/UserMenu'
+import { useResponsive } from '../hooks/useResponsive'
 
 interface HomePageProps {
   user: User
 }
 
 export function HomePage({ user }: HomePageProps) {
+  const { isMobile } = useResponsive()
   const menuItems = [
     {
       title: '預約表',
@@ -62,7 +64,7 @@ export function HomePage({ user }: HomePageProps) {
           />
           <h1 style={{ 
             margin: '0 0 20px 0',
-            fontSize: '36px',
+            fontSize: isMobile ? '32px' : '42px',
             fontWeight: 'bold',
             color: '#000',
             letterSpacing: '2px'
@@ -124,7 +126,7 @@ export function HomePage({ user }: HomePageProps) {
 
               <h2 style={{
                 margin: 0,
-                fontSize: '17px',
+                fontSize: isMobile ? '16px' : '18px',
                 fontWeight: '600',
                 color: '#000',
                 letterSpacing: '0.5px'

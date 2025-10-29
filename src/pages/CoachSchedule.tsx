@@ -155,36 +155,33 @@ export function CoachSchedule({ user }: CoachScheduleProps) {
         {/* Search section */}
         <div style={{
           background: 'white',
-          borderRadius: '12px',
-          padding: '30px',
-          marginBottom: '20px',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          borderRadius: '8px',
+          padding: '20px',
+          marginBottom: '15px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
           <label style={{
             display: 'block',
-            marginBottom: '10px',
-            fontSize: '16px',
-            fontWeight: 'bold',
+            marginBottom: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
             color: '#333'
           }}>
             教練姓名
           </label>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
             <select
               value={selectedCoachId}
               onChange={(e) => setSelectedCoachId(e.target.value)}
               style={{
                 flex: '1',
                 minWidth: '200px',
-                padding: '12px',
-                fontSize: '16px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                outline: 'none',
-                transition: 'border-color 0.3s ease'
+                padding: '10px 12px',
+                fontSize: '15px',
+                border: '1px solid #dee2e6',
+                borderRadius: '6px',
+                outline: 'none'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#667eea'}
-              onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
             >
               <option value="">請選擇教練</option>
               {coaches.map(coach => (
@@ -197,33 +194,18 @@ export function CoachSchedule({ user }: CoachScheduleProps) {
               onClick={handleSearch}
               disabled={!selectedCoachId || loading}
               style={{
-                padding: '12px 30px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                background: selectedCoachId && !loading ? '#4CAF50' : '#ccc',
+                padding: '10px 20px',
+                fontSize: '14px',
+                fontWeight: '500',
+                background: selectedCoachId && !loading ? '#28a745' : '#ccc',
                 color: 'white',
                 border: 'none',
-                borderRadius: '8px',
+                borderRadius: '6px',
                 cursor: selectedCoachId && !loading ? 'pointer' : 'not-allowed',
-                transition: 'all 0.3s ease',
-                boxShadow: selectedCoachId && !loading ? '0 2px 4px rgba(76, 175, 80, 0.3)' : 'none'
-              }}
-              onMouseEnter={(e) => {
-                if (selectedCoachId && !loading) {
-                  e.currentTarget.style.background = '#45a049'
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(76, 175, 80, 0.4)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedCoachId && !loading) {
-                  e.currentTarget.style.background = '#4CAF50'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(76, 175, 80, 0.3)'
-                }
+                minHeight: '40px'
               }}
             >
-              {loading ? '搜尋中...' : '搜尋'}
+              {loading ? '搜尋中...' : '🔍 搜尋'}
             </button>
           </div>
         </div>

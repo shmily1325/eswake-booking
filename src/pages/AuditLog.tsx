@@ -221,12 +221,12 @@ export function AuditLog({ user }: AuditLogProps) {
         {/* Filter buttons */}
         <div style={{
           background: 'white',
-          borderRadius: '12px',
+          borderRadius: '8px',
           padding: '15px',
-          marginBottom: '20px',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          marginBottom: '15px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           display: 'flex',
-          gap: '10px',
+          gap: '8px',
           flexWrap: 'wrap'
         }}>
           {['all', 'INSERT', 'UPDATE', 'DELETE'].map((f) => (
@@ -234,14 +234,14 @@ export function AuditLog({ user }: AuditLogProps) {
               key={f}
               onClick={() => setFilter(f as any)}
               style={{
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '8px',
-                background: filter === f ? '#667eea' : '#e9ecef',
-                color: filter === f ? 'white' : '#333',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
+                padding: '8px 16px',
+                border: '1px solid #dee2e6',
+                borderRadius: '6px',
+                background: filter === f ? '#000' : '#fff',
+                color: filter === f ? '#fff' : '#333',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
               }}
             >
               {f === 'all' ? '全部' : f === 'INSERT' ? '新增' : f === 'UPDATE' ? '修改' : '刪除'}
@@ -252,9 +252,9 @@ export function AuditLog({ user }: AuditLogProps) {
         {/* Logs list */}
         <div style={{
           background: 'white',
-          borderRadius: '12px',
+          borderRadius: '8px',
           padding: '20px',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
