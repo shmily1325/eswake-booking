@@ -28,6 +28,7 @@ interface Booking {
   activity_types?: string[] | null // ['WB', 'WS']
   notes?: string | null
   status: string
+  boats?: Boat // Join result from Supabase
   coaches?: Coach // Join result from Supabase
 }
 
@@ -142,7 +143,7 @@ export function DayView({ user }: DayViewProps) {
     
     const { data: bookingsData, error: bookingsError } = await supabase
       .from('bookings')
-      .select('*, coaches:coach_id(id, name)')
+      .select('*, boats:boat_id(id, name, color), coaches:coach_id(id, name)')
       .gte('start_at', startOfDay)
       .lte('start_at', endOfDay)
     
