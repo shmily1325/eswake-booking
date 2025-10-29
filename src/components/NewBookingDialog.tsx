@@ -35,6 +35,13 @@ export function NewBookingDialog({
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingCoaches, setLoadingCoaches] = useState(true)
+  
+  // 重複預約相關狀態
+  const [isRepeat, setIsRepeat] = useState(false)
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]) // 0=Sunday, 1=Monday, ..., 6=Saturday
+  const [repeatEndType, setRepeatEndType] = useState<'count' | 'date'>('count')
+  const [repeatCount, setRepeatCount] = useState(8)
+  const [repeatEndDate, setRepeatEndDate] = useState('')
 
   useEffect(() => {
     if (isOpen) {
@@ -79,154 +86,262 @@ export function NewBookingDialog({
     )
   }
 
+  const toggleWeekday = (day: number) => {
+    setSelectedWeekdays(prev =>
+      prev.includes(day)
+        ? prev.filter(d => d !== day)
+        : [...prev, day].sort()
+    )
+  }
+
+  // 生成所有重複日期
+  const generateRepeatDates = (): Date[] => {
+    if (!isRepeat || selectedWeekdays.length === 0) {
+      return [new Date(`${startDate}T${startTime}:00`)]
+    }
+
+    const dates: Date[] = []
+    const startDateTime = new Date(`${startDate}T${startTime}:00`)
+    
+    if (repeatEndType === 'count') {
+      // 根據重複次數生成日期
+      let currentDate = new Date(startDateTime)
+      let count = 0
+      
+      // 最多檢查 365 天，避免無限循環
+      for (let i = 0; i < 365 && count < repeatCount; i++) {
+        const dayOfWeek = currentDate.getDay()
+        if (selectedWeekdays.includes(dayOfWeek)) {
+          dates.push(new Date(currentDate))
+          count++
+        }
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+    } else {
+      // 根據結束日期生成日期
+      const endDate = new Date(repeatEndDate)
+      let currentDate = new Date(startDateTime)
+      
+      while (currentDate <= endDate) {
+        const dayOfWeek = currentDate.getDay()
+        if (selectedWeekdays.includes(dayOfWeek)) {
+          dates.push(new Date(currentDate))
+        }
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+    }
+    
+    return dates
+  }
+
   if (!isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
+    // 驗證重複預約設定
+    if (isRepeat) {
+      if (selectedWeekdays.length === 0) {
+        setError('請至少選擇一個星期')
+        return
+      }
+      if (repeatEndType === 'date' && !repeatEndDate) {
+        setError('請選擇結束日期')
+        return
+      }
+    }
+
     setLoading(true)
 
     try {
-      // Combine date and time into ISO format
-      const newStartAt = new Date(`${startDate}T${startTime}:00`).toISOString()
-      const newStartTime = new Date(newStartAt).getTime()
-      const newEndTime = newStartTime + durationMin * 60000
+      const datesToCreate = generateRepeatDates()
       
-      // 檢查船隻衝突（需要至少15分鐘間隔）
-      const { data: existingBookings, error: checkError } = await supabase
-        .from('bookings')
-        .select('id, start_at, duration_min, student, coaches(name)')
-        .eq('boat_id', defaultBoatId)
-        .gte('start_at', `${startDate}T00:00:00`)
-        .lte('start_at', `${startDate}T23:59:59`)
-      
-      if (checkError) {
-        setError('檢查衝突時發生錯誤')
+      if (datesToCreate.length === 0) {
+        setError('沒有可創建的預約日期')
         setLoading(false)
         return
       }
-      
-      // 檢查是否與現有預約衝突（需要15分鐘接船時間）
-      for (const existing of existingBookings || []) {
-        const existingStart = new Date(existing.start_at).getTime()
-        const existingEnd = existingStart + existing.duration_min * 60000
-        const existingCleanupEnd = existingEnd + 15 * 60000 // 加15分鐘接船時間
-        
-        // 檢查新預約是否在現有預約的接船時間內開始
-        if (newStartTime >= existingEnd && newStartTime < existingCleanupEnd) {
-          setError(`與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`)
-          setLoading(false)
-          return
-        }
-        
-        // 檢查新預約結束時間是否會影響現有預約
-        const newCleanupEnd = newEndTime + 15 * 60000
-        if (existingStart >= newEndTime && existingStart < newCleanupEnd) {
-          setError(`與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`)
-          setLoading(false)
-          return
-        }
-        
-        // 檢查時間重疊
-        if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
-          setError(`與 ${existing.student} 的預約時間重疊`)
-          setLoading(false)
-          return
-        }
+
+      // 用於追蹤結果
+      const results = {
+        success: [] as string[],
+        skipped: [] as { date: string; reason: string }[],
       }
+
+      // 對每個日期進行處理
+      for (const dateTime of datesToCreate) {
+        const dateStr = dateTime.toISOString().split('T')[0]
+        const timeStr = `${dateTime.getHours().toString().padStart(2, '0')}:${dateTime.getMinutes().toString().padStart(2, '0')}`
+        const displayDate = `${dateStr} ${timeStr}`
+        
+        const newStartAt = dateTime.toISOString()
+        const newStartTime = dateTime.getTime()
+        const newEndTime = newStartTime + durationMin * 60000
+        
+        let hasConflict = false
+        let conflictReason = ''
       
-      // 檢查教練衝突（如果有選擇教練）
-      if (selectedCoaches.length > 0) {
-        for (const coachId of selectedCoaches) {
-          const { data: coachBookings, error: coachCheckError } = await supabase
-            .from('bookings')
-            .select('id, start_at, duration_min, student, boats(name)')
-            .eq('coach_id', coachId)
-            .gte('start_at', `${startDate}T00:00:00`)
-            .lte('start_at', `${startDate}T23:59:59`)
-          
-          if (coachCheckError) continue
-          
-          for (const existing of coachBookings || []) {
+        // 檢查船隻衝突（需要至少15分鐘間隔）
+        const { data: existingBookings, error: checkError } = await supabase
+          .from('bookings')
+          .select('id, start_at, duration_min, student, coaches(name)')
+          .eq('boat_id', defaultBoatId)
+          .gte('start_at', `${dateStr}T00:00:00`)
+          .lte('start_at', `${dateStr}T23:59:59`)
+      
+        if (checkError) {
+          hasConflict = true
+          conflictReason = '檢查衝突時發生錯誤'
+        } else {
+          // 檢查是否與現有預約衝突（需要15分鐘接船時間）
+          for (const existing of existingBookings || []) {
             const existingStart = new Date(existing.start_at).getTime()
             const existingEnd = existingStart + existing.duration_min * 60000
+            const existingCleanupEnd = existingEnd + 15 * 60000 // 加15分鐘接船時間
+            
+            // 檢查新預約是否在現有預約的接船時間內開始
+            if (newStartTime >= existingEnd && newStartTime < existingCleanupEnd) {
+              hasConflict = true
+              conflictReason = `與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`
+              break
+            }
+            
+            // 檢查新預約結束時間是否會影響現有預約
+            const newCleanupEnd = newEndTime + 15 * 60000
+            if (existingStart >= newEndTime && existingStart < newCleanupEnd) {
+              hasConflict = true
+              conflictReason = `與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`
+              break
+            }
             
             // 檢查時間重疊
             if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
-              const coachName = coaches.find(c => c.id === coachId)?.name || coachId
-              const boatName = (existing as any).boats?.name || ''
-              setError(`教練 ${coachName} 在此時段已有其他預約${boatName ? `（${boatName}）` : ''}`)
-              setLoading(false)
-              return
+              hasConflict = true
+              conflictReason = `與 ${existing.student} 的預約時間重疊`
+              break
             }
           }
         }
-      }
       
-      // Create bookings
-      let bookingsToInsert
-      if (selectedCoaches.length === 0) {
-        // 如果沒有選擇教練，創建一個沒有教練的預約
-        bookingsToInsert = [{
-          boat_id: defaultBoatId,
-          coach_id: null,
-          student: student,
-          start_at: newStartAt,
-          duration_min: durationMin,
-          activity_types: activityTypes.length > 0 ? activityTypes : null,
-          notes: notes || null,
-          status: 'Confirmed',
-          created_by: user.id,
-        }]
-      } else {
-        // 為每個選擇的教練創建一個預約
-        bookingsToInsert = selectedCoaches.map(coachId => ({
-          boat_id: defaultBoatId,
-          coach_id: coachId,
-          student: student,
-          start_at: newStartAt,
-          duration_min: durationMin,
-          activity_types: activityTypes.length > 0 ? activityTypes : null,
-          notes: notes || null,
-          status: 'Confirmed',
-          created_by: user.id,
-        }))
+        // 檢查教練衝突（如果有選擇教練）
+        if (!hasConflict && selectedCoaches.length > 0) {
+          for (const coachId of selectedCoaches) {
+            const { data: coachBookings, error: coachCheckError } = await supabase
+              .from('bookings')
+              .select('id, start_at, duration_min, student, boats(name)')
+              .eq('coach_id', coachId)
+              .gte('start_at', `${dateStr}T00:00:00`)
+              .lte('start_at', `${dateStr}T23:59:59`)
+            
+            if (coachCheckError) continue
+            
+            for (const existing of coachBookings || []) {
+              const existingStart = new Date(existing.start_at).getTime()
+              const existingEnd = existingStart + existing.duration_min * 60000
+              
+              // 檢查時間重疊
+              if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
+                const coachName = coaches.find(c => c.id === coachId)?.name || coachId
+                const boatName = (existing as any).boats?.name || ''
+                hasConflict = true
+                conflictReason = `教練 ${coachName} 在此時段已有其他預約${boatName ? `（${boatName}）` : ''}`
+                break
+              }
+            }
+            if (hasConflict) break
+          }
+        }
+        
+        // 如果有衝突，跳過這個日期
+        if (hasConflict) {
+          results.skipped.push({ date: displayDate, reason: conflictReason })
+          continue
+        }
+      
+        // Create bookings
+        let bookingsToInsert
+        if (selectedCoaches.length === 0) {
+          // 如果沒有選擇教練，創建一個沒有教練的預約
+          bookingsToInsert = [{
+            boat_id: defaultBoatId,
+            coach_id: null,
+            student: student,
+            start_at: newStartAt,
+            duration_min: durationMin,
+            activity_types: activityTypes.length > 0 ? activityTypes : null,
+            notes: notes || null,
+            status: 'Confirmed',
+            created_by: user.id,
+          }]
+        } else {
+          // 為每個選擇的教練創建一個預約
+          bookingsToInsert = selectedCoaches.map(coachId => ({
+            boat_id: defaultBoatId,
+            coach_id: coachId,
+            student: student,
+            start_at: newStartAt,
+            duration_min: durationMin,
+            activity_types: activityTypes.length > 0 ? activityTypes : null,
+            notes: notes || null,
+            status: 'Confirmed',
+            created_by: user.id,
+          }))
+        }
+
+        const { data: insertedBookings, error: insertError } = await supabase
+          .from('bookings')
+          .insert(bookingsToInsert)
+          .select()
+
+        if (insertError) {
+          // 如果創建失敗，記錄為跳過
+          results.skipped.push({
+            date: displayDate,
+            reason: insertError.message.includes('violates exclusion constraint')
+              ? '該時段已被預約'
+              : insertError.message
+          })
+          continue
+        }
+
+        // Log to audit_log
+        if (insertedBookings && insertedBookings.length > 0) {
+          const auditLogs = insertedBookings.map(booking => ({
+            table_name: 'bookings',
+            record_id: booking.id,
+            action: 'INSERT',
+            user_id: user.id,
+            user_email: user.email,
+            new_data: booking,
+            old_data: null,
+            changed_fields: null,
+          }))
+
+          await supabase.from('audit_log').insert(auditLogs)
+          
+          // 記錄成功
+          results.success.push(displayDate)
+        }
       }
 
-      const { data: insertedBookings, error: insertError } = await supabase
-        .from('bookings')
-        .insert(bookingsToInsert)
-        .select()
-
-      if (insertError) {
-        // Check for exclusion constraint violation
-        if (insertError.message.includes('violates exclusion constraint')) {
-          setError('該時段已被預約（教練/船）')
-        } else {
-          setError(insertError.message)
-        }
+      // 顯示結果
+      if (results.success.length === 0) {
+        setError('沒有成功創建任何預約，所有日期都有衝突')
         setLoading(false)
         return
       }
-
-      // Log to audit_log
-      if (insertedBookings && insertedBookings.length > 0) {
-        const auditLogs = insertedBookings.map(booking => ({
-          table_name: 'bookings',
-          record_id: booking.id,
-          action: 'INSERT',
-          user_id: user.id,
-          user_email: user.email,
-          new_data: booking,
-          old_data: null,
-          changed_fields: null,
-        }))
-
-        await supabase.from('audit_log').insert(auditLogs)
+      
+      // 如果有跳過的，顯示詳細報告
+      if (results.skipped.length > 0) {
+        let message = `✅ 成功創建 ${results.success.length} 個預約\n⚠️ 跳過 ${results.skipped.length} 個衝突:\n\n`
+        results.skipped.forEach(({ date, reason }) => {
+          message += `• ${date}: ${reason}\n`
+        })
+        alert(message)
       }
 
-      // Success
+      // Success - 重置表單
       setSelectedCoaches([])
       setStudent('')
       setStartDate('')
@@ -234,6 +349,10 @@ export function NewBookingDialog({
       setDurationMin(60)
       setActivityTypes([])
       setNotes('')
+      setIsRepeat(false)
+      setSelectedWeekdays([])
+      setRepeatCount(8)
+      setRepeatEndDate('')
       setLoading(false)
       onSuccess()
       onClose()
@@ -252,6 +371,10 @@ export function NewBookingDialog({
     setDurationMin(60)
     setActivityTypes([])
     setNotes('')
+    setIsRepeat(false)
+    setSelectedWeekdays([])
+    setRepeatCount(8)
+    setRepeatEndDate('')
     onClose()
   }
 
@@ -592,6 +715,169 @@ export function NewBookingDialog({
                 touchAction: 'manipulation',
               }}
             />
+          </div>
+
+          {/* 重複預約選項 */}
+          <div style={{ 
+            marginBottom: '18px',
+            padding: '16px',
+            backgroundColor: '#f0f8ff',
+            borderRadius: '8px',
+            border: '1px solid #d0e8ff',
+          }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              marginBottom: isRepeat ? '16px' : '0',
+            }}>
+              <input
+                type="checkbox"
+                checked={isRepeat}
+                onChange={(e) => setIsRepeat(e.target.checked)}
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  marginRight: '10px',
+                  cursor: 'pointer',
+                }}
+              />
+              <span style={{ 
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#000',
+              }}>
+                🔄 重複預約
+              </span>
+            </label>
+
+            {isRepeat && (
+              <div>
+                {/* 星期選擇 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: '8px', 
+                    color: '#000',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                  }}>
+                    重複於（請選擇星期）：
+                  </label>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: '8px',
+                  }}>
+                    {[
+                      { value: 1, label: '一' },
+                      { value: 2, label: '二' },
+                      { value: 3, label: '三' },
+                      { value: 4, label: '四' },
+                      { value: 5, label: '五' },
+                      { value: 6, label: '六' },
+                      { value: 0, label: '日' },
+                    ].map(day => (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => toggleWeekday(day.value)}
+                        style={{
+                          padding: '10px',
+                          borderRadius: '6px',
+                          border: selectedWeekdays.includes(day.value) ? '2px solid #007bff' : '1px solid #ccc',
+                          backgroundColor: selectedWeekdays.includes(day.value) ? '#007bff' : 'white',
+                          color: selectedWeekdays.includes(day.value) ? 'white' : '#000',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: selectedWeekdays.includes(day.value) ? '600' : '400',
+                          touchAction: 'manipulation',
+                        }}
+                      >
+                        週{day.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 結束條件 */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: '8px', 
+                    color: '#000',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                  }}>
+                    結束條件：
+                  </label>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="radio"
+                        checked={repeatEndType === 'count'}
+                        onChange={() => setRepeatEndType('count')}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '14px', color: '#000' }}>重複</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="52"
+                        value={repeatCount}
+                        onChange={(e) => setRepeatCount(Math.max(1, parseInt(e.target.value) || 1))}
+                        disabled={repeatEndType !== 'count'}
+                        style={{
+                          width: '70px',
+                          padding: '6px',
+                          borderRadius: '4px',
+                          border: '1px solid #ccc',
+                          fontSize: '14px',
+                        }}
+                      />
+                      <span style={{ fontSize: '14px', color: '#000' }}>次</span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="radio"
+                        checked={repeatEndType === 'date'}
+                        onChange={() => setRepeatEndType('date')}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '14px', color: '#000' }}>結束於</span>
+                      <input
+                        type="date"
+                        value={repeatEndDate}
+                        onChange={(e) => setRepeatEndDate(e.target.value)}
+                        disabled={repeatEndType !== 'date'}
+                        style={{
+                          flex: 1,
+                          padding: '6px',
+                          borderRadius: '4px',
+                          border: '1px solid #ccc',
+                          fontSize: '14px',
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* 預覽 */}
+                {selectedWeekdays.length > 0 && (
+                  <div style={{
+                    padding: '10px',
+                    backgroundColor: '#fff3cd',
+                    borderRadius: '4px',
+                    fontSize: '13px',
+                    color: '#856404',
+                  }}>
+                    📅 預計創建 <strong>{generateRepeatDates().length}</strong> 個預約
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={{ 

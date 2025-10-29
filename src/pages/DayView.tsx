@@ -31,10 +31,16 @@ interface Booking {
   coaches?: Coach // Join result from Supabase
 }
 
-// Generate time slots from 08:00 to 18:00, every 15 minutes
+// Generate time slots from 04:30 to 18:00, every 15 minutes
 const generateTimeSlots = () => {
   const slots: string[] = []
-  for (let hour = 8; hour < 18; hour++) {
+  
+  // Start from 04:30
+  slots.push('04:30')
+  slots.push('04:45')
+  
+  // Continue from 05:00 to 17:45
+  for (let hour = 5; hour < 18; hour++) {
     for (let min = 0; min < 60; min += 15) {
       const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`
       slots.push(timeStr)
