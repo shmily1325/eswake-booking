@@ -296,10 +296,10 @@ export function DayView({ user }: DayViewProps) {
           <h1 style={{ margin: 0, fontSize: '18px', whiteSpace: 'nowrap' }}>Daily Schedule</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <a
-              href="/student-history"
+              href="/"
               style={{
                 padding: '8px 12px',
-                backgroundColor: '#28a745',
+                backgroundColor: '#667eea',
                 color: 'white',
                 textDecoration: 'none',
                 borderRadius: '6px',
@@ -308,22 +308,7 @@ export function DayView({ user }: DayViewProps) {
                 whiteSpace: 'nowrap',
               }}
             >
-              📊 學生記錄
-            </a>
-            <a
-              href="/coach-schedule"
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#17a2b8',
-                color: 'white',
-                textDecoration: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              👨‍🏫 教練行程
+              🏠 回主頁
             </a>
             <UserMenu user={user} />
           </div>
