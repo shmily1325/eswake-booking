@@ -263,10 +263,10 @@ export function DayView({ user }: DayViewProps) {
         ))}
       </div>
       <div style={{ 
-        marginBottom: '16px', 
+        marginBottom: '12px', 
         display: 'flex', 
         flexDirection: 'column',
-        gap: '12px',
+        gap: '8px',
         position: 'relative',
         zIndex: 1,
       }}>
@@ -274,30 +274,28 @@ export function DayView({ user }: DayViewProps) {
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          gap: '12px',
-          flexWrap: 'wrap',
+          gap: '8px',
         }}>
-          <h1 style={{ margin: 0, fontSize: '24px' }}>Daily Schedule</h1>
+          <h1 style={{ margin: 0, fontSize: '18px', whiteSpace: 'nowrap' }}>Daily Schedule</h1>
           <UserMenu user={user} />
         </div>
         
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          gap: '8px',
-          flexWrap: 'wrap',
+          gap: '6px',
         }}>
           <button
             onClick={() => changeDate(-1)}
             style={{
-              padding: '12px 20px',
-              borderRadius: '8px',
+              padding: '8px 12px',
+              borderRadius: '6px',
               border: '1px solid #ccc',
               backgroundColor: 'white',
               cursor: 'pointer',
-              fontSize: '18px',
-              minWidth: '48px',
-              minHeight: '48px',
+              fontSize: '16px',
+              minWidth: '36px',
+              minHeight: '36px',
               touchAction: 'manipulation',
             }}
             title="前一天"
@@ -310,13 +308,13 @@ export function DayView({ user }: DayViewProps) {
             value={dateParam}
             onChange={handleDateInputChange}
             style={{
-              padding: '12px',
-              borderRadius: '8px',
+              padding: '8px',
+              borderRadius: '6px',
               border: '1px solid #ccc',
-              fontSize: '16px',
+              fontSize: '14px',
               flex: 1,
-              minWidth: '160px',
-              minHeight: '48px',
+              minWidth: '120px',
+              minHeight: '36px',
               touchAction: 'manipulation',
             }}
           />
@@ -324,14 +322,14 @@ export function DayView({ user }: DayViewProps) {
           <button
             onClick={() => changeDate(1)}
             style={{
-              padding: '12px 20px',
-              borderRadius: '8px',
+              padding: '8px 12px',
+              borderRadius: '6px',
               border: '1px solid #ccc',
               backgroundColor: 'white',
               cursor: 'pointer',
-              fontSize: '18px',
-              minWidth: '48px',
-              minHeight: '48px',
+              fontSize: '16px',
+              minWidth: '36px',
+              minHeight: '36px',
               touchAction: 'manipulation',
             }}
             title="下一天"
@@ -342,16 +340,17 @@ export function DayView({ user }: DayViewProps) {
           <button
             onClick={goToToday}
             style={{
-              padding: '12px 20px',
-              borderRadius: '8px',
+              padding: '8px 12px',
+              borderRadius: '6px',
               border: '1px solid #007bff',
               backgroundColor: '#007bff',
               color: 'white',
               cursor: 'pointer',
-              fontSize: '16px',
+              fontSize: '14px',
               fontWeight: 'bold',
-              minHeight: '48px',
+              minHeight: '36px',
               touchAction: 'manipulation',
+              whiteSpace: 'nowrap',
             }}
           >
             今天
@@ -364,7 +363,7 @@ export function DayView({ user }: DayViewProps) {
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
         borderRadius: '8px',
-        maxHeight: 'calc(100vh - 200px)',
+        maxHeight: 'calc(100vh - 140px)',
         position: 'relative',
       }}>
         <table
