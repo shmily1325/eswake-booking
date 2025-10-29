@@ -1,4 +1,63 @@
-# React + TypeScript + Vite
+# eswake-booking
+
+一個使用 React + TypeScript + Vite + Supabase 建立的預訂系統。
+
+## 🚀 快速開始
+
+### 1. 安裝相依套件
+```bash
+npm install
+```
+
+### 2. 設定環境變數
+複製環境變數模板並填入你的 Supabase 憑證：
+
+```bash
+# Windows
+copy .env.example .env
+
+# Mac/Linux
+cp .env.example .env
+```
+
+然後編輯 `.env` 檔案，填入你的 Supabase 專案資訊：
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+> 💡 在 [Supabase Dashboard](https://supabase.com/dashboard) 的 `Settings` → `API` 中可以找到這些資訊
+
+### 3. 啟動開發伺服器
+```bash
+npm run dev
+```
+
+開啟瀏覽器訪問顯示的網址，你會看到 Supabase 連接測試頁面。如果顯示綠色勾勾 ✅，表示連接成功！
+
+## 📦 技術堆疊
+
+- **React 19** - UI 框架
+- **TypeScript** - 型別安全
+- **Vite** - 建置工具
+- **Supabase** - 後端服務（資料庫、認證等）
+
+## 🔧 其他指令
+
+```bash
+# 建置生產版本
+npm run build
+
+# 預覽生產版本
+npm run preview
+
+# 程式碼檢查
+npm run lint
+```
+
+---
+
+## React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
