@@ -298,17 +298,18 @@ export function DayView({ user }: DayViewProps) {
             <a
               href="/"
               style={{
-                padding: '8px 12px',
-                backgroundColor: '#667eea',
-                color: 'white',
+                padding: '6px 12px',
+                backgroundColor: '#f8f9fa',
+                color: '#333',
                 textDecoration: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
+                borderRadius: '4px',
+                fontSize: '13px',
+                fontWeight: 'normal',
                 whiteSpace: 'nowrap',
+                border: '1px solid #dee2e6'
               }}
             >
-              🏠 回主頁
+              ← 回主頁
             </a>
             <UserMenu user={user} />
           </div>

@@ -84,37 +84,43 @@ export function StudentHistory({ user }: StudentHistoryProps) {
       backgroundColor: '#f5f5f5',
     }}>
       {/* Header */}
-      <div style={{
+      <div style={{ 
+        background: 'white',
+        borderRadius: '8px',
+        padding: '15px',
+        marginBottom: '15px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '20px',
-        gap: '16px',
-        flexWrap: 'wrap',
+        gap: '10px'
       }}>
-        <h1 style={{ margin: 0, fontSize: '24px', color: '#000' }}>
-          📊 學生預約記錄
+        <h1 style={{ 
+          margin: 0,
+          fontSize: '18px',
+          color: '#000',
+          fontWeight: '600'
+        }}>
+          學生記錄
         </h1>
-        <UserMenu user={user} />
-      </div>
-
-      {/* Navigation */}
-      <div style={{ marginBottom: '20px' }}>
-        <a
-          href="/day"
-          style={{
-            display: 'inline-block',
-            padding: '10px 16px',
-            backgroundColor: '#007bff',
-            color: 'white',
-            textDecoration: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '500',
-          }}
-        >
-          ← 返回每日視圖
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <a
+            href="/"
+            style={{
+              padding: '6px 12px',
+              background: '#f8f9fa',
+              color: '#333',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              fontSize: '13px',
+              border: '1px solid #dee2e6',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            ← 回主頁
+          </a>
+          <UserMenu user={user} />
+        </div>
       </div>
 
       {/* Search Form */}
@@ -154,7 +160,7 @@ export function StudentHistory({ user }: StudentHistoryProps) {
               fontSize: '12px',
               color: '#666',
             }}>
-              💡 可搜尋部分姓名，例如搜尋「Ming」可找到「Ingrid/Ming」
+              💡 可搜尋部分姓名
             </div>
           </div>
           <button

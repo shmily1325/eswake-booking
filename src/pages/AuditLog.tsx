@@ -171,91 +171,52 @@ export function AuditLog({ user }: AuditLogProps) {
   return (
     <div style={{ 
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '20px',
-      position: 'relative',
-      overflow: 'hidden'
+      background: '#f8f9fa',
+      padding: '15px'
     }}>
-      {/* 浮水印背景 */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        pointerEvents: 'none',
-        zIndex: 0,
-        opacity: 0.03
-      }}>
-        {[...Array(6)].map((_, i) => (
-          <img 
-            key={i}
-            src="/logo.png" 
-            alt="watermark"
-            style={{
-              position: 'absolute',
-              width: '300px',
-              height: '300px',
-              objectFit: 'contain',
-              transform: `rotate(${-30 + i * 15}deg)`,
-              top: `${10 + (i % 3) * 35}%`,
-              left: `${5 + Math.floor(i / 3) * 50}%`,
-            }}
-          />
-        ))}
-      </div>
-
       <div style={{ 
         maxWidth: '1200px', 
-        margin: '0 auto',
-        position: 'relative',
-        zIndex: 1
+        margin: '0 auto'
       }}>
         {/* Header */}
         <div style={{ 
           background: 'white',
-          borderRadius: '12px',
-          padding: '20px',
-          marginBottom: '20px',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          borderRadius: '8px',
+          padding: '15px',
+          marginBottom: '15px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '15px'
+          gap: '10px'
         }}>
           <h1 style={{ 
             margin: 0,
-            fontSize: '24px',
-            color: '#333',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
+            fontSize: '18px',
+            color: '#000',
+            fontWeight: '600'
           }}>
-            <span style={{ fontSize: '28px' }}>📝</span>
             編輯記錄
           </h1>
-          <UserMenu user={user} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Link 
+              to="/"
+              style={{
+                padding: '6px 12px',
+                background: '#f8f9fa',
+                color: '#333',
+                textDecoration: 'none',
+                borderRadius: '4px',
+                fontSize: '13px',
+                border: '1px solid #dee2e6',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              ← 回主頁
+            </Link>
+            <UserMenu user={user} />
+          </div>
         </div>
-
-        {/* Back button */}
-        <Link 
-          to="/"
-          style={{
-            display: 'inline-block',
-            marginBottom: '20px',
-            padding: '10px 20px',
-            background: 'white',
-            color: '#667eea',
-            textDecoration: 'none',
-            borderRadius: '8px',
-            fontWeight: 'bold',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            transition: 'all 0.3s ease'
-          }}
-        >
-          ← 返回主頁
-        </Link>
 
         {/* Filter buttons */}
         <div style={{
