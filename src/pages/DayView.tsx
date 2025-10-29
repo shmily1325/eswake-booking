@@ -381,14 +381,14 @@ export function DayView({ user }: DayViewProps) {
               <th
                 style={{
                   border: '1px solid #ddd',
-                  padding: '12px 8px',
+                  padding: '8px 4px',
                   backgroundColor: '#f8f9fa',
                   position: 'sticky',
                   top: 0,
                   left: 0,
                   zIndex: 30,
-                  minWidth: '60px',
-                  fontSize: '14px',
+                  minWidth: '50px',
+                  fontSize: '12px',
                   fontWeight: 'bold',
                   boxShadow: '2px 2px 4px rgba(0,0,0,0.1)',
                 }}
@@ -400,13 +400,13 @@ export function DayView({ user }: DayViewProps) {
                   key={boat.id}
                   style={{
                     border: '1px solid #ddd',
-                    padding: '12px 8px',
+                    padding: '8px 4px',
                     backgroundColor: '#f8f9fa',
                     position: 'sticky',
                     top: 0,
                     zIndex: 20,
-                    minWidth: '100px',
-                    fontSize: '14px',
+                    minWidth: '70px',
+                    fontSize: '12px',
                     fontWeight: 'bold',
                     whiteSpace: 'nowrap',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
@@ -423,14 +423,14 @@ export function DayView({ user }: DayViewProps) {
                 <td
                   style={{
                     border: '1px solid #ddd',
-                    padding: '10px 6px',
+                    padding: '6px 4px',
                     fontWeight: 'bold',
                     backgroundColor: '#f8f9fa',
                     textAlign: 'center',
                     position: 'sticky',
                     left: 0,
                     zIndex: 10,
-                    fontSize: '13px',
+                    fontSize: '11px',
                     boxShadow: '2px 0 4px rgba(0,0,0,0.1)',
                   }}
                 >
@@ -458,12 +458,12 @@ export function DayView({ user }: DayViewProps) {
                       onClick={() => handleCellClick(boat.id, timeSlot, booking || undefined)}
                       style={{
                         border: '1px solid #ddd',
-                        padding: '10px 8px',
+                        padding: '6px 4px',
                         cursor: 'pointer',
                         backgroundColor: bgColor,
                         color: textColor,
                         verticalAlign: 'top',
-                        minHeight: booking ? `${rowSpan * 44}px` : '44px',
+                        minHeight: booking ? `${rowSpan * 32}px` : '32px',
                         transition: 'background-color 0.2s',
                         touchAction: 'manipulation',
                         WebkitTapHighlightColor: 'transparent',
@@ -494,7 +494,7 @@ export function DayView({ user }: DayViewProps) {
                     >
                       {isCleanupTime && (
                         <div style={{ 
-                          fontSize: '16px',
+                          fontSize: '14px',
                           lineHeight: '1.2',
                           textAlign: 'center',
                           opacity: 0.4,
@@ -504,23 +504,23 @@ export function DayView({ user }: DayViewProps) {
                       )}
                       {booking && (
                         <div style={{ 
-                          fontSize: '13px',
-                          lineHeight: '1.4',
+                          fontSize: '11px',
+                          lineHeight: '1.3',
                         }}>
-                          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                          <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
                             {booking.student}
                           </div>
                           <div style={{ opacity: 0.9 }}>
                             教練: {booking.coach_id ? (booking.coaches?.name || getCoachName(booking.coach_id)) : '未指定'}
                           </div>
-                          <div style={{ opacity: 0.9, marginTop: '2px' }}>
+                          <div style={{ opacity: 0.9, marginTop: '1px' }}>
                             {booking.duration_min} 分鐘
                           </div>
                           {booking.activity_types && booking.activity_types.length > 0 && (
                             <div style={{ 
                               opacity: 0.9, 
-                              marginTop: '2px',
-                              fontSize: '11px',
+                              marginTop: '1px',
+                              fontSize: '10px',
                               fontWeight: 'bold',
                             }}>
                               {booking.activity_types.join(' + ')}
@@ -529,11 +529,11 @@ export function DayView({ user }: DayViewProps) {
                           {booking.notes && (
                             <div style={{ 
                               opacity: 0.85,
-                              marginTop: '4px',
+                              marginTop: '2px',
                               fontStyle: 'italic',
-                              fontSize: '12px',
+                              fontSize: '10px',
                               borderTop: '1px solid rgba(255,255,255,0.3)',
-                              paddingTop: '4px',
+                              paddingTop: '2px',
                             }}>
                               📝 {booking.notes}
                             </div>
