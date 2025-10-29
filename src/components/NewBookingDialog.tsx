@@ -137,6 +137,13 @@ export function NewBookingDialog({
     e.preventDefault()
     setError('')
 
+    // 防呆檢查：08:00之前的預約必須指定教練
+    const [hour] = startTime.split(':').map(Number)
+    if (hour < 8 && selectedCoaches.length === 0) {
+      setError('⚠️ 08:00之前的預約必須指定教練')
+      return
+    }
+
     // 驗證重複預約設定
     if (isRepeat) {
       if (repeatEndType === 'date' && !repeatEndDate) {

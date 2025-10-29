@@ -131,65 +131,58 @@ export function StudentHistory({ user }: StudentHistoryProps) {
         marginBottom: '15px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
+        <label style={{
+          display: 'block',
+          marginBottom: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#333'
+        }}>
+          學生姓名
+        </label>
         <form onSubmit={handleSearch}>
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'flex-end',
-            flexWrap: 'wrap',
-          }}>
-            <div style={{ flex: '1 1 300px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333',
-              }}>
-                學生姓名
-              </label>
-              <input
-                type="text"
-                value={searchName}
-                onChange={(e) => setSearchName(e.target.value)}
-                placeholder="輸入學生姓名..."
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid #dee2e6',
-                  fontSize: '15px',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <div style={{
-                marginTop: '4px',
-                fontSize: '12px',
-                color: '#666',
-              }}>
-                💡 可搜尋部分姓名
-              </div>
-            </div>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              type="text"
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              placeholder="輸入學生姓名..."
+              style={{
+                flex: '1',
+                minWidth: '200px',
+                padding: '10px 12px',
+                fontSize: '15px',
+                border: '1px solid #dee2e6',
+                borderRadius: '6px',
+                outline: 'none'
+              }}
+            />
             <button
               type="submit"
               disabled={loading}
               style={{
                 padding: '10px 20px',
-                backgroundColor: '#28a745',
+                fontSize: '14px',
+                fontWeight: '500',
+                background: !loading ? '#28a745' : '#ccc',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.6 : 1,
-                minHeight: '40px',
+                cursor: !loading ? 'pointer' : 'not-allowed',
+                minHeight: '40px'
               }}
             >
               {loading ? '搜尋中...' : '🔍 搜尋'}
             </button>
           </div>
         </form>
+        <div style={{
+          marginTop: '8px',
+          fontSize: '12px',
+          color: '#666',
+        }}>
+          💡 可搜尋部分姓名
+        </div>
       </div>
 
       {/* Results */}

@@ -104,6 +104,13 @@ export function EditBookingDialog({
     e.preventDefault()
     setError('')
 
+    // 防呆檢查：08:00之前的預約必須指定教練
+    const [hour] = startTime.split(':').map(Number)
+    if (hour < 8 && !selectedCoachId) {
+      setError('⚠️ 08:00之前的預約必須指定教練')
+      return
+    }
+
     setLoading(true)
 
     try {

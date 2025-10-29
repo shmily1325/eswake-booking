@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -80,8 +80,8 @@ export function DayView({ user }: DayViewProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
 
-  // 手機優化：時間範圍篩選
-  const [timeRange, setTimeRange] = useState<'all' | 'business'>('all')
+  // 手機優化：時間範圍篩選（默認為營業時間）
+  const [timeRange, setTimeRange] = useState<'all' | 'business'>('business')
   
   // 手機優化：單船視圖
   const [singleBoatMode, setSingleBoatMode] = useState(false)
@@ -226,24 +226,26 @@ export function DayView({ user }: DayViewProps) {
     return Math.ceil(booking.duration_min / 15)
   }
 
-  // 篩選時間槽
-  const getFilteredTimeSlots = () => {
+  // 篩選時間槽（使用useMemo緩存）
+  const filteredTimeSlots = useMemo(() => {
     if (timeRange === 'business') {
+      // 營業時間：5:00 - 20:00
       return TIME_SLOTS.filter(slot => {
         const [hour] = slot.split(':').map(Number)
-        return hour >= 8 && hour < 18
+        return hour >= 5 && hour < 20
       })
     }
+    // 全天：顯示所有時間槽（04:30 - 22:00，已包含在TIME_SLOTS中）
     return TIME_SLOTS
-  }
+  }, [timeRange])
 
-  // 取得要顯示的船隻
-  const getDisplayBoats = () => {
+  // 取得要顯示的船隻（使用useMemo緩存）
+  const displayBoats = useMemo(() => {
     if (singleBoatMode && boats.length > 0) {
       return [boats[currentBoatIndex]]
     }
     return boats
-  }
+  }, [singleBoatMode, boats, currentBoatIndex])
 
   // 切換到下一艘船
   const nextBoat = () => {
@@ -258,6 +260,17 @@ export function DayView({ user }: DayViewProps) {
       setCurrentBoatIndex(currentBoatIndex - 1)
     }
   }
+
+  // 預先計算每艘船的bookings（用於列表視圖，使用useMemo緩存）
+  const bookingsByBoat = useMemo(() => {
+    const result: Record<number, Booking[]> = {}
+    boats.forEach(boat => {
+      result[boat.id] = bookings
+        .filter(b => b.boat_id === boat.id)
+        .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
+    })
+    return result
+  }, [boats, bookings])
 
   // 檢查是否為接船時間（預約結束後 30 分鐘）
   const isInCleanupTime = (boatId: number, timeSlot: string): boolean => {
@@ -486,111 +499,99 @@ export function DayView({ user }: DayViewProps) {
         {isMobile && viewMode === 'timeline' && (
           <div style={{ 
             display: 'flex', 
-            gap: '6px',
+            gap: '8px',
             marginTop: '8px',
-            flexWrap: 'wrap',
+            alignItems: 'center',
           }}>
             {/* 時間範圍切換 */}
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <button
-                onClick={() => setTimeRange('all')}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '4px',
-                  border: `1px solid ${timeRange === 'all' ? '#007bff' : '#ccc'}`,
-                  backgroundColor: timeRange === 'all' ? '#007bff' : 'white',
-                  color: timeRange === 'all' ? 'white' : '#333',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  touchAction: 'manipulation',
-                }}
-              >
-                全天
-              </button>
-              <button
-                onClick={() => setTimeRange('business')}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '4px',
-                  border: `1px solid ${timeRange === 'business' ? '#007bff' : '#ccc'}`,
-                  backgroundColor: timeRange === 'business' ? '#007bff' : 'white',
-                  color: timeRange === 'business' ? 'white' : '#333',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  touchAction: 'manipulation',
-                }}
-              >
-                營業時間
-              </button>
-            </div>
+            <button
+              onClick={() => setTimeRange(timeRange === 'all' ? 'business' : 'all')}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '4px',
+                border: `1px solid ${timeRange === 'all' ? '#6c757d' : '#007bff'}`,
+                backgroundColor: timeRange === 'all' ? '#6c757d' : '#007bff',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '500',
+                touchAction: 'manipulation',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {timeRange === 'all' ? '🕐 全天' : '⏰ 營業時間'}
+            </button>
 
             {/* 視圖模式切換 */}
-            <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
-              <button
-                onClick={() => {
-                  setSingleBoatMode(!singleBoatMode)
-                  setCurrentBoatIndex(0)
-                }}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '4px',
-                  border: `1px solid ${singleBoatMode ? '#28a745' : '#ccc'}`,
-                  backgroundColor: singleBoatMode ? '#28a745' : 'white',
-                  color: singleBoatMode ? 'white' : '#333',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  touchAction: 'manipulation',
-                }}
-              >
-                {singleBoatMode ? '📱 單船' : '📊 全部'}
-              </button>
+            <button
+              onClick={() => {
+                setSingleBoatMode(!singleBoatMode)
+                setCurrentBoatIndex(0)
+              }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '4px',
+                border: `1px solid ${singleBoatMode ? '#28a745' : '#6c757d'}`,
+                backgroundColor: singleBoatMode ? '#28a745' : '#6c757d',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '500',
+                touchAction: 'manipulation',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {singleBoatMode ? '📱 單船' : '📊 全部'}
+            </button>
               
-              {singleBoatMode && boats.length > 0 && (
-                <>
-                  <button
-                    onClick={prevBoat}
-                    disabled={currentBoatIndex === 0}
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                      backgroundColor: 'white',
-                      color: currentBoatIndex === 0 ? '#ccc' : '#333',
-                      cursor: currentBoatIndex === 0 ? 'not-allowed' : 'pointer',
-                      fontSize: '12px',
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    ←
-                  </button>
-                  <span style={{ 
+            
+            {singleBoatMode && boats.length > 0 && (
+              <>
+                <button
+                  onClick={prevBoat}
+                  disabled={currentBoatIndex === 0}
+                  style={{
                     padding: '6px 10px',
+                    borderRadius: '4px',
+                    border: '1px solid #6c757d',
+                    backgroundColor: currentBoatIndex === 0 ? '#e9ecef' : 'white',
+                    color: currentBoatIndex === 0 ? '#adb5bd' : '#333',
+                    cursor: currentBoatIndex === 0 ? 'not-allowed' : 'pointer',
                     fontSize: '12px',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}>
-                    {boats[currentBoatIndex]?.name}
-                  </span>
-                  <button
-                    onClick={nextBoat}
-                    disabled={currentBoatIndex === boats.length - 1}
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                      backgroundColor: 'white',
-                      color: currentBoatIndex === boats.length - 1 ? '#ccc' : '#333',
-                      cursor: currentBoatIndex === boats.length - 1 ? 'not-allowed' : 'pointer',
-                      fontSize: '12px',
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    →
-                  </button>
-                </>
-              )}
-            </div>
+                    fontWeight: '500',
+                    touchAction: 'manipulation',
+                  }}
+                >
+                  ←
+                </button>
+                <span style={{ 
+                  padding: '6px 10px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  color: '#333',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {boats[currentBoatIndex]?.name}
+                </span>
+                <button
+                  onClick={nextBoat}
+                  disabled={currentBoatIndex === boats.length - 1}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    border: '1px solid #6c757d',
+                    backgroundColor: currentBoatIndex === boats.length - 1 ? '#e9ecef' : 'white',
+                    color: currentBoatIndex === boats.length - 1 ? '#adb5bd' : '#333',
+                    cursor: currentBoatIndex === boats.length - 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    touchAction: 'manipulation',
+                  }}
+                >
+                  →
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -600,51 +601,59 @@ export function DayView({ user }: DayViewProps) {
         <div style={{ 
           overflowY: 'auto',
           maxHeight: isLandscape ? 'calc(100vh - 100px)' : 'calc(100vh - 140px)',
-          padding: isMobile ? '16px' : '24px 32px',
+          padding: '20px 16px',
           backgroundColor: '#f8f9fa',
         }}>
           {boats.map((boat) => {
-            const boatBookings = bookings
-              .filter(b => b.boat_id === boat.id)
-              .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
+            const boatBookings = bookingsByBoat[boat.id] || []
 
             return (
               <div key={boat.id} style={{ 
-                marginBottom: isMobile ? '24px' : '32px',
-                maxWidth: isMobile ? '100%' : '1200px',
-                margin: isMobile ? '0 0 24px 0' : '0 auto 32px auto',
+                marginBottom: '18px',
+                maxWidth: '100%',
+                margin: '0 0 18px 0',
+                display: 'flex',
+                gap: '0',
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                overflow: 'hidden',
               }}>
-                {/* 船隻標題 */}
+                {/* 左側：船隻標題 */}
                 <div style={{
                   backgroundColor: boat.color,
                   color: getContrastingTextColor(boat.color),
-                  padding: isMobile ? '12px 16px' : '16px 24px',
-                  borderRadius: '8px 8px 0 0',
+                  padding: '16px 20px',
                   fontWeight: 'bold',
-                  fontSize: isMobile ? '14px' : '20px',
+                  fontSize: '16px',
                   display: 'flex',
-                  justifyContent: 'space-between',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
                   alignItems: 'center',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  minWidth: '90px',
+                  width: '90px',
+                  flexShrink: 0,
+                  textAlign: 'center',
+                  gap: '6px',
+                  borderRight: '3px solid rgba(0,0,0,0.1)',
                 }}>
-                  <span>{boat.name}</span>
-                  <span style={{ fontSize: isMobile ? '12px' : '15px', opacity: 0.9 }}>
-                    {boatBookings.length} 個預約
+                  <span style={{ fontSize: '16px' }}>{boat.name}</span>
+                  <span style={{ fontSize: '11px', opacity: 0.85, fontWeight: 'normal' }}>
+                    {boatBookings.length} 個
                   </span>
                 </div>
 
-                {/* 預約列表 */}
+                {/* 右側：預約列表 */}
                 <div style={{
+                  flex: 1,
                   backgroundColor: 'white',
-                  borderRadius: '0 0 8px 8px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
                 }}>
                   {boatBookings.length === 0 ? (
                     <div style={{
-                      padding: isMobile ? '24px' : '48px',
+                      padding: '36px 24px',
                       textAlign: 'center',
                       color: '#999',
-                      fontSize: isMobile ? '14px' : '16px',
+                      fontSize: '14px',
                     }}>
                       今日無預約
                     </div>
@@ -667,17 +676,17 @@ export function DayView({ user }: DayViewProps) {
                             setEditDialogOpen(true)
                           }}
                           style={{
-                            padding: isMobile ? '12px 16px' : '18px 24px',
-                            borderBottom: '1px solid #e0e0e0',
+                            padding: '16px 20px',
+                            borderBottom: '1px solid #e8e8e8',
                             cursor: 'pointer',
                             transition: 'all 0.15s ease',
-                            backgroundColor: needsConfirmation ? '#fff3cd' : 'white',
+                            backgroundColor: needsConfirmation ? '#fff8e1' : 'white',
                             touchAction: 'manipulation',
                             WebkitTapHighlightColor: 'transparent',
-                            minHeight: isMobile ? '44px' : '60px',
+                            minHeight: '56px',
                             display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
+                            gap: '14px',
+                            alignItems: 'center',
                           }}
                           onTouchStart={(e) => {
                             // 觸覺反饋
@@ -699,166 +708,187 @@ export function DayView({ user }: DayViewProps) {
                             e.currentTarget.style.transform = 'translateX(4px)'
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = needsConfirmation ? '#fff3cd' : 'white'
+                            e.currentTarget.style.backgroundColor = needsConfirmation ? '#fff8e1' : 'white'
                             e.currentTarget.style.transform = 'translateX(0)'
                           }}
                         >
-                          {/* 第一行：時間 + 狀態 */}
+                          {/* 左側：時間標籤（黑底白字） */}
                           <div style={{
                             display: 'flex',
-                            justifyContent: 'space-between',
+                            flexDirection: 'column',
                             alignItems: 'center',
-                            marginBottom: isMobile ? '8px' : '12px',
+                            justifyContent: 'center',
+                            backgroundColor: '#2c3e50',
+                            color: 'white',
+                            padding: '10px 12px',
+                            borderRadius: '6px',
+                            minWidth: '70px',
+                            flexShrink: 0,
                           }}>
                             <div style={{
-                              fontSize: isMobile ? '13px' : '18px',
+                              fontSize: '15px',
                               fontWeight: 'bold',
-                              color: '#222',
-                              letterSpacing: '0.3px',
+                              lineHeight: '1.2',
                             }}>
-                              {startTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })} - {endTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
-                              <span style={{
-                                marginLeft: isMobile ? '8px' : '12px',
-                                fontSize: isMobile ? '11px' : '14px',
-                                color: '#666',
-                                fontWeight: 'normal',
-                              }}>
-                                ({booking.duration_min}分)
-                              </span>
+                              {startTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
                             </div>
-                            <div style={{ display: 'flex', gap: '6px' }}>
+                            <div style={{
+                              fontSize: '11px',
+                              opacity: 0.8,
+                              marginTop: '2px',
+                            }}>
+                              {booking.duration_min}分
+                            </div>
+                          </div>
+
+                          {/* 右側：詳細資訊 */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {/* 第一行：學生 + 教練 + 狀態 */}
+                            <div style={{
+                              display: 'flex',
+                              gap: '12px',
+                              alignItems: 'center',
+                              marginBottom: '6px',
+                              flexWrap: 'wrap',
+                            }}>
+                              <div style={{
+                                fontSize: '15px',
+                                fontWeight: 'bold',
+                                color: '#2c3e50',
+                              }}>
+                                {booking.student}
+                              </div>
+                              <div style={{
+                                fontSize: '13px',
+                                color: '#5a6c7d',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}>
+                                <span>👨‍🏫</span>
+                                <span>{booking.coach_id ? (booking.coaches?.name || getCoachName(booking.coach_id)) : '未指定'}</span>
+                              </div>
                               {isConfirmed && (
-                                <span style={{ fontSize: isMobile ? '10px' : '12px', padding: isMobile ? '2px 6px' : '4px 10px', background: '#4caf50', borderRadius: '4px', color: 'white', fontWeight: 'bold' }}>✓ 已確認</span>
+                                <span style={{
+                                  fontSize: '11px',
+                                  padding: '3px 8px',
+                                  background: '#4caf50',
+                                  borderRadius: '12px',
+                                  color: 'white',
+                                  fontWeight: '600',
+                                  marginLeft: 'auto',
+                                }}>
+                                  ✓ 已確認
+                                </span>
                               )}
                               {needsConfirmation && (
-                                <span style={{ fontSize: isMobile ? '10px' : '12px', padding: isMobile ? '2px 6px' : '4px 10px', background: '#ff9800', borderRadius: '4px', color: 'white', fontWeight: 'bold' }}>! 待確認</span>
+                                <span style={{
+                                  fontSize: '11px',
+                                  padding: '3px 8px',
+                                  background: '#ff9800',
+                                  borderRadius: '12px',
+                                  color: 'white',
+                                  fontWeight: '600',
+                                  marginLeft: 'auto',
+                                }}>
+                                  ! 待確認
+                                </span>
                               )}
                             </div>
-                          </div>
 
-                          {/* 第二行：教練 + 學生 */}
-                          <div style={{
-                            display: 'flex',
-                            gap: isMobile ? '12px' : '32px',
-                            flexWrap: 'wrap',
-                            marginBottom: isMobile ? '6px' : '10px',
-                            fontSize: isMobile ? '12px' : '15px',
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ color: '#666', fontSize: isMobile ? '12px' : '14px' }}>👨‍🏫 教練</span>
-                              <span style={{ fontWeight: 'bold', color: '#333' }}>
-                                {booking.coach_id ? (booking.coaches?.name || getCoachName(booking.coach_id)) : '未指定'}
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ color: '#666', fontSize: isMobile ? '12px' : '14px' }}>🎯 學生</span>
-                              <span style={{ fontWeight: 'bold', color: '#333' }}>
-                                {booking.student}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* 第三行：活動類型 */}
-                          {booking.activity_types && booking.activity_types.length > 0 && (
-                            <div style={{
-                              marginBottom: isMobile ? '6px' : '8px',
-                              fontSize: isMobile ? '11px' : '13px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                            }}>
-                              <span style={{ color: '#666' }}>🏄 活動</span>
-                              <span style={{
-                                padding: isMobile ? '2px 8px' : '4px 12px',
-                                backgroundColor: boat.color,
-                                color: getContrastingTextColor(boat.color),
+                            {/* 第二行：活動類型（統一色系） */}
+                            {booking.activity_types && booking.activity_types.length > 0 && (
+                              <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '12px',
+                                padding: '4px 10px',
+                                backgroundColor: '#ecf0f1',
+                                color: '#34495e',
                                 borderRadius: '4px',
-                                fontWeight: 'bold',
-                                fontSize: isMobile ? '11px' : '13px',
+                                fontWeight: '600',
+                                marginBottom: '4px',
                               }}>
-                                {booking.activity_types.join(' + ')}
-                              </span>
-                            </div>
-                          )}
+                                <span>🏄</span>
+                                <span>{booking.activity_types.join(' + ')}</span>
+                              </div>
+                            )}
 
-                          {/* 第四行：備註 */}
-                          {booking.notes && (
-                            <div style={{
-                              fontSize: isMobile ? '11px' : '14px',
-                              color: '#555',
-                              fontStyle: 'italic',
-                              marginTop: isMobile ? '6px' : '10px',
-                              paddingTop: isMobile ? '6px' : '10px',
-                              borderTop: '1px solid #e0e0e0',
-                              lineHeight: '1.5',
-                            }}>
-                              <span style={{ opacity: 0.7 }}>💬</span> {booking.notes}
-                            </div>
-                          )}
+                            {/* 第三行：備註 */}
+                            {booking.notes && (
+                              <div style={{
+                                fontSize: '12px',
+                                color: '#7f8c8d',
+                                marginTop: '4px',
+                                lineHeight: '1.4',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                              }}>
+                                💬 {booking.notes}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )
                     })
                   )}
-                </div>
 
-                {/* 新增按鈕 */}
-                <button
-                  onClick={() => {
-                    if ('vibrate' in navigator) {
-                      navigator.vibrate(15)
-                    }
-                    setSelectedBoatId(boat.id)
-                    setSelectedTime('')
-                    setDialogOpen(true)
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: isMobile ? '14px' : '12px',
-                    marginTop: '8px',
-                    backgroundColor: 'white',
-                    border: '2px dashed #ccc',
-                    borderRadius: '6px',
-                    color: '#666',
-                    cursor: 'pointer',
-                    fontSize: isMobile ? '14px' : '13px',
-                    fontWeight: 'bold',
-                    transition: 'all 0.15s ease',
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent',
-                    minHeight: '48px', // 增大點擊區域
-                  }}
-                  onTouchStart={(e) => {
-                    if ('vibrate' in navigator) {
-                      navigator.vibrate(15)
-                    }
-                    e.currentTarget.style.transform = 'scale(0.98)'
-                    e.currentTarget.style.backgroundColor = '#e7f3ff'
-                    e.currentTarget.style.borderColor = '#007bff'
-                    e.currentTarget.style.color = '#007bff'
-                  }}
-                  onTouchEnd={(e) => {
-                    setTimeout(() => {
-                      e.currentTarget.style.transform = 'scale(1)'
-                      e.currentTarget.style.backgroundColor = 'white'
-                      e.currentTarget.style.borderColor = '#ccc'
+                  {/* 新增按鈕 */}
+                  <div
+                    onClick={() => {
+                      if ('vibrate' in navigator) {
+                        navigator.vibrate(15)
+                      }
+                      setSelectedBoatId(boat.id)
+                      setSelectedTime('')
+                      setDialogOpen(true)
+                    }}
+                    style={{
+                      padding: '14px 20px',
+                      borderTop: '2px dashed #ddd',
+                      backgroundColor: '#f8f9fa',
+                      color: '#666',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      transition: 'all 0.15s ease',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      minHeight: '48px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onTouchStart={(e) => {
+                      if ('vibrate' in navigator) {
+                        navigator.vibrate(15)
+                      }
+                      e.currentTarget.style.transform = 'scale(0.98)'
+                      e.currentTarget.style.backgroundColor = '#e7f3ff'
+                      e.currentTarget.style.color = '#007bff'
+                    }}
+                    onTouchEnd={(e) => {
+                      setTimeout(() => {
+                        e.currentTarget.style.transform = 'scale(1)'
+                        e.currentTarget.style.backgroundColor = '#f8f9fa'
+                        e.currentTarget.style.color = '#666'
+                      }, 150)
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#e7f3ff'
+                      e.currentTarget.style.color = '#007bff'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8f9fa'
                       e.currentTarget.style.color = '#666'
-                    }, 150)
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f8f9fa'
-                    e.currentTarget.style.borderColor = '#007bff'
-                    e.currentTarget.style.color = '#007bff'
-                    e.currentTarget.style.transform = 'scale(1.02)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'white'
-                    e.currentTarget.style.borderColor = '#ccc'
-                    e.currentTarget.style.color = '#666'
-                    e.currentTarget.style.transform = 'scale(1)'
-                  }}
-                >
-                  ➕ 新增預約
-                </button>
+                    }}
+                  >
+                    ➕ 新增預約
+                  </div>
+                </div>
               </div>
             )
           })}
@@ -903,7 +933,7 @@ export function DayView({ user }: DayViewProps) {
               >
                 時間
               </th>
-              {getDisplayBoats().map((boat) => (
+              {displayBoats.map((boat) => (
                 <th
                   key={boat.id}
                   style={{
@@ -926,14 +956,19 @@ export function DayView({ user }: DayViewProps) {
             </tr>
           </thead>
           <tbody>
-            {getFilteredTimeSlots().map((timeSlot) => (
-              <tr key={timeSlot}>
+            {filteredTimeSlots.map((timeSlot) => (
+              <tr 
+                key={timeSlot}
+                style={{
+                  borderTop: timeSlot === '08:00' ? '3px solid #ff6b6b' : undefined,
+                }}
+              >
                 <td
                   style={{
                     border: '1px solid #ddd',
                     padding: '6px 4px',
                     fontWeight: 'bold',
-                    backgroundColor: '#f8f9fa',
+                    backgroundColor: timeSlot === '08:00' ? '#fff5f5' : '#f8f9fa',
                     textAlign: 'center',
                     position: 'sticky',
                     left: 0,
@@ -942,9 +977,9 @@ export function DayView({ user }: DayViewProps) {
                     boxShadow: '2px 0 4px rgba(0,0,0,0.1)',
                   }}
                 >
-                  {timeSlot}
+                  {timeSlot === '08:00' ? '⚠️ ' : ''}{timeSlot}
                 </td>
-                {getDisplayBoats().map((boat) => {
+                {displayBoats.map((boat) => {
                   const booking = getBookingForCell(boat.id, timeSlot)
                   
                   if (booking && !isBookingStart(booking, timeSlot)) {
@@ -1118,55 +1153,6 @@ export function DayView({ user }: DayViewProps) {
                               whiteSpace: isMobile ? 'nowrap' : 'normal',
                             }}>
                               💬 {booking.notes}
-                            </div>
-                          )}
-
-                          {/* 手機快速操作按鈕 */}
-                          {isMobile && (
-                            <div style={{ 
-                              marginTop: '6px',
-                              paddingTop: '4px',
-                              borderTop: '1px solid rgba(255,255,255,0.3)',
-                              display: 'flex',
-                              gap: '4px',
-                              justifyContent: 'flex-end',
-                            }}>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  // 觸覺反饋
-                                  if ('vibrate' in navigator) {
-                                    navigator.vibrate(15)
-                                  }
-                                  setSelectedBooking(booking)
-                                  setEditDialogOpen(true)
-                                }}
-                                style={{
-                                  padding: '4px 10px',
-                                  fontSize: '10px',
-                                  borderRadius: '4px',
-                                  border: 'none',
-                                  backgroundColor: 'rgba(255,255,255,0.95)',
-                                  color: boat.color,
-                                  cursor: 'pointer',
-                                  fontWeight: 'bold',
-                                  touchAction: 'manipulation',
-                                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                  transition: 'all 0.15s ease',
-                                }}
-                                onTouchStart={(e) => {
-                                  e.currentTarget.style.transform = 'scale(0.95)'
-                                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)'
-                                }}
-                                onTouchEnd={(e) => {
-                                  setTimeout(() => {
-                                    e.currentTarget.style.transform = 'scale(1)'
-                                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)'
-                                  }, 100)
-                                }}
-                              >
-                                ✏️ 編輯
-                              </button>
                             </div>
                           )}
                         </div>

@@ -23,13 +23,21 @@ export function UserMenu({ user }: UserMenuProps) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          padding: '8px 12px',
-          borderRadius: '8px',
-          border: '1px solid #ddd',
+          justifyContent: 'center',
+          padding: '4px',
+          borderRadius: '50%',
+          border: '2px solid #ddd',
           backgroundColor: 'white',
           cursor: 'pointer',
-          fontSize: '14px',
+          transition: 'all 0.2s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = '#007bff'
+          e.currentTarget.style.transform = 'scale(1.05)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = '#ddd'
+          e.currentTarget.style.transform = 'scale(1)'
         }}
       >
         <img
@@ -39,10 +47,9 @@ export function UserMenu({ user }: UserMenuProps) {
             width: '32px',
             height: '32px',
             borderRadius: '50%',
+            display: 'block',
           }}
         />
-        <span style={{ color: '#000' }}>{user.email}</span>
-        <span style={{ color: '#666' }}>▼</span>
       </button>
 
       {isOpen && (
