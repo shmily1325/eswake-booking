@@ -38,7 +38,6 @@ export function NewBookingDialog({
   
   // 重複預約相關狀態
   const [isRepeat, setIsRepeat] = useState(false)
-  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]) // 0=Sunday, 1=Monday, ..., 6=Saturday
   const [repeatEndType, setRepeatEndType] = useState<'count' | 'date'>('count')
   const [repeatCount, setRepeatCount] = useState(8)
   const [repeatEndDate, setRepeatEndDate] = useState('')
@@ -86,22 +85,20 @@ export function NewBookingDialog({
     )
   }
 
-  const toggleWeekday = (day: number) => {
-    setSelectedWeekdays(prev =>
-      prev.includes(day)
-        ? prev.filter(d => d !== day)
-        : [...prev, day].sort()
-    )
-  }
-
   // 生成所有重複日期
   const generateRepeatDates = (): Date[] => {
-    if (!isRepeat || selectedWeekdays.length === 0) {
-      return [new Date(`${startDate}T${startTime}:00`)]
+    // 對於重複預約，使用 defaultStartTime；對於單次預約，使用手動輸入的時間
+    const baseDateTime = isRepeat 
+      ? new Date(defaultStartTime)
+      : new Date(`${startDate}T${startTime}:00`)
+    
+    if (!isRepeat) {
+      return [baseDateTime]
     }
 
     const dates: Date[] = []
-    const startDateTime = new Date(`${startDate}T${startTime}:00`)
+    const startDateTime = new Date(defaultStartTime)
+    const targetWeekday = startDateTime.getDay() // 獲取點擊的星期幾（0=週日, 1=週一, ..., 6=週六）
     
     if (repeatEndType === 'count') {
       // 根據重複次數生成日期
@@ -111,7 +108,7 @@ export function NewBookingDialog({
       // 最多檢查 365 天，避免無限循環
       for (let i = 0; i < 365 && count < repeatCount; i++) {
         const dayOfWeek = currentDate.getDay()
-        if (selectedWeekdays.includes(dayOfWeek)) {
+        if (dayOfWeek === targetWeekday) {
           dates.push(new Date(currentDate))
           count++
         }
@@ -124,7 +121,7 @@ export function NewBookingDialog({
       
       while (currentDate <= endDate) {
         const dayOfWeek = currentDate.getDay()
-        if (selectedWeekdays.includes(dayOfWeek)) {
+        if (dayOfWeek === targetWeekday) {
           dates.push(new Date(currentDate))
         }
         currentDate.setDate(currentDate.getDate() + 1)
@@ -142,10 +139,6 @@ export function NewBookingDialog({
 
     // 驗證重複預約設定
     if (isRepeat) {
-      if (selectedWeekdays.length === 0) {
-        setError('請至少選擇一個星期')
-        return
-      }
       if (repeatEndType === 'date' && !repeatEndDate) {
         setError('請選擇結束日期')
         return
@@ -350,7 +343,6 @@ export function NewBookingDialog({
       setActivityTypes([])
       setNotes('')
       setIsRepeat(false)
-      setSelectedWeekdays([])
       setRepeatCount(8)
       setRepeatEndDate('')
       setLoading(false)
@@ -372,7 +364,6 @@ export function NewBookingDialog({
     setActivityTypes([])
     setNotes('')
     setIsRepeat(false)
-    setSelectedWeekdays([])
     setRepeatCount(8)
     setRepeatEndDate('')
     onClose()
@@ -753,51 +744,16 @@ export function NewBookingDialog({
 
             {isRepeat && (
               <div>
-                {/* 星期選擇 */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: '8px', 
-                    color: '#000',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                  }}>
-                    重複於（請選擇星期）：
-                  </label>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: '8px',
-                  }}>
-                    {[
-                      { value: 1, label: '一' },
-                      { value: 2, label: '二' },
-                      { value: 3, label: '三' },
-                      { value: 4, label: '四' },
-                      { value: 5, label: '五' },
-                      { value: 6, label: '六' },
-                      { value: 0, label: '日' },
-                    ].map(day => (
-                      <button
-                        key={day.value}
-                        type="button"
-                        onClick={() => toggleWeekday(day.value)}
-                        style={{
-                          padding: '10px',
-                          borderRadius: '6px',
-                          border: selectedWeekdays.includes(day.value) ? '2px solid #007bff' : '1px solid #ccc',
-                          backgroundColor: selectedWeekdays.includes(day.value) ? '#007bff' : 'white',
-                          color: selectedWeekdays.includes(day.value) ? 'white' : '#000',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: selectedWeekdays.includes(day.value) ? '600' : '400',
-                          touchAction: 'manipulation',
-                        }}
-                      >
-                        週{day.label}
-                      </button>
-                    ))}
-                  </div>
+                {/* 提示訊息 */}
+                <div style={{
+                  padding: '12px',
+                  backgroundColor: '#e7f3ff',
+                  borderRadius: '6px',
+                  marginBottom: '16px',
+                  fontSize: '14px',
+                  color: '#004085',
+                }}>
+                  💡 將會在每{['日', '一', '二', '三', '四', '五', '六'][new Date(defaultStartTime).getDay()]} {new Date(defaultStartTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })} 重複預約
                 </div>
 
                 {/* 結束條件 */}
@@ -865,17 +821,15 @@ export function NewBookingDialog({
                 </div>
 
                 {/* 預覽 */}
-                {selectedWeekdays.length > 0 && (
-                  <div style={{
-                    padding: '10px',
-                    backgroundColor: '#fff3cd',
-                    borderRadius: '4px',
-                    fontSize: '13px',
-                    color: '#856404',
-                  }}>
-                    📅 預計創建 <strong>{generateRepeatDates().length}</strong> 個預約
-                  </div>
-                )}
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: '#fff3cd',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  color: '#856404',
+                }}>
+                  📅 預計創建 <strong>{generateRepeatDates().length}</strong> 個預約
+                </div>
               </div>
             )}
           </div>
