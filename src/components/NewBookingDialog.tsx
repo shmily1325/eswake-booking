@@ -287,21 +287,6 @@ export function NewBookingDialog({
       >
         <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px' }}>新增預約</h2>
         
-        {error && (
-          <div
-            style={{
-              padding: '12px',
-              backgroundColor: '#fee',
-              color: '#c00',
-              borderRadius: '4px',
-              marginBottom: '16px',
-              border: '1px solid #fcc',
-            }}
-          >
-            {error}
-          </div>
-        )}
-
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '18px' }}>
             <label style={{ 
@@ -626,6 +611,22 @@ export function NewBookingDialog({
               minute: '2-digit',
             })}
           </div>
+
+          {error && (
+            <div
+              style={{
+                padding: '12px',
+                backgroundColor: '#fee',
+                color: '#c00',
+                borderRadius: '4px',
+                marginBottom: '16px',
+                border: '1px solid #fcc',
+                fontSize: '15px',
+              }}
+            >
+              {error}
+            </div>
+          )}
 
           <div style={{ 
             display: 'flex', 

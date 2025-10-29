@@ -317,21 +317,6 @@ export function EditBookingDialog({
       >
         <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px' }}>編輯預約</h2>
         
-        {error && (
-          <div
-            style={{
-              padding: '12px',
-              backgroundColor: '#fee',
-              color: '#c00',
-              borderRadius: '4px',
-              marginBottom: '16px',
-              border: '1px solid #fcc',
-            }}
-          >
-            {error}
-          </div>
-        )}
-
         <form onSubmit={handleUpdate}>
           <div style={{ marginBottom: '18px' }}>
             <label style={{ 
@@ -600,6 +585,21 @@ export function EditBookingDialog({
             />
           </div>
 
+          {error && (
+            <div
+              style={{
+                padding: '12px',
+                backgroundColor: '#fee',
+                color: '#c00',
+                borderRadius: '4px',
+                marginBottom: '16px',
+                border: '1px solid #fcc',
+                fontSize: '15px',
+              }}
+            >
+              {error}
+            </div>
+          )}
 
           <div style={{ 
             display: 'flex', 
