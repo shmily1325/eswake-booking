@@ -17,6 +17,10 @@ interface Booking {
   activity_types?: string[] | null
   notes?: string | null
   status: string
+  actual_duration_min?: number | null
+  coach_confirmed?: boolean
+  confirmed_at?: string | null
+  confirmed_by?: string | null
 }
 
 interface EditBookingDialogProps {
@@ -45,6 +49,10 @@ export function EditBookingDialog({
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingCoaches, setLoadingCoaches] = useState(true)
+  
+  // 教練確認相關狀態
+  const [actualDurationMin, setActualDurationMin] = useState<number | null>(null)
+  const [isConfirming, setIsConfirming] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -55,6 +63,7 @@ export function EditBookingDialog({
         setDurationMin(booking.duration_min)
         setActivityTypes(booking.activity_types || [])
         setNotes(booking.notes || '')
+        setActualDurationMin(booking.actual_duration_min || booking.duration_min)
         
         // Parse start_at into date and time
         const startDateTime = new Date(booking.start_at)
@@ -231,6 +240,60 @@ export function EditBookingDialog({
     } catch (err: any) {
       setError(err.message || '更新失敗')
       setLoading(false)
+    }
+  }
+
+  const handleConfirm = async () => {
+    if (!booking) return
+    if (!actualDurationMin || actualDurationMin <= 0) {
+      setError('請輸入實際時長')
+      return
+    }
+
+    setIsConfirming(true)
+    setError('')
+
+    try {
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({
+          actual_duration_min: actualDurationMin,
+          coach_confirmed: true,
+          confirmed_at: new Date().toISOString(),
+          confirmed_by: user.id
+        })
+        .eq('id', booking.id)
+
+      if (updateError) throw updateError
+
+      // Log to audit_log
+      const { error: auditError } = await supabase.from('audit_log').insert({
+        table_name: 'bookings',
+        record_id: booking.id,
+        action: 'UPDATE',
+        user_id: user.id,
+        user_email: user.email,
+        old_data: booking,
+        new_data: { 
+          ...booking, 
+          actual_duration_min: actualDurationMin, 
+          coach_confirmed: true,
+          confirmed_at: new Date().toISOString(),
+          confirmed_by: user.id
+        },
+        changed_fields: ['actual_duration_min', 'coach_confirmed', 'confirmed_at', 'confirmed_by']
+      })
+      
+      if (auditError) {
+        console.error('Audit log insert error:', auditError)
+      }
+
+      setIsConfirming(false)
+      onSuccess()
+      onClose()
+    } catch (err: any) {
+      setError(err.message || '確認失敗')
+      setIsConfirming(false)
     }
   }
 
@@ -590,6 +653,100 @@ export function EditBookingDialog({
               }}
             />
           </div>
+
+          {/* 教練確認區塊 */}
+          {booking && (() => {
+            const endTime = new Date(booking.start_at).getTime() + booking.duration_min * 60000
+            const isEnded = endTime < Date.now()
+            const isConfirmed = booking.coach_confirmed
+            
+            if (isEnded && !isConfirmed) {
+              return (
+                <div style={{
+                  marginTop: '20px',
+                  padding: '16px',
+                  background: '#fff3cd',
+                  border: '2px solid #ff9800',
+                  borderRadius: '8px'
+                }}>
+                  <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333' }}>
+                    ⚠️ 教練確認
+                  </h3>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '6px',
+                      color: '#000',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                    }}>
+                      實際時長（分鐘） *
+                    </label>
+                    <input
+                      type="number"
+                      value={actualDurationMin || ''}
+                      onChange={(e) => setActualDurationMin(parseInt(e.target.value) || null)}
+                      placeholder="輸入實際上課時長"
+                      min="0"
+                      step="15"
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '6px',
+                        border: '1px solid #ccc',
+                        boxSizing: 'border-box',
+                        fontSize: '15px',
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={isConfirming || !actualDurationMin}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      backgroundColor: isConfirming || !actualDurationMin ? '#ccc' : '#28a745',
+                      color: 'white',
+                      fontSize: '15px',
+                      fontWeight: 'bold',
+                      cursor: isConfirming || !actualDurationMin ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {isConfirming ? '確認中...' : '✓ 確認完成'}
+                  </button>
+                </div>
+              )
+            } else if (isConfirmed) {
+              return (
+                <div style={{
+                  marginTop: '20px',
+                  padding: '16px',
+                  background: '#d4edda',
+                  border: '2px solid #28a745',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '20px' }}>✓</span>
+                    <h3 style={{ margin: 0, fontSize: '16px', color: '#155724' }}>
+                      已確認
+                    </h3>
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#155724' }}>
+                    實際時長：{booking.actual_duration_min} 分鐘
+                  </div>
+                  {booking.confirmed_at && (
+                    <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                      確認時間：{new Date(booking.confirmed_at).toLocaleString('zh-TW')}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+            return null
+          })()}
 
           {error && (
             <div

@@ -30,6 +30,10 @@ interface Booking {
   status: string
   boats?: Boat // Join result from Supabase
   coaches?: Coach // Join result from Supabase
+  actual_duration_min?: number | null
+  coach_confirmed?: boolean
+  confirmed_at?: string | null
+  confirmed_by?: string | null
 }
 
 // Generate time slots from 04:30 to 22:00, every 15 minutes
@@ -160,6 +164,11 @@ export function DayView({ user }: DayViewProps) {
   const getCoachName = (coachId: string): string => {
     const coach = coaches.find(c => c.id === coachId)
     return coach ? coach.name : coachId
+  }
+
+  const isBookingEnded = (booking: Booking): boolean => {
+    const endTime = new Date(booking.start_at).getTime() + booking.duration_min * 60000
+    return endTime < Date.now()
   }
 
   const handleCellClick = (boatId: number, timeSlot: string, booking?: Booking) => {
@@ -484,6 +493,8 @@ export function DayView({ user }: DayViewProps) {
                   const rowSpan = booking ? getBookingSpan(booking) : 1
                   const bgColor = booking ? boat.color : (isCleanupTime ? 'rgba(200, 200, 200, 0.3)' : 'transparent')
                   const textColor = booking ? getContrastingTextColor(boat.color) : '#666'
+                  const needsConfirmation = booking && isBookingEnded(booking) && !booking.coach_confirmed
+                  const isConfirmed = booking && booking.coach_confirmed
                   
                   return (
                     <td
@@ -491,8 +502,8 @@ export function DayView({ user }: DayViewProps) {
                       rowSpan={rowSpan}
                       onClick={() => handleCellClick(boat.id, timeSlot, booking || undefined)}
                       style={{
-                        border: '1px solid #ddd',
-                        padding: '6px 4px',
+                        border: needsConfirmation ? '3px solid #ff9800' : '1px solid #ddd',
+                        padding: needsConfirmation ? '4px 2px' : '6px 4px',
                         cursor: 'pointer',
                         backgroundColor: bgColor,
                         color: textColor,
@@ -541,8 +552,14 @@ export function DayView({ user }: DayViewProps) {
                           fontSize: '11px',
                           lineHeight: '1.3',
                         }}>
-                          <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
-                            {booking.student}
+                          <div style={{ fontWeight: 'bold', marginBottom: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{booking.student}</span>
+                            {isConfirmed && (
+                              <span style={{ fontSize: '10px', padding: '1px 4px', background: '#4caf50', borderRadius: '3px', color: 'white' }}>✓</span>
+                            )}
+                            {needsConfirmation && (
+                              <span style={{ fontSize: '10px', padding: '1px 4px', background: '#ff9800', borderRadius: '3px', color: 'white' }}>!</span>
+                            )}
                           </div>
                           <div style={{ opacity: 0.9 }}>
                             教練: {booking.coach_id ? (booking.coaches?.name || getCoachName(booking.coach_id)) : '未指定'}
