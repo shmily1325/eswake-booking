@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
+import { HomePage } from './pages/HomePage'
 import { DayView } from './pages/DayView'
 import { StudentHistory } from './pages/StudentHistory'
 import { CoachSchedule } from './pages/CoachSchedule'
+import { AuditLog } from './pages/AuditLog'
 import { LoginPage } from './components/LoginPage'
 import './App.css'
 
@@ -46,16 +48,14 @@ function App() {
     return <LoginPage onLoginSuccess={setUser} />
   }
 
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split('T')[0]
-
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to={`/day?date=${today}`} replace />} />
+        <Route path="/" element={<HomePage user={user} />} />
         <Route path="/day" element={<DayView user={user} />} />
         <Route path="/student-history" element={<StudentHistory user={user} />} />
         <Route path="/coach-schedule" element={<CoachSchedule user={user} />} />
+        <Route path="/audit-log" element={<AuditLog user={user} />} />
       </Routes>
     </BrowserRouter>
   )
