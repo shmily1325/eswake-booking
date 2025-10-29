@@ -552,13 +552,13 @@ export function DayView({ user }: DayViewProps) {
                           fontSize: '11px',
                           lineHeight: '1.3',
                         }}>
-                          <div style={{ fontWeight: 'bold', marginBottom: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>{booking.student}</span>
+                          <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
+                            {booking.student}
                             {isConfirmed && (
-                              <span style={{ fontSize: '10px', padding: '1px 4px', background: '#4caf50', borderRadius: '3px', color: 'white' }}>✓</span>
+                              <span style={{ fontSize: '9px', padding: '1px 3px', background: '#4caf50', borderRadius: '2px', color: 'white', marginLeft: '4px' }}>✓</span>
                             )}
                             {needsConfirmation && (
-                              <span style={{ fontSize: '10px', padding: '1px 4px', background: '#ff9800', borderRadius: '3px', color: 'white' }}>!</span>
+                              <span style={{ fontSize: '9px', padding: '1px 3px', background: '#ff9800', borderRadius: '2px', color: 'white', marginLeft: '4px' }}>!</span>
                             )}
                           </div>
                           <div style={{ opacity: 0.9 }}>

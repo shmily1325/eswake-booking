@@ -43,7 +43,7 @@ export function CoachSchedule({ user }: CoachScheduleProps) {
   
   // 快速確認狀態
   const [confirmingIds, setConfirmingIds] = useState<Set<number>>(new Set())
-  const [actualDurations, setActualDurations] = useState<Map<number, number>>(new Map())
+  const [confirmNotes, setConfirmNotes] = useState<Map<number, string>>(new Map())
 
   useEffect(() => {
     fetchCoaches()
@@ -131,23 +131,34 @@ export function CoachSchedule({ user }: CoachScheduleProps) {
   }
 
   const handleQuickConfirm = async (bookingId: number) => {
-    const duration = actualDurations.get(bookingId)
-    if (!duration || duration <= 0) {
-      alert('請輸入實際時長')
-      return
-    }
+    const note = confirmNotes.get(bookingId) || ''
 
     setConfirmingIds(new Set(confirmingIds).add(bookingId))
 
     try {
+      // 找到該預約以取得原始時長
+      const booking = bookings.find(b => b.id === bookingId)
+      if (!booking) throw new Error('找不到預約')
+
+      // 更新備註（如果有輸入的話）
+      const updateData: any = {
+        actual_duration_min: booking.duration_min, // 使用原始時長
+        coach_confirmed: true,
+        confirmed_at: new Date().toISOString(),
+        confirmed_by: user.id
+      }
+
+      // 如果有輸入備註，加到現有備註後面
+      if (note.trim()) {
+        const existingNotes = booking.notes || ''
+        updateData.notes = existingNotes 
+          ? `${existingNotes}\n[教練確認] ${note}` 
+          : `[教練確認] ${note}`
+      }
+
       const { error: updateError } = await supabase
         .from('bookings')
-        .update({
-          actual_duration_min: duration,
-          coach_confirmed: true,
-          confirmed_at: new Date().toISOString(),
-          confirmed_by: user.id
-        })
+        .update(updateData)
         .eq('id', bookingId)
 
       if (updateError) throw updateError
@@ -155,14 +166,20 @@ export function CoachSchedule({ user }: CoachScheduleProps) {
       // 從列表中移除或更新
       setBookings(bookings.map(b => 
         b.id === bookingId 
-          ? { ...b, actual_duration_min: duration, coach_confirmed: true, confirmed_at: new Date().toISOString() }
+          ? { 
+              ...b, 
+              actual_duration_min: booking.duration_min,
+              coach_confirmed: true, 
+              confirmed_at: new Date().toISOString(),
+              notes: updateData.notes || b.notes
+            }
           : b
       ))
 
       // 清除輸入
-      const newDurations = new Map(actualDurations)
-      newDurations.delete(bookingId)
-      setActualDurations(newDurations)
+      const newNotes = new Map(confirmNotes)
+      newNotes.delete(bookingId)
+      setConfirmNotes(newNotes)
 
     } catch (err: any) {
       alert(err.message || '確認失敗')
@@ -173,10 +190,10 @@ export function CoachSchedule({ user }: CoachScheduleProps) {
     }
   }
 
-  const setActualDuration = (bookingId: number, duration: number) => {
-    const newDurations = new Map(actualDurations)
-    newDurations.set(bookingId, duration)
-    setActualDurations(newDurations)
+  const setConfirmNote = (bookingId: number, note: string) => {
+    const newNotes = new Map(confirmNotes)
+    newNotes.set(bookingId, note)
+    setConfirmNotes(newNotes)
   }
 
   const formatDate = (dateString: string) => {
@@ -582,20 +599,18 @@ export function CoachSchedule({ user }: CoachScheduleProps) {
                               borderRadius: '8px'
                             }}>
                               <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#333' }}>
-                                ⚠️ 請確認實際時長
+                                ⚠️ 請確認課程完成
                               </div>
                               <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                                <div style={{ flex: '1', minWidth: '150px' }}>
+                                <div style={{ flex: '1', minWidth: '200px' }}>
                                   <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-                                    實際時長（分鐘）
+                                    備註（選填）
                                   </label>
                                   <input
-                                    type="number"
-                                    value={actualDurations.get(booking.id) || booking.duration_min}
-                                    onChange={(e) => setActualDuration(booking.id, parseInt(e.target.value) || 0)}
-                                    placeholder="輸入時長"
-                                    min="0"
-                                    step="15"
+                                    type="text"
+                                    value={confirmNotes.get(booking.id) || ''}
+                                    onChange={(e) => setConfirmNote(booking.id, e.target.value)}
+                                    placeholder="例如：學生表現良好、提早結束..."
                                     style={{
                                       width: '100%',
                                       padding: '8px',
@@ -618,7 +633,8 @@ export function CoachSchedule({ user }: CoachScheduleProps) {
                                     fontSize: '14px',
                                     fontWeight: 'bold',
                                     cursor: isConfirming ? 'not-allowed' : 'pointer',
-                                    minHeight: '36px'
+                                    minHeight: '36px',
+                                    whiteSpace: 'nowrap'
                                   }}
                                 >
                                   {isConfirming ? '確認中...' : '✓ 確認'}
