@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { DayView } from './pages/DayView'
 import { StudentHistory } from './pages/StudentHistory'
+import { CoachSchedule } from './pages/CoachSchedule'
 import { LoginPage } from './components/LoginPage'
 import './App.css'
 
@@ -54,6 +55,7 @@ function App() {
         <Route path="/" element={<Navigate to={`/day?date=${today}`} replace />} />
         <Route path="/day" element={<DayView user={user} />} />
         <Route path="/student-history" element={<StudentHistory user={user} />} />
+        <Route path="/coach-schedule" element={<CoachSchedule user={user} />} />
       </Routes>
     </BrowserRouter>
   )

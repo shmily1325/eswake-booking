@@ -310,6 +310,21 @@ export function DayView({ user }: DayViewProps) {
             >
               📊 學生記錄
             </a>
+            <a
+              href="/coach-schedule"
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#17a2b8',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              👨‍🏫 教練行程
+            </a>
             <UserMenu user={user} />
           </div>
         </div>
