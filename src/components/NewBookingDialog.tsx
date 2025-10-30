@@ -221,6 +221,8 @@ export function NewBookingDialog({
           dateStr,
           timeStr,
           defaultBoatId,
+          newStartTime: new Date(newStartTime).toISOString(),
+          newEndTime: new Date(newEndTime).toISOString(),
           existingBookings: existingBookings?.length || 0,
           checkError
         })
@@ -240,8 +242,13 @@ export function NewBookingDialog({
               student: existing.student,
               existingStart: new Date(existingStart).toISOString(),
               existingEnd: new Date(existingEnd).toISOString(),
+              existingCleanupEnd: new Date(existingCleanupEnd).toISOString(),
               newStart: new Date(newStartTime).toISOString(),
               newEnd: new Date(newEndTime).toISOString(),
+              newCleanupEnd: new Date(newEndTime + 15 * 60000).toISOString(),
+              check1: newStartTime >= existingEnd && newStartTime < existingCleanupEnd,
+              check2: existingStart >= newEndTime && existingStart < (newEndTime + 15 * 60000),
+              check3: !(newEndTime <= existingStart || newStartTime >= existingEnd),
             })
             
             // 檢查新預約是否在現有預約的接船時間內開始
