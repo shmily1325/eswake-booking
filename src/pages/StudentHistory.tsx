@@ -25,6 +25,13 @@ export function StudentHistory({ user, isEmbedded = false }: StudentHistoryProps
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  
+  // 新增的篩選選項
+  const [filterType, setFilterType] = useState<'range' | 'today'>('range')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [copySuccess, setCopySuccess] = useState(false)
+  const [showPast, setShowPast] = useState(false) // 預設不顯示已結束的預約
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,14 +42,34 @@ export function StudentHistory({ user, isEmbedded = false }: StudentHistoryProps
 
     setLoading(true)
     setHasSearched(true)
+    setCopySuccess(false)
 
     try {
-      // 先獲取符合條件的預約
-      const { data, error } = await supabase
+      let query = supabase
         .from('bookings')
         .select('*, boats:boat_id (name, color)')
         .ilike('student', `%${searchName.trim()}%`)
-        .order('start_at', { ascending: false })
+      
+      // 根據篩選類型添加條件
+      const now = new Date()
+      const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
+      
+      if (filterType === 'today') {
+        // 今日新增的預約
+        const todayStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00:00`
+        const todayEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T23:59:59`
+        query = query.gte('created_at', todayStart).lte('created_at', todayEnd)
+      } else if (filterType === 'range' && startDate && endDate) {
+        // 特定區間內的預約
+        query = query.gte('start_at', `${startDate}T00:00:00`).lte('start_at', `${endDate}T23:59:59`)
+      }
+      
+      // 根據 showPast 決定是否只顯示未來的預約
+      if (!showPast) {
+        query = query.gte('start_at', nowStr)
+      }
+      
+      const { data, error } = await query.order('start_at', { ascending: true })
 
       if (error) {
         console.error('Error fetching bookings:', error)
@@ -110,6 +137,55 @@ export function StudentHistory({ user, isEmbedded = false }: StudentHistoryProps
     return datetime < nowStr
   }
 
+  // 生成 LINE 格式的文字
+  const generateLineMessage = () => {
+    if (bookings.length === 0) return ''
+    
+    let message = `📋 ${searchName} 的預約\n`
+    message += `共 ${bookings.length} 筆\n`
+    message += `\n`
+    
+    bookings.forEach((booking, index) => {
+      const datetime = booking.start_at.substring(0, 16)
+      const [dateStr, timeStr] = datetime.split('T')
+      const [year, month, day] = dateStr.split('-')
+      
+      // 計算星期幾
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+      const weekday = weekdays[date.getDay()]
+      
+      message += `${index + 1}. ${month}/${day} (週${weekday}) ${timeStr}\n`
+      message += `   🚤 ${booking.boats?.name || '未指定'}\n`
+      message += `   👤 ${booking.coaches && booking.coaches.length > 0 ? booking.coaches.map(c => c.name).join(' / ') : '未指定'}\n`
+      message += `   ⏱️ ${booking.duration_min}分鐘`
+      
+      if (booking.activity_types && booking.activity_types.length > 0) {
+        message += ` | 🏄 ${booking.activity_types.join(' + ')}`
+      }
+      
+      if (booking.notes) {
+        message += `\n   📝 ${booking.notes}`
+      }
+      
+      message += `\n\n`
+    })
+    
+    return message.trim()
+  }
+  
+  const handleCopyToClipboard = async () => {
+    const message = generateLineMessage()
+    try {
+      await navigator.clipboard.writeText(message)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+      alert('複製失敗，請手動複製')
+    }
+  }
+
   return (
     <div style={{ 
       padding: isEmbedded ? '0' : '20px',
@@ -137,7 +213,7 @@ export function StudentHistory({ user, isEmbedded = false }: StudentHistoryProps
             color: '#000',
             fontWeight: '600'
           }}>
-            學生記錄
+            學生預約查詢
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <a
@@ -168,70 +244,225 @@ export function StudentHistory({ user, isEmbedded = false }: StudentHistoryProps
         marginBottom: '15px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
-        <label style={{
-          display: 'block',
-          marginBottom: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          color: '#333'
-        }}>
-          學生姓名
-        </label>
         <form onSubmit={handleSearch}>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* 學生姓名 */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#333'
+            }}>
+              學生姓名
+            </label>
             <input
               type="text"
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
               placeholder="輸入學生姓名..."
+              required
               style={{
-                flex: '1',
-                minWidth: '200px',
+                width: '100%',
                 padding: '10px 12px',
                 fontSize: '15px',
                 border: '1px solid #dee2e6',
                 borderRadius: '6px',
-                outline: 'none'
+                outline: 'none',
+                boxSizing: 'border-box'
               }}
             />
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                fontWeight: '500',
-                background: !loading ? '#28a745' : '#ccc',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: !loading ? 'pointer' : 'not-allowed',
-                minHeight: '40px'
-              }}
-            >
-              {loading ? '搜尋中...' : '🔍 搜尋'}
-            </button>
           </div>
+
+          {/* 篩選類型 */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#333'
+            }}>
+              查詢範圍
+            </label>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                padding: '8px 16px',
+                border: `2px solid ${filterType === 'range' ? '#007bff' : '#dee2e6'}`,
+                borderRadius: '6px',
+                backgroundColor: filterType === 'range' ? '#e7f3ff' : 'white',
+                transition: 'all 0.2s'
+              }}>
+                <input
+                  type="radio"
+                  name="filterType"
+                  checked={filterType === 'range'}
+                  onChange={() => setFilterType('range')}
+                  style={{ marginRight: '8px' }}
+                />
+                <span style={{ fontSize: '14px' }}>指定日期區間</span>
+              </label>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                padding: '8px 16px',
+                border: `2px solid ${filterType === 'today' ? '#007bff' : '#dee2e6'}`,
+                borderRadius: '6px',
+                backgroundColor: filterType === 'today' ? '#e7f3ff' : 'white',
+                transition: 'all 0.2s'
+              }}>
+                <input
+                  type="radio"
+                  name="filterType"
+                  checked={filterType === 'today'}
+                  onChange={() => setFilterType('today')}
+                  style={{ marginRight: '8px' }}
+                />
+                <span style={{ fontSize: '14px' }}>今日新增</span>
+              </label>
+            </div>
+          </div>
+
+          {/* 顯示已結束預約的開關 */}
+          <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              gap: '8px'
+            }}>
+              <input
+                type="checkbox"
+                checked={showPast}
+                onChange={(e) => setShowPast(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '14px', color: '#333' }}>顯示已結束的預約</span>
+            </label>
+          </div>
+
+          {/* 日期區間選擇 */}
+          {filterType === 'range' && (
+            <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '4px',
+                    fontSize: '13px',
+                    color: '#666'
+                  }}>
+                    開始日期
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      fontSize: '14px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '4px',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '4px',
+                    fontSize: '13px',
+                    color: '#666'
+                  }}>
+                    結束日期
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      fontSize: '14px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '4px',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+                💡 不填日期則顯示所有未來預約
+              </div>
+            </div>
+          )}
+
+          {/* 搜尋按鈕 */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '12px',
+              fontSize: '15px',
+              fontWeight: '500',
+              background: !loading ? '#28a745' : '#ccc',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: !loading ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {loading ? '搜尋中...' : '🔍 搜尋預約'}
+          </button>
         </form>
-        <div style={{
-          marginTop: '8px',
-          fontSize: '12px',
-          color: '#666',
-        }}>
-          💡 可搜尋部分姓名
-        </div>
       </div>
 
       {/* Results */}
       {hasSearched && (
         <div>
           <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             marginBottom: '16px',
-            fontSize: '16px',
-            color: '#666',
-            fontWeight: '500',
+            flexWrap: 'wrap',
+            gap: '12px'
           }}>
-            找到 {bookings.length} 筆預約記錄
+            <div style={{
+              fontSize: '16px',
+              color: '#666',
+              fontWeight: '500',
+            }}>
+              找到 {bookings.length} 筆預約
+            </div>
+            
+            {bookings.length > 0 && (
+              <button
+                onClick={handleCopyToClipboard}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  background: copySuccess ? '#28a745' : '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {copySuccess ? '✓ 已複製' : '📋 複製 LINE 格式'}
+              </button>
+            )}
           </div>
 
           {bookings.length === 0 ? (
