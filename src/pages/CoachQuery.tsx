@@ -23,7 +23,7 @@ interface CoachQueryProps {
   user: User
 }
 
-export function CoachQuery({ user }: CoachQueryProps) {
+export function CoachQuery({ }: CoachQueryProps) {
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [bookings, setBookings] = useState<Booking[]>([])

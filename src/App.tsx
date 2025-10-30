@@ -9,6 +9,7 @@ import { SearchBookings } from './pages/SearchBookings'
 import { CoachCheck } from './pages/CoachCheck'
 import { AuditLog } from './pages/AuditLog'
 import { AdminPage } from './pages/AdminPage'
+import { BackupPage } from './pages/BackupPage'
 import { LoginPage } from './components/LoginPage'
 import './App.css'
 
@@ -60,6 +61,7 @@ function App() {
         <Route path="/coach-check" element={<CoachCheck user={user} />} />
         <Route path="/audit-log" element={<AuditLog user={user} />} />
         <Route path="/admin" element={<AdminPage user={user} />} />
+        <Route path="/backup" element={<BackupPage user={user} />} />
       </Routes>
     </BrowserRouter>
   )

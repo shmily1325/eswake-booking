@@ -35,6 +35,11 @@ export function HomePage({ user }: HomePageProps) {
       title: '編輯記錄',
       icon: '📝',
       link: '/audit-log'
+    },
+    {
+      title: '資料備份',
+      icon: '💾',
+      link: '/backup'
     }
   ]
 
