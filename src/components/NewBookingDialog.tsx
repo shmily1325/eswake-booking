@@ -198,15 +198,18 @@ export function NewBookingDialog({
 
       // 對每個日期進行處理
       for (const dateTime of datesToCreate) {
-        // 使用本地日期
+        // 使用本地日期組件構建 ISO 字符串（避免時區偏移）
         const year = dateTime.getFullYear()
         const month = (dateTime.getMonth() + 1).toString().padStart(2, '0')
         const day = dateTime.getDate().toString().padStart(2, '0')
+        const hours = dateTime.getHours().toString().padStart(2, '0')
+        const minutes = dateTime.getMinutes().toString().padStart(2, '0')
         const dateStr = `${year}-${month}-${day}`
-        const timeStr = `${dateTime.getHours().toString().padStart(2, '0')}:${dateTime.getMinutes().toString().padStart(2, '0')}`
+        const timeStr = `${hours}:${minutes}`
         const displayDate = `${dateStr} ${timeStr}`
         
-        const newStartAt = dateTime.toISOString()
+        // 手動構建 ISO 字符串，使用本地時間組件
+        const newStartAt = `${dateStr}T${timeStr}:00`
         const newStartTime = dateTime.getTime()
         const newEndTime = newStartTime + durationMin * 60000
         

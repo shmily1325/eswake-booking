@@ -582,6 +582,11 @@ export function DayView({ user }: DayViewProps) {
           }}>
             <button
               onClick={() => {
+                // 設置第一艘船為默認選擇（用戶可在對話框中更改）
+                if (boats.length > 0) {
+                  setSelectedBoatId(boats[0].id)
+                }
+                
                 // 智能設置默認時間
                 let defaultTime: Date
                 const today = getLocalDateString()
