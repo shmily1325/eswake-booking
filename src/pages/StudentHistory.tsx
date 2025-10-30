@@ -17,9 +17,10 @@ interface Booking {
 
 interface StudentHistoryProps {
   user: User
+  isEmbedded?: boolean
 }
 
-export function StudentHistory({ user }: StudentHistoryProps) {
+export function StudentHistory({ user, isEmbedded = false }: StudentHistoryProps) {
   const [searchName, setSearchName] = useState('')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
@@ -77,51 +78,53 @@ export function StudentHistory({ user }: StudentHistoryProps) {
 
   return (
     <div style={{ 
-      padding: '20px',
+      padding: isEmbedded ? '0' : '20px',
       maxWidth: '1200px',
       margin: '0 auto',
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
+      minHeight: isEmbedded ? 'auto' : '100vh',
+      backgroundColor: isEmbedded ? 'transparent' : '#f5f5f5',
     }}>
       {/* Header */}
-      <div style={{ 
-        background: 'white',
-        borderRadius: '8px',
-        padding: '15px',
-        marginBottom: '15px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '10px'
-      }}>
-        <h1 style={{ 
-          margin: 0,
-          fontSize: '18px',
-          color: '#000',
-          fontWeight: '600'
+      {!isEmbedded && (
+        <div style={{ 
+          background: 'white',
+          borderRadius: '8px',
+          padding: '15px',
+          marginBottom: '15px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '10px'
         }}>
-          學生記錄
-        </h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <a
-            href="/"
-            style={{
-              padding: '6px 12px',
-              background: '#f8f9fa',
-              color: '#333',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              fontSize: '13px',
-              border: '1px solid #dee2e6',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            ← 回主頁
-          </a>
-          <UserMenu user={user} />
+          <h1 style={{ 
+            margin: 0,
+            fontSize: '18px',
+            color: '#000',
+            fontWeight: '600'
+          }}>
+            學生記錄
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <a
+              href="/"
+              style={{
+                padding: '6px 12px',
+                background: '#f8f9fa',
+                color: '#333',
+                textDecoration: 'none',
+                borderRadius: '4px',
+                fontSize: '13px',
+                border: '1px solid #dee2e6',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              ← 回主頁
+            </a>
+            <UserMenu user={user} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Search Form */}
       <div style={{

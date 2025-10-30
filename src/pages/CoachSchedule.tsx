@@ -27,9 +27,10 @@ interface Booking {
 
 interface CoachScheduleProps {
   user: User
+  isEmbedded?: boolean
 }
 
-export function CoachSchedule({ user }: CoachScheduleProps) {
+export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) {
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -216,53 +217,55 @@ export function CoachSchedule({ user }: CoachScheduleProps) {
 
   return (
     <div style={{ 
-      minHeight: '100vh',
-      background: '#f8f9fa',
-      padding: '15px'
+      minHeight: isEmbedded ? 'auto' : '100vh',
+      background: isEmbedded ? 'transparent' : '#f8f9fa',
+      padding: isEmbedded ? '0' : '15px'
     }}>
       <div style={{ 
         maxWidth: '900px', 
         margin: '0 auto'
       }}>
         {/* Header */}
-        <div style={{ 
-          background: 'white',
-          borderRadius: '8px',
-          padding: '15px',
-          marginBottom: '15px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
-          <h1 style={{ 
-            margin: 0,
-            fontSize: '18px',
-            color: '#000',
-            fontWeight: '600'
+        {!isEmbedded && (
+          <div style={{ 
+            background: 'white',
+            borderRadius: '8px',
+            padding: '15px',
+            marginBottom: '15px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '10px'
           }}>
-            教練行程
-          </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Link 
-              to="/"
-              style={{
-                padding: '6px 12px',
-                background: '#f8f9fa',
-                color: '#333',
-                textDecoration: 'none',
-                borderRadius: '4px',
-                fontSize: '13px',
-                border: '1px solid #dee2e6',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              ← 回主頁
-            </Link>
-            <UserMenu user={user} />
+            <h1 style={{ 
+              margin: 0,
+              fontSize: '18px',
+              color: '#000',
+              fontWeight: '600'
+            }}>
+              教練行程
+            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Link 
+                to="/"
+                style={{
+                  padding: '6px 12px',
+                  background: '#f8f9fa',
+                  color: '#333',
+                  textDecoration: 'none',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  border: '1px solid #dee2e6',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                ← 回主頁
+              </Link>
+              <UserMenu user={user} />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Search section */}
         <div style={{
