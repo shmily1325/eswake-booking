@@ -27,7 +27,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
   const [hasSearched, setHasSearched] = useState(false)
   
   // 新增的篩選選項
-  const [filterType, setFilterType] = useState<'today' | 'range'>('today') // 預設今日新增
+  const [filterType, setFilterType] = useState<'all' | 'today' | 'range'>('all') // 預設顯示所有未來預約
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [copySuccess, setCopySuccess] = useState(false)
@@ -44,30 +44,68 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
     setCopySuccess(false)
 
     try {
+      // 先只按學生名字搜索，不加任何時間過濾（調試用）
       let query = supabase
         .from('bookings')
         .select('*, boats:boat_id (name, color)')
         .ilike('student', `%${searchName.trim()}%`)
       
+      console.log('🔍 搜尋學生:', searchName.trim())
+      
+      // 先不加時間過濾，看看能找到多少筆
+      const { data: allData } = await supabase
+        .from('bookings')
+        .select('id, student, start_at, created_at, status')
+        .ilike('student', `%${searchName.trim()}%`)
+        .order('start_at', { ascending: false })
+      
+      console.log('📊 不加時間過濾的所有結果:', allData?.length || 0)
+      if (allData && allData.length > 0) {
+        console.log('結果列表:', allData.map(b => ({ 
+          id: b.id,
+          student: b.student, 
+          start_at: b.start_at,
+          created_at: b.created_at,
+          status: b.status
+        })))
+      }
+      
       // 根據篩選類型添加條件
       const now = new Date()
       const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
       
-      if (filterType === 'today') {
-        // 今日新增的預約（使用日期範圍，避免時區問題）
+      console.log('⏰ 當前時間:', nowStr)
+      
+      if (filterType === 'all') {
+        // 顯示所有未來的預約
+        query = query.gte('start_at', nowStr)
+      } else if (filterType === 'today') {
+        // 今日新增的未來預約
         const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
         const tomorrow = new Date(now)
         tomorrow.setDate(tomorrow.getDate() + 1)
         const tomorrowDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
         
+        console.log('📅 今日新增過濾:', { todayDate, tomorrowDate })
         query = query.gte('created_at', `${todayDate}T00:00:00`).lt('created_at', `${tomorrowDate}T00:00:00`)
+        query = query.gte('start_at', nowStr) // 只顯示未來的
       } else if (filterType === 'range' && startDate && endDate) {
-        // 特定區間內的預約（只顯示未來的）
+        // 特定區間內的未來預約
         query = query.gte('start_at', `${startDate}T00:00:00`).lte('start_at', `${endDate}T23:59:59`)
         query = query.gte('start_at', nowStr)
       }
       
       const { data, error } = await query.order('start_at', { ascending: true })
+
+      // 調試信息
+      console.log('✅ 過濾後的結果數量:', data?.length || 0)
+      if (data && data.length > 0) {
+        console.log('過濾後的前3筆:', data.slice(0, 3).map(b => ({ 
+          student: b.student, 
+          start_at: b.start_at,
+          created_at: (b as any).created_at
+        })))
+      }
 
       if (error) {
         console.error('Error fetching bookings:', error)
@@ -264,36 +302,75 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
             />
           </div>
 
-          {/* 篩選選項 - 簡化版 */}
+          {/* 篩選選項 */}
           <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              padding: '14px',
-              backgroundColor: '#f8f9fa',
-              borderRadius: '8px',
-              gap: '10px',
-              border: '1px solid #e9ecef'
+            <div style={{ 
+              marginBottom: '12px', 
+              fontSize: '13px', 
+              color: '#868e96',
+              fontWeight: '500'
             }}>
-              <input
-                type="checkbox"
-                checked={filterType === 'range'}
-                onChange={(e) => setFilterType(e.target.checked ? 'range' : 'today')}
-                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-              />
-              <span style={{ fontSize: '15px', color: '#495057' }}>指定日期查詢</span>
-            </label>
-            {filterType === 'today' && (
-              <div style={{ 
-                marginTop: '8px', 
-                fontSize: '13px', 
-                color: '#868e96',
-                paddingLeft: '4px'
-              }}>
-                查詢模式：今日新增
-              </div>
-            )}
+              查詢模式
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setFilterType('all')}
+                style={{
+                  flex: 1,
+                  minWidth: '120px',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: filterType === 'all' ? '2px solid #007bff' : '1px solid #e9ecef',
+                  backgroundColor: filterType === 'all' ? '#e7f3ff' : 'white',
+                  color: filterType === 'all' ? '#007bff' : '#495057',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                全部預約
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterType('today')}
+                style={{
+                  flex: 1,
+                  minWidth: '120px',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: filterType === 'today' ? '2px solid #28a745' : '1px solid #e9ecef',
+                  backgroundColor: filterType === 'today' ? '#d4edda' : 'white',
+                  color: filterType === 'today' ? '#28a745' : '#495057',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                今日新增
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterType('range')}
+                style={{
+                  flex: 1,
+                  minWidth: '120px',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: filterType === 'range' ? '2px solid #ffc107' : '1px solid #e9ecef',
+                  backgroundColor: filterType === 'range' ? '#fff8e1' : 'white',
+                  color: filterType === 'range' ? '#f59f00' : '#495057',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                指定日期
+              </button>
+            </div>
           </div>
 
           {/* 日期區間選擇 */}
