@@ -77,7 +77,7 @@ export function HomePage({ user }: HomePageProps) {
             letterSpacing: '2px',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
           }}>
-            ES Wake
+            ES WAKE
           </h1>
           <div style={{
             display: 'flex',

@@ -33,12 +33,42 @@ export function AdminPage({ user }: AdminPageProps) {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copiedStudent, setCopiedStudent] = useState<string | null>(null)
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
   
-  // 可編輯的文字模板
-  const [greetingText, setGreetingText] = useState('Ming你好\n提醒你，明天有者這些')
-  const [headerText, setHeaderText] = useState('阿壽教練')
-  const [footerText, setFooterText] = useState('由於近期天氣變化較大，請務必在「前一日」確認是否有新氣象狀況\n另也了在進前先收費預價信用卡！\n再再麻煩我們維護這些！謝謝！\n明天見囉😊\n\n提醒囉，萬壽我取與門提醒我們\n幫你都會傳播場兩滑\n\n準時後壽再算真計算好價格\n也自行不能後，煩請配合👍')
+  // 天氣警告開關（持久化）
+  const [includeWeatherWarning, setIncludeWeatherWarning] = useState(() => {
+    const saved = localStorage.getItem('includeWeatherWarning')
+    return saved !== null ? JSON.parse(saved) : true
+  })
+  
+  // 可編輯文字模板（持久化）
+  const [weatherWarning, setWeatherWarning] = useState(() => {
+    return localStorage.getItem('weatherWarning') || `由於近期天氣變化較大，請務必在『啟程前』
+透過官方訊息與我們確認最新天氣狀況
+別忘了在出發前查收最新訊息哦！`
+  })
+  
+  const [footerText, setFooterText] = useState(() => {
+    return localStorage.getItem('footerText') || `再麻煩幫我們準時抵達哦！謝謝！
+明天見哦😊
+抵達時 再麻煩幫我按開門鍵提醒教練們幫你開啟停車場鐵閘門 
+進來後再麻煩幫我停黃色停車格 
+白色的不能停 煩請配合🙏`
+  })
+  
+  // 保存到 localStorage
+  useEffect(() => {
+    localStorage.setItem('includeWeatherWarning', JSON.stringify(includeWeatherWarning))
+  }, [includeWeatherWarning])
+  
+  useEffect(() => {
+    localStorage.setItem('weatherWarning', weatherWarning)
+  }, [weatherWarning])
+  
+  useEffect(() => {
+    localStorage.setItem('footerText', footerText)
+  }, [footerText])
   
   useEffect(() => {
     fetchData()
@@ -78,57 +108,87 @@ export function AdminPage({ user }: AdminPageProps) {
     return coach ? coach.name : coachId
   }
   
-  const formatTime = (dateString: string): string => {
+  const formatTimeNoColon = (dateString: string): string => {
     const date = new Date(dateString)
-    return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${hours}${minutes}`
   }
   
-  const getArrivalTime = (dateString: string): string => {
+  const getArrivalTimeNoColon = (dateString: string): string => {
     const date = new Date(dateString)
     date.setMinutes(date.getMinutes() - 30)
-    return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${hours}${minutes}`
   }
   
-  const generateMessage = (): string => {
-    let message = greetingText + '\n\n'
-    message += headerText + '\n'
+  // 获取所有学生列表
+  const getStudentList = (): string[] => {
+    const students = new Set<string>()
+    bookings.forEach(booking => students.add(booking.student))
+    return Array.from(students).sort()
+  }
+  
+  // 为特定学生生成消息
+  const generateMessageForStudent = (studentName: string): string => {
+    // 获取该学生的所有预约
+    const studentBookings = bookings.filter(b => b.student === studentName)
     
-    // 處理所有預約，避免重複
-    const processedBookings = new Set<string>()
-    const bookingsList: Array<{ arrivalTime: string; startTime: string }> = []
+    let message = `${studentName}你好\n提醒你，明天有預約\n\n`
     
-    bookings.forEach((booking) => {
-      // 創建唯一 key 來避免重複處理相同的預約
-      const bookingKey = `${booking.boat_id}-${booking.student}-${booking.start_at}-${booking.duration_min}`
-      
-      if (!processedBookings.has(bookingKey)) {
-        processedBookings.add(bookingKey)
-        
-        const startTime = formatTime(booking.start_at)
-        const arrivalTime = getArrivalTime(booking.start_at)
-        
-        bookingsList.push({ arrivalTime, startTime })
+    // 按教练分组
+    const coachBookings = new Map<string, Booking[]>()
+    studentBookings.forEach(booking => {
+      const coachName = getCoachName(booking.coach_id)
+      if (!coachBookings.has(coachName)) {
+        coachBookings.set(coachName, [])
       }
+      coachBookings.get(coachName)!.push(booking)
     })
     
-    // 按時間排序並顯示
-    bookingsList
-      .sort((a, b) => a.startTime.localeCompare(b.startTime))
-      .forEach(({ arrivalTime, startTime }) => {
+    // 为每个教练生成时间列表
+    coachBookings.forEach((bookings, coachName) => {
+      message += `${coachName}教練\n`
+      
+      // 去重并排序（同一时间的预约只显示一次）
+      const uniqueTimes = new Map<string, Booking>()
+      bookings.forEach(booking => {
+        const key = `${booking.start_at}-${booking.duration_min}`
+        if (!uniqueTimes.has(key)) {
+          uniqueTimes.set(key, booking)
+        }
+      })
+      
+      // 按时间排序
+      const sortedBookings = Array.from(uniqueTimes.values()).sort((a, b) => 
+        new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+      )
+      
+      sortedBookings.forEach(booking => {
+        const arrivalTime = getArrivalTimeNoColon(booking.start_at)
+        const startTime = formatTimeNoColon(booking.start_at)
         message += `${arrivalTime}抵達\n`
         message += `${startTime}下水\n\n`
       })
+    })
     
+    // 天氣警告（可選）
+    if (includeWeatherWarning) {
+      message += weatherWarning + '\n\n'
+    }
+    
+    // 結尾提醒
     message += footerText
     
     return message
   }
   
-  const handleCopy = () => {
-    const message = generateMessage()
+  const handleCopyForStudent = (studentName: string) => {
+    const message = generateMessageForStudent(studentName)
     navigator.clipboard.writeText(message).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setCopiedStudent(studentName)
+      setTimeout(() => setCopiedStudent(null), 2000)
     })
   }
   
@@ -245,6 +305,37 @@ export function AdminPage({ user }: AdminPageProps) {
             編輯文字模板
           </h2>
           
+          {/* 天氣警告開關 */}
+          <div style={{ 
+            marginBottom: isMobile ? '15px' : '18px',
+            padding: isMobile ? '12px' : '14px',
+            background: '#f8f9fa',
+            borderRadius: '6px',
+            border: '1px solid #e0e0e0'
+          }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              fontSize: isMobile ? '14px' : '14px',
+              fontWeight: '500',
+              gap: '10px'
+            }}>
+              <input
+                type="checkbox"
+                checked={includeWeatherWarning}
+                onChange={(e) => setIncludeWeatherWarning(e.target.checked)}
+                style={{
+                  width: isMobile ? '18px' : '16px',
+                  height: isMobile ? '18px' : '16px',
+                  cursor: 'pointer'
+                }}
+              />
+              <span>包含天氣警告</span>
+            </label>
+          </div>
+          
+          {/* 天氣警告文字 */}
           <div style={{ marginBottom: isMobile ? '12px' : '15px' }}>
             <label style={{
               display: 'block',
@@ -253,14 +344,14 @@ export function AdminPage({ user }: AdminPageProps) {
               marginBottom: '6px',
               color: '#555'
             }}>
-              開頭問候語
+              天氣警告文字
             </label>
             <textarea
-              value={greetingText}
-              onChange={(e) => setGreetingText(e.target.value)}
+              value={weatherWarning}
+              onChange={(e) => setWeatherWarning(e.target.value)}
               style={{
                 width: '100%',
-                minHeight: isMobile ? '80px' : '60px',
+                minHeight: isMobile ? '100px' : '80px',
                 padding: isMobile ? '12px' : '10px',
                 border: '1px solid #dee2e6',
                 borderRadius: '4px',
@@ -268,37 +359,14 @@ export function AdminPage({ user }: AdminPageProps) {
                 fontFamily: 'inherit',
                 resize: 'vertical',
                 touchAction: 'manipulation',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                opacity: includeWeatherWarning ? 1 : 0.5
               }}
+              disabled={!includeWeatherWarning}
             />
           </div>
           
-          <div style={{ marginBottom: isMobile ? '12px' : '15px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: isMobile ? '12px' : '13px',
-              fontWeight: '600',
-              marginBottom: '6px',
-              color: '#555'
-            }}>
-              預約列表標題
-            </label>
-            <input
-              type="text"
-              value={headerText}
-              onChange={(e) => setHeaderText(e.target.value)}
-              style={{
-                width: '100%',
-                padding: isMobile ? '12px' : '8px 12px',
-                border: '1px solid #dee2e6',
-                borderRadius: '4px',
-                fontSize: isMobile ? '15px' : '14px',
-                touchAction: 'manipulation',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-          
+          {/* 結尾提醒文字 */}
           <div>
             <label style={{
               display: 'block',
@@ -307,14 +375,14 @@ export function AdminPage({ user }: AdminPageProps) {
               marginBottom: '6px',
               color: '#555'
             }}>
-              結尾注意事項
+              結尾提醒文字
             </label>
             <textarea
               value={footerText}
               onChange={(e) => setFooterText(e.target.value)}
               style={{
                 width: '100%',
-                minHeight: isMobile ? '200px' : '150px',
+                minHeight: isMobile ? '180px' : '140px',
                 padding: isMobile ? '12px' : '10px',
                 border: '1px solid #dee2e6',
                 borderRadius: '4px',
@@ -326,82 +394,178 @@ export function AdminPage({ user }: AdminPageProps) {
               }}
             />
           </div>
+          
+          <div style={{
+            marginTop: isMobile ? '12px' : '15px',
+            padding: isMobile ? '10px' : '12px',
+            background: '#e8f5e9',
+            borderRadius: '4px',
+            fontSize: isMobile ? '12px' : '13px',
+            color: '#2e7d32',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>✓</span>
+            <span>您的修改會自動保存，下次打開時繼續使用</span>
+          </div>
         </div>
 
-        {/* Preview */}
-        <div style={{
-          background: 'white',
-          borderRadius: '8px',
-          padding: isMobile ? '15px' : '20px',
-          marginBottom: isMobile ? '10px' : '15px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
+        {/* Student Messages List */}
+        {bookings.length === 0 && !loading ? (
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: isMobile ? '12px' : '15px',
-            gap: '10px'
+            background: 'white',
+            borderRadius: '8px',
+            padding: isMobile ? '15px' : '20px',
+            marginBottom: isMobile ? '10px' : '15px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{
+              padding: isMobile ? '30px 15px' : '40px 20px',
+              textAlign: 'center',
+              color: '#666'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>📅</div>
+              <div style={{ fontSize: isMobile ? '15px' : '16px', fontWeight: '500' }}>
+                選擇的日期沒有預約記錄
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            background: 'white',
+            borderRadius: '8px',
+            padding: isMobile ? '15px' : '20px',
+            marginBottom: isMobile ? '10px' : '15px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
           }}>
             <h2 style={{
               fontSize: isMobile ? '15px' : '16px',
               fontWeight: '600',
               color: '#34495e',
-              margin: 0
+              marginBottom: isMobile ? '12px' : '15px'
             }}>
-              預覽訊息
+              學生提醒訊息 ({getStudentList().length} 位學生)
             </h2>
-            <button
-              onClick={handleCopy}
-              style={{
-                padding: isMobile ? '10px 16px' : '8px 16px',
-                background: copied ? '#28a745' : '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: isMobile ? '15px' : '14px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'background 0.2s',
-                touchAction: 'manipulation',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {copied ? '✓ 已複製' : '📋 複製訊息'}
-            </button>
-          </div>
-          
-          <div style={{
-            background: '#f8f9fa',
-            padding: isMobile ? '12px' : '15px',
-            borderRadius: '6px',
-            border: '1px solid #dee2e6',
-            whiteSpace: 'pre-wrap',
-            fontSize: isMobile ? '14px' : '14px',
-            lineHeight: '1.6',
-            color: '#333',
-            fontFamily: 'inherit',
-            maxHeight: isMobile ? '400px' : 'none',
-            overflowY: isMobile ? 'auto' : 'visible',
-            WebkitOverflowScrolling: 'touch'
-          }}>
-            {generateMessage()}
-          </div>
-          
-          {bookings.length === 0 && !loading && (
+            
             <div style={{
-              marginTop: isMobile ? '12px' : '15px',
-              padding: isMobile ? '12px' : '15px',
-              background: '#fff3cd',
-              border: '1px solid #ffc107',
-              borderRadius: '4px',
-              color: '#856404',
-              fontSize: isMobile ? '13px' : '14px'
+              display: 'grid',
+              gap: isMobile ? '10px' : '12px'
             }}>
-              ⚠️ 選擇的日期沒有預約記錄
+              {getStudentList().map((studentName) => {
+                const isExpanded = selectedStudent === studentName
+                const isCopied = copiedStudent === studentName
+                const studentBookings = bookings.filter(b => b.student === studentName)
+                
+                return (
+                  <div
+                    key={studentName}
+                    style={{
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {/* Student Header */}
+                    <div
+                      onClick={() => setSelectedStudent(isExpanded ? null : studentName)}
+                      style={{
+                        padding: isMobile ? '14px' : '16px',
+                        background: isExpanded ? '#f8f9fa' : 'white',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '12px',
+                        touchAction: 'manipulation'
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: isMobile ? '15px' : '16px',
+                          fontWeight: '600',
+                          color: '#333',
+                          marginBottom: '4px'
+                        }}>
+                          {studentName}
+                        </div>
+                        <div style={{
+                          fontSize: isMobile ? '12px' : '13px',
+                          color: '#666'
+                        }}>
+                          {studentBookings.length} 個預約
+                        </div>
+                      </div>
+                      
+                      <div style={{
+                        fontSize: isMobile ? '20px' : '18px',
+                        color: '#999',
+                        transition: 'transform 0.2s',
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                      }}>
+                        ▼
+                      </div>
+                    </div>
+                    
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <div style={{
+                        padding: isMobile ? '14px' : '16px',
+                        borderTop: '1px solid #e0e0e0',
+                        background: 'white'
+                      }}>
+                        {/* Preview Message */}
+                        <div style={{
+                          background: '#f8f9fa',
+                          padding: isMobile ? '12px' : '14px',
+                          borderRadius: '6px',
+                          border: '1px solid #dee2e6',
+                          whiteSpace: 'pre-wrap',
+                          fontSize: isMobile ? '13px' : '14px',
+                          lineHeight: '1.6',
+                          color: '#333',
+                          fontFamily: 'inherit',
+                          marginBottom: isMobile ? '12px' : '14px',
+                          maxHeight: isMobile ? '300px' : '400px',
+                          overflowY: 'auto',
+                          WebkitOverflowScrolling: 'touch'
+                        }}>
+                          {generateMessageForStudent(studentName)}
+                        </div>
+                        
+                        {/* Copy Button */}
+                        <button
+                          onClick={() => handleCopyForStudent(studentName)}
+                          style={{
+                            width: '100%',
+                            padding: isMobile ? '12px' : '10px',
+                            background: isCopied ? '#28a745' : '#007bff',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: isMobile ? '15px' : '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            touchAction: 'manipulation',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px'
+                          }}
+                        >
+                          <span>{isCopied ? '✓' : '📋'}</span>
+                          <span>{isCopied ? '已複製' : '複製訊息'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Booking List */}
         {bookings.length > 0 && (
@@ -425,8 +589,8 @@ export function AdminPage({ user }: AdminPageProps) {
               gap: isMobile ? '8px' : '10px'
             }}>
               {bookings.map((booking) => {
-                const startTime = formatTime(booking.start_at)
-                const arrivalTime = getArrivalTime(booking.start_at)
+                const startTime = formatTimeNoColon(booking.start_at)
+                const arrivalTime = getArrivalTimeNoColon(booking.start_at)
                 
                 // 找出同一時間的所有教練
                 const sameTimeBookings = bookings.filter(b => 
