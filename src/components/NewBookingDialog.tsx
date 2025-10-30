@@ -367,10 +367,9 @@ export function NewBookingDialog({
         if (insertedBookings && insertedBookings.length > 0) {
           const auditLogs = insertedBookings.map(booking => ({
             table_name: 'bookings',
-            record_id: booking.id,
-            action: 'INSERT',
-            user_id: user.id,
-            user_email: user.email,
+            record_id: booking.id.toString(),
+            operation: 'INSERT',
+            changed_by: user.id,
             new_data: booking,
             old_data: null,
             changed_fields: null,
@@ -378,7 +377,9 @@ export function NewBookingDialog({
 
           const { error: auditError } = await supabase.from('audit_log').insert(auditLogs)
           if (auditError) {
-            console.error('Audit log insert error:', auditError)
+            console.error('❌ Audit log insert error:', auditError)
+          } else {
+            console.log('✅ Audit log inserted successfully')
           }
           
           // 記錄成功

@@ -119,7 +119,6 @@ export function EditBookingDialog({
         .from('bookings')
         .select('id, start_at, duration_min, student, coaches(name)')
         .eq('boat_id', booking.boat_id)
-        .neq('id', booking.id) // 排除當前預約
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${startDate}T23:59:59`)
       
@@ -131,6 +130,13 @@ export function EditBookingDialog({
       
       // 檢查是否與現有預約衝突（需要15分鐘接船時間）
       for (const existing of existingBookings || []) {
+        // 跳過當前編輯的預約組（同一學生、同一時間、同一船、同一時長）
+        if (existing.student === booking.student && 
+            existing.start_at === booking.start_at && 
+            existing.duration_min === booking.duration_min) {
+          continue
+        }
+        
         const existingStart = new Date(existing.start_at).getTime()
         const existingEnd = existingStart + existing.duration_min * 60000
         const existingCleanupEnd = existingEnd + 15 * 60000
@@ -164,12 +170,18 @@ export function EditBookingDialog({
           .from('bookings')
           .select('id, start_at, duration_min, student, boats(name)')
           .eq('coach_id', selectedCoachId)
-          .neq('id', booking.id) // 排除當前預約
           .gte('start_at', `${startDate}T00:00:00`)
           .lte('start_at', `${startDate}T23:59:59`)
         
         if (!coachCheckError) {
           for (const existing of coachBookings || []) {
+            // 跳過當前編輯的預約組（同一學生、同一時間、同一時長）
+            if (existing.student === booking.student && 
+                existing.start_at === booking.start_at && 
+                existing.duration_min === booking.duration_min) {
+              continue
+            }
+            
             const existingStart = new Date(existing.start_at).getTime()
             const existingEnd = existingStart + existing.duration_min * 60000
             
@@ -223,16 +235,17 @@ export function EditBookingDialog({
 
       const { error: auditError } = await supabase.from('audit_log').insert({
         table_name: 'bookings',
-        record_id: booking.id,
-        action: 'UPDATE',
-        user_id: user.id,
-        user_email: user.email,
+        record_id: booking.id.toString(),
+        operation: 'UPDATE',
+        changed_by: user.id,
         old_data: booking,
         new_data: { ...booking, ...updateData },
         changed_fields: changedFields,
       })
       if (auditError) {
-        console.error('Audit log insert error:', auditError)
+        console.error('❌ Audit log insert error:', auditError)
+      } else {
+        console.log('✅ Audit log inserted successfully')
       }
 
       // Success
@@ -269,10 +282,9 @@ export function EditBookingDialog({
       if (relatedBookings && relatedBookings.length > 0) {
         const auditLogs = relatedBookings.map(b => ({
           table_name: 'bookings',
-          record_id: b.id,
-          action: 'DELETE',
-          user_id: user.id,
-          user_email: user.email,
+          record_id: b.id.toString(),
+          operation: 'DELETE',
+          changed_by: user.id,
           old_data: b,
           new_data: null,
           changed_fields: null,
@@ -280,7 +292,9 @@ export function EditBookingDialog({
 
         const { error: auditError } = await supabase.from('audit_log').insert(auditLogs)
         if (auditError) {
-          console.error('Audit log insert error:', auditError)
+          console.error('❌ Audit log insert error:', auditError)
+        } else {
+          console.log('✅ Audit log inserted successfully')
         }
       }
 

@@ -48,6 +48,7 @@ export function UserMenu({ user }: UserMenuProps) {
             height: '32px',
             borderRadius: '50%',
             display: 'block',
+            filter: 'grayscale(100%)',
           }}
         />
       </button>

@@ -7,6 +7,37 @@ import { EditBookingDialog } from '../components/EditBookingDialog'
 import { UserMenu } from '../components/UserMenu'
 import { useResponsive } from '../hooks/useResponsive'
 
+// 統一按鈕樣式
+const buttonStyles = {
+  primary: {
+    padding: '8px 14px',
+    borderRadius: '6px',
+    border: '1px solid #dee2e6',
+    backgroundColor: '#f8f9fa',
+    color: '#333',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
+    minHeight: '36px',
+    touchAction: 'manipulation' as const,
+    whiteSpace: 'nowrap' as const,
+    transition: 'all 0.2s',
+  },
+  secondary: {
+    padding: '8px 12px',
+    borderRadius: '6px',
+    border: '1px solid #dee2e6',
+    backgroundColor: 'white',
+    color: '#333',
+    cursor: 'pointer',
+    fontSize: '14px',
+    minWidth: '36px',
+    minHeight: '36px',
+    touchAction: 'manipulation' as const,
+    transition: 'all 0.2s',
+  }
+}
+
 interface Boat {
   id: number
   name: string
@@ -369,37 +400,6 @@ export function DayView({ user }: DayViewProps) {
       paddingBottom: '60px',
       position: 'relative',
     }}>
-      {/* 浮水印背景 */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '120px',
-        padding: '60px',
-        pointerEvents: 'none',
-        opacity: 0.04,
-        userSelect: 'none',
-        zIndex: 0,
-      }}>
-        {Array.from({ length: 20 }).map((_, i) => (
-          <img
-            key={i}
-            src="/logo black.png"
-            alt="ESWake"
-            style={{
-              width: '250px',
-              height: 'auto',
-              transform: 'rotate(-25deg)',
-            }}
-          />
-        ))}
-      </div>
       <div style={{ 
         marginBottom: '12px', 
         display: 'flex', 
@@ -423,15 +423,8 @@ export function DayView({ user }: DayViewProps) {
             <button
               onClick={() => setViewMode(viewMode === 'timeline' ? 'list' : 'timeline')}
               style={{
-                padding: '6px 12px',
-                borderRadius: '4px',
-                border: '1px solid #007bff',
-                backgroundColor: '#007bff',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '600',
-                whiteSpace: 'nowrap',
+                ...buttonStyles.primary,
+                filter: 'grayscale(100%)',
               }}
             >
               {viewMode === 'timeline' ? '📋 列表' : '🗓️ 時間軸'}
@@ -439,15 +432,9 @@ export function DayView({ user }: DayViewProps) {
             <a
               href="/"
               style={{
-                padding: '6px 12px',
-                backgroundColor: '#f8f9fa',
-                color: '#333',
+                ...buttonStyles.primary,
                 textDecoration: 'none',
-                borderRadius: '4px',
-                fontSize: '13px',
-                fontWeight: 'normal',
-                whiteSpace: 'nowrap',
-                border: '1px solid #dee2e6'
+                display: 'inline-block',
               }}
             >
               ← 回主頁
@@ -464,15 +451,8 @@ export function DayView({ user }: DayViewProps) {
           <button
             onClick={() => changeDate(-1)}
             style={{
-              padding: '8px 12px',
-              borderRadius: '6px',
-              border: '1px solid #ccc',
-              backgroundColor: 'white',
-              cursor: 'pointer',
+              ...buttonStyles.secondary,
               fontSize: '16px',
-              minWidth: '36px',
-              minHeight: '36px',
-              touchAction: 'manipulation',
             }}
             title="前一天"
           >
@@ -486,7 +466,7 @@ export function DayView({ user }: DayViewProps) {
             style={{
               padding: '8px',
               borderRadius: '6px',
-              border: '1px solid #ccc',
+              border: '1px solid #dee2e6',
               fontSize: '14px',
               flex: 1,
               minWidth: '120px',
@@ -498,15 +478,8 @@ export function DayView({ user }: DayViewProps) {
           <button
             onClick={() => changeDate(1)}
             style={{
-              padding: '8px 12px',
-              borderRadius: '6px',
-              border: '1px solid #ccc',
-              backgroundColor: 'white',
-              cursor: 'pointer',
+              ...buttonStyles.secondary,
               fontSize: '16px',
-              minWidth: '36px',
-              minHeight: '36px',
-              touchAction: 'manipulation',
             }}
             title="下一天"
           >
@@ -515,19 +488,7 @@ export function DayView({ user }: DayViewProps) {
           
           <button
             onClick={goToToday}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '6px',
-              border: '1px solid #007bff',
-              backgroundColor: '#007bff',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              minHeight: '36px',
-              touchAction: 'manipulation',
-              whiteSpace: 'nowrap',
-            }}
+            style={buttonStyles.primary}
           >
             今天
           </button>
@@ -675,7 +636,7 @@ export function DayView({ user }: DayViewProps) {
               }}>
                 {/* 左側：船隻標題 */}
                 <div style={{
-                  background: 'linear-gradient(135deg, #34495e 0%, #2c3e50 100%)',
+                  background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
                   color: 'white',
                   padding: isMobile ? '20px 14px' : '24px 18px',
                   fontWeight: '600',
@@ -689,7 +650,7 @@ export function DayView({ user }: DayViewProps) {
                   flexShrink: 0,
                   textAlign: 'center',
                   gap: '6px',
-                  borderRight: '3px solid #2c3e50',
+                  borderRight: '3px solid #4a4a4a',
                   boxShadow: '3px 0 10px rgba(0,0,0,0.15)',
                 }}>
                   <span style={{ fontSize: isMobile ? '15px' : '17px', lineHeight: '1.2', fontWeight: '700' }}>{boat.name}</span>
@@ -842,6 +803,7 @@ export function DayView({ user }: DayViewProps) {
                               display: 'flex',
                               gap: '6px',
                               alignItems: 'center',
+                              justifyContent: 'center',
                               flexWrap: 'wrap',
                             }}>
                               {booking.activity_types && booking.activity_types.length > 0 && (

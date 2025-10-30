@@ -101,7 +101,8 @@ export function HomePage({ user }: HomePageProps) {
               to={item.link}
               style={{
                 textDecoration: 'none',
-                background: '#fff',
+                background: 'rgba(255, 255, 255, 0.7)',
+                backdropFilter: 'blur(10px)',
                 borderRadius: '16px',
                 padding: '35px 20px',
                 boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
@@ -112,7 +113,7 @@ export function HomePage({ user }: HomePageProps) {
                 textAlign: 'center',
                 gap: '12px',
                 cursor: 'pointer',
-                border: '1px solid #e0e0e0'
+                border: '1px solid rgba(224, 224, 224, 0.5)'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-5px)'
@@ -128,8 +129,8 @@ export function HomePage({ user }: HomePageProps) {
               <div style={{
                 fontSize: '42px',
                 marginBottom: '5px',
-                filter: 'grayscale(100%)',
-                opacity: 0.7
+                filter: 'grayscale(100%) contrast(1.2)',
+                opacity: 0.85
               }}>
                 {item.icon}
               </div>
