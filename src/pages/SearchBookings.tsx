@@ -135,15 +135,13 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
     return datetime < nowStr
   }
 
-  // 生成 LINE 格式的文字
+  // 生成 LINE 格式的文字（簡化版）
   const generateLineMessage = () => {
     if (bookings.length === 0) return ''
     
-    let message = `📋 ${searchName} 的預約\n`
-    message += `共 ${bookings.length} 筆\n`
-    message += `\n`
+    let message = `${searchName}的預約\n`
     
-    bookings.forEach((booking, index) => {
+    bookings.forEach((booking) => {
       const datetime = booking.start_at.substring(0, 16)
       const [dateStr, timeStr] = datetime.split('T')
       const [year, month, day] = dateStr.split('-')
@@ -153,20 +151,26 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       const weekdays = ['日', '一', '二', '三', '四', '五', '六']
       const weekday = weekdays[date.getDay()]
       
-      message += `${index + 1}. ${month}/${day} (週${weekday}) ${timeStr}\n`
-      message += `   🚤 ${booking.boats?.name || '未指定'}\n`
-      message += `   👤 ${booking.coaches && booking.coaches.length > 0 ? booking.coaches.map(c => c.name).join(' / ') : '未指定'}\n`
-      message += `   ⏱️ ${booking.duration_min}分鐘`
+      // 組合一行：日期 時間 船隻 [教練] 時長 活動類型
+      const coaches = booking.coaches && booking.coaches.length > 0 
+        ? `[${booking.coaches.map(c => c.name).join('/')}]`
+        : '[未指定]'
       
-      if (booking.activity_types && booking.activity_types.length > 0) {
-        message += ` | 🏄 ${booking.activity_types.join(' + ')}`
+      const activities = booking.activity_types && booking.activity_types.length > 0
+        ? booking.activity_types.join('+')
+        : ''
+      
+      message += `${month}/${day}(週${weekday}) ${timeStr} ${booking.boats?.name || '?'} ${coaches} ${booking.duration_min}分`
+      
+      if (activities) {
+        message += ` ${activities}`
       }
       
       if (booking.notes) {
-        message += `\n   📝 ${booking.notes}`
+        message += ` 備註:${booking.notes}`
       }
       
-      message += `\n\n`
+      message += `\n`
     })
     
     return message.trim()
