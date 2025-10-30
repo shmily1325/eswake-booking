@@ -1011,7 +1011,7 @@ export function DayView({ user }: DayViewProps) {
                   const isCleanupTime = !booking && boat.name !== '彈簧床' && isInCleanupTime(boat.id, timeSlot)
                   
                   const rowSpan = booking ? getBookingSpan(booking) : 1
-                  const bgColor = booking ? '#34495e' : (isCleanupTime ? 'rgba(200, 200, 200, 0.3)' : 'transparent')
+                  const bgColor = booking ? '#5a5a5a' : (isCleanupTime ? 'rgba(200, 200, 200, 0.3)' : 'transparent')
                   const textColor = booking ? 'white' : '#666'
                   
                   return (
