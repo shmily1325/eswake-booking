@@ -13,14 +13,13 @@ interface AdminPageProps {
 interface Booking {
   id: string
   boat_id: number
-  coach_id: string | null
   student: string
   start_at: string
   duration_min: number
   activity_types: string[] | null
   notes: string | null
   boats?: { id: number; name: string; color: string } | null
-  coaches?: { id: string; name: string } | null
+  coaches?: { id: string; name: string }[]
 }
 
 interface Coach {
@@ -30,7 +29,22 @@ interface Coach {
 
 export function AdminPage({ user }: AdminPageProps) {
   const { isMobile } = useResponsive()
-  const [selectedDate, setSelectedDate] = useState(getLocalDateString())
+  // 智能選擇日期：凌晨 03:00 前顯示今天，之後顯示明天
+  const getDefaultDate = () => {
+    const now = new Date()
+    const hour = now.getHours()
+    
+    if (hour < 3) {
+      // 凌晨 00:00 - 02:59，顯示今天
+      return getLocalDateString(now)
+    } else {
+      // 03:00 之後，顯示明天
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      return getLocalDateString(tomorrow)
+    }
+  }
+  const [selectedDate, setSelectedDate] = useState(getDefaultDate())
   const [bookings, setBookings] = useState<Booking[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(false)
@@ -130,12 +144,6 @@ export function AdminPage({ user }: AdminPageProps) {
     }
   }
   
-  const getCoachName = (coachId: string | null): string => {
-    if (!coachId) return '未指定'
-    const coach = coaches.find(c => c.id === coachId)
-    return coach ? coach.name : coachId
-  }
-  
   const formatTimeNoColon = (dateString: string): string => {
     const date = new Date(dateString)
     const hours = date.getHours().toString().padStart(2, '0')
@@ -168,11 +176,14 @@ export function AdminPage({ user }: AdminPageProps) {
     // 按教练分组
     const coachBookings = new Map<string, Booking[]>()
     studentBookings.forEach(booking => {
-      const coachName = getCoachName(booking.coach_id)
-      if (!coachBookings.has(coachName)) {
-        coachBookings.set(coachName, [])
+      const coachNames = booking.coaches && booking.coaches.length > 0
+        ? booking.coaches.map(c => c.name).join(' / ')
+        : '未指定'
+      
+      if (!coachBookings.has(coachNames)) {
+        coachBookings.set(coachNames, [])
       }
-      coachBookings.get(coachName)!.push(booking)
+      coachBookings.get(coachNames)!.push(booking)
     })
     
     // 为每个教练生成时间列表
@@ -605,18 +616,6 @@ export function AdminPage({ user }: AdminPageProps) {
 
         {/* Booking List */}
         {bookings.length > 0 && (() => {
-          // 去重：同一學生、同一時間、同一船的預約只顯示一次
-          const uniqueBookings: Booking[] = []
-          const processedKeys = new Set<string>()
-          
-          bookings.forEach((booking) => {
-            const key = `${booking.boat_id}-${booking.student}-${booking.start_at}-${booking.duration_min}`
-            if (!processedKeys.has(key)) {
-              processedKeys.add(key)
-              uniqueBookings.push(booking)
-            }
-          })
-          
           return (
             <div style={{
               background: 'white',
@@ -630,27 +629,21 @@ export function AdminPage({ user }: AdminPageProps) {
                 color: '#34495e',
                 marginBottom: isMobile ? '12px' : '15px'
               }}>
-                當日預約明細 ({uniqueBookings.length} 筆)
+                當日預約明細 ({bookings.length} 筆)
               </h2>
               
               <div style={{
                 display: 'grid',
                 gap: isMobile ? '8px' : '10px'
               }}>
-                {uniqueBookings.map((booking) => {
+                {bookings.map((booking) => {
                   const startTime = formatTimeNoColon(booking.start_at)
                   const arrivalTime = getArrivalTimeNoColon(booking.start_at)
                   
-                  // 找出同一時間的所有教練
-                  const sameTimeBookings = bookings.filter(b => 
-                    b.boat_id === booking.boat_id &&
-                    b.student === booking.student &&
-                    b.start_at === booking.start_at &&
-                    b.duration_min === booking.duration_min
-                  )
-                  const allCoaches = sameTimeBookings.map(b => 
-                    getCoachName(b.coach_id)
-                  ).filter((name, idx, self) => self.indexOf(name) === idx).join(' / ')
+                  // 直接使用 booking.coaches 數組
+                  const allCoaches = booking.coaches && booking.coaches.length > 0
+                    ? booking.coaches.map(c => c.name).join(' / ')
+                    : '未指定'
                   
                   return (
                     <div

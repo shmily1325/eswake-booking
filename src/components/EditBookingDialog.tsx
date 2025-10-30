@@ -159,7 +159,17 @@ export function EditBookingDialog({
           continue
         }
         
-        const existingStart = new Date(existing.start_at).getTime()
+        // 使用相同的本地時間解析方式（避免時區偏移）
+        const existingDate = new Date(existing.start_at)
+        const existingLocalTime = new Date(
+          existingDate.getFullYear(),
+          existingDate.getMonth(),
+          existingDate.getDate(),
+          existingDate.getHours(),
+          existingDate.getMinutes(),
+          0
+        )
+        const existingStart = existingLocalTime.getTime()
         const existingEnd = existingStart + existing.duration_min * 60000
         const existingCleanupEnd = existingEnd + 15 * 60000
         
@@ -226,7 +236,17 @@ export function EditBookingDialog({
               continue
             }
             
-            const existingStart = new Date(coachBooking.start_at).getTime()
+            // 使用相同的本地時間解析方式（避免時區偏移）
+            const existingDate = new Date(coachBooking.start_at)
+            const existingLocalTime = new Date(
+              existingDate.getFullYear(),
+              existingDate.getMonth(),
+              existingDate.getDate(),
+              existingDate.getHours(),
+              existingDate.getMinutes(),
+              0
+            )
+            const existingStart = existingLocalTime.getTime()
             const existingEnd = existingStart + coachBooking.duration_min * 60000
             
             // 檢查時間重疊
