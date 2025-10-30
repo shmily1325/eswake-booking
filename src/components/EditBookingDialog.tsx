@@ -164,8 +164,8 @@ export function EditBookingDialog({
         
         // 直接從資料庫取前16個字符
         const existingDatetime = existing.start_at.substring(0, 16)
-        const [, existingTime] = existingDatetime.split('T')
-        const [existingHour, existingMinute] = existingTime.split(':').map(Number)
+        const [, existingTimeStr] = existingDatetime.split('T')
+        const [existingHour, existingMinute] = existingTimeStr.split(':').map(Number)
         
         const existingStartMinutes = existingHour * 60 + existingMinute
         const existingEndMinutes = existingStartMinutes + existing.duration_min
@@ -173,21 +173,25 @@ export function EditBookingDialog({
         
         // 檢查新預約是否在現有預約的接船時間內開始
         if (newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
-          setError(`與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`)
+          const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
+          setError(`與 ${existing.student} 的預約衝突：${existing.student} 在 ${existingEndTime} 結束，需要15分鐘接船時間。您的預約 ${startTime} 太接近了。`)
           setLoading(false)
           return
         }
         
         // 檢查新預約結束時間是否會影響現有預約
         if (existingStartMinutes >= newEndMinutes && existingStartMinutes < newCleanupEndMinutes) {
-          setError(`與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`)
+          const newEndTime = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
+          setError(`與 ${existing.student} 的預約衝突：您的預約 ${newEndTime} 結束，${existing.student} ${existingTimeStr} 開始，需要15分鐘接船時間。`)
           setLoading(false)
           return
         }
         
         // 檢查時間重疊
         if (!(newEndMinutes <= existingStartMinutes || newStartMinutes >= existingEndMinutes)) {
-          setError(`與 ${existing.student} 的預約時間重疊`)
+          const newEnd = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
+          const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
+          setError(`與 ${existing.student} 的預約時間重疊：您的時間 ${startTime}-${newEnd}，${existing.student} 的時間 ${existingTimeStr}-${existingEndTime}`)
           setLoading(false)
           return
         }
@@ -447,25 +451,6 @@ export function EditBookingDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px' }}>編輯預約</h2>
-        
-        {error && (
-          <div style={{
-            padding: '14px 16px',
-            backgroundColor: '#fff3cd',
-            border: '2px solid #ffc107',
-            borderRadius: '8px',
-            marginBottom: '18px',
-            color: '#856404',
-            fontSize: '15px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}>
-            <span style={{ fontSize: '20px' }}>⚠️</span>
-            <span>{error}</span>
-          </div>
-        )}
         
         <form onSubmit={handleUpdate}>
           <div style={{ marginBottom: '18px' }}>
@@ -793,6 +778,26 @@ export function EditBookingDialog({
               }}
             />
           </div>
+
+          {/* 錯誤訊息 */}
+          {error && (
+            <div style={{
+              padding: '14px 16px',
+              backgroundColor: '#fff3cd',
+              border: '2px solid #ffc107',
+              borderRadius: '8px',
+              marginTop: '20px',
+              color: '#856404',
+              fontSize: '15px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+            }}>
+              <span style={{ fontSize: '20px' }}>⚠️</span>
+              <span style={{ whiteSpace: 'pre-line', flex: 1 }}>{error}</span>
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
             <button

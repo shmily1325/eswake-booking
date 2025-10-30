@@ -419,7 +419,12 @@ export function NewBookingDialog({
 
       // 顯示結果
       if (results.success.length === 0) {
-        setError('沒有成功創建任何預約，所有日期都有衝突')
+        // 顯示詳細的衝突原因
+        let errorMessage = '❌ 沒有成功創建任何預約\n\n衝突詳情:\n'
+        results.skipped.forEach(({ date, reason }) => {
+          errorMessage += `\n• ${date}\n  ${reason}\n`
+        })
+        setError(errorMessage)
         setLoading(false)
         return
       }
@@ -503,25 +508,6 @@ export function NewBookingDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px' }}>新增預約</h2>
-        
-        {error && (
-          <div style={{
-            padding: '14px 16px',
-            backgroundColor: '#fff3cd',
-            border: '2px solid #ffc107',
-            borderRadius: '8px',
-            marginBottom: '18px',
-            color: '#856404',
-            fontSize: '15px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}>
-            <span style={{ fontSize: '20px' }}>⚠️</span>
-            <span>{error}</span>
-          </div>
-        )}
         
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '18px' }}>
@@ -957,6 +943,26 @@ export function NewBookingDialog({
               </div>
             )}
           </div>
+
+          {/* 錯誤訊息 */}
+          {error && (
+            <div style={{
+              padding: '14px 16px',
+              backgroundColor: '#fff3cd',
+              border: '2px solid #ffc107',
+              borderRadius: '8px',
+              marginTop: '20px',
+              color: '#856404',
+              fontSize: '15px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+            }}>
+              <span style={{ fontSize: '20px' }}>⚠️</span>
+              <span style={{ whiteSpace: 'pre-line', flex: 1 }}>{error}</span>
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
             <button
