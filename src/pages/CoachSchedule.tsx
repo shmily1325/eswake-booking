@@ -37,10 +37,27 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   
-  // 篩選選項
-  const [filterType, setFilterType] = useState<'pending' | 'future' | 'custom' | 'all'>('pending')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  // 月份選擇（預設下個月）
+  const getNextMonth = () => {
+    const now = new Date()
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    return `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`
+  }
+  const [selectedMonth, setSelectedMonth] = useState(getNextMonth())
+  
+  // 月份選擇（預設下個月）
+  const getNextMonth = () => {
+    const now = new Date()
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    return {
+      year: nextMonth.getFullYear(),
+      month: nextMonth.getMonth() + 1
+    }
+  }
+  
+  const { year: defaultYear, month: defaultMonth } = getNextMonth()
+  const [selectedYear, setSelectedYear] = useState(defaultYear)
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth)
   
   // 快速確認狀態
   const [confirmingIds, setConfirmingIds] = useState<Set<number>>(new Set())
@@ -97,28 +114,16 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
         .select('*, boats:boat_id (name, color)')
         .in('id', bookingIds)
 
-      // 根據篩選類型添加條件（TEXT 格式，本地時間）
-      const nowDate = new Date()
-      const now = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, '0')}-${String(nowDate.getDate()).padStart(2, '0')}T${String(nowDate.getHours()).padStart(2, '0')}:${String(nowDate.getMinutes()).padStart(2, '0')}:00`
+      // 根據選擇的月份查詢
+      const [year, month] = selectedMonth.split('-')
+      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+      const startDate = `${selectedMonth}-01T00:00:00`
+      const endDate = `${selectedMonth}-${String(lastDay).padStart(2, '0')}T23:59:59`
       
-      switch (filterType) {
-        case 'future':
-          query = query.gte('start_at', now)
-          query = query.order('start_at', { ascending: true })
-          break
-        case 'custom':
-          if (startDate) query = query.gte('start_at', `${startDate}T00:00:00`)
-          if (endDate) query = query.lte('start_at', `${endDate}T23:59:59`)
-          query = query.order('start_at', { ascending: false })
-          break
-        case 'all':
-          query = query.order('start_at', { ascending: false })
-          break
-        case 'pending':
-        default:
-          query = query.order('start_at', { ascending: false })
-          break
-      }
+      query = query
+        .gte('start_at', startDate)
+        .lte('start_at', endDate)
+        .order('start_at', { ascending: true })
 
       const { data, error } = await query
 
