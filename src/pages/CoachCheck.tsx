@@ -19,6 +19,9 @@ interface Booking {
   status: string
   boats: { name: string; color: string } | null
   coaches: { id: string; name: string }[]
+  coach_confirmed: boolean
+  confirmed_at: string | null
+  actual_duration_min: number | null
 }
 
 interface CoachCheckProps {
@@ -31,6 +34,8 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
+  const [confirmingIds, setConfirmingIds] = useState<Set<number>>(new Set())
+  const [confirmNotes, setConfirmNotes] = useState<Map<number, string>>(new Map())
   
   // 月份選擇（預設下個月）
   const getNextMonth = () => {
@@ -52,6 +57,10 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
     }
     return options
   }
+
+  // 統計未確認數量
+  const unconfirmedCount = bookings.filter(b => !b.coach_confirmed).length
+  const confirmedCount = bookings.filter(b => b.coach_confirmed).length
 
   useEffect(() => {
     fetchCoaches()
@@ -82,7 +91,6 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
     setLoading(true)
 
     try {
-      // 查詢該教練的所有預約關聯
       const { data: bookingCoachesData, error: bcError } = await supabase
         .from('booking_coaches')
         .select('booking_id')
@@ -96,7 +104,6 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
 
       const bookingIds = bookingCoachesData.map(bc => bc.booking_id)
 
-      // 根據選擇的月份查詢預約
       const [year, month] = selectedMonth.split('-')
       const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
       const startDate = `${selectedMonth}-01T00:00:00`
@@ -114,14 +121,12 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
         console.error('Error fetching bookings:', error)
         setBookings([])
       } else if (data && data.length > 0) {
-        // 獲取每個預約的所有教練
         const allBookingIds = data.map(b => b.id)
         const { data: allCoachesData } = await supabase
           .from('booking_coaches')
           .select('booking_id, coaches:coach_id(id, name)')
           .in('booking_id', allBookingIds)
 
-        // 合併教練信息
         const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
         for (const item of allCoachesData || []) {
           const bookingId = item.booking_id
@@ -148,6 +153,69 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
       setBookings([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleConfirm = async (bookingId: number) => {
+    const note = confirmNotes.get(bookingId) || ''
+    
+    setConfirmingIds(new Set(confirmingIds).add(bookingId))
+
+    try {
+      const booking = bookings.find(b => b.id === bookingId)
+      if (!booking) throw new Error('找不到預約')
+
+      const now = new Date()
+      const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+      
+      const updateData: any = {
+        actual_duration_min: booking.duration_min,
+        coach_confirmed: true,
+        confirmed_at: nowStr,
+        confirmed_by: user.id
+      }
+
+      // 如果有輸入備註，加到現有備註後面
+      if (note.trim()) {
+        const existingNotes = booking.notes || ''
+        updateData.notes = existingNotes 
+          ? `${existingNotes}\n[教練確認] ${note}` 
+          : `[教練確認] ${note}`
+      }
+
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update(updateData)
+        .eq('id', bookingId)
+
+      if (updateError) throw updateError
+
+      // 更新本地狀態
+      setBookings(bookings.map(b => 
+        b.id === bookingId 
+          ? { 
+              ...b, 
+              actual_duration_min: booking.duration_min,
+              coach_confirmed: true,
+              confirmed_at: nowStr,
+              notes: updateData.notes || b.notes
+            }
+          : b
+      ))
+
+      // 清除備註輸入
+      const newNotes = new Map(confirmNotes)
+      newNotes.delete(bookingId)
+      setConfirmNotes(newNotes)
+
+      alert('✅ 確認成功！')
+    } catch (error) {
+      console.error('Error confirming booking:', error)
+      alert('❌ 確認失敗，請重試')
+    } finally {
+      const newConfirming = new Set(confirmingIds)
+      newConfirming.delete(bookingId)
+      setConfirmingIds(newConfirming)
     }
   }
 
@@ -218,7 +286,6 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
           marginBottom: '15px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
         }}>
-          {/* 教練選擇 */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
@@ -252,7 +319,6 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
             </select>
           </div>
 
-          {/* 月份選擇 */}
           <div>
             <label style={{
               display: 'block',
@@ -288,6 +354,45 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
           </div>
         </div>
 
+        {/* 統計 */}
+        {selectedCoachId && bookings.length > 0 && (
+          <div style={{
+            background: 'white',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '15px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            display: 'flex',
+            gap: '20px',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ flex: 1, minWidth: '120px' }}>
+              <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                總預約數
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: '600', color: '#333' }}>
+                {bookings.length}
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: '120px' }}>
+              <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                未確認
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: '600', color: '#dc3545' }}>
+                {unconfirmedCount}
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: '120px' }}>
+              <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                已確認
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: '600', color: '#28a745' }}>
+                {confirmedCount}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 預約列表 */}
         {selectedCoachId && (
           <div style={{
@@ -296,14 +401,16 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
             padding: '20px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
           }}>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#333',
-              marginBottom: '15px'
-            }}>
-              {loading ? '載入中...' : `找到 ${bookings.length} 筆預約`}
-            </div>
+            {loading && (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px 20px',
+                color: '#666',
+                fontSize: '16px',
+              }}>
+                載入中...
+              </div>
+            )}
 
             {!loading && bookings.length === 0 && (
               <div style={{
@@ -323,10 +430,10 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
                     key={booking.id}
                     style={{
                       padding: '16px',
-                      backgroundColor: 'white',
+                      backgroundColor: booking.coach_confirmed ? '#f8f9fa' : 'white',
                       borderRadius: '8px',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                      borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`,
+                      borderLeft: `4px solid ${booking.coach_confirmed ? '#28a745' : '#dc3545'}`,
                     }}
                   >
                     <div style={{
@@ -353,6 +460,16 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
                           {formatDateTime(booking.start_at)}
                         </div>
                       </div>
+                      <div style={{
+                        padding: '4px 12px',
+                        backgroundColor: booking.coach_confirmed ? '#d4edda' : '#f8d7da',
+                        color: booking.coach_confirmed ? '#155724' : '#721c24',
+                        borderRadius: '4px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                      }}>
+                        {booking.coach_confirmed ? '✓ 已確認' : '⚠ 未確認'}
+                      </div>
                     </div>
 
                     <div style={{
@@ -363,7 +480,7 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
                       fontSize: '14px'
                     }}>
                       <div>
-                        <span style={{ color: '#666' }}>船：</span>
+                        <span style={{ color: '#666' }}>船隻：</span>
                         <span style={{ fontWeight: '500' }}>{booking.boats?.name || '未指定'}</span>
                       </div>
                       <div>
@@ -388,13 +505,86 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
                       <div style={{
                         marginTop: '12px',
                         padding: '10px',
-                        backgroundColor: '#f8f9fa',
+                        backgroundColor: '#fff',
                         borderRadius: '4px',
                         fontSize: '13px',
                         color: '#666',
-                        whiteSpace: 'pre-wrap'
+                        whiteSpace: 'pre-wrap',
+                        border: '1px solid #e9ecef'
                       }}>
                         📝 {booking.notes}
+                      </div>
+                    )}
+
+                    {/* 確認區域 */}
+                    {!booking.coach_confirmed && (
+                      <div style={{
+                        marginTop: '16px',
+                        padding: '16px',
+                        backgroundColor: '#fff3cd',
+                        borderRadius: '6px',
+                        border: '1px solid #ffc107'
+                      }}>
+                        <div style={{ marginBottom: '12px' }}>
+                          <label style={{
+                            display: 'block',
+                            marginBottom: '6px',
+                            fontSize: '13px',
+                            color: '#333',
+                            fontWeight: '500'
+                          }}>
+                            教練備註（選填）
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="例如：總時數、是否指定、其他備註..."
+                            value={confirmNotes.get(booking.id) || ''}
+                            onChange={(e) => {
+                              const newNotes = new Map(confirmNotes)
+                              newNotes.set(booking.id, e.target.value)
+                              setConfirmNotes(newNotes)
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '10px 12px',
+                              fontSize: '14px',
+                              border: '1px solid #dee2e6',
+                              borderRadius: '6px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleConfirm(booking.id)}
+                          disabled={confirmingIds.has(booking.id)}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                            background: confirmingIds.has(booking.id) ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: confirmingIds.has(booking.id) ? 'not-allowed' : 'pointer',
+                            boxShadow: confirmingIds.has(booking.id) ? 'none' : '0 2px 8px rgba(40, 167, 69, 0.3)'
+                          }}
+                        >
+                          {confirmingIds.has(booking.id) ? '確認中...' : '✓ 確認此預約'}
+                        </button>
+                      </div>
+                    )}
+
+                    {booking.coach_confirmed && booking.confirmed_at && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '10px',
+                        backgroundColor: '#d4edda',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        color: '#155724'
+                      }}>
+                        ✓ 已於 {formatDateTime(booking.confirmed_at)} 確認
                       </div>
                     )}
                   </div>

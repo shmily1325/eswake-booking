@@ -76,13 +76,13 @@ export function SearchPage({ user }: SearchPageProps) {
               border: 'none',
               borderRadius: '8px',
               background: activeTab === 'student' 
-                ? 'linear-gradient(135deg, #4a5568 0%, #3a4558 100%)'
-                : 'white',
-              color: activeTab === 'student' ? 'white' : '#333',
+                ? 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)'
+                : '#e9ecef',
+              color: activeTab === 'student' ? 'white' : '#495057',
               fontSize: '15px',
               fontWeight: '600',
               cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              boxShadow: activeTab === 'student' ? '0 2px 4px rgba(0,0,0,0.2)' : '0 1px 2px rgba(0,0,0,0.1)',
               transition: 'all 0.2s'
             }}
           >
@@ -96,13 +96,13 @@ export function SearchPage({ user }: SearchPageProps) {
               border: 'none',
               borderRadius: '8px',
               background: activeTab === 'coach'
-                ? 'linear-gradient(135deg, #4a5568 0%, #3a4558 100%)'
-                : 'white',
-              color: activeTab === 'coach' ? 'white' : '#333',
+                ? 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)'
+                : '#e9ecef',
+              color: activeTab === 'coach' ? 'white' : '#495057',
               fontSize: '15px',
               fontWeight: '600',
               cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              boxShadow: activeTab === 'coach' ? '0 2px 4px rgba(0,0,0,0.2)' : '0 1px 2px rgba(0,0,0,0.1)',
               transition: 'all 0.2s'
             }}
           >
