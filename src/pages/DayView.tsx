@@ -206,6 +206,18 @@ export function DayView({ user }: DayViewProps) {
       const bookingStart = new Date(booking.start_at)
       const bookingEnd = new Date(bookingStart.getTime() + booking.duration_min * 60000)
       
+      // 調試：如果是 07:00 且是 G23
+      if (timeSlot === '07:00' && boatId === boats.find(b => b.name === 'G23')?.id) {
+        console.log('🔍 Checking 07:00 for G23:', {
+          cellDateTime: cellDateTime.toISOString(),
+          bookingStartAt: booking.start_at,
+          bookingStartParsed: bookingStart.toISOString(),
+          cellTime: cellDateTime.getTime(),
+          bookingTime: bookingStart.getTime(),
+          match: cellDateTime.getTime() === bookingStart.getTime(),
+        })
+      }
+      
       if (cellDateTime >= bookingStart && cellDateTime < bookingEnd) {
         return booking
       }
