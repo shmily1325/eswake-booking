@@ -157,20 +157,10 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
         : '[未指定]'
       
       const activities = booking.activity_types && booking.activity_types.length > 0
-        ? booking.activity_types.join('+')
+        ? ` ${booking.activity_types.join('+')}`
         : ''
       
-      message += `${month}/${day}(週${weekday}) ${timeStr} ${booking.boats?.name || '?'} ${coaches} ${booking.duration_min}分`
-      
-      if (activities) {
-        message += ` ${activities}`
-      }
-      
-      if (booking.notes) {
-        message += ` 備註:${booking.notes}`
-      }
-      
-      message += `\n`
+      message += `${month}/${day}(週${weekday}) ${timeStr} ${booking.boats?.name || '?'} ${coaches} ${booking.duration_min}分${activities}\n`
     })
     
     return message.trim()
