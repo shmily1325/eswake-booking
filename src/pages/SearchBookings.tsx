@@ -345,13 +345,13 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
               padding: '18px',
               fontSize: '24px',
               fontWeight: '600',
-              background: !loading ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)' : '#ccc',
+              background: !loading ? 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)' : '#ccc',
               color: 'white',
               border: 'none',
               borderRadius: '10px',
               cursor: !loading ? 'pointer' : 'not-allowed',
               touchAction: 'manipulation',
-              boxShadow: !loading ? '0 4px 12px rgba(40, 167, 69, 0.3)' : 'none',
+              boxShadow: !loading ? '0 4px 12px rgba(0, 0, 0, 0.3)' : 'none',
               transition: 'transform 0.1s'
             }}
             onTouchStart={(e) => !loading && (e.currentTarget.style.transform = 'scale(0.98)')}
