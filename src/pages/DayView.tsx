@@ -219,11 +219,24 @@ export function DayView({ user }: DayViewProps) {
     const [hour, minute] = timeSlot.split(':').map(Number)
     const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
     
+    // 调试：检查早班预约
+    const isEarlySlot = hour === 7 && minute === 0
+    const boatName = boats.find(b => b.id === boatId)?.name
+    
     for (const booking of bookings) {
       if (booking.boat_id !== boatId) continue
       
       const bookingStart = new Date(booking.start_at)
       const bookingEnd = new Date(bookingStart.getTime() + booking.duration_min * 60000)
+      
+      if (isEarlySlot && boatName === 'G23') {
+        console.log('🔍 Checking 07:00 slot for G23:')
+        console.log('  cellDateTime:', cellDateTime.toString(), '| timestamp:', cellDateTime.getTime())
+        console.log('  booking.start_at:', booking.start_at)
+        console.log('  bookingStart:', bookingStart.toString(), '| timestamp:', bookingStart.getTime())
+        console.log('  Match?', cellDateTime.getTime() >= bookingStart.getTime() && cellDateTime.getTime() < bookingEnd.getTime())
+        console.log('  Exact match?', cellDateTime.getTime() === bookingStart.getTime())
+      }
       
       if (cellDateTime >= bookingStart && cellDateTime < bookingEnd) {
         return booking
