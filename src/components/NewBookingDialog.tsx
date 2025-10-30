@@ -206,8 +206,8 @@ export function NewBookingDialog({
         const timeStr = `${hours}:${minutes}`
         const displayDate = `${dateStr} ${timeStr}`
         
-        // 手動構建 ISO 字符串，明確指定台北時區 (+08:00)
-        const newStartAt = `${dateStr}T${timeStr}:00+08:00`
+        // 手動構建 ISO 字符串（TEXT 格式，不含時區）
+        const newStartAt = `${dateStr}T${timeStr}:00`
         
         let hasConflict = false
         let conflictReason = ''
@@ -219,6 +219,7 @@ export function NewBookingDialog({
         const newCleanupEndMinutes = newEndMinutes + 15
       
         // 檢查船隻衝突（需要至少15分鐘間隔）
+        // TEXT 格式查詢，直接字符串比較
         const { data: existingBookings, error: checkError } = await supabase
           .from('bookings')
           .select('id, start_at, duration_min, student')

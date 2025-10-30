@@ -97,8 +97,9 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
         .select('*, boats:boat_id (name, color)')
         .in('id', bookingIds)
 
-      // 根據篩選類型添加條件
-      const now = new Date().toISOString()
+      // 根據篩選類型添加條件（TEXT 格式，本地時間）
+      const nowDate = new Date()
+      const now = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, '0')}-${String(nowDate.getDate()).padStart(2, '0')}T${String(nowDate.getHours()).padStart(2, '0')}:${String(nowDate.getMinutes()).padStart(2, '0')}:00`
       
       switch (filterType) {
         case 'future':
@@ -198,7 +199,7 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
 
       // 更新備註（如果有輸入的話）
       const now = new Date()
-      const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}+08:00`
+      const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
       
       const updateData: any = {
         actual_duration_min: booking.duration_min, // 使用原始時長
@@ -229,7 +230,7 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
               ...b, 
               actual_duration_min: booking.duration_min,
               coach_confirmed: true, 
-              confirmed_at: new Date().toISOString(),
+              confirmed_at: nowStr,  // 使用上面已經構造好的 nowStr
               notes: updateData.notes || b.notes
             }
           : b

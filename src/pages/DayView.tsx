@@ -159,7 +159,7 @@ export function DayView({ user }: DayViewProps) {
       }
       
     // 每次都獲取當日的 bookings
-    // 使用簡單的字符串查詢，避免時區轉換問題
+    // TEXT 格式查詢，直接字符串比較
     const startOfDay = `${dateParam}T00:00:00`
     const endOfDay = `${dateParam}T23:59:59`
     
@@ -583,7 +583,9 @@ export function DayView({ user }: DayViewProps) {
                   }
                 } else {
                   // 如果不是今天，使用營業時間開始（05:00）
-                  defaultTime = new Date(`${dateParam}T05:00:00`)
+                  // 手動構造 Date 對象（避免字符串解析的時區問題）
+                  const [year, month, day] = dateParam.split('-').map(Number)
+                  defaultTime = new Date(year, month - 1, day, 5, 0, 0)
                 }
                 
                 setSelectedTime(getLocalDateTimeString(defaultTime))
@@ -841,16 +843,20 @@ export function DayView({ user }: DayViewProps) {
 
       {/* 時間軸視圖 */}
       {viewMode === 'timeline' && (
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ 
+          overflowX: 'auto', 
+          WebkitOverflowScrolling: 'touch',
+          margin: isMobile ? '0 -10px' : '0',
+          padding: isMobile ? '0 10px' : '0',
+        }}>
         <table style={{
-          width: '100%',
+          width: isMobile ? 'auto' : '100%',
           borderCollapse: 'separate',
           borderSpacing: 0,
           backgroundColor: 'white',
           borderRadius: '8px',
           overflow: 'hidden',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          minWidth: isMobile ? '600px' : 'auto',
         }}>
           <thead>
             <tr>
@@ -860,12 +866,12 @@ export function DayView({ user }: DayViewProps) {
                 zIndex: 12,
                 backgroundColor: '#5a5a5a',
                 color: 'white',
-                padding: isMobile ? '10px 8px' : '12px',
+                padding: isMobile ? '8px 4px' : '12px',
                 textAlign: 'center',
                 borderBottom: '2px solid #dee2e6',
-                fontSize: isMobile ? '13px' : '14px',
+                fontSize: isMobile ? '11px' : '14px',
                 fontWeight: '600',
-                minWidth: isMobile ? '60px' : '80px',
+                width: isMobile ? '50px' : '80px',
               }}>
                 時間
               </th>
@@ -876,19 +882,21 @@ export function DayView({ user }: DayViewProps) {
                     position: 'sticky',
                     top: 0,
                     zIndex: 11,
-                    padding: isMobile ? '10px 8px' : '12px',
+                    padding: isMobile ? '8px 4px' : '12px',
                     textAlign: 'center',
                     borderBottom: '2px solid #dee2e6',
                     backgroundColor: '#5a5a5a',
                     color: 'white',
-                    fontSize: isMobile ? '13px' : '14px',
+                    fontSize: isMobile ? '11px' : '14px',
                     fontWeight: '600',
-                    minWidth: isMobile ? '100px' : '120px',
+                    width: isMobile ? '80px' : '120px',
                   }}
                 >
-                  {boat.name}
+                  <div style={{ fontSize: isMobile ? '11px' : '13px' }}>
+                    {boat.name}
+                  </div>
                   <div style={{
-                    fontSize: '11px',
+                    fontSize: isMobile ? '9px' : '11px',
                     fontWeight: '400',
                     marginTop: '2px',
                     opacity: 0.8,
@@ -913,17 +921,18 @@ export function DayView({ user }: DayViewProps) {
                     left: 0,
                     zIndex: 10,
                     backgroundColor: 'white',
-                    padding: isMobile ? '8px 6px' : '10px 12px',
+                    padding: isMobile ? '6px 2px' : '10px 12px',
                     borderBottom: showPracticeLine ? '3px solid #ffc107' : '1px solid #e9ecef',
-                    fontSize: isMobile ? '12px' : '13px',
+                    fontSize: isMobile ? '10px' : '13px',
                     fontWeight: '500',
                     textAlign: 'center',
                     color: showPracticeLine ? '#856404' : (isBefore8AM ? '#856404' : '#666'),
+                    lineHeight: isMobile ? '1.2' : '1.5',
                   }}>
-                    {isBefore8AM && '⚠️ '}{timeSlot}
+                    {isBefore8AM && '⚠️'}{timeSlot}
                     {showPracticeLine && (
                       <div style={{
-                        fontSize: '10px',
+                        fontSize: isMobile ? '8px' : '10px',
                         color: '#856404',
                         marginTop: '2px',
                         fontWeight: '600',
@@ -946,7 +955,7 @@ export function DayView({ user }: DayViewProps) {
                           rowSpan={slots}
                           onClick={() => handleCellClick(boat.id, timeSlot, booking)}
                           style={{
-                            padding: isMobile ? '10px 8px' : '12px',
+                            padding: isMobile ? '4px 2px' : '12px',
                             borderBottom: '1px solid #e9ecef',
                             borderRight: '1px solid #e9ecef',
                             backgroundColor: '#5a5a5a',
@@ -954,8 +963,8 @@ export function DayView({ user }: DayViewProps) {
                             cursor: 'pointer',
                             verticalAlign: 'top',
                             position: 'relative',
-                            borderRadius: '8px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            borderRadius: '4px',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
                             transition: 'all 0.2s',
                           }}
                           onMouseEnter={(e) => {
@@ -964,22 +973,23 @@ export function DayView({ user }: DayViewProps) {
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.transform = 'scale(1)'
-                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
+                            e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)'
                           }}
                         >
                           <div style={{
-                            fontSize: isMobile ? '14px' : '15px',
+                            fontSize: isMobile ? '11px' : '15px',
                             fontWeight: '600',
-                            marginBottom: '6px',
+                            marginBottom: isMobile ? '2px' : '6px',
                             textAlign: 'center',
+                            lineHeight: '1.2',
                           }}>
                             {booking.student}
                           </div>
                           
                           <div style={{
-                            fontSize: isMobile ? '12px' : '13px',
+                            fontSize: isMobile ? '9px' : '13px',
                             opacity: 0.95,
-                            marginBottom: '4px',
+                            marginBottom: isMobile ? '2px' : '4px',
                             textAlign: 'center',
                           }}>
                             {booking.duration_min}分
@@ -987,12 +997,13 @@ export function DayView({ user }: DayViewProps) {
                           
                           {booking.coaches && booking.coaches.length > 0 && (
                             <div style={{
-                              fontSize: isMobile ? '11px' : '12px',
+                              fontSize: isMobile ? '9px' : '12px',
                               opacity: 0.9,
-                              marginTop: '6px',
+                              marginTop: isMobile ? '2px' : '6px',
                               textAlign: 'center',
+                              lineHeight: '1.2',
                             }}>
-                              🎓 {booking.coaches.map(c => c.name).join(' / ')}
+                              {isMobile ? booking.coaches.map(c => c.name).join('/') : `🎓 ${booking.coaches.map(c => c.name).join(' / ')}`}
                             </div>
                           )}
                           

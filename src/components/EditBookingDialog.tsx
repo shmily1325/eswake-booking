@@ -133,11 +133,12 @@ export function EditBookingDialog({
     setLoading(true)
 
     try {
-      // Combine date and time into ISO format，明確指定台北時區 (+08:00)
-      const newStartAt = `${startDate}T${startTime}:00+08:00`
+      // Combine date and time into ISO format（TEXT 格式，不含時區）
+      const newStartAt = `${startDate}T${startTime}:00`
       
       // 檢查船隻衝突（需要至少15分鐘間隔）
-      const { data: existingBookings, error: checkError } = await supabase
+      // TEXT 格式查詢，直接字符串比較
+      const { data: existingBookings, error: checkError} = await supabase
         .from('bookings')
         .select('id, start_at, duration_min, student')
         .eq('boat_id', booking.boat_id)
