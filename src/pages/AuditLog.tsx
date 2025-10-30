@@ -67,26 +67,28 @@ export function AuditLog({ user }: AuditLogProps) {
   const formatDateTime = (isoString: string) => {
     if (!isoString) return ''
     
-    // 純字符串處理，處理可能包含毫秒和時區的格式
-    // 例如：2025-10-30T10:05:34.163194+00:00 或 2025-10-30T10:05:34
-    const datetime = isoString.substring(0, 16) // "2025-10-30T10:05"
-    const parts = datetime.split('T')
-    
-    if (parts.length !== 2) return ''
-    
-    const [dateStr, timeStr] = parts
-    const dateParts = dateStr.split('-')
-    
-    if (dateParts.length !== 3 || !timeStr) return ''
-    
-    const [year, month, day] = dateParts
-    
-    // 計算星期幾
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-    const weekday = weekdays[date.getDay()]
-    
-    return `${month}/${day} (週${weekday}) ${timeStr}`
+    try {
+      // 使用 Date 對象自動處理時區轉換
+      const date = new Date(isoString)
+      
+      // 檢查是否為有效日期
+      if (isNaN(date.getTime())) return ''
+      
+      // 獲取本地時間的各個部分
+      const month = date.getMonth() + 1
+      const day = date.getDate()
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      
+      // 計算星期幾
+      const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+      const weekday = weekdays[date.getDay()]
+      
+      return `${month}/${day} (週${weekday}) ${hours}:${minutes}`
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return ''
+    }
   }
 
   const getOperationColor = (operation: string) => {

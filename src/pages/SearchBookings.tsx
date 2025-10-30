@@ -44,51 +44,26 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
     setCopySuccess(false)
 
     try {
-      // 先只按學生名字搜索，不加任何時間過濾（調試用）
       let query = supabase
         .from('bookings')
         .select('*, boats:boat_id (name, color)')
         .ilike('student', `%${searchName.trim()}%`)
       
-      console.log('🔍 搜尋學生:', searchName.trim())
-      
-      // 先不加時間過濾，看看能找到多少筆
-      const { data: allData } = await supabase
-        .from('bookings')
-        .select('id, student, start_at, created_at, status')
-        .ilike('student', `%${searchName.trim()}%`)
-        .order('start_at', { ascending: false })
-      
-      console.log('📊 不加時間過濾的所有結果:', allData?.length || 0)
-      if (allData && allData.length > 0) {
-        console.log('結果列表:', allData.map(b => ({ 
-          id: b.id,
-          student: b.student, 
-          start_at: b.start_at,
-          created_at: b.created_at,
-          status: b.status
-        })))
-      }
-      
       // 根據篩選類型添加條件
       const now = new Date()
       const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
-      
-      console.log('⏰ 當前時間:', nowStr)
       
       if (filterType === 'all') {
         // 顯示所有未來的預約
         query = query.gte('start_at', nowStr)
       } else if (filterType === 'today') {
-        // 今日新增的未來預約
+        // 今日新增的預約（不限時間）
         const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
         const tomorrow = new Date(now)
         tomorrow.setDate(tomorrow.getDate() + 1)
         const tomorrowDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
         
-        console.log('📅 今日新增過濾:', { todayDate, tomorrowDate })
         query = query.gte('created_at', `${todayDate}T00:00:00`).lt('created_at', `${tomorrowDate}T00:00:00`)
-        query = query.gte('start_at', nowStr) // 只顯示未來的
       } else if (filterType === 'range' && startDate && endDate) {
         // 特定區間內的未來預約
         query = query.gte('start_at', `${startDate}T00:00:00`).lte('start_at', `${endDate}T23:59:59`)
@@ -96,16 +71,6 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       }
       
       const { data, error } = await query.order('start_at', { ascending: true })
-
-      // 調試信息
-      console.log('✅ 過濾後的結果數量:', data?.length || 0)
-      if (data && data.length > 0) {
-        console.log('過濾後的前3筆:', data.slice(0, 3).map(b => ({ 
-          student: b.student, 
-          start_at: b.start_at,
-          created_at: (b as any).created_at
-        })))
-      }
 
       if (error) {
         console.error('Error fetching bookings:', error)

@@ -21,9 +21,7 @@ export function BackupPage({ user }: BackupPageProps) {
         .from('bookings')
         .select(`
           *,
-          boats:boat_id (name, color),
-          created_by_user:created_by (email),
-          confirmed_by_user:confirmed_by (email)
+          boats:boat_id (name, color)
         `)
         .order('start_at', { ascending: false })
 
@@ -43,15 +41,17 @@ export function BackupPage({ user }: BackupPageProps) {
         return
       }
 
-      // 获取所有预约的教练信息
+      // 获取所有预约的教练信息和确认状态
       const bookingIds = bookings.map(b => b.id)
       const { data: coachesData } = await supabase
         .from('booking_coaches')
-        .select('booking_id, coaches:coach_id(name)')
+        .select('booking_id, coaches:coach_id(name), coach_confirmed, confirmed_at, actual_duration_min')
         .in('booking_id', bookingIds)
 
-      // 整理教练信息
+      // 整理教练信息和确认状态
       const coachesByBooking: { [key: number]: string[] } = {}
+      const confirmByBooking: { [key: number]: { confirmed: boolean, confirmedAt: string | null, actualDuration: number | null } } = {}
+      
       for (const item of coachesData || []) {
         const bookingId = item.booking_id
         const coach = (item as any).coaches
@@ -60,6 +60,21 @@ export function BackupPage({ user }: BackupPageProps) {
             coachesByBooking[bookingId] = []
           }
           coachesByBooking[bookingId].push(coach.name)
+        }
+        
+        // 收集确认状态（任一教练确认即算已确认）
+        if (item.coach_confirmed) {
+          confirmByBooking[bookingId] = {
+            confirmed: true,
+            confirmedAt: item.confirmed_at,
+            actualDuration: item.actual_duration_min
+          }
+        } else if (!confirmByBooking[bookingId]) {
+          confirmByBooking[bookingId] = {
+            confirmed: false,
+            confirmedAt: null,
+            actualDuration: null
+          }
         }
       }
 
@@ -75,13 +90,12 @@ export function BackupPage({ user }: BackupPageProps) {
 
       // 生成 CSV
       let csv = '\uFEFF' // UTF-8 BOM
-      csv += '學生姓名,預約日期,抵達時間,下水時間,時長(分鐘),船隻,教練,活動類型,教練回報,回報時間,回報人,狀態,備註,創建者,創建時間\n'
+      csv += '學生姓名,預約日期,抵達時間,下水時間,時長(分鐘),船隻,教練,活動類型,教練回報,回報時間,狀態,備註,創建時間\n'
 
       bookings.forEach(booking => {
         const boat = (booking as any).boats?.name || '未指定'
         const coaches = coachesByBooking[booking.id]?.join('/') || '未指定'
         const activities = booking.activity_types?.join('+') || ''
-        const creator = (booking as any).created_by_user?.email || ''
         const notes = (booking.notes || '').replace(/"/g, '""').replace(/\n/g, ' ')
         
         // 计算抵达时间（提前30分钟）
@@ -96,18 +110,18 @@ export function BackupPage({ user }: BackupPageProps) {
         const bookingDate = booking.start_at.substring(0, 10).replace(/-/g, '/')
         
         // 教练确认状态
-        const coachConfirmed = booking.coach_confirmed ? '已回報' : '未回報'
-        const confirmedAt = formatDateTime(booking.confirmed_at)
-        const confirmedBy = (booking as any).confirmed_by_user?.email || ''
+        const confirmInfo = confirmByBooking[booking.id]
+        const coachConfirmed = confirmInfo?.confirmed ? '已回報' : '未回報'
+        const confirmedAt = formatDateTime(confirmInfo?.confirmedAt || null)
         
         // 状态翻译
         const statusMap: { [key: string]: string } = {
-          'confirmed': '已回報',
-          'cancelled': '已取消'
+          'Confirmed': '已確認',
+          'Cancelled': '已取消'
         }
         const status = statusMap[booking.status] || booking.status
 
-        csv += `"${booking.student}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${activities}","${coachConfirmed}","${confirmedAt}","${confirmedBy}","${status}","${notes}","${creator}","${formatDateTime(booking.created_at)}"\n`
+        csv += `"${booking.student}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${activities}","${coachConfirmed}","${confirmedAt}","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`
       })
 
       // 下载文件

@@ -37,13 +37,12 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
   const [confirmingIds, setConfirmingIds] = useState<Set<number>>(new Set())
   const [confirmNotes, setConfirmNotes] = useState<Map<number, string>>(new Map())
   
-  // 月份選擇（預設下個月）
-  const getNextMonth = () => {
+  // 月份選擇（預設當前月份）
+  const getCurrentMonth = () => {
     const now = new Date()
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-    return `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   }
-  const [selectedMonth, setSelectedMonth] = useState(getNextMonth())
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
 
   // 生成月份選項（前後各3個月）
   const generateMonthOptions = () => {
@@ -58,7 +57,7 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
     return options
   }
 
-  // 統計未確認數量
+  // 統計未回報數量
   const unconfirmedCount = bookings.filter(b => !b.coach_confirmed).length
   const confirmedCount = bookings.filter(b => b.coach_confirmed).length
 
@@ -122,6 +121,8 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
         setBookings([])
       } else if (data && data.length > 0) {
         const allBookingIds = data.map(b => b.id)
+        
+        // 獲取所有教練信息
         const { data: allCoachesData } = await supabase
           .from('booking_coaches')
           .select('booking_id, coaches:coach_id(id, name)')
@@ -139,12 +140,40 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
           }
         }
 
+        // 獲取當前教練的確認狀態
+        const { data: currentCoachData } = await supabase
+          .from('booking_coaches')
+          .select('booking_id, coach_confirmed, actual_duration_min, confirmed_at')
+          .eq('coach_id', selectedCoachId)
+          .in('booking_id', allBookingIds)
+
+        const confirmStatusByBooking: { [key: number]: any } = {}
+        for (const item of currentCoachData || []) {
+          confirmStatusByBooking[item.booking_id] = {
+            coach_confirmed: item.coach_confirmed || false,
+            actual_duration_min: item.actual_duration_min,
+            confirmed_at: item.confirmed_at
+          }
+        }
+
         const bookingsWithCoaches = data.map(booking => ({
           ...booking,
-          coaches: coachesByBooking[booking.id] || []
+          coaches: coachesByBooking[booking.id] || [],
+          coach_confirmed: confirmStatusByBooking[booking.id]?.coach_confirmed || false,
+          actual_duration_min: confirmStatusByBooking[booking.id]?.actual_duration_min,
+          confirmed_at: confirmStatusByBooking[booking.id]?.confirmed_at
         }))
 
-        setBookings(bookingsWithCoaches as Booking[])
+        // 只顯示已結束的預約
+        const now = new Date()
+        const finishedBookings = bookingsWithCoaches.filter(booking => {
+          // 計算預約結束時間
+          const startTime = new Date(booking.start_at)
+          const endTime = new Date(startTime.getTime() + booking.duration_min * 60 * 1000)
+          return endTime < now
+        })
+
+        setBookings(finishedBookings as Booking[])
       } else {
         setBookings([])
       }
@@ -468,7 +497,7 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
                         fontSize: '13px',
                         fontWeight: '600',
                       }}>
-                        {booking.coach_confirmed ? '✓ 已確認' : '⚠ 未確認'}
+                        {booking.coach_confirmed ? '✓ 已回報' : '⚠ 未回報'}
                       </div>
                     </div>
 
@@ -570,7 +599,7 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
                             boxShadow: confirmingIds.has(booking.id) ? 'none' : '0 2px 8px rgba(40, 167, 69, 0.3)'
                           }}
                         >
-                          {confirmingIds.has(booking.id) ? '確認中...' : '✓ 確認此預約'}
+                          {confirmingIds.has(booking.id) ? '回報中...' : '✓ 回報此預約'}
                         </button>
                       </div>
                     )}
@@ -584,7 +613,7 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
                         fontSize: '12px',
                         color: '#155724'
                       }}>
-                        ✓ 已於 {formatDateTime(booking.confirmed_at)} 確認
+                        ✓ 已於 {formatDateTime(booking.confirmed_at)} 回報
                       </div>
                     )}
                   </div>
