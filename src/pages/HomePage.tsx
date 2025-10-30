@@ -24,17 +24,17 @@ export function HomePage({ user }: HomePageProps) {
     {
       title: '教練確認',
       icon: '✅',
-      link: '/coach-schedule'
+      link: '/coach-check'
+    },
+    {
+      title: '明日提醒',
+      icon: '📢',
+      link: '/admin'
     },
     {
       title: '編輯記錄',
       icon: '📝',
       link: '/audit-log'
-    },
-    {
-      title: '小編專區',
-      icon: '⚙️',
-      link: '/admin'
     }
   ]
 
