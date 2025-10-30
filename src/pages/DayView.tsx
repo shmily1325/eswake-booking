@@ -1026,7 +1026,7 @@ export function DayView({ user }: DayViewProps) {
                         handleCellClick(boat.id, timeSlot, booking || undefined)
                       }}
                       style={{
-                        border: needsConfirmation ? '2px solid #f39c12' : '1px solid #ddd',
+                        border: needsConfirmation ? '2px solid #f39c12' : booking ? '1px solid rgba(0,0,0,0.15)' : '1px solid #ddd',
                         padding: booking ? '8px' : '10px 6px',
                         cursor: 'pointer',
                         backgroundColor: bgColor,
@@ -1037,7 +1037,8 @@ export function DayView({ user }: DayViewProps) {
                         touchAction: 'manipulation',
                         WebkitTapHighlightColor: 'transparent',
                         position: 'relative',
-                        boxShadow: booking ? '0 2px 6px rgba(0,0,0,0.2)' : 'none',
+                        boxShadow: booking ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+                        borderRadius: booking ? '8px' : '0',
                       }}
                       onTouchStart={(e) => {
                         // 觸覺反饋
@@ -1099,83 +1100,132 @@ export function DayView({ user }: DayViewProps) {
                         </div>
                       )}
                       {booking && (
-                        <div style={{ 
-                          fontSize: '12px',
-                          lineHeight: '1.4',
-                          textAlign: 'center',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          height: '100%',
-                        }}>
-                          {/* 第一行：學生 */}
-                          <div style={{ 
-                            fontWeight: '600', 
-                            marginBottom: '4px',
-                            fontSize: '13px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                          }}>
-                            <span>{booking.student}</span>
-                            {isConfirmed && (
-                              <span style={{ fontSize: '10px', padding: '2px 5px', background: '#27ae60', borderRadius: '3px', color: 'white' }}>✓</span>
-                            )}
-                            {needsConfirmation && (
-                              <span style={{ fontSize: '10px', padding: '2px 5px', background: '#f39c12', borderRadius: '3px', color: 'white' }}>!</span>
-                            )}
-                          </div>
-
-                          {/* 第二行：教練 */}
-                          <div style={{ 
-                            fontWeight: '500',
-                            marginBottom: '4px',
-                            fontSize: '12px',
-                            opacity: 0.9,
-                          }}>
-                            {booking.coach_id ? (booking.coaches?.name || getCoachName(booking.coach_id)) : '未指定'}
-                          </div>
-
-                          {/* 第三行：時長 + 活動類型 */}
-                          <div style={{ 
-                            display: 'flex',
-                            gap: '6px',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '11px',
-                            marginBottom: '2px',
-                          }}>
-                            <span>{booking.duration_min}分</span>
-                            {booking.activity_types && booking.activity_types.length > 0 && (
-                              <span style={{ 
-                                fontWeight: '600',
-                                padding: '2px 6px',
-                                background: 'rgba(255,255,255,0.2)',
-                                borderRadius: '3px',
-                              }}>
-                                {booking.activity_types.join('+')}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* 備註 */}
-                          {booking.notes && (
+                        <>
+                          {/* 狀態標籤 - 右上角圓形徽章 */}
+                          {isConfirmed && (
                             <div style={{ 
-                              marginTop: '4px',
-                              paddingTop: '4px',
-                              borderTop: '1px solid rgba(255,255,255,0.2)',
-                              fontSize: '10px',
-                              opacity: 0.8,
-                              fontStyle: 'italic',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                              position: 'absolute',
+                              top: '6px',
+                              right: '6px',
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #27ae60 0%, #229954 100%)',
+                              color: 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              boxShadow: '0 2px 6px rgba(39, 174, 96, 0.4)',
+                              border: '2px solid rgba(255,255,255,0.3)',
                             }}>
-                              {booking.notes}
+                              ✓
                             </div>
                           )}
-                        </div>
+                          {needsConfirmation && (
+                            <div style={{ 
+                              position: 'absolute',
+                              top: '6px',
+                              right: '6px',
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #f39c12 0%, #e67e22 100%)',
+                              color: 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '12px',
+                              fontWeight: 'bold',
+                              boxShadow: '0 2px 6px rgba(243, 156, 18, 0.4)',
+                              border: '2px solid rgba(255,255,255,0.3)',
+                              animation: 'pulse 2s ease-in-out infinite',
+                            }}>
+                              !
+                            </div>
+                          )}
+                          
+                          <div style={{ 
+                            fontSize: '12px',
+                            lineHeight: '1.4',
+                            textAlign: 'center',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            height: '100%',
+                          }}>
+                            {/* 第一行：學生 */}
+                            <div style={{ 
+                              fontWeight: '600', 
+                              marginBottom: '4px',
+                              fontSize: '13px',
+                            }}>
+                              {booking.student}
+                            </div>
+
+                            {/* 第二行：教練 */}
+                            <div style={{ 
+                              fontWeight: '500',
+                              marginBottom: '4px',
+                              fontSize: '12px',
+                              opacity: 0.9,
+                            }}>
+                              {(() => {
+                                // 找出同一時間、同一船、同一學生的所有預約（多教練情況）
+                                const sameTimeBookings = bookings.filter(b => 
+                                  b.boat_id === booking.boat_id &&
+                                  b.student === booking.student &&
+                                  b.start_at === booking.start_at &&
+                                  b.duration_min === booking.duration_min
+                                )
+                                const allCoaches = sameTimeBookings.map(b => 
+                                  b.coach_id ? (b.coaches?.name || getCoachName(b.coach_id)) : '未指定'
+                                ).filter((name, index, self) => self.indexOf(name) === index)
+                                return allCoaches.join(' / ')
+                              })()}
+                            </div>
+
+                            {/* 第三行：時長 + 活動類型 */}
+                            <div style={{ 
+                              display: 'flex',
+                              gap: '6px',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '11px',
+                              marginBottom: '2px',
+                            }}>
+                              <span>{booking.duration_min}分</span>
+                              {booking.activity_types && booking.activity_types.length > 0 && (
+                                <span style={{ 
+                                  fontWeight: '600',
+                                  padding: '2px 6px',
+                                  background: 'rgba(255,255,255,0.2)',
+                                  borderRadius: '3px',
+                                }}>
+                                  {booking.activity_types.join('+')}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* 備註 */}
+                            {booking.notes && (
+                              <div style={{ 
+                                marginTop: '4px',
+                                paddingTop: '4px',
+                                borderTop: '1px solid rgba(255,255,255,0.2)',
+                                fontSize: '10px',
+                                opacity: 0.8,
+                                fontStyle: 'italic',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {booking.notes}
+                              </div>
+                            )}
+                          </div>
+                        </>
                       )}
                     </td>
                   )
