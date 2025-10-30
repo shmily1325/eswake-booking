@@ -22,7 +22,7 @@ export function HomePage({ user }: HomePageProps) {
       link: '/search'
     },
     {
-      title: '教練確認',
+      title: '教練回報',
       icon: '✅',
       link: '/coach-check'
     },
