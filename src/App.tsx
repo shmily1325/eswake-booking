@@ -8,6 +8,7 @@ import { SearchPage } from './pages/SearchPage'
 import { StudentHistory } from './pages/StudentHistory'
 import { CoachSchedule } from './pages/CoachSchedule'
 import { AuditLog } from './pages/AuditLog'
+import { AdminPage } from './pages/AdminPage'
 import { LoginPage } from './components/LoginPage'
 import './App.css'
 
@@ -58,6 +59,7 @@ function App() {
         <Route path="/student-history" element={<StudentHistory user={user} />} />
         <Route path="/coach-schedule" element={<CoachSchedule user={user} />} />
         <Route path="/audit-log" element={<AuditLog user={user} />} />
+        <Route path="/admin" element={<AdminPage user={user} />} />
       </Routes>
     </BrowserRouter>
   )

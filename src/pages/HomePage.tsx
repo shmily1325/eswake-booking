@@ -16,19 +16,24 @@ export function HomePage({ user }: HomePageProps) {
       link: `/day?date=${new Date().toISOString().split('T')[0]}`
     },
     {
-      title: '學生記錄',
-      icon: '📊',
-      link: '/student-history'
+      title: '預約查詢',
+      icon: '🔍',
+      link: '/search'
     },
     {
-      title: '教練記錄',
-      icon: '👨‍🏫',
+      title: '教練確認',
+      icon: '✅',
       link: '/coach-schedule'
     },
     {
       title: '編輯記錄',
       icon: '📝',
       link: '/audit-log'
+    },
+    {
+      title: '小編專區',
+      icon: '⚙️',
+      link: '/admin'
     }
   ]
 
@@ -67,9 +72,10 @@ export function HomePage({ user }: HomePageProps) {
           <h1 style={{ 
             margin: '0 0 20px 0',
             fontSize: isMobile ? '32px' : '42px',
-            fontWeight: 'bold',
+            fontWeight: '800',
             color: '#000',
-            letterSpacing: '2px'
+            letterSpacing: '2px',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
           }}>
             ES Wake
           </h1>
@@ -85,7 +91,7 @@ export function HomePage({ user }: HomePageProps) {
         {/* Menu Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
           gap: '15px',
           marginBottom: '30px'
         }}>
@@ -121,7 +127,9 @@ export function HomePage({ user }: HomePageProps) {
             >
               <div style={{
                 fontSize: '42px',
-                marginBottom: '5px'
+                marginBottom: '5px',
+                filter: 'grayscale(100%)',
+                opacity: 0.7
               }}>
                 {item.icon}
               </div>
