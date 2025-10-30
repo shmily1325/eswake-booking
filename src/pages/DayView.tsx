@@ -623,7 +623,12 @@ export function DayView({ user }: DayViewProps) {
             {boats.map((boat, index) => {
               const boatBookings = bookings
                 .filter(b => b.boat_id === boat.id)
-                .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
+                .sort((a, b) => {
+                  // 純字符串比較排序（避免時區問題）
+                  const aTime = a.start_at.substring(0, 16)
+                  const bTime = b.start_at.substring(0, 16)
+                  return aTime.localeCompare(bTime)
+                })
 
               return (
                 <div 

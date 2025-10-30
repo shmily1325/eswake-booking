@@ -59,16 +59,10 @@ export function NewBookingDialog({
       fetchBoats()
       fetchCoaches()
       setSelectedBoatId(defaultBoatId)
-      // Parse defaultStartTime into date and time
-      const startDateTime = new Date(defaultStartTime)
-      // 使用本地時間
-      const year = startDateTime.getFullYear()
-      const month = (startDateTime.getMonth() + 1).toString().padStart(2, '0')
-      const day = startDateTime.getDate().toString().padStart(2, '0')
-      const dateStr = `${year}-${month}-${day}`
-      const hours = startDateTime.getHours().toString().padStart(2, '0')
-      const minutes = startDateTime.getMinutes().toString().padStart(2, '0')
-      const timeStr = `${hours}:${minutes}`
+      // 純字符串解析（避免 new Date() 的時區問題）
+      // defaultStartTime 格式: "2025-10-30T17:00"
+      const datetime = defaultStartTime.substring(0, 16) // 取前16個字符
+      const [dateStr, timeStr] = datetime.split('T')
       setStartDate(dateStr)
       setStartTime(timeStr)
     }
@@ -120,7 +114,10 @@ export function NewBookingDialog({
 
   // 生成所有重複日期
   const generateRepeatDates = (): Date[] => {
-    const baseDateTime = new Date(`${startDate}T${startTime}:00`)
+    // 手動構造 Date 對象（避免字符串解析的時區問題）
+    const [year, month, day] = startDate.split('-').map(Number)
+    const [hour, minute] = startTime.split(':').map(Number)
+    const baseDateTime = new Date(year, month - 1, day, hour, minute, 0)
     
     if (!isRepeat) {
       return [baseDateTime]
@@ -131,7 +128,8 @@ export function NewBookingDialog({
     
     if (repeatEndDate) {
       // 使用結束日期
-      const endDate = new Date(repeatEndDate)
+      const [endYear, endMonth, endDay] = repeatEndDate.split('-').map(Number)
+      const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59)
       while (currentDate <= endDate) {
         dates.push(new Date(currentDate))
         currentDate.setDate(currentDate.getDate() + 7)
@@ -290,14 +288,12 @@ export function NewBookingDialog({
               continue // 該教練沒有任何預約，跳過
             }
             
-            // 第二步：查詢這些預約的詳細信息
+            // 第二步：查詢這些預約的詳細信息（不限定日期，避免時區問題）
             const bookingIds = coachBookingIds.map(item => item.booking_id)
-            const { data: coachBookings, error: bookingError } = await supabase
+            const { data: allCoachBookings, error: bookingError } = await supabase
               .from('bookings')
               .select('id, start_at, duration_min, student')
               .in('id', bookingIds)
-              .gte('start_at', `${dateStr}T00:00:00`)
-              .lte('start_at', `${dateStr}T23:59:59`)
             
             if (bookingError) {
               hasConflict = true
@@ -305,7 +301,13 @@ export function NewBookingDialog({
               break
             }
             
-            for (const booking of coachBookings || []) {
+            // 篩選出同一天的預約（純字符串比較）
+            const coachBookings = (allCoachBookings || []).filter(booking => {
+              const bookingDate = booking.start_at.substring(0, 10) // "2025-10-30"
+              return bookingDate === dateStr
+            })
+            
+            for (const booking of coachBookings) {
               // 純字符串比較
               const bookingDatetime = booking.start_at.substring(0, 16)
               const [, bookingTime] = bookingDatetime.split('T')
@@ -316,7 +318,6 @@ export function NewBookingDialog({
               
               // 檢查時間重疊
               if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
-                // 找到教練名字
                 const coach = coaches.find(c => c.id === coachId)
                 hasConflict = true
                 conflictReason = `教練 ${coach?.name || '未知'} 在此時段已有其他預約（${booking.student}）`

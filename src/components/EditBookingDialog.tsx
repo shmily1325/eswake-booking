@@ -312,9 +312,12 @@ export function EditBookingDialog({
         changes.push(`教練: ${oldCoachNames} → ${newCoachNames}`)
       }
       if (booking.start_at !== newStartAt) {
-        const oldTime = new Date(booking.start_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })
-        const newTime = new Date(newStartAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })
-        changes.push(`時間: ${oldTime} → ${newTime}`)
+        // 純字符串格式化（避免時區問題）
+        const oldDatetime = booking.start_at.substring(0, 16)
+        const [oldDate, oldTime] = oldDatetime.split('T')
+        const newDatetime = newStartAt.substring(0, 16)
+        const [newDate, newTime] = newDatetime.split('T')
+        changes.push(`時間: ${oldDate} ${oldTime} → ${newDate} ${newTime}`)
       }
       if (booking.duration_min !== durationMin) {
         changes.push(`時長: ${booking.duration_min}分 → ${durationMin}分`)
