@@ -222,12 +222,6 @@ export function DayView({ user }: DayViewProps) {
     
     return { year, month, day, hour, minute }
   }
-  
-  // 格式化台北時間為字符串 HH:MM
-  const formatTaipeiTime = (dateString: string): string => {
-    const { hour, minute } = toTaipeiTime(dateString)
-    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-  }
 
   const isBookingEnded = (booking: Booking): boolean => {
     const endTime = new Date(booking.start_at).getTime() + booking.duration_min * 60000
