@@ -217,9 +217,18 @@ export function NewBookingDialog({
           .gte('start_at', `${dateStr}T00:00:00`)
           .lte('start_at', `${dateStr}T23:59:59`)
       
+        console.log('🔍 檢查船隻衝突:', {
+          dateStr,
+          timeStr,
+          defaultBoatId,
+          existingBookings: existingBookings?.length || 0,
+          checkError
+        })
+
         if (checkError) {
           hasConflict = true
           conflictReason = '檢查衝突時發生錯誤'
+          console.error('❌ 檢查衝突時發生錯誤:', checkError)
         } else {
           // 檢查是否與現有預約衝突（需要15分鐘接船時間）
           for (const existing of existingBookings || []) {
@@ -227,10 +236,19 @@ export function NewBookingDialog({
             const existingEnd = existingStart + existing.duration_min * 60000
             const existingCleanupEnd = existingEnd + 15 * 60000 // 加15分鐘接船時間
             
+            console.log('📅 檢查現有預約:', {
+              student: existing.student,
+              existingStart: new Date(existingStart).toISOString(),
+              existingEnd: new Date(existingEnd).toISOString(),
+              newStart: new Date(newStartTime).toISOString(),
+              newEnd: new Date(newEndTime).toISOString(),
+            })
+            
             // 檢查新預約是否在現有預約的接船時間內開始
             if (newStartTime >= existingEnd && newStartTime < existingCleanupEnd) {
               hasConflict = true
               conflictReason = `與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`
+              console.log('❌ 衝突類型 1: 新預約在接船時間內')
               break
             }
             
@@ -239,6 +257,7 @@ export function NewBookingDialog({
             if (existingStart >= newEndTime && existingStart < newCleanupEnd) {
               hasConflict = true
               conflictReason = `與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`
+              console.log('❌ 衝突類型 2: 新預約的接船時間會影響現有預約')
               break
             }
             
@@ -246,6 +265,7 @@ export function NewBookingDialog({
             if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
               hasConflict = true
               conflictReason = `與 ${existing.student} 的預約時間重疊`
+              console.log('❌ 衝突類型 3: 時間重疊')
               break
             }
           }

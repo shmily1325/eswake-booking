@@ -223,11 +223,6 @@ export function DayView({ user }: DayViewProps) {
     return { year, month, day, hour, minute }
   }
 
-  const isBookingEnded = (booking: Booking): boolean => {
-    const endTime = new Date(booking.start_at).getTime() + booking.duration_min * 60000
-    return endTime < Date.now()
-  }
-
   const handleCellClick = (boatId: number, timeSlot: string, booking?: Booking) => {
     if (booking) {
       // Edit existing booking
@@ -667,36 +662,45 @@ export function DayView({ user }: DayViewProps) {
 
             return (
               <div key={boat.id} style={{ 
-                marginBottom: '18px',
+                marginBottom: '20px',
                 maxWidth: '100%',
-                margin: '0 0 18px 0',
+                margin: '0 0 20px 0',
                 display: 'flex',
                 gap: '0',
                 backgroundColor: 'white',
-                borderRadius: '8px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                borderRadius: '12px',
+                boxShadow: '0 3px 12px rgba(0,0,0,0.15)',
                 overflow: 'hidden',
+                border: '1px solid #e8e8e8',
               }}>
                 {/* 左側：船隻標題 */}
                 <div style={{
-                  backgroundColor: '#34495e',
+                  background: 'linear-gradient(135deg, #34495e 0%, #2c3e50 100%)',
                   color: 'white',
-                  padding: '16px 12px',
+                  padding: isMobile ? '20px 14px' : '24px 18px',
                   fontWeight: '600',
-                  fontSize: '15px',
+                  fontSize: isMobile ? '15px' : '16px',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  minWidth: '85px',
-                  width: '85px',
+                  minWidth: isMobile ? '90px' : '105px',
+                  width: isMobile ? '90px' : '105px',
                   flexShrink: 0,
                   textAlign: 'center',
-                  gap: '4px',
-                  borderRight: '2px solid #2c3e50',
+                  gap: '6px',
+                  borderRight: '3px solid #2c3e50',
+                  boxShadow: '3px 0 10px rgba(0,0,0,0.15)',
                 }}>
-                  <span style={{ fontSize: '15px', lineHeight: '1.3' }}>{boat.name}</span>
-                  <span style={{ fontSize: '11px', opacity: 0.7, fontWeight: '400' }}>
+                  <span style={{ fontSize: isMobile ? '15px' : '17px', lineHeight: '1.2', fontWeight: '700' }}>{boat.name}</span>
+                  <span style={{ 
+                    fontSize: '11px', 
+                    opacity: 0.9, 
+                    fontWeight: '500',
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    padding: '3px 10px',
+                    borderRadius: '12px',
+                  }}>
                     {displayBookings.length} 個
                   </span>
                 </div>
@@ -704,16 +708,17 @@ export function DayView({ user }: DayViewProps) {
                 {/* 右側：預約列表 */}
                 <div style={{
                   flex: 1,
-                  backgroundColor: 'white',
+                  backgroundColor: '#fafafa',
                 }}>
                   {displayBookings.length === 0 ? (
                     <div style={{
-                      padding: '36px 24px',
+                      padding: isMobile ? '40px 24px' : '52px 32px',
                       textAlign: 'center',
-                      color: '#999',
-                      fontSize: '14px',
+                      color: '#aaa',
+                      fontSize: isMobile ? '14px' : '15px',
+                      fontWeight: '500',
                     }}>
-                      今日無預約
+                      📭 今日無預約
                     </div>
                   ) : (
                     displayBookings.map((booking) => {
@@ -725,9 +730,6 @@ export function DayView({ user }: DayViewProps) {
                       ).filter((name, index, self) => self.indexOf(name) === index) // 去重
                       const startTime = new Date(booking.start_at)
                       const endTime = new Date(startTime.getTime() + booking.duration_min * 60000)
-                      const isEnded = endTime.getTime() < Date.now()
-                      const needsConfirmation = isEnded && !booking.coach_confirmed
-                      const isConfirmed = booking.coach_confirmed
 
                       return (
                         <div
@@ -744,7 +746,7 @@ export function DayView({ user }: DayViewProps) {
                             borderBottom: '1px solid #e8e8e8',
                             cursor: 'pointer',
                             transition: 'all 0.15s ease',
-                            backgroundColor: needsConfirmation ? '#fff8e1' : 'white',
+                            backgroundColor: 'white',
                             touchAction: 'manipulation',
                             WebkitTapHighlightColor: 'transparent',
                             minHeight: '56px',
@@ -759,20 +761,20 @@ export function DayView({ user }: DayViewProps) {
                             }
                             // 視覺反饋
                             e.currentTarget.style.transform = 'scale(0.98)'
-                            e.currentTarget.style.backgroundColor = needsConfirmation ? '#ffe8a1' : 'rgba(0, 123, 255, 0.05)'
+                            e.currentTarget.style.backgroundColor = 'rgba(0, 123, 255, 0.05)'
                           }}
                           onTouchEnd={(e) => {
                             setTimeout(() => {
                               e.currentTarget.style.transform = 'scale(1)'
-                              e.currentTarget.style.backgroundColor = needsConfirmation ? '#fff3cd' : 'white'
+                              e.currentTarget.style.backgroundColor = 'white'
                             }, 100)
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = needsConfirmation ? '#ffe8a1' : '#f8f9fa'
+                            e.currentTarget.style.backgroundColor = '#f8f9fa'
                             e.currentTarget.style.transform = 'translateX(4px)'
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = needsConfirmation ? '#fff8e1' : 'white'
+                            e.currentTarget.style.backgroundColor = 'white'
                             e.currentTarget.style.transform = 'translateX(0)'
                           }}
                         >
@@ -835,7 +837,7 @@ export function DayView({ user }: DayViewProps) {
                               {allCoaches.join(' / ')}
                             </div>
 
-                            {/* 第三行：活動類型 + 狀態 */}
+                            {/* 第三行：活動類型 + 備註 */}
                             <div style={{
                               display: 'flex',
                               gap: '6px',
@@ -853,30 +855,6 @@ export function DayView({ user }: DayViewProps) {
                                 }}>
                                   {booking.activity_types.join(' + ')}
                                 </div>
-                              )}
-                              {isConfirmed && (
-                                <span style={{
-                                  fontSize: '11px',
-                                  padding: '3px 6px',
-                                  background: '#27ae60',
-                                  borderRadius: '3px',
-                                  color: 'white',
-                                  fontWeight: '600',
-                                }}>
-                                  ✓
-                                </span>
-                              )}
-                              {needsConfirmation && (
-                                <span style={{
-                                  fontSize: '11px',
-                                  padding: '3px 6px',
-                                  background: '#f39c12',
-                                  borderRadius: '3px',
-                                  color: 'white',
-                                  fontWeight: '600',
-                                }}>
-                                  !
-                                </span>
                               )}
                               {booking.notes && (
                                 <div style={{
@@ -1071,8 +1049,6 @@ export function DayView({ user }: DayViewProps) {
                   const rowSpan = booking ? getBookingSpan(booking) : 1
                   const bgColor = booking ? '#34495e' : (isCleanupTime ? 'rgba(200, 200, 200, 0.3)' : 'transparent')
                   const textColor = booking ? 'white' : '#666'
-                  const needsConfirmation = booking && isBookingEnded(booking) && !booking.coach_confirmed
-                  const isConfirmed = booking && booking.coach_confirmed
                   
                   return (
                     <td
@@ -1086,7 +1062,7 @@ export function DayView({ user }: DayViewProps) {
                         handleCellClick(boat.id, timeSlot, booking || undefined)
                       }}
                       style={{
-                        border: needsConfirmation ? '2px solid #f39c12' : booking ? '1px solid rgba(0,0,0,0.15)' : '1px solid #ddd',
+                        border: booking ? '1px solid rgba(0,0,0,0.15)' : '1px solid #ddd',
                         padding: booking ? '8px' : '10px 6px',
                         cursor: 'pointer',
                         backgroundColor: bgColor,
@@ -1161,51 +1137,6 @@ export function DayView({ user }: DayViewProps) {
                       )}
                       {booking && (
                         <>
-                          {/* 狀態標籤 - 右上角圓形徽章 */}
-                          {isConfirmed && (
-                            <div style={{ 
-                              position: 'absolute',
-                              top: '6px',
-                              right: '6px',
-                              width: '20px',
-                              height: '20px',
-                              borderRadius: '50%',
-                              background: 'linear-gradient(135deg, #27ae60 0%, #229954 100%)',
-                              color: 'white',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '11px',
-                              fontWeight: 'bold',
-                              boxShadow: '0 2px 6px rgba(39, 174, 96, 0.4)',
-                              border: '2px solid rgba(255,255,255,0.3)',
-                            }}>
-                              ✓
-                            </div>
-                          )}
-                          {needsConfirmation && (
-                            <div style={{ 
-                              position: 'absolute',
-                              top: '6px',
-                              right: '6px',
-                              width: '20px',
-                              height: '20px',
-                              borderRadius: '50%',
-                              background: 'linear-gradient(135deg, #f39c12 0%, #e67e22 100%)',
-                              color: 'white',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '12px',
-                              fontWeight: 'bold',
-                              boxShadow: '0 2px 6px rgba(243, 156, 18, 0.4)',
-                              border: '2px solid rgba(255,255,255,0.3)',
-                              animation: 'pulse 2s ease-in-out infinite',
-                            }}>
-                              !
-                            </div>
-                          )}
-                          
                           <div style={{ 
                             fontSize: '12px',
                             lineHeight: '1.4',
