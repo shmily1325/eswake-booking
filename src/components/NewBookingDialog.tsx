@@ -420,9 +420,10 @@ export function NewBookingDialog({
       // 顯示結果
       if (results.success.length === 0) {
         // 顯示詳細的衝突原因
-        let errorMessage = '❌ 沒有成功創建任何預約\n\n衝突詳情:\n'
-        results.skipped.forEach(({ date, reason }) => {
-          errorMessage += `\n• ${date}\n  ${reason}\n`
+        let errorMessage = ''
+        results.skipped.forEach(({ date, reason }, index) => {
+          if (index > 0) errorMessage += '\n\n'
+          errorMessage += `${date}\n${reason}`
         })
         setError(errorMessage)
         setLoading(false)
