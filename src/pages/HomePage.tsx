@@ -129,6 +129,7 @@ export function HomePage({ user }: HomePageProps) {
               <div style={{
                 fontSize: '42px',
                 marginBottom: '5px',
+                filter: 'grayscale(100%) contrast(1.3) brightness(0.7)',
               }}>
                 {item.icon}
               </div>

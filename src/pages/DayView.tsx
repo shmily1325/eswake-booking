@@ -900,6 +900,8 @@ export function DayView({ user }: DayViewProps) {
             {/* 08:00 分隔線 */}
             {filteredTimeSlots.map((timeSlot) => {
               const showPracticeLine = timeSlot === '08:00'
+              const [hour] = timeSlot.split(':').map(Number)
+              const isBefore8AM = hour < 8
               
               return (
                 <tr key={timeSlot}>
@@ -913,9 +915,9 @@ export function DayView({ user }: DayViewProps) {
                     fontSize: isMobile ? '12px' : '13px',
                     fontWeight: '500',
                     textAlign: 'center',
-                    color: showPracticeLine ? '#856404' : '#666',
+                    color: showPracticeLine ? '#856404' : (isBefore8AM ? '#856404' : '#666'),
                   }}>
-                    {timeSlot}
+                    {isBefore8AM && '⚠️ '}{timeSlot}
                     {showPracticeLine && (
                       <div style={{
                         fontSize: '10px',
@@ -923,7 +925,7 @@ export function DayView({ user }: DayViewProps) {
                         marginTop: '2px',
                         fontWeight: '600',
                       }}>
-                        ⚠️ 練習時間
+                        需指定
                       </div>
                     )}
                   </td>
