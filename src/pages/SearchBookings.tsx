@@ -146,21 +146,16 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       const [dateStr, timeStr] = datetime.split('T')
       const [year, month, day] = dateStr.split('-')
       
-      // 計算星期幾
-      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-      const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-      const weekday = weekdays[date.getDay()]
-      
-      // 組合一行：日期 時間 船隻 [教練] 時長 活動類型
+      // 組合一行：日期 時間 船隻 教練 時長 活動類型
       const coaches = booking.coaches && booking.coaches.length > 0 
-        ? `[${booking.coaches.map(c => c.name).join('/')}]`
-        : '[未指定]'
+        ? booking.coaches.map(c => c.name).join('/')
+        : '不指定'
       
       const activities = booking.activity_types && booking.activity_types.length > 0
         ? ` ${booking.activity_types.join('+')}`
         : ''
       
-      message += `${month}/${day}(週${weekday}) ${timeStr} ${booking.boats?.name || '?'} ${coaches} ${booking.duration_min}分${activities}\n`
+      message += `${month}/${day} ${timeStr} ${booking.boats?.name || '?'} ${coaches} ${booking.duration_min}分${activities}\n`
     })
     
     return message.trim()
@@ -231,110 +226,91 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       {/* Search Form */}
       <div style={{
         background: 'white',
-        borderRadius: '8px',
-        padding: '20px',
+        borderRadius: '12px',
+        padding: '24px',
         marginBottom: '15px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
       }}>
         <form onSubmit={handleSearch}>
           {/* 學生姓名 */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#333'
-            }}>
-              學生姓名
-            </label>
+          <div style={{ marginBottom: '20px' }}>
             <input
               type="text"
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
-              placeholder="輸入學生姓名..."
+              placeholder="輸入學生姓名"
               required
               style={{
                 width: '100%',
-                padding: '10px 12px',
-                fontSize: '15px',
-                border: '1px solid #dee2e6',
-                borderRadius: '6px',
+                padding: '14px 16px',
+                fontSize: '16px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
                 outline: 'none',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                transition: 'border-color 0.2s'
               }}
+              onFocus={(e) => e.target.style.borderColor = '#007bff'}
+              onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
             />
           </div>
 
           {/* 篩選選項 - 簡化版 */}
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'flex',
               alignItems: 'center',
               cursor: 'pointer',
-              padding: '12px',
+              padding: '14px',
               backgroundColor: '#f8f9fa',
-              borderRadius: '6px',
-              gap: '8px'
+              borderRadius: '8px',
+              gap: '10px',
+              border: '1px solid #e9ecef'
             }}>
               <input
                 type="checkbox"
                 checked={filterType === 'range'}
                 onChange={(e) => setFilterType(e.target.checked ? 'range' : 'today')}
-                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
               />
-              <span style={{ fontSize: '14px', color: '#333' }}>指定日期查詢</span>
+              <span style={{ fontSize: '15px', color: '#495057' }}>指定日期查詢</span>
             </label>
           </div>
 
           {/* 日期區間選擇 */}
           {filterType === 'range' && (
-            <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#fff3cd', borderRadius: '6px', border: '1px solid #ffc107' }}>
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#333'
-                }}>
-                  開始日期
-                </label>
+            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff8e1', borderRadius: '8px', border: '1px solid #ffe082' }}>
+              <div style={{ marginBottom: '14px' }}>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  placeholder="開始日期"
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: '14px 16px',
                     fontSize: '16px',
                     border: '1px solid #dee2e6',
-                    borderRadius: '6px',
-                    boxSizing: 'border-box'
+                    borderRadius: '8px',
+                    boxSizing: 'border-box',
+                    backgroundColor: 'white'
                   }}
                 />
               </div>
               <div>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#333'
-                }}>
-                  結束日期
-                </label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  placeholder="結束日期"
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: '14px 16px',
                     fontSize: '16px',
                     border: '1px solid #dee2e6',
-                    borderRadius: '6px',
-                    boxSizing: 'border-box'
+                    borderRadius: '8px',
+                    boxSizing: 'border-box',
+                    backgroundColor: 'white'
                   }}
                 />
               </div>
@@ -347,18 +323,22 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
             disabled={loading}
             style={{
               width: '100%',
-              padding: '16px',
-              fontSize: '16px',
+              padding: '18px',
+              fontSize: '17px',
               fontWeight: '600',
-              background: !loading ? '#28a745' : '#ccc',
+              background: !loading ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)' : '#ccc',
               color: 'white',
               border: 'none',
-              borderRadius: '8px',
+              borderRadius: '10px',
               cursor: !loading ? 'pointer' : 'not-allowed',
-              touchAction: 'manipulation'
+              touchAction: 'manipulation',
+              boxShadow: !loading ? '0 4px 12px rgba(40, 167, 69, 0.3)' : 'none',
+              transition: 'transform 0.1s'
             }}
+            onTouchStart={(e) => !loading && (e.currentTarget.style.transform = 'scale(0.98)')}
+            onTouchEnd={(e) => !loading && (e.currentTarget.style.transform = 'scale(1)')}
           >
-            {loading ? '搜尋中...' : (filterType === 'today' ? '🔍 查詢今日新增' : '🔍 查詢預約')}
+            {loading ? '搜尋中...' : (filterType === 'today' ? '查詢今日新增' : '查詢預約')}
           </button>
         </form>
       </div>
