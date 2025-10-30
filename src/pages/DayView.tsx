@@ -360,43 +360,27 @@ export function DayView({ user }: DayViewProps) {
           gap: '8px',
           flexWrap: 'wrap',
         }}>
-          <h1 style={{ margin: 0, fontSize: '18px', whiteSpace: 'nowrap' }}>Daily Schedule</h1>
+          <h1 style={{ margin: 0, fontSize: '18px', whiteSpace: 'nowrap' }}>
+            {viewMode === 'timeline' ? '時間軸' : '列表'}
+          </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {/* 視圖切換 */}
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <button
-                onClick={() => setViewMode('timeline')}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '4px',
-                  border: `1px solid ${viewMode === 'timeline' ? '#007bff' : '#dee2e6'}`,
-                  backgroundColor: viewMode === 'timeline' ? '#007bff' : 'white',
-                  color: viewMode === 'timeline' ? 'white' : '#333',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: viewMode === 'timeline' ? 'bold' : 'normal',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                🗓️ 時間軸
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '4px',
-                  border: `1px solid ${viewMode === 'list' ? '#007bff' : '#dee2e6'}`,
-                  backgroundColor: viewMode === 'list' ? '#007bff' : 'white',
-                  color: viewMode === 'list' ? 'white' : '#333',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: viewMode === 'list' ? 'bold' : 'normal',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                📋 列表
-              </button>
-            </div>
+            <button
+              onClick={() => setViewMode(viewMode === 'timeline' ? 'list' : 'timeline')}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '4px',
+                border: '1px solid #007bff',
+                backgroundColor: '#007bff',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '600',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {viewMode === 'timeline' ? '📋 列表' : '🗓️ 時間軸'}
+            </button>
             <a
               href="/"
               style={{

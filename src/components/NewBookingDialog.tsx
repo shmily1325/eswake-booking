@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
@@ -41,6 +41,10 @@ export function NewBookingDialog({
   const [repeatEndType, setRepeatEndType] = useState<'count' | 'date'>('count')
   const [repeatCount, setRepeatCount] = useState(8)
   const [repeatEndDate, setRepeatEndDate] = useState('')
+  
+  // 使用 Set 來優化 includes 檢查
+  const selectedCoachesSet = useMemo(() => new Set(selectedCoaches), [selectedCoaches])
+  const activityTypesSet = useMemo(() => new Set(activityTypes), [activityTypes])
 
   useEffect(() => {
     if (isOpen) {
@@ -439,43 +443,46 @@ export function NewBookingDialog({
                 maxHeight: '200px',
                 overflowY: 'auto',
                 backgroundColor: '#f8f9fa',
+                WebkitOverflowScrolling: 'touch', // 平滑滾動
               }}>
-                {coaches.map((coach) => (
-                  <label
-                    key={coach.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '10px',
-                      cursor: 'pointer',
-                      borderRadius: '6px',
-                      marginBottom: '4px',
-                      backgroundColor: selectedCoaches.includes(coach.id) ? '#e7f3ff' : 'white',
-                      border: selectedCoaches.includes(coach.id) ? '2px solid #007bff' : '2px solid transparent',
-                      transition: 'all 0.2s',
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedCoaches.includes(coach.id)}
-                      onChange={() => toggleCoach(coach.id)}
+                {coaches.map((coach) => {
+                  const isSelected = selectedCoachesSet.has(coach.id)
+                  return (
+                    <label
+                      key={coach.id}
                       style={{
-                        width: '20px',
-                        height: '20px',
-                        marginRight: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '10px',
                         cursor: 'pointer',
+                        borderRadius: '6px',
+                        marginBottom: '4px',
+                        backgroundColor: isSelected ? '#e7f3ff' : 'white',
+                        border: isSelected ? '2px solid #007bff' : '2px solid transparent',
+                        touchAction: 'manipulation',
                       }}
-                    />
-                    <span style={{ 
-                      fontSize: '16px',
-                      color: '#000',
-                      fontWeight: selectedCoaches.includes(coach.id) ? '600' : '400',
-                    }}>
-                      {coach.name}
-                    </span>
-                  </label>
-                ))}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleCoach(coach.id)}
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          marginRight: '10px',
+                          cursor: 'pointer',
+                        }}
+                      />
+                      <span style={{ 
+                        fontSize: '16px',
+                        color: '#000',
+                        fontWeight: isSelected ? '600' : '400',
+                      }}>
+                        {coach.name}
+                      </span>
+                    </label>
+                  )
+                })}
               </div>
             )}
             
@@ -625,9 +632,8 @@ export function NewBookingDialog({
                 padding: '10px 16px',
                 cursor: 'pointer',
                 borderRadius: '8px',
-                backgroundColor: activityTypes.includes('WB') ? '#e7f3ff' : '#f8f9fa',
-                border: activityTypes.includes('WB') ? '2px solid #007bff' : '2px solid #ddd',
-                transition: 'all 0.2s',
+                backgroundColor: activityTypesSet.has('WB') ? '#e7f3ff' : '#f8f9fa',
+                border: activityTypesSet.has('WB') ? '2px solid #007bff' : '2px solid #ddd',
                 touchAction: 'manipulation',
                 flex: '1 1 auto',
                 minWidth: '100px',
@@ -635,7 +641,7 @@ export function NewBookingDialog({
               }}>
                 <input
                   type="checkbox"
-                  checked={activityTypes.includes('WB')}
+                  checked={activityTypesSet.has('WB')}
                   onChange={() => toggleActivityType('WB')}
                   style={{
                     width: '20px',
@@ -647,7 +653,7 @@ export function NewBookingDialog({
                 <span style={{ 
                   fontSize: '16px',
                   color: '#000',
-                  fontWeight: activityTypes.includes('WB') ? '600' : '400',
+                  fontWeight: activityTypesSet.has('WB') ? '600' : '400',
                 }}>
                   WB (滑水板)
                 </span>
@@ -659,9 +665,8 @@ export function NewBookingDialog({
                 padding: '10px 16px',
                 cursor: 'pointer',
                 borderRadius: '8px',
-                backgroundColor: activityTypes.includes('WS') ? '#e7f3ff' : '#f8f9fa',
-                border: activityTypes.includes('WS') ? '2px solid #007bff' : '2px solid #ddd',
-                transition: 'all 0.2s',
+                backgroundColor: activityTypesSet.has('WS') ? '#e7f3ff' : '#f8f9fa',
+                border: activityTypesSet.has('WS') ? '2px solid #007bff' : '2px solid #ddd',
                 touchAction: 'manipulation',
                 flex: '1 1 auto',
                 minWidth: '100px',
@@ -669,7 +674,7 @@ export function NewBookingDialog({
               }}>
                 <input
                   type="checkbox"
-                  checked={activityTypes.includes('WS')}
+                  checked={activityTypesSet.has('WS')}
                   onChange={() => toggleActivityType('WS')}
                   style={{
                     width: '20px',
@@ -681,7 +686,7 @@ export function NewBookingDialog({
                 <span style={{ 
                   fontSize: '16px',
                   color: '#000',
-                  fontWeight: activityTypes.includes('WS') ? '600' : '400',
+                  fontWeight: activityTypesSet.has('WS') ? '600' : '400',
                 }}>
                   WS (滑水)
                 </span>
@@ -865,16 +870,22 @@ export function NewBookingDialog({
           {error && (
             <div
               style={{
-                padding: '12px',
-                backgroundColor: '#fee',
-                color: '#c00',
-                borderRadius: '4px',
+                padding: '16px 20px',
+                backgroundColor: '#fff3cd',
+                color: '#856404',
+                borderRadius: '8px',
                 marginBottom: '16px',
-                border: '1px solid #fcc',
-                fontSize: '15px',
+                border: '2px solid #ffc107',
+                fontSize: '16px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(255, 193, 7, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
               }}
             >
-              {error}
+              <span style={{ fontSize: '24px', flexShrink: 0 }}>⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 
