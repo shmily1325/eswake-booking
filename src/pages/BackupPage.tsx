@@ -22,7 +22,8 @@ export function BackupPage({ user }: BackupPageProps) {
         .select(`
           *,
           boats:boat_id (name, color),
-          created_by_user:created_by (email)
+          created_by_user:created_by (email),
+          confirmed_by_user:confirmed_by (email)
         `)
         .order('start_at', { ascending: false })
 
@@ -62,18 +63,51 @@ export function BackupPage({ user }: BackupPageProps) {
         }
       }
 
+      // 格式化时间函数
+      const formatDateTime = (isoString: string | null): string => {
+        if (!isoString) return ''
+        const dt = isoString.substring(0, 16) // "2025-10-30T08:30"
+        const [date, time] = dt.split('T')
+        if (!date || !time) return ''
+        const [year, month, day] = date.split('-')
+        return `${year}/${month}/${day} ${time}`
+      }
+
       // 生成 CSV
       let csv = '\uFEFF' // UTF-8 BOM
-      csv += '預約ID,學生姓名,船隻,教練,開始時間,時長(分鐘),活動類型,狀態,備註,創建者,創建時間\n'
+      csv += '學生姓名,預約日期,抵達時間,下水時間,時長(分鐘),船隻,教練,活動類型,教練確認,確認時間,確認人,狀態,備註,創建者,創建時間\n'
 
       bookings.forEach(booking => {
-        const boat = (booking as any).boats?.name || ''
-        const coaches = coachesByBooking[booking.id]?.join('/') || ''
+        const boat = (booking as any).boats?.name || '未指定'
+        const coaches = coachesByBooking[booking.id]?.join('/') || '未指定'
         const activities = booking.activity_types?.join('+') || ''
         const creator = (booking as any).created_by_user?.email || ''
         const notes = (booking.notes || '').replace(/"/g, '""').replace(/\n/g, ' ')
+        
+        // 计算抵达时间（提前30分钟）
+        const startTime = booking.start_at.substring(11, 16) // "08:30"
+        const [startHour, startMin] = startTime.split(':').map(Number)
+        const totalMinutes = startHour * 60 + startMin - 30
+        const arrivalHour = Math.floor(totalMinutes / 60)
+        const arrivalMin = totalMinutes % 60
+        const arrivalTime = `${arrivalHour.toString().padStart(2, '0')}:${arrivalMin.toString().padStart(2, '0')}`
+        
+        // 预约日期
+        const bookingDate = booking.start_at.substring(0, 10).replace(/-/g, '/')
+        
+        // 教练确认状态
+        const coachConfirmed = booking.coach_confirmed ? '已確認' : '未確認'
+        const confirmedAt = formatDateTime(booking.confirmed_at)
+        const confirmedBy = (booking as any).confirmed_by_user?.email || ''
+        
+        // 状态翻译
+        const statusMap: { [key: string]: string } = {
+          'confirmed': '已確認',
+          'cancelled': '已取消'
+        }
+        const status = statusMap[booking.status] || booking.status
 
-        csv += `${booking.id},"${booking.student}","${boat}","${coaches}","${booking.start_at}",${booking.duration_min},"${activities}","${booking.status}","${notes}","${creator}","${booking.created_at}"\n`
+        csv += `"${booking.student}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${activities}","${coachConfirmed}","${confirmedAt}","${confirmedBy}","${status}","${notes}","${creator}","${formatDateTime(booking.created_at)}"\n`
       })
 
       // 下载文件
@@ -119,7 +153,7 @@ export function BackupPage({ user }: BackupPageProps) {
             color: 'white',
             fontWeight: '600'
           }}>
-            資料備份
+            匯出
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Link
@@ -247,7 +281,8 @@ export function BackupPage({ user }: BackupPageProps) {
             </div>
             <ul style={{ margin: 0, paddingLeft: '20px' }}>
               <li>CSV 文件可用 Excel 或 Google Sheets 打開</li>
-              <li>包含預約ID、學生、船隻、教練、時間等完整信息</li>
+              <li>包含學生、船隻、教練、時間、確認狀態等完整信息</li>
+              <li>所有時間已格式化為易讀格式（YYYY/MM/DD HH:mm）</li>
               <li>建議定期備份以確保數據安全</li>
             </ul>
           </div>

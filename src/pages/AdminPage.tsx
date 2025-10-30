@@ -364,7 +364,7 @@ export function AdminPage({ user }: AdminPageProps) {
                   cursor: 'pointer'
                 }}
               />
-              <span>包含天氣警告</span>
+              <span>🌥️</span>
             </label>
           </div>
           

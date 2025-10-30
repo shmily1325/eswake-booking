@@ -71,19 +71,19 @@ export function AuditLog({ user }: AuditLogProps) {
     const datetime = isoString.substring(0, 16) // "2025-11-01T13:55"
     const parts = datetime.split('T')
     
-    if (parts.length !== 2) return isoString
+    if (parts.length !== 2) return '未知時間'
     
     const [dateStr, timeStr] = parts
     const [year, month, day] = dateStr.split('-')
     
-    if (!year || !month || !day || !timeStr) return isoString
+    if (!year || !month || !day || !timeStr) return '未知時間'
     
     // 計算星期幾
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
     const weekdays = ['日', '一', '二', '三', '四', '五', '六']
     const weekday = weekdays[date.getDay()]
     
-    return `${year}/${month}/${day} (週${weekday}) ${timeStr}`
+    return `${month}/${day} (週${weekday}) ${timeStr}`
   }
 
   const getOperationColor = (operation: string) => {
