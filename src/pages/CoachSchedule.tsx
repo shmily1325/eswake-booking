@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { UserMenu } from '../components/UserMenu'
-import { getContrastingTextColor } from '../utils/color'
 
 interface Coach {
   id: string
@@ -19,10 +18,7 @@ interface Booking {
   activity_types: string[] | null
   status: string
   boats: { name: string; color: string } | null
-  coaches: { id: string; name: string }[] // 改為數組
-  actual_duration_min?: number | null
-  coach_confirmed?: boolean
-  confirmed_at?: string | null
+  coaches: { id: string; name: string }[]
 }
 
 interface CoachScheduleProps {
@@ -35,7 +31,6 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
-  const [hasSearched, setHasSearched] = useState(false)
   
   // 月份選擇（預設下個月）
   const getNextMonth = () => {
@@ -44,28 +39,29 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
     return `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`
   }
   const [selectedMonth, setSelectedMonth] = useState(getNextMonth())
-  
-  // 月份選擇（預設下個月）
-  const getNextMonth = () => {
+
+  // 生成月份選項（前後各3個月）
+  const generateMonthOptions = () => {
+    const options = []
     const now = new Date()
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-    return {
-      year: nextMonth.getFullYear(),
-      month: nextMonth.getMonth() + 1
+    for (let i = -3; i <= 6; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() + i, 1)
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const label = `${date.getFullYear()}年${date.getMonth() + 1}月`
+      options.push({ value, label })
     }
+    return options
   }
-  
-  const { year: defaultYear, month: defaultMonth } = getNextMonth()
-  const [selectedYear, setSelectedYear] = useState(defaultYear)
-  const [selectedMonth, setSelectedMonth] = useState(defaultMonth)
-  
-  // 快速確認狀態
-  const [confirmingIds, setConfirmingIds] = useState<Set<number>>(new Set())
-  const [confirmNotes, setConfirmNotes] = useState<Map<number, string>>(new Map())
 
   useEffect(() => {
     fetchCoaches()
   }, [])
+
+  useEffect(() => {
+    if (selectedCoachId) {
+      fetchBookings()
+    }
+  }, [selectedCoachId, selectedMonth])
 
   const fetchCoaches = async () => {
     const { data, error } = await supabase
@@ -84,23 +80,15 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
     if (!selectedCoachId) return
 
     setLoading(true)
-    setHasSearched(true)
 
     try {
-      // 先查詢該教練的所有預約關聯
+      // 查詢該教練的所有預約關聯
       const { data: bookingCoachesData, error: bcError } = await supabase
         .from('booking_coaches')
         .select('booking_id')
         .eq('coach_id', selectedCoachId)
 
-      if (bcError) {
-        console.error('Error fetching booking_coaches:', bcError)
-        setBookings([])
-        setLoading(false)
-        return
-      }
-
-      if (!bookingCoachesData || bookingCoachesData.length === 0) {
+      if (bcError || !bookingCoachesData || bookingCoachesData.length === 0) {
         setBookings([])
         setLoading(false)
         return
@@ -108,39 +96,30 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
 
       const bookingIds = bookingCoachesData.map(bc => bc.booking_id)
 
-      // 查詢這些預約的詳細信息
-      let query = supabase
-        .from('bookings')
-        .select('*, boats:boat_id (name, color)')
-        .in('id', bookingIds)
-
-      // 根據選擇的月份查詢
+      // 根據選擇的月份查詢預約
       const [year, month] = selectedMonth.split('-')
       const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
       const startDate = `${selectedMonth}-01T00:00:00`
       const endDate = `${selectedMonth}-${String(lastDay).padStart(2, '0')}T23:59:59`
-      
-      query = query
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*, boats:boat_id (name, color)')
+        .in('id', bookingIds)
         .gte('start_at', startDate)
         .lte('start_at', endDate)
         .order('start_at', { ascending: true })
-
-      const { data, error } = await query
 
       if (error) {
         console.error('Error fetching bookings:', error)
         setBookings([])
       } else if (data && data.length > 0) {
-        // 獲取每個預約的所有教練（用於顯示）
+        // 獲取每個預約的所有教練
         const allBookingIds = data.map(b => b.id)
-        const { data: allCoachesData, error: coachError } = await supabase
+        const { data: allCoachesData } = await supabase
           .from('booking_coaches')
           .select('booking_id, coaches:coach_id(id, name)')
           .in('booking_id', allBookingIds)
-
-        if (coachError) {
-          console.error('Error fetching all coaches:', coachError)
-        }
 
         // 合併教練信息
         const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
@@ -155,191 +134,72 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
           }
         }
 
-        let bookingsWithCoaches = data.map(booking => ({
+        const bookingsWithCoaches = data.map(booking => ({
           ...booking,
           coaches: coachesByBooking[booking.id] || []
         }))
-        
-        // 如果是待確認，只顯示已結束且未確認的
-        if (filterType === 'pending') {
-          bookingsWithCoaches = bookingsWithCoaches.filter(booking => {
-            // 純字符串比較（包含日期和時間）
-            const datetime = booking.start_at.substring(0, 16) // "2025-10-30T13:55"
-            
-            // 計算預約結束時間
-            const [dateStr, timeStr] = datetime.split('T')
-            const [hour, minute] = timeStr.split(':').map(Number)
-            const endMinute = hour * 60 + minute + booking.duration_min
-            const endHour = Math.floor(endMinute / 60)
-            const endMin = endMinute % 60
-            const endTimeStr = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
-            const endDatetime = `${dateStr}T${endTimeStr}`
-            
-            // 獲取當前時間（本地格式）
-            const now = new Date()
-            const nowYear = now.getFullYear()
-            const nowMonth = String(now.getMonth() + 1).padStart(2, '0')
-            const nowDay = String(now.getDate()).padStart(2, '0')
-            const nowHour = String(now.getHours()).padStart(2, '0')
-            const nowMinute = String(now.getMinutes()).padStart(2, '0')
-            const nowDatetime = `${nowYear}-${nowMonth}-${nowDay}T${nowHour}:${nowMinute}`
-            
-            // 字符串比較（已結束的預約）
-            return endDatetime < nowDatetime
-          })
-        }
-        
+
         setBookings(bookingsWithCoaches as Booking[])
       } else {
         setBookings([])
       }
     } catch (err) {
       console.error('Search error:', err)
+      setBookings([])
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSearch = () => {
-    fetchBookings()
-  }
-
-  const handleQuickConfirm = async (bookingId: number) => {
-    const note = confirmNotes.get(bookingId) || ''
-
-    setConfirmingIds(new Set(confirmingIds).add(bookingId))
-
-    try {
-      // 找到該預約以取得原始時長
-      const booking = bookings.find(b => b.id === bookingId)
-      if (!booking) throw new Error('找不到預約')
-
-      // 更新備註（如果有輸入的話）
-      const now = new Date()
-      const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
-      
-      const updateData: any = {
-        actual_duration_min: booking.duration_min, // 使用原始時長
-        coach_confirmed: true,
-        confirmed_at: nowStr,
-        confirmed_by: user.id
-      }
-
-      // 如果有輸入備註，加到現有備註後面
-      if (note.trim()) {
-        const existingNotes = booking.notes || ''
-        updateData.notes = existingNotes 
-          ? `${existingNotes}\n[教練確認] ${note}` 
-          : `[教練確認] ${note}`
-      }
-
-      const { error: updateError } = await supabase
-        .from('bookings')
-        .update(updateData)
-        .eq('id', bookingId)
-
-      if (updateError) throw updateError
-
-      // 從列表中移除或更新
-      setBookings(bookings.map(b => 
-        b.id === bookingId 
-          ? { 
-              ...b, 
-              actual_duration_min: booking.duration_min,
-              coach_confirmed: true, 
-              confirmed_at: nowStr,  // 使用上面已經構造好的 nowStr
-              notes: updateData.notes || b.notes
-            }
-          : b
-      ))
-
-      // 清除輸入
-      const newNotes = new Map(confirmNotes)
-      newNotes.delete(bookingId)
-      setConfirmNotes(newNotes)
-
-    } catch (err: any) {
-      alert(err.message || '確認失敗')
-    } finally {
-      const newConfirming = new Set(confirmingIds)
-      newConfirming.delete(bookingId)
-      setConfirmingIds(newConfirming)
-    }
-  }
-
-  const setConfirmNote = (bookingId: number, note: string) => {
-    const newNotes = new Map(confirmNotes)
-    newNotes.set(bookingId, note)
-    setConfirmNotes(newNotes)
-  }
-
-  const formatDate = (dateString: string) => {
-    // 純字符串處理（避免時區問題）
-    const datetime = dateString.substring(0, 16) // "2025-10-30T17:00"
-    const [dateStr] = datetime.split('T')
+  const formatDateTime = (isoString: string) => {
+    const datetime = isoString.substring(0, 16)
+    const [dateStr, timeStr] = datetime.split('T')
     const [year, month, day] = dateStr.split('-')
-    
-    // 手動構造 Date 只用來計算星期幾
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-    const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
     const weekday = weekdays[date.getDay()]
-    
-    return `${year}/${month}/${day} (${weekday})`
-  }
-
-  const formatTime = (dateString: string) => {
-    // 純字符串處理（避免時區問題）
-    const datetime = dateString.substring(0, 16) // "2025-10-30T17:00"
-    const [, timeStr] = datetime.split('T')
-    const hours = parseInt(timeStr.split(':')[0])
-    
-    const period = hours < 12 ? '上午' : '下午'
-    
-    return `${period}${timeStr}`
+    return `${month}/${day} (週${weekday}) ${timeStr}`
   }
 
   return (
-    <div style={{ 
-      minHeight: isEmbedded ? 'auto' : '100vh',
-      background: isEmbedded ? 'transparent' : '#f8f9fa',
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: isEmbedded ? 'transparent' : '#f5f5f5',
       padding: isEmbedded ? '0' : '15px'
     }}>
-      <div style={{ 
-        maxWidth: '900px', 
-        margin: '0 auto'
-      }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         {/* Header */}
         {!isEmbedded && (
-          <div style={{ 
-            background: 'white',
+          <div style={{
+            background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
             borderRadius: '8px',
             padding: '15px',
             marginBottom: '15px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             gap: '10px'
           }}>
-            <h1 style={{ 
+            <h1 style={{
               margin: 0,
               fontSize: '18px',
-              color: '#000',
+              color: 'white',
               fontWeight: '600'
             }}>
               教練行程
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Link 
+              <Link
                 to="/"
                 style={{
                   padding: '6px 12px',
-                  background: '#f8f9fa',
-                  color: '#333',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  color: 'white',
                   textDecoration: 'none',
                   borderRadius: '4px',
                   fontSize: '13px',
-                  border: '1px solid #dee2e6',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
                   whiteSpace: 'nowrap'
                 }}
               >
@@ -350,35 +210,37 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
           </div>
         )}
 
-        {/* Search section */}
+        {/* 搜尋區域 */}
         <div style={{
           background: 'white',
-          borderRadius: '8px',
-          padding: '20px',
+          borderRadius: '12px',
+          padding: '24px',
           marginBottom: '15px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
         }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#333'
-          }}>
-            教練姓名
-          </label>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* 教練選擇 */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '13px',
+              color: '#868e96',
+              fontWeight: '500'
+            }}>
+              教練姓名
+            </label>
             <select
               value={selectedCoachId}
               onChange={(e) => setSelectedCoachId(e.target.value)}
               style={{
-                flex: '1',
-                minWidth: '200px',
-                padding: '10px 12px',
-                fontSize: '15px',
-                border: '1px solid #dee2e6',
-                borderRadius: '6px',
-                outline: 'none'
+                width: '100%',
+                padding: '14px 16px',
+                fontSize: '16px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                outline: 'none',
+                boxSizing: 'border-box',
+                backgroundColor: 'white'
               }}
             >
               <option value="">請選擇教練</option>
@@ -388,393 +250,156 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
                 </option>
               ))}
             </select>
-            <button
-              onClick={handleSearch}
-              disabled={!selectedCoachId || loading}
+          </div>
+
+          {/* 月份選擇 */}
+          <div>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '13px',
+              color: '#868e96',
+              fontWeight: '500'
+            }}>
+              選擇月份
+            </label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              disabled={!selectedCoachId}
               style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                fontWeight: '500',
-                background: selectedCoachId && !loading ? '#28a745' : '#ccc',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: selectedCoachId && !loading ? 'pointer' : 'not-allowed',
-                minHeight: '40px'
+                width: '100%',
+                padding: '14px 16px',
+                fontSize: '16px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                outline: 'none',
+                boxSizing: 'border-box',
+                backgroundColor: selectedCoachId ? 'white' : '#f8f9fa',
+                cursor: selectedCoachId ? 'pointer' : 'not-allowed'
               }}
             >
-              {loading ? '搜尋中...' : '🔍 搜尋'}
-            </button>
+              {generateMonthOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
-          
-          {/* 篩選選項 */}
-          {hasSearched && (
-            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e0e0e0' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '12px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333'
-              }}>
-                篩選類型
-              </label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                {[
-                  { value: 'pending', label: '待確認' },
-                  { value: 'future', label: '未來預約' },
-                  { value: 'custom', label: '自定義日期' },
-                  { value: 'all', label: '全部' }
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setFilterType(option.value as any)}
-                    style={{
-                      padding: '8px 16px',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '6px',
-                      background: filterType === option.value ? '#000' : '#fff',
-                      color: filterType === option.value ? '#fff' : '#333',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              
-              {/* 自定義日期範圍 */}
-              {filterType === 'custom' && (
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <div>
-                    <label style={{ fontSize: '12px', color: '#666', marginBottom: '4px', display: 'block' }}>
-                      開始日期
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      style={{
-                        padding: '8px',
-                        border: '1px solid #dee2e6',
-                        borderRadius: '4px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '12px', color: '#666', marginBottom: '4px', display: 'block' }}>
-                      結束日期
-                    </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      style={{
-                        padding: '8px',
-                        border: '1px solid #dee2e6',
-                        borderRadius: '4px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-              
-              <button
-                onClick={handleSearch}
-                style={{
-                  marginTop: '12px',
-                  padding: '8px 20px',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  background: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
-                }}
-              >
-                套用篩選
-              </button>
-            </div>
-          )}
         </div>
 
-        {/* Results */}
-        {hasSearched && (
+        {/* 預約列表 */}
+        {selectedCoachId && (
           <div style={{
             background: 'white',
-            borderRadius: '12px',
-            padding: '30px',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            borderRadius: '8px',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
           }}>
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                載入中...
+            <div style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#333',
+              marginBottom: '15px'
+            }}>
+              {loading ? '載入中...' : `找到 ${bookings.length} 筆預約`}
+            </div>
+
+            {!loading && bookings.length === 0 && (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px 20px',
+                color: '#999',
+                fontSize: '16px',
+              }}>
+                😔 該月份沒有預約記錄
               </div>
-            ) : bookings.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                沒有找到預約記錄
-              </div>
-            ) : (
-              <>
-                <h2 style={{ 
-                  marginTop: 0,
-                  marginBottom: '20px',
-                  fontSize: '20px',
-                  color: '#333'
-                }}>
-                  找到 {bookings.length} 筆預約記錄
-                </h2>
-                <div style={{ 
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '15px'
-                }}>
-                  {bookings.map((booking) => (
-                    <div
-                      key={booking.id}
-                      style={{
-                        border: '2px solid #e0e0e0',
-                        borderRadius: '10px',
-                        padding: '20px',
-                        transition: 'all 0.3s ease',
-                        cursor: 'pointer',
-                        borderLeftWidth: '6px',
-                        borderLeftColor: booking.boats?.color || '#999'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = booking.boats?.color || '#667eea'
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#e0e0e0'
-                        e.currentTarget.style.borderLeftColor = booking.boats?.color || '#999'
-                        e.currentTarget.style.boxShadow = 'none'
-                        e.currentTarget.style.transform = 'translateY(0)'
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        marginBottom: '15px',
-                        flexWrap: 'wrap',
-                        gap: '10px'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <h3 style={{ 
-                            margin: 0,
-                            fontSize: '18px',
-                            color: '#333',
-                            fontWeight: 'bold'
-                          }}>
-                            {booking.student}
-                          </h3>
-                          {booking.coach_confirmed && (
-                            <span style={{ 
-                              fontSize: '12px', 
-                              padding: '4px 8px', 
-                              background: '#4caf50', 
-                              borderRadius: '4px', 
-                              color: 'white',
-                              fontWeight: 'bold'
-                            }}>
-                              ✓ 已確認
-                            </span>
-                          )}
-                          {(() => {
-                            // 純字符串比較（包含日期和時間）
-                            const datetime = booking.start_at.substring(0, 16) // "2025-10-30T13:55"
-                            
-                            // 計算預約結束時間
-                            const [dateStr, timeStr] = datetime.split('T')
-                            const [hour, minute] = timeStr.split(':').map(Number)
-                            const endMinute = hour * 60 + minute + booking.duration_min
-                            const endHour = Math.floor(endMinute / 60)
-                            const endMin = endMinute % 60
-                            const endTimeStr = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
-                            const endDatetime = `${dateStr}T${endTimeStr}`
-                            
-                            // 獲取當前時間（本地格式）
-                            const now = new Date()
-                            const nowYear = now.getFullYear()
-                            const nowMonth = String(now.getMonth() + 1).padStart(2, '0')
-                            const nowDay = String(now.getDate()).padStart(2, '0')
-                            const nowHour = String(now.getHours()).padStart(2, '0')
-                            const nowMinute = String(now.getMinutes()).padStart(2, '0')
-                            const nowDatetime = `${nowYear}-${nowMonth}-${nowDay}T${nowHour}:${nowMinute}`
-                            
-                            // 字符串比較（已結束的預約）
-                            const isEnded = endDatetime < nowDatetime
-                            
-                            return isEnded && !booking.coach_confirmed && (
-                              <span style={{ 
-                                fontSize: '12px', 
-                                padding: '4px 8px', 
-                                background: '#ff9800', 
-                                borderRadius: '4px', 
-                                color: 'white',
-                                fontWeight: 'bold'
-                              }}>
-                                ! 待確認
-                              </span>
-                            )
-                          })()}
+            )}
+
+            {!loading && bookings.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {bookings.map((booking) => (
+                  <div
+                    key={booking.id}
+                    style={{
+                      padding: '16px',
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`,
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '12px',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                    }}>
+                      <div>
+                        <div style={{
+                          fontSize: '18px',
+                          fontWeight: '600',
+                          color: '#000',
+                          marginBottom: '4px',
+                        }}>
+                          {booking.student}
                         </div>
                         <div style={{
                           fontSize: '14px',
-                          color: '#666'
+                          color: '#666',
                         }}>
-                          {formatDate(booking.start_at)} {formatTime(booking.start_at)}
+                          {formatDateTime(booking.start_at)}
                         </div>
                       </div>
+                    </div>
 
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: '15px',
-                        fontSize: '14px'
-                      }}>
-                        {booking.boats && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '18px' }}>🚤</span>
-                            <span style={{ fontWeight: 'bold' }}>船隻：</span>
-                            <span 
-                              style={{ 
-                                padding: '4px 12px',
-                                borderRadius: '20px',
-                                background: booking.boats.color,
-                                color: getContrastingTextColor(booking.boats.color),
-                                fontWeight: 'bold'
-                              }}
-                            >
-                              {booking.boats.name}
-                            </span>
-                          </div>
-                        )}
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '18px' }}>⏱️</span>
-                          <span style={{ fontWeight: 'bold' }}>時長：</span>
-                          <span>
-                            {booking.coach_confirmed && booking.actual_duration_min
-                              ? `${booking.actual_duration_min} 分鐘 (實際)`
-                              : `${booking.duration_min} 分鐘`}
-                          </span>
-                        </div>
-
-                        {booking.activity_types && booking.activity_types.length > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '18px' }}>🏄</span>
-                            <span style={{ fontWeight: 'bold' }}>活動：</span>
-                            <span>{booking.activity_types.join(', ')}</span>
-                          </div>
-                        )}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                      gap: '12px',
+                      marginTop: '12px',
+                      fontSize: '14px'
+                    }}>
+                      <div>
+                        <span style={{ color: '#666' }}>船：</span>
+                        <span style={{ fontWeight: '500' }}>{booking.boats?.name || '未指定'}</span>
                       </div>
-
-                      {booking.notes && (
-                        <div style={{
-                          marginTop: '15px',
-                          padding: '10px',
-                          background: '#f5f5f5',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          color: '#666'
-                        }}>
-                          <span style={{ fontWeight: 'bold' }}>📝 備註：</span> {booking.notes}
+                      <div>
+                        <span style={{ color: '#666' }}>時長：</span>
+                        <span style={{ fontWeight: '500' }}>{booking.duration_min}分鐘</span>
+                      </div>
+                      {booking.activity_types && booking.activity_types.length > 0 && (
+                        <div>
+                          <span style={{ color: '#666' }}>活動：</span>
+                          <span style={{ fontWeight: '500' }}>{booking.activity_types.join(' + ')}</span>
                         </div>
                       )}
-
-                      {/* 快速確認區塊 */}
-                      {(() => {
-                        // 純字符串比較（包含日期和時間）
-                        const datetime = booking.start_at.substring(0, 16) // "2025-10-30T13:55"
-                        
-                        // 計算預約結束時間
-                        const [dateStr, timeStr] = datetime.split('T')
-                        const [hour, minute] = timeStr.split(':').map(Number)
-                        const endMinute = hour * 60 + minute + booking.duration_min
-                        const endHour = Math.floor(endMinute / 60)
-                        const endMin = endMinute % 60
-                        const endTimeStr = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
-                        const endDatetime = `${dateStr}T${endTimeStr}`
-                        
-                        // 獲取當前時間（本地格式）
-                        const now = new Date()
-                        const nowYear = now.getFullYear()
-                        const nowMonth = String(now.getMonth() + 1).padStart(2, '0')
-                        const nowDay = String(now.getDate()).padStart(2, '0')
-                        const nowHour = String(now.getHours()).padStart(2, '0')
-                        const nowMinute = String(now.getMinutes()).padStart(2, '0')
-                        const nowDatetime = `${nowYear}-${nowMonth}-${nowDay}T${nowHour}:${nowMinute}`
-                        
-                        // 字符串比較（已結束的預約）
-                        const isEnded = endDatetime < nowDatetime
-                        const needsConfirm = isEnded && !booking.coach_confirmed
-                        const isConfirming = confirmingIds.has(booking.id)
-                        
-                        if (needsConfirm) {
-                          return (
-                            <div style={{
-                              marginTop: '15px',
-                              padding: '15px',
-                              background: '#fff3cd',
-                              border: '2px solid #ff9800',
-                              borderRadius: '8px'
-                            }}>
-                              <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#333' }}>
-                                ⚠️ 請確認課程完成
-                              </div>
-                              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <div style={{ flex: '1', minWidth: '200px' }}>
-                                  <input
-                                    type="text"
-                                    value={confirmNotes.get(booking.id) || ''}
-                                    onChange={(e) => setConfirmNote(booking.id, e.target.value)}
-                                    placeholder="總時數、是否指定教練、其它備註"
-                                    style={{
-                                      width: '100%',
-                                      padding: '10px',
-                                      border: '1px solid #ccc',
-                                      borderRadius: '4px',
-                                      fontSize: '14px',
-                                      boxSizing: 'border-box'
-                                    }}
-                                  />
-                                </div>
-                                <button
-                                  onClick={() => handleQuickConfirm(booking.id)}
-                                  disabled={isConfirming}
-                                  style={{
-                                    padding: '8px 20px',
-                                    background: isConfirming ? '#ccc' : '#28a745',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                    cursor: isConfirming ? 'not-allowed' : 'pointer',
-                                    minHeight: '36px',
-                                    whiteSpace: 'nowrap'
-                                  }}
-                                >
-                                  {isConfirming ? '確認中...' : '✓ 確認'}
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        }
-                        return null
-                      })()}
+                      <div>
+                        <span style={{ color: '#666' }}>教練：</span>
+                        <span style={{ fontWeight: '500' }}>
+                          {booking.coaches.map(c => c.name).join(' / ') || '未指定'}
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </>
+
+                    {booking.notes && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '10px',
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: '4px',
+                        fontSize: '13px',
+                        color: '#666',
+                        whiteSpace: 'pre-wrap'
+                      }}>
+                        📝 {booking.notes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -782,4 +407,3 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
     </div>
   )
 }
-

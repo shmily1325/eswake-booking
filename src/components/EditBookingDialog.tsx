@@ -135,7 +135,7 @@ export function EditBookingDialog({
       // Combine date and time into ISO format（TEXT 格式，不含時區）
       const newStartAt = `${startDate}T${startTime}:00`
       
-      // 檢查船隻衝突（需要至少15分鐘間隔）
+      // 檢查船衝突（需要至少15分鐘間隔）
       // TEXT 格式查詢，直接字符串比較
       const { data: existingBookings, error: checkError} = await supabase
         .from('bookings')
@@ -365,8 +365,8 @@ export function EditBookingDialog({
     setLoading(true)
 
     try {
-      // 獲取船隻名稱
-      const boatName = booking.boats?.name || '未知船隻'
+      // 獲取船名稱
+      const boatName = booking.boats?.name || '未知船'
       const coachNames = booking.coaches && booking.coaches.length > 0
         ? booking.coaches.map(c => c.name).join(' / ')
         : '未指定'

@@ -65,10 +65,18 @@ export function AuditLog({ user }: AuditLogProps) {
   }
 
   const formatDateTime = (isoString: string) => {
+    if (!isoString) return '未知時間'
+    
     // 純字符串處理
     const datetime = isoString.substring(0, 16) // "2025-11-01T13:55"
-    const [dateStr, timeStr] = datetime.split('T')
+    const parts = datetime.split('T')
+    
+    if (parts.length !== 2) return isoString
+    
+    const [dateStr, timeStr] = parts
     const [year, month, day] = dateStr.split('-')
+    
+    if (!year || !month || !day || !timeStr) return isoString
     
     // 計算星期幾
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
@@ -291,7 +299,7 @@ export function AuditLog({ user }: AuditLogProps) {
                 </div>
                 <div style={{ marginBottom: '8px' }}>
                   <strong>學生：</strong>{log.student_name} | 
-                  <strong> 船隻：</strong>{log.boat_name} | 
+                  <strong> 船：</strong>{log.boat_name} | 
                   <strong> 時長：</strong>{log.duration_min}分鐘
                 </div>
                 <div style={{ marginBottom: '8px' }}>

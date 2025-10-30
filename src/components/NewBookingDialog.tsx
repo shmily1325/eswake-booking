@@ -198,7 +198,7 @@ export function NewBookingDialog({
         skipped: [] as { date: string; reason: string }[],
       }
 
-      // 獲取船隻名稱（用於審計日誌）
+      // 獲取船名稱（用於審計日誌）
       const { data: boatData } = await supabase
         .from('boats')
         .select('name')
@@ -230,7 +230,7 @@ export function NewBookingDialog({
         const newEndMinutes = newStartMinutes + durationMin
         const newCleanupEndMinutes = newEndMinutes + 15
       
-        // 檢查船隻衝突（需要至少15分鐘間隔）
+        // 檢查船衝突（需要至少15分鐘間隔）
         // TEXT 格式查詢，直接字符串比較
         const { data: existingBookings, error: checkError } = await supabase
           .from('bookings')
@@ -607,7 +607,7 @@ export function NewBookingDialog({
               fontSize: '15px',
               fontWeight: '500',
             }}>
-              船隻
+              船
             </label>
             <select
               value={selectedBoatId}
@@ -640,7 +640,7 @@ export function NewBookingDialog({
               fontSize: '15px',
               fontWeight: '500',
             }}>
-              學生姓名
+              學生
             </label>
             <input
               type="text"
@@ -856,7 +856,7 @@ export function NewBookingDialog({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="例如：初學者、需要救生衣、特殊需求..."
+              placeholder="例如：初學者、特殊需求..."
               style={{
                 width: '100%',
                 padding: '12px',

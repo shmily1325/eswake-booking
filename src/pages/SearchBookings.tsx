@@ -146,7 +146,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       const [dateStr, timeStr] = datetime.split('T')
       const [, month, day] = dateStr.split('-')
       
-      // 組合一行：日期 時間 船隻 教練 時長 活動類型
+      // 組合一行：日期 時間 船 教練 時長 活動類型
       const coaches = booking.coaches && booking.coaches.length > 0 
         ? booking.coaches.map(c => c.name).join('/')
         : '不指定'
