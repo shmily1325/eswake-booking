@@ -359,7 +359,7 @@ export function DayView({ user }: DayViewProps) {
       const { year: bYear, month: bMonth, day: bDay, hour: bHour, minute: bMinute } = toTaipeiTime(booking.start_at)
       const bookingStart = new Date(bYear, bMonth - 1, bDay, bHour, bMinute, 0).getTime()
       const bookingEnd = bookingStart + booking.duration_min * 60000
-      const cleanupEnd = bookingEnd + 15 * 60000
+      const cleanupEnd = bookingEnd + 30 * 60000  // 顯示30分鐘接船時間
       
       if (cellTime >= bookingEnd && cellTime < cleanupEnd) {
         return true
