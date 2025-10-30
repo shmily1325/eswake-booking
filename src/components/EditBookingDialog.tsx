@@ -186,13 +186,11 @@ export function EditBookingDialog({
       // 檢查教練衝突（如果有選擇教練）
       if (selectedCoaches.length > 0) {
         for (const coachId of selectedCoaches) {
-          // 查詢該教練在該日期的所有預約
-          const { data: coachBookings, error: coachCheckError } = await supabase
+          // 第一步：查詢該教練的所有預約關聯
+          const { data: coachBookingIds, error: coachCheckError } = await supabase
             .from('booking_coaches')
-            .select('booking_id, bookings!inner(id, start_at, duration_min, student)')
+            .select('booking_id')
             .eq('coach_id', coachId)
-            .gte('bookings.start_at', `${startDate}T00:00:00`)
-            .lte('bookings.start_at', `${startDate}T23:59:59`)
           
           if (coachCheckError) {
             setError('檢查教練衝突時發生錯誤')
@@ -200,9 +198,26 @@ export function EditBookingDialog({
             return
           }
           
-          for (const item of coachBookings || []) {
-            const coachBooking = (item as any).bookings
-            
+          if (!coachBookingIds || coachBookingIds.length === 0) {
+            continue // 該教練沒有任何預約，跳過
+          }
+          
+          // 第二步：查詢這些預約的詳細信息
+          const bookingIds = coachBookingIds.map(item => item.booking_id)
+          const { data: coachBookings, error: bookingError } = await supabase
+            .from('bookings')
+            .select('id, start_at, duration_min, student')
+            .in('id', bookingIds)
+            .gte('start_at', `${startDate}T00:00:00`)
+            .lte('start_at', `${startDate}T23:59:59`)
+          
+          if (bookingError) {
+            setError('檢查教練衝突時發生錯誤')
+            setLoading(false)
+            return
+          }
+          
+          for (const coachBooking of coachBookings || []) {
             // 跳過當前編輯的預約
             if (coachBooking.id === booking.id) {
               continue

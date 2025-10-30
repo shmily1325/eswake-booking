@@ -95,11 +95,10 @@ interface DayViewProps {
 export function DayView({ user }: DayViewProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0]
-  const { isMobile, isLandscape } = useResponsive()
+  const { isMobile } = useResponsive()
   
   const [boats, setBoats] = useState<Boat[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(true)
   
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -151,11 +150,10 @@ export function DayView({ user }: DayViewProps) {
       // 使用 Promise.all 並行獲取數據
       const promises = []
       
-      // 只在初次載入時獲取 boats 和 coaches
+      // 只在初次載入時獲取 boats
       if (isInitialLoad) {
         promises.push(
-          supabase.from('boats').select('*'),
-          supabase.from('coaches').select('*')
+          supabase.from('boats').select('*')
         )
       }
       
@@ -181,7 +179,7 @@ export function DayView({ user }: DayViewProps) {
       const results = await Promise.all(promises)
       
       if (isInitialLoad) {
-        const [boatsResult, coachesResult, bookingsResult] = results
+        const [boatsResult, bookingsResult] = results
         
         if (boatsResult.error) {
           console.error('Error fetching boats:', boatsResult.error)
@@ -192,12 +190,6 @@ export function DayView({ user }: DayViewProps) {
             return order.indexOf(a.name) - order.indexOf(b.name)
           })
           setBoats(sortedBoats)
-        }
-        
-        if (coachesResult.error) {
-          console.error('Error fetching coaches:', coachesResult.error)
-        } else {
-          setCoaches(coachesResult.data || [])
         }
 
         if (bookingsResult.error) {
@@ -505,7 +497,6 @@ export function DayView({ user }: DayViewProps) {
           onClick={() => setViewMode(viewMode === 'timeline' ? 'list' : 'timeline')}
           style={{
             ...buttonStyles.primary,
-            filter: 'grayscale(100%)',
             marginLeft: 'auto',
           }}
         >
@@ -907,7 +898,7 @@ export function DayView({ user }: DayViewProps) {
           </thead>
           <tbody>
             {/* 08:00 分隔線 */}
-            {filteredTimeSlots.map((timeSlot, idx) => {
+            {filteredTimeSlots.map((timeSlot) => {
               const showPracticeLine = timeSlot === '08:00'
               
               return (

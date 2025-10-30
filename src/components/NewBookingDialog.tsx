@@ -235,13 +235,11 @@ export function NewBookingDialog({
         // 檢查教練衝突（如果有選擇教練）
         if (!hasConflict && selectedCoaches.length > 0) {
           for (const coachId of selectedCoaches) {
-            // 查詢該教練在該日期的所有預約
-            const { data: coachBookings, error: coachCheckError } = await supabase
+            // 第一步：查詢該教練的所有預約關聯
+            const { data: coachBookingIds, error: coachCheckError } = await supabase
               .from('booking_coaches')
-              .select('booking_id, bookings!inner(start_at, duration_min, student)')
+              .select('booking_id')
               .eq('coach_id', coachId)
-              .gte('bookings.start_at', `${dateStr}T00:00:00`)
-              .lte('bookings.start_at', `${dateStr}T23:59:59`)
             
             if (coachCheckError) {
               hasConflict = true
@@ -249,8 +247,26 @@ export function NewBookingDialog({
               break
             }
             
-            for (const item of coachBookings || []) {
-              const booking = (item as any).bookings
+            if (!coachBookingIds || coachBookingIds.length === 0) {
+              continue // 該教練沒有任何預約，跳過
+            }
+            
+            // 第二步：查詢這些預約的詳細信息
+            const bookingIds = coachBookingIds.map(item => item.booking_id)
+            const { data: coachBookings, error: bookingError } = await supabase
+              .from('bookings')
+              .select('id, start_at, duration_min, student')
+              .in('id', bookingIds)
+              .gte('start_at', `${dateStr}T00:00:00`)
+              .lte('start_at', `${dateStr}T23:59:59`)
+            
+            if (bookingError) {
+              hasConflict = true
+              conflictReason = '檢查教練衝突時發生錯誤'
+              break
+            }
+            
+            for (const booking of coachBookings || []) {
               const existingStart = new Date(booking.start_at).getTime()
               const existingEnd = existingStart + booking.duration_min * 60000
               
