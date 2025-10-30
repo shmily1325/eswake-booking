@@ -158,17 +158,29 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
         // 如果是待確認，只顯示已結束且未確認的
         if (filterType === 'pending') {
           bookingsWithCoaches = bookingsWithCoaches.filter(booking => {
-            // 純字符串比較
-            const datetime = booking.start_at.substring(0, 16)
-            const [, timeStr] = datetime.split('T')
+            // 純字符串比較（包含日期和時間）
+            const datetime = booking.start_at.substring(0, 16) // "2025-10-30T13:55"
+            
+            // 計算預約結束時間
+            const [dateStr, timeStr] = datetime.split('T')
             const [hour, minute] = timeStr.split(':').map(Number)
-            const startMinutes = hour * 60 + minute
-            const endMinutes = startMinutes + booking.duration_min
+            const endMinute = hour * 60 + minute + booking.duration_min
+            const endHour = Math.floor(endMinute / 60)
+            const endMin = endMinute % 60
+            const endTimeStr = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+            const endDatetime = `${dateStr}T${endTimeStr}`
             
+            // 獲取當前時間（本地格式）
             const now = new Date()
-            const nowMinutes = now.getHours() * 60 + now.getMinutes()
+            const nowYear = now.getFullYear()
+            const nowMonth = String(now.getMonth() + 1).padStart(2, '0')
+            const nowDay = String(now.getDate()).padStart(2, '0')
+            const nowHour = String(now.getHours()).padStart(2, '0')
+            const nowMinute = String(now.getMinutes()).padStart(2, '0')
+            const nowDatetime = `${nowYear}-${nowMonth}-${nowDay}T${nowHour}:${nowMinute}`
             
-            return endMinutes < nowMinutes
+            // 字符串比較（已結束的預約）
+            return endDatetime < nowDatetime
           })
         }
         
@@ -257,21 +269,28 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    // 純字符串處理（避免時區問題）
+    const datetime = dateString.substring(0, 16) // "2025-10-30T17:00"
+    const [dateStr] = datetime.split('T')
+    const [year, month, day] = dateStr.split('-')
+    
+    // 手動構造 Date 只用來計算星期幾
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
     const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
     const weekday = weekdays[date.getDay()]
     
-    return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} (${weekday})`
+    return `${year}/${month}/${day} (${weekday})`
   }
 
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
+    // 純字符串處理（避免時區問題）
+    const datetime = dateString.substring(0, 16) // "2025-10-30T17:00"
+    const [, timeStr] = datetime.split('T')
+    const hours = parseInt(timeStr.split(':')[0])
     
-    const period = date.getHours() < 12 ? '上午' : '下午'
+    const period = hours < 12 ? '上午' : '下午'
     
-    return `${period}${hours}:${minutes}`
+    return `${period}${timeStr}`
   }
 
   return (
@@ -564,16 +583,29 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
                             </span>
                           )}
                           {(() => {
-                            // 純字符串比較
-                            const datetime = booking.start_at.substring(0, 16)
-                            const [, timeStr] = datetime.split('T')
-                            const [hour, minute] = timeStr.split(':').map(Number)
-                            const startMinutes = hour * 60 + minute
-                            const endMinutes = startMinutes + booking.duration_min
+                            // 純字符串比較（包含日期和時間）
+                            const datetime = booking.start_at.substring(0, 16) // "2025-10-30T13:55"
                             
+                            // 計算預約結束時間
+                            const [dateStr, timeStr] = datetime.split('T')
+                            const [hour, minute] = timeStr.split(':').map(Number)
+                            const endMinute = hour * 60 + minute + booking.duration_min
+                            const endHour = Math.floor(endMinute / 60)
+                            const endMin = endMinute % 60
+                            const endTimeStr = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+                            const endDatetime = `${dateStr}T${endTimeStr}`
+                            
+                            // 獲取當前時間（本地格式）
                             const now = new Date()
-                            const nowMinutes = now.getHours() * 60 + now.getMinutes()
-                            const isEnded = endMinutes < nowMinutes
+                            const nowYear = now.getFullYear()
+                            const nowMonth = String(now.getMonth() + 1).padStart(2, '0')
+                            const nowDay = String(now.getDate()).padStart(2, '0')
+                            const nowHour = String(now.getHours()).padStart(2, '0')
+                            const nowMinute = String(now.getMinutes()).padStart(2, '0')
+                            const nowDatetime = `${nowYear}-${nowMonth}-${nowDay}T${nowHour}:${nowMinute}`
+                            
+                            // 字符串比較（已結束的預約）
+                            const isEnded = endDatetime < nowDatetime
                             
                             return isEnded && !booking.coach_confirmed && (
                               <span style={{ 
@@ -655,16 +687,29 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
 
                       {/* 快速確認區塊 */}
                       {(() => {
-                        // 純字符串比較
-                        const datetime = booking.start_at.substring(0, 16)
-                        const [, timeStr] = datetime.split('T')
-                        const [hour, minute] = timeStr.split(':').map(Number)
-                        const startMinutes = hour * 60 + minute
-                        const endMinutes = startMinutes + booking.duration_min
+                        // 純字符串比較（包含日期和時間）
+                        const datetime = booking.start_at.substring(0, 16) // "2025-10-30T13:55"
                         
+                        // 計算預約結束時間
+                        const [dateStr, timeStr] = datetime.split('T')
+                        const [hour, minute] = timeStr.split(':').map(Number)
+                        const endMinute = hour * 60 + minute + booking.duration_min
+                        const endHour = Math.floor(endMinute / 60)
+                        const endMin = endMinute % 60
+                        const endTimeStr = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+                        const endDatetime = `${dateStr}T${endTimeStr}`
+                        
+                        // 獲取當前時間（本地格式）
                         const now = new Date()
-                        const nowMinutes = now.getHours() * 60 + now.getMinutes()
-                        const isEnded = endMinutes < nowMinutes
+                        const nowYear = now.getFullYear()
+                        const nowMonth = String(now.getMonth() + 1).padStart(2, '0')
+                        const nowDay = String(now.getDate()).padStart(2, '0')
+                        const nowHour = String(now.getHours()).padStart(2, '0')
+                        const nowMinute = String(now.getMinutes()).padStart(2, '0')
+                        const nowDatetime = `${nowYear}-${nowMonth}-${nowDay}T${nowHour}:${nowMinute}`
+                        
+                        // 字符串比較（已結束的預約）
+                        const isEnded = endDatetime < nowDatetime
                         const needsConfirm = isEnded && !booking.coach_confirmed
                         const isConfirming = confirmingIds.has(booking.id)
                         

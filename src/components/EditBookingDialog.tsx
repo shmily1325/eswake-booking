@@ -45,7 +45,7 @@ export function EditBookingDialog({
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
   const [student, setStudent] = useState('')
   const [startDate, setStartDate] = useState('')
-  const [startTime, setStartTime] = useState('')
+  const [startTime, setStartTime] = useState('00:00')
   const [durationMin, setDurationMin] = useState(60)
   const [activityTypes, setActivityTypes] = useState<string[]>([])
   const [notes, setNotes] = useState('')
@@ -73,15 +73,14 @@ export function EditBookingDialog({
         setActivityTypes(booking.activity_types || [])
         setNotes(booking.notes || '')
         
-        // Parse start_at into date and time (使用本地時間組件避免時區偏移)
-        const startDateTime = new Date(booking.start_at)
-        const year = startDateTime.getFullYear()
-        const month = String(startDateTime.getMonth() + 1).padStart(2, '0')
-        const day = String(startDateTime.getDate()).padStart(2, '0')
-        const dateStr = `${year}-${month}-${day}`
-        const timeStr = startDateTime.toTimeString().slice(0, 5) // HH:MM
-        setStartDate(dateStr)
-        setStartTime(timeStr)
+        // Parse start_at into date and time（純字符串解析，避免時區問題）
+        // booking.start_at 格式: "2025-10-30T17:00:00"
+        if (booking.start_at) {
+          const datetime = booking.start_at.substring(0, 16) // 取前16個字符 "2025-10-30T17:00"
+          const [dateStr, timeStr] = datetime.split('T')
+          setStartDate(dateStr)
+          setStartTime(timeStr)
+        }
       }
     }
   }, [isOpen, booking])
@@ -341,7 +340,7 @@ export function EditBookingDialog({
       setSelectedCoaches([])
       setStudent('')
       setStartDate('')
-      setStartTime('')
+      setStartTime('00:00')
       setDurationMin(60)
       setActivityTypes([])
       setNotes('')
@@ -408,7 +407,7 @@ export function EditBookingDialog({
       setSelectedCoaches([])
       setStudent('')
       setStartDate('')
-      setStartTime('')
+      setStartTime('00:00')
       setDurationMin(60)
       setActivityTypes([])
       setNotes('')

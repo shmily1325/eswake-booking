@@ -37,7 +37,7 @@ export function NewBookingDialog({
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
   const [student, setStudent] = useState('')
   const [startDate, setStartDate] = useState('')
-  const [startTime, setStartTime] = useState('')
+  const [startTime, setStartTime] = useState('00:00')
   const [durationMin, setDurationMin] = useState(60)
   const [activityTypes, setActivityTypes] = useState<string[]>([])
   const [notes, setNotes] = useState('')
@@ -59,12 +59,24 @@ export function NewBookingDialog({
       fetchBoats()
       fetchCoaches()
       setSelectedBoatId(defaultBoatId)
+      
       // 純字符串解析（避免 new Date() 的時區問題）
-      // defaultStartTime 格式: "2025-10-30T17:00"
-      const datetime = defaultStartTime.substring(0, 16) // 取前16個字符
-      const [dateStr, timeStr] = datetime.split('T')
-      setStartDate(dateStr)
-      setStartTime(timeStr)
+      if (defaultStartTime) {
+        // defaultStartTime 格式: "2025-10-30T17:00"
+        const datetime = defaultStartTime.substring(0, 16) // 取前16個字符
+        const [dateStr, timeStr] = datetime.split('T')
+        setStartDate(dateStr)
+        setStartTime(timeStr)
+      } else {
+        // 如果沒有提供預設時間，使用當前時間
+        const now = new Date()
+        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+        const hour = now.getHours()
+        const minute = Math.floor(now.getMinutes() / 15) * 15 // 對齊到15分鐘
+        const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+        setStartDate(dateStr)
+        setStartTime(timeStr)
+      }
     }
   }, [isOpen, defaultStartTime, defaultBoatId])
 
@@ -425,7 +437,7 @@ export function NewBookingDialog({
       setSelectedCoaches([])
       setStudent('')
       setStartDate('')
-      setStartTime('')
+      setStartTime('00:00')
       setDurationMin(60)
       setActivityTypes([])
       setNotes('')
@@ -446,7 +458,7 @@ export function NewBookingDialog({
       setSelectedCoaches([])
       setStudent('')
       setStartDate('')
-      setStartTime('')
+      setStartTime('00:00')
       setDurationMin(60)
       setActivityTypes([])
       setNotes('')

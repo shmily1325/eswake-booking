@@ -120,7 +120,9 @@ export function DayView({ user }: DayViewProps) {
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('list')
 
   const changeDate = (offset: number) => {
-    const currentDate = new Date(dateParam)
+    // 手動構造 Date 對象（避免字符串解析的時區問題）
+    const [year, month, day] = dateParam.split('-').map(Number)
+    const currentDate = new Date(year, month - 1, day)
     currentDate.setDate(currentDate.getDate() + offset)
     const newDate = getLocalDateString(currentDate)
     setSearchParams({ date: newDate })
