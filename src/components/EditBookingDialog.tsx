@@ -133,10 +133,8 @@ export function EditBookingDialog({
     setLoading(true)
 
     try {
-      // Combine date and time into ISO format
-      const newStartAt = new Date(`${startDate}T${startTime}:00`).toISOString()
-      const newStartTime = new Date(newStartAt).getTime()
-      const newEndTime = newStartTime + durationMin * 60000
+      // Combine date and time into ISO format，明確指定台北時區 (+08:00)
+      const newStartAt = `${startDate}T${startTime}:00+08:00`
       
       // 檢查船隻衝突（需要至少15分鐘間隔）
       const { data: existingBookings, error: checkError } = await supabase
@@ -152,44 +150,43 @@ export function EditBookingDialog({
         return
       }
       
-      // 檢查是否與現有預約衝突（需要15分鐘接船時間）
+      // 純字符串比較（避免時區問題）
+      const [newHour, newMinute] = startTime.split(':').map(Number)
+      const newStartMinutes = newHour * 60 + newMinute
+      const newEndMinutes = newStartMinutes + durationMin
+      const newCleanupEndMinutes = newEndMinutes + 15
+      
       // 排除當前編輯的預約
       for (const existing of existingBookings || []) {
         if (existing.id === booking.id) {
           continue
         }
         
-        // 使用相同的本地時間解析方式（避免時區偏移）
-        const existingDate = new Date(existing.start_at)
-        const existingLocalTime = new Date(
-          existingDate.getFullYear(),
-          existingDate.getMonth(),
-          existingDate.getDate(),
-          existingDate.getHours(),
-          existingDate.getMinutes(),
-          0
-        )
-        const existingStart = existingLocalTime.getTime()
-        const existingEnd = existingStart + existing.duration_min * 60000
-        const existingCleanupEnd = existingEnd + 15 * 60000
+        // 直接從資料庫取前16個字符
+        const existingDatetime = existing.start_at.substring(0, 16)
+        const [, existingTime] = existingDatetime.split('T')
+        const [existingHour, existingMinute] = existingTime.split(':').map(Number)
+        
+        const existingStartMinutes = existingHour * 60 + existingMinute
+        const existingEndMinutes = existingStartMinutes + existing.duration_min
+        const existingCleanupEndMinutes = existingEndMinutes + 15
         
         // 檢查新預約是否在現有預約的接船時間內開始
-        if (newStartTime >= existingEnd && newStartTime < existingCleanupEnd) {
+        if (newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
           setError(`與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`)
           setLoading(false)
           return
         }
         
         // 檢查新預約結束時間是否會影響現有預約
-        const newCleanupEnd = newEndTime + 15 * 60000
-        if (existingStart >= newEndTime && existingStart < newCleanupEnd) {
+        if (existingStartMinutes >= newEndMinutes && existingStartMinutes < newCleanupEndMinutes) {
           setError(`與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`)
           setLoading(false)
           return
         }
         
         // 檢查時間重疊
-        if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
+        if (!(newEndMinutes <= existingStartMinutes || newStartMinutes >= existingEndMinutes)) {
           setError(`與 ${existing.student} 的預約時間重疊`)
           setLoading(false)
           return
@@ -236,21 +233,16 @@ export function EditBookingDialog({
               continue
             }
             
-            // 使用相同的本地時間解析方式（避免時區偏移）
-            const existingDate = new Date(coachBooking.start_at)
-            const existingLocalTime = new Date(
-              existingDate.getFullYear(),
-              existingDate.getMonth(),
-              existingDate.getDate(),
-              existingDate.getHours(),
-              existingDate.getMinutes(),
-              0
-            )
-            const existingStart = existingLocalTime.getTime()
-            const existingEnd = existingStart + coachBooking.duration_min * 60000
+            // 純字符串比較
+            const bookingDatetime = coachBooking.start_at.substring(0, 16)
+            const [, bookingTime] = bookingDatetime.split('T')
+            const [bookingHour, bookingMinute] = bookingTime.split(':').map(Number)
+            
+            const bookingStartMinutes = bookingHour * 60 + bookingMinute
+            const bookingEndMinutes = bookingStartMinutes + coachBooking.duration_min
             
             // 檢查時間重疊
-            if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
+            if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
               const coach = coaches.find(c => c.id === coachId)
               setError(`教練 ${coach?.name || '未知'} 在此時段已有其他預約（${coachBooking.student}）`)
               setLoading(false)
@@ -624,22 +616,58 @@ export function EditBookingDialog({
             }}>
               開始時間
             </label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              required
-              step="900"
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                boxSizing: 'border-box',
-                fontSize: '16px',
-                touchAction: 'manipulation',
-              }}
-            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <select
+                value={startTime.split(':')[0]}
+                onChange={(e) => {
+                  const hour = e.target.value
+                  const minute = startTime.split(':')[1] || '00'
+                  setStartTime(`${hour}:${minute}`)
+                }}
+                required
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ccc',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                  touchAction: 'manipulation',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                {Array.from({ length: 24 }, (_, i) => {
+                  const hour = String(i).padStart(2, '0')
+                  return <option key={hour} value={hour}>{hour}</option>
+                })}
+              </select>
+              <select
+                value={startTime.split(':')[1] || '00'}
+                onChange={(e) => {
+                  const hour = startTime.split(':')[0]
+                  const minute = e.target.value
+                  setStartTime(`${hour}:${minute}`)
+                }}
+                required
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ccc',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                  touchAction: 'manipulation',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="00">00</option>
+                <option value="15">15</option>
+                <option value="30">30</option>
+                <option value="45">45</option>
+              </select>
+            </div>
           </div>
 
           <div style={{ marginBottom: '18px' }}>

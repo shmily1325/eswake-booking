@@ -90,19 +90,24 @@ export function StudentHistory({ user, isEmbedded = false }: StudentHistoryProps
   }
 
   const formatDateTime = (isoString: string) => {
-    const date = new Date(isoString)
-    return date.toLocaleString('zh-TW', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      weekday: 'short',
-    })
+    // 純字符串處理（避免時區問題）
+    const datetime = isoString.substring(0, 16) // "2025-11-01T13:55"
+    const [dateStr, timeStr] = datetime.split('T')
+    const [year, month, day] = dateStr.split('-')
+    
+    // 計算星期幾
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+    const weekday = weekdays[date.getDay()]
+    
+    return `${year}/${month}/${day} (週${weekday}) ${timeStr}`
   }
 
   const isPastBooking = (isoString: string) => {
-    return new Date(isoString) < new Date()
+    const datetime = isoString.substring(0, 16) // "2025-11-01T13:55"
+    const now = new Date()
+    const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    return datetime < nowStr
   }
 
   return (

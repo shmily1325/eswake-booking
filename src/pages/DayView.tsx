@@ -159,14 +159,9 @@ export function DayView({ user }: DayViewProps) {
       }
       
     // 每次都獲取當日的 bookings
-    // 將台北時間的日期範圍轉換為 UTC 時間進行查詢
-    const [year, month, day] = dateParam.split('-').map(Number)
-    const taipeiStartOfDay = new Date(year, month - 1, day, 0, 0, 0)
-    const taipeiEndOfDay = new Date(year, month - 1, day, 23, 59, 59)
-    
-    // 轉換為 UTC ISO 字符串（會自動調整為 UTC-8）
-    const startOfDay = new Date(taipeiStartOfDay.getTime() - 8 * 60 * 60 * 1000).toISOString()
-    const endOfDay = new Date(taipeiEndOfDay.getTime() - 8 * 60 * 60 * 1000).toISOString()
+    // 使用簡單的字符串查詢，避免時區轉換問題
+    const startOfDay = `${dateParam}T00:00:00`
+    const endOfDay = `${dateParam}T23:59:59`
     
     promises.push(
       supabase
@@ -261,26 +256,10 @@ export function DayView({ user }: DayViewProps) {
     setBookings(bookingsWithCoaches)
   }
 
-  // 轉換為台北時間組件
-  const toTaipeiTime = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const taipeiFormatter = new Intl.DateTimeFormat('zh-TW', {
-      timeZone: 'Asia/Taipei',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    })
-    const parts = taipeiFormatter.formatToParts(date)
-    const year = parseInt(parts.find(p => p.type === 'year')?.value || '0')
-    const month = parseInt(parts.find(p => p.type === 'month')?.value || '0')
-    const day = parseInt(parts.find(p => p.type === 'day')?.value || '0')
-    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0')
-    const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0')
-    
-    return { year, month, day, hour, minute }
+  // 輔助函數：將時間字符串轉為分鐘數（方便比較）
+  const timeToMinutes = (timeStr: string): number => {
+    const [hour, minute] = timeStr.split(':').map(Number)
+    return hour * 60 + minute
   }
 
   const handleCellClick = (boatId: number, timeSlot: string, booking?: Booking) => {
@@ -298,23 +277,24 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const getBookingForCell = (boatId: number, timeSlot: string): Booking | null => {
-    // 強制使用台北時間
-    const [year, month, day] = dateParam.split('-').map(Number)
-    const [hour, minute] = timeSlot.split(':').map(Number)
-    
-    // 構建當前格子的時間（使用本地時間）
-    const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
-    const cellTime = cellDateTime.getTime()
+    // 純字符串比較，完全不使用 Date 對象
+    const cellMinutes = timeToMinutes(timeSlot)
     
     for (const booking of bookings) {
       if (booking.boat_id !== boatId) continue
       
-      // 將預約的 start_at 轉換為台北時間進行比較
-      const { year: bYear, month: bMonth, day: bDay, hour: bHour, minute: bMinute } = toTaipeiTime(booking.start_at)
-      const bookingStart = new Date(bYear, bMonth - 1, bDay, bHour, bMinute, 0).getTime()
-      const bookingEnd = bookingStart + booking.duration_min * 60000
+      // 直接取資料庫時間的前16個字符，不做任何轉換
+      const bookingDatetime = booking.start_at.substring(0, 16) // "2025-11-01T13:55"
+      const [bookingDate, bookingTime] = bookingDatetime.split('T')
       
-      if (cellTime >= bookingStart && cellTime < bookingEnd) {
+      // 只比較同一天的預約
+      if (bookingDate !== dateParam) continue
+      
+      const bookingStartMinutes = timeToMinutes(bookingTime)
+      const bookingEndMinutes = bookingStartMinutes + booking.duration_min
+      
+      // 檢查當前格子是否在預約時間範圍內
+      if (cellMinutes >= bookingStartMinutes && cellMinutes < bookingEndMinutes) {
         return booking
       }
     }
@@ -322,46 +302,46 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const isBookingStart = (boatId: number, timeSlot: string): boolean => {
-    const [year, month, day] = dateParam.split('-').map(Number)
-    const [hour, minute] = timeSlot.split(':').map(Number)
-    
-    const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
-    const cellTime = cellDateTime.getTime()
+    // 純字符串比較
+    const cellDatetime = `${dateParam}T${timeSlot}` // "2025-11-01T15:00"
     
     for (const booking of bookings) {
       if (booking.boat_id !== boatId) continue
       
-      const { year: bYear, month: bMonth, day: bDay, hour: bHour, minute: bMinute } = toTaipeiTime(booking.start_at)
-      const bookingStart = new Date(bYear, bMonth - 1, bDay, bHour, bMinute, 0).getTime()
+      // 直接比較字符串（前16個字符）
+      const bookingDatetime = booking.start_at.substring(0, 16)
       
-      if (cellTime === bookingStart) {
+      if (cellDatetime === bookingDatetime) {
         return true
       }
     }
     return false
   }
 
-  // 計算接船時間結束的格子（15分鐘）
+  // 計算接船時間結束的格子（30分鐘顯示）
   const isCleanupTime = (boatId: number, timeSlot: string): boolean => {
     // 排除彈簧床
     const boat = boats.find(b => b.id === boatId)
     if (boat && boat.name === '彈簧床') return false
 
-    const [year, month, day] = dateParam.split('-').map(Number)
-    const [hour, minute] = timeSlot.split(':').map(Number)
-    
-    const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
-    const cellTime = cellDateTime.getTime()
+    const cellMinutes = timeToMinutes(timeSlot)
 
     for (const booking of bookings) {
       if (booking.boat_id !== boatId) continue
       
-      const { year: bYear, month: bMonth, day: bDay, hour: bHour, minute: bMinute } = toTaipeiTime(booking.start_at)
-      const bookingStart = new Date(bYear, bMonth - 1, bDay, bHour, bMinute, 0).getTime()
-      const bookingEnd = bookingStart + booking.duration_min * 60000
-      const cleanupEnd = bookingEnd + 30 * 60000  // 顯示30分鐘接船時間
+      // 直接取資料庫時間的前16個字符
+      const bookingDatetime = booking.start_at.substring(0, 16)
+      const [bookingDate, bookingTime] = bookingDatetime.split('T')
       
-      if (cellTime >= bookingEnd && cellTime < cleanupEnd) {
+      // 只比較同一天的預約
+      if (bookingDate !== dateParam) continue
+      
+      const bookingStartMinutes = timeToMinutes(bookingTime)
+      const bookingEndMinutes = bookingStartMinutes + booking.duration_min
+      const cleanupEndMinutes = bookingEndMinutes + 30  // 顯示30分鐘接船時間
+      
+      // 當前格子在接船時間範圍內
+      if (cellMinutes >= bookingEndMinutes && cellMinutes < cleanupEndMinutes) {
         return true
       }
     }
@@ -714,14 +694,14 @@ export function DayView({ user }: DayViewProps) {
                         flexDirection: 'column',
                       }}>
                         {boatBookings.map((booking, bookingIndex) => {
-                          const startTime = new Date(booking.start_at)
-                          const endTime = new Date(startTime.getTime() + booking.duration_min * 60000)
-                          const timeFormatter = new Intl.DateTimeFormat('zh-TW', {
-                            timeZone: 'Asia/Taipei',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: false
-                          })
+                          // 純字符串處理（避免時區問題）
+                          const startDatetime = booking.start_at.substring(0, 16) // "2025-11-01T13:55"
+                          const [, startTimeStr] = startDatetime.split('T')
+                          const [startHour, startMinute] = startTimeStr.split(':').map(Number)
+                          const endMinutes = startHour * 60 + startMinute + booking.duration_min
+                          const endHour = Math.floor(endMinutes / 60)
+                          const endMin = endMinutes % 60
+                          const endTimeStr = `${endHour.toString().padStart(2,'0')}:${endMin.toString().padStart(2,'0')}`
                           
                           return (
                             <div
@@ -762,9 +742,9 @@ export function DayView({ user }: DayViewProps) {
                                 lineHeight: '1.3',
                                 flexShrink: 0,
                               }}>
-                                <div>{timeFormatter.format(startTime)}</div>
+                                <div>{startTimeStr}</div>
                                 <div style={{ fontSize: '10px', opacity: 0.7, margin: '2px 0' }}>↓</div>
-                                <div>{timeFormatter.format(endTime)}</div>
+                                <div>{endTimeStr}</div>
                                 <div style={{ 
                                   fontSize: '10px', 
                                   marginTop: '3px', 

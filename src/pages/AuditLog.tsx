@@ -65,15 +65,17 @@ export function AuditLog({ user }: AuditLogProps) {
   }
 
   const formatDateTime = (isoString: string) => {
-    const date = new Date(isoString)
-    return date.toLocaleString('zh-TW', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      weekday: 'short',
-    })
+    // 純字符串處理
+    const datetime = isoString.substring(0, 16) // "2025-11-01T13:55"
+    const [dateStr, timeStr] = datetime.split('T')
+    const [year, month, day] = dateStr.split('-')
+    
+    // 計算星期幾
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+    const weekday = weekdays[date.getDay()]
+    
+    return `${year}/${month}/${day} (週${weekday}) ${timeStr}`
   }
 
   const getOperationColor = (operation: string) => {
@@ -296,14 +298,7 @@ export function AuditLog({ user }: AuditLogProps) {
                   <strong>教練：</strong>{log.coach_names || '未指定'}
                 </div>
                 <div style={{ marginBottom: '8px' }}>
-                  <strong>時間：</strong>{new Date(log.start_time).toLocaleString('zh-TW', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    weekday: 'short',
-                  })}
+                  <strong>時間：</strong>{formatDateTime(log.start_time)}
                 </div>
                 {log.activity_types && log.activity_types.length > 0 && (
                   <div style={{ marginBottom: '8px' }}>

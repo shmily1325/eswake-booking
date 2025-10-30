@@ -133,18 +133,22 @@ export function AdminPage({ user }: AdminPageProps) {
   }
   
   const formatTimeNoColon = (dateString: string): string => {
-    const date = new Date(dateString)
-    const hours = date.getHours().toString().padStart(2, '0')
-    const minutes = date.getMinutes().toString().padStart(2, '0')
+    // 純字符串處理
+    const datetime = dateString.substring(0, 16) // "2025-11-01T13:55"
+    const [, timeStr] = datetime.split('T')
+    const [hours, minutes] = timeStr.split(':')
     return `${hours}${minutes}`
   }
   
   const getArrivalTimeNoColon = (dateString: string): string => {
-    const date = new Date(dateString)
-    date.setMinutes(date.getMinutes() - 30)
-    const hours = date.getHours().toString().padStart(2, '0')
-    const minutes = date.getMinutes().toString().padStart(2, '0')
-    return `${hours}${minutes}`
+    // 純字符串處理，提前30分鐘
+    const datetime = dateString.substring(0, 16)
+    const [, timeStr] = datetime.split('T')
+    const [hour, minute] = timeStr.split(':').map(Number)
+    const totalMinutes = hour * 60 + minute - 30
+    const arrivalHour = Math.floor(totalMinutes / 60)
+    const arrivalMinute = totalMinutes % 60
+    return `${arrivalHour.toString().padStart(2, '0')}${arrivalMinute.toString().padStart(2, '0')}`
   }
   
   // 获取所有学生列表
@@ -187,10 +191,12 @@ export function AdminPage({ user }: AdminPageProps) {
         }
       })
       
-      // 按时间排序
-      const sortedBookings = Array.from(uniqueTimes.values()).sort((a, b) => 
-        new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
-      )
+      // 按时间排序（純字符串比較）
+      const sortedBookings = Array.from(uniqueTimes.values()).sort((a, b) => {
+        const aTime = a.start_at.substring(0, 16)
+        const bTime = b.start_at.substring(0, 16)
+        return aTime.localeCompare(bTime)
+      })
       
       sortedBookings.forEach(booking => {
         const arrivalTime = getArrivalTimeNoColon(booking.start_at)

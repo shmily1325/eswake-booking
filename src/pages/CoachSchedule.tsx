@@ -157,10 +157,17 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
         // 如果是待確認，只顯示已結束且未確認的
         if (filterType === 'pending') {
           bookingsWithCoaches = bookingsWithCoaches.filter(booking => {
-            const endTime = new Date(booking.start_at).getTime() + booking.duration_min * 60000
-            // Note: coach_confirmed 字段在 booking_coaches 表中，這裡需要額外查詢
-            // 為簡化，暫時假設沒有 coach_confirmed 欄位或在前端管理
-            return endTime < Date.now()
+            // 純字符串比較
+            const datetime = booking.start_at.substring(0, 16)
+            const [, timeStr] = datetime.split('T')
+            const [hour, minute] = timeStr.split(':').map(Number)
+            const startMinutes = hour * 60 + minute
+            const endMinutes = startMinutes + booking.duration_min
+            
+            const now = new Date()
+            const nowMinutes = now.getHours() * 60 + now.getMinutes()
+            
+            return endMinutes < nowMinutes
           })
         }
         
@@ -190,10 +197,13 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
       if (!booking) throw new Error('找不到預約')
 
       // 更新備註（如果有輸入的話）
+      const now = new Date()
+      const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}+08:00`
+      
       const updateData: any = {
         actual_duration_min: booking.duration_min, // 使用原始時長
         coach_confirmed: true,
-        confirmed_at: new Date().toISOString(),
+        confirmed_at: nowStr,
         confirmed_by: user.id
       }
 
@@ -553,8 +563,17 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
                             </span>
                           )}
                           {(() => {
-                            const endTime = new Date(booking.start_at).getTime() + booking.duration_min * 60000
-                            const isEnded = endTime < Date.now()
+                            // 純字符串比較
+                            const datetime = booking.start_at.substring(0, 16)
+                            const [, timeStr] = datetime.split('T')
+                            const [hour, minute] = timeStr.split(':').map(Number)
+                            const startMinutes = hour * 60 + minute
+                            const endMinutes = startMinutes + booking.duration_min
+                            
+                            const now = new Date()
+                            const nowMinutes = now.getHours() * 60 + now.getMinutes()
+                            const isEnded = endMinutes < nowMinutes
+                            
                             return isEnded && !booking.coach_confirmed && (
                               <span style={{ 
                                 fontSize: '12px', 
@@ -635,8 +654,16 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
 
                       {/* 快速確認區塊 */}
                       {(() => {
-                        const endTime = new Date(booking.start_at).getTime() + booking.duration_min * 60000
-                        const isEnded = endTime < Date.now()
+                        // 純字符串比較
+                        const datetime = booking.start_at.substring(0, 16)
+                        const [, timeStr] = datetime.split('T')
+                        const [hour, minute] = timeStr.split(':').map(Number)
+                        const startMinutes = hour * 60 + minute
+                        const endMinutes = startMinutes + booking.duration_min
+                        
+                        const now = new Date()
+                        const nowMinutes = now.getHours() * 60 + now.getMinutes()
+                        const isEnded = endMinutes < nowMinutes
                         const needsConfirm = isEnded && !booking.coach_confirmed
                         const isConfirming = confirmingIds.has(booking.id)
                         

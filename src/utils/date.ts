@@ -24,3 +24,27 @@ export function getLocalDateTimeString(date: Date): string {
   return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
+/**
+ * 直接從資料庫的 timestamp 字串中提取日期和時間
+ * 不做任何時區轉換，直接取前 16 個字符
+ * @param dbTimestamp - 資料庫返回的時間戳字串
+ * @returns { date: "YYYY-MM-DD", time: "HH:mm", datetime: "YYYY-MM-DDTHH:mm" }
+ */
+export function parseDbTimestamp(dbTimestamp: string): { 
+  date: string
+  time: string
+  datetime: string
+} {
+  // 直接取前 16 個字符: "2025-11-01T13:55"
+  const datetime = dbTimestamp.substring(0, 16)
+  const [date, time] = datetime.split('T')
+  return { date, time, datetime }
+}
+
+/**
+ * 比較兩個 datetime 字串
+ * @returns 負數表示 dt1 < dt2，0 表示相等，正數表示 dt1 > dt2
+ */
+export function compareDateTimeStr(dt1: string, dt2: string): number {
+  return dt1.localeCompare(dt2)
+}

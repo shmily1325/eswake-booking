@@ -208,13 +208,17 @@ export function NewBookingDialog({
         const timeStr = `${hours}:${minutes}`
         const displayDate = `${dateStr} ${timeStr}`
         
-        // 手動構建 ISO 字符串，使用本地時間組件
-        const newStartAt = `${dateStr}T${timeStr}:00`
-        const newStartTime = dateTime.getTime()
-        const newEndTime = newStartTime + durationMin * 60000
+        // 手動構建 ISO 字符串，明確指定台北時區 (+08:00)
+        const newStartAt = `${dateStr}T${timeStr}:00+08:00`
         
         let hasConflict = false
         let conflictReason = ''
+        
+        // 計算新預約的時間（分鐘數，用於所有衝突檢查）
+        const [newHour, newMinute] = timeStr.split(':').map(Number)
+        const newStartMinutes = newHour * 60 + newMinute
+        const newEndMinutes = newStartMinutes + durationMin
+        const newCleanupEndMinutes = newEndMinutes + 15
       
         // 檢查船隻衝突（需要至少15分鐘間隔）
         const { data: existingBookings, error: checkError } = await supabase
@@ -228,41 +232,40 @@ export function NewBookingDialog({
           hasConflict = true
           conflictReason = '檢查衝突時發生錯誤'
         } else {
-          // 檢查是否與現有預約衝突（需要15分鐘接船時間）
+          // 純字符串比較（避免時區問題）
+          
           for (const existing of existingBookings || []) {
-            // 使用相同的本地時間解析方式（避免時區偏移）
-            const existingDate = new Date(existing.start_at)
-            const existingLocalTime = new Date(
-              existingDate.getFullYear(),
-              existingDate.getMonth(),
-              existingDate.getDate(),
-              existingDate.getHours(),
-              existingDate.getMinutes(),
-              0
-            )
-            const existingStart = existingLocalTime.getTime()
-            const existingEnd = existingStart + existing.duration_min * 60000
-            const existingCleanupEnd = existingEnd + 15 * 60000
+            // 直接從資料庫取前16個字符
+            const existingDatetime = existing.start_at.substring(0, 16)
+            const [, existingTime] = existingDatetime.split('T')
+            const [existingHour, existingMinute] = existingTime.split(':').map(Number)
+            
+            const existingStartMinutes = existingHour * 60 + existingMinute
+            const existingEndMinutes = existingStartMinutes + existing.duration_min
+            const existingCleanupEndMinutes = existingEndMinutes + 15
             
             // 檢查新預約是否在現有預約的接船時間內開始
-            if (newStartTime >= existingEnd && newStartTime < existingCleanupEnd) {
+            if (newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
               hasConflict = true
-              conflictReason = `與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`
+              const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
+              conflictReason = `與 ${existing.student} 的預約衝突：${existing.student} 在 ${existingEndTime} 結束，需要15分鐘接船時間。您的預約 ${timeStr} 太接近了。`
               break
             }
             
             // 檢查新預約結束時間是否會影響現有預約
-            const newCleanupEnd = newEndTime + 15 * 60000
-            if (existingStart >= newEndTime && existingStart < newCleanupEnd) {
+            if (existingStartMinutes >= newEndMinutes && existingStartMinutes < newCleanupEndMinutes) {
               hasConflict = true
-              conflictReason = `與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`
+              const newEndTime = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
+              conflictReason = `與 ${existing.student} 的預約衝突：您的預約 ${newEndTime} 結束，${existing.student} ${existingTime} 開始，需要15分鐘接船時間。`
               break
             }
             
             // 檢查時間重疊
-            if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
+            if (!(newEndMinutes <= existingStartMinutes || newStartMinutes >= existingEndMinutes)) {
               hasConflict = true
-              conflictReason = `與 ${existing.student} 的預約時間重疊`
+              const newEnd = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
+              const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
+              conflictReason = `與 ${existing.student} 的預約時間重疊：您的時間 ${timeStr}-${newEnd}，${existing.student} 的時間 ${existingTime}-${existingEndTime}`
               break
             }
           }
@@ -303,11 +306,16 @@ export function NewBookingDialog({
             }
             
             for (const booking of coachBookings || []) {
-              const existingStart = new Date(booking.start_at).getTime()
-              const existingEnd = existingStart + booking.duration_min * 60000
+              // 純字符串比較
+              const bookingDatetime = booking.start_at.substring(0, 16)
+              const [, bookingTime] = bookingDatetime.split('T')
+              const [bookingHour, bookingMinute] = bookingTime.split(':').map(Number)
+              
+              const bookingStartMinutes = bookingHour * 60 + bookingMinute
+              const bookingEndMinutes = bookingStartMinutes + booking.duration_min
               
               // 檢查時間重疊
-              if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
+              if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
                 // 找到教練名字
                 const coach = coaches.find(c => c.id === coachId)
                 hasConflict = true
@@ -687,22 +695,58 @@ export function NewBookingDialog({
             }}>
               開始時間
             </label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              required
-              step="900"
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                boxSizing: 'border-box',
-                fontSize: '16px',
-                touchAction: 'manipulation',
-              }}
-            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <select
+                value={startTime.split(':')[0]}
+                onChange={(e) => {
+                  const hour = e.target.value
+                  const minute = startTime.split(':')[1] || '00'
+                  setStartTime(`${hour}:${minute}`)
+                }}
+                required
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ccc',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                  touchAction: 'manipulation',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                {Array.from({ length: 24 }, (_, i) => {
+                  const hour = String(i).padStart(2, '0')
+                  return <option key={hour} value={hour}>{hour}</option>
+                })}
+              </select>
+              <select
+                value={startTime.split(':')[1] || '00'}
+                onChange={(e) => {
+                  const hour = startTime.split(':')[0]
+                  const minute = e.target.value
+                  setStartTime(`${hour}:${minute}`)
+                }}
+                required
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ccc',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                  touchAction: 'manipulation',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="00">00</option>
+                <option value="15">15</option>
+                <option value="30">30</option>
+                <option value="45">45</option>
+              </select>
+            </div>
           </div>
 
           <div style={{ marginBottom: '18px' }}>
