@@ -903,24 +903,6 @@ export function NewBookingDialog({
             )}
           </div>
 
-          <div style={{ 
-            marginBottom: '20px', 
-            padding: '12px',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '8px',
-            color: '#333', 
-            fontSize: '14px',
-          }}>
-            <strong>開始時間:</strong><br />
-            {new Date(defaultStartTime).toLocaleString('zh-TW', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </div>
-
           {error && (
             <div
               style={{
