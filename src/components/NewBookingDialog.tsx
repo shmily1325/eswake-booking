@@ -7,6 +7,12 @@ interface Coach {
   name: string
 }
 
+interface Boat {
+  id: number
+  name: string
+  color: string
+}
+
 interface NewBookingDialogProps {
   isOpen: boolean
   onClose: () => void
@@ -25,6 +31,8 @@ export function NewBookingDialog({
   user,
 }: NewBookingDialogProps) {
   
+  const [boats, setBoats] = useState<Boat[]>([])
+  const [selectedBoatId, setSelectedBoatId] = useState(defaultBoatId)
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
   const [student, setStudent] = useState('')
@@ -48,7 +56,9 @@ export function NewBookingDialog({
 
   useEffect(() => {
     if (isOpen) {
+      fetchBoats()
       fetchCoaches()
+      setSelectedBoatId(defaultBoatId)
       // Parse defaultStartTime into date and time
       const startDateTime = new Date(defaultStartTime)
       // 使用本地時間
@@ -62,7 +72,20 @@ export function NewBookingDialog({
       setStartDate(dateStr)
       setStartTime(timeStr)
     }
-  }, [isOpen, defaultStartTime])
+  }, [isOpen, defaultStartTime, defaultBoatId])
+
+  const fetchBoats = async () => {
+    const { data, error } = await supabase
+      .from('boats')
+      .select('id, name, color')
+      .order('id')
+    
+    if (error) {
+      console.error('Error fetching boats:', error)
+    } else {
+      setBoats(data || [])
+    }
+  }
 
   const fetchCoaches = async () => {
     setLoadingCoaches(true)
@@ -169,7 +192,7 @@ export function NewBookingDialog({
       const { data: boatData } = await supabase
         .from('boats')
         .select('name')
-        .eq('id', defaultBoatId)
+        .eq('id', selectedBoatId)
         .single()
       const boatName = boatData?.name || '未知船隻'
 
@@ -194,7 +217,7 @@ export function NewBookingDialog({
         const { data: existingBookings, error: checkError } = await supabase
           .from('bookings')
           .select('id, start_at, duration_min, student')
-          .eq('boat_id', defaultBoatId)
+          .eq('boat_id', selectedBoatId)
           .gte('start_at', `${dateStr}T00:00:00`)
           .lte('start_at', `${dateStr}T23:59:59`)
       
@@ -292,7 +315,7 @@ export function NewBookingDialog({
       
         // 創建預約（不包含 coach_id）
         const bookingToInsert = {
-          boat_id: defaultBoatId,
+          boat_id: selectedBoatId,
           student: student,
           start_at: newStartAt,
           duration_min: durationMin,
@@ -551,6 +574,40 @@ export function NewBookingDialog({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* 船隻選擇 */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '6px', 
+              color: '#000',
+              fontSize: '15px',
+              fontWeight: '500',
+            }}>
+              船隻
+            </label>
+            <select
+              value={selectedBoatId}
+              onChange={(e) => setSelectedBoatId(Number(e.target.value))}
+              required
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #ccc',
+                boxSizing: 'border-box',
+                fontSize: '16px',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              {boats.map(boat => (
+                <option key={boat.id} value={boat.id}>
+                  {boat.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={{ marginBottom: '18px' }}>
