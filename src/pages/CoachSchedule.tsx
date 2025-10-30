@@ -604,11 +604,8 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
                               <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#333' }}>
                                 ⚠️ 請確認課程完成
                               </div>
-                              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                                 <div style={{ flex: '1', minWidth: '200px' }}>
-                                  <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-                                    備註
-                                  </label>
                                   <input
                                     type="text"
                                     value={confirmNotes.get(booking.id) || ''}
@@ -616,7 +613,7 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
                                     placeholder="總時數、是否指定教練、其它備註"
                                     style={{
                                       width: '100%',
-                                      padding: '8px',
+                                      padding: '10px',
                                       border: '1px solid #ccc',
                                       borderRadius: '4px',
                                       fontSize: '14px',

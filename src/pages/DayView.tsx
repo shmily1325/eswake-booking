@@ -87,7 +87,7 @@ export function DayView({ user }: DayViewProps) {
   const [currentBoatIndex, setCurrentBoatIndex] = useState(0)
 
   // 視圖模式：時間軸 vs 列表
-  const [viewMode, setViewMode] = useState<'timeline' | 'list'>('timeline')
+  const [viewMode, setViewMode] = useState<'timeline' | 'list'>('list')
 
   const changeDate = (offset: number) => {
     const currentDate = new Date(dateParam)
@@ -117,59 +117,75 @@ export function DayView({ user }: DayViewProps) {
       setLoading(true)
     }
     
-    // 只在初次載入時獲取 boats 和 coaches
-    if (isInitialLoad) {
-      // Fetch boats
-      const { data: boatsData, error: boatsError } = await supabase
-        .from('boats')
-        .select('*')
+    try {
+      // 使用 Promise.all 並行獲取數據
+      const promises = []
       
-      if (boatsError) {
-        console.error('Error fetching boats:', boatsError)
-      } else {
-        // 自訂排序：G23/G21/黑豹/粉紅/彈簧床
-        const boatOrder = ['G23', 'G21', '黑豹', '粉紅', '彈簧床']
-        const sortedBoats = (boatsData || []).sort((a, b) => {
-          const indexA = boatOrder.indexOf(a.name)
-          const indexB = boatOrder.indexOf(b.name)
-          // 如果名稱不在列表中，放到最後
-          if (indexA === -1) return 1
-          if (indexB === -1) return -1
-          return indexA - indexB
-        })
-        setBoats(sortedBoats)
+      // 只在初次載入時獲取 boats 和 coaches
+      if (isInitialLoad) {
+        promises.push(
+          supabase.from('boats').select('*'),
+          supabase.from('coaches').select('*')
+        )
       }
-
-      // Fetch coaches
-      const { data: coachesData, error: coachesError } = await supabase
-        .from('coaches')
-        .select('*')
       
-      if (coachesError) {
-        console.error('Error fetching coaches:', coachesError)
-      } else {
-        setCoaches(coachesData || [])
+      // 每次都獲取當日的 bookings
+      const startOfDay = `${dateParam}T00:00:00`
+      const endOfDay = `${dateParam}T23:59:59`
+      
+      promises.push(
+        supabase
+          .from('bookings')
+          .select('*, boats:boat_id(id, name, color), coaches:coach_id(id, name)')
+          .gte('start_at', startOfDay)
+          .lte('start_at', endOfDay)
+          .order('start_at', { ascending: true })
+      )
+      
+      const results = await Promise.all(promises)
+      
+      // 處理結果
+      let resultIndex = 0
+      
+      if (isInitialLoad) {
+        // 處理 boats
+        const { data: boatsData, error: boatsError } = results[resultIndex++]
+        if (boatsError) {
+          console.error('Error fetching boats:', boatsError)
+        } else {
+          // 自訂排序：G23/G21/黑豹/粉紅/彈簧床
+          const boatOrder = ['G23', 'G21', '黑豹', '粉紅', '彈簧床']
+          const sortedBoats = (boatsData || []).sort((a, b) => {
+            const indexA = boatOrder.indexOf(a.name)
+            const indexB = boatOrder.indexOf(b.name)
+            if (indexA === -1) return 1
+            if (indexB === -1) return -1
+            return indexA - indexB
+          })
+          setBoats(sortedBoats)
+        }
+        
+        // 處理 coaches
+        const { data: coachesData, error: coachesError } = results[resultIndex++]
+        if (coachesError) {
+          console.error('Error fetching coaches:', coachesError)
+        } else {
+          setCoaches(coachesData || [])
+        }
       }
+      
+      // 處理 bookings
+      const { data: bookingsData, error: bookingsError } = results[resultIndex]
+      if (bookingsError) {
+        console.error('Error fetching bookings:', bookingsError)
+      } else {
+        setBookings(bookingsData || [])
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
     }
-
-    // 每次都獲取當日的 bookings
-    const startOfDay = `${dateParam}T00:00:00`
-    const endOfDay = `${dateParam}T23:59:59`
-    
-    const { data: bookingsData, error: bookingsError } = await supabase
-      .from('bookings')
-      .select('*, boats:boat_id(id, name, color), coaches:coach_id(id, name)')
-      .gte('start_at', startOfDay)
-      .lte('start_at', endOfDay)
-    
-    if (bookingsError) {
-      console.error('Error fetching bookings:', bookingsError)
-      console.error('Error details:', bookingsError.details, bookingsError.hint)
-    } else {
-      setBookings(bookingsData || [])
-    }
-    
-    setLoading(false)
   }
 
   const getCoachName = (coachId: string): string => {
