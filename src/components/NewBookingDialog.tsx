@@ -144,6 +144,19 @@ export function NewBookingDialog({
     e.preventDefault()
     setError('')
 
+    // 驗證必填欄位
+    if (!student.trim()) {
+      setError('⚠️ 請輸入學生姓名')
+      return
+    }
+
+    if (!isRepeat) {
+      if (!startDate || !startTime) {
+        setError('⚠️ 請選擇開始日期和時間')
+        return
+      }
+    }
+
     // 防呆檢查：08:00之前的預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
     if (hour < 8 && selectedCoaches.length === 0) {
@@ -169,6 +182,13 @@ export function NewBookingDialog({
         setLoading(false)
         return
       }
+      
+      console.log('準備創建預約:', {
+        datesToCreate: datesToCreate.map(d => d.toISOString()),
+        student,
+        durationMin,
+        selectedCoaches: selectedCoaches.length
+      })
 
       // 用於追蹤結果
       const results = {

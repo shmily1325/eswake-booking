@@ -845,8 +845,22 @@ export function DayView({ user }: DayViewProps) {
                         navigator.vibrate(15)
                       }
                       setSelectedBoatId(boat.id)
-                      // 設置默認時間為當前日期的早上9點
-                      const defaultTime = new Date(`${dateParam}T09:00:00`)
+                      // 智能設置默認時間
+                      const now = new Date()
+                      const today = now.toISOString().split('T')[0]
+                      let defaultTime: Date
+                      
+                      if (dateParam === today) {
+                        // 如果是今天，使用當前時間（取整到15分鐘）
+                        const minutes = now.getMinutes()
+                        const roundedMinutes = Math.ceil(minutes / 15) * 15
+                        defaultTime = new Date(now)
+                        defaultTime.setMinutes(roundedMinutes, 0, 0)
+                      } else {
+                        // 如果不是今天，使用營業時間開始（05:00）
+                        defaultTime = new Date(`${dateParam}T05:00:00`)
+                      }
+                      
                       setSelectedTime(defaultTime.toISOString())
                       setDialogOpen(true)
                     }}
