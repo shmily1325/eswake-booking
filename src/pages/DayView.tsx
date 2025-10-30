@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase'
 import { NewBookingDialog } from '../components/NewBookingDialog'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { UserMenu } from '../components/UserMenu'
-import { getContrastingTextColor } from '../utils/color'
 import { useResponsive } from '../hooks/useResponsive'
 
 interface Boat {
@@ -989,8 +988,8 @@ export function DayView({ user }: DayViewProps) {
                   const isCleanupTime = !booking && boat.name !== '彈簧床' && isInCleanupTime(boat.id, timeSlot)
                   
                   const rowSpan = booking ? getBookingSpan(booking) : 1
-                  const bgColor = booking ? boat.color : (isCleanupTime ? 'rgba(200, 200, 200, 0.3)' : 'transparent')
-                  const textColor = booking ? getContrastingTextColor(boat.color) : '#666'
+                  const bgColor = booking ? '#34495e' : (isCleanupTime ? 'rgba(200, 200, 200, 0.3)' : 'transparent')
+                  const textColor = booking ? 'white' : '#666'
                   const needsConfirmation = booking && isBookingEnded(booking) && !booking.coach_confirmed
                   const isConfirmed = booking && booking.coach_confirmed
                   
@@ -1006,19 +1005,18 @@ export function DayView({ user }: DayViewProps) {
                         handleCellClick(boat.id, timeSlot, booking || undefined)
                       }}
                       style={{
-                        border: needsConfirmation ? '3px solid #ff9800' : '1px solid #ddd',
-                        // 增大點擊區域
-                        padding: needsConfirmation ? '8px 4px' : '10px 6px',
+                        border: needsConfirmation ? '2px solid #f39c12' : '1px solid #ddd',
+                        padding: booking ? '8px' : '10px 6px',
                         cursor: 'pointer',
                         backgroundColor: bgColor,
                         color: textColor,
-                        verticalAlign: 'top',
-                        minHeight: booking ? `${rowSpan * 32}px` : '44px', // 增加最小點擊高度
+                        verticalAlign: 'middle',
+                        minHeight: booking ? `${rowSpan * 32}px` : '44px',
                         transition: 'all 0.15s ease',
                         touchAction: 'manipulation',
                         WebkitTapHighlightColor: 'transparent',
                         position: 'relative',
-                        boxShadow: booking ? '0 2px 4px rgba(0,0,0,0.15)' : 'none',
+                        boxShadow: booking ? '0 2px 6px rgba(0,0,0,0.2)' : 'none',
                       }}
                       onTouchStart={(e) => {
                         // 觸覺反饋
@@ -1081,37 +1079,41 @@ export function DayView({ user }: DayViewProps) {
                       )}
                       {booking && (
                         <div style={{ 
-                          fontSize: isMobile ? '10px' : '12px',
+                          fontSize: '12px',
                           lineHeight: '1.4',
+                          textAlign: 'center',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          height: '100%',
                         }}>
-                          {/* 第一行：學生 + 狀態標記 */}
+                          {/* 第一行：學生 */}
                           <div style={{ 
-                            fontWeight: 'bold', 
-                            marginBottom: '2px',
-                            fontSize: isMobile ? '11px' : '13px',
+                            fontWeight: '600', 
+                            marginBottom: '4px',
+                            fontSize: '13px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px',
+                            justifyContent: 'center',
+                            gap: '6px',
                           }}>
-                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {booking.student}
-                            </span>
+                            <span>{booking.student}</span>
                             {isConfirmed && (
-                              <span style={{ fontSize: '8px', padding: '2px 4px', background: 'rgba(76, 175, 80, 0.9)', borderRadius: '3px', color: 'white', flexShrink: 0 }}>✓</span>
+                              <span style={{ fontSize: '10px', padding: '2px 5px', background: '#27ae60', borderRadius: '3px', color: 'white' }}>✓</span>
                             )}
                             {needsConfirmation && (
-                              <span style={{ fontSize: '8px', padding: '2px 4px', background: 'rgba(255, 152, 0, 0.9)', borderRadius: '3px', color: 'white', flexShrink: 0 }}>!</span>
+                              <span style={{ fontSize: '10px', padding: '2px 5px', background: '#f39c12', borderRadius: '3px', color: 'white' }}>!</span>
                             )}
                           </div>
 
-                          {/* 第二行：教練 - 同樣重要 */}
+                          {/* 第二行：教練 */}
                           <div style={{ 
-                            fontWeight: 'bold',
-                            marginBottom: '3px',
-                            fontSize: isMobile ? '11px' : '13px',
-                            opacity: 0.95,
+                            fontWeight: '500',
+                            marginBottom: '4px',
+                            fontSize: '12px',
+                            opacity: 0.9,
                           }}>
-                            👨‍🏫 {booking.coach_id ? (booking.coaches?.name || getCoachName(booking.coach_id)) : '未指定'}
+                            {booking.coach_id ? (booking.coaches?.name || getCoachName(booking.coach_id)) : '未指定'}
                           </div>
 
                           {/* 第三行：時長 + 活動類型 */}
@@ -1119,17 +1121,16 @@ export function DayView({ user }: DayViewProps) {
                             display: 'flex',
                             gap: '6px',
                             alignItems: 'center',
-                            fontSize: isMobile ? '9px' : '10px',
+                            justifyContent: 'center',
+                            fontSize: '11px',
                             marginBottom: '2px',
                           }}>
-                            <span style={{ opacity: 0.9 }}>
-                              ⏱️ {booking.duration_min}分
-                            </span>
+                            <span>{booking.duration_min}分</span>
                             {booking.activity_types && booking.activity_types.length > 0 && (
                               <span style={{ 
-                                fontWeight: 'bold',
-                                padding: '1px 5px',
-                                background: 'rgba(255,255,255,0.25)',
+                                fontWeight: '600',
+                                padding: '2px 6px',
+                                background: 'rgba(255,255,255,0.2)',
                                 borderRadius: '3px',
                               }}>
                                 {booking.activity_types.join('+')}
@@ -1140,17 +1141,17 @@ export function DayView({ user }: DayViewProps) {
                           {/* 備註 */}
                           {booking.notes && (
                             <div style={{ 
-                              marginTop: '3px',
-                              paddingTop: '3px',
+                              marginTop: '4px',
+                              paddingTop: '4px',
                               borderTop: '1px solid rgba(255,255,255,0.2)',
-                              fontSize: isMobile ? '8px' : '9px',
-                              opacity: 0.85,
+                              fontSize: '10px',
+                              opacity: 0.8,
                               fontStyle: 'italic',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
-                              whiteSpace: isMobile ? 'nowrap' : 'normal',
+                              whiteSpace: 'nowrap',
                             }}>
-                              💬 {booking.notes}
+                              {booking.notes}
                             </div>
                           )}
                         </div>
