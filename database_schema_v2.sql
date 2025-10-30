@@ -59,7 +59,7 @@ CREATE TABLE booking_coaches (
   id SERIAL PRIMARY KEY,
   booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
   coach_id UUID NOT NULL REFERENCES coaches(id) ON DELETE CASCADE,
-  -- 教練確認相關欄位
+  -- 教練回報相關欄位
   actual_duration_min INTEGER,
   coach_confirmed BOOLEAN DEFAULT FALSE,
   confirmed_at TIMESTAMPTZ,

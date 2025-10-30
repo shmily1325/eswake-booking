@@ -75,7 +75,7 @@ export function BackupPage({ user }: BackupPageProps) {
 
       // 生成 CSV
       let csv = '\uFEFF' // UTF-8 BOM
-      csv += '學生姓名,預約日期,抵達時間,下水時間,時長(分鐘),船隻,教練,活動類型,教練確認,確認時間,確認人,狀態,備註,創建者,創建時間\n'
+      csv += '學生姓名,預約日期,抵達時間,下水時間,時長(分鐘),船隻,教練,活動類型,教練回報,回報時間,回報人,狀態,備註,創建者,創建時間\n'
 
       bookings.forEach(booking => {
         const boat = (booking as any).boats?.name || '未指定'
@@ -96,13 +96,13 @@ export function BackupPage({ user }: BackupPageProps) {
         const bookingDate = booking.start_at.substring(0, 10).replace(/-/g, '/')
         
         // 教练确认状态
-        const coachConfirmed = booking.coach_confirmed ? '已確認' : '未確認'
+        const coachConfirmed = booking.coach_confirmed ? '已回報' : '未回報'
         const confirmedAt = formatDateTime(booking.confirmed_at)
         const confirmedBy = (booking as any).confirmed_by_user?.email || ''
         
         // 状态翻译
         const statusMap: { [key: string]: string } = {
-          'confirmed': '已確認',
+          'confirmed': '已回報',
           'cancelled': '已取消'
         }
         const status = statusMap[booking.status] || booking.status
@@ -281,7 +281,7 @@ export function BackupPage({ user }: BackupPageProps) {
             </div>
             <ul style={{ margin: 0, paddingLeft: '20px' }}>
               <li>CSV 文件可用 Excel 或 Google Sheets 打開</li>
-              <li>包含學生、船隻、教練、時間、確認狀態等完整信息</li>
+              <li>包含學生、船隻、教練、時間、回報狀態等完整信息</li>
               <li>所有時間已格式化為易讀格式（YYYY/MM/DD HH:mm）</li>
               <li>建議定期備份以確保數據安全</li>
             </ul>

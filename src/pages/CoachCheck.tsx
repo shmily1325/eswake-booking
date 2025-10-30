@@ -179,8 +179,8 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
       if (note.trim()) {
         const existingNotes = booking.notes || ''
         updateData.notes = existingNotes 
-          ? `${existingNotes}\n[教練確認] ${note}` 
-          : `[教練確認] ${note}`
+          ? `${existingNotes}\n[教練回報] ${note}` 
+          : `[教練回報] ${note}`
       }
 
       const { error: updateError } = await supabase
@@ -208,10 +208,10 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
       newNotes.delete(bookingId)
       setConfirmNotes(newNotes)
 
-      alert('✅ 確認成功！')
+      alert('✅ 回報成功！')
     } catch (error) {
       console.error('Error confirming booking:', error)
-      alert('❌ 確認失敗，請重試')
+      alert('❌ 回報失敗，請重試')
     } finally {
       const newConfirming = new Set(confirmingIds)
       newConfirming.delete(bookingId)
@@ -255,7 +255,7 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
               color: 'white',
               fontWeight: '600'
             }}>
-              教練確認
+              教練回報
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Link
@@ -376,7 +376,7 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
             </div>
             <div style={{ flex: 1, minWidth: '120px' }}>
               <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                未確認
+                未回報
               </div>
               <div style={{ fontSize: '24px', fontWeight: '600', color: '#dc3545' }}>
                 {unconfirmedCount}
@@ -384,7 +384,7 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
             </div>
             <div style={{ flex: 1, minWidth: '120px' }}>
               <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                已確認
+                已回報
               </div>
               <div style={{ fontSize: '24px', fontWeight: '600', color: '#28a745' }}>
                 {confirmedCount}
@@ -516,7 +516,7 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
                       </div>
                     )}
 
-                    {/* 確認區域 */}
+                    {/* 回報區域 */}
                     {!booking.coach_confirmed && (
                       <div style={{
                         marginTop: '16px',

@@ -37,7 +37,7 @@ export function HomePage({ user }: HomePageProps) {
       link: '/audit-log'
     },
     {
-      title: '資料備份',
+      title: '匯出',
       icon: '💾',
       link: '/backup'
     }
