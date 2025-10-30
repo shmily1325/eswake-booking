@@ -479,7 +479,7 @@ export function DayView({ user }: DayViewProps) {
         </div>
 
         {/* 手機優化控制（僅在時間軸視圖顯示） */}
-        {isMobile && viewMode === 'timeline' && (
+        {viewMode === 'timeline' && (
           <div style={{ 
             display: 'flex', 
             gap: '8px',
@@ -505,27 +505,29 @@ export function DayView({ user }: DayViewProps) {
               {timeRange === 'all' ? '🕐 全天' : '⏰ 營業時間'}
             </button>
 
-            {/* 視圖模式切換 */}
-            <button
-              onClick={() => {
-                setSingleBoatMode(!singleBoatMode)
-                setCurrentBoatIndex(0)
-              }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '4px',
-                border: `1px solid ${singleBoatMode ? '#28a745' : '#6c757d'}`,
-                backgroundColor: singleBoatMode ? '#28a745' : '#6c757d',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '500',
-                touchAction: 'manipulation',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {singleBoatMode ? '📱 單船' : '📊 全部'}
-            </button>
+            {/* 視圖模式切換（僅手機顯示） */}
+            {isMobile && (
+              <button
+                onClick={() => {
+                  setSingleBoatMode(!singleBoatMode)
+                  setCurrentBoatIndex(0)
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  border: `1px solid ${singleBoatMode ? '#28a745' : '#6c757d'}`,
+                  backgroundColor: singleBoatMode ? '#28a745' : '#6c757d',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  touchAction: 'manipulation',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {singleBoatMode ? '📱 單船' : '📊 全部'}
+              </button>
+            )}
               
             
             {singleBoatMode && boats.length > 0 && (
@@ -589,6 +591,19 @@ export function DayView({ user }: DayViewProps) {
         }}>
           {boats.map((boat) => {
             const boatBookings = bookingsByBoat[boat.id] || []
+            
+            // 合併相同時間、學生的預約（多教練情況）
+            const groupedBookings: Map<string, Booking[]> = new Map()
+            boatBookings.forEach(booking => {
+              const key = `${booking.start_at}_${booking.student}_${booking.duration_min}`
+              if (!groupedBookings.has(key)) {
+                groupedBookings.set(key, [])
+              }
+              groupedBookings.get(key)!.push(booking)
+            })
+            
+            // 轉換為顯示用的陣列
+            const displayBookings = Array.from(groupedBookings.values()).map(group => group[0])
 
             return (
               <div key={boat.id} style={{ 
@@ -622,7 +637,7 @@ export function DayView({ user }: DayViewProps) {
                 }}>
                   <span style={{ fontSize: '15px', lineHeight: '1.3' }}>{boat.name}</span>
                   <span style={{ fontSize: '11px', opacity: 0.7, fontWeight: '400' }}>
-                    {boatBookings.length} 個
+                    {displayBookings.length} 個
                   </span>
                 </div>
 
@@ -631,7 +646,7 @@ export function DayView({ user }: DayViewProps) {
                   flex: 1,
                   backgroundColor: 'white',
                 }}>
-                  {boatBookings.length === 0 ? (
+                  {displayBookings.length === 0 ? (
                     <div style={{
                       padding: '36px 24px',
                       textAlign: 'center',
@@ -641,7 +656,13 @@ export function DayView({ user }: DayViewProps) {
                       今日無預約
                     </div>
                   ) : (
-                    boatBookings.map((booking) => {
+                    displayBookings.map((booking) => {
+                      // 獲取相同組的所有教練
+                      const key = `${booking.start_at}_${booking.student}_${booking.duration_min}`
+                      const sameGroupBookings = groupedBookings.get(key) || [booking]
+                      const allCoaches = sameGroupBookings.map(b => 
+                        b.coach_id ? (b.coaches?.name || getCoachName(b.coach_id)) : '未指定'
+                      ).filter((name, index, self) => self.indexOf(name) === index) // 去重
                       const startTime = new Date(booking.start_at)
                       const endTime = new Date(startTime.getTime() + booking.duration_min * 60000)
                       const isEnded = endTime.getTime() < Date.now()
@@ -750,7 +771,7 @@ export function DayView({ user }: DayViewProps) {
                                 fontSize: '14px',
                                 color: '#7f8c8d',
                               }}>
-                                / {booking.coach_id ? (booking.coaches?.name || getCoachName(booking.coach_id)) : '未指定'}
+                                / {allCoaches.join(' / ')}
                               </div>
                             </div>
 

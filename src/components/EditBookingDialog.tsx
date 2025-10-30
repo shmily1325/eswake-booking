@@ -758,16 +758,22 @@ export function EditBookingDialog({
           {error && (
             <div
               style={{
-                padding: '12px',
-                backgroundColor: '#fee',
-                color: '#c00',
-                borderRadius: '4px',
+                padding: '16px 20px',
+                backgroundColor: '#fff3cd',
+                color: '#856404',
+                borderRadius: '8px',
                 marginBottom: '16px',
-                border: '1px solid #fcc',
-                fontSize: '15px',
+                border: '2px solid #ffc107',
+                fontSize: '16px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(255, 193, 7, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
               }}
             >
-              {error}
+              <span style={{ fontSize: '24px', flexShrink: 0 }}>⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 
