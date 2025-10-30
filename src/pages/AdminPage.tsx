@@ -457,6 +457,14 @@ export function AdminPage({ user }: AdminPageProps) {
                 const isCopied = copiedStudent === studentName
                 const studentBookings = bookings.filter(b => b.student === studentName)
                 
+                // 计算去重后的预约数量
+                const uniqueBookingKeys = new Set<string>()
+                studentBookings.forEach(b => {
+                  const key = `${b.boat_id}-${b.start_at}-${b.duration_min}`
+                  uniqueBookingKeys.add(key)
+                })
+                const uniqueBookingCount = uniqueBookingKeys.size
+                
                 return (
                   <div
                     key={studentName}
@@ -494,7 +502,7 @@ export function AdminPage({ user }: AdminPageProps) {
                           fontSize: isMobile ? '12px' : '13px',
                           color: '#666'
                         }}>
-                          {studentBookings.length} 個預約
+                          {uniqueBookingCount} 個預約
                         </div>
                       </div>
                       
@@ -568,93 +576,107 @@ export function AdminPage({ user }: AdminPageProps) {
         )}
 
         {/* Booking List */}
-        {bookings.length > 0 && (
-          <div style={{
-            background: 'white',
-            borderRadius: '8px',
-            padding: isMobile ? '15px' : '20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }}>
-            <h2 style={{
-              fontSize: isMobile ? '15px' : '16px',
-              fontWeight: '600',
-              color: '#34495e',
-              marginBottom: isMobile ? '12px' : '15px'
-            }}>
-              當日預約明細 ({bookings.length} 筆)
-            </h2>
-            
+        {bookings.length > 0 && (() => {
+          // 去重：同一學生、同一時間、同一船的預約只顯示一次
+          const uniqueBookings: Booking[] = []
+          const processedKeys = new Set<string>()
+          
+          bookings.forEach((booking) => {
+            const key = `${booking.boat_id}-${booking.student}-${booking.start_at}-${booking.duration_min}`
+            if (!processedKeys.has(key)) {
+              processedKeys.add(key)
+              uniqueBookings.push(booking)
+            }
+          })
+          
+          return (
             <div style={{
-              display: 'grid',
-              gap: isMobile ? '8px' : '10px'
+              background: 'white',
+              borderRadius: '8px',
+              padding: isMobile ? '15px' : '20px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
             }}>
-              {bookings.map((booking) => {
-                const startTime = formatTimeNoColon(booking.start_at)
-                const arrivalTime = getArrivalTimeNoColon(booking.start_at)
-                
-                // 找出同一時間的所有教練
-                const sameTimeBookings = bookings.filter(b => 
-                  b.boat_id === booking.boat_id &&
-                  b.student === booking.student &&
-                  b.start_at === booking.start_at &&
-                  b.duration_min === booking.duration_min
-                )
-                const allCoaches = sameTimeBookings.map(b => 
-                  getCoachName(b.coach_id)
-                ).filter((name, idx, self) => self.indexOf(name) === idx).join(' / ')
-                
-                return (
-                  <div
-                    key={booking.id}
-                    style={{
-                      padding: isMobile ? '10px' : '12px',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '6px',
-                      display: isMobile ? 'flex' : 'grid',
-                      flexDirection: isMobile ? 'column' : undefined,
-                      gridTemplateColumns: isMobile ? undefined : 'auto 1fr auto',
-                      gap: isMobile ? '8px' : '12px',
-                      alignItems: isMobile ? 'flex-start' : 'center',
-                      fontSize: isMobile ? '13px' : '14px'
-                    }}
-                  >
-                    <div style={{ color: '#666' }}>
-                      <div style={{ fontWeight: '600', color: '#333', fontSize: isMobile ? '14px' : undefined }}>
-                        {arrivalTime} 抵達
+              <h2 style={{
+                fontSize: isMobile ? '15px' : '16px',
+                fontWeight: '600',
+                color: '#34495e',
+                marginBottom: isMobile ? '12px' : '15px'
+              }}>
+                當日預約明細 ({uniqueBookings.length} 筆)
+              </h2>
+              
+              <div style={{
+                display: 'grid',
+                gap: isMobile ? '8px' : '10px'
+              }}>
+                {uniqueBookings.map((booking) => {
+                  const startTime = formatTimeNoColon(booking.start_at)
+                  const arrivalTime = getArrivalTimeNoColon(booking.start_at)
+                  
+                  // 找出同一時間的所有教練
+                  const sameTimeBookings = bookings.filter(b => 
+                    b.boat_id === booking.boat_id &&
+                    b.student === booking.student &&
+                    b.start_at === booking.start_at &&
+                    b.duration_min === booking.duration_min
+                  )
+                  const allCoaches = sameTimeBookings.map(b => 
+                    getCoachName(b.coach_id)
+                  ).filter((name, idx, self) => self.indexOf(name) === idx).join(' / ')
+                  
+                  return (
+                    <div
+                      key={booking.id}
+                      style={{
+                        padding: isMobile ? '10px' : '12px',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '6px',
+                        display: isMobile ? 'flex' : 'grid',
+                        flexDirection: isMobile ? 'column' : undefined,
+                        gridTemplateColumns: isMobile ? undefined : 'auto 1fr auto',
+                        gap: isMobile ? '8px' : '12px',
+                        alignItems: isMobile ? 'flex-start' : 'center',
+                        fontSize: isMobile ? '13px' : '14px'
+                      }}
+                    >
+                      <div style={{ color: '#666' }}>
+                        <div style={{ fontWeight: '600', color: '#333', fontSize: isMobile ? '14px' : undefined }}>
+                          {arrivalTime} 抵達
+                        </div>
+                        <div style={{ fontSize: isMobile ? '12px' : '12px', marginTop: '2px' }}>
+                          {startTime} 下水
+                        </div>
                       </div>
-                      <div style={{ fontSize: isMobile ? '12px' : '12px', marginTop: '2px' }}>
-                        {startTime} 下水
+                      
+                      <div>
+                        <div style={{ fontWeight: '600', color: '#333', fontSize: isMobile ? '14px' : undefined }}>
+                          {booking.student}
+                        </div>
+                        <div style={{ fontSize: isMobile ? '12px' : '12px', color: '#666', marginTop: '2px' }}>
+                          {allCoaches} · {booking.boats?.name} · {booking.duration_min}分
+                        </div>
                       </div>
+                      
+                      {booking.activity_types && booking.activity_types.length > 0 && (
+                        <div style={{
+                          fontSize: isMobile ? '11px' : '11px',
+                          padding: '3px 8px',
+                          background: '#e3f2fd',
+                          borderRadius: '3px',
+                          color: '#1976d2',
+                          fontWeight: '600',
+                          alignSelf: isMobile ? 'flex-start' : undefined
+                        }}>
+                          {booking.activity_types.join(' + ')}
+                        </div>
+                      )}
                     </div>
-                    
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#333', fontSize: isMobile ? '14px' : undefined }}>
-                        {booking.student}
-                      </div>
-                      <div style={{ fontSize: isMobile ? '12px' : '12px', color: '#666', marginTop: '2px' }}>
-                        {allCoaches} · {booking.boats?.name} · {booking.duration_min}分
-                      </div>
-                    </div>
-                    
-                    {booking.activity_types && booking.activity_types.length > 0 && (
-                      <div style={{
-                        fontSize: isMobile ? '11px' : '11px',
-                        padding: '3px 8px',
-                        background: '#e3f2fd',
-                        borderRadius: '3px',
-                        color: '#1976d2',
-                        fontWeight: '600',
-                        alignSelf: isMobile ? 'flex-start' : undefined
-                      }}>
-                        {booking.activity_types.join(' + ')}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
       </div>
     </div>
   )
