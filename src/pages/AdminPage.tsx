@@ -89,10 +89,37 @@ export function AdminPage({ user }: AdminPageProps) {
       
       const { data: bookingsData } = await supabase
         .from('bookings')
-        .select('*, boats:boat_id(id, name, color), coaches:coach_id(id, name)')
+        .select('*, boats:boat_id(id, name, color)')
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
         .order('start_at', { ascending: true })
+      
+      // 獲取每個預約的教練信息
+      if (bookingsData && bookingsData.length > 0) {
+        const bookingIds = bookingsData.map((b: any) => b.id)
+        const { data: bookingCoachesData } = await supabase
+          .from('booking_coaches')
+          .select('booking_id, coaches:coach_id(id, name)')
+          .in('booking_id', bookingIds)
+        
+        // 合併教練信息
+        const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
+        for (const item of bookingCoachesData || []) {
+          const bookingId = item.booking_id
+          const coach = (item as any).coaches
+          if (coach) {
+            if (!coachesByBooking[bookingId]) {
+              coachesByBooking[bookingId] = []
+            }
+            coachesByBooking[bookingId].push(coach)
+          }
+        }
+        
+        // 將教練信息添加到預約中
+        bookingsData.forEach((booking: any) => {
+          booking.coaches = coachesByBooking[booking.id] || []
+        })
+      }
       
       setBookings(bookingsData || [])
     } catch (error) {

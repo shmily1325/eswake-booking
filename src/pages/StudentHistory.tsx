@@ -12,7 +12,7 @@ interface Booking {
   activity_types: string[] | null
   status: string
   boats: { name: string; color: string } | null
-  coaches: { name: string } | null
+  coaches: { id: string; name: string }[] // 改為數組
 }
 
 interface StudentHistoryProps {
@@ -37,21 +37,50 @@ export function StudentHistory({ user, isEmbedded = false }: StudentHistoryProps
     setHasSearched(true)
 
     try {
+      // 先獲取符合條件的預約
       const { data, error } = await supabase
         .from('bookings')
-        .select(`
-          *,
-          boats:boat_id (name, color),
-          coaches:coach_id (name)
-        `)
+        .select('*, boats:boat_id (name, color)')
         .ilike('student', `%${searchName.trim()}%`)
         .order('start_at', { ascending: false })
 
       if (error) {
         console.error('Error fetching bookings:', error)
         console.error('Error details:', error.details, error.hint)
+        setBookings([])
+      } else if (data && data.length > 0) {
+        // 獲取所有預約的教練
+        const bookingIds = data.map(b => b.id)
+        const { data: bookingCoachesData, error: coachError } = await supabase
+          .from('booking_coaches')
+          .select('booking_id, coaches:coach_id(id, name)')
+          .in('booking_id', bookingIds)
+
+        if (coachError) {
+          console.error('Error fetching coaches:', coachError)
+        }
+
+        // 合併教練信息
+        const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
+        for (const item of bookingCoachesData || []) {
+          const bookingId = item.booking_id
+          const coach = (item as any).coaches
+          if (coach) {
+            if (!coachesByBooking[bookingId]) {
+              coachesByBooking[bookingId] = []
+            }
+            coachesByBooking[bookingId].push(coach)
+          }
+        }
+
+        const bookingsWithCoaches = data.map(booking => ({
+          ...booking,
+          coaches: coachesByBooking[booking.id] || []
+        }))
+
+        setBookings(bookingsWithCoaches as Booking[])
       } else {
-        setBookings((data as Booking[]) || [])
+        setBookings([])
       }
     } catch (err) {
       console.error('Search error:', err)
@@ -280,7 +309,9 @@ export function StudentHistory({ user, isEmbedded = false }: StudentHistoryProps
                       <div>
                         <span style={{ color: '#666' }}>👤 教練：</span>
                         <span style={{ fontWeight: '500', color: '#000' }}>
-                          {booking.coaches?.name || '未指定'}
+                          {booking.coaches && booking.coaches.length > 0
+                            ? booking.coaches.map(c => c.name).join(' / ')
+                            : '未指定'}
                         </span>
                       </div>
                       <div>

@@ -1,26 +1,29 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
 interface Coach {
-  id: string // UUID from Supabase
+  id: string
   name: string
+}
+
+interface Boat {
+  id: number
+  name: string
+  color: string
 }
 
 interface Booking {
   id: number
   boat_id: number
-  coach_id: string
   student: string
   start_at: string
   duration_min: number
   activity_types?: string[] | null
   notes?: string | null
   status: string
-  actual_duration_min?: number | null
-  coach_confirmed?: boolean
-  confirmed_at?: string | null
-  confirmed_by?: string | null
+  boats?: Boat
+  coaches?: Coach[]
 }
 
 interface EditBookingDialogProps {
@@ -39,7 +42,7 @@ export function EditBookingDialog({
   user,
 }: EditBookingDialogProps) {
   const [coaches, setCoaches] = useState<Coach[]>([])
-  const [selectedCoachId, setSelectedCoachId] = useState('')
+  const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
   const [student, setStudent] = useState('')
   const [startDate, setStartDate] = useState('')
   const [startTime, setStartTime] = useState('')
@@ -50,11 +53,21 @@ export function EditBookingDialog({
   const [loading, setLoading] = useState(false)
   const [loadingCoaches, setLoadingCoaches] = useState(true)
 
+  // 使用 useMemo 優化性能
+  const selectedCoachesSet = useMemo(() => new Set(selectedCoaches), [selectedCoaches])
+  const activityTypesSet = useMemo(() => new Set(activityTypes), [activityTypes])
+
   useEffect(() => {
     if (isOpen) {
       fetchCoaches()
       if (booking) {
-        setSelectedCoachId(booking.coach_id)
+        // 設置教練選擇
+        if (booking.coaches && booking.coaches.length > 0) {
+          setSelectedCoaches(booking.coaches.map(c => c.id))
+        } else {
+          setSelectedCoaches([])
+        }
+        
         setStudent(booking.student)
         setDurationMin(booking.duration_min)
         setActivityTypes(booking.activity_types || [])
@@ -85,6 +98,14 @@ export function EditBookingDialog({
     setLoadingCoaches(false)
   }
 
+  const toggleCoach = (coachId: string) => {
+    setSelectedCoaches(prev => 
+      prev.includes(coachId)
+        ? prev.filter(id => id !== coachId)
+        : [...prev, coachId]
+    )
+  }
+
   const toggleActivityType = (type: string) => {
     setActivityTypes(prev =>
       prev.includes(type)
@@ -101,7 +122,7 @@ export function EditBookingDialog({
 
     // 防呆檢查：08:00之前的預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
-    if (hour < 8 && !selectedCoachId) {
+    if (hour < 8 && selectedCoaches.length === 0) {
       setError('⚠️ 08:00之前的預約必須指定教練')
       return
     }
@@ -117,7 +138,7 @@ export function EditBookingDialog({
       // 檢查船隻衝突（需要至少15分鐘間隔）
       const { data: existingBookings, error: checkError } = await supabase
         .from('bookings')
-        .select('id, start_at, duration_min, student, coaches(name)')
+        .select('id, start_at, duration_min, student')
         .eq('boat_id', booking.boat_id)
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${startDate}T23:59:59`)
@@ -129,11 +150,9 @@ export function EditBookingDialog({
       }
       
       // 檢查是否與現有預約衝突（需要15分鐘接船時間）
+      // 排除當前編輯的預約
       for (const existing of existingBookings || []) {
-        // 跳過當前編輯的預約組（同一學生、同一時間、同一船、同一時長）
-        if (existing.student === booking.student && 
-            existing.start_at === booking.start_at && 
-            existing.duration_min === booking.duration_min) {
+        if (existing.id === booking.id) {
           continue
         }
         
@@ -165,90 +184,133 @@ export function EditBookingDialog({
       }
       
       // 檢查教練衝突（如果有選擇教練）
-      if (selectedCoachId) {
-        const { data: coachBookings, error: coachCheckError } = await supabase
-          .from('bookings')
-          .select('id, start_at, duration_min, student, boats(name)')
-          .eq('coach_id', selectedCoachId)
-          .gte('start_at', `${startDate}T00:00:00`)
-          .lte('start_at', `${startDate}T23:59:59`)
-        
-        if (!coachCheckError) {
-          for (const existing of coachBookings || []) {
-            // 跳過當前編輯的預約組（同一學生、同一時間、同一時長）
-            if (existing.student === booking.student && 
-                existing.start_at === booking.start_at && 
-                existing.duration_min === booking.duration_min) {
+      if (selectedCoaches.length > 0) {
+        for (const coachId of selectedCoaches) {
+          // 查詢該教練在該日期的所有預約
+          const { data: coachBookings, error: coachCheckError } = await supabase
+            .from('booking_coaches')
+            .select('booking_id, bookings!inner(id, start_at, duration_min, student)')
+            .eq('coach_id', coachId)
+            .gte('bookings.start_at', `${startDate}T00:00:00`)
+            .lte('bookings.start_at', `${startDate}T23:59:59`)
+          
+          if (coachCheckError) {
+            setError('檢查教練衝突時發生錯誤')
+            setLoading(false)
+            return
+          }
+          
+          for (const item of coachBookings || []) {
+            const coachBooking = (item as any).bookings
+            
+            // 跳過當前編輯的預約
+            if (coachBooking.id === booking.id) {
               continue
             }
             
-            const existingStart = new Date(existing.start_at).getTime()
-            const existingEnd = existingStart + existing.duration_min * 60000
+            const existingStart = new Date(coachBooking.start_at).getTime()
+            const existingEnd = existingStart + coachBooking.duration_min * 60000
             
             // 檢查時間重疊
             if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
-              const coachName = coaches.find(c => c.id === selectedCoachId)?.name || selectedCoachId
-              const boatName = (existing as any).boats?.name || ''
-              setError(`教練 ${coachName} 在此時段已有其他預約${boatName ? `（${boatName}）` : ''}`)
+              const coach = coaches.find(c => c.id === coachId)
+              setError(`教練 ${coach?.name || '未知'} 在此時段已有其他預約（${coachBooking.student}）`)
               setLoading(false)
               return
             }
           }
         }
       }
-      
-      const updateData = {
-        coach_id: selectedCoachId || null,
-        student: student,
-        start_at: newStartAt,
-        duration_min: durationMin,
-        activity_types: activityTypes.length > 0 ? activityTypes : null,
-        notes: notes || null,
-        updated_by: user.id,
-      }
 
+      // 更新預約（不包含 coach_id）
       const { error: updateError } = await supabase
         .from('bookings')
-        .update(updateData)
+        .update({
+          student: student,
+          start_at: newStartAt,
+          duration_min: durationMin,
+          activity_types: activityTypes.length > 0 ? activityTypes : null,
+          notes: notes || null,
+          updated_by: user.id,
+        })
         .eq('id', booking.id)
 
       if (updateError) {
-        if (updateError.message.includes('violates exclusion constraint')) {
-          setError('該時段已被預約（教練/船）')
-        } else {
-          setError(updateError.message)
-        }
+        setError(updateError.message || '更新失敗')
         setLoading(false)
         return
       }
 
-      // Log to audit_log
-      const changedFields = []
-      if (booking.coach_id !== selectedCoachId) changedFields.push('coach_id')
-      if (booking.student !== student) changedFields.push('student')
-      if (booking.start_at !== newStartAt) changedFields.push('start_at')
-      if (booking.duration_min !== durationMin) changedFields.push('duration_min')
-      if (JSON.stringify(booking.activity_types) !== JSON.stringify(activityTypes.length > 0 ? activityTypes : null)) {
-        changedFields.push('activity_types')
-      }
-      if ((booking.notes || '') !== (notes || '')) changedFields.push('notes')
+      // 刪除舊的教練關聯
+      await supabase
+        .from('booking_coaches')
+        .delete()
+        .eq('booking_id', booking.id)
 
-      const { error: auditError } = await supabase.from('audit_log').insert({
-        table_name: 'bookings',
-        record_id: booking.id.toString(),
-        operation: 'UPDATE',
-        changed_by: user.id,
-        old_data: booking,
-        new_data: { ...booking, ...updateData },
-        changed_fields: changedFields,
-      })
-      if (auditError) {
-        console.error('❌ Audit log insert error:', auditError)
-      } else {
-        console.log('✅ Audit log inserted successfully')
+      // 插入新的教練關聯
+      if (selectedCoaches.length > 0) {
+        const bookingCoachesToInsert = selectedCoaches.map(coachId => ({
+          booking_id: booking.id,
+          coach_id: coachId,
+        }))
+
+        const { error: coachInsertError } = await supabase
+          .from('booking_coaches')
+          .insert(bookingCoachesToInsert)
+
+        if (coachInsertError) {
+          console.error('插入教練關聯失敗:', coachInsertError)
+          // 不阻止更新，只記錄錯誤
+        }
       }
+
+      // 記錄到審計日誌（人類可讀格式）
+      const boatName = booking.boats?.name || '未知船隻'
+      const oldCoachNames = booking.coaches && booking.coaches.length > 0
+        ? booking.coaches.map(c => c.name).join(' / ')
+        : '未指定'
+      const newCoachNames = selectedCoaches.length > 0
+        ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name).join(' / ')
+        : '未指定'
+
+      // 計算變更內容
+      const changes: string[] = []
+      if (booking.student !== student) {
+        changes.push(`學生: ${booking.student} → ${student}`)
+      }
+      if (oldCoachNames !== newCoachNames) {
+        changes.push(`教練: ${oldCoachNames} → ${newCoachNames}`)
+      }
+      if (booking.start_at !== newStartAt) {
+        const oldTime = new Date(booking.start_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })
+        const newTime = new Date(newStartAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })
+        changes.push(`時間: ${oldTime} → ${newTime}`)
+      }
+      if (booking.duration_min !== durationMin) {
+        changes.push(`時長: ${booking.duration_min}分 → ${durationMin}分`)
+      }
+
+      await supabase.from('audit_log').insert({
+        operation: '修改預約',
+        user_email: user.email || '',
+        student_name: student,
+        boat_name: boatName,
+        coach_names: newCoachNames,
+        start_time: newStartAt,
+        duration_min: durationMin,
+        activity_types: activityTypes.length > 0 ? activityTypes : null,
+        notes: notes || null,
+        changes: changes.length > 0 ? changes.join('; ') : null,
+      })
 
       // Success
+      setSelectedCoaches([])
+      setStudent('')
+      setStartDate('')
+      setStartTime('')
+      setDurationMin(60)
+      setActivityTypes([])
+      setNotes('')
       setLoading(false)
       onSuccess()
       onClose()
@@ -259,59 +321,43 @@ export function EditBookingDialog({
   }
 
   const handleDelete = async () => {
-    if (!confirm('確定要刪除這筆預約嗎？')) {
+    if (!confirm('確定要刪除這個預約嗎？')) {
       return
     }
 
     setLoading(true)
-    setError('')
 
     try {
-      // 查詢所有相同時間、學生、船隻的預約（多教練情況）
-      const { data: relatedBookings, error: queryError } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('boat_id', booking.boat_id)
-        .eq('student', booking.student)
-        .eq('start_at', booking.start_at)
-        .eq('duration_min', booking.duration_min)
+      // 獲取船隻名稱
+      const boatName = booking.boats?.name || '未知船隻'
+      const coachNames = booking.coaches && booking.coaches.length > 0
+        ? booking.coaches.map(c => c.name).join(' / ')
+        : '未指定'
 
-      if (queryError) throw queryError
-
-      // 為每筆記錄記錄到 audit_log
-      if (relatedBookings && relatedBookings.length > 0) {
-        const auditLogs = relatedBookings.map(b => ({
-          table_name: 'bookings',
-          record_id: b.id.toString(),
-          operation: 'DELETE',
-          changed_by: user.id,
-          old_data: b,
-          new_data: null,
-          changed_fields: null,
-        }))
-
-        const { error: auditError } = await supabase.from('audit_log').insert(auditLogs)
-        if (auditError) {
-          console.error('❌ Audit log insert error:', auditError)
-        } else {
-          console.log('✅ Audit log inserted successfully')
-        }
-      }
-
-      // 刪除所有相關的預約
+      // 刪除預約（CASCADE 會自動刪除 booking_coaches）
       const { error: deleteError } = await supabase
         .from('bookings')
         .delete()
-        .eq('boat_id', booking.boat_id)
-        .eq('student', booking.student)
-        .eq('start_at', booking.start_at)
-        .eq('duration_min', booking.duration_min)
+        .eq('id', booking.id)
 
       if (deleteError) {
-        setError(deleteError.message)
+        setError(deleteError.message || '刪除失敗')
         setLoading(false)
         return
       }
+
+      // 記錄到審計日誌
+      await supabase.from('audit_log').insert({
+        operation: '刪除預約',
+        user_email: user.email || '',
+        student_name: booking.student,
+        boat_name: boatName,
+        coach_names: coachNames,
+        start_time: booking.start_at,
+        duration_min: booking.duration_min,
+        activity_types: booking.activity_types,
+        notes: booking.notes || null,
+      })
 
       // Success
       setLoading(false)
@@ -324,15 +370,17 @@ export function EditBookingDialog({
   }
 
   const handleClose = () => {
-    setError('')
-    setSelectedCoachId('')
-    setStudent('')
-    setStartDate('')
-    setStartTime('')
-    setDurationMin(60)
-    setActivityTypes([])
-    setNotes('')
-    onClose()
+    if (!loading) {
+      setSelectedCoaches([])
+      setStudent('')
+      setStartDate('')
+      setStartTime('')
+      setDurationMin(60)
+      setActivityTypes([])
+      setNotes('')
+      setError('')
+      onClose()
+    }
   }
 
   return (
@@ -367,6 +415,25 @@ export function EditBookingDialog({
       >
         <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px' }}>編輯預約</h2>
         
+        {error && (
+          <div style={{
+            padding: '14px 16px',
+            backgroundColor: '#fff3cd',
+            border: '2px solid #ffc107',
+            borderRadius: '8px',
+            marginBottom: '18px',
+            color: '#856404',
+            fontSize: '15px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}>
+            <span style={{ fontSize: '20px' }}>⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
+        
         <form onSubmit={handleUpdate}>
           <div style={{ marginBottom: '18px' }}>
             <label style={{ 
@@ -376,7 +443,7 @@ export function EditBookingDialog({
               fontSize: '15px',
               fontWeight: '500',
             }}>
-              教練
+              教練（可複選）
             </label>
             
             {loadingCoaches ? (
@@ -384,26 +451,74 @@ export function EditBookingDialog({
                 載入教練列表中...
               </div>
             ) : (
-              <select
-                value={selectedCoachId}
-                onChange={(e) => setSelectedCoachId(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #ccc',
-                  boxSizing: 'border-box',
-                  fontSize: '16px',
-                  touchAction: 'manipulation',
-                }}
-              >
-                <option value="">不指定教練</option>
+              <div style={{
+                maxHeight: '180px',
+                overflowY: 'auto',
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                padding: '8px',
+                WebkitOverflowScrolling: 'touch',
+              }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  transition: 'background 0.2s',
+                  backgroundColor: selectedCoaches.length === 0 ? '#f0f0f0' : 'transparent',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedCoaches.length === 0}
+                    onChange={() => setSelectedCoaches([])}
+                    style={{
+                      marginRight: '10px',
+                      width: '18px',
+                      height: '18px',
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <span style={{ fontSize: '15px', color: '#666' }}>不指定教練</span>
+                </label>
                 {coaches.map((coach) => (
-                  <option key={coach.id} value={coach.id}>
-                    {coach.name}
-                  </option>
+                  <label
+                    key={coach.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '10px',
+                      cursor: 'pointer',
+                      borderRadius: '6px',
+                      transition: 'background 0.2s',
+                      backgroundColor: selectedCoachesSet.has(coach.id) ? '#e3f2fd' : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!selectedCoachesSet.has(coach.id)) {
+                        e.currentTarget.style.backgroundColor = '#f5f5f5'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selectedCoachesSet.has(coach.id)) {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCoachesSet.has(coach.id)}
+                      onChange={() => toggleCoach(coach.id)}
+                      style={{
+                        marginRight: '10px',
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <span style={{ fontSize: '15px' }}>{coach.name}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
             )}
           </div>
 
@@ -540,68 +655,43 @@ export function EditBookingDialog({
                 display: 'flex',
                 alignItems: 'center',
                 padding: '10px 16px',
-                cursor: 'pointer',
+                border: '1px solid #ccc',
                 borderRadius: '8px',
-                backgroundColor: activityTypes.includes('WB') ? '#e7f3ff' : '#f8f9fa',
-                border: activityTypes.includes('WB') ? '2px solid #007bff' : '2px solid #ddd',
+                cursor: 'pointer',
+                backgroundColor: activityTypesSet.has('WB') ? '#e3f2fd' : 'white',
                 transition: 'all 0.2s',
-                touchAction: 'manipulation',
-                flex: '1 1 auto',
-                minWidth: '100px',
+                flex: '1',
+                minWidth: '120px',
                 justifyContent: 'center',
               }}>
                 <input
                   type="checkbox"
-                  checked={activityTypes.includes('WB')}
+                  checked={activityTypesSet.has('WB')}
                   onChange={() => toggleActivityType('WB')}
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    marginRight: '8px',
-                    cursor: 'pointer',
-                  }}
+                  style={{ marginRight: '8px', width: '16px', height: '16px' }}
                 />
-                <span style={{ 
-                  fontSize: '16px',
-                  color: '#000',
-                  fontWeight: activityTypes.includes('WB') ? '600' : '400',
-                }}>
-                  WB (滑水板)
-                </span>
+                <span style={{ fontSize: '15px' }}>WB (滑水板)</span>
               </label>
-
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
                 padding: '10px 16px',
-                cursor: 'pointer',
+                border: '1px solid #ccc',
                 borderRadius: '8px',
-                backgroundColor: activityTypes.includes('WS') ? '#e7f3ff' : '#f8f9fa',
-                border: activityTypes.includes('WS') ? '2px solid #007bff' : '2px solid #ddd',
+                cursor: 'pointer',
+                backgroundColor: activityTypesSet.has('WS') ? '#e3f2fd' : 'white',
                 transition: 'all 0.2s',
-                touchAction: 'manipulation',
-                flex: '1 1 auto',
-                minWidth: '100px',
+                flex: '1',
+                minWidth: '120px',
                 justifyContent: 'center',
               }}>
                 <input
                   type="checkbox"
-                  checked={activityTypes.includes('WS')}
+                  checked={activityTypesSet.has('WS')}
                   onChange={() => toggleActivityType('WS')}
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    marginRight: '8px',
-                    cursor: 'pointer',
-                  }}
+                  style={{ marginRight: '8px', width: '16px', height: '16px' }}
                 />
-                <span style={{ 
-                  fontSize: '16px',
-                  color: '#000',
-                  fontWeight: activityTypes.includes('WS') ? '600' : '400',
-                }}>
-                  WS (滑水)
-                </span>
+                <span style={{ fontSize: '15px' }}>WS (滑水)</span>
               </label>
             </div>
           </div>
@@ -619,15 +709,15 @@ export function EditBookingDialog({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="例如：初學者、需要救生衣、特殊需求..."
               rows={3}
+              placeholder="例如：初學者、需要救生衣、特殊需求..."
               style={{
                 width: '100%',
                 padding: '12px',
                 borderRadius: '8px',
                 border: '1px solid #ccc',
                 boxSizing: 'border-box',
-                fontSize: '16px',
+                fontSize: '15px',
                 fontFamily: 'inherit',
                 resize: 'vertical',
                 touchAction: 'manipulation',
@@ -635,95 +725,62 @@ export function EditBookingDialog({
             />
           </div>
 
-          {error && (
-            <div
-              style={{
-                padding: '16px 20px',
-                backgroundColor: '#fff3cd',
-                color: '#856404',
-                borderRadius: '8px',
-                marginBottom: '16px',
-                border: '2px solid #ffc107',
-                fontSize: '16px',
-                fontWeight: '600',
-                boxShadow: '0 4px 12px rgba(255, 193, 7, 0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-              }}
-            >
-              <span style={{ fontSize: '24px', flexShrink: 0 }}>⚠️</span>
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div style={{ 
-            display: 'flex', 
-            gap: '10px', 
-            flexWrap: 'wrap',
-          }}>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
             <button
               type="button"
               onClick={handleDelete}
               disabled={loading}
               style={{
-                padding: '12px 24px',
+                padding: '14px 20px',
                 borderRadius: '8px',
-                border: '1px solid #dc3545',
-                backgroundColor: 'white',
-                color: '#dc3545',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.5 : 1,
+                border: 'none',
+                backgroundColor: loading ? '#ccc' : '#dc3545',
+                color: 'white',
                 fontSize: '16px',
                 fontWeight: '500',
-                minHeight: '48px',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
               }}
             >
               刪除
             </button>
-            
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
               style={{
-                padding: '12px 24px',
+                flex: 1,
+                padding: '14px',
                 borderRadius: '8px',
                 border: '1px solid #ccc',
                 backgroundColor: 'white',
-                color: '#000',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.5 : 1,
+                color: '#333',
                 fontSize: '16px',
                 fontWeight: '500',
-                minHeight: '48px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.5 : 1,
                 touchAction: 'manipulation',
-                flex: '1 1 auto',
               }}
             >
               取消
             </button>
-            
             <button
               type="submit"
               disabled={loading}
               style={{
-                padding: '12px 24px',
+                flex: 1,
+                padding: '14px',
                 borderRadius: '8px',
                 border: 'none',
-                backgroundColor: '#28a745',
+                backgroundColor: loading ? '#ccc' : '#007bff',
                 color: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.5 : 1,
                 fontSize: '16px',
                 fontWeight: '500',
-                minHeight: '48px',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
-                flex: '1 1 auto',
               }}
             >
-              {loading ? '更新中...' : '確認更新'}
+              {loading ? '處理中...' : '確認更新'}
             </button>
           </div>
         </form>
@@ -731,4 +788,3 @@ export function EditBookingDialog({
     </div>
   )
 }
-

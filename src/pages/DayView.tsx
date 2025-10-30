@@ -52,19 +52,14 @@ interface Coach {
 interface Booking {
   id: number
   boat_id: number
-  coach_id: string
   student: string
   start_at: string
   duration_min: number
-  activity_types?: string[] | null // ['WB', 'WS']
+  activity_types?: string[] | null
   notes?: string | null
   status: string
-  boats?: Boat // Join result from Supabase
-  coaches?: Coach // Join result from Supabase
-  actual_duration_min?: number | null
-  coach_confirmed?: boolean
-  confirmed_at?: string | null
-  confirmed_by?: string | null
+  boats?: Boat
+  coaches?: Coach[] // 改为数组，支持多教练
 }
 
 // Generate time slots from 04:30 to 22:00, every 15 minutes
@@ -73,17 +68,21 @@ const generateTimeSlots = () => {
   
   // Start from 04:30
   slots.push('04:30')
-  slots.push('04:45')
   
-  // Continue from 05:00 to 22:00
-  for (let hour = 5; hour <= 22; hour++) {
-    for (let min = 0; min < 60; min += 15) {
-      const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`
-      slots.push(timeStr)
-      // Stop at 22:00
-      if (hour === 22 && min === 0) break
+  let hour = 4
+  let minute = 45
+  
+  while (hour < 22 || (hour === 22 && minute === 0)) {
+    const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+    slots.push(timeSlot)
+    
+    minute += 15
+    if (minute >= 60) {
+      minute = 0
+      hour += 1
     }
   }
+  
   return slots
 }
 
@@ -173,67 +172,105 @@ export function DayView({ user }: DayViewProps) {
     promises.push(
       supabase
         .from('bookings')
-        .select('*, boats:boat_id(id, name, color), coaches:coach_id(id, name)')
+        .select('*, boats:boat_id(id, name, color)')
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
         .order('start_at', { ascending: true })
     )
-      
+
       const results = await Promise.all(promises)
       
-      // 處理結果
-      let resultIndex = 0
-      
       if (isInitialLoad) {
-        // 處理 boats
-        const { data: boatsData, error: boatsError } = results[resultIndex++]
-        if (boatsError) {
-          console.error('Error fetching boats:', boatsError)
+        const [boatsResult, coachesResult, bookingsResult] = results
+        
+        if (boatsResult.error) {
+          console.error('Error fetching boats:', boatsResult.error)
         } else {
-          // 自訂排序：G23/G21/黑豹/粉紅/彈簧床
-          const boatOrder = ['G23', 'G21', '黑豹', '粉紅', '彈簧床']
-          const sortedBoats = (boatsData || []).sort((a, b) => {
-            const indexA = boatOrder.indexOf(a.name)
-            const indexB = boatOrder.indexOf(b.name)
-            if (indexA === -1) return 1
-            if (indexB === -1) return -1
-            return indexA - indexB
+          // 按照指定順序排序船隻
+          const sortedBoats = (boatsResult.data || []).sort((a, b) => {
+            const order = ['G23', 'G21', '黑豹', '粉紅', '彈簧床']
+            return order.indexOf(a.name) - order.indexOf(b.name)
           })
           setBoats(sortedBoats)
         }
         
-        // 處理 coaches
-        const { data: coachesData, error: coachesError } = results[resultIndex++]
-        if (coachesError) {
-          console.error('Error fetching coaches:', coachesError)
+        if (coachesResult.error) {
+          console.error('Error fetching coaches:', coachesResult.error)
         } else {
-          setCoaches(coachesData || [])
+          setCoaches(coachesResult.data || [])
+        }
+
+        if (bookingsResult.error) {
+          console.error('Error fetching bookings:', bookingsResult.error)
+        } else {
+          // 獲取每個預約的教練信息
+          await fetchBookingsWithCoaches(bookingsResult.data || [])
+        }
+      } else {
+        // 只刷新 bookings
+        const [bookingsResult] = results
+        
+        if (bookingsResult.error) {
+          console.error('Error fetching bookings:', bookingsResult.error)
+        } else {
+          await fetchBookingsWithCoaches(bookingsResult.data || [])
         }
       }
-      
-      // 處理 bookings
-      const { data: bookingsData, error: bookingsError } = results[resultIndex]
-      if (bookingsError) {
-        console.error('Error fetching bookings:', bookingsError)
-      } else {
-        setBookings(bookingsData || [])
-      }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error('Error in fetchData:', error)
     } finally {
-      setLoading(false)
+      if (isInitialLoad) {
+        setLoading(false)
+      }
     }
   }
 
-  const getCoachName = (coachId: string): string => {
-    const coach = coaches.find(c => c.id === coachId)
-    return coach ? coach.name : coachId
+  // 獲取預約的教練信息
+  const fetchBookingsWithCoaches = async (bookingsData: any[]) => {
+    if (bookingsData.length === 0) {
+      setBookings([])
+      return
+    }
+
+    // 獲取所有預約的教練關聯
+    const bookingIds = bookingsData.map(b => b.id)
+    const { data: bookingCoachesData, error } = await supabase
+      .from('booking_coaches')
+      .select('booking_id, coaches:coach_id(id, name)')
+      .in('booking_id', bookingIds)
+
+    if (error) {
+      console.error('Error fetching booking coaches:', error)
+      // 即使出錯也設置預約數據，只是沒有教練信息
+      setBookings(bookingsData.map(b => ({ ...b, coaches: [] })))
+      return
+    }
+
+    // 按 booking_id 分組教練
+    const coachesByBooking: { [key: number]: Coach[] } = {}
+    for (const item of bookingCoachesData || []) {
+      const bookingId = item.booking_id
+      const coach = (item as any).coaches
+      if (coach) {
+        if (!coachesByBooking[bookingId]) {
+          coachesByBooking[bookingId] = []
+        }
+        coachesByBooking[bookingId].push(coach)
+      }
+    }
+
+    // 合併教練信息到預約中
+    const bookingsWithCoaches = bookingsData.map(booking => ({
+      ...booking,
+      coaches: coachesByBooking[booking.id] || []
+    }))
+
+    setBookings(bookingsWithCoaches)
   }
-  
-  // 強制轉換為台北時間（UTC+8）
-  const toTaipeiTime = (dateString: string) => {
-    const date = new Date(dateString)
-    // 使用 Intl API 強制轉換為台北時區
+
+  // 轉換為台北時間組件
+  const toTaipeiTime = (dateStr: string) => {
+    const date = new Date(dateStr)
     const taipeiFormatter = new Intl.DateTimeFormat('zh-TW', {
       timeZone: 'Asia/Taipei',
       year: 'numeric',
@@ -243,7 +280,6 @@ export function DayView({ user }: DayViewProps) {
       minute: '2-digit',
       hour12: false
     })
-    
     const parts = taipeiFormatter.formatToParts(date)
     const year = parseInt(parts.find(p => p.type === 'year')?.value || '0')
     const month = parseInt(parts.find(p => p.type === 'month')?.value || '0')
@@ -260,11 +296,10 @@ export function DayView({ user }: DayViewProps) {
       setSelectedBooking(booking)
       setEditDialogOpen(true)
     } else {
-      // Create new booking
-      const localDateTime = new Date(`${dateParam}T${timeSlot}:00`)
-      const dateTime = localDateTime.toISOString()
+      // Create new booking - 使用本地時間字符串
+      const localDateTimeStr = `${dateParam}T${timeSlot}:00`
       setSelectedBoatId(boatId)
-      setSelectedTime(dateTime)
+      setSelectedTime(localDateTimeStr)
       setDialogOpen(true)
     }
   }
@@ -274,119 +309,102 @@ export function DayView({ user }: DayViewProps) {
     const [year, month, day] = dateParam.split('-').map(Number)
     const [hour, minute] = timeSlot.split(':').map(Number)
     
+    // 構建當前格子的時間（使用本地時間）
+    const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
+    const cellTime = cellDateTime.getTime()
+    
     for (const booking of bookings) {
       if (booking.boat_id !== boatId) continue
       
-      // 將預約時間轉換為台北時間
-      const bookingTaipei = toTaipeiTime(booking.start_at)
+      // 將預約的 start_at 轉換為台北時間進行比較
+      const { year: bYear, month: bMonth, day: bDay, hour: bHour, minute: bMinute } = toTaipeiTime(booking.start_at)
+      const bookingStart = new Date(bYear, bMonth - 1, bDay, bHour, bMinute, 0).getTime()
+      const bookingEnd = bookingStart + booking.duration_min * 60000
       
-      // 檢查日期是否匹配
-      if (year !== bookingTaipei.year || month !== bookingTaipei.month || day !== bookingTaipei.day) {
-        continue
-      }
-      
-      // 計算預約的結束時間（分鐘）
-      const bookingStartMinutes = bookingTaipei.hour * 60 + bookingTaipei.minute
-      const bookingEndMinutes = bookingStartMinutes + booking.duration_min
-      const cellMinutes = hour * 60 + minute
-      
-      // 檢查時間槽是否在預約時間範圍內
-      if (cellMinutes >= bookingStartMinutes && cellMinutes < bookingEndMinutes) {
+      if (cellTime >= bookingStart && cellTime < bookingEnd) {
         return booking
       }
     }
-    
     return null
   }
 
-  const isBookingStart = (booking: Booking, timeSlot: string): boolean => {
-    // 強制使用台北時間
+  const isBookingStart = (boatId: number, timeSlot: string): boolean => {
+    const [year, month, day] = dateParam.split('-').map(Number)
     const [hour, minute] = timeSlot.split(':').map(Number)
-    const bookingTaipei = toTaipeiTime(booking.start_at)
-    return bookingTaipei.hour === hour && bookingTaipei.minute === minute
+    
+    const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
+    const cellTime = cellDateTime.getTime()
+    
+    for (const booking of bookings) {
+      if (booking.boat_id !== boatId) continue
+      
+      const { year: bYear, month: bMonth, day: bDay, hour: bHour, minute: bMinute } = toTaipeiTime(booking.start_at)
+      const bookingStart = new Date(bYear, bMonth - 1, bDay, bHour, bMinute, 0).getTime()
+      
+      if (cellTime === bookingStart) {
+        return true
+      }
+    }
+    return false
   }
 
-  const getBookingSpan = (booking: Booking): number => {
-    // Each slot is 15 minutes
-    return Math.ceil(booking.duration_min / 15)
+  // 計算接船時間結束的格子（15分鐘）
+  const isCleanupTime = (boatId: number, timeSlot: string): boolean => {
+    // 排除彈簧床
+    const boat = boats.find(b => b.id === boatId)
+    if (boat && boat.name === '彈簧床') return false
+
+    const [year, month, day] = dateParam.split('-').map(Number)
+    const [hour, minute] = timeSlot.split(':').map(Number)
+    
+    const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
+    const cellTime = cellDateTime.getTime()
+
+    for (const booking of bookings) {
+      if (booking.boat_id !== boatId) continue
+      
+      const { year: bYear, month: bMonth, day: bDay, hour: bHour, minute: bMinute } = toTaipeiTime(booking.start_at)
+      const bookingStart = new Date(bYear, bMonth - 1, bDay, bHour, bMinute, 0).getTime()
+      const bookingEnd = bookingStart + booking.duration_min * 60000
+      const cleanupEnd = bookingEnd + 15 * 60000
+      
+      if (cellTime >= bookingEnd && cellTime < cleanupEnd) {
+        return true
+      }
+    }
+    return false
   }
 
-  // 篩選時間槽（使用useMemo緩存）
+  // 時間範圍篩選後的 TIME_SLOTS
   const filteredTimeSlots = useMemo(() => {
     if (timeRange === 'business') {
-      // 營業時間：5:00 - 20:00
+      // 營業時間 05:00-20:00
       return TIME_SLOTS.filter(slot => {
         const [hour] = slot.split(':').map(Number)
         return hour >= 5 && hour < 20
       })
     }
-    // 全天：顯示所有時間槽（04:30 - 22:00，已包含在TIME_SLOTS中）
     return TIME_SLOTS
   }, [timeRange])
 
-  // 取得要顯示的船隻（使用useMemo緩存）
+  // 根據單船模式篩選船隻
   const displayBoats = useMemo(() => {
     if (singleBoatMode && boats.length > 0) {
       return [boats[currentBoatIndex]]
     }
     return boats
-  }, [singleBoatMode, boats, currentBoatIndex])
-
-  // 切換到下一艘船
-  const nextBoat = () => {
-    if (currentBoatIndex < boats.length - 1) {
-      setCurrentBoatIndex(currentBoatIndex + 1)
-    }
-  }
-
-  // 切換到上一艘船
-  const prevBoat = () => {
-    if (currentBoatIndex > 0) {
-      setCurrentBoatIndex(currentBoatIndex - 1)
-    }
-  }
-
-  // 預先計算每艘船的bookings（用於列表視圖，使用useMemo緩存）
-  const bookingsByBoat = useMemo(() => {
-    const result: Record<number, Booking[]> = {}
-    boats.forEach(boat => {
-      result[boat.id] = bookings
-        .filter(b => b.boat_id === boat.id)
-        .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
-    })
-    return result
-  }, [boats, bookings])
-
-  // 檢查是否為接船時間（預約結束後 30 分鐘）
-  const isInCleanupTime = (boatId: number, timeSlot: string): boolean => {
-    const [hours, minutes] = timeSlot.split(':').map(Number)
-    const cellMinutes = hours * 60 + minutes // 轉換為當天的分鐘數
-    
-    for (const booking of bookings) {
-      if (booking.boat_id !== boatId) continue
-      
-      const bookingStart = new Date(booking.start_at)
-      const bookingStartHours = bookingStart.getHours()
-      const bookingStartMinutes = bookingStart.getMinutes()
-      const bookingStartTotalMinutes = bookingStartHours * 60 + bookingStartMinutes
-      
-      // 預約結束時間（分鐘數）
-      const bookingEndMinutes = bookingStartTotalMinutes + booking.duration_min
-      // 接船結束時間（分鐘數）
-      const cleanupEndMinutes = bookingEndMinutes + 30
-      
-      // 檢查是否在接船時間範圍內
-      if (cellMinutes >= bookingEndMinutes && cellMinutes < cleanupEndMinutes) {
-        return true
-      }
-    }
-    
-    return false
-  }
+  }, [singleBoatMode, currentBoatIndex, boats])
 
   if (loading) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '18px',
+        color: '#666'
+      }}>
         載入中...
       </div>
     )
@@ -394,521 +412,434 @@ export function DayView({ user }: DayViewProps) {
 
   return (
     <div style={{ 
-      padding: '12px', 
-      backgroundColor: '#f5f5f5', 
+      padding: isMobile ? '12px' : '20px', 
       minHeight: '100vh',
-      paddingBottom: '60px',
-      position: 'relative',
+      backgroundColor: '#f8f9fa',
     }}>
-      <div style={{ 
-        marginBottom: '12px', 
-        display: 'flex', 
-        flexDirection: 'column',
-        gap: '8px',
-        position: 'relative',
-        zIndex: 1,
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '16px',
+        flexWrap: 'wrap',
+        gap: '12px',
       }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          gap: '8px',
+        <h1 style={{ 
+          margin: 0, 
+          fontSize: isMobile ? '20px' : '24px',
+          fontWeight: '600',
+        }}>
+          {viewMode === 'list' ? '列表' : '時間軸'}
+        </h1>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={() => window.location.href = '/'}
+            style={{
+              ...buttonStyles.primary,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            ← 回主頁
+          </button>
+          <UserMenu user={user} />
+        </div>
+      </div>
+
+      {/* Date Navigation */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: isMobile ? '6px' : '10px',
+        marginBottom: '16px',
+        flexWrap: 'wrap',
+      }}>
+        <button
+          onClick={() => changeDate(-1)}
+          style={{
+            ...buttonStyles.secondary,
+            padding: isMobile ? '6px 10px' : '8px 12px',
+            fontSize: isMobile ? '16px' : '14px',
+          }}
+        >
+          ←
+        </button>
+        <input
+          type="date"
+          value={dateParam}
+          onChange={handleDateInputChange}
+          style={{
+            padding: isMobile ? '6px 10px' : '8px 12px',
+            borderRadius: '6px',
+            border: '1px solid #dee2e6',
+            fontSize: isMobile ? '14px' : '14px',
+            flex: isMobile ? '1 1 auto' : '0 0 auto',
+            minWidth: isMobile ? '140px' : 'auto',
+          }}
+        />
+        <button
+          onClick={() => changeDate(1)}
+          style={{
+            ...buttonStyles.secondary,
+            padding: isMobile ? '6px 10px' : '8px 12px',
+            fontSize: isMobile ? '16px' : '14px',
+          }}
+        >
+          →
+        </button>
+        <button
+          onClick={goToToday}
+          style={{
+            ...buttonStyles.primary,
+            padding: isMobile ? '6px 12px' : '8px 14px',
+            fontSize: isMobile ? '13px' : '13px',
+          }}
+        >
+          今天
+        </button>
+
+        {/* 視圖切換按鈕 */}
+        <button
+          onClick={() => setViewMode(viewMode === 'timeline' ? 'list' : 'timeline')}
+          style={{
+            ...buttonStyles.primary,
+            filter: 'grayscale(100%)',
+            marginLeft: 'auto',
+          }}
+        >
+          {viewMode === 'timeline' ? '📋 列表' : '📅 時間軸'}
+        </button>
+      </div>
+
+      {/* 時間範圍和單船模式切換（僅時間軸視圖） */}
+      {viewMode === 'timeline' && (
+        <div style={{
+          display: 'flex',
+          gap: '10px',
+          marginBottom: '16px',
           flexWrap: 'wrap',
         }}>
-          <h1 style={{ margin: 0, fontSize: '18px', whiteSpace: 'nowrap' }}>
-            {viewMode === 'timeline' ? '時間軸' : '列表'}
-          </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {/* 視圖切換 */}
-            <button
-              onClick={() => setViewMode(viewMode === 'timeline' ? 'list' : 'timeline')}
-              style={{
-                ...buttonStyles.primary,
-                filter: 'grayscale(100%)',
-              }}
-            >
-              {viewMode === 'timeline' ? '📋 列表' : '🗓️ 時間軸'}
-            </button>
-            <a
-              href="/"
-              style={{
-                ...buttonStyles.primary,
-                textDecoration: 'none',
-                display: 'inline-block',
-              }}
-            >
-              ← 回主頁
-            </a>
-            <UserMenu user={user} />
-          </div>
-        </div>
-        
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '6px',
-        }}>
           <button
-            onClick={() => changeDate(-1)}
+            onClick={() => setTimeRange(timeRange === 'all' ? 'business' : 'all')}
             style={{
-              ...buttonStyles.secondary,
-              fontSize: '16px',
+              ...buttonStyles.primary,
             }}
-            title="前一天"
           >
-            ←
+            {timeRange === 'business' ? '營業時間' : '全天'}
           </button>
-          
-          <input
-            type="date"
-            value={dateParam}
-            onChange={handleDateInputChange}
-            style={{
-              padding: '8px',
-              borderRadius: '6px',
-              border: '1px solid #dee2e6',
-              fontSize: '14px',
-              flex: 1,
-              minWidth: '120px',
-              minHeight: '36px',
-              touchAction: 'manipulation',
-            }}
-          />
-          
-          <button
-            onClick={() => changeDate(1)}
-            style={{
-              ...buttonStyles.secondary,
-              fontSize: '16px',
-            }}
-            title="下一天"
-          >
-            →
-          </button>
-          
-          <button
-            onClick={goToToday}
-            style={buttonStyles.primary}
-          >
-            今天
-          </button>
-        </div>
 
-        {/* 手機優化控制（僅在時間軸視圖顯示） */}
-        {viewMode === 'timeline' && (
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px',
-            marginTop: '8px',
-            alignItems: 'center',
-          }}>
-            {/* 時間範圍切換 */}
-            <button
-              onClick={() => setTimeRange(timeRange === 'all' ? 'business' : 'all')}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '4px',
-                border: `1px solid ${timeRange === 'all' ? '#6c757d' : '#007bff'}`,
-                backgroundColor: timeRange === 'all' ? '#6c757d' : '#007bff',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '500',
-                touchAction: 'manipulation',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {timeRange === 'all' ? '🕐 全天' : '⏰ 營業時間'}
-            </button>
-
-            {/* 視圖模式切換（僅手機顯示） */}
-            {isMobile && (
+          {isMobile && boats.length > 1 && (
+            <>
               <button
-                onClick={() => {
-                  setSingleBoatMode(!singleBoatMode)
-                  setCurrentBoatIndex(0)
-                }}
+                onClick={() => setSingleBoatMode(!singleBoatMode)}
                 style={{
-                  padding: '6px 12px',
-                  borderRadius: '4px',
-                  border: `1px solid ${singleBoatMode ? '#28a745' : '#6c757d'}`,
-                  backgroundColor: singleBoatMode ? '#28a745' : '#6c757d',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  touchAction: 'manipulation',
-                  whiteSpace: 'nowrap',
+                  ...buttonStyles.primary,
                 }}
               >
-                {singleBoatMode ? '📱 單船' : '📊 全部'}
+                {singleBoatMode ? '全部' : '單船'}
               </button>
-            )}
               
-            
-            {singleBoatMode && boats.length > 0 && (
-              <>
-                <button
-                  onClick={prevBoat}
-                  disabled={currentBoatIndex === 0}
-                  style={{
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    border: '1px solid #6c757d',
-                    backgroundColor: currentBoatIndex === 0 ? '#e9ecef' : 'white',
-                    color: currentBoatIndex === 0 ? '#adb5bd' : '#333',
-                    cursor: currentBoatIndex === 0 ? 'not-allowed' : 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    touchAction: 'manipulation',
-                  }}
-                >
-                  ←
-                </button>
-                <span style={{ 
-                  padding: '6px 10px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  color: '#333',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {boats[currentBoatIndex]?.name}
-                </span>
-                <button
-                  onClick={nextBoat}
-                  disabled={currentBoatIndex === boats.length - 1}
-                  style={{
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    border: '1px solid #6c757d',
-                    backgroundColor: currentBoatIndex === boats.length - 1 ? '#e9ecef' : 'white',
-                    color: currentBoatIndex === boats.length - 1 ? '#adb5bd' : '#333',
-                    cursor: currentBoatIndex === boats.length - 1 ? 'not-allowed' : 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    touchAction: 'manipulation',
-                  }}
-                >
-                  →
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-      
+              {singleBoatMode && (
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    onClick={() => setCurrentBoatIndex(Math.max(0, currentBoatIndex - 1))}
+                    disabled={currentBoatIndex === 0}
+                    style={{
+                      ...buttonStyles.secondary,
+                      opacity: currentBoatIndex === 0 ? 0.5 : 1,
+                      cursor: currentBoatIndex === 0 ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    ←
+                  </button>
+                  <span style={{ fontSize: '14px', fontWeight: '500', minWidth: '60px', textAlign: 'center' }}>
+                    {boats[currentBoatIndex]?.name}
+                  </span>
+                  <button
+                    onClick={() => setCurrentBoatIndex(Math.min(boats.length - 1, currentBoatIndex + 1))}
+                    disabled={currentBoatIndex >= boats.length - 1}
+                    style={{
+                      ...buttonStyles.secondary,
+                      opacity: currentBoatIndex >= boats.length - 1 ? 0.5 : 1,
+                      cursor: currentBoatIndex >= boats.length - 1 ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    →
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* 列表視圖 */}
       {viewMode === 'list' && (
-        <div style={{ 
-          overflowY: 'auto',
-          maxHeight: isLandscape ? 'calc(100vh - 100px)' : 'calc(100vh - 140px)',
-          padding: '20px 16px',
-          backgroundColor: '#f8f9fa',
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         }}>
-          {boats.map((boat) => {
-            const boatBookings = bookingsByBoat[boat.id] || []
-            
-            // 合併相同時間、學生的預約（多教練情況）
-            const groupedBookings: Map<string, Booking[]> = new Map()
-            boatBookings.forEach(booking => {
-              const key = `${booking.start_at}_${booking.student}_${booking.duration_min}`
-              if (!groupedBookings.has(key)) {
-                groupedBookings.set(key, [])
-              }
-              groupedBookings.get(key)!.push(booking)
-            })
-            
-            // 轉換為顯示用的陣列
-            const displayBookings = Array.from(groupedBookings.values()).map(group => group[0])
+          {/* 新增預約按鈕 */}
+          <div style={{
+            padding: '16px',
+            borderBottom: '1px solid #e9ecef',
+          }}>
+            <button
+              onClick={() => {
+                // 智能設置默認時間
+                let defaultTime: Date
+                const today = new Date().toISOString().split('T')[0]
+                
+                if (dateParam === today) {
+                  // 如果是今天，使用當前時間（四捨五入到最近的15分鐘）
+                  const now = new Date()
+                  const minutes = now.getMinutes()
+                  const roundedMinutes = Math.ceil(minutes / 15) * 15
+                  defaultTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), roundedMinutes, 0)
+                  if (roundedMinutes >= 60) {
+                    defaultTime.setHours(defaultTime.getHours() + 1)
+                    defaultTime.setMinutes(0)
+                  }
+                } else {
+                  // 如果不是今天，使用營業時間開始（05:00）
+                  defaultTime = new Date(`${dateParam}T05:00:00`)
+                }
+                
+                setSelectedTime(defaultTime.toISOString().slice(0, 16)) // 只保留到分鐘
+                setDialogOpen(true)
+              }}
+              style={{
+                padding: '14px 20px',
+                borderTop: '2px dashed #ddd',
+                width: '100%',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#007bff',
+                fontSize: '15px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              + 新增預約
+            </button>
+          </div>
+
+          {/* 按船分組顯示 */}
+          {boats.map(boat => {
+            const boatBookings = bookings
+              .filter(b => b.boat_id === boat.id)
+              .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
 
             return (
-              <div key={boat.id} style={{ 
-                marginBottom: '20px',
-                maxWidth: '100%',
-                margin: '0 0 20px 0',
-                display: 'flex',
-                gap: '0',
-                backgroundColor: 'white',
-                borderRadius: '12px',
-                boxShadow: '0 3px 12px rgba(0,0,0,0.15)',
-                overflow: 'hidden',
-                border: '1px solid #e8e8e8',
-              }}>
-                {/* 左側：船隻標題 */}
+              <div key={boat.id} style={{ marginBottom: '0px' }}>
                 <div style={{
+                  padding: isMobile ? '12px 16px' : '14px 20px',
                   background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
                   color: 'white',
-                  padding: isMobile ? '20px 14px' : '24px 18px',
                   fontWeight: '600',
                   fontSize: isMobile ? '15px' : '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  minWidth: isMobile ? '90px' : '105px',
-                  width: isMobile ? '90px' : '105px',
-                  flexShrink: 0,
-                  textAlign: 'center',
-                  gap: '6px',
-                  borderRight: '3px solid #4a4a4a',
-                  boxShadow: '3px 0 10px rgba(0,0,0,0.15)',
+                  borderBottom: '2px solid #e9ecef',
                 }}>
-                  <span style={{ fontSize: isMobile ? '15px' : '17px', lineHeight: '1.2', fontWeight: '700' }}>{boat.name}</span>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    opacity: 0.9, 
-                    fontWeight: '500',
-                    backgroundColor: 'rgba(255,255,255,0.2)',
-                    padding: '3px 10px',
-                    borderRadius: '12px',
+                  {boat.name}
+                  <span style={{
+                    marginLeft: '10px',
+                    fontSize: isMobile ? '13px' : '14px',
+                    fontWeight: '400',
+                    opacity: 0.9,
                   }}>
-                    {displayBookings.length} 個
+                    ({boatBookings.length} 筆)
                   </span>
                 </div>
 
-                {/* 右側：預約列表 */}
-                <div style={{
-                  flex: 1,
-                  backgroundColor: '#fafafa',
-                }}>
-                  {displayBookings.length === 0 ? (
-                    <div style={{
-                      padding: isMobile ? '40px 24px' : '52px 32px',
-                      textAlign: 'center',
-                      color: '#aaa',
-                      fontSize: isMobile ? '14px' : '15px',
-                      fontWeight: '500',
-                    }}>
-                      📭 今日無預約
-                    </div>
-                  ) : (
-                    displayBookings.map((booking) => {
-                      // 獲取相同組的所有教練
-                      const key = `${booking.start_at}_${booking.student}_${booking.duration_min}`
-                      const sameGroupBookings = groupedBookings.get(key) || [booking]
-                      const allCoaches = sameGroupBookings.map(b => 
-                        b.coach_id ? (b.coaches?.name || getCoachName(b.coach_id)) : '未指定'
-                      ).filter((name, index, self) => self.indexOf(name) === index) // 去重
+                {boatBookings.length === 0 ? (
+                  <div style={{
+                    padding: '24px',
+                    textAlign: 'center',
+                    color: '#999',
+                    fontSize: '14px',
+                    borderBottom: '1px solid #e9ecef',
+                  }}>
+                    今日無預約
+                  </div>
+                ) : (
+                  <div>
+                    {boatBookings.map(booking => {
                       const startTime = new Date(booking.start_at)
                       const endTime = new Date(startTime.getTime() + booking.duration_min * 60000)
-
+                      const timeFormatter = new Intl.DateTimeFormat('zh-TW', {
+                        timeZone: 'Asia/Taipei',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      })
+                      
                       return (
                         <div
                           key={booking.id}
                           onClick={() => {
-                            if ('vibrate' in navigator) {
-                              navigator.vibrate(10)
-                            }
                             setSelectedBooking(booking)
                             setEditDialogOpen(true)
                           }}
                           style={{
-                            padding: '16px 20px',
-                            borderBottom: '1px solid #e8e8e8',
+                            padding: isMobile ? '14px 16px' : '16px 20px',
+                            borderBottom: '1px solid #e9ecef',
                             cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                            backgroundColor: 'white',
-                            touchAction: 'manipulation',
-                            WebkitTapHighlightColor: 'transparent',
-                            minHeight: '56px',
+                            transition: 'background 0.2s',
                             display: 'flex',
-                            gap: '14px',
-                            alignItems: 'center',
+                            gap: isMobile ? '12px' : '16px',
+                            alignItems: 'flex-start',
                           }}
-                          onTouchStart={(e) => {
-                            // 觸覺反饋
-                            if ('vibrate' in navigator) {
-                              navigator.vibrate(10)
-                            }
-                            // 視覺反饋
-                            e.currentTarget.style.transform = 'scale(0.98)'
-                            e.currentTarget.style.backgroundColor = 'rgba(0, 123, 255, 0.05)'
-                          }}
-                          onTouchEnd={(e) => {
-                            setTimeout(() => {
-                              e.currentTarget.style.transform = 'scale(1)'
-                              e.currentTarget.style.backgroundColor = 'white'
-                            }, 100)
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f8f9fa'
-                            e.currentTarget.style.transform = 'translateX(4px)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'white'
-                            e.currentTarget.style.transform = 'translateX(0)'
-                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                         >
-                          {/* 左側：時間標籤（灰底白字） */}
+                          {/* 時間標籤 */}
                           <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            minWidth: '90px',
+                            padding: '8px 12px',
                             backgroundColor: '#5a5a5a',
                             color: 'white',
-                            padding: '10px 12px',
                             borderRadius: '6px',
-                            minWidth: '90px',
+                            fontSize: isMobile ? '13px' : '14px',
+                            fontWeight: '600',
+                            textAlign: 'center',
+                            lineHeight: '1.4',
                             flexShrink: 0,
                           }}>
-                            <div style={{
-                              fontSize: '14px',
-                              fontWeight: 'bold',
-                              lineHeight: '1.3',
-                            }}>
-                              {startTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                              {' - '}
-                              {endTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                            </div>
-                            <div style={{
-                              fontSize: '11px',
-                              opacity: 0.7,
-                              marginTop: '2px',
-                            }}>
+                            <div>{timeFormatter.format(startTime)}</div>
+                            <div style={{ fontSize: '11px', opacity: 0.8 }}>↓</div>
+                            <div>{timeFormatter.format(endTime)}</div>
+                            <div style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>
                               {booking.duration_min}分
                             </div>
                           </div>
 
-                          {/* 右側：詳細資訊 */}
-                          <div style={{ 
-                            flex: 1, 
-                            minWidth: 0,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            gap: '6px',
-                            textAlign: 'center',
-                          }}>
-                            {/* 第一行：學生名字 */}
+                          {/* 預約內容 */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {/* 學生名字 */}
                             <div style={{
-                              fontSize: isMobile ? '15px' : '15px',
+                              fontSize: isMobile ? '15px' : '16px',
                               fontWeight: '600',
-                              color: '#2c3e50',
-                              lineHeight: '1.2',
+                              marginBottom: '6px',
+                              color: '#000',
+                              textAlign: 'center',
                             }}>
                               {booking.student}
                             </div>
 
-                            {/* 第二行：教練名字 */}
+                            {/* 教練 */}
                             <div style={{
-                              fontSize: isMobile ? '13px' : '13px',
-                              color: '#7f8c8d',
-                              lineHeight: '1.3',
+                              fontSize: isMobile ? '13px' : '14px',
+                              color: '#666',
+                              marginBottom: '8px',
+                              textAlign: 'center',
                             }}>
-                              {allCoaches.join(' / ')}
+                              🎓 {booking.coaches && booking.coaches.length > 0
+                                ? booking.coaches.map(c => c.name).join(' / ')
+                                : '未指定'}
                             </div>
 
-                            {/* 第三行：活動類型 + 備註 */}
-                            <div style={{
-                              display: 'flex',
-                              gap: '6px',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexWrap: 'wrap',
-                            }}>
-                              {booking.activity_types && booking.activity_types.length > 0 && (
-                                <div style={{
-                                  fontSize: '11px',
-                                  padding: '3px 8px',
-                                  backgroundColor: '#d0d0d0',
-                                  color: '#555',
-                                  borderRadius: '3px',
-                                  fontWeight: '500',
-                                }}>
-                                  {booking.activity_types.join(' + ')}
-                                </div>
-                              )}
-                              {booking.notes && (
-                                <div style={{
-                                  fontSize: '10px',
-                                  color: '#95a5a6',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  flex: 1,
-                                  minWidth: 0,
-                                }}>
-                                  💬 {booking.notes}
-                                </div>
-                              )}
-                            </div>
+                            {/* 活動類型 */}
+                            {booking.activity_types && booking.activity_types.length > 0 && (
+                              <div style={{
+                                display: 'flex',
+                                gap: '6px',
+                                flexWrap: 'wrap',
+                                marginBottom: '8px',
+                                justifyContent: 'center',
+                              }}>
+                                {booking.activity_types.map(type => (
+                                  <span
+                                    key={type}
+                                    style={{
+                                      padding: '4px 10px',
+                                      backgroundColor: '#d0d0d0',
+                                      color: '#555',
+                                      borderRadius: '12px',
+                                      fontSize: isMobile ? '11px' : '12px',
+                                      fontWeight: '500',
+                                    }}
+                                  >
+                                    {type}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* 備註 */}
+                            {booking.notes && (
+                              <div style={{
+                                fontSize: isMobile ? '12px' : '13px',
+                                color: '#999',
+                                fontStyle: 'italic',
+                                marginTop: '4px',
+                                textAlign: 'center',
+                              }}>
+                                {booking.notes}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )
-                    })
-                  )}
-
-                  {/* 新增按鈕 */}
-                  <div
-                    onClick={() => {
-                      if ('vibrate' in navigator) {
-                        navigator.vibrate(15)
-                      }
-                      setSelectedBoatId(boat.id)
-                      // 智能設置默認時間
-                      const now = new Date()
-                      const today = now.toISOString().split('T')[0]
-                      let defaultTime: Date
-                      
-                      if (dateParam === today) {
-                        // 如果是今天，使用當前時間（取整到15分鐘）
-                        const minutes = now.getMinutes()
-                        const roundedMinutes = Math.ceil(minutes / 15) * 15
-                        defaultTime = new Date(now)
-                        defaultTime.setMinutes(roundedMinutes, 0, 0)
-                      } else {
-                        // 如果不是今天，使用營業時間開始（05:00）
-                        defaultTime = new Date(`${dateParam}T05:00:00`)
-                      }
-                      
-                      setSelectedTime(defaultTime.toISOString())
-                      setDialogOpen(true)
-                    }}
-                    style={{
-                      padding: '14px 20px',
-                      borderTop: '2px dashed #ddd',
-                      backgroundColor: '#f8f9fa',
-                      color: '#666',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: 'bold',
-                      transition: 'all 0.15s ease',
-                      touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent',
-                      minHeight: '48px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    onTouchStart={(e) => {
-                      if ('vibrate' in navigator) {
-                        navigator.vibrate(15)
-                      }
-                      e.currentTarget.style.transform = 'scale(0.98)'
-                      e.currentTarget.style.backgroundColor = '#e7f3ff'
-                      e.currentTarget.style.color = '#007bff'
-                    }}
-                    onTouchEnd={(e) => {
-                      setTimeout(() => {
-                        e.currentTarget.style.transform = 'scale(1)'
-                        e.currentTarget.style.backgroundColor = '#f8f9fa'
-                        e.currentTarget.style.color = '#666'
-                      }, 150)
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#e7f3ff'
-                      e.currentTarget.style.color = '#007bff'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f8f9fa'
-                      e.currentTarget.style.color = '#666'
-                    }}
-                  >
-                    ➕ 新增預約
+                    })}
                   </div>
-                </div>
+                )}
+
+                {/* 新增預約按鈕 */}
+                <button
+                  onClick={() => {
+                    setSelectedBoatId(boat.id)
+                    // 智能設置默認時間
+                    let defaultTime: Date
+                    const today = new Date().toISOString().split('T')[0]
+                    
+                    if (dateParam === today) {
+                      const now = new Date()
+                      const minutes = now.getMinutes()
+                      const roundedMinutes = Math.ceil(minutes / 15) * 15
+                      defaultTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), roundedMinutes, 0)
+                      if (roundedMinutes >= 60) {
+                        defaultTime.setHours(defaultTime.getHours() + 1)
+                        defaultTime.setMinutes(0)
+                      }
+                    } else {
+                      defaultTime = new Date(`${dateParam}T05:00:00`)
+                    }
+                    
+                    setSelectedTime(defaultTime.toISOString().slice(0, 16))
+                    setDialogOpen(true)
+                  }}
+                  style={{
+                    padding: '14px 20px',
+                    borderTop: '2px dashed #ddd',
+                    width: '100%',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: '#007bff',
+                    fontSize: '15px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'background 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  + 新增預約
+                </button>
               </div>
             )
           })}
@@ -917,276 +848,227 @@ export function DayView({ user }: DayViewProps) {
 
       {/* 時間軸視圖 */}
       {viewMode === 'timeline' && (
-        <div style={{ 
-          overflowX: 'auto',
-          overflowY: 'auto',
-          WebkitOverflowScrolling: 'touch',
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <table style={{
+          width: '100%',
+          borderCollapse: 'separate',
+          borderSpacing: 0,
+          backgroundColor: 'white',
           borderRadius: '8px',
-          maxHeight: isLandscape ? 'calc(100vh - 100px)' : 'calc(100vh - 140px)',
-          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          minWidth: isMobile ? '600px' : 'auto',
         }}>
-        <table
-          style={{
-            borderCollapse: 'separate',
-            borderSpacing: 0,
-            backgroundColor: 'white',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            width: '100%',
-          }}
-        >
           <thead>
             <tr>
-              <th
-                style={{
-                  border: '1px solid #ddd',
-                  padding: '8px 4px',
-                  backgroundColor: '#f8f9fa',
-                  position: 'sticky',
-                  top: 0,
-                  left: 0,
-                  zIndex: 30,
-                  minWidth: '50px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  boxShadow: '2px 2px 4px rgba(0,0,0,0.1)',
-                }}
-              >
+              <th style={{
+                position: 'sticky',
+                left: 0,
+                zIndex: 12,
+                backgroundColor: 'white',
+                padding: isMobile ? '10px 8px' : '12px',
+                textAlign: 'center',
+                borderBottom: '2px solid #dee2e6',
+                fontSize: isMobile ? '13px' : '14px',
+                fontWeight: '600',
+                minWidth: isMobile ? '60px' : '80px',
+              }}>
                 時間
               </th>
-              {displayBoats.map((boat) => (
+              {displayBoats.map(boat => (
                 <th
                   key={boat.id}
                   style={{
-                    border: '1px solid #ddd',
-                    padding: '8px 4px',
-                    backgroundColor: '#f8f9fa',
                     position: 'sticky',
                     top: 0,
-                    zIndex: 20,
-                    minWidth: '70px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    zIndex: 11,
+                    padding: isMobile ? '10px 8px' : '12px',
+                    textAlign: 'center',
+                    borderBottom: '2px solid #dee2e6',
+                    backgroundColor: '#5a5a5a',
+                    color: 'white',
+                    fontSize: isMobile ? '13px' : '14px',
+                    fontWeight: '600',
+                    minWidth: isMobile ? '100px' : '120px',
                   }}
                 >
                   {boat.name}
+                  <div style={{
+                    fontSize: '11px',
+                    fontWeight: '400',
+                    marginTop: '2px',
+                    opacity: 0.8,
+                  }}>
+                    {bookings.filter(b => b.boat_id === boat.id).length}筆
+                  </div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filteredTimeSlots.map((timeSlot) => (
-              <tr 
-                key={timeSlot}
-                style={{
-                  borderTop: timeSlot === '08:00' ? '3px solid #ff6b6b' : undefined,
-                }}
-              >
-                <td
-                  style={{
-                    border: '1px solid #ddd',
-                    padding: '6px 4px',
-                    fontWeight: 'bold',
-                    backgroundColor: timeSlot === '08:00' ? '#fff5f5' : '#f8f9fa',
-                    textAlign: 'center',
+            {/* 08:00 分隔線 */}
+            {filteredTimeSlots.map((timeSlot, idx) => {
+              const showPracticeLine = timeSlot === '08:00'
+              
+              return (
+                <tr key={timeSlot}>
+                  <td style={{
                     position: 'sticky',
                     left: 0,
                     zIndex: 10,
-                    fontSize: '11px',
-                    boxShadow: '2px 0 4px rgba(0,0,0,0.1)',
-                  }}
-                >
-                  {timeSlot === '08:00' ? '⚠️ ' : ''}{timeSlot}
-                </td>
-                {displayBoats.map((boat) => {
-                  const booking = getBookingForCell(boat.id, timeSlot)
-                  
-                  if (booking && !isBookingStart(booking, timeSlot)) {
-                    // This cell is part of a booking but not the start - skip rendering
-                    return null
-                  }
-                  
-                  // 檢查是否為接船時間（只在沒有預約時，且不是彈簧床）
-                  const isCleanupTime = !booking && boat.name !== '彈簧床' && isInCleanupTime(boat.id, timeSlot)
-                  
-                  const rowSpan = booking ? getBookingSpan(booking) : 1
-                  const bgColor = booking ? '#5a5a5a' : (isCleanupTime ? 'rgba(200, 200, 200, 0.3)' : 'transparent')
-                  const textColor = booking ? 'white' : '#666'
-                  
-                  return (
-                    <td
-                      key={boat.id}
-                      rowSpan={rowSpan}
-                      onClick={() => {
-                        // 觸覺反饋（震動）
-                        if ('vibrate' in navigator) {
-                          navigator.vibrate(10)
-                        }
-                        handleCellClick(boat.id, timeSlot, booking || undefined)
-                      }}
-                      style={{
-                        border: booking ? '1px solid rgba(0,0,0,0.15)' : '1px solid #ddd',
-                        padding: booking ? '8px' : '10px 6px',
-                        cursor: 'pointer',
-                        backgroundColor: bgColor,
-                        color: textColor,
-                        verticalAlign: 'middle',
-                        minHeight: booking ? `${rowSpan * 32}px` : '44px',
-                        transition: 'all 0.15s ease',
-                        touchAction: 'manipulation',
-                        WebkitTapHighlightColor: 'transparent',
-                        position: 'relative',
-                        boxShadow: booking ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
-                        borderRadius: booking ? '8px' : '0',
-                      }}
-                      onTouchStart={(e) => {
-                        // 觸覺反饋
-                        if ('vibrate' in navigator) {
-                          navigator.vibrate(10)
-                        }
-                        
-                        if (!booking) {
-                          // 空格子：明顯的顏色變化
-                          e.currentTarget.style.backgroundColor = isCleanupTime ? 'rgba(200, 200, 200, 0.7)' : 'rgba(0, 123, 255, 0.1)'
-                          e.currentTarget.style.transform = 'scale(0.98)'
-                        } else {
-                          // 預約卡片：縮放 + 陰影變化
-                          e.currentTarget.style.transform = 'scale(0.97)'
-                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)'
-                          // 加上輕微變暗效果
-                          e.currentTarget.style.filter = 'brightness(0.95)'
-                        }
-                      }}
-                      onTouchEnd={(e) => {
-                        if (!booking) {
-                          setTimeout(() => {
-                            e.currentTarget.style.backgroundColor = 'transparent'
+                    backgroundColor: 'white',
+                    padding: isMobile ? '8px 6px' : '10px 12px',
+                    borderBottom: showPracticeLine ? '3px solid #ffc107' : '1px solid #e9ecef',
+                    fontSize: isMobile ? '12px' : '13px',
+                    fontWeight: '500',
+                    textAlign: 'center',
+                    color: showPracticeLine ? '#856404' : '#666',
+                  }}>
+                    {timeSlot}
+                    {showPracticeLine && (
+                      <div style={{
+                        fontSize: '10px',
+                        color: '#856404',
+                        marginTop: '2px',
+                        fontWeight: '600',
+                      }}>
+                        ⚠️ 練習時間
+                      </div>
+                    )}
+                  </td>
+                  {displayBoats.map(boat => {
+                    const booking = getBookingForCell(boat.id, timeSlot)
+                    const isStart = isBookingStart(boat.id, timeSlot)
+                    const isCleanup = isCleanupTime(boat.id, timeSlot)
+                    
+                    if (booking && isStart) {
+                      const slots = Math.ceil(booking.duration_min / 15)
+                      
+                      return (
+                        <td
+                          key={boat.id}
+                          rowSpan={slots}
+                          onClick={() => handleCellClick(boat.id, timeSlot, booking)}
+                          style={{
+                            padding: isMobile ? '10px 8px' : '12px',
+                            borderBottom: '1px solid #e9ecef',
+                            borderRight: '1px solid #e9ecef',
+                            backgroundColor: '#5a5a5a',
+                            color: 'white',
+                            cursor: 'pointer',
+                            verticalAlign: 'top',
+                            position: 'relative',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.02)'
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
+                          }}
+                          onMouseLeave={(e) => {
                             e.currentTarget.style.transform = 'scale(1)'
-                          }, 150)
-                        } else {
-                          setTimeout(() => {
-                            e.currentTarget.style.transform = 'scale(1)'
-                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.15)'
-                            e.currentTarget.style.filter = 'brightness(1)'
-                          }, 150)
-                        }
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!booking) {
-                          e.currentTarget.style.backgroundColor = 'rgba(0, 123, 255, 0.05)'
-                        } else {
-                          e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.25)'
-                          e.currentTarget.style.transform = 'translateY(-1px)'
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!booking) {
-                          e.currentTarget.style.backgroundColor = 'transparent'
-                        } else {
-                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.15)'
-                          e.currentTarget.style.transform = 'translateY(0)'
-                        }
-                      }}
-                    >
-                      {isCleanupTime && (
-                        <div style={{ 
-                          fontSize: '14px',
-                          lineHeight: '1.2',
-                          textAlign: 'center',
-                          opacity: 0.4,
-                        }}>
-                          🚤
-                        </div>
-                      )}
-                      {booking && (
-                        <>
-                          <div style={{ 
-                            fontSize: '12px',
-                            lineHeight: '1.4',
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
+                          }}
+                        >
+                          <div style={{
+                            fontSize: isMobile ? '14px' : '15px',
+                            fontWeight: '600',
+                            marginBottom: '6px',
                             textAlign: 'center',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            height: '100%',
                           }}>
-                            {/* 第一行：學生 */}
-                            <div style={{ 
-                              fontWeight: '600', 
-                              marginBottom: '4px',
-                              fontSize: '13px',
-                            }}>
-                              {booking.student}
-                            </div>
-
-                            {/* 第二行：教練 */}
-                            <div style={{ 
-                              fontWeight: '500',
-                              marginBottom: '4px',
-                              fontSize: '12px',
-                              opacity: 0.9,
-                            }}>
-                              {(() => {
-                                // 找出同一時間、同一船、同一學生的所有預約（多教練情況）
-                                const sameTimeBookings = bookings.filter(b => 
-                                  b.boat_id === booking.boat_id &&
-                                  b.student === booking.student &&
-                                  b.start_at === booking.start_at &&
-                                  b.duration_min === booking.duration_min
-                                )
-                                const allCoaches = sameTimeBookings.map(b => 
-                                  b.coach_id ? (b.coaches?.name || getCoachName(b.coach_id)) : '未指定'
-                                ).filter((name, index, self) => self.indexOf(name) === index)
-                                return allCoaches.join(' / ')
-                              })()}
-                            </div>
-
-                            {/* 第三行：時長 + 活動類型 */}
-                            <div style={{ 
-                              display: 'flex',
-                              gap: '6px',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '11px',
-                              marginBottom: '2px',
-                            }}>
-                              <span>{booking.duration_min}分</span>
-                              {booking.activity_types && booking.activity_types.length > 0 && (
-                                <span style={{ 
-                                  fontWeight: '600',
-                                  padding: '2px 6px',
-                                  background: 'rgba(255,255,255,0.2)',
-                                  borderRadius: '3px',
-                                }}>
-                                  {booking.activity_types.join('+')}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* 備註 */}
-                            {booking.notes && (
-                              <div style={{ 
-                                marginTop: '4px',
-                                paddingTop: '4px',
-                                borderTop: '1px solid rgba(255,255,255,0.2)',
-                                fontSize: '10px',
-                                opacity: 0.8,
-                                fontStyle: 'italic',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}>
-                                {booking.notes}
-                              </div>
-                            )}
+                            {booking.student}
                           </div>
-                        </>
-                      )}
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
+                          
+                          <div style={{
+                            fontSize: isMobile ? '12px' : '13px',
+                            opacity: 0.95,
+                            marginBottom: '4px',
+                            textAlign: 'center',
+                          }}>
+                            {booking.duration_min}分
+                          </div>
+                          
+                          {booking.coaches && booking.coaches.length > 0 && (
+                            <div style={{
+                              fontSize: isMobile ? '11px' : '12px',
+                              opacity: 0.9,
+                              marginTop: '6px',
+                              textAlign: 'center',
+                            }}>
+                              🎓 {booking.coaches.map(c => c.name).join(' / ')}
+                            </div>
+                          )}
+                          
+                          {booking.activity_types && booking.activity_types.length > 0 && (
+                            <div style={{
+                              display: 'flex',
+                              gap: '4px',
+                              marginTop: '6px',
+                              flexWrap: 'wrap',
+                              justifyContent: 'center',
+                            }}>
+                              {booking.activity_types.map(type => (
+                                <span
+                                  key={type}
+                                  style={{
+                                    padding: '2px 6px',
+                                    backgroundColor: 'rgba(255,255,255,0.25)',
+                                    borderRadius: '8px',
+                                    fontSize: isMobile ? '10px' : '11px',
+                                  }}
+                                >
+                                  {type}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      )
+                    } else if (booking) {
+                      return null
+                    } else if (isCleanup) {
+                      return (
+                        <td
+                          key={boat.id}
+                          style={{
+                            padding: isMobile ? '8px 6px' : '10px 12px',
+                            borderBottom: '1px solid #e9ecef',
+                            borderRight: '1px solid #e9ecef',
+                            backgroundColor: 'rgba(200, 200, 200, 0.3)',
+                            textAlign: 'center',
+                            fontSize: isMobile ? '16px' : '18px',
+                            cursor: 'not-allowed',
+                          }}
+                        >
+                          🚤
+                        </td>
+                      )
+                    } else {
+                      return (
+                        <td
+                          key={boat.id}
+                          onClick={() => handleCellClick(boat.id, timeSlot)}
+                          style={{
+                            padding: isMobile ? '8px 6px' : '10px 12px',
+                            borderBottom: '1px solid #e9ecef',
+                            borderRight: '1px solid #e9ecef',
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            transition: 'background 0.2s',
+                            minHeight: isMobile ? '40px' : '50px',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                        >
+                          {/* 空格子 */}
+                        </td>
+                      )
+                    }
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
         </div>
@@ -1214,5 +1096,3 @@ export function DayView({ user }: DayViewProps) {
     </div>
   )
 }
-
-

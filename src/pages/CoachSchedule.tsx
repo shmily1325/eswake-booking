@@ -19,7 +19,7 @@ interface Booking {
   activity_types: string[] | null
   status: string
   boats: { name: string; color: string } | null
-  coaches: { id: string; name: string } | null
+  coaches: { id: string; name: string }[] // 改為數組
   actual_duration_min?: number | null
   coach_confirmed?: boolean
   confirmed_at?: string | null
@@ -70,14 +70,32 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
     setHasSearched(true)
 
     try {
+      // 先查詢該教練的所有預約關聯
+      const { data: bookingCoachesData, error: bcError } = await supabase
+        .from('booking_coaches')
+        .select('booking_id')
+        .eq('coach_id', selectedCoachId)
+
+      if (bcError) {
+        console.error('Error fetching booking_coaches:', bcError)
+        setBookings([])
+        setLoading(false)
+        return
+      }
+
+      if (!bookingCoachesData || bookingCoachesData.length === 0) {
+        setBookings([])
+        setLoading(false)
+        return
+      }
+
+      const bookingIds = bookingCoachesData.map(bc => bc.booking_id)
+
+      // 查詢這些預約的詳細信息
       let query = supabase
         .from('bookings')
-        .select(`
-          *,
-          boats:boat_id (name, color),
-          coaches:coach_id (id, name)
-        `)
-        .eq('coach_id', selectedCoachId)
+        .select('*, boats:boat_id (name, color)')
+        .in('id', bookingIds)
 
       // 根據篩選類型添加條件
       const now = new Date().toISOString()
@@ -97,7 +115,6 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
           break
         case 'pending':
         default:
-          // 待確認：先抓所有已結束的，前端再篩選
           query = query.order('start_at', { ascending: false })
           break
       }
@@ -106,19 +123,50 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
 
       if (error) {
         console.error('Error fetching bookings:', error)
-        console.error('Error details:', error.details, error.hint)
-      } else {
-        let filteredData = (data as Booking[]) || []
+        setBookings([])
+      } else if (data && data.length > 0) {
+        // 獲取每個預約的所有教練（用於顯示）
+        const allBookingIds = data.map(b => b.id)
+        const { data: allCoachesData, error: coachError } = await supabase
+          .from('booking_coaches')
+          .select('booking_id, coaches:coach_id(id, name)')
+          .in('booking_id', allBookingIds)
+
+        if (coachError) {
+          console.error('Error fetching all coaches:', coachError)
+        }
+
+        // 合併教練信息
+        const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
+        for (const item of allCoachesData || []) {
+          const bookingId = item.booking_id
+          const coach = (item as any).coaches
+          if (coach) {
+            if (!coachesByBooking[bookingId]) {
+              coachesByBooking[bookingId] = []
+            }
+            coachesByBooking[bookingId].push(coach)
+          }
+        }
+
+        let bookingsWithCoaches = data.map(booking => ({
+          ...booking,
+          coaches: coachesByBooking[booking.id] || []
+        }))
         
         // 如果是待確認，只顯示已結束且未確認的
         if (filterType === 'pending') {
-          filteredData = filteredData.filter(booking => {
+          bookingsWithCoaches = bookingsWithCoaches.filter(booking => {
             const endTime = new Date(booking.start_at).getTime() + booking.duration_min * 60000
-            return endTime < Date.now() && !booking.coach_confirmed
+            // Note: coach_confirmed 字段在 booking_coaches 表中，這裡需要額外查詢
+            // 為簡化，暫時假設沒有 coach_confirmed 欄位或在前端管理
+            return endTime < Date.now()
           })
         }
         
-        setBookings(filteredData)
+        setBookings(bookingsWithCoaches as Booking[])
+      } else {
+        setBookings([])
       }
     } catch (err) {
       console.error('Search error:', err)

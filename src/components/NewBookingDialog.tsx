@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
 interface Coach {
-  id: string // UUID from Supabase
+  id: string
   name: string
 }
 
@@ -12,7 +12,7 @@ interface NewBookingDialogProps {
   onClose: () => void
   onSuccess: () => void
   defaultBoatId: number
-  defaultStartTime: string // ISO format datetime
+  defaultStartTime: string
   user: User
 }
 
@@ -24,6 +24,7 @@ export function NewBookingDialog({
   defaultStartTime,
   user,
 }: NewBookingDialogProps) {
+  
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
   const [student, setStudent] = useState('')
@@ -35,14 +36,13 @@ export function NewBookingDialog({
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingCoaches, setLoadingCoaches] = useState(true)
-  
+
   // 重複預約相關狀態
   const [isRepeat, setIsRepeat] = useState(false)
-  const [repeatEndType, setRepeatEndType] = useState<'count' | 'date'>('count')
   const [repeatCount, setRepeatCount] = useState(8)
   const [repeatEndDate, setRepeatEndDate] = useState('')
-  
-  // 使用 Set 來優化 includes 檢查
+
+  // 使用 useMemo 優化性能
   const selectedCoachesSet = useMemo(() => new Set(selectedCoaches), [selectedCoaches])
   const activityTypesSet = useMemo(() => new Set(activityTypes), [activityTypes])
 
@@ -51,8 +51,11 @@ export function NewBookingDialog({
       fetchCoaches()
       // Parse defaultStartTime into date and time
       const startDateTime = new Date(defaultStartTime)
-      const dateStr = startDateTime.toISOString().split('T')[0]
-      // 使用本地時間而不是 UTC 時間
+      // 使用本地時間
+      const year = startDateTime.getFullYear()
+      const month = (startDateTime.getMonth() + 1).toString().padStart(2, '0')
+      const day = startDateTime.getDate().toString().padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
       const hours = startDateTime.getHours().toString().padStart(2, '0')
       const minutes = startDateTime.getMinutes().toString().padStart(2, '0')
       const timeStr = `${hours}:${minutes}`
@@ -94,47 +97,30 @@ export function NewBookingDialog({
 
   // 生成所有重複日期
   const generateRepeatDates = (): Date[] => {
-    // 對於重複預約，使用 defaultStartTime；對於單次預約，使用手動輸入的時間
-    const baseDateTime = isRepeat 
-      ? new Date(defaultStartTime)
-      : new Date(`${startDate}T${startTime}:00`)
+    const baseDateTime = new Date(`${startDate}T${startTime}:00`)
     
     if (!isRepeat) {
       return [baseDateTime]
     }
 
     const dates: Date[] = []
-    const startDateTime = new Date(defaultStartTime)
-    const targetWeekday = startDateTime.getDay() // 獲取點擊的星期幾（0=週日, 1=週一, ..., 6=週六）
+    const currentDate = new Date(baseDateTime)
     
-    if (repeatEndType === 'count') {
-      // 根據重複次數生成日期
-      let currentDate = new Date(startDateTime)
-      let count = 0
-      
-      // 最多檢查 365 天，避免無限循環
-      for (let i = 0; i < 365 && count < repeatCount; i++) {
-        const dayOfWeek = currentDate.getDay()
-        if (dayOfWeek === targetWeekday) {
-          dates.push(new Date(currentDate))
-          count++
-        }
-        currentDate.setDate(currentDate.getDate() + 1)
+    if (repeatEndDate) {
+      // 使用結束日期
+      const endDate = new Date(repeatEndDate)
+      while (currentDate <= endDate) {
+        dates.push(new Date(currentDate))
+        currentDate.setDate(currentDate.getDate() + 7)
       }
     } else {
-      // 根據結束日期生成日期
-      const endDate = new Date(repeatEndDate)
-      let currentDate = new Date(startDateTime)
-      
-      while (currentDate <= endDate) {
-        const dayOfWeek = currentDate.getDay()
-        if (dayOfWeek === targetWeekday) {
-          dates.push(new Date(currentDate))
-        }
-        currentDate.setDate(currentDate.getDate() + 1)
+      // 使用次數
+      for (let i = 0; i < repeatCount; i++) {
+        dates.push(new Date(currentDate))
+        currentDate.setDate(currentDate.getDate() + 7)
       }
     }
-    
+
     return dates
   }
 
@@ -150,11 +136,9 @@ export function NewBookingDialog({
       return
     }
 
-    if (!isRepeat) {
-      if (!startDate || !startTime) {
-        setError('⚠️ 請選擇開始日期和時間')
-        return
-      }
+    if (!startDate || !startTime) {
+      setError('⚠️ 請選擇開始日期和時間')
+      return
     }
 
     // 防呆檢查：08:00之前的預約必須指定教練
@@ -162,14 +146,6 @@ export function NewBookingDialog({
     if (hour < 8 && selectedCoaches.length === 0) {
       setError('⚠️ 08:00之前的預約必須指定教練')
       return
-    }
-
-    // 驗證重複預約設定
-    if (isRepeat) {
-      if (repeatEndType === 'date' && !repeatEndDate) {
-        setError('請選擇結束日期')
-        return
-      }
     }
 
     setLoading(true)
@@ -182,13 +158,6 @@ export function NewBookingDialog({
         setLoading(false)
         return
       }
-      
-      console.log('準備創建預約:', {
-        datesToCreate: datesToCreate.map(d => d.toISOString()),
-        student,
-        durationMin,
-        selectedCoaches: selectedCoaches.length
-      })
 
       // 用於追蹤結果
       const results = {
@@ -196,9 +165,17 @@ export function NewBookingDialog({
         skipped: [] as { date: string; reason: string }[],
       }
 
+      // 獲取船隻名稱（用於審計日誌）
+      const { data: boatData } = await supabase
+        .from('boats')
+        .select('name')
+        .eq('id', defaultBoatId)
+        .single()
+      const boatName = boatData?.name || '未知船隻'
+
       // 對每個日期進行處理
       for (const dateTime of datesToCreate) {
-        // 使用本地日期，避免 UTC 转换导致日期变化
+        // 使用本地日期
         const year = dateTime.getFullYear()
         const month = (dateTime.getMonth() + 1).toString().padStart(2, '0')
         const day = dateTime.getDate().toString().padStart(2, '0')
@@ -216,50 +193,25 @@ export function NewBookingDialog({
         // 檢查船隻衝突（需要至少15分鐘間隔）
         const { data: existingBookings, error: checkError } = await supabase
           .from('bookings')
-          .select('id, start_at, duration_min, student, coaches(name)')
+          .select('id, start_at, duration_min, student')
           .eq('boat_id', defaultBoatId)
           .gte('start_at', `${dateStr}T00:00:00`)
           .lte('start_at', `${dateStr}T23:59:59`)
       
-        console.log('🔍 檢查船隻衝突:', {
-          dateStr,
-          timeStr,
-          defaultBoatId,
-          newStartTime: new Date(newStartTime).toISOString(),
-          newEndTime: new Date(newEndTime).toISOString(),
-          existingBookings: existingBookings?.length || 0,
-          checkError
-        })
-
         if (checkError) {
           hasConflict = true
           conflictReason = '檢查衝突時發生錯誤'
-          console.error('❌ 檢查衝突時發生錯誤:', checkError)
         } else {
           // 檢查是否與現有預約衝突（需要15分鐘接船時間）
           for (const existing of existingBookings || []) {
             const existingStart = new Date(existing.start_at).getTime()
             const existingEnd = existingStart + existing.duration_min * 60000
-            const existingCleanupEnd = existingEnd + 15 * 60000 // 加15分鐘接船時間
-            
-            console.log('📅 檢查現有預約:', {
-              student: existing.student,
-              existingStart: new Date(existingStart).toISOString(),
-              existingEnd: new Date(existingEnd).toISOString(),
-              existingCleanupEnd: new Date(existingCleanupEnd).toISOString(),
-              newStart: new Date(newStartTime).toISOString(),
-              newEnd: new Date(newEndTime).toISOString(),
-              newCleanupEnd: new Date(newEndTime + 15 * 60000).toISOString(),
-              check1: newStartTime >= existingEnd && newStartTime < existingCleanupEnd,
-              check2: existingStart >= newEndTime && existingStart < (newEndTime + 15 * 60000),
-              check3: !(newEndTime <= existingStart || newStartTime >= existingEnd),
-            })
+            const existingCleanupEnd = existingEnd + 15 * 60000
             
             // 檢查新預約是否在現有預約的接船時間內開始
             if (newStartTime >= existingEnd && newStartTime < existingCleanupEnd) {
               hasConflict = true
               conflictReason = `與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`
-              console.log('❌ 衝突類型 1: 新預約在接船時間內')
               break
             }
             
@@ -268,7 +220,6 @@ export function NewBookingDialog({
             if (existingStart >= newEndTime && existingStart < newCleanupEnd) {
               hasConflict = true
               conflictReason = `與 ${existing.student} 的預約衝突：需要至少15分鐘接船時間`
-              console.log('❌ 衝突類型 2: 新預約的接船時間會影響現有預約')
               break
             }
             
@@ -276,37 +227,43 @@ export function NewBookingDialog({
             if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
               hasConflict = true
               conflictReason = `與 ${existing.student} 的預約時間重疊`
-              console.log('❌ 衝突類型 3: 時間重疊')
               break
             }
           }
         }
-      
+        
         // 檢查教練衝突（如果有選擇教練）
         if (!hasConflict && selectedCoaches.length > 0) {
           for (const coachId of selectedCoaches) {
+            // 查詢該教練在該日期的所有預約
             const { data: coachBookings, error: coachCheckError } = await supabase
-              .from('bookings')
-              .select('id, start_at, duration_min, student, boats(name)')
+              .from('booking_coaches')
+              .select('booking_id, bookings!inner(start_at, duration_min, student)')
               .eq('coach_id', coachId)
-              .gte('start_at', `${dateStr}T00:00:00`)
-              .lte('start_at', `${dateStr}T23:59:59`)
+              .gte('bookings.start_at', `${dateStr}T00:00:00`)
+              .lte('bookings.start_at', `${dateStr}T23:59:59`)
             
-            if (coachCheckError) continue
+            if (coachCheckError) {
+              hasConflict = true
+              conflictReason = '檢查教練衝突時發生錯誤'
+              break
+            }
             
-            for (const existing of coachBookings || []) {
-              const existingStart = new Date(existing.start_at).getTime()
-              const existingEnd = existingStart + existing.duration_min * 60000
+            for (const item of coachBookings || []) {
+              const booking = (item as any).bookings
+              const existingStart = new Date(booking.start_at).getTime()
+              const existingEnd = existingStart + booking.duration_min * 60000
               
               // 檢查時間重疊
               if (!(newEndTime <= existingStart || newStartTime >= existingEnd)) {
-                const coachName = coaches.find(c => c.id === coachId)?.name || coachId
-                const boatName = (existing as any).boats?.name || ''
+                // 找到教練名字
+                const coach = coaches.find(c => c.id === coachId)
                 hasConflict = true
-                conflictReason = `教練 ${coachName} 在此時段已有其他預約${boatName ? `（${boatName}）` : ''}`
+                conflictReason = `教練 ${coach?.name || '未知'} 在此時段已有其他預約（${booking.student}）`
                 break
               }
             }
+            
             if (hasConflict) break
           }
         }
@@ -317,85 +274,73 @@ export function NewBookingDialog({
           continue
         }
       
-        // Create bookings
-        let bookingsToInsert
-        if (selectedCoaches.length === 0) {
-          // 如果沒有選擇教練，創建一個沒有教練的預約
-          bookingsToInsert = [{
-            boat_id: defaultBoatId,
-            coach_id: null,
-            student: student,
-            start_at: newStartAt,
-            duration_min: durationMin,
-            activity_types: activityTypes.length > 0 ? activityTypes : null,
-            notes: notes || null,
-            status: 'Confirmed',
-            created_by: user.id,
-          }]
-        } else {
-          // 為每個選擇的教練創建一個預約
-          bookingsToInsert = selectedCoaches.map(coachId => ({
-            boat_id: defaultBoatId,
-            coach_id: coachId,
-            student: student,
-            start_at: newStartAt,
-            duration_min: durationMin,
-            activity_types: activityTypes.length > 0 ? activityTypes : null,
-            notes: notes || null,
-            status: 'Confirmed',
-            created_by: user.id,
-          }))
+        // 創建預約（不包含 coach_id）
+        const bookingToInsert = {
+          boat_id: defaultBoatId,
+          student: student,
+          start_at: newStartAt,
+          duration_min: durationMin,
+          activity_types: activityTypes.length > 0 ? activityTypes : null,
+          notes: notes || null,
+          status: 'Confirmed',
+          created_by: user.id,
         }
 
-        console.log('💾 準備插入數據:', bookingsToInsert)
-
-        const { data: insertedBookings, error: insertError } = await supabase
+        const { data: insertedBooking, error: insertError } = await supabase
           .from('bookings')
-          .insert(bookingsToInsert)
-          .select('*, boats(name, color), coaches(name)')
+          .insert([bookingToInsert])
+          .select('id')
+          .single()
 
         if (insertError) {
-          // 如果創建失敗，記錄為跳過
-          console.error('❌ 插入失敗:', {
-            error: insertError,
-            message: insertError.message,
-            details: insertError.details,
-            hint: insertError.hint,
-            code: insertError.code
-          })
           results.skipped.push({
             date: displayDate,
-            reason: insertError.message.includes('violates exclusion constraint')
-              ? '該時段已被預約'
-              : insertError.message
+            reason: insertError.message || '插入失敗'
           })
           continue
         }
 
-        console.log('✅ 插入成功:', insertedBookings)
-
-        // Log to audit_log
-        if (insertedBookings && insertedBookings.length > 0) {
-          const auditLogs = insertedBookings.map(booking => ({
-            table_name: 'bookings',
-            record_id: booking.id.toString(),
-            operation: 'INSERT',
-            changed_by: user.id,
-            new_data: booking,
-            old_data: null,
-            changed_fields: null,
+        // 插入教練關聯
+        if (selectedCoaches.length > 0 && insertedBooking) {
+          const bookingCoachesToInsert = selectedCoaches.map(coachId => ({
+            booking_id: insertedBooking.id,
+            coach_id: coachId,
           }))
 
-          const { error: auditError } = await supabase.from('audit_log').insert(auditLogs)
-          if (auditError) {
-            console.error('❌ Audit log insert error:', auditError)
-          } else {
-            console.log('✅ Audit log inserted successfully')
+          const { error: coachInsertError } = await supabase
+            .from('booking_coaches')
+            .insert(bookingCoachesToInsert)
+
+          if (coachInsertError) {
+            // 如果插入教練關聯失敗，刪除剛剛創建的預約
+            await supabase.from('bookings').delete().eq('id', insertedBooking.id)
+            results.skipped.push({
+              date: displayDate,
+              reason: '插入教練關聯失敗'
+            })
+            continue
           }
-          
-          // 記錄成功
-          results.success.push(displayDate)
         }
+
+        // 記錄到審計日誌（人類可讀格式）
+        const coachNames = selectedCoaches.length > 0
+          ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name).join(' / ')
+          : '未指定'
+
+        await supabase.from('audit_log').insert({
+          operation: '新增預約',
+          user_email: user.email || '',
+          student_name: student,
+          boat_name: boatName,
+          coach_names: coachNames,
+          start_time: newStartAt,
+          duration_min: durationMin,
+          activity_types: activityTypes.length > 0 ? activityTypes : null,
+          notes: notes || null,
+        })
+
+        // 記錄成功
+        results.success.push(displayDate)
       }
 
       // 顯示結果
@@ -435,18 +380,20 @@ export function NewBookingDialog({
   }
 
   const handleClose = () => {
-    setError('')
-    setSelectedCoaches([])
-    setStudent('')
-    setStartDate('')
-    setStartTime('')
-    setDurationMin(60)
-    setActivityTypes([])
-    setNotes('')
-    setIsRepeat(false)
-    setRepeatCount(8)
-    setRepeatEndDate('')
-    onClose()
+    if (!loading) {
+      setSelectedCoaches([])
+      setStudent('')
+      setStartDate('')
+      setStartTime('')
+      setDurationMin(60)
+      setActivityTypes([])
+      setNotes('')
+      setError('')
+      setIsRepeat(false)
+      setRepeatCount(8)
+      setRepeatEndDate('')
+      onClose()
+    }
   }
 
   return (
@@ -475,11 +422,32 @@ export function NewBookingDialog({
           width: '100%',
           maxWidth: '500px',
           color: '#000',
+          maxHeight: '90vh',
+          overflowY: 'auto',
           margin: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px' }}>新增預約</h2>
+        
+        {error && (
+          <div style={{
+            padding: '14px 16px',
+            backgroundColor: '#fff3cd',
+            border: '2px solid #ffc107',
+            borderRadius: '8px',
+            marginBottom: '18px',
+            color: '#856404',
+            fontSize: '15px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}>
+            <span style={{ fontSize: '20px' }}>⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
         
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '18px' }}>
@@ -497,69 +465,74 @@ export function NewBookingDialog({
               <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
                 載入教練列表中...
               </div>
-            ) : coaches.length === 0 ? (
-              <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
-                沒有可用的教練
-              </div>
             ) : (
               <div style={{
+                maxHeight: '180px',
+                overflowY: 'auto',
                 border: '1px solid #ccc',
                 borderRadius: '8px',
                 padding: '8px',
-                maxHeight: '200px',
-                overflowY: 'auto',
-                backgroundColor: '#f8f9fa',
-                WebkitOverflowScrolling: 'touch', // 平滑滾動
+                WebkitOverflowScrolling: 'touch',
               }}>
-                {coaches.map((coach) => {
-                  const isSelected = selectedCoachesSet.has(coach.id)
-                  return (
-                    <label
-                      key={coach.id}
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  transition: 'background 0.2s',
+                  backgroundColor: selectedCoaches.length === 0 ? '#f0f0f0' : 'transparent',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedCoaches.length === 0}
+                    onChange={() => setSelectedCoaches([])}
+                    style={{
+                      marginRight: '10px',
+                      width: '18px',
+                      height: '18px',
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <span style={{ fontSize: '15px', color: '#666' }}>不指定教練</span>
+                </label>
+                {coaches.map((coach) => (
+                  <label
+                    key={coach.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '10px',
+                      cursor: 'pointer',
+                      borderRadius: '6px',
+                      transition: 'background 0.2s',
+                      backgroundColor: selectedCoachesSet.has(coach.id) ? '#e3f2fd' : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!selectedCoachesSet.has(coach.id)) {
+                        e.currentTarget.style.backgroundColor = '#f5f5f5'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selectedCoachesSet.has(coach.id)) {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCoachesSet.has(coach.id)}
+                      onChange={() => toggleCoach(coach.id)}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '10px',
+                        marginRight: '10px',
+                        width: '18px',
+                        height: '18px',
                         cursor: 'pointer',
-                        borderRadius: '6px',
-                        marginBottom: '4px',
-                        backgroundColor: isSelected ? '#e7f3ff' : 'white',
-                        border: isSelected ? '2px solid #007bff' : '2px solid transparent',
-                        touchAction: 'manipulation',
                       }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleCoach(coach.id)}
-                        style={{
-                          width: '20px',
-                          height: '20px',
-                          marginRight: '10px',
-                          cursor: 'pointer',
-                        }}
-                      />
-                      <span style={{ 
-                        fontSize: '16px',
-                        color: '#000',
-                        fontWeight: isSelected ? '600' : '400',
-                      }}>
-                        {coach.name}
-                      </span>
-                    </label>
-                  )
-                })}
-              </div>
-            )}
-            
-            {selectedCoaches.length > 0 && (
-              <div style={{ 
-                marginTop: '8px', 
-                fontSize: '13px', 
-                color: '#007bff',
-                fontWeight: '500',
-              }}>
-                已選擇 {selectedCoaches.length} 位教練
+                    />
+                    <span style={{ fontSize: '15px' }}>{coach.name}</span>
+                  </label>
+                ))}
               </div>
             )}
           </div>
@@ -633,6 +606,7 @@ export function NewBookingDialog({
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               required
+              step="900"
               style={{
                 width: '100%',
                 padding: '12px',
@@ -696,66 +670,43 @@ export function NewBookingDialog({
                 display: 'flex',
                 alignItems: 'center',
                 padding: '10px 16px',
-                cursor: 'pointer',
+                border: '1px solid #ccc',
                 borderRadius: '8px',
-                backgroundColor: activityTypesSet.has('WB') ? '#e7f3ff' : '#f8f9fa',
-                border: activityTypesSet.has('WB') ? '2px solid #007bff' : '2px solid #ddd',
-                touchAction: 'manipulation',
-                flex: '1 1 auto',
-                minWidth: '100px',
+                cursor: 'pointer',
+                backgroundColor: activityTypesSet.has('WB') ? '#e3f2fd' : 'white',
+                transition: 'all 0.2s',
+                flex: '1',
+                minWidth: '120px',
                 justifyContent: 'center',
               }}>
                 <input
                   type="checkbox"
                   checked={activityTypesSet.has('WB')}
                   onChange={() => toggleActivityType('WB')}
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    marginRight: '8px',
-                    cursor: 'pointer',
-                  }}
+                  style={{ marginRight: '8px', width: '16px', height: '16px' }}
                 />
-                <span style={{ 
-                  fontSize: '16px',
-                  color: '#000',
-                  fontWeight: activityTypesSet.has('WB') ? '600' : '400',
-                }}>
-                  WB (滑水板)
-                </span>
+                <span style={{ fontSize: '15px' }}>WB (滑水板)</span>
               </label>
-
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
                 padding: '10px 16px',
-                cursor: 'pointer',
+                border: '1px solid #ccc',
                 borderRadius: '8px',
-                backgroundColor: activityTypesSet.has('WS') ? '#e7f3ff' : '#f8f9fa',
-                border: activityTypesSet.has('WS') ? '2px solid #007bff' : '2px solid #ddd',
-                touchAction: 'manipulation',
-                flex: '1 1 auto',
-                minWidth: '100px',
+                cursor: 'pointer',
+                backgroundColor: activityTypesSet.has('WS') ? '#e3f2fd' : 'white',
+                transition: 'all 0.2s',
+                flex: '1',
+                minWidth: '120px',
                 justifyContent: 'center',
               }}>
                 <input
                   type="checkbox"
                   checked={activityTypesSet.has('WS')}
                   onChange={() => toggleActivityType('WS')}
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    marginRight: '8px',
-                    cursor: 'pointer',
-                  }}
+                  style={{ marginRight: '8px', width: '16px', height: '16px' }}
                 />
-                <span style={{ 
-                  fontSize: '16px',
-                  color: '#000',
-                  fontWeight: activityTypesSet.has('WS') ? '600' : '400',
-                }}>
-                  WS (滑水)
-                </span>
+                <span style={{ fontSize: '15px' }}>WS (滑水)</span>
               </label>
             </div>
           </div>
@@ -773,15 +724,15 @@ export function NewBookingDialog({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="例如：初學者、需要救生衣、特殊需求..."
               rows={3}
+              placeholder="例如：初學者、需要救生衣、特殊需求..."
               style={{
                 width: '100%',
                 padding: '12px',
                 borderRadius: '8px',
                 border: '1px solid #ccc',
                 boxSizing: 'border-box',
-                fontSize: '16px',
+                fontSize: '15px',
                 fontFamily: 'inherit',
                 resize: 'vertical',
                 touchAction: 'manipulation',
@@ -789,177 +740,97 @@ export function NewBookingDialog({
             />
           </div>
 
-          {/* 重複預約選項 */}
-          <div style={{ 
-            marginBottom: '18px',
-            padding: '16px',
-            backgroundColor: '#f0f8ff',
-            borderRadius: '8px',
-            border: '1px solid #d0e8ff',
-          }}>
+          <div style={{ marginBottom: '18px', padding: '14px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
             <label style={{
               display: 'flex',
               alignItems: 'center',
               cursor: 'pointer',
-              marginBottom: isRepeat ? '16px' : '0',
+              marginBottom: isRepeat ? '12px' : '0',
             }}>
               <input
                 type="checkbox"
                 checked={isRepeat}
                 onChange={(e) => setIsRepeat(e.target.checked)}
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  marginRight: '10px',
-                  cursor: 'pointer',
-                }}
+                style={{ marginRight: '8px', width: '16px', height: '16px' }}
               />
-              <span style={{ 
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#000',
-              }}>
-                🔄 重複預約
-              </span>
+              <span style={{ fontSize: '15px', fontWeight: '500', color: '#000' }}>重複預約（每週同一時間）</span>
             </label>
 
             {isRepeat && (
-              <div>
-                {/* 提示訊息 */}
-                <div style={{
-                  padding: '12px',
-                  backgroundColor: '#e7f3ff',
-                  borderRadius: '6px',
-                  marginBottom: '16px',
-                  fontSize: '14px',
-                  color: '#004085',
-                }}>
-                  💡 將會在每{['日', '一', '二', '三', '四', '五', '六'][new Date(defaultStartTime).getDay()]} {new Date(defaultStartTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })} 重複預約
-                </div>
-
-                {/* 結束條件 */}
+              <div style={{ marginTop: '12px', paddingLeft: '24px' }}>
                 <div style={{ marginBottom: '12px' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: '8px', 
-                    color: '#000',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                  }}>
-                    結束條件：
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#666' }}>
+                    重複次數（含首次）
                   </label>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input
-                        type="radio"
-                        checked={repeatEndType === 'count'}
-                        onChange={() => setRepeatEndType('count')}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <span style={{ fontSize: '14px', color: '#000' }}>重複</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max="52"
-                        value={repeatCount}
-                        onChange={(e) => setRepeatCount(Math.max(1, parseInt(e.target.value) || 1))}
-                        disabled={repeatEndType !== 'count'}
-                        style={{
-                          width: '70px',
-                          padding: '6px',
-                          borderRadius: '4px',
-                          border: '1px solid #ccc',
-                          fontSize: '14px',
-                        }}
-                      />
-                      <span style={{ fontSize: '14px', color: '#000' }}>次</span>
-                    </label>
-
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input
-                        type="radio"
-                        checked={repeatEndType === 'date'}
-                        onChange={() => setRepeatEndType('date')}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <span style={{ fontSize: '14px', color: '#000' }}>結束於</span>
-                      <input
-                        type="date"
-                        value={repeatEndDate}
-                        onChange={(e) => setRepeatEndDate(e.target.value)}
-                        disabled={repeatEndType !== 'date'}
-                        style={{
-                          flex: 1,
-                          padding: '6px',
-                          borderRadius: '4px',
-                          border: '1px solid #ccc',
-                          fontSize: '14px',
-                        }}
-                      />
-                    </label>
-                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="52"
+                    value={repeatCount}
+                    onChange={(e) => {
+                      setRepeatCount(Number(e.target.value))
+                      setRepeatEndDate('')
+                    }}
+                    disabled={!!repeatEndDate}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '6px',
+                      border: '1px solid #ccc',
+                      fontSize: '15px',
+                      backgroundColor: repeatEndDate ? '#f5f5f5' : 'white',
+                    }}
+                  />
                 </div>
 
-                {/* 預覽 */}
-                <div style={{
-                  padding: '10px',
-                  backgroundColor: '#fff3cd',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  color: '#856404',
-                }}>
-                  📅 預計創建 <strong>{generateRepeatDates().length}</strong> 個預約
+                <div style={{ textAlign: 'center', margin: '10px 0', color: '#999', fontSize: '13px' }}>
+                  或
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#666' }}>
+                    重複至日期
+                  </label>
+                  <input
+                    type="date"
+                    value={repeatEndDate}
+                    onChange={(e) => {
+                      setRepeatEndDate(e.target.value)
+                      if (e.target.value) {
+                        setRepeatCount(1)
+                      }
+                    }}
+                    min={startDate}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '6px',
+                      border: '1px solid #ccc',
+                      fontSize: '15px',
+                    }}
+                  />
                 </div>
               </div>
             )}
           </div>
 
-          {error && (
-            <div
-              style={{
-                padding: '16px 20px',
-                backgroundColor: '#fff3cd',
-                color: '#856404',
-                borderRadius: '8px',
-                marginBottom: '16px',
-                border: '2px solid #ffc107',
-                fontSize: '16px',
-                fontWeight: '600',
-                boxShadow: '0 4px 12px rgba(255, 193, 7, 0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-              }}
-            >
-              <span style={{ fontSize: '24px', flexShrink: 0 }}>⚠️</span>
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div style={{ 
-            display: 'flex', 
-            gap: '10px', 
-            justifyContent: 'flex-end',
-            flexWrap: 'wrap',
-          }}>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
               style={{
-                padding: '12px 24px',
+                flex: 1,
+                padding: '14px',
                 borderRadius: '8px',
                 border: '1px solid #ccc',
                 backgroundColor: 'white',
-                color: '#000',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.5 : 1,
+                color: '#333',
                 fontSize: '16px',
                 fontWeight: '500',
-                minHeight: '48px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.5 : 1,
                 touchAction: 'manipulation',
-                flex: '1 1 auto',
               }}
             >
               取消
@@ -968,21 +839,19 @@ export function NewBookingDialog({
               type="submit"
               disabled={loading}
               style={{
-                padding: '12px 24px',
+                flex: 1,
+                padding: '14px',
                 borderRadius: '8px',
                 border: 'none',
-                backgroundColor: '#007bff',
+                backgroundColor: loading ? '#ccc' : '#007bff',
                 color: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.5 : 1,
                 fontSize: '16px',
                 fontWeight: '500',
-                minHeight: '48px',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
-                flex: '1 1 auto',
               }}
             >
-              {loading ? '新增中...' : '確認新增'}
+              {loading ? '處理中...' : '確認新增'}
             </button>
           </div>
         </form>
@@ -990,4 +859,3 @@ export function NewBookingDialog({
     </div>
   )
 }
-
