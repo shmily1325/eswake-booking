@@ -6,6 +6,7 @@ import { NewBookingDialog } from '../components/NewBookingDialog'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { UserMenu } from '../components/UserMenu'
 import { useResponsive } from '../hooks/useResponsive'
+import { getLocalDateString, getLocalDateTimeString } from '../utils/date'
 
 // 統一按鈕樣式
 const buttonStyles = {
@@ -94,7 +95,7 @@ interface DayViewProps {
 
 export function DayView({ user }: DayViewProps) {
   const [searchParams, setSearchParams] = useSearchParams()
-  const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0]
+  const dateParam = searchParams.get('date') || getLocalDateString()
   const { isMobile } = useResponsive()
   
   const [boats, setBoats] = useState<Boat[]>([])
@@ -121,12 +122,12 @@ export function DayView({ user }: DayViewProps) {
   const changeDate = (offset: number) => {
     const currentDate = new Date(dateParam)
     currentDate.setDate(currentDate.getDate() + offset)
-    const newDate = currentDate.toISOString().split('T')[0]
+    const newDate = getLocalDateString(currentDate)
     setSearchParams({ date: newDate })
   }
 
   const goToToday = () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateString()
     setSearchParams({ date: today })
   }
 
@@ -583,7 +584,7 @@ export function DayView({ user }: DayViewProps) {
               onClick={() => {
                 // 智能設置默認時間
                 let defaultTime: Date
-                const today = new Date().toISOString().split('T')[0]
+                const today = getLocalDateString()
                 
                 if (dateParam === today) {
                   // 如果是今天，使用當前時間（四捨五入到最近的15分鐘）
@@ -600,7 +601,7 @@ export function DayView({ user }: DayViewProps) {
                   defaultTime = new Date(`${dateParam}T05:00:00`)
                 }
                 
-                setSelectedTime(defaultTime.toISOString().slice(0, 16)) // 只保留到分鐘
+                setSelectedTime(getLocalDateTimeString(defaultTime))
                 setDialogOpen(true)
               }}
               style={{
@@ -792,7 +793,7 @@ export function DayView({ user }: DayViewProps) {
                     setSelectedBoatId(boat.id)
                     // 智能設置默認時間
                     let defaultTime: Date
-                    const today = new Date().toISOString().split('T')[0]
+                    const today = getLocalDateString()
                     
                     if (dateParam === today) {
                       const now = new Date()
@@ -807,7 +808,7 @@ export function DayView({ user }: DayViewProps) {
                       defaultTime = new Date(`${dateParam}T05:00:00`)
                     }
                     
-                    setSelectedTime(defaultTime.toISOString().slice(0, 16))
+                    setSelectedTime(getLocalDateTimeString(defaultTime))
                     setDialogOpen(true)
                   }}
                   style={{

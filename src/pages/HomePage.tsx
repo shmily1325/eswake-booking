@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { UserMenu } from '../components/UserMenu'
 import { useResponsive } from '../hooks/useResponsive'
+import { getLocalDateString } from '../utils/date'
 
 interface HomePageProps {
   user: User
@@ -13,7 +14,7 @@ export function HomePage({ user }: HomePageProps) {
     {
       title: '預約表',
       icon: '📅',
-      link: `/day?date=${new Date().toISOString().split('T')[0]}`
+      link: `/day?date=${getLocalDateString()}`
     },
     {
       title: '預約查詢',
@@ -129,7 +130,6 @@ export function HomePage({ user }: HomePageProps) {
               <div style={{
                 fontSize: '42px',
                 marginBottom: '5px',
-                filter: 'grayscale(100%) contrast(1.3) brightness(0.7)',
               }}>
                 {item.icon}
               </div>

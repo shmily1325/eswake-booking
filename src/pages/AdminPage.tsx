@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { UserMenu } from '../components/UserMenu'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
+import { getLocalDateString } from '../utils/date'
 
 interface AdminPageProps {
   user: User
@@ -29,7 +30,7 @@ interface Coach {
 
 export function AdminPage({ user }: AdminPageProps) {
   const { isMobile } = useResponsive()
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString())
   const [bookings, setBookings] = useState<Booking[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(false)
