@@ -198,7 +198,11 @@ export function NewBookingDialog({
 
       // 對每個日期進行處理
       for (const dateTime of datesToCreate) {
-        const dateStr = dateTime.toISOString().split('T')[0]
+        // 使用本地日期，避免 UTC 转换导致日期变化
+        const year = dateTime.getFullYear()
+        const month = (dateTime.getMonth() + 1).toString().padStart(2, '0')
+        const day = dateTime.getDate().toString().padStart(2, '0')
+        const dateStr = `${year}-${month}-${day}`
         const timeStr = `${dateTime.getHours().toString().padStart(2, '0')}:${dateTime.getMinutes().toString().padStart(2, '0')}`
         const displayDate = `${dateStr} ${timeStr}`
         
