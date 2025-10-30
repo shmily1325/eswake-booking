@@ -129,18 +129,24 @@ export function DayView({ user }: DayViewProps) {
         )
       }
       
-      // 每次都獲取當日的 bookings
-      const startOfDay = `${dateParam}T00:00:00`
-      const endOfDay = `${dateParam}T23:59:59`
-      
-      promises.push(
-        supabase
-          .from('bookings')
-          .select('*, boats:boat_id(id, name, color), coaches:coach_id(id, name)')
-          .gte('start_at', startOfDay)
-          .lte('start_at', endOfDay)
-          .order('start_at', { ascending: true })
-      )
+    // 每次都獲取當日的 bookings
+    // 將台北時間的日期範圍轉換為 UTC 時間進行查詢
+    const [year, month, day] = dateParam.split('-').map(Number)
+    const taipeiStartOfDay = new Date(year, month - 1, day, 0, 0, 0)
+    const taipeiEndOfDay = new Date(year, month - 1, day, 23, 59, 59)
+    
+    // 轉換為 UTC ISO 字符串（會自動調整為 UTC-8）
+    const startOfDay = new Date(taipeiStartOfDay.getTime() - 8 * 60 * 60 * 1000).toISOString()
+    const endOfDay = new Date(taipeiEndOfDay.getTime() - 8 * 60 * 60 * 1000).toISOString()
+    
+    promises.push(
+      supabase
+        .from('bookings')
+        .select('*, boats:boat_id(id, name, color), coaches:coach_id(id, name)')
+        .gte('start_at', startOfDay)
+        .lte('start_at', endOfDay)
+        .order('start_at', { ascending: true })
+    )
       
       const results = await Promise.all(promises)
       
@@ -192,6 +198,36 @@ export function DayView({ user }: DayViewProps) {
     const coach = coaches.find(c => c.id === coachId)
     return coach ? coach.name : coachId
   }
+  
+  // 強制轉換為台北時間（UTC+8）
+  const toTaipeiTime = (dateString: string) => {
+    const date = new Date(dateString)
+    // 使用 Intl API 強制轉換為台北時區
+    const taipeiFormatter = new Intl.DateTimeFormat('zh-TW', {
+      timeZone: 'Asia/Taipei',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
+    
+    const parts = taipeiFormatter.formatToParts(date)
+    const year = parseInt(parts.find(p => p.type === 'year')?.value || '0')
+    const month = parseInt(parts.find(p => p.type === 'month')?.value || '0')
+    const day = parseInt(parts.find(p => p.type === 'day')?.value || '0')
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0')
+    const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0')
+    
+    return { year, month, day, hour, minute }
+  }
+  
+  // 格式化台北時間為字符串 HH:MM
+  const formatTaipeiTime = (dateString: string): string => {
+    const { hour, minute } = toTaipeiTime(dateString)
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+  }
 
   const isBookingEnded = (booking: Booking): boolean => {
     const endTime = new Date(booking.start_at).getTime() + booking.duration_min * 60000
@@ -214,31 +250,28 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const getBookingForCell = (boatId: number, timeSlot: string): Booking | null => {
-    // 使用本地時間構建，避免時區轉換問題
+    // 強制使用台北時間
     const [year, month, day] = dateParam.split('-').map(Number)
     const [hour, minute] = timeSlot.split(':').map(Number)
-    const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
-    
-    // 调试：检查早班预约
-    const isEarlySlot = hour === 7 && minute === 0
-    const boatName = boats.find(b => b.id === boatId)?.name
     
     for (const booking of bookings) {
       if (booking.boat_id !== boatId) continue
       
-      const bookingStart = new Date(booking.start_at)
-      const bookingEnd = new Date(bookingStart.getTime() + booking.duration_min * 60000)
+      // 將預約時間轉換為台北時間
+      const bookingTaipei = toTaipeiTime(booking.start_at)
       
-      if (isEarlySlot && boatName === 'G23') {
-        console.log('🔍 Checking 07:00 slot for G23:')
-        console.log('  cellDateTime:', cellDateTime.toString(), '| timestamp:', cellDateTime.getTime())
-        console.log('  booking.start_at:', booking.start_at)
-        console.log('  bookingStart:', bookingStart.toString(), '| timestamp:', bookingStart.getTime())
-        console.log('  Match?', cellDateTime.getTime() >= bookingStart.getTime() && cellDateTime.getTime() < bookingEnd.getTime())
-        console.log('  Exact match?', cellDateTime.getTime() === bookingStart.getTime())
+      // 檢查日期是否匹配
+      if (year !== bookingTaipei.year || month !== bookingTaipei.month || day !== bookingTaipei.day) {
+        continue
       }
       
-      if (cellDateTime >= bookingStart && cellDateTime < bookingEnd) {
+      // 計算預約的結束時間（分鐘）
+      const bookingStartMinutes = bookingTaipei.hour * 60 + bookingTaipei.minute
+      const bookingEndMinutes = bookingStartMinutes + booking.duration_min
+      const cellMinutes = hour * 60 + minute
+      
+      // 檢查時間槽是否在預約時間範圍內
+      if (cellMinutes >= bookingStartMinutes && cellMinutes < bookingEndMinutes) {
         return booking
       }
     }
@@ -247,12 +280,10 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const isBookingStart = (booking: Booking, timeSlot: string): boolean => {
-    // 使用本地時間構建，避免時區轉換問題
-    const [year, month, day] = dateParam.split('-').map(Number)
+    // 強制使用台北時間
     const [hour, minute] = timeSlot.split(':').map(Number)
-    const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
-    const bookingStart = new Date(booking.start_at)
-    return cellDateTime.getTime() === bookingStart.getTime()
+    const bookingTaipei = toTaipeiTime(booking.start_at)
+    return bookingTaipei.hour === hour && bookingTaipei.minute === minute
   }
 
   const getBookingSpan = (booking: Booking): number => {
@@ -789,40 +820,38 @@ export function DayView({ user }: DayViewProps) {
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'center',
+                            gap: '5px',
                           }}>
-                            {/* 第一行：學生 + 教練 */}
+                            {/* 第一行：學生名字 */}
                             <div style={{
-                              display: 'flex',
-                              gap: '10px',
-                              alignItems: 'center',
-                              marginBottom: '4px',
+                              fontSize: isMobile ? '15px' : '14px',
+                              fontWeight: '600',
+                              color: '#2c3e50',
+                              lineHeight: '1.2',
                             }}>
-                              <div style={{
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                color: '#2c3e50',
-                              }}>
-                                {booking.student}
-                              </div>
-                              <div style={{
-                                fontSize: '14px',
-                                color: '#7f8c8d',
-                              }}>
-                                / {allCoaches.join(' / ')}
-                              </div>
+                              {booking.student}
                             </div>
 
-                            {/* 第二行：活動類型 + 狀態 */}
+                            {/* 第二行：教練名字 */}
+                            <div style={{
+                              fontSize: isMobile ? '13px' : '13px',
+                              color: '#7f8c8d',
+                              lineHeight: '1.3',
+                            }}>
+                              {allCoaches.join(' / ')}
+                            </div>
+
+                            {/* 第三行：活動類型 + 狀態 */}
                             <div style={{
                               display: 'flex',
-                              gap: '8px',
+                              gap: '6px',
                               alignItems: 'center',
                               flexWrap: 'wrap',
                             }}>
                               {booking.activity_types && booking.activity_types.length > 0 && (
                                 <div style={{
-                                  fontSize: '12px',
-                                  padding: '2px 8px',
+                                  fontSize: '11px',
+                                  padding: '3px 8px',
                                   backgroundColor: '#ecf0f1',
                                   color: '#34495e',
                                   borderRadius: '3px',
@@ -834,7 +863,7 @@ export function DayView({ user }: DayViewProps) {
                               {isConfirmed && (
                                 <span style={{
                                   fontSize: '11px',
-                                  padding: '2px 6px',
+                                  padding: '3px 6px',
                                   background: '#27ae60',
                                   borderRadius: '3px',
                                   color: 'white',
@@ -846,7 +875,7 @@ export function DayView({ user }: DayViewProps) {
                               {needsConfirmation && (
                                 <span style={{
                                   fontSize: '11px',
-                                  padding: '2px 6px',
+                                  padding: '3px 6px',
                                   background: '#f39c12',
                                   borderRadius: '3px',
                                   color: 'white',
@@ -857,7 +886,7 @@ export function DayView({ user }: DayViewProps) {
                               )}
                               {booking.notes && (
                                 <div style={{
-                                  fontSize: '12px',
+                                  fontSize: '10px',
                                   color: '#95a5a6',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
