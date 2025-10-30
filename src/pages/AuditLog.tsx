@@ -65,18 +65,21 @@ export function AuditLog({ user }: AuditLogProps) {
   }
 
   const formatDateTime = (isoString: string) => {
-    if (!isoString) return '未知時間'
+    if (!isoString) return ''
     
-    // 純字符串處理
-    const datetime = isoString.substring(0, 16) // "2025-11-01T13:55"
+    // 純字符串處理，處理可能包含毫秒和時區的格式
+    // 例如：2025-10-30T10:05:34.163194+00:00 或 2025-10-30T10:05:34
+    const datetime = isoString.substring(0, 16) // "2025-10-30T10:05"
     const parts = datetime.split('T')
     
-    if (parts.length !== 2) return '未知時間'
+    if (parts.length !== 2) return ''
     
     const [dateStr, timeStr] = parts
-    const [year, month, day] = dateStr.split('-')
+    const dateParts = dateStr.split('-')
     
-    if (!year || !month || !day || !timeStr) return '未知時間'
+    if (dateParts.length !== 3 || !timeStr) return ''
+    
+    const [year, month, day] = dateParts
     
     // 計算星期幾
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
