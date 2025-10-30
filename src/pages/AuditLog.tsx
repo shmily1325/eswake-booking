@@ -46,8 +46,16 @@ export function AuditLog({ user }: AuditLogProps) {
       const { data, error } = await query
 
       if (error) {
-        console.error('Error fetching audit logs:', error)
+        console.error('❌ Error fetching audit logs:', error)
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
       } else {
+        console.log('✅ Audit logs fetched:', data?.length || 0, 'records')
+        console.log('First 3 records:', data?.slice(0, 3))
         setLogs(data || [])
       }
     } catch (err) {
