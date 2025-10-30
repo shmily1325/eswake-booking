@@ -362,7 +362,7 @@ export function DayView({ user }: DayViewProps) {
     return TIME_SLOTS
   }, [timeRange])
 
-  // 根據單船模式篩選船隻
+  // 根據單船模式篩選船
   const displayBoats = useMemo(() => {
     if (singleBoatMode && boats.length > 0) {
       return [boats[currentBoatIndex]]
@@ -393,28 +393,37 @@ export function DayView({ user }: DayViewProps) {
     }}>
       {/* Header */}
       <div style={{
+        background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+        borderRadius: '8px',
+        padding: '15px',
+        marginBottom: '15px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '16px',
-        flexWrap: 'wrap',
-        gap: '12px',
+        gap: '10px',
+        flexWrap: 'wrap'
       }}>
         <h1 style={{ 
           margin: 0, 
-          fontSize: isMobile ? '20px' : '24px',
+          fontSize: '18px',
           fontWeight: '600',
+          color: 'white'
         }}>
           {viewMode === 'list' ? '列表' : '時間軸'}
         </h1>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
             onClick={() => window.location.href = '/'}
             style={{
-              ...buttonStyles.primary,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
+              padding: '6px 12px',
+              background: 'rgba(255, 255, 255, 0.15)',
+              color: 'white',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '4px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
             }}
           >
             ← 回主頁
