@@ -607,13 +607,13 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
                               <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                                 <div style={{ flex: '1', minWidth: '200px' }}>
                                   <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-                                    備註（選填）
+                                    備註
                                   </label>
                                   <input
                                     type="text"
                                     value={confirmNotes.get(booking.id) || ''}
                                     onChange={(e) => setConfirmNote(booking.id, e.target.value)}
-                                    placeholder="例如：學生表現良好、提早結束..."
+                                    placeholder="總時數、是否指定教練、其它備註"
                                     style={{
                                       width: '100%',
                                       padding: '8px',

@@ -313,25 +313,44 @@ export function EditBookingDialog({
     setError('')
 
     try {
-      // Log to audit_log before deleting
-      const { error: auditError } = await supabase.from('audit_log').insert({
-        table_name: 'bookings',
-        record_id: booking.id,
-        action: 'DELETE',
-        user_id: user.id,
-        user_email: user.email,
-        old_data: booking,
-        new_data: null,
-        changed_fields: null,
-      })
-      if (auditError) {
-        console.error('Audit log insert error:', auditError)
+      // 查詢所有相同時間、學生、船隻的預約（多教練情況）
+      const { data: relatedBookings, error: queryError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('boat_id', booking.boat_id)
+        .eq('student', booking.student)
+        .eq('start_at', booking.start_at)
+        .eq('duration_min', booking.duration_min)
+
+      if (queryError) throw queryError
+
+      // 為每筆記錄記錄到 audit_log
+      if (relatedBookings && relatedBookings.length > 0) {
+        const auditLogs = relatedBookings.map(b => ({
+          table_name: 'bookings',
+          record_id: b.id,
+          action: 'DELETE',
+          user_id: user.id,
+          user_email: user.email,
+          old_data: b,
+          new_data: null,
+          changed_fields: null,
+        }))
+
+        const { error: auditError } = await supabase.from('audit_log').insert(auditLogs)
+        if (auditError) {
+          console.error('Audit log insert error:', auditError)
+        }
       }
 
+      // 刪除所有相關的預約
       const { error: deleteError } = await supabase
         .from('bookings')
         .delete()
-        .eq('id', booking.id)
+        .eq('boat_id', booking.boat_id)
+        .eq('student', booking.student)
+        .eq('start_at', booking.start_at)
+        .eq('duration_min', booking.duration_min)
 
       if (deleteError) {
         setError(deleteError.message)

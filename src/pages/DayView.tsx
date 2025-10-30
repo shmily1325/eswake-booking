@@ -198,25 +198,16 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const getBookingForCell = (boatId: number, timeSlot: string): Booking | null => {
-    const cellDateTime = new Date(`${dateParam}T${timeSlot}:00`)
+    // 使用本地時間構建，避免時區轉換問題
+    const [year, month, day] = dateParam.split('-').map(Number)
+    const [hour, minute] = timeSlot.split(':').map(Number)
+    const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
     
     for (const booking of bookings) {
       if (booking.boat_id !== boatId) continue
       
       const bookingStart = new Date(booking.start_at)
       const bookingEnd = new Date(bookingStart.getTime() + booking.duration_min * 60000)
-      
-      // 調試：如果是 07:00 且是 G23
-      if (timeSlot === '07:00' && boatId === boats.find(b => b.name === 'G23')?.id) {
-        console.log('🔍 Checking 07:00 for G23:', {
-          cellDateTime: cellDateTime.toISOString(),
-          bookingStartAt: booking.start_at,
-          bookingStartParsed: bookingStart.toISOString(),
-          cellTime: cellDateTime.getTime(),
-          bookingTime: bookingStart.getTime(),
-          match: cellDateTime.getTime() === bookingStart.getTime(),
-        })
-      }
       
       if (cellDateTime >= bookingStart && cellDateTime < bookingEnd) {
         return booking
@@ -227,7 +218,10 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const isBookingStart = (booking: Booking, timeSlot: string): boolean => {
-    const cellDateTime = new Date(`${dateParam}T${timeSlot}:00`)
+    // 使用本地時間構建，避免時區轉換問題
+    const [year, month, day] = dateParam.split('-').map(Number)
+    const [hour, minute] = timeSlot.split(':').map(Number)
+    const cellDateTime = new Date(year, month - 1, day, hour, minute, 0)
     const bookingStart = new Date(booking.start_at)
     return cellDateTime.getTime() === bookingStart.getTime()
   }
@@ -738,19 +732,21 @@ export function DayView({ user }: DayViewProps) {
                             color: 'white',
                             padding: '10px 12px',
                             borderRadius: '6px',
-                            minWidth: '70px',
+                            minWidth: '90px',
                             flexShrink: 0,
                           }}>
                             <div style={{
-                              fontSize: '15px',
+                              fontSize: '14px',
                               fontWeight: 'bold',
-                              lineHeight: '1.2',
+                              lineHeight: '1.3',
                             }}>
-                              {startTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                              {startTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                              {' - '}
+                              {endTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })}
                             </div>
                             <div style={{
                               fontSize: '11px',
-                              opacity: 0.8,
+                              opacity: 0.7,
                               marginTop: '2px',
                             }}>
                               {booking.duration_min}分
