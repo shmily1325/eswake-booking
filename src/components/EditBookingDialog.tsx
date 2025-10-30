@@ -73,9 +73,12 @@ export function EditBookingDialog({
         setActivityTypes(booking.activity_types || [])
         setNotes(booking.notes || '')
         
-        // Parse start_at into date and time
+        // Parse start_at into date and time (使用本地時間組件避免時區偏移)
         const startDateTime = new Date(booking.start_at)
-        const dateStr = startDateTime.toISOString().split('T')[0]
+        const year = startDateTime.getFullYear()
+        const month = String(startDateTime.getMonth() + 1).padStart(2, '0')
+        const day = String(startDateTime.getDate()).padStart(2, '0')
+        const dateStr = `${year}-${month}-${day}`
         const timeStr = startDateTime.toTimeString().slice(0, 5) // HH:MM
         setStartDate(dateStr)
         setStartTime(timeStr)
