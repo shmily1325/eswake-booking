@@ -621,24 +621,24 @@ export function DayView({ user }: DayViewProps) {
               }}>
                 {/* 左側：船隻標題 */}
                 <div style={{
-                  backgroundColor: boat.color,
-                  color: getContrastingTextColor(boat.color),
-                  padding: '16px 20px',
-                  fontWeight: 'bold',
-                  fontSize: '16px',
+                  backgroundColor: '#34495e',
+                  color: 'white',
+                  padding: '16px 12px',
+                  fontWeight: '600',
+                  fontSize: '15px',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  minWidth: '90px',
-                  width: '90px',
+                  minWidth: '85px',
+                  width: '85px',
                   flexShrink: 0,
                   textAlign: 'center',
-                  gap: '6px',
-                  borderRight: '3px solid rgba(0,0,0,0.1)',
+                  gap: '4px',
+                  borderRight: '2px solid #2c3e50',
                 }}>
-                  <span style={{ fontSize: '16px' }}>{boat.name}</span>
-                  <span style={{ fontSize: '11px', opacity: 0.85, fontWeight: 'normal' }}>
+                  <span style={{ fontSize: '15px', lineHeight: '1.3' }}>{boat.name}</span>
+                  <span style={{ fontSize: '11px', opacity: 0.7, fontWeight: '400' }}>
                     {boatBookings.length} 個
                   </span>
                 </div>
@@ -742,94 +742,92 @@ export function DayView({ user }: DayViewProps) {
                           </div>
 
                           {/* 右側：詳細資訊 */}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            {/* 第一行：學生 + 教練 + 狀態 */}
+                          <div style={{ 
+                            flex: 1, 
+                            minWidth: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                          }}>
+                            {/* 第一行：學生 + 教練 */}
                             <div style={{
                               display: 'flex',
-                              gap: '12px',
+                              gap: '10px',
                               alignItems: 'center',
-                              marginBottom: '6px',
-                              flexWrap: 'wrap',
+                              marginBottom: '4px',
                             }}>
                               <div style={{
-                                fontSize: '15px',
-                                fontWeight: 'bold',
+                                fontSize: '14px',
+                                fontWeight: '600',
                                 color: '#2c3e50',
                               }}>
                                 {booking.student}
                               </div>
                               <div style={{
-                                fontSize: '13px',
-                                color: '#5a6c7d',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
+                                fontSize: '14px',
+                                color: '#7f8c8d',
                               }}>
-                                <span>👨‍🏫</span>
-                                <span>{booking.coach_id ? (booking.coaches?.name || getCoachName(booking.coach_id)) : '未指定'}</span>
+                                / {booking.coach_id ? (booking.coaches?.name || getCoachName(booking.coach_id)) : '未指定'}
                               </div>
+                            </div>
+
+                            {/* 第二行：活動類型 + 狀態 */}
+                            <div style={{
+                              display: 'flex',
+                              gap: '8px',
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                            }}>
+                              {booking.activity_types && booking.activity_types.length > 0 && (
+                                <div style={{
+                                  fontSize: '12px',
+                                  padding: '2px 8px',
+                                  backgroundColor: '#ecf0f1',
+                                  color: '#34495e',
+                                  borderRadius: '3px',
+                                  fontWeight: '500',
+                                }}>
+                                  {booking.activity_types.join(' + ')}
+                                </div>
+                              )}
                               {isConfirmed && (
                                 <span style={{
                                   fontSize: '11px',
-                                  padding: '3px 8px',
-                                  background: '#4caf50',
-                                  borderRadius: '12px',
+                                  padding: '2px 6px',
+                                  background: '#27ae60',
+                                  borderRadius: '3px',
                                   color: 'white',
                                   fontWeight: '600',
-                                  marginLeft: 'auto',
                                 }}>
-                                  ✓ 已確認
+                                  ✓
                                 </span>
                               )}
                               {needsConfirmation && (
                                 <span style={{
                                   fontSize: '11px',
-                                  padding: '3px 8px',
-                                  background: '#ff9800',
-                                  borderRadius: '12px',
+                                  padding: '2px 6px',
+                                  background: '#f39c12',
+                                  borderRadius: '3px',
                                   color: 'white',
                                   fontWeight: '600',
-                                  marginLeft: 'auto',
                                 }}>
-                                  ! 待確認
+                                  !
                                 </span>
                               )}
+                              {booking.notes && (
+                                <div style={{
+                                  fontSize: '12px',
+                                  color: '#95a5a6',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  flex: 1,
+                                  minWidth: 0,
+                                }}>
+                                  💬 {booking.notes}
+                                </div>
+                              )}
                             </div>
-
-                            {/* 第二行：活動類型（統一色系） */}
-                            {booking.activity_types && booking.activity_types.length > 0 && (
-                              <div style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '12px',
-                                padding: '4px 10px',
-                                backgroundColor: '#ecf0f1',
-                                color: '#34495e',
-                                borderRadius: '4px',
-                                fontWeight: '600',
-                                marginBottom: '4px',
-                              }}>
-                                <span>🏄</span>
-                                <span>{booking.activity_types.join(' + ')}</span>
-                              </div>
-                            )}
-
-                            {/* 第三行：備註 */}
-                            {booking.notes && (
-                              <div style={{
-                                fontSize: '12px',
-                                color: '#7f8c8d',
-                                marginTop: '4px',
-                                lineHeight: '1.4',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                              }}>
-                                💬 {booking.notes}
-                              </div>
-                            )}
                           </div>
                         </div>
                       )
