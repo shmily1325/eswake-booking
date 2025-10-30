@@ -739,13 +739,13 @@ export function DayView({ user }: DayViewProps) {
                             e.currentTarget.style.transform = 'translateX(0)'
                           }}
                         >
-                          {/* 左側：時間標籤（黑底白字） */}
+                          {/* 左側：時間標籤（灰底白字） */}
                           <div style={{
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            backgroundColor: '#2c3e50',
+                            backgroundColor: '#5a5a5a',
                             color: 'white',
                             padding: '10px 12px',
                             borderRadius: '6px',
@@ -777,11 +777,13 @@ export function DayView({ user }: DayViewProps) {
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'center',
-                            gap: '5px',
+                            alignItems: 'center',
+                            gap: '6px',
+                            textAlign: 'center',
                           }}>
                             {/* 第一行：學生名字 */}
                             <div style={{
-                              fontSize: isMobile ? '15px' : '14px',
+                              fontSize: isMobile ? '15px' : '15px',
                               fontWeight: '600',
                               color: '#2c3e50',
                               lineHeight: '1.2',
@@ -810,8 +812,8 @@ export function DayView({ user }: DayViewProps) {
                                 <div style={{
                                   fontSize: '11px',
                                   padding: '3px 8px',
-                                  backgroundColor: '#ecf0f1',
-                                  color: '#34495e',
+                                  backgroundColor: '#d0d0d0',
+                                  color: '#555',
                                   borderRadius: '3px',
                                   fontWeight: '500',
                                 }}>
