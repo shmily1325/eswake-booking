@@ -336,6 +336,8 @@ export function NewBookingDialog({
           }))
         }
 
+        console.log('💾 準備插入數據:', bookingsToInsert)
+
         const { data: insertedBookings, error: insertError } = await supabase
           .from('bookings')
           .insert(bookingsToInsert)
@@ -343,6 +345,13 @@ export function NewBookingDialog({
 
         if (insertError) {
           // 如果創建失敗，記錄為跳過
+          console.error('❌ 插入失敗:', {
+            error: insertError,
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint,
+            code: insertError.code
+          })
           results.skipped.push({
             date: displayDate,
             reason: insertError.message.includes('violates exclusion constraint')
@@ -351,6 +360,8 @@ export function NewBookingDialog({
           })
           continue
         }
+
+        console.log('✅ 插入成功:', insertedBookings)
 
         // Log to audit_log
         if (insertedBookings && insertedBookings.length > 0) {
