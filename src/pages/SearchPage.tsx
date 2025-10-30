@@ -24,11 +24,11 @@ export function SearchPage({ user }: SearchPageProps) {
       }}>
         {/* Header */}
         <div style={{
-          background: 'white',
+          background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
           borderRadius: '8px',
           padding: '15px',
           marginBottom: '15px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -37,7 +37,7 @@ export function SearchPage({ user }: SearchPageProps) {
           <h1 style={{
             margin: 0,
             fontSize: '18px',
-            color: '#000',
+            color: 'white',
             fontWeight: '600'
           }}>
             預約查詢
@@ -47,12 +47,12 @@ export function SearchPage({ user }: SearchPageProps) {
               to="/"
               style={{
                 padding: '6px 12px',
-                background: '#f8f9fa',
-                color: '#333',
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: 'white',
                 textDecoration: 'none',
                 borderRadius: '4px',
                 fontSize: '13px',
-                border: '1px solid #dee2e6',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 whiteSpace: 'nowrap'
               }}
             >
@@ -62,58 +62,56 @@ export function SearchPage({ user }: SearchPageProps) {
           </div>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tabs */}
         <div style={{
           display: 'flex',
-          marginBottom: '15px',
-          background: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          overflow: 'hidden',
+          gap: '10px',
+          marginBottom: '15px'
         }}>
           <button
             onClick={() => setActiveTab('student')}
             style={{
               flex: 1,
-              padding: '12px 15px',
+              padding: '12px',
               border: 'none',
-              background: activeTab === 'student' ? '#34495e' : 'transparent',
+              borderRadius: '8px',
+              background: activeTab === 'student' 
+                ? 'linear-gradient(135deg, #4a5568 0%, #3a4558 100%)'
+                : 'white',
               color: activeTab === 'student' ? 'white' : '#333',
               fontSize: '15px',
               fontWeight: '600',
               cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              borderRight: activeTab === 'student' ? 'none' : '1px solid #eee',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              transition: 'all 0.2s'
             }}
           >
-            👨‍🎓 學生
+            🎓 學生
           </button>
           <button
             onClick={() => setActiveTab('coach')}
             style={{
               flex: 1,
-              padding: '12px 15px',
+              padding: '12px',
               border: 'none',
-              background: activeTab === 'coach' ? '#34495e' : 'transparent',
+              borderRadius: '8px',
+              background: activeTab === 'coach'
+                ? 'linear-gradient(135deg, #4a5568 0%, #3a4558 100%)'
+                : 'white',
               color: activeTab === 'coach' ? 'white' : '#333',
               fontSize: '15px',
               fontWeight: '600',
               cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              borderLeft: activeTab === 'coach' ? 'none' : '1px solid #eee',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              transition: 'all 0.2s'
             }}
           >
             👨‍🏫 教練
           </button>
         </div>
 
-        {/* Content based on active tab */}
-        <div style={{
-          background: 'white',
-          borderRadius: '8px',
-          padding: '20px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        }}>
+        {/* Content */}
+        <div>
           {activeTab === 'student' && (
             <SearchBookings user={user} isEmbedded={true} />
           )}
@@ -125,4 +123,3 @@ export function SearchPage({ user }: SearchPageProps) {
     </div>
   )
 }
-
