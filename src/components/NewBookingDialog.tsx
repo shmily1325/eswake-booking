@@ -52,7 +52,10 @@ export function NewBookingDialog({
       // Parse defaultStartTime into date and time
       const startDateTime = new Date(defaultStartTime)
       const dateStr = startDateTime.toISOString().split('T')[0]
-      const timeStr = startDateTime.toTimeString().slice(0, 5) // HH:MM
+      // 使用本地時間而不是 UTC 時間
+      const hours = startDateTime.getHours().toString().padStart(2, '0')
+      const minutes = startDateTime.getMinutes().toString().padStart(2, '0')
+      const timeStr = `${hours}:${minutes}`
       setStartDate(dateStr)
       setStartTime(timeStr)
     }
