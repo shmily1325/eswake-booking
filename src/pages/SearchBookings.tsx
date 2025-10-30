@@ -144,7 +144,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
     bookings.forEach((booking) => {
       const datetime = booking.start_at.substring(0, 16)
       const [dateStr, timeStr] = datetime.split('T')
-      const [year, month, day] = dateStr.split('-')
+      const [, month, day] = dateStr.split('-')
       
       // 組合一行：日期 時間 船隻 教練 時長 活動類型
       const coaches = booking.coaches && booking.coaches.length > 0 
@@ -234,6 +234,15 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
         <form onSubmit={handleSearch}>
           {/* 學生姓名 */}
           <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '13px',
+              color: '#868e96',
+              fontWeight: '500'
+            }}>
+              學生姓名
+            </label>
             <input
               type="text"
               value={searchName}
@@ -275,6 +284,16 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
               />
               <span style={{ fontSize: '15px', color: '#495057' }}>指定日期查詢</span>
             </label>
+            {filterType === 'today' && (
+              <div style={{ 
+                marginTop: '8px', 
+                fontSize: '13px', 
+                color: '#868e96',
+                paddingLeft: '4px'
+              }}>
+                查詢模式：今日新增
+              </div>
+            )}
           </div>
 
           {/* 日期區間選擇 */}
@@ -324,7 +343,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
             style={{
               width: '100%',
               padding: '18px',
-              fontSize: '17px',
+              fontSize: '24px',
               fontWeight: '600',
               background: !loading ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)' : '#ccc',
               color: 'white',
@@ -338,7 +357,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
             onTouchStart={(e) => !loading && (e.currentTarget.style.transform = 'scale(0.98)')}
             onTouchEnd={(e) => !loading && (e.currentTarget.style.transform = 'scale(1)')}
           >
-            {loading ? '搜尋中...' : (filterType === 'today' ? '查詢今日新增' : '查詢預約')}
+            {loading ? '...' : '🔍'}
           </button>
         </form>
       </div>
