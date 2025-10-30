@@ -21,12 +21,12 @@ interface Booking {
   coaches: { id: string; name: string }[]
 }
 
-interface CoachScheduleProps {
+interface CoachCheckProps {
   user: User
   isEmbedded?: boolean
 }
 
-export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) {
+export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -187,7 +187,7 @@ export function CoachSchedule({ user, isEmbedded = false }: CoachScheduleProps) 
               color: 'white',
               fontWeight: '600'
             }}>
-              教練行程
+              教練確認
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Link

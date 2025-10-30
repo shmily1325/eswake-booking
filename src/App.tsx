@@ -6,7 +6,7 @@ import { HomePage } from './pages/HomePage'
 import { DayView } from './pages/DayView'
 import { SearchPage } from './pages/SearchPage'
 import { SearchBookings } from './pages/SearchBookings'
-import { CoachSchedule } from './pages/CoachSchedule'
+import { CoachCheck } from './pages/CoachCheck'
 import { AuditLog } from './pages/AuditLog'
 import { AdminPage } from './pages/AdminPage'
 import { LoginPage } from './components/LoginPage'
@@ -57,7 +57,7 @@ function App() {
         <Route path="/day" element={<DayView user={user} />} />
         <Route path="/search" element={<SearchPage user={user} />} />
         <Route path="/search-bookings" element={<SearchBookings user={user} />} />
-        <Route path="/coach-schedule" element={<CoachSchedule user={user} />} />
+        <Route path="/coach-check" element={<CoachCheck user={user} />} />
         <Route path="/audit-log" element={<AuditLog user={user} />} />
         <Route path="/admin" element={<AdminPage user={user} />} />
       </Routes>

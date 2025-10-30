@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { UserMenu } from '../components/UserMenu'
 import { SearchBookings } from './SearchBookings'
-import { CoachSchedule } from './CoachSchedule'
+import { CoachQuery } from './CoachQuery'
 
 interface SearchPageProps {
   user: User
@@ -116,7 +116,7 @@ export function SearchPage({ user }: SearchPageProps) {
             <SearchBookings user={user} isEmbedded={true} />
           )}
           {activeTab === 'coach' && (
-            <CoachSchedule user={user} isEmbedded={true} />
+            <CoachQuery user={user} />
           )}
         </div>
       </div>
