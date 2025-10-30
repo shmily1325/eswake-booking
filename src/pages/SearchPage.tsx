@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { UserMenu } from '../components/UserMenu'
-import { StudentHistory } from './StudentHistory'
+import { SearchBookings } from './SearchBookings'
 import { CoachSchedule } from './CoachSchedule'
 
 interface SearchPageProps {
@@ -115,7 +115,7 @@ export function SearchPage({ user }: SearchPageProps) {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         }}>
           {activeTab === 'student' && (
-            <StudentHistory user={user} isEmbedded={true} />
+            <SearchBookings user={user} isEmbedded={true} />
           )}
           {activeTab === 'coach' && (
             <CoachSchedule user={user} isEmbedded={true} />

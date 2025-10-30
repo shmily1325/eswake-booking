@@ -816,7 +816,7 @@ export function NewBookingDialog({
                   onChange={() => toggleActivityType('WB')}
                   style={{ marginRight: '8px', width: '16px', height: '16px' }}
                 />
-                <span style={{ fontSize: '15px' }}>WB (滑水板)</span>
+                <span style={{ fontSize: '15px' }}>WB</span>
               </label>
               <label style={{
                 display: 'flex',
@@ -837,7 +837,7 @@ export function NewBookingDialog({
                   onChange={() => toggleActivityType('WS')}
                   style={{ marginRight: '8px', width: '16px', height: '16px' }}
                 />
-                <span style={{ fontSize: '15px' }}>WS (滑水)</span>
+                <span style={{ fontSize: '15px' }}>WS</span>
               </label>
             </div>
           </div>

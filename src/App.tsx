@@ -5,7 +5,7 @@ import { supabase } from './lib/supabase'
 import { HomePage } from './pages/HomePage'
 import { DayView } from './pages/DayView'
 import { SearchPage } from './pages/SearchPage'
-import { StudentHistory } from './pages/StudentHistory'
+import { SearchBookings } from './pages/SearchBookings'
 import { CoachSchedule } from './pages/CoachSchedule'
 import { AuditLog } from './pages/AuditLog'
 import { AdminPage } from './pages/AdminPage'
@@ -56,7 +56,7 @@ function App() {
         <Route path="/" element={<HomePage user={user} />} />
         <Route path="/day" element={<DayView user={user} />} />
         <Route path="/search" element={<SearchPage user={user} />} />
-        <Route path="/student-history" element={<StudentHistory user={user} />} />
+        <Route path="/search-bookings" element={<SearchBookings user={user} />} />
         <Route path="/coach-schedule" element={<CoachSchedule user={user} />} />
         <Route path="/audit-log" element={<AuditLog user={user} />} />
         <Route path="/admin" element={<AdminPage user={user} />} />
