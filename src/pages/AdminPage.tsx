@@ -22,11 +22,6 @@ interface Booking {
   coaches?: { id: string; name: string }[]
 }
 
-interface Coach {
-  id: string
-  name: string
-}
-
 export function AdminPage({ user }: AdminPageProps) {
   const { isMobile } = useResponsive()
   // 智能選擇日期：凌晨 03:00 前顯示今天，之後顯示明天
@@ -46,7 +41,6 @@ export function AdminPage({ user }: AdminPageProps) {
   }
   const [selectedDate, setSelectedDate] = useState(getDefaultDate())
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(false)
   const [copiedStudent, setCopiedStudent] = useState<string | null>(null)
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
@@ -92,12 +86,6 @@ export function AdminPage({ user }: AdminPageProps) {
   const fetchData = async () => {
     setLoading(true)
     try {
-      // 獲取教練列表
-      const { data: coachesData } = await supabase
-        .from('coaches')
-        .select('*')
-      setCoaches(coachesData || [])
-      
       // 獲取當天預約
       const startOfDay = `${selectedDate}T00:00:00`
       const endOfDay = `${selectedDate}T23:59:59`
