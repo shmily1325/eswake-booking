@@ -326,6 +326,18 @@ export function EditBookingDialog({
       if (booking.duration_min !== durationMin) {
         changes.push(`時長: ${booking.duration_min}分 → ${durationMin}分`)
       }
+      // 檢查活動類型變更
+      const oldActivities = (booking.activity_types || []).sort().join('+')
+      const newActivities = activityTypes.sort().join('+')
+      if (oldActivities !== newActivities) {
+        changes.push(`活動類型: ${oldActivities || '無'} → ${newActivities || '無'}`)
+      }
+      // 檢查備註變更
+      const oldNotes = booking.notes || ''
+      const newNotes = notes || ''
+      if (oldNotes !== newNotes) {
+        changes.push(`備註已修改`)
+      }
 
       await supabase.from('audit_log').insert({
         operation: '修改預約',
