@@ -197,27 +197,34 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
       const now = new Date()
       const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
       
-      const updateData: any = {
-        actual_duration_min: booking.duration_min,
-        coach_confirmed: true,
-        confirmed_at: nowStr,
-        confirmed_by: user.id
-      }
+      // 更新 booking_coaches 表（教練確認信息）
+      const { error: coachUpdateError } = await supabase
+        .from('booking_coaches')
+        .update({
+          actual_duration_min: booking.duration_min,
+          coach_confirmed: true,
+          confirmed_at: nowStr,
+          confirmed_by: user.id
+        })
+        .eq('booking_id', bookingId)
+        .eq('coach_id', selectedCoachId)
 
-      // 如果有輸入備註，加到現有備註後面
+      if (coachUpdateError) throw coachUpdateError
+
+      // 如果有輸入備註，更新 bookings 表的備註
       if (note.trim()) {
         const existingNotes = booking.notes || ''
-        updateData.notes = existingNotes 
-          ? `${existingNotes}\n[教練回報] ${note}` 
-          : `[教練回報] ${note}`
+        const newNotes = existingNotes 
+          ? `${existingNotes}\n[教練回報 ${new Date().toLocaleDateString()}] ${note}` 
+          : `[教練回報 ${new Date().toLocaleDateString()}] ${note}`
+        
+        const { error: notesError } = await supabase
+          .from('bookings')
+          .update({ notes: newNotes })
+          .eq('id', bookingId)
+
+        if (notesError) throw notesError
       }
-
-      const { error: updateError } = await supabase
-        .from('bookings')
-        .update(updateData)
-        .eq('id', bookingId)
-
-      if (updateError) throw updateError
 
       // 更新本地狀態
       setBookings(bookings.map(b => 
@@ -227,7 +234,7 @@ export function CoachCheck({ user, isEmbedded = false }: CoachCheckProps) {
               actual_duration_min: booking.duration_min,
               coach_confirmed: true,
               confirmed_at: nowStr,
-              notes: updateData.notes || b.notes
+              notes: note.trim() ? `${b.notes || ''}\n[教練回報 ${new Date().toLocaleDateString()}] ${note}`.trim() : b.notes
             }
           : b
       ))
