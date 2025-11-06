@@ -10,6 +10,11 @@ interface HomePageProps {
 
 export function HomePage({ user }: HomePageProps) {
   const { isMobile } = useResponsive()
+  
+  // 检测当前环境
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+  const isV2Environment = supabaseUrl.includes('v2') || supabaseUrl.includes('staging')
+  const isDevelopment = import.meta.env.DEV
   const menuItems = [
     {
       title: '預約表',
@@ -169,6 +174,30 @@ export function HomePage({ user }: HomePageProps) {
           </p>
         </div>
       </div>
+
+      {/* 版本指示器 */}
+      {isV2Environment && (
+        <div style={{
+          position: 'fixed',
+          bottom: 10,
+          right: 10,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          padding: '10px 18px',
+          borderRadius: '12px',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          zIndex: 9999,
+          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          border: '2px solid rgba(255, 255, 255, 0.3)'
+        }}>
+          <span style={{ fontSize: '18px' }}>✨</span>
+          <span>V2 新版本</span>
+        </div>
+      )}
     </div>
   )
 }
