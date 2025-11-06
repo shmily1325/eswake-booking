@@ -11,10 +11,9 @@ interface HomePageProps {
 export function HomePage({ user }: HomePageProps) {
   const { isMobile } = useResponsive()
   
-  // 检测当前环境
+  // Detect V2 environment
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
   const isV2Environment = supabaseUrl.includes('v2') || supabaseUrl.includes('staging')
-  const isDevelopment = import.meta.env.DEV
   const menuItems = [
     {
       title: '預約表',
@@ -175,7 +174,7 @@ export function HomePage({ user }: HomePageProps) {
         </div>
       </div>
 
-      {/* 版本指示器 */}
+      {/* Version indicator */}
       {isV2Environment && (
         <div style={{
           position: 'fixed',
