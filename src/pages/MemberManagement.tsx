@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import type { User } from '@supabase/supabase-js'
 
 interface Member {
   id: string
@@ -19,11 +18,7 @@ interface Member {
   created_at: string
 }
 
-interface MemberManagementProps {
-  user: User
-}
-
-export function MemberManagement(_props: MemberManagementProps) {
+export function MemberManagement() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')

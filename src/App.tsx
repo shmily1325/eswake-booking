@@ -63,7 +63,7 @@ function App() {
         <Route path="/audit-log" element={<AuditLog user={user} />} />
         <Route path="/admin" element={<AdminPage user={user} />} />
         <Route path="/backup" element={<BackupPage user={user} />} />
-        <Route path="/members" element={<MemberManagement user={user} />} />
+        <Route path="/members" element={<MemberManagement />} />
       </Routes>
     </BrowserRouter>
   )
