@@ -26,6 +26,11 @@ export function HomePage({ user }: HomePageProps) {
       link: '/search'
     },
     {
+      title: '會員管理',
+      icon: '👥',
+      link: '/members'
+    },
+    {
       title: '教練回報',
       icon: '✅',
       link: '/coach-check'
