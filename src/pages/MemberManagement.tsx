@@ -23,7 +23,7 @@ interface MemberManagementProps {
   user: User
 }
 
-export function MemberManagement({ }: MemberManagementProps) {
+export function MemberManagement(_props: MemberManagementProps) {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
