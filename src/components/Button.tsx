@@ -1,4 +1,4 @@
-import { designSystem, getButtonStyle } from '../styles/designSystem'
+import { getButtonStyle } from '../styles/designSystem'
 import { useResponsive } from '../hooks/useResponsive'
 
 interface ButtonProps {
