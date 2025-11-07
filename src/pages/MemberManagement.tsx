@@ -211,37 +211,73 @@ export function MemberManagement({ user }: MemberManagementProps) {
         marginBottom: '20px'
       }}>
         <div style={{
-          background: '#e9ecef',
-          padding: '20px',
+          background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+          padding: isMobile ? '16px' : '20px',
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>總人數</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#667eea' }}>
+          <div style={{ 
+            fontSize: isMobile ? '13px' : '14px', 
+            color: '#ccc', 
+            marginBottom: '8px',
+            fontWeight: '500'
+          }}>
+            總人數
+          </div>
+          <div style={{ 
+            fontSize: isMobile ? '28px' : '32px', 
+            fontWeight: 'bold', 
+            color: '#667eea',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          }}>
             {filteredMembers.length}
           </div>
         </div>
         
         <div style={{
-          background: '#e9ecef',
-          padding: '20px',
+          background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+          padding: isMobile ? '16px' : '20px',
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>會員</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#1976d2' }}>
+          <div style={{ 
+            fontSize: isMobile ? '13px' : '14px', 
+            color: '#ccc', 
+            marginBottom: '8px',
+            fontWeight: '500'
+          }}>
+            會員
+          </div>
+          <div style={{ 
+            fontSize: isMobile ? '28px' : '32px', 
+            fontWeight: 'bold', 
+            color: '#1976d2',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          }}>
             {filteredMembers.filter(m => m.member_type === 'member').length}
           </div>
         </div>
 
         <div style={{
-          background: '#e9ecef',
-          padding: '20px',
+          background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+          padding: isMobile ? '16px' : '20px',
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>置板數</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4caf50' }}>
+          <div style={{ 
+            fontSize: isMobile ? '13px' : '14px', 
+            color: '#ccc', 
+            marginBottom: '8px',
+            fontWeight: '500'
+          }}>
+            置板數
+          </div>
+          <div style={{ 
+            fontSize: isMobile ? '28px' : '32px', 
+            fontWeight: 'bold', 
+            color: '#4caf50',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          }}>
             {filteredMembers.reduce((sum, m) => sum + (m.board_count || 0), 0)}
           </div>
         </div>
