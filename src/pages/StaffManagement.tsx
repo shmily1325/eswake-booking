@@ -98,57 +98,31 @@ export function StaffManagement({ user }: StaffManagementProps) {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      {/* 標題列 */}
+      {/* 頂部導航列 */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: isMobile ? '15px' : '20px',
-        background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-        padding: '15px',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-        gap: isMobile ? '8px' : '10px',
-        flexWrap: 'wrap'
+        marginBottom: '15px',
+        gap: '10px'
       }}>
-        <h1 style={{
-          margin: 0,
-          fontSize: isMobile ? '18px' : '20px',
-          fontWeight: 'bold',
-          color: 'white'
-        }}>
-          🎓 教練管理
-        </h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => setAddDialogOpen(true)}
-            style={{
-              padding: isMobile ? '8px 12px' : '6px 12px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: isMobile ? '14px' : '13px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              touchAction: 'manipulation'
-            }}
-          >
-            + 新增教練
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Link
             to="/bao"
             style={{
-              padding: isMobile ? '8px 12px' : '6px 12px',
-              background: '#f8f9fa',
+              padding: isMobile ? '8px 14px' : '8px 16px',
+              background: 'white',
               color: '#333',
               textDecoration: 'none',
-              borderRadius: '4px',
-              fontSize: isMobile ? '14px' : '13px',
-              border: '1px solid #dee2e6',
-              whiteSpace: 'nowrap',
-              touchAction: 'manipulation'
+              borderRadius: '8px',
+              fontSize: isMobile ? '14px' : '14px',
+              border: '1px solid #e0e0e0',
+              fontWeight: '500',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
             }}
           >
             ← BAO
@@ -156,21 +130,77 @@ export function StaffManagement({ user }: StaffManagementProps) {
           <Link
             to="/"
             style={{
-              padding: isMobile ? '8px 12px' : '6px 12px',
-              background: '#f8f9fa',
+              padding: isMobile ? '8px 14px' : '8px 16px',
+              background: 'white',
               color: '#333',
               textDecoration: 'none',
-              borderRadius: '4px',
-              fontSize: isMobile ? '14px' : '13px',
-              border: '1px solid #dee2e6',
-              whiteSpace: 'nowrap',
-              touchAction: 'manipulation'
+              borderRadius: '8px',
+              fontSize: isMobile ? '14px' : '14px',
+              border: '1px solid #e0e0e0',
+              fontWeight: '500',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
             }}
           >
             ← HOME
           </Link>
-          <UserMenu user={user} />
         </div>
+        <UserMenu user={user} />
+      </div>
+
+      {/* 標題與操作區 */}
+      <div style={{
+        background: 'white',
+        padding: isMobile ? '20px 15px' : '24px 20px',
+        borderRadius: '12px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        marginBottom: isMobile ? '15px' : '20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '15px',
+        flexWrap: 'wrap'
+      }}>
+        <h1 style={{
+          margin: 0,
+          fontSize: isMobile ? '24px' : '28px',
+          fontWeight: 'bold',
+          color: '#333',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          <span style={{ fontSize: isMobile ? '28px' : '32px' }}>🎓</span>
+          教練管理
+        </h1>
+        <button
+          onClick={() => setAddDialogOpen(true)}
+          style={{
+            padding: isMobile ? '10px 20px' : '12px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: isMobile ? '15px' : '15px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)'
+          }}
+        >
+          + 新增教練
+        </button>
       </div>
 
       {/* 搜尋欄 */}
