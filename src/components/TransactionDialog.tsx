@@ -73,15 +73,18 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         newBalance += numAmount
       }
 
-      // 購買：扣除餘額，增加分鐘數
-      if (transactionType === 'purchase' && numAmount && numMinutes) {
-        newBalance -= Math.abs(numAmount) // 扣除餘額
+      // 購買：增加分鐘數（船券/指定課）
+      if (transactionType === 'purchase' && numMinutes) {
         if (category === 'designated_lesson') {
           newDesignatedMinutes += Math.abs(numMinutes)
         } else if (category === 'boat_voucher_g23') {
           newBoatVoucherG23Minutes += Math.abs(numMinutes)
         } else if (category === 'boat_voucher_g21') {
           newBoatVoucherG21Minutes += Math.abs(numMinutes)
+        }
+        // 如果有輸入金額，則扣除餘額
+        if (numAmount) {
+          newBalance -= Math.abs(numAmount)
         }
       }
 
@@ -207,8 +210,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
   if (!open) return null
 
   // 根據交易類型和類別決定顯示哪些輸入框
-  const showAmount = category === 'balance' || transactionType === 'purchase'
+  const showAmount = category === 'balance' || (transactionType === 'purchase' && category === 'balance')
   const showMinutes = (category === 'designated_lesson' || category === 'boat_voucher_g23' || category === 'boat_voucher_g21')
+  
+  // 購買船券/指定課時，金額是選填（如果要從儲值扣款才填）
+  const amountOptional = transactionType === 'purchase' && showMinutes
 
   return (
     <div style={{
@@ -346,21 +352,21 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
             </div>
 
             {/* 金額 */}
-            {showAmount && (
+            {(showAmount || amountOptional) && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  金額 (元) <span style={{ color: 'red' }}>*</span>
+                  金額 (元) {amountOptional ? <span style={{ color: '#999', fontSize: '13px' }}>（選填，若從儲值扣款才填）</span> : <span style={{ color: 'red' }}>*</span>}
                 </label>
                 <input
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder={transactionType === 'adjust' ? '輸入正數增加，負數減少' : '請輸入金額'}
+                  placeholder={amountOptional ? '選填：若要從儲值扣款才填寫' : (transactionType === 'adjust' ? '輸入正數增加，負數減少' : '請輸入金額')}
                   style={inputStyle}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                   step="0.01"
-                  required
+                  required={!amountOptional}
                 />
               </div>
             )}
@@ -385,18 +391,18 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
               </div>
             )}
 
-            {/* 購買時需要同時輸入金額和分鐘數 */}
+            {/* 購買時的提示 */}
             {transactionType === 'purchase' && showMinutes && (
               <div style={{
                 padding: '12px',
-                background: '#fff7e6',
-                border: '1px solid #ffd591',
+                background: '#e6f7ff',
+                border: '1px solid #91d5ff',
                 borderRadius: '8px',
                 marginBottom: '16px',
                 fontSize: '13px',
-                color: '#ad6800',
+                color: '#096dd9',
               }}>
-                💡 購買時會扣除「金額」欄位的餘額，並增加「分鐘數」欄位的分鐘數
+                💡 購買船券/指定課：直接輸入分鐘數即可。如果要從儲值扣款，再填寫金額欄位。
               </div>
             )}
 
@@ -447,7 +453,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
               <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>💡 操作說明</div>
               <ul style={{ margin: 0, paddingLeft: '20px' }}>
                 <li><strong>儲值</strong>：增加餘額</li>
-                <li><strong>購買</strong>：扣除餘額，增加指定課/船券分鐘數</li>
+                <li><strong>購買</strong>：增加指定課/船券分鐘數（金額選填，若從儲值扣款才填）</li>
                 <li><strong>消耗</strong>：扣除餘額或分鐘數</li>
                 <li><strong>退款</strong>：退回餘額或分鐘數</li>
                 <li><strong>調整</strong>：手動調整任何數值（輸入正負數）</li>
