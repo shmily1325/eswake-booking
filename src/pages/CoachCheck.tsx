@@ -598,7 +598,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
                       setShowMemberDropdown(true)
                             }}
                     onFocus={() => setShowMemberDropdown(true)}
-                    placeholder="搜尋會員姓名/暱稱/電話..."
+                    placeholder="搜尋會員姓名/暱稱..."
                             style={{
                               width: '100%',
                       padding: '10px',

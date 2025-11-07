@@ -237,7 +237,7 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
             color: 'white',
             fontWeight: '600'
           }}>
-            {isMobile ? '⏰ 明日提醒' : '⏰ 小編專區 - 明日提醒'}
+            ⏰ 明日提醒
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Link

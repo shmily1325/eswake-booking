@@ -710,18 +710,28 @@ function BookingsDialog({ open, staff, onClose }: BookingsDialogProps) {
   const loadBookings = async () => {
     setLoading(true)
     try {
+      // 先找出這個教練的所有預約 ID（作為教練）
+      const { data: coachBookings } = await supabase
+        .from('booking_coaches')
+        .select('booking_id')
+        .eq('coach_id', staff.id)
+      
+      const coachBookingIds = (coachBookings || []).map(b => b.booking_id)
+
+      // 查詢作為教練或司機的所有預約
       let query = supabase
         .from('bookings')
         .select(`
           id,
           start_at,
           status,
+          contact_name,
           booking_participants (
             member_name,
             reported
           )
         `)
-        .or(`coach.eq.${staff.name},driver.eq.${staff.name}`)
+        .or(`id.in.(${coachBookingIds.length > 0 ? coachBookingIds.join(',') : 0}),driver_coach_id.eq.${staff.id}`)
         .order('start_at', { ascending: false })
         .limit(50)
 

@@ -4,6 +4,7 @@ import { UserMenu } from '../components/UserMenu'
 import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
+import { designSystem, getTextStyle } from '../styles/designSystem'
 
 interface HomePageProps {
   user: User

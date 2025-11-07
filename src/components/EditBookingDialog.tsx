@@ -124,16 +124,35 @@ export function EditBookingDialog({
 
   const fetchCoaches = async () => {
     setLoadingCoaches(true)
-    const { data, error } = await supabase
+    
+    // 取得預約日期
+    const bookingDate = startDate || (booking?.start_at ? booking.start_at.split('T')[0] : '')
+    
+    // 取得所有教練
+    const { data: allCoaches, error } = await supabase
       .from('coaches')
       .select('id, name')
       .order('name')
     
     if (error) {
       console.error('Error fetching coaches:', error)
-    } else {
-      setCoaches(data || [])
+      setLoadingCoaches(false)
+      return
     }
+    
+    // 查詢當天休假的教練
+    const { data: timeOffData } = await supabase
+      .from('coach_time_off')
+      .select('coach_id')
+      .lte('start_date', bookingDate)
+      .or(`end_date.gte.${bookingDate},end_date.is.null`)
+    
+    const timeOffCoachIds = new Set((timeOffData || []).map(t => t.coach_id))
+    
+    // 過濾掉休假的教練
+    const availableCoaches = (allCoaches || []).filter(c => !timeOffCoachIds.has(c.id))
+    
+    setCoaches(availableCoaches)
     setLoadingCoaches(false)
   }
 
@@ -739,7 +758,7 @@ export function EditBookingDialog({
                 }
               }}
               onFocus={() => setShowMemberDropdown(true)}
-              placeholder="搜尋會員姓名/暱稱/電話..."
+              placeholder="搜尋會員姓名/暱稱..."
               style={{
                 width: '100%',
                 padding: '12px',
