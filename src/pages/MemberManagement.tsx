@@ -11,17 +11,17 @@ interface Member {
   id: string
   name: string
   nickname: string | null
+  birthday: string | null
   phone: string | null
-  email: string | null
-  line_id: string | null
   balance: number
   designated_lesson_minutes: number
   boat_voucher_minutes: number
   membership_expires_at: string | null
-  has_board_storage: boolean
-  board_storage_expires_at: string | null
+  member_type: string  // 'guest' or 'member'
   notes: string | null
+  status: string
   created_at: string
+  board_count?: number  // 置板數量（從 board_storage 計算）
 }
 
 interface MemberManagementProps {
@@ -48,14 +48,46 @@ export function MemberManagement({ user }: MemberManagementProps) {
   const loadMembers = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
+      // 載入會員資料
+      const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-      setMembers(data || [])
+      if (membersError) throw membersError
+
+      // 載入每個會員的置板數量
+      if (membersData && membersData.length > 0) {
+        const memberIds = membersData.map((m: any) => m.id)
+        const { data: boardData, error: boardError } = await supabase
+          .from('board_storage')
+          .select('member_id')
+          .in('member_id', memberIds)
+          .eq('status', 'active')
+
+        if (boardError) {
+          console.error('載入置板資料失敗:', boardError)
+        }
+
+        // 計算每個會員的置板數量
+        const boardCounts: Record<string, number> = {}
+        if (boardData) {
+          boardData.forEach((board: any) => {
+            boardCounts[board.member_id] = (boardCounts[board.member_id] || 0) + 1
+          })
+        }
+
+        // 合併資料
+        const membersWithBoards = membersData.map((member: any) => ({
+          ...member,
+          board_count: boardCounts[member.id] || 0
+        }))
+
+        setMembers(membersWithBoards)
+      } else {
+        setMembers([])
+      }
     } catch (error) {
       console.error('載入會員失敗:', error)
       alert('載入會員失敗')
@@ -67,8 +99,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
   const filteredMembers = members.filter(member => 
     member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.phone?.includes(searchTerm) ||
-    member.line_id?.toLowerCase().includes(searchTerm.toLowerCase())
+    member.phone?.includes(searchTerm)
   )
 
   if (loading) {
@@ -175,7 +206,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
       {/* 統計資訊 */}
       <div style={{ 
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
         gap: '15px',
         marginBottom: '20px'
       }}>
@@ -186,7 +217,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>總會員數</div>
+          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>總人數</div>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#667eea' }}>
             {filteredMembers.length}
           </div>
@@ -199,9 +230,22 @@ export function MemberManagement({ user }: MemberManagementProps) {
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>置板會員</div>
+          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>會員</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#1976d2' }}>
+            {filteredMembers.filter(m => m.member_type === 'member').length}
+          </div>
+        </div>
+
+        <div style={{
+          background: 'white',
+          padding: '20px',
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>置板數</div>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4caf50' }}>
-            {filteredMembers.filter(m => m.has_board_storage).length}
+            {filteredMembers.reduce((sum, m) => sum + (m.board_count || 0), 0)}
           </div>
         </div>
       </div>
@@ -270,11 +314,11 @@ export function MemberManagement({ user }: MemberManagementProps) {
                     )}
                   </div>
                   
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                    {member.phone && <span>📱 {member.phone}</span>}
-                    {member.phone && member.line_id && <span style={{ margin: '0 8px' }}>|</span>}
-                    {member.line_id && <span>💬 {member.line_id}</span>}
-                  </div>
+                  {member.phone && (
+                    <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                      📱 {member.phone}
+                    </div>
+                  )}
 
                   {member.notes && (
                     <div style={{ 
@@ -318,32 +362,52 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 </div>
               </div>
 
-              {/* 底部：附加資訊 */}
+              {/* 底部：到期資訊 */}
               <div style={{ 
                 marginTop: '12px',
                 paddingTop: '12px',
                 borderTop: '1px solid #f0f0f0',
                 display: 'flex',
-                gap: '15px',
-                fontSize: '13px',
-                color: '#666'
+                flexDirection: 'column',
+                gap: '8px',
+                fontSize: '13px'
               }}>
-                {member.has_board_storage && (
+                {/* 會員類型 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ 
-                    background: '#e8f5e9',
-                    color: '#2e7d32',
-                    padding: '4px 8px',
+                    background: member.member_type === 'member' ? '#e3f2fd' : '#f5f5f5',
+                    color: member.member_type === 'member' ? '#1976d2' : '#666',
+                    padding: '3px 8px',
                     borderRadius: '4px',
-                    fontWeight: 'bold'
+                    fontWeight: 'bold',
+                    fontSize: '12px'
                   }}>
-                    🏄 置板中
-                    {member.board_storage_expires_at && ` (至 ${member.board_storage_expires_at})`}
+                    {member.member_type === 'member' ? '👤 會員' : '👋 客人'}
                   </span>
-                )}
-                {member.membership_expires_at && (
-                  <span>
-                    會員到期：{member.membership_expires_at}
-                  </span>
+                  {member.member_type === 'member' && member.membership_expires_at && (
+                    <span style={{ color: '#666' }}>
+                      到期：{member.membership_expires_at}
+                    </span>
+                  )}
+                </div>
+                
+                {/* 置板資訊 */}
+                {member.board_count && member.board_count > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ 
+                      background: '#e8f5e9',
+                      color: '#2e7d32',
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      fontWeight: 'bold',
+                      fontSize: '12px'
+                    }}>
+                      🏄 置板
+                    </span>
+                    <span style={{ color: '#666' }}>
+                      {member.board_count} 格
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
