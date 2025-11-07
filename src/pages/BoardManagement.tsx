@@ -291,9 +291,10 @@ export function BoardManagement({ user }: BoardManagementProps) {
                   
                   {pair.upper && pair.lower && (
                     <div style={{
-                      height: '1px',
-                      background: 'linear-gradient(to right, transparent, #999, transparent)',
-                      margin: '0'
+                      height: '2px',
+                      background: 'linear-gradient(to right, #ddd, #999, #ddd)',
+                      margin: '2px 0',
+                      borderRadius: '1px'
                     }} />
                   )}
                   
