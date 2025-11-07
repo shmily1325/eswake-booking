@@ -210,7 +210,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
   if (!open) return null
 
   // 根據交易類型和類別決定顯示哪些輸入框
-  const showAmount = category === 'balance' || (transactionType === 'purchase' && category === 'balance')
+  const showAmount = category === 'balance'
   const showMinutes = (category === 'designated_lesson' || category === 'boat_voucher_g23' || category === 'boat_voucher_g21')
   
   // 購買船券/指定課時，金額是選填（如果要從儲值扣款才填）
