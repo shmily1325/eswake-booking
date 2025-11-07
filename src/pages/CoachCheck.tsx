@@ -99,7 +99,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
         .from('booking_coaches')
         .select('booking_id')
         .eq('coach_id', selectedCoachId)
-      
+
       const bookingIds = (coachBookings || []).map(b => b.booking_id)
       
       if (bookingIds.length === 0) {
@@ -155,8 +155,8 @@ export function CoachCheck({ user }: CoachCheckProps) {
         if (!coachesByBooking[item.booking_id]) {
           coachesByBooking[item.booking_id] = []
         }
-        const coach = (item as any).coaches
-        if (coach) {
+          const coach = (item as any).coaches
+          if (coach) {
           coachesByBooking[item.booking_id].push(coach)
         }
       })
@@ -175,7 +175,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
       })
 
       // 合併資料並過濾已結束的預約
-      const now = new Date()
+        const now = new Date()
       const bookingsWithData = (bookingsResult.data || [])
         .map(booking => {
           // 計算預約結束時間
@@ -352,26 +352,26 @@ export function CoachCheck({ user }: CoachCheckProps) {
             }}>
             選擇教練
             </label>
-          <select
-            value={selectedCoachId}
-            onChange={(e) => setSelectedCoachId(e.target.value)}
+            <select
+              value={selectedCoachId}
+              onChange={(e) => setSelectedCoachId(e.target.value)}
               style={{
                 width: '100%',
               padding: isMobile ? '14px' : '12px',
               fontSize: isMobile ? '16px' : '15px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
-              boxSizing: 'border-box',
+                boxSizing: 'border-box',
               backgroundColor: 'white',
               cursor: 'pointer'
-            }}
-          >
-            <option value="">請選擇教練</option>
-            {coaches.map(coach => (
+              }}
+            >
+              <option value="">請選擇教練</option>
+              {coaches.map(coach => (
               <option key={coach.id} value={coach.id}>{coach.name}</option>
-            ))}
-          </select>
-        </div>
+              ))}
+            </select>
+          </div>
 
         {/* Statistics */}
         {bookings.length > 0 && (
@@ -677,8 +677,8 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
                   {/* Duration Quick Select */}
                   <div style={{ marginBottom: '10px' }}>
-                    <label style={{ 
-                      display: 'block', 
+                          <label style={{
+                            display: 'block',
                       fontSize: '14px', 
                       fontWeight: '500', 
                       marginBottom: '6px' 
@@ -756,7 +756,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
                     <span style={{ fontSize: isMobile ? '15px' : '14px', fontWeight: '500' }}>
                       ✅ 指定課
                     </span>
-                  </label>
+                          </label>
                 </div>
               ))}
 

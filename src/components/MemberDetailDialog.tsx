@@ -73,37 +73,35 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     
     setLoading(true)
     try {
-      // 載入會員資料
-      const { data: memberData, error: memberError } = await supabase
-        .from('members')
-        .select('*')
-        .eq('id', memberId)
-        .single()
+      // 並行載入所有資料以提升速度
+      const [memberResult, boardResult, transactionsResult] = await Promise.all([
+        supabase
+          .from('members')
+          .select('*')
+          .eq('id', memberId)
+          .single(),
+        supabase
+          .from('board_storage')
+          .select('*')
+          .eq('member_id', memberId)
+          .eq('status', 'active')
+          .order('slot_number', { ascending: true }),
+        supabase
+          .from('transactions')
+          .select('*')
+          .eq('member_id', memberId)
+          .order('created_at', { ascending: false})
+          .limit(50)
+      ])
 
-      if (memberError) throw memberError
-      setMember(memberData)
+      if (memberResult.error) throw memberResult.error
+      setMember(memberResult.data)
 
-      // 載入置板資料
-      const { data: boardData, error: boardError } = await supabase
-        .from('board_storage')
-        .select('*')
-        .eq('member_id', memberId)
-        .eq('status', 'active')
-        .order('slot_number', { ascending: true })
+      if (boardResult.error) throw boardResult.error
+      setBoardStorage(boardResult.data || [])
 
-      if (boardError) throw boardError
-      setBoardStorage(boardData || [])
-
-      // 載入交易記錄
-      const { data: transactionsData, error: transactionsError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('member_id', memberId)
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      if (transactionsError) throw transactionsError
-      setTransactions(transactionsData || [])
+      if (transactionsResult.error) throw transactionsResult.error
+      setTransactions(transactionsResult.data || [])
     } catch (error) {
       console.error('載入會員資料失敗:', error)
       alert('載入會員資料失敗')
@@ -431,14 +429,13 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         style={{
                           flex: isMobile ? '1 1 100%' : '1',
                           padding: '12px 20px',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          background: '#667eea',
                           color: 'white',
                           border: 'none',
                           borderRadius: '8px',
                           fontSize: '16px',
-                          fontWeight: 'bold',
+                          fontWeight: '600',
                           cursor: 'pointer',
-                          boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
                         }}
                       >
                         ✏️ 編輯資料
@@ -448,14 +445,13 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         style={{
                           flex: isMobile ? '1 1 100%' : '1',
                           padding: '12px 20px',
-                          background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                          background: '#667eea',
                           color: 'white',
                           border: 'none',
                           borderRadius: '8px',
                           fontSize: '16px',
-                          fontWeight: 'bold',
+                          fontWeight: '600',
                           cursor: 'pointer',
-                          boxShadow: '0 2px 8px rgba(17, 153, 142, 0.3)',
                         }}
                       >
                         💳 記帳

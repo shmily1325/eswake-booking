@@ -24,7 +24,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
   const [newCoachName, setNewCoachName] = useState('')
   const [adding, setAdding] = useState(false)
   const [timeOffDialogOpen, setTimeOffDialogOpen] = useState(false)
-  const [bookingsDialogOpen, setBookingsDialogOpen] = useState(false)
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
 
   useEffect(() => {
@@ -75,24 +74,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
     }
   }
 
-  const handleDelete = async (staff: Staff) => {
-    if (!confirm(`確定要刪除「${staff.name}」嗎？`)) {
-      return
-    }
-
-    try {
-      const { error } = await supabase
-        .from('coaches')
-        .delete()
-        .eq('id', staff.id)
-
-      if (error) throw error
-      loadStaff()
-    } catch (error) {
-      console.error('刪除失敗:', error)
-      alert('刪除失敗')
-    }
-  }
 
   if (loading) {
     return (
@@ -155,64 +136,25 @@ export function StaffManagement({ user }: StaffManagementProps) {
               {staff.name}
             </div>
 
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              flexShrink: 0,
-              flexWrap: 'wrap'
-            }}>
-              <button
-                onClick={() => {
-                  setSelectedStaff(staff)
-                  setTimeOffDialogOpen(true)
-                }}
-                style={{
-                  padding: isMobile ? '6px 12px' : '8px 14px',
-                  background: '#ff9800',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: isMobile ? '12px' : '13px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                }}
-              >
-                休假
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedStaff(staff)
-                  setBookingsDialogOpen(true)
-                }}
-                style={{
-                  padding: isMobile ? '6px 12px' : '8px 14px',
-                  background: '#2196f3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: isMobile ? '12px' : '13px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                }}
-              >
-                預約
-              </button>
-              <button
-                onClick={() => handleDelete(staff)}
-                style={{
-                  padding: isMobile ? '6px 12px' : '8px 14px',
-                  background: '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: isMobile ? '12px' : '13px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                }}
-              >
-                刪除
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                setSelectedStaff(staff)
+                setTimeOffDialogOpen(true)
+              }}
+              style={{
+                padding: isMobile ? '10px 20px' : '12px 24px',
+                background: '#ff9800',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: isMobile ? '14px' : '15px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                minWidth: isMobile ? '80px' : '100px'
+              }}
+            >
+              休假
+            </button>
           </div>
         ))}
 
@@ -276,17 +218,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
         />
       )}
 
-      {/* 查看預約對話框 */}
-      {bookingsDialogOpen && selectedStaff && (
-        <BookingsDialog
-          open={bookingsDialogOpen}
-          staff={selectedStaff}
-          onClose={() => {
-            setBookingsDialogOpen(false)
-            setSelectedStaff(null)
-          }}
-        />
-      )}
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }
@@ -671,289 +604,6 @@ function TimeOffDialog({ open, coach, onClose }: TimeOffDialogProps) {
           )}
         </div>
       </div>
-    </div>
-  )
-}
-
-// 查看預約對話框組件
-interface BookingsDialogProps {
-  open: boolean
-  staff: Staff
-  onClose: () => void
-}
-
-interface Booking {
-  id: string
-  start_at: string
-  status: string
-  participants: Array<{
-    member_name: string
-    reported: boolean
-  }>
-}
-
-function BookingsDialog({ open, staff, onClose }: BookingsDialogProps) {
-  const [loading, setLoading] = useState(false)
-  const [bookings, setBookings] = useState<Booking[]>([])
-  const [filterDate, setFilterDate] = useState('')
-
-  useEffect(() => {
-    if (open) {
-      loadBookings()
-    }
-  }, [open, filterDate])
-
-  const loadBookings = async () => {
-    setLoading(true)
-    try {
-      // 先找出這個教練的所有預約 ID（作為教練）
-      const { data: coachBookings } = await supabase
-        .from('booking_coaches')
-        .select('booking_id')
-        .eq('coach_id', staff.id)
-      
-      const coachBookingIds = (coachBookings || []).map(b => b.booking_id)
-
-      // 查詢作為教練或司機的所有預約
-      let query = supabase
-        .from('bookings')
-        .select(`
-          id,
-          start_at,
-          status,
-          contact_name,
-          booking_participants (
-            participant_name,
-            duration_min,
-            is_designated
-          )
-        `)
-      
-      // 構建查詢條件
-      if (coachBookingIds.length > 0) {
-        // 有教練預約：查詢教練預約或駕駛預約
-        query = query.or(`id.in.(${coachBookingIds.join(',')}),driver_coach_id.eq.${staff.id}`)
-      } else {
-        // 沒有教練預約：只查詢駕駛預約
-        query = query.eq('driver_coach_id', staff.id)
-      }
-      
-      query = query
-        .order('start_at', { ascending: false })
-        .limit(50)
-
-      // 如果有日期過濾
-      if (filterDate) {
-        query = query.gte('start_at', filterDate).lt('start_at', filterDate + 'T23:59:59')
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-      
-      // Map booking_participants to participants
-      const formattedData = (data || []).map((booking: any) => ({
-        ...booking,
-        participants: booking.booking_participants || []
-      }))
-      
-      setBookings(formattedData)
-    } catch (error) {
-      console.error('載入預約記錄失敗:', error)
-      alert('載入預約記錄失敗')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (!open) return null
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px',
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        maxWidth: '800px',
-        width: '100%',
-        maxHeight: '90vh',
-        overflow: 'auto',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-      }}>
-        <div style={{
-          padding: '20px',
-          borderBottom: '1px solid #e0e0e0',
-          position: 'sticky',
-          top: 0,
-          background: 'white',
-          zIndex: 1
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px'
-          }}>
-            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-              {staff.name} - 預約記錄
-            </h2>
-            <button
-              onClick={onClose}
-              style={{
-                border: 'none',
-                background: 'none',
-                fontSize: '24px',
-                cursor: 'pointer',
-                color: '#666',
-              }}
-            >
-              &times;
-            </button>
-          </div>
-
-          {/* 日期過濾 */}
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
-              篩選日期
-            </label>
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '6px',
-                fontSize: '14px',
-              }}
-            />
-            {filterDate && (
-              <button
-                onClick={() => setFilterDate('')}
-                style={{
-                  marginTop: '8px',
-                  padding: '6px 12px',
-                  background: '#f8f9fa',
-                  color: '#333',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                }}
-              >
-                清除篩選
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div style={{ padding: '20px' }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              載入中...
-            </div>
-          ) : bookings.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              {filterDate ? '該日期無預約記錄' : '尚無預約記錄'}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {bookings.map((booking) => {
-                const participants = booking.participants || []
-                const reportedCount = participants.filter(p => p.reported).length
-                const totalCount = participants.length
-
-                return (
-                  <div
-                    key={booking.id}
-                    style={{
-                      background: 'white',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      padding: '16px',
-                    }}
-                  >
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'start',
-                      marginBottom: '12px'
-                    }}>
-                      <div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>
-                          📅 {booking.start_at.split('T')[0]} {booking.start_at.split('T')[1]?.substring(0, 5)}
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#666' }}>
-                          狀態: {booking.status}
-                        </div>
-                      </div>
-                      <span style={{
-                        padding: '6px 12px',
-                        borderRadius: '12px',
-                        fontSize: '13px',
-                        fontWeight: 'bold',
-                        background: reportedCount === totalCount && totalCount > 0
-                          ? 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)'
-                          : reportedCount > 0
-                          ? 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)'
-                          : '#e0e0e0',
-                        color: reportedCount > 0 ? 'white' : '#666'
-                      }}>
-                        已回報 {reportedCount}/{totalCount}
-                      </span>
-                    </div>
-
-                    {/* 參與者列表 */}
-                    {participants.length > 0 && (
-                      <div style={{
-                        background: '#f8f9fa',
-                        padding: '12px',
-                        borderRadius: '6px',
-                      }}>
-                        <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: '#666' }}>
-                          參與者:
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                          {participants.map((participant, idx) => (
-                            <span
-                              key={idx}
-                              style={{
-                                padding: '4px 10px',
-                                background: participant.reported ? '#4caf50' : 'white',
-                                color: participant.reported ? 'white' : '#333',
-                                border: participant.reported ? 'none' : '1px solid #ddd',
-                                borderRadius: '12px',
-                                fontSize: '13px',
-                              }}
-                            >
-                              {participant.reported ? '✓ ' : ''}{participant.member_name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <Footer />
     </div>
   )
 }

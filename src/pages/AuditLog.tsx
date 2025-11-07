@@ -52,6 +52,8 @@ export function AuditLog({ user }: AuditLogProps) {
       if (error) {
         console.error('Error fetching audit logs:', error)
       } else {
+        console.log('Fetched audit logs:', data)
+        console.log('Total logs count:', data?.length || 0)
         setLogs(data || [])
       }
     } catch (err) {

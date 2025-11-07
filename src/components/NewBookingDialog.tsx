@@ -244,6 +244,16 @@ export function NewBookingDialog({
       return
     }
 
+    // 防呆檢查：教練和駕駛不能是同一人
+    if (selectedDriver) {
+      const driverCoach = coaches.find(c => c.name === selectedDriver)
+      if (driverCoach && selectedCoaches.includes(driverCoach.id)) {
+        const conflictName = driverCoach.name
+        setError(`⚠️ ${conflictName} 不能同時擔任教練和駕駛`)
+        return
+      }
+    }
+
     setLoading(true)
 
     try {
@@ -347,12 +357,18 @@ export function NewBookingDialog({
         
         // 檢查教練衝突（如果有選擇教練）
         if (!hasConflict && selectedCoaches.length > 0) {
+          console.log(`🔍 開始檢查 ${selectedCoaches.length} 位教練的衝突...`)
           for (const coachId of selectedCoaches) {
-            // 第一步：查詢該教練的所有預約關聯
+            const coachName = coaches.find(c => c.id === coachId)?.name || '未知'
+            console.log(`🔍 檢查教練: ${coachName} (ID: ${coachId})`)
+            
+            // 第一步：查詢該教練作為教練的所有預約關聯
             const { data: coachBookingIds, error: coachCheckError } = await supabase
               .from('booking_coaches')
               .select('booking_id')
               .eq('coach_id', coachId)
+            
+            console.log(`📋 教練 ${coachName} 作為教練的預約數量: ${coachBookingIds?.length || 0}`)
             
             if (coachCheckError) {
               hasConflict = true
@@ -360,16 +376,35 @@ export function NewBookingDialog({
               break
             }
             
-            if (!coachBookingIds || coachBookingIds.length === 0) {
+            // 第二步：查詢該教練作為駕駛的所有預約
+            const { data: driverBookings, error: driverCheckError } = await supabase
+              .from('bookings')
+              .select('id, start_at, duration_min, contact_name')
+              .eq('driver_coach_id', coachId)
+            
+            console.log(`🚗 教練 ${coachName} 作為駕駛的預約數量: ${driverBookings?.length || 0}`)
+            
+            if (driverCheckError) {
+              hasConflict = true
+              conflictReason = '檢查教練衝突時發生錯誤'
+              break
+            }
+            
+            // 合併所有預約ID
+            const allBookingIds = [
+              ...(coachBookingIds?.map(item => item.booking_id) || []),
+              ...(driverBookings?.map(item => item.id) || [])
+            ]
+            
+            if (allBookingIds.length === 0) {
               continue // 該教練沒有任何預約，跳過
             }
             
-            // 第二步：查詢這些預約的詳細信息（不限定日期，避免時區問題）
-            const bookingIds = coachBookingIds.map(item => item.booking_id)
-            const { data: allCoachBookings, error: bookingError } = await supabase
+            // 查詢所有預約的詳細信息
+            const { data: allBookings, error: bookingError } = await supabase
               .from('bookings')
               .select('id, start_at, duration_min, contact_name')
-              .in('id', bookingIds)
+              .in('id', allBookingIds)
             
             if (bookingError) {
               hasConflict = true
@@ -378,12 +413,14 @@ export function NewBookingDialog({
             }
             
             // 篩選出同一天的預約（純字符串比較）
-            const coachBookings = (allCoachBookings || []).filter(booking => {
+            const sameDayBookings = (allBookings || []).filter(booking => {
               const bookingDate = booking.start_at.substring(0, 10) // "2025-10-30"
               return bookingDate === dateStr
             })
             
-            for (const booking of coachBookings) {
+            console.log(`📅 教練 ${coachName} 在 ${dateStr} 的所有預約數（教練+駕駛）: ${sameDayBookings.length}`)
+            
+            for (const booking of sameDayBookings) {
               // 純字符串比較
               const bookingDatetime = booking.start_at.substring(0, 16)
               const [, bookingTime] = bookingDatetime.split('T')
@@ -392,11 +429,14 @@ export function NewBookingDialog({
               const bookingStartMinutes = bookingHour * 60 + bookingMinute
               const bookingEndMinutes = bookingStartMinutes + booking.duration_min
               
+              console.log(`⏰ 檢查時段: 新預約 ${newStartMinutes}-${newEndMinutes} vs 現有預約 ${bookingStartMinutes}-${bookingEndMinutes} (${booking.contact_name})`)
+              
               // 檢查時間重疊
               if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
                 const coach = coaches.find(c => c.id === coachId)
                 hasConflict = true
-                conflictReason = `教練 ${coach?.name || '未知'} 在此時段已有其他預約（${booking.contact_name}）`
+                conflictReason = `${coach?.name || '未知'} 在此時段已有其他預約（${booking.contact_name}）`
+                console.log(`❌ 衝突！${conflictReason}`)
                 break
               }
             }
@@ -407,35 +447,71 @@ export function NewBookingDialog({
         
         // 檢查駕駛衝突（如果有選擇駕駛）
         if (!hasConflict && selectedDriver) {
+          console.log(`🚗 開始檢查駕駛衝突: ${selectedDriver}`)
           // 找到駕駛的 ID
           const driverCoach = coaches.find(c => c.name === selectedDriver)
           if (driverCoach) {
-            // 查詢該駕駛的所有預約（作為駕駛的預約）
-            const { data: driverBookings, error: driverCheckError } = await supabase
+            console.log(`🚗 駕駛 ID: ${driverCoach.id}`)
+            
+            // 查詢該駕駛作為駕駛的所有預約
+            const { data: driverBookings, error: driverCheckError1 } = await supabase
               .from('bookings')
               .select('id, start_at, duration_min, contact_name')
               .eq('driver_coach_id', driverCoach.id)
-              .gte('start_at', `${dateStr}T00:00:00`)
-              .lte('start_at', `${dateStr}T23:59:59`)
             
-            if (driverCheckError) {
+            console.log(`🚗 駕駛 ${selectedDriver} 作為駕駛的預約數量: ${driverBookings?.length || 0}`)
+            
+            // 查詢該駕駛作為教練的所有預約
+            const { data: coachBookingIds, error: driverCheckError2 } = await supabase
+              .from('booking_coaches')
+              .select('booking_id')
+              .eq('coach_id', driverCoach.id)
+            
+            console.log(`📋 駕駛 ${selectedDriver} 作為教練的預約數量: ${coachBookingIds?.length || 0}`)
+            
+            if (driverCheckError1 || driverCheckError2) {
               hasConflict = true
               conflictReason = '檢查駕駛衝突時發生錯誤'
             } else {
-              // 檢查時間重疊
-              for (const booking of driverBookings || []) {
-                const bookingDatetime = booking.start_at.substring(0, 16)
-                const [, bookingTime] = bookingDatetime.split('T')
-                const [bookingHour, bookingMinute] = bookingTime.split(':').map(Number)
+              // 合併所有預約ID
+              const allBookingIds = [
+                ...(driverBookings?.map(item => item.id) || []),
+                ...(coachBookingIds?.map(item => item.booking_id) || [])
+              ]
+              
+              if (allBookingIds.length > 0) {
+                // 查詢所有預約的詳細信息
+                const { data: allBookings } = await supabase
+                  .from('bookings')
+                  .select('id, start_at, duration_min, contact_name')
+                  .in('id', allBookingIds)
                 
-                const bookingStartMinutes = bookingHour * 60 + bookingMinute
-                const bookingEndMinutes = bookingStartMinutes + booking.duration_min
+                // 篩選出同一天的預約
+                const sameDayBookings = (allBookings || []).filter(booking => {
+                  const bookingDate = booking.start_at.substring(0, 10)
+                  return bookingDate === dateStr
+                })
+                
+                console.log(`📅 駕駛 ${selectedDriver} 在 ${dateStr} 的所有預約數（教練+駕駛）: ${sameDayBookings.length}`)
                 
                 // 檢查時間重疊
-                if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
-                  hasConflict = true
-                  conflictReason = `駕駛 ${selectedDriver} 在此時段已有其他預約（${booking.contact_name}）`
-                  break
+                for (const booking of sameDayBookings) {
+                  const bookingDatetime = booking.start_at.substring(0, 16)
+                  const [, bookingTime] = bookingDatetime.split('T')
+                  const [bookingHour, bookingMinute] = bookingTime.split(':').map(Number)
+                  
+                  const bookingStartMinutes = bookingHour * 60 + bookingMinute
+                  const bookingEndMinutes = bookingStartMinutes + booking.duration_min
+                  
+                  console.log(`⏰ 檢查時段: 新預約 ${newStartMinutes}-${newEndMinutes} vs 現有預約 ${bookingStartMinutes}-${bookingEndMinutes} (${booking.contact_name})`)
+                  
+                  // 檢查時間重疊
+                  if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
+                    hasConflict = true
+                    conflictReason = `${selectedDriver} 在此時段已有其他預約（${booking.contact_name}）`
+                    console.log(`❌ 衝突！${conflictReason}`)
+                    break
+                  }
                 }
               }
             }
