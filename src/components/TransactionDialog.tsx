@@ -135,7 +135,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
 
       // 記錄交易
       const { error: transactionError } = await supabase
-        .from('member_transactions')
+        .from('transactions')
         .insert([{
           member_id: member.id,
           transaction_type: transactionType,

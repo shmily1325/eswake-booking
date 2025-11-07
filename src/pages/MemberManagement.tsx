@@ -174,7 +174,23 @@ export function MemberManagement({ user }: MemberManagementProps) {
               touchAction: 'manipulation'
             }}
           >
-            ← 回 BAO 專區
+            ← BAO
+          </Link>
+          <Link
+            to="/"
+            style={{
+              padding: isMobile ? '8px 12px' : '6px 12px',
+              background: '#f8f9fa',
+              color: '#333',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              fontSize: isMobile ? '14px' : '13px',
+              border: '1px solid #dee2e6',
+              whiteSpace: 'nowrap',
+              touchAction: 'manipulation'
+            }}
+          >
+            ← HOME
           </Link>
           <UserMenu user={user} />
         </div>

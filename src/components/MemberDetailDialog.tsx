@@ -95,7 +95,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
 
       // 載入交易記錄
       const { data: transactionsData, error: transactionsError } = await supabase
-        .from('member_transactions')
+        .from('transactions')
         .select('*')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false })

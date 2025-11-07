@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
@@ -167,11 +167,12 @@ export function BoardManagement({ user }: BoardManagementProps) {
           cursor: 'pointer',
           border: isOccupied ? '2px solid #2e7d32' : '2px solid #e0e0e0',
           transition: 'all 0.2s',
-          minHeight: isMobile ? '65px' : '75px',
+          height: isMobile ? '85px' : '95px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
-          position: 'relative'
+          justifyContent: 'flex-start',
+          position: 'relative',
+          overflow: 'hidden'
         }}
         onMouseEnter={(e) => {
           if (isOccupied) {
@@ -249,21 +250,21 @@ export function BoardManagement({ user }: BoardManagementProps) {
     // 創建配對的格位：每一組包含上層（雙數）和下層（單數）
     const slotPairs: Array<{ upper: number | null; lower: number | null }> = []
     
-    for (let i = section.start; i <= section.end; i += 2) {
-      const lower = i  // 單數（下層）
-      const upper = i + 1  // 雙數（上層）
-      
-      // 檢查是否在範圍內
-      const hasLower = lower <= section.end
-      const hasUpper = upper <= section.end
-      
-      if (section.upperOnly) {
-        // 第5排只有上層
-        if (hasUpper) {
-          slotPairs.push({ upper, lower: null })
-        }
-      } else {
-        // 其他排有上下兩層
+    if (section.upperOnly) {
+      // 第5排：所有格位都顯示在上層，不分上下
+      for (let i = section.start; i <= section.end; i++) {
+        slotPairs.push({ upper: i, lower: null })
+      }
+    } else {
+      // 其他排：雙數在上層，單數在下層
+      for (let i = section.start; i <= section.end; i += 2) {
+        const lower = i  // 單數（下層）
+        const upper = i + 1  // 雙數（上層）
+        
+        // 檢查是否在範圍內
+        const hasLower = lower <= section.end
+        const hasUpper = upper <= section.end
+        
         slotPairs.push({
           upper: hasUpper ? upper : null,
           lower: hasLower ? lower : null
@@ -271,6 +272,9 @@ export function BoardManagement({ user }: BoardManagementProps) {
       }
     }
 
+    // 計算每行的格位數（桌面版9列，手機版3列）
+    const columnsPerRow = isMobile ? 3 : 9
+    
     return (
       <div key={section.name} style={{ marginBottom: '30px' }}>
         <h3 style={{ 
@@ -294,17 +298,47 @@ export function BoardManagement({ user }: BoardManagementProps) {
           {/* 對齊的上下層格位 */}
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '80px' : '110px'}, 1fr))`,
-            gap: isMobile ? '10px' : '12px'
+            gridTemplateColumns: `repeat(${columnsPerRow}, 1fr)`,
+            gap: isMobile ? '10px' : '12px',
+            rowGap: isMobile ? '20px' : '24px'
           }}>
             {slotPairs.map((pair, index) => (
-              <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {/* 上層（雙數） */}
-                {pair.upper && renderSlotCard(pair.upper)}
+              <React.Fragment key={index}>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '0',
+                  background: 'white',
+                  borderRadius: '10px',
+                  padding: '8px',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  {/* 上層（雙數） */}
+                  {pair.upper && renderSlotCard(pair.upper)}
+                  
+                  {/* 分隔線 */}
+                  {pair.upper && pair.lower && (
+                    <div style={{
+                      height: '2px',
+                      background: 'linear-gradient(to right, transparent, #ccc, transparent)',
+                      margin: '6px 0'
+                    }} />
+                  )}
+                  
+                  {/* 下層（單數） */}
+                  {pair.lower && renderSlotCard(pair.lower)}
+                </div>
                 
-                {/* 下層（單數） */}
-                {pair.lower && renderSlotCard(pair.lower)}
-              </div>
+                {/* 在每一行結束後加入分隔線 */}
+                {(index + 1) % columnsPerRow === 0 && index < slotPairs.length - 1 && (
+                  <div style={{
+                    gridColumn: `1 / -1`,
+                    height: '3px',
+                    background: 'linear-gradient(to right, transparent 10%, #999 50%, transparent 90%)',
+                    margin: '8px 0'
+                  }} />
+                )}
+              </React.Fragment>
             ))}
           </div>
         </div>
@@ -354,6 +388,22 @@ export function BoardManagement({ user }: BoardManagementProps) {
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Link
+            to="/bao"
+            style={{
+              padding: isMobile ? '8px 12px' : '6px 12px',
+              background: '#f8f9fa',
+              color: '#333',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              fontSize: isMobile ? '14px' : '13px',
+              border: '1px solid #dee2e6',
+              whiteSpace: 'nowrap',
+              touchAction: 'manipulation'
+            }}
+          >
+            ← BAO
+          </Link>
+          <Link
             to="/"
             style={{
               padding: isMobile ? '8px 12px' : '6px 12px',
@@ -367,7 +417,7 @@ export function BoardManagement({ user }: BoardManagementProps) {
               touchAction: 'manipulation'
             }}
           >
-            ← 回主頁
+            ← HOME
           </Link>
           <UserMenu user={user} />
         </div>

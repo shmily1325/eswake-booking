@@ -171,19 +171,34 @@ export function BackupPage({ user }: BackupPageProps) {
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Link
-              to="/"
+              to="/bao"
               style={{
                 padding: '6px 12px',
-                background: 'rgba(255, 255, 255, 0.15)',
-                color: 'white',
+                background: '#f8f9fa',
+                color: '#333',
                 textDecoration: 'none',
                 borderRadius: '4px',
                 fontSize: '13px',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                border: '1px solid #dee2e6',
                 whiteSpace: 'nowrap'
               }}
             >
-              ← 回主頁
+              ← BAO
+            </Link>
+            <Link
+              to="/"
+              style={{
+                padding: '6px 12px',
+                background: '#f8f9fa',
+                color: '#333',
+                textDecoration: 'none',
+                borderRadius: '4px',
+                fontSize: '13px',
+                border: '1px solid #dee2e6',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              ← HOME
             </Link>
             <UserMenu user={user} />
           </div>

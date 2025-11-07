@@ -41,12 +41,7 @@ export function HomePage({ user }: HomePageProps) {
       link: '/audit-log'
     },
     {
-      title: '匯出',
-      icon: '💾',
-      link: '/backup'
-    },
-    {
-      title: 'BAO 專區',
+      title: 'BAO',
       icon: '🔧',
       link: '/bao',
       isAdmin: true

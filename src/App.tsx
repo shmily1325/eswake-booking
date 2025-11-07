@@ -13,6 +13,7 @@ import { BackupPage } from './pages/BackupPage'
 import { MemberManagement } from './pages/MemberManagement'
 import { BoardManagement } from './pages/BoardManagement'
 import { BaoHub } from './pages/BaoHub'
+import { StaffManagement } from './pages/StaffManagement'
 import { LoginPage } from './components/LoginPage'
 import './App.css'
 
@@ -65,10 +66,11 @@ function App() {
         <Route path="/audit-log" element={<AuditLog user={user} />} />
         <Route path="/admin" element={<AdminPage user={user} />} />
         <Route path="/backup" element={<BackupPage user={user} />} />
-        <Route path="/bao" element={<BaoHub user={user} />} />
-        <Route path="/members" element={<MemberManagement user={user} />} />
-        <Route path="/boards" element={<BoardManagement user={user} />} />
-      </Routes>
+                <Route path="/bao" element={<BaoHub user={user} />} />
+                <Route path="/members" element={<MemberManagement user={user} />} />
+                <Route path="/boards" element={<BoardManagement user={user} />} />
+                <Route path="/staff" element={<StaffManagement user={user} />} />
+              </Routes>
     </BrowserRouter>
   )
 }

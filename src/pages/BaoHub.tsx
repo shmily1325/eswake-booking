@@ -10,28 +10,36 @@ interface BaoHubProps {
 export function BaoHub({ user }: BaoHubProps) {
   const { isMobile } = useResponsive()
 
-  const baoFeatures = [
+  const baoFeatures: Array<{
+    title: string
+    icon: string
+    link: string
+    color: string
+    comingSoon?: boolean
+  }> = [
     {
       title: '會員管理',
       icon: '👥',
-      description: '管理會員資料、儲值、指定課、船券',
       link: '/members',
       color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     },
     {
       title: '置板區',
       icon: '🏄',
-      description: '查看置板使用狀況、管理格位',
       link: '/boards',
       color: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)'
     },
     {
-      title: '教練管理',
-      icon: '🎓',
-      description: '管理教練資料、休假安排',
-      link: '/coaches',
-      color: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
-      comingSoon: true
+      title: '人員管理',
+      icon: '👥',
+      link: '/staff',
+      color: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)'
+    },
+    {
+      title: '匯出資料',
+      icon: '💾',
+      link: '/backup',
+      color: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)'
     },
   ]
 
@@ -70,7 +78,7 @@ export function BaoHub({ user }: BaoHubProps) {
               transition: 'all 0.2s'
             }}
           >
-            ← 回主頁
+            ← HOME
           </Link>
         </div>
         <UserMenu user={user} />
@@ -151,21 +159,13 @@ export function BaoHub({ user }: BaoHubProps) {
                 {feature.icon}
               </div>
               <h2 style={{
-                margin: '0 0 15px 0',
+                margin: 0,
                 fontSize: '28px',
                 fontWeight: 'bold',
                 color: '#333'
               }}>
                 {feature.title}
               </h2>
-              <p style={{
-                margin: 0,
-                fontSize: '16px',
-                color: '#999',
-                lineHeight: '1.6'
-              }}>
-                {feature.description}
-              </p>
             </div>
           ) : (
             <Link
@@ -197,7 +197,7 @@ export function BaoHub({ user }: BaoHubProps) {
                 {feature.icon}
               </div>
               <h2 style={{
-                margin: '0 0 15px 0',
+                margin: 0,
                 fontSize: '28px',
                 fontWeight: 'bold',
                 background: feature.color,
@@ -207,38 +207,11 @@ export function BaoHub({ user }: BaoHubProps) {
               }}>
                 {feature.title}
               </h2>
-              <p style={{
-                margin: 0,
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6'
-              }}>
-                {feature.description}
-              </p>
             </Link>
           )
         ))}
       </div>
 
-      {/* 提示信息 */}
-      <div style={{
-        width: '100%',
-        maxWidth: '1200px',
-        padding: '20px',
-        background: 'rgba(102, 126, 234, 0.1)',
-        borderRadius: '12px',
-        border: '2px solid rgba(102, 126, 234, 0.2)',
-        textAlign: 'center'
-      }}>
-        <div style={{
-          fontSize: '14px',
-          color: '#667eea',
-          fontWeight: '500',
-          lineHeight: '1.6'
-        }}>
-          💡 提示：這是專為寶哥設計的管理後台，包含會員、置板、教練等進階功能
-        </div>
-      </div>
     </div>
   )
 }

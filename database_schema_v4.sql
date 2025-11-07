@@ -133,11 +133,13 @@ CREATE TABLE coaches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
   notes TEXT,
+  status TEXT DEFAULT 'active',                     -- active, inactive
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 COMMENT ON TABLE coaches IS '教練表';
+COMMENT ON COLUMN coaches.status IS 'active=上架（可預約，在預約表顯示）, inactive=下架（不可預約，不在預約表顯示）';
 
 -- 初始教練資料
 INSERT INTO coaches (name) VALUES
@@ -169,7 +171,27 @@ CREATE INDEX idx_coach_timeoff_coach ON coach_time_off(coach_id);
 CREATE INDEX idx_coach_timeoff_dates ON coach_time_off(start_date, end_date);
 
 -- =============================================
--- 7. 預約表 (Bookings)
+-- 7. 駕駛表 (Drivers)
+-- =============================================
+CREATE TABLE drivers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  notes TEXT,
+  status TEXT DEFAULT 'active',                     -- active, inactive
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE drivers IS '駕駛表（專門負責開船的人員）';
+COMMENT ON COLUMN drivers.status IS 'active=上架（可排班），inactive=下架（不可排班）';
+
+-- 初始駕駛資料
+INSERT INTO drivers (name) VALUES
+  ('駕駛A'),
+  ('駕駛B');
+
+-- =============================================
+-- 8. 預約表 (Bookings)
 -- =============================================
 CREATE TABLE bookings (
   id SERIAL PRIMARY KEY,
