@@ -175,6 +175,28 @@ export function DailyAnnouncement() {
           fontSize: isMobile ? '13px' : '14px',
           color: '#333'
         }}>
+          {announcements.length > 0 && (
+            <div style={{
+              background: 'white',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              border: '2px solid #667eea',
+              boxShadow: '0 2px 4px rgba(102,126,234,0.1)'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '15px', color: '#667eea' }}>
+                📋 交辦事項
+              </div>
+              {announcements.map((ann, idx) => (
+                <div key={ann.id} style={{ 
+                  marginBottom: idx < announcements.length - 1 ? '8px' : '0',
+                  paddingLeft: '4px'
+                }}>
+                  • {ann.content}
+                </div>
+              ))}
+            </div>
+          )}
+
           {timeOffCoaches.length > 0 && (
             <div style={{
               background: 'white',
@@ -196,24 +218,6 @@ export function DailyAnnouncement() {
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🎂 今日壽星</div>
               <div>{birthdays.map(b => b.name).join('、')}</div>
-            </div>
-          )}
-
-          {announcements.length > 0 && (
-            <div style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '8px 10px',
-              border: '1px solid #dee2e6'
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>📋 交辦事項</div>
-              {announcements.map((ann, idx) => (
-                <div key={ann.id} style={{ 
-                  marginBottom: idx < announcements.length - 1 ? '6px' : '0'
-                }}>
-                  • {ann.content}
-                </div>
-              ))}
             </div>
           )}
 

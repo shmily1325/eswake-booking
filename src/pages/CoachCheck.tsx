@@ -16,6 +16,7 @@ interface Booking {
   coaches: { name: string }[]
   has_report: boolean
   participant_count: number
+  reported_participants?: { participant_name: string; duration_min: number; is_designated: boolean }[]
 }
 
 interface Member {
@@ -117,15 +118,20 @@ export function CoachCheck({ user }: CoachCheckProps) {
           contact_name,
           notes,
           status,
-          boats:boat_id (name, color)
+          boat_id
         `)
         .in('id', bookingIds)
         .order('start_at', { ascending: true })
 
       if (bookingsResult.error) throw bookingsResult.error
 
-      // 並行查詢教練和參與者資料（重要：從串行改為並行，提升載入速度）
-      const [coachResult, participantResult] = await Promise.all([
+      // 並行查詢船隻、教練和參與者資料
+      const [boatResult, coachResult, participantResult] = await Promise.all([
+        supabase
+          .from('boats')
+          .select('id, name, color')
+          .in('id', (bookingsResult.data || []).filter(b => b.boat_id).map(b => b.boat_id)),
+        
         supabase
           .from('booking_coaches')
           .select('booking_id, coaches:coach_id(name)')
@@ -133,9 +139,15 @@ export function CoachCheck({ user }: CoachCheckProps) {
         
         supabase
           .from('booking_participants')
-          .select('booking_id, id')
+          .select('booking_id, participant_name, duration_min, is_designated')
           .in('booking_id', bookingIds)
       ])
+
+      // 處理船隻資料
+      const boatsById: Record<string, { name: string; color: string }> = {}
+      boatResult.data?.forEach(boat => {
+        boatsById[boat.id] = { name: boat.name, color: boat.color }
+      })
 
       // 處理教練資料
       const coachesByBooking: Record<number, { name: string }[]> = {}
@@ -150,18 +162,26 @@ export function CoachCheck({ user }: CoachCheckProps) {
       })
 
       // 處理參與者資料
-      const participantCounts: Record<number, number> = {}
+      const participantsByBooking: Record<number, { participant_name: string; duration_min: number; is_designated: boolean }[]> = {}
       participantResult.data?.forEach(p => {
-        participantCounts[p.booking_id] = (participantCounts[p.booking_id] || 0) + 1
+        if (!participantsByBooking[p.booking_id]) {
+          participantsByBooking[p.booking_id] = []
+        }
+        participantsByBooking[p.booking_id].push({
+          participant_name: p.participant_name,
+          duration_min: p.duration_min,
+          is_designated: p.is_designated
+        })
       })
 
       // 合併資料
       const bookingsWithData = (bookingsResult.data || []).map(booking => ({
         ...booking,
-        boats: booking.boats?.[0] || null,
+        boats: booking.boat_id ? boatsById[booking.boat_id] || null : null,
         coaches: coachesByBooking[booking.id] || [],
-        has_report: participantCounts[booking.id] > 0,
-        participant_count: participantCounts[booking.id] || 0
+        has_report: (participantsByBooking[booking.id]?.length || 0) > 0,
+        participant_count: participantsByBooking[booking.id]?.length || 0,
+        reported_participants: participantsByBooking[booking.id] || []
       }))
 
       setBookings(bookingsWithData as Booking[])
@@ -383,9 +403,15 @@ export function CoachCheck({ user }: CoachCheckProps) {
               </div>
             )}
 
-            {!loading && bookings.length === 0 && (
+            {!loading && bookings.length === 0 && selectedCoachId && (
             <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              😔 當天沒有預約記錄
+              😔 該教練暫無預約
+              </div>
+            )}
+            
+            {!loading && !selectedCoachId && (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+              請先選擇教練
               </div>
             )}
 
@@ -443,6 +469,30 @@ export function CoachCheck({ user }: CoachCheckProps) {
                       {booking.has_report ? `✅ 已回報 (${booking.participant_count}人)` : '⚠️ 未回報'}
                     </div>
                       </div>
+                      
+                      {/* 顯示回報資訊 */}
+                      {booking.has_report && booking.reported_participants && booking.reported_participants.length > 0 && (
+                        <div style={{
+                          marginTop: '8px',
+                          paddingTop: '8px',
+                          borderTop: '1px solid #dee2e6',
+                          fontSize: isMobile ? '13px' : '14px',
+                          color: '#495057'
+                        }}>
+                          {booking.reported_participants.map((p, idx) => (
+                            <div key={idx} style={{ 
+                              marginBottom: idx < booking.reported_participants!.length - 1 ? '4px' : '0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              <span>👤 {p.participant_name}</span>
+                              <span style={{ color: '#666' }}>• {p.duration_min}分</span>
+                              {p.is_designated && <span style={{ color: '#28a745', fontWeight: 'bold' }}>• ✅指定</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       </div>
               ))}
                         </div>
