@@ -81,7 +81,8 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           notes: formData.notes.trim() || null,
           balance: 0,
           designated_lesson_minutes: 0,
-          boat_voucher_minutes: 0,
+          boat_voucher_g23_minutes: 0,
+          boat_voucher_g21_minutes: 0,
           membership_expires_at: formData.member_type === 'member' ? (formData.membership_expires_at || null) : null,
           status: 'active',
         }])

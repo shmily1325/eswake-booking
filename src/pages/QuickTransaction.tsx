@@ -117,27 +117,27 @@ export function QuickTransaction({ user }: QuickTransactionProps) {
 
       {/* 標題區 */}
       <div style={{
-        background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-        padding: '20px',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(17, 153, 142, 0.3)',
+        background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+        padding: '15px',
+        borderRadius: '8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
         marginBottom: isMobile ? '15px' : '20px'
       }}>
         <h1 style={{
           margin: 0,
-          fontSize: isMobile ? '20px' : '24px',
+          fontSize: isMobile ? '18px' : '20px',
           fontWeight: 'bold',
           color: 'white',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '8px'
         }}>
           💳 快速記帳
         </h1>
         <p style={{
-          margin: '8px 0 0 0',
+          margin: '6px 0 0 0',
           fontSize: isMobile ? '13px' : '14px',
-          color: 'rgba(255,255,255,0.9)'
+          color: 'rgba(255,255,255,0.85)'
         }}>
           搜尋會員，點擊即可快速記帳
         </p>
@@ -159,7 +159,7 @@ export function QuickTransaction({ user }: QuickTransactionProps) {
             transition: 'border-color 0.2s',
             boxSizing: 'border-box'
           }}
-          onFocus={(e) => e.currentTarget.style.borderColor = '#11998e'}
+          onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
           onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
         />
       </div>
@@ -219,9 +219,9 @@ export function QuickTransaction({ user }: QuickTransactionProps) {
                 setTransactionDialogOpen(true)
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#11998e'
+                e.currentTarget.style.borderColor = '#667eea'
                 e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(17, 153, 142, 0.2)'
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.2)'
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = 'transparent'
