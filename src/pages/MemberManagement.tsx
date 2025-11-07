@@ -211,10 +211,9 @@ export function MemberManagement({ user }: MemberManagementProps) {
         marginBottom: '20px'
       }}>
         <div style={{
-          background: 'white',
+          background: '#e9ecef',
           padding: '20px',
           borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           textAlign: 'center'
         }}>
           <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>總人數</div>
@@ -224,10 +223,9 @@ export function MemberManagement({ user }: MemberManagementProps) {
         </div>
         
         <div style={{
-          background: 'white',
+          background: '#e9ecef',
           padding: '20px',
           borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           textAlign: 'center'
         }}>
           <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>會員</div>
@@ -237,10 +235,9 @@ export function MemberManagement({ user }: MemberManagementProps) {
         </div>
 
         <div style={{
-          background: 'white',
+          background: '#e9ecef',
           padding: '20px',
           borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           textAlign: 'center'
         }}>
           <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>置板數</div>
