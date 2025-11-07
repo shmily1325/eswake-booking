@@ -10,19 +10,22 @@ interface Member {
   nickname: string | null
   birthday: string | null
   phone: string | null
-  email: string | null
-  line_id: string | null
   balance: number
   designated_lesson_minutes: number
   boat_voucher_minutes: number
   membership_expires_at: string | null
-  has_board_storage: boolean
-  board_storage_expires_at: string | null
-  board_storage_location: string | null
-  member_type: string
+  member_type: string  // 'guest' or 'member'
   notes: string | null
   status: string
   created_at: string
+}
+
+interface BoardStorage {
+  id: number
+  slot_number: number
+  expires_at: string | null
+  notes: string | null
+  status: string
 }
 
 interface Transaction {
@@ -45,11 +48,12 @@ interface MemberDetailDialogProps {
 export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: MemberDetailDialogProps) {
   const { isMobile } = useResponsive()
   const [member, setMember] = useState<Member | null>(null)
+  const [boardStorage, setBoardStorage] = useState<BoardStorage[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'info' | 'transactions'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'transactions' | 'boards'>('info')
 
   useEffect(() => {
     if (open && memberId) {
@@ -71,6 +75,17 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
 
       if (memberError) throw memberError
       setMember(memberData)
+
+      // 載入置板資料
+      const { data: boardData, error: boardError } = await supabase
+        .from('board_storage')
+        .select('*')
+        .eq('member_id', memberId)
+        .eq('status', 'active')
+        .order('slot_number', { ascending: true })
+
+      if (boardError) throw boardError
+      setBoardStorage(boardData || [])
 
       // 載入交易記錄
       const { data: transactionsData, error: transactionsError } = await supabase
@@ -213,9 +228,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         <InfoRow label="暱稱" value={member.nickname || '-'} />
                         <InfoRow label="生日" value={member.birthday || '-'} />
                         <InfoRow label="電話" value={member.phone || '-'} />
-                        <InfoRow label="Email" value={member.email || '-'} />
-                        <InfoRow label="LINE ID" value={member.line_id || '-'} />
-                        <InfoRow label="會員類型" value={getMemberTypeLabel(member.member_type)} />
+                        <InfoRow label="類型" value={getMemberTypeLabel(member.member_type)} />
                         {member.notes && <InfoRow label="備註" value={member.notes} />}
                       </div>
                     </div>
@@ -245,34 +258,32 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                       </div>
                     </div>
 
-                    {/* 服務資訊 */}
-                    <div style={{ marginBottom: '30px' }}>
-                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>🎫 服務資訊</h3>
-                      <div style={{ display: 'grid', gap: '12px' }}>
-                        <InfoRow 
-                          label="會籍到期" 
-                          value={member.membership_expires_at || '無會籍'}
-                          highlight={member.membership_expires_at ? isExpiringSoon(member.membership_expires_at) : false}
-                        />
-                        <InfoRow 
-                          label="置板服務" 
-                          value={member.has_board_storage ? '已開通' : '未開通'}
-                        />
-                        {member.has_board_storage && (
-                          <>
-                            <InfoRow 
-                              label="置板到期" 
-                              value={member.board_storage_expires_at || '-'}
-                              highlight={member.board_storage_expires_at ? isExpiringSoon(member.board_storage_expires_at) : false}
-                            />
-                            <InfoRow 
-                              label="置板位置" 
-                              value={member.board_storage_location || '-'}
-                            />
-                          </>
-                        )}
+                    {/* 置板資訊 */}
+                    {boardStorage.length > 0 && (
+                      <div style={{ marginBottom: '30px' }}>
+                        <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>🏄 置板服務</h3>
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          <InfoRow label="置板數量" value={`${boardStorage.length} 格`} />
+                          <div style={{ marginTop: '8px', fontSize: '14px', color: '#666' }}>
+                            格位編號：{boardStorage.map(b => b.slot_number).join(', ')}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* 服務資訊 */}
+                    {member.member_type === 'member' && (
+                      <div style={{ marginBottom: '30px' }}>
+                        <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>🎫 會員服務</h3>
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          <InfoRow 
+                            label="會籍到期" 
+                            value={member.membership_expires_at || '無設定'}
+                            highlight={member.membership_expires_at ? isExpiringSoon(member.membership_expires_at) : false}
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {/* 操作按鈕 */}
                     <div style={{
@@ -483,9 +494,8 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
 // 輔助函數
 function getMemberTypeLabel(type: string): string {
   switch (type) {
+    case 'guest': return '客人'
     case 'member': return '會員'
-    case 'member_with_board': return '會員+置板'
-    case 'board_only': return '僅置板'
     default: return type
   }
 }
