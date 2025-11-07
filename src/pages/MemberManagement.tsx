@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { AddMemberDialog } from '../components/AddMemberDialog'
@@ -49,46 +49,38 @@ export function MemberManagement({ user }: MemberManagementProps) {
   const loadMembers = async () => {
     setLoading(true)
     try {
-      // 載入會員資料
-      const { data: membersData, error: membersError } = await supabase
-        .from('members')
-        .select('*')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-
-      if (membersError) throw membersError
-
-      // 載入每個會員的置板數量
-      if (membersData && membersData.length > 0) {
-        const memberIds = membersData.map((m: any) => m.id)
-        const { data: boardData, error: boardError } = await supabase
+      // 並行查詢會員資料和置板資料（重要：從串行改為並行，提升載入速度）
+      const [membersResult, boardResult] = await Promise.all([
+        supabase
+          .from('members')
+          .select('*')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false }),
+        
+        supabase
           .from('board_storage')
           .select('member_id')
-          .in('member_id', memberIds)
           .eq('status', 'active')
+      ])
 
-        if (boardError) {
-          console.error('載入置板資料失敗:', boardError)
-        }
+      if (membersResult.error) throw membersResult.error
 
-        // 計算每個會員的置板數量
-        const boardCounts: Record<string, number> = {}
-        if (boardData) {
-          boardData.forEach((board: any) => {
-            boardCounts[board.member_id] = (boardCounts[board.member_id] || 0) + 1
-          })
-        }
+      const membersData = membersResult.data || []
+      const boardData = boardResult.data || []
 
-        // 合併資料
-        const membersWithBoards = membersData.map((member: any) => ({
-          ...member,
-          board_count: boardCounts[member.id] || 0
-        }))
+      // 計算每個會員的置板數量
+      const boardCounts: Record<string, number> = {}
+      boardData.forEach((board: any) => {
+        boardCounts[board.member_id] = (boardCounts[board.member_id] || 0) + 1
+      })
 
-        setMembers(membersWithBoards)
-      } else {
-        setMembers([])
-      }
+      // 合併資料
+      const membersWithBoards = membersData.map((member: any) => ({
+        ...member,
+        board_count: boardCounts[member.id] || 0
+      }))
+
+      setMembers(membersWithBoards)
     } catch (error) {
       console.error('載入會員失敗:', error)
       alert('載入會員失敗')
@@ -97,11 +89,17 @@ export function MemberManagement({ user }: MemberManagementProps) {
     }
   }
 
-  const filteredMembers = members.filter(member => 
-    member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.phone?.includes(searchTerm)
-  )
+  // 使用 useMemo 快取過濾結果，避免不必要的重複計算
+  const filteredMembers = useMemo(() => {
+    if (!searchTerm) return members
+    
+    const lowerSearch = searchTerm.toLowerCase()
+    return members.filter(member => 
+      member.name.toLowerCase().includes(lowerSearch) ||
+      member.nickname?.toLowerCase().includes(lowerSearch) ||
+      member.phone?.includes(searchTerm)
+    )
+  }, [members, searchTerm])
 
   if (loading) {
     return (

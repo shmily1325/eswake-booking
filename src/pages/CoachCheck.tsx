@@ -84,7 +84,8 @@ export function CoachCheck({ user }: CoachCheckProps) {
       const startDate = `${selectedDate}T00:00:00`
       const endDate = `${selectedDate}T23:59:59`
 
-      const { data, error } = await supabase
+      // 首先查詢預約
+      const bookingsResult = await supabase
         .from('bookings')
         .select(`
           id,
@@ -99,17 +100,31 @@ export function CoachCheck({ user }: CoachCheckProps) {
         .lte('start_at', endDate)
         .order('start_at', { ascending: true })
 
-      if (error) throw error
+      if (bookingsResult.error) throw bookingsResult.error
 
-      // Load coaches for each booking
-      const bookingIds = data?.map(b => b.id) || []
-      const { data: coachData } = await supabase
+      const bookingIds = bookingsResult.data?.map(b => b.id) || []
+      
+      if (bookingIds.length === 0) {
+        setBookings([])
+        return
+      }
+
+      // 並行查詢教練和參與者資料（重要：從串行改為並行，提升載入速度）
+      const [coachResult, participantResult] = await Promise.all([
+        supabase
           .from('booking_coaches')
-        .select('booking_id, coaches:coach_id(name)')
-        .in('booking_id', bookingIds)
+          .select('booking_id, coaches:coach_id(name)')
+          .in('booking_id', bookingIds),
+        
+        supabase
+          .from('booking_participants')
+          .select('booking_id, id')
+          .in('booking_id', bookingIds)
+      ])
 
+      // 處理教練資料
       const coachesByBooking: Record<number, { name: string }[]> = {}
-      coachData?.forEach(item => {
+      coachResult.data?.forEach(item => {
         if (!coachesByBooking[item.booking_id]) {
           coachesByBooking[item.booking_id] = []
         }
@@ -119,21 +134,17 @@ export function CoachCheck({ user }: CoachCheckProps) {
         }
       })
 
-      // Load participant counts
-      const { data: participantData } = await supabase
-        .from('booking_participants')
-        .select('booking_id, id')
-        .in('booking_id', bookingIds)
-
+      // 處理參與者資料
       const participantCounts: Record<number, number> = {}
-      participantData?.forEach(p => {
+      participantResult.data?.forEach(p => {
         participantCounts[p.booking_id] = (participantCounts[p.booking_id] || 0) + 1
       })
 
-      const bookingsWithData = (data || []).map(booking => ({
-          ...booking,
+      // 合併資料
+      const bookingsWithData = (bookingsResult.data || []).map(booking => ({
+        ...booking,
         boats: booking.boats?.[0] || null,
-          coaches: coachesByBooking[booking.id] || [],
+        coaches: coachesByBooking[booking.id] || [],
         has_report: participantCounts[booking.id] > 0,
         participant_count: participantCounts[booking.id] || 0
       }))

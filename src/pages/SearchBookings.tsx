@@ -115,27 +115,28 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
         query = query.gte('start_at', nowStr)
       }
       
-      const { data, error } = await query.order('start_at', { ascending: true })
+      // 執行預約查詢
+      const bookingsResult = await query.order('start_at', { ascending: true })
 
-      if (error) {
-        console.error('Error fetching bookings:', error)
-        console.error('Error details:', error.details, error.hint)
+      if (bookingsResult.error) {
+        console.error('Error fetching bookings:', bookingsResult.error)
+        console.error('Error details:', bookingsResult.error.details, bookingsResult.error.hint)
         setBookings([])
-      } else if (data && data.length > 0) {
-        // 獲取所有預約的教練
-        const bookingIds = data.map(b => b.id)
-        const { data: bookingCoachesData, error: coachError } = await supabase
+      } else if (bookingsResult.data && bookingsResult.data.length > 0) {
+        // 同時查詢教練信息（重要：立即發起查詢而不是等待）
+        const bookingIds = bookingsResult.data.map(b => b.id)
+        const coachesResult = await supabase
           .from('booking_coaches')
           .select('booking_id, coaches:coach_id(id, name)')
           .in('booking_id', bookingIds)
 
-        if (coachError) {
-          console.error('Error fetching coaches:', coachError)
+        if (coachesResult.error) {
+          console.error('Error fetching coaches:', coachesResult.error)
         }
 
         // 合併教練信息
         const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
-        for (const item of bookingCoachesData || []) {
+        for (const item of coachesResult.data || []) {
           const bookingId = item.booking_id
           const coach = (item as any).coaches
           if (coach) {
@@ -146,7 +147,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
           }
         }
 
-        const bookingsWithCoaches = data.map(booking => ({
+        const bookingsWithCoaches = bookingsResult.data.map(booking => ({
           ...booking,
           coaches: coachesByBooking[booking.id] || []
         }))

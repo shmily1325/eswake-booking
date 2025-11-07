@@ -40,64 +40,74 @@ export function DailyAnnouncement() {
 
   const loadData = async () => {
     const today = getLocalDateString()
-    
-    // 獲取交辦事項
-    const { data: announcementData } = await supabase
-      .from('daily_announcements')
-      .select('*')
-      .eq('display_date', today)
-      .limit(5)
-    
-    if (announcementData) setAnnouncements(announcementData)
-
-    // 獲取今日休假教練
-    const { data: timeOffData } = await supabase
-      .from('coach_time_off')
-      .select('coach_id, coaches(name)')
-      .lte('start_date', today)
-      .or(`end_date.gte.${today},end_date.is.null`)
-    
-    if (timeOffData) {
-      setTimeOffCoaches(timeOffData.map((item: any) => item.coaches?.name).filter(Boolean))
-    }
-
-    // 獲取今日生日會員
     const todayMD = today.substring(5) // MM-DD
-    const { data: birthdayData } = await supabase
-      .from('members')
-      .select('name, nickname')
-      .eq('status', 'active')
-      .like('birthday', `%${todayMD}%`)
-      .limit(5)
     
-    if (birthdayData) setBirthdays(birthdayData)
-
-    // 獲取即將到期的會籍（7天內）
     const sevenDaysLater = new Date()
     sevenDaysLater.setDate(sevenDaysLater.getDate() + 7)
     const sevenDaysLaterStr = `${sevenDaysLater.getFullYear()}-${String(sevenDaysLater.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysLater.getDate()).padStart(2, '0')}`
 
-    const { data: membershipData } = await supabase
-      .from('members')
-      .select('name, nickname, membership_expires_at')
-      .eq('status', 'active')
-      .not('membership_expires_at', 'is', null)
-      .lte('membership_expires_at', sevenDaysLaterStr)
-      .order('membership_expires_at', { ascending: true })
-      .limit(10)
+    // 並行執行所有查詢（重要：從串行改為並行，大幅提升速度）
+    const [
+      announcementResult,
+      timeOffResult,
+      birthdayResult,
+      membershipResult,
+      boardResult
+    ] = await Promise.all([
+      // 獲取交辦事項
+      supabase
+        .from('daily_announcements')
+        .select('*')
+        .eq('display_date', today)
+        .limit(5),
+      
+      // 獲取今日休假教練
+      supabase
+        .from('coach_time_off')
+        .select('coach_id, coaches(name)')
+        .lte('start_date', today)
+        .or(`end_date.gte.${today},end_date.is.null`),
+      
+      // 獲取今日生日會員
+      supabase
+        .from('members')
+        .select('name, nickname')
+        .eq('status', 'active')
+        .like('birthday', `%${todayMD}%`)
+        .limit(5),
+      
+      // 獲取即將到期的會籍（7天內）
+      supabase
+        .from('members')
+        .select('name, nickname, membership_expires_at')
+        .eq('status', 'active')
+        .not('membership_expires_at', 'is', null)
+        .lte('membership_expires_at', sevenDaysLaterStr)
+        .order('membership_expires_at', { ascending: true })
+        .limit(10),
+      
+      // 獲取即將到期或已到期的置板（7天內）
+      supabase
+        .from('board_storage')
+        .select('slot_number, members(name), expires_at')
+        .lte('expires_at', sevenDaysLaterStr)
+        .order('expires_at', { ascending: true })
+        .limit(10)
+    ])
 
-    if (membershipData) setExpiringMemberships(membershipData)
-
-    // 獲取即將到期或已到期的置板（7天內）
-    const { data: boardData } = await supabase
-      .from('board_storage')
-      .select('slot_number, members(name), expires_at')
-      .lte('expires_at', sevenDaysLaterStr)
-      .order('expires_at', { ascending: true })
-      .limit(10)
-
-    if (boardData) {
-      const boardList = boardData.map((b: any) => ({
+    // 處理查詢結果
+    if (announcementResult.data) setAnnouncements(announcementResult.data)
+    
+    if (timeOffResult.data) {
+      setTimeOffCoaches(timeOffResult.data.map((item: any) => item.coaches?.name).filter(Boolean))
+    }
+    
+    if (birthdayResult.data) setBirthdays(birthdayResult.data)
+    
+    if (membershipResult.data) setExpiringMemberships(membershipResult.data)
+    
+    if (boardResult.data) {
+      const boardList = boardResult.data.map((b: any) => ({
         slot_number: b.slot_number,
         member_name: b.members?.name || '未知',
         expires_at: b.expires_at
