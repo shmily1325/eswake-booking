@@ -21,9 +21,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
   const { isMobile } = useResponsive()
   const [staffList, setStaffList] = useState<Staff[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [newCoachName, setNewCoachName] = useState('')
+  const [adding, setAdding] = useState(false)
   const [timeOffDialogOpen, setTimeOffDialogOpen] = useState(false)
   const [bookingsDialogOpen, setBookingsDialogOpen] = useState(false)
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
@@ -50,10 +49,34 @@ export function StaffManagement({ user }: StaffManagementProps) {
     }
   }
 
-  const handleDelete = async (staff: Staff, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleAddCoach = async (e: React.FormEvent) => {
+    e.preventDefault()
     
-    if (!confirm(`確定要刪除「${staff.name}」嗎？此操作無法復原。`)) {
+    if (!newCoachName.trim()) {
+      alert('請輸入教練姓名')
+      return
+    }
+
+    setAdding(true)
+    try {
+      const { error } = await supabase
+        .from('coaches')
+        .insert([{ name: newCoachName.trim() }])
+
+      if (error) throw error
+
+      setNewCoachName('')
+      loadStaff()
+    } catch (error) {
+      console.error('新增失敗:', error)
+      alert('新增失敗')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const handleDelete = async (staff: Staff) => {
+    if (!confirm(`確定要刪除「${staff.name}」嗎？`)) {
       return
     }
 
@@ -64,18 +87,12 @@ export function StaffManagement({ user }: StaffManagementProps) {
         .eq('id', staff.id)
 
       if (error) throw error
-
-      alert('刪除成功！')
       loadStaff()
     } catch (error) {
       console.error('刪除失敗:', error)
       alert('刪除失敗')
     }
   }
-
-  const filteredStaff = staffList.filter(staff =>
-    staff.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
 
   if (loading) {
     return (
@@ -115,14 +132,10 @@ export function StaffManagement({ user }: StaffManagementProps) {
               color: '#333',
               textDecoration: 'none',
               borderRadius: '8px',
-              fontSize: isMobile ? '14px' : '14px',
+              fontSize: '14px',
               border: '1px solid #e0e0e0',
               fontWeight: '500',
               boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
             }}
           >
             ← BAO
@@ -135,14 +148,10 @@ export function StaffManagement({ user }: StaffManagementProps) {
               color: '#333',
               textDecoration: 'none',
               borderRadius: '8px',
-              fontSize: isMobile ? '14px' : '14px',
+              fontSize: '14px',
               border: '1px solid #e0e0e0',
               fontWeight: '500',
               boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
             }}
           >
             ← HOME
@@ -151,21 +160,16 @@ export function StaffManagement({ user }: StaffManagementProps) {
         <UserMenu user={user} />
       </div>
 
-      {/* 標題與操作區 */}
+      {/* 標題 */}
       <div style={{
         background: 'white',
         padding: isMobile ? '20px 15px' : '24px 20px',
         borderRadius: '12px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         marginBottom: isMobile ? '15px' : '20px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '15px',
-        flexWrap: 'wrap'
       }}>
         <h1 style={{
-          margin: 0,
+          margin: '0 0 8px 0',
           fontSize: isMobile ? '24px' : '28px',
           fontWeight: 'bold',
           color: '#333',
@@ -176,275 +180,161 @@ export function StaffManagement({ user }: StaffManagementProps) {
           <span style={{ fontSize: isMobile ? '28px' : '32px' }}>🎓</span>
           教練管理
         </h1>
-        <button
-          onClick={() => setAddDialogOpen(true)}
-          style={{
-            padding: isMobile ? '10px 20px' : '12px 24px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: isMobile ? '15px' : '15px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)'
-          }}
-        >
-          + 新增教練
-        </button>
-      </div>
-
-      {/* 搜尋欄 */}
-      <div style={{ marginBottom: isMobile ? '15px' : '20px' }}>
-        <input
-          type="text"
-          placeholder="搜尋教練姓名..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            width: '100%',
-            padding: isMobile ? '12px' : '10px',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            fontSize: isMobile ? '16px' : '14px',
-            transition: 'border-color 0.2s',
-          }}
-          onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
-          onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
-        />
-      </div>
-
-      {/* 統計資訊 */}
-      <div style={{
-        background: 'white',
-        padding: '20px',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        textAlign: 'center',
-        marginBottom: '20px'
-      }}>
-        <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>教練總數</div>
-        <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#667eea' }}>
-          {filteredStaff.length}
-        </div>
+        <p style={{
+          margin: 0,
+          fontSize: '14px',
+          color: '#666'
+        }}>
+          共 {staffList.length} 位教練
+        </p>
       </div>
 
       {/* 教練列表 */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
-        gap: '15px'
+        background: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        overflow: 'hidden'
       }}>
-        {filteredStaff.length === 0 ? (
-          <div style={{
-            gridColumn: '1 / -1',
-            textAlign: 'center',
-            padding: '40px',
-            color: '#999',
-            fontSize: '16px'
-          }}>
-            {searchTerm ? '找不到符合條件的教練' : '尚無教練資料'}
-          </div>
-        ) : (
-          filteredStaff.map((staff) => (
-            <div
-              key={staff.id}
-              style={{
-                background: 'white',
-                padding: '20px',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                transition: 'all 0.2s',
-                border: '2px solid transparent'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#667eea'
-                e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'transparent'
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
-              }}
-            >
-              {/* 教練姓名 */}
-              <div style={{
-                fontSize: '20px',
-                fontWeight: 'bold',
-                color: '#333',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '12px'
-              }}>
-                <span>🎓</span>
-                {staff.name}
-              </div>
-
-              {/* 備註 */}
-              {staff.notes && (
-                <div style={{
-                  fontSize: '14px',
-                  color: '#666',
-                  marginBottom: '12px',
-                  paddingBottom: '12px',
-                  borderBottom: '1px solid #f0f0f0'
-                }}>
-                  📝 {staff.notes}
-                </div>
-              )}
-
-              {/* 操作按鈕 */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '8px',
-                marginTop: '12px'
-              }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedStaff(staff)
-                    setTimeOffDialogOpen(true)
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.9'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1'
-                  }}
-                >
-                  休假管理
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedStaff(staff)
-                    setBookingsDialogOpen(true)
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.9'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1'
-                  }}
-                >
-                  查看預約
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedStaff(staff)
-                    setEditDialogOpen(true)
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.9'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1'
-                  }}
-                >
-                  編輯
-                </button>
-                <button
-                  onClick={(e) => handleDelete(staff, e)}
-                  style={{
-                    padding: '8px 12px',
-                    background: '#f44336',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.9'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1'
-                  }}
-                >
-                  刪除
-                </button>
-              </div>
+        {staffList.map((staff, index) => (
+          <div
+            key={staff.id}
+            style={{
+              padding: isMobile ? '15px' : '20px',
+              borderBottom: index < staffList.length - 1 ? '1px solid #f0f0f0' : 'none',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '15px',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f8f9fa'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white'
+            }}
+          >
+            <div style={{
+              fontSize: isMobile ? '16px' : '18px',
+              fontWeight: '500',
+              color: '#333',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <span>🎓</span>
+              {staff.name}
             </div>
-          ))
-        )}
+
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              flexShrink: 0,
+              flexWrap: 'wrap'
+            }}>
+              <button
+                onClick={() => {
+                  setSelectedStaff(staff)
+                  setTimeOffDialogOpen(true)
+                }}
+                style={{
+                  padding: isMobile ? '6px 12px' : '8px 14px',
+                  background: '#ff9800',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: isMobile ? '12px' : '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                }}
+              >
+                休假
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedStaff(staff)
+                  setBookingsDialogOpen(true)
+                }}
+                style={{
+                  padding: isMobile ? '6px 12px' : '8px 14px',
+                  background: '#2196f3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: isMobile ? '12px' : '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                }}
+              >
+                預約
+              </button>
+              <button
+                onClick={() => handleDelete(staff)}
+                style={{
+                  padding: isMobile ? '6px 12px' : '8px 14px',
+                  background: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: isMobile ? '12px' : '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                }}
+              >
+                刪除
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {/* 新增教練輸入框 */}
+        <form
+          onSubmit={handleAddCoach}
+          style={{
+            padding: isMobile ? '15px' : '20px',
+            background: '#f8f9fa',
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'center'
+          }}
+        >
+          <input
+            type="text"
+            value={newCoachName}
+            onChange={(e) => setNewCoachName(e.target.value)}
+            placeholder="輸入教練姓名..."
+            disabled={adding}
+            style={{
+              flex: 1,
+              padding: isMobile ? '10px 12px' : '12px 14px',
+              border: '2px solid #e0e0e0',
+              borderRadius: '8px',
+              fontSize: isMobile ? '14px' : '15px',
+              outline: 'none',
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+            onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+          />
+          <button
+            type="submit"
+            disabled={adding || !newCoachName.trim()}
+            style={{
+              padding: isMobile ? '10px 16px' : '12px 20px',
+              background: adding || !newCoachName.trim() ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: isMobile ? '14px' : '15px',
+              fontWeight: 'bold',
+              cursor: adding || !newCoachName.trim() ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {adding ? '新增中...' : '+ 新增'}
+          </button>
+        </form>
       </div>
-
-      {/* 新增教練對話框 */}
-      {addDialogOpen && (
-        <AddStaffDialog
-          open={addDialogOpen}
-          onClose={() => setAddDialogOpen(false)}
-          onSuccess={() => {
-            loadStaff()
-            setAddDialogOpen(false)
-          }}
-        />
-      )}
-
-      {/* 編輯教練對話框 */}
-      {editDialogOpen && selectedStaff && (
-        <EditStaffDialog
-          open={editDialogOpen}
-          staff={selectedStaff}
-          onClose={() => {
-            setEditDialogOpen(false)
-            setSelectedStaff(null)
-          }}
-          onSuccess={() => {
-            loadStaff()
-            setEditDialogOpen(false)
-            setSelectedStaff(null)
-          }}
-        />
-      )}
 
       {/* 休假管理對話框 */}
       {timeOffDialogOpen && selectedStaff && (
@@ -469,365 +359,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
           }}
         />
       )}
-    </div>
-  )
-}
-
-// 新增教練對話框組件
-interface AddStaffDialogProps {
-  open: boolean
-  onClose: () => void
-  onSuccess: () => void
-}
-
-function AddStaffDialog({ open, onClose, onSuccess }: AddStaffDialogProps) {
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    notes: ''
-  })
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!formData.name.trim()) {
-      alert('請輸入姓名')
-      return
-    }
-
-    setLoading(true)
-    try {
-      const { error } = await supabase
-        .from('coaches')
-        .insert([{
-          name: formData.name.trim(),
-          notes: formData.notes.trim() || null
-        }])
-
-      if (error) throw error
-
-      alert('新增成功！')
-      onSuccess()
-      setFormData({ name: '', notes: '' })
-    } catch (error) {
-      console.error('新增失敗:', error)
-      alert('新增失敗')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (!open) return null
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px',
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        maxWidth: '500px',
-        width: '100%',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-      }}>
-        <div style={{
-          padding: '20px',
-          borderBottom: '1px solid #e0e0e0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-            新增教練
-          </h2>
-          <button
-            onClick={onClose}
-            style={{
-              border: 'none',
-              background: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: '#666',
-            }}
-          >
-            &times;
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ padding: '20px' }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                姓名 <span style={{ color: 'red' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="請輸入姓名"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                }}
-                required
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                備註 <span style={{ fontSize: '13px' }}>（選填）</span>
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="請輸入備註"
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  resize: 'vertical',
-                }}
-              />
-            </div>
-          </div>
-
-          <div style={{
-            padding: '20px',
-            borderTop: '1px solid #e0e0e0',
-            display: 'flex',
-            gap: '12px',
-            justifyContent: 'flex-end',
-          }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              style={{
-                padding: '10px 20px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                background: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-              }}
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '6px',
-                background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: 'bold',
-              }}
-            >
-              {loading ? '新增中...' : '確認新增'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-// 編輯教練對話框組件
-interface EditStaffDialogProps {
-  open: boolean
-  staff: Staff
-  onClose: () => void
-  onSuccess: () => void
-}
-
-function EditStaffDialog({ open, staff, onClose, onSuccess }: EditStaffDialogProps) {
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    name: staff.name,
-    notes: staff.notes || ''
-  })
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!formData.name.trim()) {
-      alert('請輸入姓名')
-      return
-    }
-
-    setLoading(true)
-    try {
-      const { error } = await supabase
-        .from('coaches')
-        .update({
-          name: formData.name.trim(),
-          notes: formData.notes.trim() || null
-        })
-        .eq('id', staff.id)
-
-      if (error) throw error
-
-      alert('更新成功！')
-      onSuccess()
-    } catch (error) {
-      console.error('更新失敗:', error)
-      alert('更新失敗')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (!open) return null
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px',
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        maxWidth: '500px',
-        width: '100%',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-      }}>
-        <div style={{
-          padding: '20px',
-          borderBottom: '1px solid #e0e0e0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-            編輯教練
-          </h2>
-          <button
-            onClick={onClose}
-            style={{
-              border: 'none',
-              background: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: '#666',
-            }}
-          >
-            &times;
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ padding: '20px' }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                姓名 <span style={{ color: 'red' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="請輸入姓名"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                }}
-                required
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                備註 <span style={{ fontSize: '13px' }}>（選填）</span>
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="請輸入備註"
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  resize: 'vertical',
-                }}
-              />
-            </div>
-          </div>
-
-          <div style={{
-            padding: '20px',
-            borderTop: '1px solid #e0e0e0',
-            display: 'flex',
-            gap: '12px',
-            justifyContent: 'flex-end',
-          }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              style={{
-                padding: '10px 20px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                background: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-              }}
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '6px',
-                background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: 'bold',
-              }}
-            >
-              {loading ? '更新中...' : '確認更新'}
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   )
 }
