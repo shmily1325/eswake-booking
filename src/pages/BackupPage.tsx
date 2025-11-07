@@ -12,7 +12,7 @@ export function BackupPage({ user }: BackupPageProps) {
   const [loading, setLoading] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [exportType, setExportType] = useState<'bookings' | 'member_hours' | 'member_summary' | 'coach_summary'>('bookings')
+  const [exportType, setExportType] = useState<'bookings' | 'member_hours' | 'coach_hours'>('bookings')
 
   const exportBookingsToCSV = async () => {
     setLoading(true)
@@ -248,21 +248,16 @@ export function BackupPage({ user }: BackupPageProps) {
         })
       })
 
-      // 生成CSV
+      // 生成CSV（每一行都重複會員資訊，方便Excel篩選）
       let csv = '\uFEFF'
-      csv += '會員姓名,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘),日期,單次時長(分鐘),是否指定課\n'
+      csv += '會員姓名,日期,單次時長(分鐘),是否指定課,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘)\n'
 
       Object.values(memberStats)
         .sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
         .forEach(member => {
-          member.records.forEach((record, idx) => {
-            if (idx === 0) {
-              // 第一筆顯示會員統計資訊
-              csv += `"${member.name}",${member.totalMinutes},${member.designatedMinutes},${member.normalMinutes},"${record.date}",${record.duration},"${record.isDesignated ? '是' : '否'}"\n`
-            } else {
-              // 後續只顯示記錄詳情
-              csv += `"","","","","${record.date}",${record.duration},"${record.isDesignated ? '是' : '否'}"\n`
-            }
+          member.records.forEach((record) => {
+            // 每一行都顯示完整資訊，方便篩選
+            csv += `"${member.name}","${record.date}",${record.duration},"${record.isDesignated ? '是' : '否'}",${member.totalMinutes},${member.designatedMinutes},${member.normalMinutes}\n`
           })
         })
 
@@ -281,92 +276,7 @@ export function BackupPage({ user }: BackupPageProps) {
     }
   }
 
-  const exportMemberSummaryToCSV = async () => {
-    setLoading(true)
-    try {
-      // 查詢指定日期範圍內的參與者記錄
-      let participantsQuery = supabase
-        .from('booking_participants')
-        .select(`
-          *,
-          bookings!inner(start_at, contact_name, boat_id)
-        `)
-        .order('bookings(start_at)', { ascending: true })
-
-      if (startDate && endDate) {
-        participantsQuery = participantsQuery
-          .gte('bookings.start_at', `${startDate}T00:00:00`)
-          .lte('bookings.start_at', `${endDate}T23:59:59`)
-      }
-
-      const { data: participants, error } = await participantsQuery
-
-      if (error) throw error
-
-      if (!participants || participants.length === 0) {
-        alert('沒有數據可以導出')
-        return
-      }
-
-      // 按會員分組統計
-      const memberStats: {
-        [key: string]: {
-          name: string
-          totalMinutes: number
-          designatedMinutes: number
-          normalMinutes: number
-          sessionCount: number
-        }
-      } = {}
-
-      participants.forEach((p: any) => {
-        const memberName = p.participant_name
-
-        if (!memberStats[memberName]) {
-          memberStats[memberName] = {
-            name: memberName,
-            totalMinutes: 0,
-            designatedMinutes: 0,
-            normalMinutes: 0,
-            sessionCount: 0
-          }
-        }
-
-        memberStats[memberName].totalMinutes += p.duration_min
-        memberStats[memberName].sessionCount += 1
-        if (p.is_designated) {
-          memberStats[memberName].designatedMinutes += p.duration_min
-        } else {
-          memberStats[memberName].normalMinutes += p.duration_min
-        }
-      })
-
-      // 生成CSV - 每個會員一行，方便篩選
-      let csv = '\uFEFF'
-      csv += '會員姓名,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘),總次數\n'
-
-      Object.values(memberStats)
-        .sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
-        .forEach(member => {
-          csv += `"${member.name}",${member.totalMinutes},${member.designatedMinutes},${member.normalMinutes},${member.sessionCount}\n`
-        })
-
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `會員對帳表_${new Date().toISOString().split('T')[0]}.csv`
-      link.click()
-      URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Export error:', error)
-      alert('❌ 導出失敗，請重試')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const exportCoachSummaryToCSV = async () => {
+  const exportCoachHoursToCSV = async () => {
     setLoading(true)
     try {
       // 查詢指定日期範圍內的預約
@@ -405,19 +315,29 @@ export function BackupPage({ user }: BackupPageProps) {
           .in('booking_id', bookingIds),
         supabase
           .from('booking_participants')
-          .select('booking_id, duration_min, is_designated')
+          .select('booking_id, participant_name, duration_min, is_designated')
           .in('booking_id', bookingIds)
       ])
 
-      // 按教練分組統計
-      const coachStats: {
+      // 建立預約ID到日期的映射
+      const bookingDateMap: { [key: number]: string } = {}
+      bookings.forEach(b => {
+        bookingDateMap[b.id] = b.start_at.substring(0, 10).replace(/-/g, '/')
+      })
+
+      // 按教練整理詳細記錄
+      const coachRecords: {
         [key: string]: {
           name: string
-          bookingCount: number
+          records: Array<{
+            date: string
+            participantName: string
+            duration: number
+            isDesignated: boolean
+          }>
           totalMinutes: number
           designatedMinutes: number
           normalMinutes: number
-          participantCount: number
         }
       } = {}
 
@@ -425,47 +345,53 @@ export function BackupPage({ user }: BackupPageProps) {
         const coachName = item.coaches?.name
         if (!coachName) return
 
-        if (!coachStats[coachName]) {
-          coachStats[coachName] = {
+        if (!coachRecords[coachName]) {
+          coachRecords[coachName] = {
             name: coachName,
-            bookingCount: 0,
+            records: [],
             totalMinutes: 0,
             designatedMinutes: 0,
-            normalMinutes: 0,
-            participantCount: 0
+            normalMinutes: 0
           }
         }
 
-        coachStats[coachName].bookingCount += 1
-
-        // 計算該預約的參與者時數
+        // 找到該預約的所有參與者
         const participants = participantsResult.data?.filter(p => p.booking_id === item.booking_id) || []
         participants.forEach(p => {
-          coachStats[coachName].totalMinutes += p.duration_min
-          coachStats[coachName].participantCount += 1
+          coachRecords[coachName].records.push({
+            date: bookingDateMap[item.booking_id],
+            participantName: p.participant_name,
+            duration: p.duration_min,
+            isDesignated: p.is_designated
+          })
+          
+          coachRecords[coachName].totalMinutes += p.duration_min
           if (p.is_designated) {
-            coachStats[coachName].designatedMinutes += p.duration_min
+            coachRecords[coachName].designatedMinutes += p.duration_min
           } else {
-            coachStats[coachName].normalMinutes += p.duration_min
+            coachRecords[coachName].normalMinutes += p.duration_min
           }
         })
       })
 
-      // 生成CSV
+      // 生成CSV（每一行都重複教練資訊，方便Excel篩選）
       let csv = '\uFEFF'
-      csv += '教練姓名,預約數,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘),參與人次\n'
+      csv += '教練姓名,日期,學員姓名,單次時長(分鐘),是否指定課,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘)\n'
 
-      Object.values(coachStats)
+      Object.values(coachRecords)
         .sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
         .forEach(coach => {
-          csv += `"${coach.name}",${coach.bookingCount},${coach.totalMinutes},${coach.designatedMinutes},${coach.normalMinutes},${coach.participantCount}\n`
+          coach.records.forEach(record => {
+            // 每一行都顯示完整資訊，方便篩選
+            csv += `"${coach.name}","${record.date}","${record.participantName}",${record.duration},"${record.isDesignated ? '是' : '否'}",${coach.totalMinutes},${coach.designatedMinutes},${coach.normalMinutes}\n`
+          })
         })
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `教練對帳表_${new Date().toISOString().split('T')[0]}.csv`
+      link.download = `教練時數統計_${new Date().toISOString().split('T')[0]}.csv`
       link.click()
       URL.revokeObjectURL(url)
     } catch (error) {
@@ -481,10 +407,8 @@ export function BackupPage({ user }: BackupPageProps) {
       exportBookingsToCSV()
     } else if (exportType === 'member_hours') {
       exportMemberHoursToCSV()
-    } else if (exportType === 'member_summary') {
-      exportMemberSummaryToCSV()
     } else {
-      exportCoachSummaryToCSV()
+      exportCoachHoursToCSV()
     }
   }
 
@@ -552,7 +476,7 @@ export function BackupPage({ user }: BackupPageProps) {
                 </div>
               </div>
 
-              {/* 選項 2: 會員時數統計 */}
+              {/* 選項 2: 會員時數詳細記錄 */}
               <div
                 onClick={() => setExportType('member_hours')}
                 style={{
@@ -573,23 +497,23 @@ export function BackupPage({ user }: BackupPageProps) {
                   />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>
-                      ⏱️ 會員時數詳細記錄
+                      💰 會員時數詳細記錄（內有總對帳表）
                     </div>
                     <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-                      按會員分組統計：總時數、指定課時數、一般時數，並列出每次參與記錄。適合查看詳細消費明細。
+                      每一行顯示：會員姓名、日期、時長、是否指定課、總時數、指定課時數、一般時數。每筆消費都重複顯示會員資訊，方便Excel篩選與透視分析。
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* 選項 3: 會員對帳表 */}
+              {/* 選項 3: 教練時數詳細記錄 */}
               <div
-                onClick={() => setExportType('member_summary')}
+                onClick={() => setExportType('coach_hours')}
                 style={{
                   padding: '16px',
-                  border: exportType === 'member_summary' ? '2px solid #667eea' : '2px solid #dee2e6',
+                  border: exportType === 'coach_hours' ? '2px solid #667eea' : '2px solid #dee2e6',
                   borderRadius: '8px',
-                  backgroundColor: exportType === 'member_summary' ? '#f0f4ff' : 'white',
+                  backgroundColor: exportType === 'coach_hours' ? '#f0f4ff' : 'white',
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
@@ -597,46 +521,16 @@ export function BackupPage({ user }: BackupPageProps) {
                 <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
                   <input
                     type="radio"
-                    checked={exportType === 'member_summary'}
-                    onChange={() => setExportType('member_summary')}
+                    checked={exportType === 'coach_hours'}
+                    onChange={() => setExportType('coach_hours')}
                     style={{ marginTop: '4px', width: '18px', height: '18px', cursor: 'pointer' }}
                   />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>
-                      💰 會員對帳表（推薦）
+                      👨‍🏫 教練時數詳細記錄（內有教練對帳表）
                     </div>
                     <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-                      每個會員一行摘要：總時數、指定課時數、一般時數、總次數。方便Excel篩選與對帳，最適合給會員對帳使用！
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 選項 4: 教練對帳表 */}
-              <div
-                onClick={() => setExportType('coach_summary')}
-                style={{
-                  padding: '16px',
-                  border: exportType === 'coach_summary' ? '2px solid #667eea' : '2px solid #dee2e6',
-                  borderRadius: '8px',
-                  backgroundColor: exportType === 'coach_summary' ? '#f0f4ff' : 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
-                  <input
-                    type="radio"
-                    checked={exportType === 'coach_summary'}
-                    onChange={() => setExportType('coach_summary')}
-                    style={{ marginTop: '4px', width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>
-                      👨‍🏫 教練對帳表
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-                      每個教練一行摘要：預約數、總時數、指定課時數、一般時數、參與人次。適合核算教練工作量與薪資。
+                      每一行顯示：教練姓名、日期、學員姓名、時長、是否指定課、總時數、指定課時數、一般時數。每次教學都重複顯示教練資訊，方便Excel篩選與核算薪資。
                     </div>
                   </div>
                 </div>
@@ -726,46 +620,15 @@ export function BackupPage({ user }: BackupPageProps) {
 
           <div style={{
             marginTop: '20px',
-            padding: '16px',
+            padding: '12px 16px',
             backgroundColor: '#fff3cd',
             borderRadius: '8px',
             border: '1px solid #ffc107',
             fontSize: '13px',
-            color: '#856404'
+            color: '#856404',
+            textAlign: 'center'
           }}>
-            <div style={{ fontWeight: '600', marginBottom: '8px' }}>
-              💡 使用說明：
-            </div>
-            {exportType === 'bookings' ? (
-            <ul style={{ margin: 0, paddingLeft: '20px' }}>
-              <li>CSV 文件可用 Excel 或 Google Sheets 打開</li>
-                <li>包含預約人、船隻、教練、駕駛、回報狀態等完整信息</li>
-                <li>如有多個參與者，會分多行顯示（第一行顯示完整預約資訊）</li>
-              <li>所有時間已格式化為易讀格式（YYYY/MM/DD HH:mm）</li>
-              <li>建議定期備份以確保數據安全</li>
-            </ul>
-            ) : exportType === 'member_hours' ? (
-              <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                <li>CSV 文件可用 Excel 或 Google Sheets 打開</li>
-                <li>按會員分組，每個會員顯示總時數統計與明細</li>
-                <li>可快速核對會員消費時數與指定課時數</li>
-                <li>建議每月導出一次以進行核對與結算</li>
-              </ul>
-            ) : exportType === 'member_summary' ? (
-              <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                <li>每個會員一行，方便用 Excel 篩選、排序、加總</li>
-                <li>直接顯示：總時數、指定課時數、一般時數、總次數</li>
-                <li>可快速找到特定會員並對帳</li>
-                <li>最適合月底結算與對帳使用！</li>
-              </ul>
-            ) : (
-              <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                <li>每個教練一行，清楚顯示工作量統計</li>
-                <li>包含：預約數、總時數、指定課時數、參與人次</li>
-                <li>方便計算教練薪資與獎金</li>
-                <li>可用於評估教練表現與工作分配</li>
-              </ul>
-            )}
+            💡 CSV 文件可用 Excel 或 Google Sheets 打開
           </div>
         </div>
       </div>
