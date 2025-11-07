@@ -163,11 +163,17 @@ export function DailyAnnouncement() {
           color: '#555',
           lineHeight: '1.7'
         }}>
-          {announcements.length > 0 && announcements.map((ann) => (
-            <div key={ann.id} style={{ marginBottom: '6px', color: '#667eea', fontWeight: '500' }}>
-              📋 {ann.content}
+          {announcements.length > 0 && (
+            <div style={{ marginBottom: '6px' }}>
+              {announcements.map((ann, idx) => (
+                <div key={ann.id} style={{ color: '#667eea', fontWeight: '500' }}>
+                  {idx === 0 && '📋 交辦事項：'}
+                  {idx > 0 && '　　　　'}
+                  {ann.content}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
 
           {timeOffCoaches.length > 0 && (
             <div style={{ marginBottom: '6px' }}>
