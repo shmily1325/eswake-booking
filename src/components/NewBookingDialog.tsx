@@ -385,6 +385,43 @@ export function NewBookingDialog({
           }
         }
         
+        // 檢查駕駛衝突（如果有選擇駕駛）
+        if (!hasConflict && selectedDriver) {
+          // 找到駕駛的 ID
+          const driverCoach = coaches.find(c => c.name === selectedDriver)
+          if (driverCoach) {
+            // 查詢該駕駛的所有預約（作為駕駛的預約）
+            const { data: driverBookings, error: driverCheckError } = await supabase
+              .from('bookings')
+              .select('id, start_at, duration_min, contact_name')
+              .eq('driver_coach_id', driverCoach.id)
+              .gte('start_at', `${dateStr}T00:00:00`)
+              .lte('start_at', `${dateStr}T23:59:59`)
+            
+            if (driverCheckError) {
+              hasConflict = true
+              conflictReason = '檢查駕駛衝突時發生錯誤'
+            } else {
+              // 檢查時間重疊
+              for (const booking of driverBookings || []) {
+                const bookingDatetime = booking.start_at.substring(0, 16)
+                const [, bookingTime] = bookingDatetime.split('T')
+                const [bookingHour, bookingMinute] = bookingTime.split(':').map(Number)
+                
+                const bookingStartMinutes = bookingHour * 60 + bookingMinute
+                const bookingEndMinutes = bookingStartMinutes + booking.duration_min
+                
+                // 檢查時間重疊
+                if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
+                  hasConflict = true
+                  conflictReason = `駕駛 ${selectedDriver} 在此時段已有其他預約（${booking.contact_name}）`
+                  break
+                }
+              }
+            }
+          }
+        }
+        
         // 如果有衝突，跳過這個日期
         if (hasConflict) {
           results.skipped.push({ date: displayDate, reason: conflictReason })
@@ -496,6 +533,11 @@ export function NewBookingDialog({
 
       // Success - 重置表單
       setSelectedCoaches([])
+      setSelectedDriver('') // 清除駕駛選擇
+      setSelectedMemberId(null) // 清除會員選擇
+      setMemberSearchTerm('') // 清除會員搜尋
+      setManualStudentName('') // 清除手動輸入名字
+      setShowMemberDropdown(false) // 關閉下拉選單
       setStudent('')
       setStartDate('')
       setStartTime('00:00')
@@ -517,6 +559,11 @@ export function NewBookingDialog({
   const handleClose = () => {
     if (!loading) {
       setSelectedCoaches([])
+      setSelectedDriver('') // 清除駕駛選擇
+      setSelectedMemberId(null) // 清除會員選擇
+      setMemberSearchTerm('') // 清除會員搜尋
+      setManualStudentName('') // 清除手動輸入名字
+      setShowMemberDropdown(false) // 關閉下拉選單
       setStudent('')
       setStartDate('')
       setStartTime('00:00')
@@ -566,6 +613,136 @@ export function NewBookingDialog({
         <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px' }}>新增預約</h2>
         
         <form onSubmit={handleSubmit}>
+          {/* 預約人選擇（會員搜尋或手動輸入） */}
+          <div style={{ marginBottom: '18px', position: 'relative' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '6px', 
+              color: '#000',
+              fontSize: '15px',
+              fontWeight: '500',
+            }}>
+              預約人 {selectedMemberId && <span style={{ color: '#4caf50', fontSize: '13px' }}>（已選擇會員）</span>}
+            </label>
+            
+            {/* 搜尋會員 */}
+            <input
+              type="text"
+              value={memberSearchTerm}
+              onChange={(e) => {
+                setMemberSearchTerm(e.target.value)
+                setShowMemberDropdown(true)
+                if (!e.target.value) {
+                  setSelectedMemberId(null)
+                }
+              }}
+              onFocus={() => setShowMemberDropdown(true)}
+              placeholder="搜尋會員姓名/暱稱/電話..."
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                border: selectedMemberId ? '2px solid #4caf50' : '1px solid #ccc',
+                boxSizing: 'border-box',
+                fontSize: '16px',
+                touchAction: 'manipulation',
+              }}
+            />
+            
+            {/* 會員下拉選單 */}
+            {showMemberDropdown && filteredMembers.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                maxHeight: '200px',
+                overflowY: 'auto',
+                background: 'white',
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                marginTop: '4px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                zIndex: 1000,
+              }}>
+                {filteredMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    onClick={() => {
+                      setSelectedMemberId(member.id)
+                      setMemberSearchTerm(member.name + (member.nickname ? ` (${member.nickname})` : ''))
+                      setManualStudentName(member.name)
+                      setShowMemberDropdown(false)
+                    }}
+                    style={{
+                      padding: '12px',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid #f0f0f0',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                  >
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                      {member.name}
+                      {member.nickname && <span style={{ color: '#666', fontWeight: 'normal' }}> ({member.nickname})</span>}
+                    </div>
+                    {member.phone && (
+                      <div style={{ fontSize: '13px', color: '#999' }}>
+                        📱 {member.phone}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* 或手動輸入 */}
+            {!selectedMemberId && (
+              <div style={{ marginTop: '8px' }}>
+                <input
+                  type="text"
+                  value={manualStudentName}
+                  onChange={(e) => setManualStudentName(e.target.value)}
+                  placeholder="或直接輸入姓名（非會員/首次體驗）"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #ff9800',
+                    boxSizing: 'border-box',
+                    fontSize: '16px',
+                    touchAction: 'manipulation',
+                  }}
+                />
+              </div>
+            )}
+            
+            {/* 清除會員選擇 */}
+            {selectedMemberId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMemberId(null)
+                  setMemberSearchTerm('')
+                  setManualStudentName('')
+                }}
+                style={{
+                  marginTop: '8px',
+                  padding: '6px 12px',
+                  background: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                清除會員選擇
+              </button>
+            )}
+          </div>
+
           <div style={{ marginBottom: '18px' }}>
             <label style={{ 
               display: 'block', 

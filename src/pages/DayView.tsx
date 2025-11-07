@@ -835,7 +835,7 @@ export function DayView({ user }: DayViewProps) {
                                   {booking.driver && (
                                     <div style={{
                                       fontSize: isMobile ? '12px' : '13px',
-                                      color: '#2196f3',
+                                      color: '#666',
                                       display: 'flex',
                                       alignItems: 'center',
                                       gap: '4px',
@@ -1061,7 +1061,7 @@ export function DayView({ user }: DayViewProps) {
                           {booking.driver && (
                             <div style={{
                               fontSize: isMobile ? '9px' : '12px',
-                              color: '#2196f3',
+                              opacity: 0.9,
                               marginTop: isMobile ? '2px' : '4px',
                               textAlign: 'center',
                               lineHeight: '1.2',
