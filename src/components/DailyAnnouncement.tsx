@@ -125,11 +125,11 @@ export function DailyAnnouncement() {
   return (
     <div style={{
       background: 'white',
-      borderRadius: '12px',
-      padding: isMobile ? '12px' : '16px',
+      borderRadius: '8px',
+      padding: isMobile ? '14px' : '18px',
       marginBottom: '20px',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e9ecef'
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+      border: '1px solid #e0e0e0'
     }}>
       <div 
         style={{
@@ -142,128 +142,74 @@ export function DailyAnnouncement() {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: isMobile ? '14px' : '16px',
-          fontWeight: 'bold',
+          fontSize: isMobile ? '14px' : '15px',
+          fontWeight: '600',
           color: '#333'
         }}>
-          <span style={{ fontSize: isMobile ? '18px' : '20px' }}>📢</span>
-          <span>今日公告</span>
+          📢 今日公告
         </div>
-        <button style={{
-          background: '#f8f9fa',
-          border: '1px solid #dee2e6',
-          borderRadius: '6px',
-          color: '#333',
-          padding: '4px 10px',
-          fontSize: '12px',
-          cursor: 'pointer',
+        <span style={{
+          color: '#999',
+          fontSize: '11px',
           fontWeight: '500'
         }}>
           {isExpanded ? '收起 ▲' : '展開 ▼'}
-        </button>
+        </span>
       </div>
-
 
       {isExpanded && (
         <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
           fontSize: isMobile ? '13px' : '14px',
-          color: '#333'
+          color: '#555',
+          lineHeight: '1.7'
         }}>
-          {announcements.length > 0 && (
-            <div style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '10px 12px',
-              border: '2px solid #667eea',
-              boxShadow: '0 2px 4px rgba(102,126,234,0.1)'
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '15px', color: '#667eea' }}>
-                📋 交辦事項
-              </div>
-              {announcements.map((ann, idx) => (
-                <div key={ann.id} style={{ 
-                  marginBottom: idx < announcements.length - 1 ? '8px' : '0',
-                  paddingLeft: '4px'
+          {announcements.length > 0 && announcements.map((ann) => (
+            <div key={ann.id} style={{ marginBottom: '6px', color: '#667eea', fontWeight: '500' }}>
+              📋 {ann.content}
+            </div>
+          ))}
+
+          {timeOffCoaches.length > 0 && (
+            <div style={{ marginBottom: '6px' }}>
+              🏖️ 休假：{timeOffCoaches.join('、')}
+            </div>
+          )}
+
+          {birthdays.length > 0 && (
+            <div style={{ marginBottom: '6px' }}>
+              🎂 今日壽星：{birthdays.map(b => b.name).join('、')}
+            </div>
+          )}
+
+          {expiringMemberships.length > 0 && (
+            <div style={{ marginBottom: '6px' }}>
+              <div style={{ marginBottom: '3px' }}>⚠️ 會籍即將到期：</div>
+              {expiringMemberships.map((m, idx) => (
+                <div key={idx} style={{ 
+                  paddingLeft: '20px', 
+                  fontSize: isMobile ? '12px' : '13px',
+                  color: '#666',
+                  marginBottom: '2px'
                 }}>
-                  • {ann.content}
+                  {m.name} ({m.membership_expires_at})
                 </div>
               ))}
             </div>
           )}
 
-          {timeOffCoaches.length > 0 && (
-            <div style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '8px 10px',
-              border: '1px solid #dee2e6'
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🏖️ 休假</div>
-              <div>{timeOffCoaches.join('、')}</div>
-            </div>
-          )}
-
-          {birthdays.length > 0 && (
-            <div style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '8px 10px',
-              border: '1px solid #dee2e6'
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🎂 今日壽星</div>
-              <div>{birthdays.map(b => b.name).join('、')}</div>
-            </div>
-          )}
-
-          {expiringMemberships.length > 0 && (
-            <div style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '8px 10px',
-              border: '1px solid #dee2e6'
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>⚠️ 會籍即將到期</div>
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column',
-                gap: '4px',
-                fontSize: isMobile ? '12px' : '13px'
-              }}>
-                {expiringMemberships.map((m, idx) => (
-                  <div key={idx}>
-                    • {m.name} ({m.membership_expires_at})
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {expiringBoards.length > 0 && (
-            <div style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '8px 10px',
-              border: '1px solid #dee2e6'
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🏄 置板即將到期</div>
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column',
-                gap: '4px',
-                fontSize: isMobile ? '12px' : '13px'
-              }}>
-                {expiringBoards.map((b, idx) => (
-                  <div key={idx}>
-                    • {b.slot_number}號 - {b.member_name} ({b.expires_at})
-                  </div>
-                ))}
-              </div>
+            <div>
+              <div style={{ marginBottom: '3px' }}>🏄 置板即將到期：</div>
+              {expiringBoards.map((b, idx) => (
+                <div key={idx} style={{ 
+                  paddingLeft: '20px', 
+                  fontSize: isMobile ? '12px' : '13px',
+                  color: '#666',
+                  marginBottom: '2px'
+                }}>
+                  {b.slot_number}號 - {b.member_name} ({b.expires_at})
+                </div>
+              ))}
             </div>
           )}
         </div>
