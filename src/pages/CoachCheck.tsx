@@ -34,10 +34,9 @@ interface Participant {
   id?: string
   member_id: string | null
   participant_name: string
-  boat_fee_duration_min: number
-  boat_fee_type: 'voucher_g23' | 'voucher_g21' | 'balance' | 'cash'
-  designated_fee_duration_min: number
-  designated_fee_type: 'designated_lesson' | 'cash' | null
+  duration_min: number
+  is_designated: boolean
+  notes?: string
   member?: Member  // For displaying member info
 }
 
@@ -133,9 +132,9 @@ export function CoachCheck({ user }: CoachCheckProps) {
       })
 
       const bookingsWithData = (data || []).map(booking => ({
-        ...booking,
+          ...booking,
         boats: booking.boats?.[0] || null,
-        coaches: coachesByBooking[booking.id] || [],
+          coaches: coachesByBooking[booking.id] || [],
         has_report: participantCounts[booking.id] > 0,
         participant_count: participantCounts[booking.id] || 0
       }))
@@ -163,21 +162,18 @@ export function CoachCheck({ user }: CoachCheckProps) {
         id: p.id,
         member_id: p.member_id,
         participant_name: p.participant_name,
-        boat_fee_duration_min: p.boat_fee_duration_min || 0,
-        boat_fee_type: p.boat_fee_type || 'cash',
-        designated_fee_duration_min: p.designated_fee_duration_min || 0,
-        designated_fee_type: p.designated_fee_type
+        duration_min: p.designated_fee_duration_min || 0,
+        is_designated: p.designated_fee_type === 'designated_lesson',
+        notes: p.notes || ''
       })))
     } else {
       // Default: add booking person as first participant
-      const boatType = booking.boats?.name?.includes('G23') ? 'voucher_g23' : 'voucher_g21'
       setParticipants([{
         member_id: null,
         participant_name: booking.contact_name,
-        boat_fee_duration_min: booking.duration_min,
-        boat_fee_type: boatType,
-        designated_fee_duration_min: 0,
-        designated_fee_type: null
+        duration_min: booking.duration_min,
+        is_designated: false,
+        notes: ''
       }])
     }
     
@@ -185,14 +181,12 @@ export function CoachCheck({ user }: CoachCheckProps) {
   }
 
   const addParticipant = (member: Member | null, name?: string) => {
-    const boatType = selectedBooking?.boats?.name?.includes('G23') ? 'voucher_g23' : 'voucher_g21'
     setParticipants([...participants, {
       member_id: member?.id || null,
       participant_name: member?.name || name || '',
-      boat_fee_duration_min: selectedBooking?.duration_min || 60,
-      boat_fee_type: boatType,
-      designated_fee_duration_min: 0,
-      designated_fee_type: null,
+      duration_min: selectedBooking?.duration_min || 60,
+      is_designated: false,
+      notes: '',
       member: member || undefined
     }])
     setMemberSearchTerm('')
@@ -230,10 +224,11 @@ export function CoachCheck({ user }: CoachCheckProps) {
           booking_id: selectedBooking.id,
           member_id: p.member_id,
           participant_name: p.participant_name,
-          boat_fee_duration_min: p.boat_fee_duration_min,
-          boat_fee_type: p.boat_fee_type,
-          designated_fee_duration_min: p.designated_fee_duration_min || null,
-          designated_fee_type: p.designated_fee_type
+          boat_fee_duration_min: null,
+          boat_fee_type: null,
+          designated_fee_duration_min: p.is_designated ? p.duration_min : null,
+          designated_fee_type: p.is_designated ? 'designated_lesson' : null,
+          notes: p.notes || null
         })))
 
       if (error) throw error
@@ -551,172 +546,130 @@ export function CoachCheck({ user }: CoachCheckProps) {
                 <div
                   key={index}
                   style={{
-                    padding: '15px',
-                    background: '#f8f9fa',
+                    padding: isMobile ? '12px' : '15px',
+                    background: 'white',
                     borderRadius: '8px',
                     marginBottom: '12px',
-                    border: '1px solid #e0e0e0'
+                    border: '2px solid #e0e0e0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
                   }}
                 >
+                  {/* Header: Name + Delete */}
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '12px'
+                    alignItems: 'start',
+                    marginBottom: '10px'
                   }}>
-                    <div>
-                      <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '4px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>
                         👤 {participant.participant_name}
                       </div>
                       {participant.member && (
                         <div style={{
-                          fontSize: '12px',
-                          color: '#666',
+                          fontSize: '11px',
+                          color: '#999',
                           display: 'flex',
-                          gap: '10px',
+                          gap: '8px',
                           flexWrap: 'wrap'
                         }}>
-                          <span>💰 ${participant.member.balance}</span>
-                          <span>⏱️ {participant.member.designated_lesson_minutes}分</span>
-                          <span>🚤 {participant.member.boat_voucher_g23_minutes}分</span>
-                          <span>⛵ {participant.member.boat_voucher_g21_minutes}分</span>
+                          <span>餘額 ${participant.member.balance}</span>
+                          <span>指定課 {participant.member.designated_lesson_minutes}分</span>
                         </div>
                       )}
                     </div>
                     <button
                       onClick={() => removeParticipant(index)}
                       style={{
-                        padding: '4px 10px',
+                        padding: '6px 12px',
                         background: '#dc3545',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        cursor: 'pointer'
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        fontWeight: '500'
                       }}
                     >
                       刪除
                     </button>
                   </div>
 
-                  {/* Boat Fee */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-                      船費時長（分鐘）
+                  {/* Duration */}
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ 
+                      display: 'block', 
+                      fontSize: '14px', 
+                      fontWeight: '500', 
+                      marginBottom: '6px' 
+                    }}>
+                      ⏱️ 時長（分鐘）
                     </label>
                     <input
                       type="number"
-                      value={participant.boat_fee_duration_min}
-                      onChange={(e) => updateParticipant(index, 'boat_fee_duration_min', parseInt(e.target.value) || 0)}
+                      value={participant.duration_min}
+                      onChange={(e) => updateParticipant(index, 'duration_min', parseInt(e.target.value) || 0)}
+                      style={{
+                        width: '100%',
+                        padding: isMobile ? '10px' : '8px',
+                        border: '2px solid #ccc',
+                        borderRadius: '6px',
+                        fontSize: isMobile ? '16px' : '14px'
+                      }}
+                    />
+                  </div>
+
+                  {/* Is Designated */}
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '10px',
+                    background: participant.is_designated ? '#e8f5e9' : '#f8f9fa',
+                    border: `2px solid ${participant.is_designated ? '#4caf50' : '#e0e0e0'}`,
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    marginBottom: '10px'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={participant.is_designated}
+                      onChange={(e) => updateParticipant(index, 'is_designated', e.target.checked)}
+                      style={{ 
+                        width: isMobile ? '18px' : '16px',
+                        height: isMobile ? '18px' : '16px',
+                        marginRight: '8px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <span style={{ fontSize: isMobile ? '15px' : '14px', fontWeight: '500' }}>
+                      ✅ 指定課
+                    </span>
+                  </label>
+
+                  {/* Notes */}
+                  <div>
+                    <label style={{ 
+                      display: 'block', 
+                      fontSize: '13px', 
+                      color: '#666', 
+                      marginBottom: '6px' 
+                    }}>
+                      💬 註解（選填，可寫船資訊）
+                    </label>
+                    <textarea
+                      value={participant.notes || ''}
+                      onChange={(e) => updateParticipant(index, 'notes', e.target.value)}
+                      placeholder="例如：換船 G21 → G23"
+                      rows={2}
                       style={{
                         width: '100%',
                         padding: '8px',
                         border: '1px solid #ccc',
                         borderRadius: '6px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        resize: 'vertical'
                       }}
                     />
-                  </div>
-
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-                      船費付費方式
-                    </label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                      {['voucher_g23', 'voucher_g21', 'balance', 'cash'].map(type => (
-                        <label
-                          key={type}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '8px',
-                            background: participant.boat_fee_type === type ? '#e3f2fd' : 'white',
-                            border: `2px solid ${participant.boat_fee_type === type ? '#667eea' : '#e0e0e0'}`,
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '13px'
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            checked={participant.boat_fee_type === type}
-                            onChange={() => updateParticipant(index, 'boat_fee_type', type)}
-                            style={{ marginRight: '6px' }}
-                          />
-                          {type === 'voucher_g23' && '🚤 G23券'}
-                          {type === 'voucher_g21' && '⛵ G21券'}
-                          {type === 'balance' && '💰 儲值'}
-                          {type === 'cash' && '💵 現金'}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Designated Lesson (Optional) */}
-                  <div style={{
-                    padding: '12px',
-                    background: 'white',
-                    borderRadius: '6px',
-                    border: '1px solid #e0e0e0'
-                  }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                      指定課（選填）
-                    </div>
-                    <div style={{ marginBottom: '8px' }}>
-                      <input
-                        type="number"
-                        value={participant.designated_fee_duration_min}
-                        onChange={(e) => updateParticipant(index, 'designated_fee_duration_min', parseInt(e.target.value) || 0)}
-                        placeholder="時長（分鐘）"
-                        style={{
-                          width: '100%',
-                          padding: '8px',
-                          border: '1px solid #ccc',
-                          borderRadius: '6px',
-                          fontSize: '14px'
-                        }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <label style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '8px',
-                        background: participant.designated_fee_type === 'designated_lesson' ? '#e3f2fd' : 'white',
-                        border: `2px solid ${participant.designated_fee_type === 'designated_lesson' ? '#667eea' : '#e0e0e0'}`,
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '13px'
-                      }}>
-                        <input
-                          type="radio"
-                          checked={participant.designated_fee_type === 'designated_lesson'}
-                          onChange={() => updateParticipant(index, 'designated_fee_type', 'designated_lesson')}
-                          style={{ marginRight: '6px' }}
-                        />
-                        ⏱️ 指定課
-                      </label>
-                      <label style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '8px',
-                        background: participant.designated_fee_type === 'cash' ? '#e3f2fd' : 'white',
-                        border: `2px solid ${participant.designated_fee_type === 'cash' ? '#667eea' : '#e0e0e0'}`,
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '13px'
-                      }}>
-                        <input
-                          type="radio"
-                          checked={participant.designated_fee_type === 'cash'}
-                          onChange={() => updateParticipant(index, 'designated_fee_type', 'cash')}
-                          style={{ marginRight: '6px' }}
-                        />
-                        💵 現金
-                          </label>
-                    </div>
                   </div>
                 </div>
               ))}
