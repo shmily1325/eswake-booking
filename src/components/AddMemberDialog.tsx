@@ -16,8 +16,9 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     nickname: '',
     birthday: '',
     phone: '',
-    member_type: 'member',
+    member_type: 'guest',  // 預設為客人
     notes: '',
+    membership_expires_at: '',
   })
 
   // 统一的输入框样式
@@ -48,9 +49,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
     setLoading(true)
     try {
-      // 根據會員類型設定置板狀態
-      const hasBoard = formData.member_type === 'member_with_board' || formData.member_type === 'board_only'
-      
       const { error } = await supabase
         .from('members')
         .insert([{
@@ -63,13 +61,13 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           balance: 0,
           designated_lesson_minutes: 0,
           boat_voucher_minutes: 0,
-          has_board_storage: hasBoard,
+          membership_expires_at: formData.member_type === 'member' ? (formData.membership_expires_at || null) : null,
           status: 'active',
         }])
 
       if (error) throw error
 
-      alert('新增會員成功！')
+      alert('新增成功！')
       onSuccess()
       onClose()
       
@@ -79,8 +77,9 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
         nickname: '',
         birthday: '',
         phone: '',
-        member_type: 'member',
+        member_type: 'guest',
         notes: '',
+        membership_expires_at: '',
       })
     } catch (error) {
       console.error('新增會員失敗:', error)
@@ -218,10 +217,10 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               />
             </div>
 
-            {/* 會員類型 */}
+            {/* 類型 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                會員類型 <span style={{ color: 'red' }}>*</span>
+                類型 <span style={{ color: 'red' }}>*</span>
               </label>
               <select
                 value={formData.member_type}
@@ -231,11 +230,27 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 onBlur={handleBlur}
                 required
               >
+                <option value="guest">客人</option>
                 <option value="member">會員</option>
-                <option value="member_with_board">會員+置板</option>
-                <option value="board_only">僅置板</option>
               </select>
             </div>
+
+            {/* 會員到期 - 只在選擇「會員」時顯示 */}
+            {formData.member_type === 'member' && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                  會員到期 <span style={{ fontSize: '13px' }}>（選填）</span>
+                </label>
+                <input
+                  type="date"
+                  value={formData.membership_expires_at}
+                  onChange={(e) => setFormData({ ...formData, membership_expires_at: e.target.value })}
+                  style={inputStyle}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+              </div>
+            )}
 
             {/* 備註 */}
             <div style={{ marginBottom: '16px' }}>
