@@ -15,7 +15,8 @@ interface Member {
   phone: string | null
   balance: number
   designated_lesson_minutes: number
-  boat_voucher_minutes: number
+  boat_voucher_g23_minutes: number
+  boat_voucher_g21_minutes: number
   membership_expires_at: string | null
   member_type: string  // 'guest' or 'member'
   notes: string | null
@@ -351,28 +352,35 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 {/* 右側：權益資訊 */}
                 <div style={{ 
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '15px',
-                  minWidth: '400px'
+                  gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                  gap: '12px',
+                  minWidth: isMobile ? 'auto' : '500px'
                 }}>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>儲值</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f44336' }}>
+                    <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold', color: '#f44336' }}>
                       ${member.balance.toLocaleString()}
                     </div>
                   </div>
                   
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>指定課</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff9800' }}>
+                    <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold', color: '#ff9800' }}>
                       {member.designated_lesson_minutes} 分
                     </div>
                   </div>
                   
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>船券</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#2196f3' }}>
-                      {member.boat_voucher_minutes} 分
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>G23券</div>
+                    <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold', color: '#4caf50' }}>
+                      {member.boat_voucher_g23_minutes} 分
+                    </div>
+                  </div>
+                  
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>G21券</div>
+                    <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold', color: '#13c2c2' }}>
+                      {member.boat_voucher_g21_minutes} 分
                     </div>
                   </div>
                 </div>

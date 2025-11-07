@@ -12,7 +12,8 @@ interface Member {
   phone: string | null
   balance: number
   designated_lesson_minutes: number
-  boat_voucher_minutes: number
+  boat_voucher_g23_minutes: number
+  boat_voucher_g21_minutes: number
   membership_expires_at: string | null
   member_type: string  // 'guest' or 'member'
   notes: string | null
@@ -307,7 +308,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                     {/* 財務資訊 */}
                     <div style={{ marginBottom: '30px' }}>
                       <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>💰 財務資訊</h3>
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '15px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '15px' }}>
                         <BalanceCard
                           icon="💵"
                           label="餘額"
@@ -322,9 +323,15 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         />
                         <BalanceCard
                           icon="🚤"
-                          label="船券"
-                          value={`${member.boat_voucher_minutes} 分鐘`}
+                          label="G23 船券"
+                          value={`${member.boat_voucher_g23_minutes} 分鐘`}
                           color="#52c41a"
+                        />
+                        <BalanceCard
+                          icon="⛵"
+                          label="G21 船券"
+                          value={`${member.boat_voucher_g21_minutes} 分鐘`}
+                          color="#13c2c2"
                         />
                       </div>
                     </div>
@@ -721,6 +728,8 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
       case 'balance': return '餘額'
       case 'designated_lesson': return '指定課'
       case 'boat_voucher': return '船券'
+      case 'boat_voucher_g23': return 'G23 船券'
+      case 'boat_voucher_g21': return 'G21 船券'
       case 'membership': return '會籍'
       case 'board_storage': return '置板'
       default: return category
