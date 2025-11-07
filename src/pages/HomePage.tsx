@@ -14,43 +14,44 @@ export function HomePage({ user }: HomePageProps) {
   // Detect V2 environment
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
   const isV2Environment = supabaseUrl.includes('v2') || supabaseUrl.includes('staging')
-        const menuItems = [
-          {
-            title: '預約表',
-            icon: '📅',
-            link: `/day?date=${getLocalDateString()}`
-          },
-          {
-            title: '預約查詢',
-            icon: '🔍',
-            link: '/search'
-          },
-          {
-            title: 'BAO 專區',
-            icon: '🔧',
-            link: '/bao'
-          },
-          {
-            title: '教練回報',
-            icon: '✅',
-            link: '/coach-check'
-          },
-          {
-            title: '明日提醒',
-            icon: '📢',
-            link: '/admin'
-          },
-          {
-            title: '編輯記錄',
-            icon: '📝',
-            link: '/audit-log'
-          },
-          {
-            title: '匯出',
-            icon: '💾',
-            link: '/backup'
-          }
-        ]
+  const menuItems = [
+    {
+      title: '預約表',
+      icon: '📅',
+      link: `/day?date=${getLocalDateString()}`
+    },
+    {
+      title: '預約查詢',
+      icon: '🔍',
+      link: '/search'
+    },
+    {
+      title: '教練回報',
+      icon: '✅',
+      link: '/coach-check'
+    },
+    {
+      title: '明日提醒',
+      icon: '📢',
+      link: '/admin'
+    },
+    {
+      title: '編輯記錄',
+      icon: '📝',
+      link: '/audit-log'
+    },
+    {
+      title: '匯出',
+      icon: '💾',
+      link: '/backup'
+    },
+    {
+      title: 'BAO 專區',
+      icon: '🔧',
+      link: '/bao',
+      isAdmin: true
+    }
+  ]
 
   return (
     <div style={{ 
