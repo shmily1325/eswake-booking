@@ -26,19 +26,14 @@ export function HomePage({ user }: HomePageProps) {
       link: '/search'
     },
     {
-      title: '教練回報',
-      icon: '✅',
-      link: '/coach-check'
-    },
-    {
       title: '明日提醒',
-      icon: '📢',
+      icon: '⏰',
       link: '/admin'
     },
     {
-      title: '快速記帳',
-      icon: '💳',
-      link: '/quick-transaction'
+      title: '教練回報',
+      icon: '👨‍🏫',
+      link: '/coach-check'
     },
     {
       title: '編輯記錄',
@@ -46,7 +41,7 @@ export function HomePage({ user }: HomePageProps) {
       link: '/audit-log'
     },
     {
-      title: 'BAO',
+      title: 'BAO 專區',
       icon: '🔧',
       link: '/bao',
       isAdmin: true

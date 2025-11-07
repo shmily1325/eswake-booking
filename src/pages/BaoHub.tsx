@@ -32,6 +32,11 @@ export function BaoHub({ user }: BaoHubProps) {
       link: '/staff'
     },
     {
+      title: '快速記帳',
+      icon: '💳',
+      link: '/quick-transaction'
+    },
+    {
       title: '匯出資料',
       icon: '💾',
       link: '/backup'
@@ -104,7 +109,7 @@ export function BaoHub({ user }: BaoHubProps) {
             color: '#000',
             letterSpacing: '1px'
           }}>
-            BAO 管理專區
+            BAO HUB
           </h1>
           <p style={{
             margin: 0,
@@ -112,7 +117,7 @@ export function BaoHub({ user }: BaoHubProps) {
             color: '#666',
             fontWeight: '500'
           }}>
-            寶哥專屬後台管理中心
+            最大的人(?)專用後台
           </p>
         </div>
 
