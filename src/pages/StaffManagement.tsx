@@ -160,33 +160,36 @@ export function StaffManagement({ user }: StaffManagementProps) {
         <UserMenu user={user} />
       </div>
 
-      {/* 標題 */}
-      <div style={{
-        background: 'white',
-        padding: isMobile ? '20px 15px' : '24px 20px',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      {/* 標題列 */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
         marginBottom: isMobile ? '15px' : '20px',
+        background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+        padding: '15px',
+        borderRadius: '8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        gap: isMobile ? '8px' : '10px',
+        flexWrap: 'wrap'
       }}>
-        <h1 style={{
-          margin: '0 0 8px 0',
-          fontSize: isMobile ? '24px' : '28px',
-          fontWeight: 'bold',
-          color: '#333',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
-          <span style={{ fontSize: isMobile ? '28px' : '32px' }}>🎓</span>
-          教練管理
-        </h1>
-        <p style={{
-          margin: 0,
-          fontSize: '14px',
-          color: '#666'
-        }}>
-          共 {staffList.length} 位教練
-        </p>
+        <div>
+          <h1 style={{ 
+            margin: '0 0 4px 0', 
+            fontSize: isMobile ? '18px' : '20px', 
+            fontWeight: 'bold',
+            color: 'white'
+          }}>
+            🎓 教練管理
+          </h1>
+          <p style={{
+            margin: 0,
+            fontSize: '13px',
+            color: 'rgba(255,255,255,0.8)'
+          }}>
+            共 {staffList.length} 位教練
+          </p>
+        </div>
       </div>
 
       {/* 教練列表 */}

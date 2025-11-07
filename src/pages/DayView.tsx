@@ -54,6 +54,9 @@ interface Booking {
   id: number
   boat_id: number
   student: string
+  contact_name?: string    // V2 新欄位
+  member_id?: string | null // V2 新欄位
+  driver_coach_id?: string | null // V2 新欄位：駕駛
   start_at: string
   duration_min: number
   activity_types?: string[] | null
@@ -61,6 +64,7 @@ interface Booking {
   status: string
   boats?: Boat
   coaches?: Coach[] // 改为数组，支持多教练
+  driver?: { name: string } | null // 駕駛資訊
 }
 
 // Generate time slots from 04:30 to 22:00, every 15 minutes
@@ -215,15 +219,16 @@ export function DayView({ user }: DayViewProps) {
     }
   }
 
-  // 獲取預約的教練信息
+  // 獲取預約的教練信息和駕駛信息
   const fetchBookingsWithCoaches = async (bookingsData: any[]) => {
     if (bookingsData.length === 0) {
       setBookings([])
       return
     }
 
-    // 獲取所有預約的教練關聯
     const bookingIds = bookingsData.map(b => b.id)
+
+    // 獲取所有預約的教練關聯
     const { data: bookingCoachesData, error } = await supabase
       .from('booking_coaches')
       .select('booking_id, coaches:coach_id(id, name)')
@@ -231,9 +236,25 @@ export function DayView({ user }: DayViewProps) {
 
     if (error) {
       console.error('Error fetching booking coaches:', error)
-      // 即使出錯也設置預約數據，只是沒有教練信息
-      setBookings(bookingsData.map(b => ({ ...b, coaches: [] })))
-      return
+    }
+
+    // 獲取駕駛資訊（透過 driver_coach_id）
+    const driverCoachIds = bookingsData
+      .map(b => b.driver_coach_id)
+      .filter(id => id != null)
+    
+    let driversData: any[] = []
+    if (driverCoachIds.length > 0) {
+      const { data, error: driverError } = await supabase
+        .from('coaches')
+        .select('id, name')
+        .in('id', driverCoachIds)
+      
+      if (driverError) {
+        console.error('Error fetching drivers:', driverError)
+      } else {
+        driversData = data || []
+      }
     }
 
     // 按 booking_id 分組教練
@@ -249,10 +270,17 @@ export function DayView({ user }: DayViewProps) {
       }
     }
 
-    // 合併教練信息到預約中
+    // 建立駕駛 ID 對應名稱的 map
+    const driversMap: { [key: string]: { name: string } } = {}
+    for (const driver of driversData) {
+      driversMap[driver.id] = { name: driver.name }
+    }
+
+    // 合併教練和駕駛信息到預約中
     const bookingsWithCoaches = bookingsData.map(booking => ({
       ...booking,
-      coaches: coachesByBooking[booking.id] || []
+      coaches: coachesByBooking[booking.id] || [],
+      driver: booking.driver_coach_id ? driversMap[booking.driver_coach_id] : null
     }))
 
     setBookings(bookingsWithCoaches)
@@ -777,7 +805,7 @@ export function DayView({ user }: DayViewProps) {
 
                               {/* 預約詳情 */}
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                {/* 學生和教練 */}
+                                {/* 學生、教練和駕駛 */}
                                 <div style={{
                                   display: 'flex',
                                   gap: isMobile ? '8px' : '12px',
@@ -790,7 +818,7 @@ export function DayView({ user }: DayViewProps) {
                                     fontWeight: '700',
                                     color: '#000',
                                   }}>
-                                    {booking.student}
+                                    {booking.contact_name || booking.student}
                                   </div>
                                   <div style={{
                                     fontSize: isMobile ? '12px' : '13px',
@@ -804,6 +832,18 @@ export function DayView({ user }: DayViewProps) {
                                       ? booking.coaches.map(c => c.name).join(' / ')
                                       : '未指定'}</span>
                                   </div>
+                                  {booking.driver && (
+                                    <div style={{
+                                      fontSize: isMobile ? '12px' : '13px',
+                                      color: '#2196f3',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                    }}>
+                                      <span>🚤</span>
+                                      <span>{booking.driver.name}</span>
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* 活動類型和備註 */}
@@ -994,7 +1034,7 @@ export function DayView({ user }: DayViewProps) {
                             textAlign: 'center',
                             lineHeight: '1.2',
                           }}>
-                            {booking.student}
+                            {booking.contact_name || booking.student}
                           </div>
                           
                           <div style={{
@@ -1015,6 +1055,18 @@ export function DayView({ user }: DayViewProps) {
                               lineHeight: '1.2',
                             }}>
                               {isMobile ? booking.coaches.map(c => c.name).join('/') : `🎓 ${booking.coaches.map(c => c.name).join(' / ')}`}
+                            </div>
+                          )}
+                          
+                          {booking.driver && (
+                            <div style={{
+                              fontSize: isMobile ? '9px' : '12px',
+                              color: '#2196f3',
+                              marginTop: isMobile ? '2px' : '4px',
+                              textAlign: 'center',
+                              lineHeight: '1.2',
+                            }}>
+                              {isMobile ? booking.driver.name : `🚤 ${booking.driver.name}`}
                             </div>
                           )}
                           

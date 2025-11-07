@@ -13,6 +13,13 @@ interface Boat {
   color: string
 }
 
+interface Member {
+  id: string
+  name: string
+  nickname: string | null
+  phone: string | null
+}
+
 interface NewBookingDialogProps {
   isOpen: boolean
   onClose: () => void
@@ -35,6 +42,15 @@ export function NewBookingDialog({
   const [selectedBoatId, setSelectedBoatId] = useState(defaultBoatId)
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
+  const [selectedDriver, setSelectedDriver] = useState<string>('') // 駕駛（可選）
+  
+  // 會員搜尋相關
+  const [members, setMembers] = useState<Member[]>([])
+  const [memberSearchTerm, setMemberSearchTerm] = useState('')
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false)
+  const [manualStudentName, setManualStudentName] = useState('') // 手動輸入的名字
+  
   const [student, setStudent] = useState('')
   const [startDate, setStartDate] = useState('')
   const [startTime, setStartTime] = useState('00:00')
@@ -58,6 +74,7 @@ export function NewBookingDialog({
     if (isOpen) {
       fetchBoats()
       fetchCoaches()
+      fetchMembers()
       setSelectedBoatId(defaultBoatId)
       
       // 純字符串解析（避免 new Date() 的時區問題）
@@ -107,6 +124,32 @@ export function NewBookingDialog({
     }
     setLoadingCoaches(false)
   }
+
+  const fetchMembers = async () => {
+    const { data, error } = await supabase
+      .from('members')
+      .select('id, name, nickname, phone')
+      .eq('status', 'active')
+      .order('name')
+    
+    if (error) {
+      console.error('Error fetching members:', error)
+    } else {
+      setMembers(data || [])
+    }
+  }
+
+  // 過濾會員列表
+  const filteredMembers = useMemo(() => {
+    if (!memberSearchTerm.trim()) return []
+    
+    const searchLower = memberSearchTerm.toLowerCase()
+    return members.filter(member => 
+      member.name.toLowerCase().includes(searchLower) ||
+      (member.nickname && member.nickname.toLowerCase().includes(searchLower)) ||
+      (member.phone && member.phone.includes(searchLower))
+    ).slice(0, 10) // 只顯示前 10 筆
+  }, [members, memberSearchTerm])
 
   const toggleCoach = (coachId: string) => {
     setSelectedCoaches(prev => 
@@ -164,8 +207,8 @@ export function NewBookingDialog({
     setError('')
 
     // 驗證必填欄位
-    if (!student.trim()) {
-      setError('⚠️ 請輸入學生姓名')
+    if (!selectedMemberId && !manualStudentName.trim()) {
+      setError('⚠️ 請選擇會員或輸入姓名')
       return
     }
 
@@ -348,15 +391,27 @@ export function NewBookingDialog({
           continue
         }
       
-        // 創建預約（不包含 coach_id）
+        // 決定最終的學生名字
+        const finalStudentName = selectedMemberId 
+          ? (members.find(m => m.id === selectedMemberId)?.name || manualStudentName)
+          : manualStudentName
+
+        // 找到駕駛的 ID（如果有選擇）
+        const driverCoachId = selectedDriver 
+          ? (coaches.find(c => c.name === selectedDriver)?.id || null)
+          : null
+
+        // 創建預約
         const bookingToInsert = {
           boat_id: selectedBoatId,
-          student: student,
+          member_id: selectedMemberId || null,  // 會員 ID（可選）
+          contact_name: finalStudentName,        // 聯絡人姓名
+          contact_phone: null,                   // TODO: 之後可以加電話
           start_at: newStartAt,
           duration_min: durationMin,
-          activity_types: activityTypes.length > 0 ? activityTypes : null,
+          driver_coach_id: driverCoachId,        // 駕駛 ID（可選）
           notes: notes || null,
-          status: 'Confirmed',
+          status: 'confirmed',
           created_by: user.id,
         }
 
@@ -598,6 +653,94 @@ export function NewBookingDialog({
             )}
           </div>
 
+          {/* 駕駛選擇 */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              color: '#000',
+              fontSize: '15px',
+              fontWeight: '500',
+            }}>
+              駕駛（選填）
+            </label>
+            
+            {loadingCoaches ? (
+              <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
+                載入駕駛列表中...
+              </div>
+            ) : (
+              <div style={{
+                maxHeight: '180px',
+                overflowY: 'auto',
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                padding: '8px',
+                WebkitOverflowScrolling: 'touch',
+              }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  transition: 'background 0.2s',
+                  backgroundColor: selectedDriver === '' ? '#f0f0f0' : 'transparent',
+                }}>
+                  <input
+                    type="radio"
+                    checked={selectedDriver === ''}
+                    onChange={() => setSelectedDriver('')}
+                    style={{
+                      marginRight: '10px',
+                      width: '18px',
+                      height: '18px',
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <span style={{ fontSize: '15px', color: '#666' }}>不指定駕駛</span>
+                </label>
+                {coaches.map((coach) => (
+                  <label
+                    key={coach.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '10px',
+                      cursor: 'pointer',
+                      borderRadius: '6px',
+                      transition: 'background 0.2s',
+                      backgroundColor: selectedDriver === coach.name ? '#e3f2fd' : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedDriver !== coach.name) {
+                        e.currentTarget.style.backgroundColor = '#f5f5f5'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedDriver !== coach.name) {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      checked={selectedDriver === coach.name}
+                      onChange={() => setSelectedDriver(coach.name)}
+                      style={{
+                        marginRight: '10px',
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <span style={{ fontSize: '15px' }}>{coach.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* 船隻選擇 */}
           <div style={{ marginBottom: '18px' }}>
             <label style={{ 
@@ -632,7 +775,8 @@ export function NewBookingDialog({
             </select>
           </div>
 
-          <div style={{ marginBottom: '18px' }}>
+          {/* 預約人選擇（會員搜尋或手動輸入） */}
+          <div style={{ marginBottom: '18px', position: 'relative' }}>
             <label style={{ 
               display: 'block', 
               marginBottom: '6px', 
@@ -640,23 +784,125 @@ export function NewBookingDialog({
               fontSize: '15px',
               fontWeight: '500',
             }}>
-              學生
+              預約人 {selectedMemberId && <span style={{ color: '#4caf50', fontSize: '13px' }}>（已選擇會員）</span>}
             </label>
+            
+            {/* 搜尋會員 */}
             <input
               type="text"
-              value={student}
-              onChange={(e) => setStudent(e.target.value)}
-              required
+              value={memberSearchTerm}
+              onChange={(e) => {
+                setMemberSearchTerm(e.target.value)
+                setShowMemberDropdown(true)
+                if (!e.target.value) {
+                  setSelectedMemberId(null)
+                }
+              }}
+              onFocus={() => setShowMemberDropdown(true)}
+              placeholder="搜尋會員姓名/暱稱/電話..."
               style={{
                 width: '100%',
                 padding: '12px',
                 borderRadius: '8px',
-                border: '1px solid #ccc',
+                border: selectedMemberId ? '2px solid #4caf50' : '1px solid #ccc',
                 boxSizing: 'border-box',
                 fontSize: '16px',
                 touchAction: 'manipulation',
               }}
             />
+            
+            {/* 會員下拉選單 */}
+            {showMemberDropdown && filteredMembers.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                maxHeight: '200px',
+                overflowY: 'auto',
+                background: 'white',
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                marginTop: '4px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                zIndex: 1000,
+              }}>
+                {filteredMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    onClick={() => {
+                      setSelectedMemberId(member.id)
+                      setMemberSearchTerm(member.name + (member.nickname ? ` (${member.nickname})` : ''))
+                      setManualStudentName(member.name)
+                      setShowMemberDropdown(false)
+                    }}
+                    style={{
+                      padding: '12px',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid #f0f0f0',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                  >
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                      {member.name}
+                      {member.nickname && <span style={{ color: '#666', fontWeight: 'normal' }}> ({member.nickname})</span>}
+                    </div>
+                    {member.phone && (
+                      <div style={{ fontSize: '13px', color: '#999' }}>
+                        📱 {member.phone}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* 或手動輸入 */}
+            {!selectedMemberId && (
+              <div style={{ marginTop: '8px' }}>
+                <input
+                  type="text"
+                  value={manualStudentName}
+                  onChange={(e) => setManualStudentName(e.target.value)}
+                  placeholder="或直接輸入姓名（非會員/首次體驗）"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #ff9800',
+                    boxSizing: 'border-box',
+                    fontSize: '16px',
+                    touchAction: 'manipulation',
+                  }}
+                />
+              </div>
+            )}
+            
+            {/* 清除會員選擇 */}
+            {selectedMemberId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMemberId(null)
+                  setMemberSearchTerm('')
+                  setManualStudentName('')
+                }}
+                style={{
+                  marginTop: '8px',
+                  padding: '6px 12px',
+                  background: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                清除會員選擇
+              </button>
+            )}
           </div>
 
           <div style={{ marginBottom: '18px' }}>
