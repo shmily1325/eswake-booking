@@ -82,7 +82,7 @@ export function BackupPage({ user }: BackupPageProps) {
       }
 
       let csv = '\uFEFF'
-      csv += '學生姓名,預約日期,抵達時間,下水時間,時長(分鐘),船隻,教練,活動類型,教練回報,回報時間,狀態,備註,創建時間\n'
+      csv += '預約人,預約日期,抵達時間,下水時間,時長(分鐘),船隻,教練,活動類型,教練回報,回報時間,狀態,備註,創建時間\n'
 
       bookings.forEach(booking => {
         const boat = (booking as any).boats?.name || '未指定'

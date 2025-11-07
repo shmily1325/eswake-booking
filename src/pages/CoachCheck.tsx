@@ -523,8 +523,38 @@ export function CoachCheck({ user }: CoachCheckProps) {
                     marginBottom: '10px'
                   }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                        👤 {participant.participant_name}
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        flexWrap: 'wrap'
+                      }}>
+                        <span>👤 {participant.participant_name}</span>
+                        {participant.member_id ? (
+                          <span style={{
+                            fontSize: '12px',
+                            padding: '2px 8px',
+                            background: '#e7f3ff',
+                            color: '#007bff',
+                            borderRadius: '4px',
+                            fontWeight: 'normal'
+                          }}>
+                            會員
+                          </span>
+                        ) : (
+                          <span style={{
+                            fontSize: '12px',
+                            padding: '2px 8px',
+                            background: '#f8f9fa',
+                            color: '#666',
+                            borderRadius: '4px',
+                            fontWeight: 'normal'
+                          }}>
+                            非會員
+                          </span>
+                        )}
                       </div>
                     </div>
                     <button
@@ -544,7 +574,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
                     </button>
                   </div>
 
-                  {/* Duration */}
+                  {/* Duration Quick Select */}
                   <div style={{ marginBottom: '10px' }}>
                     <label style={{ 
                       display: 'block', 
@@ -554,18 +584,51 @@ export function CoachCheck({ user }: CoachCheckProps) {
                     }}>
                       ⏱️ 時長（分鐘）
                     </label>
-                    <input
-                      type="number"
-                      value={participant.duration_min}
-                      onChange={(e) => updateParticipant(index, 'duration_min', parseInt(e.target.value) || 0)}
-                      style={{
-                        width: '100%',
-                        padding: isMobile ? '10px' : '8px',
-                        border: '2px solid #ccc',
-                        borderRadius: '6px',
-                        fontSize: isMobile ? '16px' : '14px'
-                      }}
-                    />
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '6px', 
+                      alignItems: 'center',
+                      flexWrap: 'wrap'
+                    }}>
+                      {[20, 30, 60, 90].map(min => (
+                        <button
+                          key={min}
+                          type="button"
+                          onClick={() => updateParticipant(index, 'duration_min', min)}
+                          style={{
+                            padding: isMobile ? '10px 16px' : '8px 14px',
+                            border: participant.duration_min === min ? '2px solid #007bff' : '1px solid #dee2e6',
+                            background: participant.duration_min === min ? '#e7f3ff' : 'white',
+                            borderRadius: '6px',
+                            fontSize: isMobile ? '15px' : '14px',
+                            fontWeight: participant.duration_min === min ? 'bold' : 'normal',
+                            color: participant.duration_min === min ? '#007bff' : '#495057',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {min}
+                        </button>
+                      ))}
+                      <span style={{ 
+                        fontSize: '14px', 
+                        color: '#666',
+                        margin: '0 4px'
+                      }}>或</span>
+                      <input
+                        type="number"
+                        value={participant.duration_min}
+                        onChange={(e) => updateParticipant(index, 'duration_min', parseInt(e.target.value) || 0)}
+                        style={{
+                          width: isMobile ? '70px' : '60px',
+                          padding: isMobile ? '10px 8px' : '8px 6px',
+                          border: '1px solid #dee2e6',
+                          borderRadius: '6px',
+                          fontSize: isMobile ? '15px' : '14px',
+                          textAlign: 'center'
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* Is Designated */}

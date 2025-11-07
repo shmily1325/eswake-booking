@@ -121,7 +121,7 @@ export function BaoHub({ user }: BaoHubProps) {
                 e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
               }}
             >
-              ← 回主頁
+              ← HOME
             </Link>
             <UserMenu user={user} />
           </div>

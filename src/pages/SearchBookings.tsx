@@ -249,7 +249,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
               color: '#868e96',
               fontWeight: '500'
             }}>
-              學生姓名
+              預約人
             </label>
             <input
               type="text"

@@ -195,7 +195,7 @@ export function DailyAnnouncement() {
               border: '1px solid #ffc107'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🎂 今日壽星</div>
-              <div>{birthdays.map(b => b.nickname || b.name).join('、')}</div>
+              <div>{birthdays.map(b => b.name).join('、')}</div>
             </div>
           )}
 
@@ -233,7 +233,7 @@ export function DailyAnnouncement() {
               }}>
                 {expiringMemberships.map((m, idx) => (
                   <div key={idx}>
-                    • {m.nickname || m.name} ({m.membership_expires_at})
+                    • {m.name} ({m.membership_expires_at})
                   </div>
                 ))}
               </div>

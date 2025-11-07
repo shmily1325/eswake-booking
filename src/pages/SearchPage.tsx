@@ -40,7 +40,7 @@ export function SearchPage({ user }: SearchPageProps) {
             color: 'white',
             fontWeight: '600'
           }}>
-            預約查詢
+            🔍預約查詢
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Link
@@ -56,7 +56,7 @@ export function SearchPage({ user }: SearchPageProps) {
                 whiteSpace: 'nowrap'
               }}
             >
-              ← 回主頁
+              ← HOME
             </Link>
             <UserMenu user={user} />
           </div>
@@ -86,7 +86,7 @@ export function SearchPage({ user }: SearchPageProps) {
               transition: 'all 0.2s'
             }}
           >
-            🎓 學生
+            👤 預約人
           </button>
           <button
             onClick={() => setActiveTab('coach')}

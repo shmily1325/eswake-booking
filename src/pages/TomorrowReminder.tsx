@@ -459,7 +459,7 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
               color: '#34495e',
               marginBottom: isMobile ? '12px' : '15px'
             }}>
-              學生提醒訊息 ({getStudentList().length} 位學生)
+              預約人提醒訊息 ({getStudentList().length} 位)
             </h2>
             
             <div style={{

@@ -723,11 +723,22 @@ function BookingsDialog({ open, staff, onClose }: BookingsDialogProps) {
           status,
           contact_name,
           booking_participants (
-            member_name,
-            reported
+            participant_name,
+            duration_min,
+            is_designated
           )
         `)
-        .or(`id.in.(${coachBookingIds.length > 0 ? coachBookingIds.join(',') : 0}),driver_coach_id.eq.${staff.id}`)
+      
+      // 構建查詢條件
+      if (coachBookingIds.length > 0) {
+        // 有教練預約：查詢教練預約或駕駛預約
+        query = query.or(`id.in.(${coachBookingIds.join(',')}),driver_coach_id.eq.${staff.id}`)
+      } else {
+        // 沒有教練預約：只查詢駕駛預約
+        query = query.eq('driver_coach_id', staff.id)
+      }
+      
+      query = query
         .order('start_at', { ascending: false })
         .limit(50)
 
