@@ -309,25 +309,21 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                           icon="💵"
                           label="餘額"
                           value={`$${member.balance.toFixed(0)}`}
-                          color="#1890ff"
                         />
                         <BalanceCard
                           icon="⏱️"
                           label="指定課"
                           value={`${member.designated_lesson_minutes} 分鐘`}
-                          color="#faad14"
                         />
                         <BalanceCard
                           icon="🚤"
                           label="G23 船券"
                           value={`${member.boat_voucher_g23_minutes} 分鐘`}
-                          color="#52c41a"
                         />
                         <BalanceCard
                           icon="⛵"
                           label="G21 船券"
                           value={`${member.boat_voucher_g21_minutes} 分鐘`}
-                          color="#13c2c2"
                         />
                       </div>
                     </div>
@@ -690,18 +686,18 @@ function InfoRow({ label, value, highlight = false }: { label: string; value: st
   )
 }
 
-function BalanceCard({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) {
+function BalanceCard({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <div style={{
-      background: `${color}10`,
-      border: `2px solid ${color}30`,
+      background: 'white',
+      border: '1px solid #dee2e6',
       borderRadius: '10px',
       padding: '20px',
       textAlign: 'center',
     }}>
       <div style={{ fontSize: '28px', marginBottom: '8px' }}>{icon}</div>
       <div style={{ color: '#666', fontSize: '14px', marginBottom: '5px' }}>{label}</div>
-      <div style={{ color: color, fontSize: '20px', fontWeight: 'bold' }}>{value}</div>
+      <div style={{ color: '#333', fontSize: '20px', fontWeight: 'bold' }}>{value}</div>
     </div>
   )
 }

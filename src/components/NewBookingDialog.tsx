@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { logBookingCreation } from '../utils/auditLog'
 
 interface Coach {
   id: string
@@ -509,19 +510,20 @@ export function NewBookingDialog({
 
         // 記錄到審計日誌（人類可讀格式）
         const coachNames = selectedCoaches.length > 0
-          ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name).join(' / ')
-          : '未指定'
+          ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
+          : []
+        const driverName = selectedDriver
+          ? coaches.find(c => c.id === selectedDriver)?.name
+          : undefined
 
-        await supabase.from('audit_log').insert({
-          operation: '新增預約',
-          user_email: user.email || '',
-          student_name: student,
-          boat_name: boatName,
-          coach_names: coachNames,
-          start_time: newStartAt,
-          duration_min: durationMin,
-          activity_types: activityTypes.length > 0 ? activityTypes : null,
-          notes: notes || null,
+        await logBookingCreation({
+          userEmail: user.email || '',
+          studentName: student,
+          boatName,
+          startTime: newStartAt,
+          durationMin,
+          coachNames,
+          driverName
         })
 
         // 記錄成功
@@ -969,136 +971,6 @@ export function NewBookingDialog({
                 </option>
               ))}
             </select>
-          </div>
-
-          {/* 預約人選擇（會員搜尋或手動輸入） */}
-          <div style={{ marginBottom: '18px', position: 'relative' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '6px', 
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '500',
-            }}>
-              預約人 {selectedMemberId && <span style={{ color: '#4caf50', fontSize: '13px' }}>（已選擇會員）</span>}
-            </label>
-            
-            {/* 搜尋會員 */}
-            <input
-              type="text"
-              value={memberSearchTerm}
-              onChange={(e) => {
-                setMemberSearchTerm(e.target.value)
-                setShowMemberDropdown(true)
-                if (!e.target.value) {
-                  setSelectedMemberId(null)
-                }
-              }}
-              onFocus={() => setShowMemberDropdown(true)}
-              placeholder="搜尋會員姓名/暱稱..."
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: selectedMemberId ? '2px solid #4caf50' : '1px solid #ccc',
-                boxSizing: 'border-box',
-                fontSize: '16px',
-                touchAction: 'manipulation',
-              }}
-            />
-            
-            {/* 會員下拉選單 */}
-            {showMemberDropdown && filteredMembers.length > 0 && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                maxHeight: '200px',
-                overflowY: 'auto',
-                background: 'white',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                marginTop: '4px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                zIndex: 1000,
-              }}>
-                {filteredMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    onClick={() => {
-                      setSelectedMemberId(member.id)
-                      setMemberSearchTerm(member.name + (member.nickname ? ` (${member.nickname})` : ''))
-                      setManualStudentName(member.name)
-                      setShowMemberDropdown(false)
-                    }}
-                    style={{
-                      padding: '12px',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #f0f0f0',
-                      transition: 'background 0.2s',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                  >
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                      {member.name}
-                      {member.nickname && <span style={{ color: '#666', fontWeight: 'normal' }}> ({member.nickname})</span>}
-                    </div>
-                    {member.phone && (
-                      <div style={{ fontSize: '13px', color: '#999' }}>
-                        📱 {member.phone}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {/* 或手動輸入 */}
-            {!selectedMemberId && (
-              <div style={{ marginTop: '8px' }}>
-                <input
-                  type="text"
-                  value={manualStudentName}
-                  onChange={(e) => setManualStudentName(e.target.value)}
-                  placeholder="或直接輸入姓名（非會員/首次體驗）"
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #ff9800',
-                    boxSizing: 'border-box',
-                    fontSize: '16px',
-                    touchAction: 'manipulation',
-                  }}
-                />
-              </div>
-            )}
-            
-            {/* 清除會員選擇 */}
-            {selectedMemberId && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedMemberId(null)
-                  setMemberSearchTerm('')
-                  setManualStudentName('')
-                }}
-                style={{
-                  marginTop: '8px',
-                  padding: '6px 12px',
-                  background: '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                }}
-              >
-                清除會員選擇
-              </button>
-            )}
           </div>
 
           <div style={{ marginBottom: '18px' }}>

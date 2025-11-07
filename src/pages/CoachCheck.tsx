@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString } from '../utils/date'
 
 interface Booking {
   id: number
@@ -45,7 +44,8 @@ interface CoachCheckProps {
 
 export function CoachCheck({ user }: CoachCheckProps) {
   const { isMobile } = useResponsive()
-  const [selectedDate, setSelectedDate] = useState(getLocalDateString())
+  const [selectedCoachId, setSelectedCoachId] = useState<string>('')
+  const [coaches, setCoaches] = useState<{ id: string; name: string }[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   const [reportDialogOpen, setReportDialogOpen] = useState(false)
@@ -57,14 +57,26 @@ export function CoachCheck({ user }: CoachCheckProps) {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    loadCoaches()
     loadMembers()
   }, [])
 
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedCoachId) {
       loadBookings()
     }
-  }, [selectedDate])
+  }, [selectedCoachId])
+
+  const loadCoaches = async () => {
+    const { data } = await supabase
+      .from('coaches')
+      .select('id, name')
+      .order('name')
+    
+    if (data) {
+      setCoaches(data)
+    }
+  }
 
   const loadMembers = async () => {
     const { data, error } = await supabase
@@ -81,10 +93,21 @@ export function CoachCheck({ user }: CoachCheckProps) {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      const startDate = `${selectedDate}T00:00:00`
-      const endDate = `${selectedDate}T23:59:59`
+      // 先找出這個教練的所有預約 ID
+      const { data: coachBookings } = await supabase
+        .from('booking_coaches')
+        .select('booking_id')
+        .eq('coach_id', selectedCoachId)
+      
+      const bookingIds = (coachBookings || []).map(b => b.booking_id)
+      
+      if (bookingIds.length === 0) {
+        setBookings([])
+        setLoading(false)
+        return
+      }
 
-      // 首先查詢預約
+      // 查詢這些預約的詳細資料
       const bookingsResult = await supabase
         .from('bookings')
         .select(`
@@ -96,18 +119,10 @@ export function CoachCheck({ user }: CoachCheckProps) {
           status,
           boats:boat_id (name, color)
         `)
-        .gte('start_at', startDate)
-        .lte('start_at', endDate)
+        .in('id', bookingIds)
         .order('start_at', { ascending: true })
 
       if (bookingsResult.error) throw bookingsResult.error
-
-      const bookingIds = bookingsResult.data?.map(b => b.id) || []
-      
-      if (bookingIds.length === 0) {
-        setBookings([])
-        return
-      }
 
       // 並行查詢教練和參與者資料（重要：從串行改為並行，提升載入速度）
       const [coachResult, participantResult] = await Promise.all([
@@ -285,21 +300,27 @@ export function CoachCheck({ user }: CoachCheckProps) {
             color: '#666',
               fontWeight: '500'
             }}>
-            選擇日期
+            選擇教練
             </label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+          <select
+            value={selectedCoachId}
+            onChange={(e) => setSelectedCoachId(e.target.value)}
               style={{
                 width: '100%',
               padding: isMobile ? '14px' : '12px',
               fontSize: isMobile ? '16px' : '15px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              backgroundColor: 'white',
+              cursor: 'pointer'
             }}
-          />
+          >
+            <option value="">請選擇教練</option>
+            {coaches.map(coach => (
+              <option key={coach.id} value={coach.id}>{coach.name}</option>
+            ))}
+          </select>
         </div>
 
         {/* Statistics */}

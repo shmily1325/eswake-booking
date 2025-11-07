@@ -177,10 +177,10 @@ export function DailyAnnouncement() {
         }}>
           {timeOffCoaches.length > 0 && (
             <div style={{
-              background: '#f8f9fa',
+              background: 'white',
               borderRadius: '8px',
               padding: '8px 10px',
-              border: '1px solid #e9ecef'
+              border: '1px solid #dee2e6'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🏖️ 休假</div>
               <div>{timeOffCoaches.join('、')}</div>
@@ -189,10 +189,10 @@ export function DailyAnnouncement() {
 
           {birthdays.length > 0 && (
             <div style={{
-              background: '#fff3cd',
+              background: 'white',
               borderRadius: '8px',
               padding: '8px 10px',
-              border: '1px solid #ffc107'
+              border: '1px solid #dee2e6'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🎂 今日壽星</div>
               <div>{birthdays.map(b => b.name).join('、')}</div>
@@ -201,10 +201,10 @@ export function DailyAnnouncement() {
 
           {announcements.length > 0 && (
             <div style={{
-              background: '#e7f3ff',
+              background: 'white',
               borderRadius: '8px',
               padding: '8px 10px',
-              border: '1px solid #2196f3'
+              border: '1px solid #dee2e6'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>📋 交辦事項</div>
               {announcements.map((ann, idx) => (
@@ -219,10 +219,10 @@ export function DailyAnnouncement() {
 
           {expiringMemberships.length > 0 && (
             <div style={{
-              background: '#ffe6e6',
+              background: 'white',
               borderRadius: '8px',
               padding: '8px 10px',
-              border: '1px solid #ff5252'
+              border: '1px solid #dee2e6'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>⚠️ 會籍即將到期</div>
               <div style={{ 
@@ -242,10 +242,10 @@ export function DailyAnnouncement() {
 
           {expiringBoards.length > 0 && (
             <div style={{
-              background: '#ffe6e6',
+              background: 'white',
               borderRadius: '8px',
               padding: '8px 10px',
-              border: '1px solid #ff5252'
+              border: '1px solid #dee2e6'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🏄 置板即將到期</div>
               <div style={{ 

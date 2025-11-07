@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
 
 interface Coach {
   id: string
@@ -392,20 +393,19 @@ export function EditBookingDialog({
         }
       }
 
-      // 記錄到審計日誌（人類可讀格式）
-      const boatName = booking.boats?.name || '未知船隻'
+      // 計算變更內容
+      const changes: string[] = []
+      if (booking.contact_name !== student) {
+        changes.push(`學生: ${booking.contact_name} → ${student}`)
+      }
+      
+      // 檢查教練變更
       const oldCoachNames = booking.coaches && booking.coaches.length > 0
         ? booking.coaches.map(c => c.name).join(' / ')
         : '未指定'
       const newCoachNames = selectedCoaches.length > 0
         ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name).join(' / ')
         : '未指定'
-
-      // 計算變更內容
-      const changes: string[] = []
-      if (booking.contact_name !== student) {
-        changes.push(`學生: ${booking.contact_name} → ${student}`)
-      }
       if (oldCoachNames !== newCoachNames) {
         changes.push(`教練: ${oldCoachNames} → ${newCoachNames}`)
       }
@@ -433,17 +433,10 @@ export function EditBookingDialog({
         changes.push(`備註已修改`)
       }
 
-      await supabase.from('audit_log').insert({
-        operation: '修改預約',
-        user_email: user.email || '',
-        student_name: student,
-        boat_name: boatName,
-        coach_names: newCoachNames,
-        start_time: newStartAt,
-        duration_min: durationMin,
-        activity_types: activityTypes.length > 0 ? activityTypes : null,
-        notes: notes || null,
-        changes: changes.length > 0 ? changes.join('; ') : null,
+      await logBookingUpdate({
+        userEmail: user.email || '',
+        studentName: student,
+        changes
       })
 
       // Success
@@ -471,12 +464,6 @@ export function EditBookingDialog({
     setLoading(true)
 
     try {
-      // 獲取船名稱
-      const boatName = booking.boats?.name || '未知船'
-      const coachNames = booking.coaches && booking.coaches.length > 0
-        ? booking.coaches.map(c => c.name).join(' / ')
-        : '未指定'
-
       // 刪除預約（CASCADE 會自動刪除 booking_coaches）
       const { error: deleteError } = await supabase
         .from('bookings')
@@ -490,16 +477,10 @@ export function EditBookingDialog({
       }
 
       // 記錄到審計日誌
-      await supabase.from('audit_log').insert({
-        operation: '刪除預約',
-        user_email: user.email || '',
-        student_name: booking.contact_name,
-        boat_name: boatName,
-        coach_names: coachNames,
-        start_time: booking.start_at,
-        duration_min: booking.duration_min,
-        activity_types: booking.activity_types,
-        notes: booking.notes || null,
+      await logBookingDeletion({
+        userEmail: user.email || '',
+        studentName: booking.contact_name,
+        startTime: booking.start_at
       })
 
       // Success
