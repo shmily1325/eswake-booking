@@ -221,11 +221,22 @@ export function CoachCheck({ user }: CoachCheckProps) {
         is_designated: p.is_designated || false
       })))
     } else {
+      // 查詢預約人是否為會員
+      const { data: memberData } = await supabase
+        .from('members')
+        .select('id, name, nickname, phone, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes')
+        .eq('status', 'active')
+        .or(`name.eq.${booking.contact_name},nickname.cs.{${booking.contact_name}}`)
+        .limit(1)
+      
+      const matchedMember = memberData?.[0] as Member | undefined
+      
       setParticipants([{
-        member_id: null,
+        member_id: matchedMember?.id || null,
         participant_name: booking.contact_name,
         duration_min: booking.duration_min,
-        is_designated: false
+        is_designated: false,
+        member: matchedMember
       }])
     }
     
