@@ -50,6 +50,8 @@ interface DesignSystem {
 
 export const designSystem: DesignSystem = {
   fontSize: {
+    // 超大標題（首頁專用）
+    display: { mobile: '32px', desktop: '42px' },
     // 頁面主標題
     h1: { mobile: '18px', desktop: '20px' },
     // 區塊標題

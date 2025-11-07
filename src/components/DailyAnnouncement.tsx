@@ -32,7 +32,7 @@ export function DailyAnnouncement() {
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
   const [expiringMemberships, setExpiringMemberships] = useState<ExpiringMembership[]>([])
   const [expiringBoards, setExpiringBoards] = useState<ExpiringBoard[]>([])
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(true)
 
   useEffect(() => {
     loadData()

@@ -282,22 +282,23 @@ export function BoardManagement({ user }: BoardManagementProps) {
           }}>
             {slotPairs.map((pair, index) => (
               <React.Fragment key={index}>
+                {/* 在每一行開始前（除了第一行）插入橫向分隔線 */}
+                {index > 0 && index % columnsPerRow === 0 && (
+                  <div style={{
+                    gridColumn: `1 / -1`,
+                    height: '3px',
+                    background: 'linear-gradient(to right, transparent, #666, transparent)',
+                    margin: '8px 0',
+                    borderRadius: '2px'
+                  }} />
+                )}
+                
                 <div style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
                   gap: '6px'
                 }}>
                   {pair.upper && renderSlotCard(pair.upper)}
-                  
-                  {pair.upper && pair.lower && (
-                    <div style={{
-                      height: '2px',
-                      background: 'linear-gradient(to right, #ddd, #999, #ddd)',
-                      margin: '2px 0',
-                      borderRadius: '1px'
-                    }} />
-                  )}
-                  
                   {pair.lower && renderSlotCard(pair.lower)}
                 </div>
               </React.Fragment>

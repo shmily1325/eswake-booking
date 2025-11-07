@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
-import { PageHeader } from '../components/PageHeader'
+import { UserMenu } from '../components/UserMenu'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 
@@ -52,15 +52,80 @@ export function BaoHub({ user }: BaoHubProps) {
   return (
     <div style={{ 
       minHeight: '100vh',
-      background: '#f5f5f5',
-      padding: isMobile ? '12px' : '20px'
+      background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)',
+      padding: '40px 20px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center'
     }}>
       <div style={{ 
-        maxWidth: '800px', 
+        maxWidth: '600px', 
         width: '100%',
         margin: '0 auto'
       }}>
-        <PageHeader title="🔧 BAO HUB" user={user} />
+        {/* Header */}
+        <div style={{
+          textAlign: 'center',
+          marginBottom: '50px'
+        }}>
+          <div style={{
+            fontSize: isMobile ? '80px' : '100px',
+            marginBottom: '20px'
+          }}>
+            🔧
+          </div>
+          <h1 style={{ 
+            margin: '0 0 10px 0',
+            fontSize: isMobile ? '32px' : '42px',
+            fontWeight: '800',
+            color: '#000',
+            letterSpacing: '2px',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+          }}>
+            BAO HUB
+          </h1>
+          <p style={{
+            margin: '0 0 20px 0',
+            fontSize: isMobile ? '14px' : '16px',
+            color: '#666',
+            fontWeight: '500'
+          }}>
+            管理者專用後台
+          </p>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '10px',
+            marginTop: '20px'
+          }}>
+            <Link
+              to="/"
+              style={{
+                padding: '10px 20px',
+                background: 'rgba(255, 255, 255, 0.7)',
+                color: '#333',
+                textDecoration: 'none',
+                borderRadius: '8px',
+                fontSize: isMobile ? '13px' : '14px',
+                border: '1px solid rgba(224, 224, 224, 0.5)',
+                fontWeight: '500',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'white'
+                e.currentTarget.style.borderColor = '#000'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
+                e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
+              }}
+            >
+              ← 回主頁
+            </Link>
+            <UserMenu user={user} />
+          </div>
+        </div>
 
         {/* Feature Cards Grid */}
         <div style={{
