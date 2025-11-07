@@ -25,34 +25,31 @@ interface Booking {
 
 export function TomorrowReminder({ user }: TomorrowReminderProps) {
   const { isMobile } = useResponsive()
-  // 智能選擇日期：凌晨 03:00 前顯示今天，之後顯示明天
+  
   const getDefaultDate = () => {
     const now = new Date()
     const hour = now.getHours()
     
     if (hour < 3) {
-      // 凌晨 00:00 - 02:59，顯示今天
       return getLocalDateString(now)
     } else {
-      // 03:00 之後，顯示明天
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
       return getLocalDateString(tomorrow)
     }
   }
+  
   const [selectedDate, setSelectedDate] = useState(getDefaultDate())
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   const [copiedStudent, setCopiedStudent] = useState<string | null>(null)
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
   
-  // 天氣警告開關（持久化）
   const [includeWeatherWarning, setIncludeWeatherWarning] = useState(() => {
     const saved = localStorage.getItem('includeWeatherWarning')
     return saved !== null ? JSON.parse(saved) : true
   })
   
-  // 可編輯文字模板（持久化）
   const [weatherWarning, setWeatherWarning] = useState(() => {
     return localStorage.getItem('weatherWarning') || `由於近期天氣變化較大，請務必在『啟程前』
 透過官方訊息與我們確認最新天氣狀況
@@ -67,7 +64,6 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
 白色的不能停 煩請配合🙏`
   })
   
-  // 保存到 localStorage
   useEffect(() => {
     localStorage.setItem('includeWeatherWarning', JSON.stringify(includeWeatherWarning))
   }, [includeWeatherWarning])
@@ -87,7 +83,6 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
   const fetchData = async () => {
     setLoading(true)
     try {
-      // 獲取當天預約
       const startOfDay = `${selectedDate}T00:00:00`
       const endOfDay = `${selectedDate}T23:59:59`
       
@@ -98,7 +93,6 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
         .lte('start_at', endOfDay)
         .order('start_at', { ascending: true })
       
-      // 獲取每個預約的教練信息
       if (bookingsData && bookingsData.length > 0) {
         const bookingIds = bookingsData.map((b: any) => b.id)
         const { data: bookingCoachesData } = await supabase
@@ -106,7 +100,6 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
           .select('booking_id, coaches:coach_id(id, name)')
           .in('booking_id', bookingIds)
         
-        // 合併教練信息
         const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
         for (const item of bookingCoachesData || []) {
           const bookingId = item.booking_id
@@ -119,7 +112,6 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
           }
         }
         
-        // 將教練信息添加到預約中
         bookingsData.forEach((booking: any) => {
           booking.coaches = coachesByBooking[booking.id] || []
         })
@@ -152,21 +144,17 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
     return `${arrivalHour.toString().padStart(2, '0')}${arrivalMinute.toString().padStart(2, '0')}`
   }
   
-  // 获取所有学生列表
   const getStudentList = (): string[] => {
     const students = new Set<string>()
     bookings.forEach(booking => students.add(booking.contact_name))
     return Array.from(students).sort()
   }
   
-  // 为特定学生生成消息
   const generateMessageForStudent = (studentName: string): string => {
-    // 获取该学生的所有预约
     const studentBookings = bookings.filter(b => b.contact_name === studentName)
     
     let message = `${studentName}你好\n提醒你，明天有預約\n\n`
     
-    // 按教练分组
     const coachBookings = new Map<string, Booking[]>()
     studentBookings.forEach(booking => {
       const coachNames = booking.coaches && booking.coaches.length > 0
@@ -179,11 +167,9 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
       coachBookings.get(coachNames)!.push(booking)
     })
     
-    // 为每个教练生成时间列表
     coachBookings.forEach((bookings, coachName) => {
       message += `${coachName}教練\n`
       
-      // 去重并排序（同一时间的预约只显示一次）
       const uniqueTimes = new Map<string, Booking>()
       bookings.forEach(booking => {
         const key = `${booking.start_at}-${booking.duration_min}`
@@ -192,7 +178,6 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
         }
       })
       
-      // 按时间排序（純字符串比較）
       const sortedBookings = Array.from(uniqueTimes.values()).sort((a, b) => {
         const aTime = a.start_at.substring(0, 16)
         const bTime = b.start_at.substring(0, 16)
@@ -207,12 +192,10 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
       })
     })
     
-    // 天氣警告（可選）
     if (includeWeatherWarning) {
       message += weatherWarning + '\n\n'
     }
     
-    // 結尾提醒
     message += footerText
     
     return message
@@ -276,7 +259,6 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
           </div>
         </div>
 
-        {/* Date Selector */}
         <div style={{
           background: 'white',
           borderRadius: '8px',
@@ -489,7 +471,6 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
                 const isCopied = copiedStudent === studentName
                 const studentBookings = bookings.filter(b => b.contact_name === studentName)
                 
-                // 计算去重后的预约数量
                 const uniqueBookingKeys = new Set<string>()
                 studentBookings.forEach(b => {
                   const key = `${b.boat_id}-${b.start_at}-${b.duration_min}`
@@ -507,7 +488,6 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
                       transition: 'all 0.2s'
                     }}
                   >
-                    {/* Student Header */}
                     <div
                       onClick={() => setSelectedStudent(isExpanded ? null : studentName)}
                       style={{

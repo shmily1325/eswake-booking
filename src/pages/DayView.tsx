@@ -7,8 +7,8 @@ import { EditBookingDialog } from '../components/EditBookingDialog'
 import { UserMenu } from '../components/UserMenu'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getLocalDateTimeString } from '../utils/date'
+import { Footer } from '../components/Footer'
 
-// 統一按鈕樣式
 const buttonStyles = {
   primary: {
     padding: '8px 14px',
@@ -54,24 +54,21 @@ interface Booking {
   id: number
   boat_id: number
   student: string
-  contact_name?: string    // V2 新欄位
-  member_id?: string | null // V2 新欄位
-  driver_coach_id?: string | null // V2 新欄位：駕駛
+  contact_name?: string
+  member_id?: string | null
+  driver_coach_id?: string | null
   start_at: string
   duration_min: number
   activity_types?: string[] | null
   notes?: string | null
   status: string
   boats?: Boat
-  coaches?: Coach[] // 改为数组，支持多教练
-  driver?: { name: string } | null // 駕駛資訊
+  coaches?: Coach[]
+  driver?: { name: string } | null
 }
 
-// Generate time slots from 04:30 to 22:00, every 15 minutes
 const generateTimeSlots = () => {
   const slots: string[] = []
-  
-  // Start from 04:30
   slots.push('04:30')
   
   let hour = 4
@@ -112,19 +109,12 @@ export function DayView({ user }: DayViewProps) {
   
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
-
-  // 手機優化：時間範圍篩選（默認為營業時間）
   const [timeRange, setTimeRange] = useState<'all' | 'business'>('business')
-  
-  // 手機優化：單船視圖
   const [singleBoatMode, setSingleBoatMode] = useState(false)
   const [currentBoatIndex, setCurrentBoatIndex] = useState(0)
-
-  // 視圖模式：時間軸 vs 列表
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('list')
 
   const changeDate = (offset: number) => {
-    // 手動構造 Date 對象（避免字符串解析的時區問題）
     const [year, month, day] = dateParam.split('-').map(Number)
     const currentDate = new Date(year, month - 1, day)
     currentDate.setDate(currentDate.getDate() + offset)
@@ -146,7 +136,6 @@ export function DayView({ user }: DayViewProps) {
   }, [dateParam])
 
   const fetchData = async () => {
-    // 如果 boats 已經存在，表示這是刷新數據，不是初次載入
     const isInitialLoad = boats.length === 0
     
     if (isInitialLoad) {
@@ -154,29 +143,23 @@ export function DayView({ user }: DayViewProps) {
     }
     
     try {
-      // 使用 Promise.all 並行獲取數據
       const promises = []
       
-      // 只在初次載入時獲取 boats
       if (isInitialLoad) {
-        promises.push(
-          supabase.from('boats').select('*')
-        )
+        promises.push(supabase.from('boats').select('*'))
       }
       
-    // 每次都獲取當日的 bookings
-    // TEXT 格式查詢，直接字符串比較
-    const startOfDay = `${dateParam}T00:00:00`
-    const endOfDay = `${dateParam}T23:59:59`
-    
-    promises.push(
-      supabase
-        .from('bookings')
-        .select('*, boats:boat_id(id, name, color)')
-        .gte('start_at', startOfDay)
-        .lte('start_at', endOfDay)
-        .order('start_at', { ascending: true })
-    )
+      const startOfDay = `${dateParam}T00:00:00`
+      const endOfDay = `${dateParam}T23:59:59`
+      
+      promises.push(
+        supabase
+          .from('bookings')
+          .select('*, boats:boat_id(id, name, color)')
+          .gte('start_at', startOfDay)
+          .lte('start_at', endOfDay)
+          .order('start_at', { ascending: true })
+      )
 
       const results = await Promise.all(promises)
       
@@ -186,7 +169,6 @@ export function DayView({ user }: DayViewProps) {
         if (boatsResult.error) {
           console.error('Error fetching boats:', boatsResult.error)
         } else {
-          // 按照指定順序排序船
           const sortedBoats = (boatsResult.data || []).sort((a, b) => {
             const order = ['G23', 'G21', '黑豹', '粉紅', '彈簧床']
             return order.indexOf(a.name) - order.indexOf(b.name)
@@ -197,11 +179,9 @@ export function DayView({ user }: DayViewProps) {
         if (bookingsResult.error) {
           console.error('Error fetching bookings:', bookingsResult.error)
         } else {
-          // 獲取每個預約的教練信息
           await fetchBookingsWithCoaches(bookingsResult.data || [])
         }
       } else {
-        // 只刷新 bookings
         const [bookingsResult] = results
         
         if (bookingsResult.error) {
@@ -219,7 +199,6 @@ export function DayView({ user }: DayViewProps) {
     }
   }
 
-  // 獲取預約的教練信息和駕駛信息
   const fetchBookingsWithCoaches = async (bookingsData: any[]) => {
     if (bookingsData.length === 0) {
       setBookings([])
@@ -228,7 +207,6 @@ export function DayView({ user }: DayViewProps) {
 
     const bookingIds = bookingsData.map(b => b.id)
 
-    // 獲取所有預約的教練關聯
     const { data: bookingCoachesData, error } = await supabase
       .from('booking_coaches')
       .select('booking_id, coaches:coach_id(id, name)')
@@ -238,7 +216,6 @@ export function DayView({ user }: DayViewProps) {
       console.error('Error fetching booking coaches:', error)
     }
 
-    // 獲取駕駛資訊（透過 driver_coach_id）
     const driverCoachIds = bookingsData
       .map(b => b.driver_coach_id)
       .filter(id => id != null)
@@ -257,7 +234,6 @@ export function DayView({ user }: DayViewProps) {
       }
     }
 
-    // 按 booking_id 分組教練
     const coachesByBooking: { [key: number]: Coach[] } = {}
     for (const item of bookingCoachesData || []) {
       const bookingId = item.booking_id
@@ -270,13 +246,11 @@ export function DayView({ user }: DayViewProps) {
       }
     }
 
-    // 建立駕駛 ID 對應名稱的 map
     const driversMap: { [key: string]: { name: string } } = {}
     for (const driver of driversData) {
       driversMap[driver.id] = { name: driver.name }
     }
 
-    // 合併教練和駕駛信息到預約中
     const bookingsWithCoaches = bookingsData.map(booking => ({
       ...booking,
       coaches: coachesByBooking[booking.id] || [],
@@ -286,7 +260,6 @@ export function DayView({ user }: DayViewProps) {
     setBookings(bookingsWithCoaches)
   }
 
-  // 輔助函數：將時間字符串轉為分鐘數（方便比較）
   const timeToMinutes = (timeStr: string): number => {
     const [hour, minute] = timeStr.split(':').map(Number)
     return hour * 60 + minute
@@ -294,11 +267,9 @@ export function DayView({ user }: DayViewProps) {
 
   const handleCellClick = (boatId: number, timeSlot: string, booking?: Booking) => {
     if (booking) {
-      // Edit existing booking
       setSelectedBooking(booking)
       setEditDialogOpen(true)
     } else {
-      // Create new booking - 使用本地時間字符串
       const localDateTimeStr = `${dateParam}T${timeSlot}:00`
       setSelectedBoatId(boatId)
       setSelectedTime(localDateTimeStr)
@@ -307,23 +278,19 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const getBookingForCell = (boatId: number, timeSlot: string): Booking | null => {
-    // 純字符串比較，完全不使用 Date 對象
     const cellMinutes = timeToMinutes(timeSlot)
     
     for (const booking of bookings) {
       if (booking.boat_id !== boatId) continue
       
-      // 直接取資料庫時間的前16個字符，不做任何轉換
-      const bookingDatetime = booking.start_at.substring(0, 16) // "2025-11-01T13:55"
+      const bookingDatetime = booking.start_at.substring(0, 16)
       const [bookingDate, bookingTime] = bookingDatetime.split('T')
       
-      // 只比較同一天的預約
       if (bookingDate !== dateParam) continue
       
       const bookingStartMinutes = timeToMinutes(bookingTime)
       const bookingEndMinutes = bookingStartMinutes + booking.duration_min
       
-      // 檢查當前格子是否在預約時間範圍內
       if (cellMinutes >= bookingStartMinutes && cellMinutes < bookingEndMinutes) {
         return booking
       }
@@ -332,13 +299,11 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const isBookingStart = (boatId: number, timeSlot: string): boolean => {
-    // 純字符串比較
-    const cellDatetime = `${dateParam}T${timeSlot}` // "2025-11-01T15:00"
+    const cellDatetime = `${dateParam}T${timeSlot}`
     
     for (const booking of bookings) {
       if (booking.boat_id !== boatId) continue
       
-      // 直接比較字符串（前16個字符）
       const bookingDatetime = booking.start_at.substring(0, 16)
       
       if (cellDatetime === bookingDatetime) {
@@ -348,9 +313,7 @@ export function DayView({ user }: DayViewProps) {
     return false
   }
 
-  // 計算接船時間結束的格子（30分鐘顯示）
   const isCleanupTime = (boatId: number, timeSlot: string): boolean => {
-    // 排除彈簧床
     const boat = boats.find(b => b.id === boatId)
     if (boat && boat.name === '彈簧床') return false
 
@@ -359,18 +322,15 @@ export function DayView({ user }: DayViewProps) {
     for (const booking of bookings) {
       if (booking.boat_id !== boatId) continue
       
-      // 直接取資料庫時間的前16個字符
       const bookingDatetime = booking.start_at.substring(0, 16)
       const [bookingDate, bookingTime] = bookingDatetime.split('T')
       
-      // 只比較同一天的預約
       if (bookingDate !== dateParam) continue
       
       const bookingStartMinutes = timeToMinutes(bookingTime)
       const bookingEndMinutes = bookingStartMinutes + booking.duration_min
-      const cleanupEndMinutes = bookingEndMinutes + 30  // 顯示30分鐘接船時間
+      const cleanupEndMinutes = bookingEndMinutes + 30
       
-      // 當前格子在接船時間範圍內
       if (cellMinutes >= bookingEndMinutes && cellMinutes < cleanupEndMinutes) {
         return true
       }
@@ -378,10 +338,8 @@ export function DayView({ user }: DayViewProps) {
     return false
   }
 
-  // 時間範圍篩選後的 TIME_SLOTS
   const filteredTimeSlots = useMemo(() => {
     if (timeRange === 'business') {
-      // 營業時間 05:00-20:00
       return TIME_SLOTS.filter(slot => {
         const [hour] = slot.split(':').map(Number)
         return hour >= 5 && hour < 20
@@ -390,7 +348,6 @@ export function DayView({ user }: DayViewProps) {
     return TIME_SLOTS
   }, [timeRange])
 
-  // 根據單船模式篩選船
   const displayBoats = useMemo(() => {
     if (singleBoatMode && boats.length > 0) {
       return [boats[currentBoatIndex]]
@@ -419,7 +376,6 @@ export function DayView({ user }: DayViewProps) {
       minHeight: '100vh',
       backgroundColor: '#f8f9fa',
     }}>
-      {/* Header */}
       <div style={{
         background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
         borderRadius: '8px',
@@ -434,11 +390,11 @@ export function DayView({ user }: DayViewProps) {
       }}>
         <h1 style={{ 
           margin: 0, 
-          fontSize: '18px',
+          fontSize: isMobile ? '18px' : '20px',
           fontWeight: '600',
           color: 'white'
         }}>
-          {viewMode === 'list' ? '列表' : '時間軸'}
+          📅 {viewMode === 'list' ? '預約列表' : '預約時間軸'}
         </h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
@@ -454,13 +410,13 @@ export function DayView({ user }: DayViewProps) {
               whiteSpace: 'nowrap'
             }}
           >
-            ← 回主頁
+            ← HOME
           </button>
           <UserMenu user={user} />
         </div>
       </div>
 
-      {/* Date Navigation */}
+
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -512,7 +468,6 @@ export function DayView({ user }: DayViewProps) {
           今天
         </button>
 
-        {/* 視圖切換按鈕 */}
         <button
           onClick={() => setViewMode(viewMode === 'timeline' ? 'list' : 'timeline')}
           style={{
@@ -524,7 +479,6 @@ export function DayView({ user }: DayViewProps) {
         </button>
       </div>
 
-      {/* 時間範圍和單船模式切換（僅時間軸視圖） */}
       {viewMode === 'timeline' && (
         <div style={{
           display: 'flex',
@@ -586,7 +540,6 @@ export function DayView({ user }: DayViewProps) {
         </div>
       )}
 
-      {/* 列表視圖 */}
       {viewMode === 'list' && (
         <div style={{
           backgroundColor: 'white',
@@ -594,24 +547,20 @@ export function DayView({ user }: DayViewProps) {
           overflow: 'hidden',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         }}>
-          {/* 新增預約按鈕 */}
           <div style={{
             padding: '16px',
             borderBottom: '1px solid #e9ecef',
           }}>
             <button
               onClick={() => {
-                // 設置第一艘船為默認選擇（用戶可在對話框中更改）
                 if (boats.length > 0) {
                   setSelectedBoatId(boats[0].id)
                 }
                 
-                // 智能設置默認時間
                 let defaultTime: Date
                 const today = getLocalDateString()
                 
                 if (dateParam === today) {
-                  // 如果是今天，使用當前時間（四捨五入到最近的15分鐘）
                   const now = new Date()
                   const minutes = now.getMinutes()
                   const roundedMinutes = Math.ceil(minutes / 15) * 15
@@ -621,8 +570,6 @@ export function DayView({ user }: DayViewProps) {
                     defaultTime.setMinutes(0)
                   }
                 } else {
-                  // 如果不是今天，使用營業時間開始（05:00）
-                  // 手動構造 Date 對象（避免字符串解析的時區問題）
                   const [year, month, day] = dateParam.split('-').map(Number)
                   defaultTime = new Date(year, month - 1, day, 5, 0, 0)
                 }
@@ -1163,6 +1110,8 @@ export function DayView({ user }: DayViewProps) {
         booking={selectedBooking}
         user={user}
       />
+
+      <Footer />
     </div>
   )
 }

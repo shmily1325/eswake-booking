@@ -114,14 +114,13 @@ export function DailyAnnouncement() {
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+      background: 'white',
       borderRadius: '12px',
       padding: isMobile ? '12px' : '16px',
       marginBottom: '20px',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-      color: 'white'
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      border: '1px solid #e9ecef'
     }}>
-      {/* Header */}
       <div 
         style={{
           display: 'flex',
@@ -137,63 +136,65 @@ export function DailyAnnouncement() {
           alignItems: 'center',
           gap: '8px',
           fontSize: isMobile ? '14px' : '16px',
-          fontWeight: 'bold'
+          fontWeight: 'bold',
+          color: '#333'
         }}>
           <span style={{ fontSize: isMobile ? '18px' : '20px' }}>📢</span>
           <span>今日公告</span>
         </div>
         <button style={{
-          background: 'rgba(255, 255, 255, 0.2)',
-          border: 'none',
+          background: '#f8f9fa',
+          border: '1px solid #dee2e6',
           borderRadius: '6px',
-          color: 'white',
+          color: '#333',
           padding: '4px 10px',
           fontSize: '12px',
           cursor: 'pointer',
           fontWeight: '500'
         }}>
-          {isExpanded ? '收起 ▲' : '展开 ▼'}
+          {isExpanded ? '收起 ▲' : '展開 ▼'}
         </button>
       </div>
 
-      {/* Content */}
+
       {isExpanded && (
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           gap: '10px',
-          fontSize: isMobile ? '13px' : '14px'
+          fontSize: isMobile ? '13px' : '14px',
+          color: '#333'
         }}>
-          {/* 休假人员 */}
           {timeOffCoaches.length > 0 && (
             <div style={{
-              background: 'rgba(255, 255, 255, 0.15)',
+              background: '#f8f9fa',
               borderRadius: '8px',
-              padding: '8px 10px'
+              padding: '8px 10px',
+              border: '1px solid #e9ecef'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🏖️ 休假</div>
               <div>{timeOffCoaches.join('、')}</div>
             </div>
           )}
 
-          {/* 生日快樂 */}
           {birthdays.length > 0 && (
             <div style={{
-              background: 'rgba(255, 255, 255, 0.15)',
+              background: '#fff3cd',
               borderRadius: '8px',
-              padding: '8px 10px'
+              padding: '8px 10px',
+              border: '1px solid #ffc107'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🎂 今日壽星</div>
               <div>{birthdays.map(b => b.nickname || b.name).join('、')}</div>
             </div>
           )}
 
-          {/* 交辦事項 */}
           {announcements.length > 0 && (
             <div style={{
-              background: 'rgba(255, 255, 255, 0.15)',
+              background: '#e7f3ff',
               borderRadius: '8px',
-              padding: '8px 10px'
+              padding: '8px 10px',
+              border: '1px solid #2196f3'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>📋 交辦事項</div>
               {announcements.map((ann, idx) => (
@@ -206,12 +207,12 @@ export function DailyAnnouncement() {
             </div>
           )}
 
-          {/* 會籍到期 */}
           {expiringMemberships.length > 0 && (
             <div style={{
-              background: 'rgba(255, 255, 255, 0.15)',
+              background: '#ffe6e6',
               borderRadius: '8px',
-              padding: '8px 10px'
+              padding: '8px 10px',
+              border: '1px solid #ff5252'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>⚠️ 會籍即將到期</div>
               <div style={{ 
@@ -229,12 +230,12 @@ export function DailyAnnouncement() {
             </div>
           )}
 
-          {/* 置板到期 */}
           {expiringBoards.length > 0 && (
             <div style={{
-              background: 'rgba(255, 255, 255, 0.15)',
+              background: '#ffe6e6',
               borderRadius: '8px',
-              padding: '8px 10px'
+              padding: '8px 10px',
+              border: '1px solid #ff5252'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🏄 置板即將到期</div>
               <div style={{ 
