@@ -9,8 +9,6 @@ interface Staff {
   id: string
   name: string
   notes: string | null
-  roles: string[]  // ['coach', 'driver']
-  status: string
   created_at: string
   updated_at: string
 }
@@ -52,49 +50,32 @@ export function StaffManagement({ user }: StaffManagementProps) {
     }
   }
 
-  const toggleStaffStatus = async (staff: Staff, e: React.MouseEvent) => {
+  const handleDelete = async (staff: Staff, e: React.MouseEvent) => {
     e.stopPropagation()
     
-    const newStatus = staff.status === 'active' ? 'inactive' : 'active'
-    const statusText = newStatus === 'active' ? '上架' : '下架'
-    
-    if (!confirm(`確定要${statusText}「${staff.name}」嗎？`)) {
+    if (!confirm(`確定要刪除「${staff.name}」嗎？此操作無法復原。`)) {
       return
     }
 
     try {
       const { error } = await supabase
         .from('coaches')
-        .update({ status: newStatus })
+        .delete()
         .eq('id', staff.id)
 
       if (error) throw error
 
-      alert(`已${statusText}成功！`)
+      alert('刪除成功！')
       loadStaff()
     } catch (error) {
-      console.error('更新狀態失敗:', error)
-      alert('更新狀態失敗')
+      console.error('刪除失敗:', error)
+      alert('刪除失敗')
     }
   }
 
   const filteredStaff = staffList.filter(staff =>
     staff.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
-
-  const getRoleLabel = (roles: string[]) => {
-    const labels = []
-    if (roles.includes('coach')) labels.push('教練')
-    if (roles.includes('driver')) labels.push('駕駛')
-    return labels.join(' + ') || '未設定'
-  }
-
-  const getRoleIcon = (roles: string[]) => {
-    if (roles.includes('coach') && roles.includes('driver')) return '🎓🚤'
-    if (roles.includes('coach')) return '🎓'
-    if (roles.includes('driver')) return '🚤'
-    return '👤'
-  }
 
   if (loading) {
     return (
@@ -136,7 +117,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
           fontWeight: 'bold',
           color: 'white'
         }}>
-          👥 人員管理
+          🎓 教練管理
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
@@ -154,7 +135,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
               touchAction: 'manipulation'
             }}
           >
-            + 新增
+            + 新增教練
           </button>
           <Link
             to="/bao"
@@ -196,7 +177,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
       <div style={{ marginBottom: isMobile ? '15px' : '20px' }}>
         <input
           type="text"
-          placeholder="搜尋人員姓名..."
+          placeholder="搜尋教練姓名..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
@@ -214,55 +195,23 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
       {/* 統計資訊 */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '15px',
+        background: 'white',
+        padding: '20px',
+        borderRadius: '12px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        textAlign: 'center',
         marginBottom: '20px'
       }}>
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>總人數</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#667eea' }}>
-            {filteredStaff.length}
-          </div>
-        </div>
-
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>上架中</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4caf50' }}>
-            {filteredStaff.filter(s => s.status === 'active').length}
-          </div>
-        </div>
-
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>已下架</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#999' }}>
-            {filteredStaff.filter(s => s.status === 'inactive').length}
-          </div>
+        <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>教練總數</div>
+        <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#667eea' }}>
+          {filteredStaff.length}
         </div>
       </div>
 
-      {/* 人員列表 */}
+      {/* 教練列表 */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
         gap: '15px'
       }}>
         {filteredStaff.length === 0 ? (
@@ -273,22 +222,17 @@ export function StaffManagement({ user }: StaffManagementProps) {
             color: '#999',
             fontSize: '16px'
           }}>
-            {searchTerm ? '找不到符合條件的人員' : '尚無人員資料'}
+            {searchTerm ? '找不到符合條件的教練' : '尚無教練資料'}
           </div>
         ) : (
           filteredStaff.map((staff) => (
             <div
               key={staff.id}
-              onClick={() => {
-                setSelectedStaff(staff)
-                setEditDialogOpen(true)
-              }}
               style={{
                 background: 'white',
                 padding: '20px',
                 borderRadius: '12px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                cursor: 'pointer',
                 transition: 'all 0.2s',
                 border: '2px solid transparent'
               }}
@@ -303,55 +247,18 @@ export function StaffManagement({ user }: StaffManagementProps) {
                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
               }}
             >
-              {/* 人員姓名和狀態 */}
+              {/* 教練姓名 */}
               <div style={{
+                fontSize: '20px',
+                fontWeight: 'bold',
+                color: '#333',
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'start',
+                alignItems: 'center',
+                gap: '8px',
                 marginBottom: '12px'
               }}>
-                <div style={{
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  color: '#333',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span style={{ fontSize: '20px' }}>{getRoleIcon(staff.roles || [])}</span>
-                  {staff.name}
-                </div>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  background: staff.status === 'active'
-                    ? 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)'
-                    : '#e0e0e0',
-                  color: staff.status === 'active' ? 'white' : '#666'
-                }}>
-                  {staff.status === 'active' ? '✓ 上架' : '下架'}
-                </span>
-              </div>
-
-              {/* 角色標籤 */}
-              <div style={{
-                display: 'flex',
-                gap: '6px',
-                marginBottom: '12px',
-                flexWrap: 'wrap'
-              }}>
-                <span style={{
-                  padding: '4px 10px',
-                  background: '#f0f0f0',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  color: '#666',
-                  fontWeight: '500'
-                }}>
-                  {getRoleLabel(staff.roles || [])}
-                </span>
+                <span>🎓</span>
+                {staff.name}
               </div>
 
               {/* 備註 */}
@@ -375,12 +282,14 @@ export function StaffManagement({ user }: StaffManagementProps) {
                 marginTop: '12px'
               }}>
                 <button
-                  onClick={(e) => toggleStaffStatus(staff, e)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedStaff(staff)
+                    setTimeOffDialogOpen(true)
+                  }}
                   style={{
                     padding: '8px 12px',
-                    background: staff.status === 'active'
-                      ? '#f44336'
-                      : 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                    background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '6px',
@@ -396,36 +305,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
                     e.currentTarget.style.opacity = '1'
                   }}
                 >
-                  {staff.status === 'active' ? '下架' : '上架'}
+                  休假管理
                 </button>
-                {(staff.roles || []).includes('coach') && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedStaff(staff)
-                      setTimeOffDialogOpen(true)
-                    }}
-                    style={{
-                      padding: '8px 12px',
-                      background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.opacity = '0.9'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.opacity = '1'
-                    }}
-                  >
-                    休假管理
-                  </button>
-                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -441,8 +322,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
                     fontSize: '13px',
                     fontWeight: 'bold',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    gridColumn: (staff.roles || []).includes('coach') ? 'auto' : '1 / -1'
+                    transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.opacity = '0.9'
@@ -453,13 +333,61 @@ export function StaffManagement({ user }: StaffManagementProps) {
                 >
                   查看預約
                 </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedStaff(staff)
+                    setEditDialogOpen(true)
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.9'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1'
+                  }}
+                >
+                  編輯
+                </button>
+                <button
+                  onClick={(e) => handleDelete(staff, e)}
+                  style={{
+                    padding: '8px 12px',
+                    background: '#f44336',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.9'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1'
+                  }}
+                >
+                  刪除
+                </button>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* 新增人員對話框 */}
+      {/* 新增教練對話框 */}
       {addDialogOpen && (
         <AddStaffDialog
           open={addDialogOpen}
@@ -471,7 +399,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
         />
       )}
 
-      {/* 編輯人員對話框 */}
+      {/* 編輯教練對話框 */}
       {editDialogOpen && selectedStaff && (
         <EditStaffDialog
           open={editDialogOpen}
@@ -515,7 +443,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
   )
 }
 
-// 新增人員對話框組件
+// 新增教練對話框組件
 interface AddStaffDialogProps {
   open: boolean
   onClose: () => void
@@ -526,23 +454,8 @@ function AddStaffDialog({ open, onClose, onSuccess }: AddStaffDialogProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
-    notes: '',
-    roles: ['coach'] as string[]
+    notes: ''
   })
-
-  const toggleRole = (role: string) => {
-    if (formData.roles.includes(role)) {
-      setFormData({
-        ...formData,
-        roles: formData.roles.filter(r => r !== role)
-      })
-    } else {
-      setFormData({
-        ...formData,
-        roles: [...formData.roles, role]
-      })
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -552,27 +465,20 @@ function AddStaffDialog({ open, onClose, onSuccess }: AddStaffDialogProps) {
       return
     }
 
-    if (formData.roles.length === 0) {
-      alert('請至少選擇一個角色')
-      return
-    }
-
     setLoading(true)
     try {
       const { error } = await supabase
         .from('coaches')
         .insert([{
           name: formData.name.trim(),
-          notes: formData.notes.trim() || null,
-          roles: formData.roles,
-          status: 'active'
+          notes: formData.notes.trim() || null
         }])
 
       if (error) throw error
 
       alert('新增成功！')
       onSuccess()
-      setFormData({ name: '', notes: '', roles: ['coach'] })
+      setFormData({ name: '', notes: '' })
     } catch (error) {
       console.error('新增失敗:', error)
       alert('新增失敗')
@@ -612,7 +518,7 @@ function AddStaffDialog({ open, onClose, onSuccess }: AddStaffDialogProps) {
           alignItems: 'center',
         }}>
           <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-            新增人員
+            新增教練
           </h2>
           <button
             onClick={onClose}
@@ -648,54 +554,6 @@ function AddStaffDialog({ open, onClose, onSuccess }: AddStaffDialogProps) {
                 }}
                 required
               />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                角色 <span style={{ color: 'red' }}>*</span>
-              </label>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <label style={{
-                  flex: 1,
-                  padding: '12px',
-                  border: `2px solid ${formData.roles.includes('coach') ? '#667eea' : '#e0e0e0'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  background: formData.roles.includes('coach') ? '#f0f4ff' : 'white',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.roles.includes('coach')}
-                    onChange={() => toggleRole('coach')}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span>🎓 教練</span>
-                </label>
-                <label style={{
-                  flex: 1,
-                  padding: '12px',
-                  border: `2px solid ${formData.roles.includes('driver') ? '#667eea' : '#e0e0e0'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  background: formData.roles.includes('driver') ? '#f0f4ff' : 'white',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.roles.includes('driver')}
-                    onChange={() => toggleRole('driver')}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span>🚤 駕駛</span>
-                </label>
-              </div>
             </div>
 
             <div style={{ marginBottom: '16px' }}>
@@ -764,7 +622,7 @@ function AddStaffDialog({ open, onClose, onSuccess }: AddStaffDialogProps) {
   )
 }
 
-// 編輯人員對話框組件
+// 編輯教練對話框組件
 interface EditStaffDialogProps {
   open: boolean
   staff: Staff
@@ -776,23 +634,8 @@ function EditStaffDialog({ open, staff, onClose, onSuccess }: EditStaffDialogPro
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: staff.name,
-    notes: staff.notes || '',
-    roles: staff.roles || ['coach']
+    notes: staff.notes || ''
   })
-
-  const toggleRole = (role: string) => {
-    if (formData.roles.includes(role)) {
-      setFormData({
-        ...formData,
-        roles: formData.roles.filter(r => r !== role)
-      })
-    } else {
-      setFormData({
-        ...formData,
-        roles: [...formData.roles, role]
-      })
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -802,19 +645,13 @@ function EditStaffDialog({ open, staff, onClose, onSuccess }: EditStaffDialogPro
       return
     }
 
-    if (formData.roles.length === 0) {
-      alert('請至少選擇一個角色')
-      return
-    }
-
     setLoading(true)
     try {
       const { error } = await supabase
         .from('coaches')
         .update({
           name: formData.name.trim(),
-          notes: formData.notes.trim() || null,
-          roles: formData.roles
+          notes: formData.notes.trim() || null
         })
         .eq('id', staff.id)
 
@@ -861,7 +698,7 @@ function EditStaffDialog({ open, staff, onClose, onSuccess }: EditStaffDialogPro
           alignItems: 'center',
         }}>
           <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-            編輯人員
+            編輯教練
           </h2>
           <button
             onClick={onClose}
@@ -897,54 +734,6 @@ function EditStaffDialog({ open, staff, onClose, onSuccess }: EditStaffDialogPro
                 }}
                 required
               />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                角色 <span style={{ color: 'red' }}>*</span>
-              </label>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <label style={{
-                  flex: 1,
-                  padding: '12px',
-                  border: `2px solid ${formData.roles.includes('coach') ? '#667eea' : '#e0e0e0'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  background: formData.roles.includes('coach') ? '#f0f4ff' : 'white',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.roles.includes('coach')}
-                    onChange={() => toggleRole('coach')}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span>🎓 教練</span>
-                </label>
-                <label style={{
-                  flex: 1,
-                  padding: '12px',
-                  border: `2px solid ${formData.roles.includes('driver') ? '#667eea' : '#e0e0e0'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  background: formData.roles.includes('driver') ? '#f0f4ff' : 'white',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.roles.includes('driver')}
-                    onChange={() => toggleRole('driver')}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span>🚤 駕駛</span>
-                </label>
-              </div>
             </div>
 
             <div style={{ marginBottom: '16px' }}>
@@ -1024,7 +813,7 @@ interface TimeOffRecord {
   id: string
   coach_id: string
   start_date: string
-  end_date: string
+  end_date: string | null
   reason: string | null
   created_at: string
 }
@@ -1036,7 +825,8 @@ function TimeOffDialog({ open, coach, onClose }: TimeOffDialogProps) {
   const [formData, setFormData] = useState({
     start_date: '',
     end_date: '',
-    reason: ''
+    reason: '',
+    indefinite: false
   })
 
   useEffect(() => {
@@ -1067,12 +857,17 @@ function TimeOffDialog({ open, coach, onClose }: TimeOffDialogProps) {
   const handleAddTimeOff = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.start_date || !formData.end_date) {
-      alert('請選擇開始和結束日期')
+    if (!formData.start_date) {
+      alert('請選擇開始日期')
       return
     }
 
-    if (formData.start_date > formData.end_date) {
+    if (!formData.indefinite && !formData.end_date) {
+      alert('請選擇結束日期或勾選無限延期')
+      return
+    }
+
+    if (!formData.indefinite && formData.start_date > formData.end_date) {
       alert('結束日期不能早於開始日期')
       return
     }
@@ -1084,14 +879,14 @@ function TimeOffDialog({ open, coach, onClose }: TimeOffDialogProps) {
         .insert([{
           coach_id: coach.id,
           start_date: formData.start_date,
-          end_date: formData.end_date,
+          end_date: formData.indefinite ? null : formData.end_date,
           reason: formData.reason.trim() || null
         }])
 
       if (error) throw error
 
       alert('新增休假成功！')
-      setFormData({ start_date: '', end_date: '', reason: '' })
+      setFormData({ start_date: '', end_date: '', reason: '', indefinite: false })
       setShowAddForm(false)
       loadTimeOffRecords()
     } catch (error) {
@@ -1230,23 +1025,46 @@ function TimeOffDialog({ open, coach, onClose }: TimeOffDialogProps) {
               </div>
 
               <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  結束日期 <span style={{ color: 'red' }}>*</span>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  padding: '10px',
+                  background: formData.indefinite ? '#fff3e0' : 'white',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '6px'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.indefinite}
+                    onChange={(e) => setFormData({ ...formData, indefinite: e.target.checked, end_date: '' })}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontWeight: '500' }}>無限延期（長假）</span>
                 </label>
-                <input
-                  type="date"
-                  value={formData.end_date}
-                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                  }}
-                  required
-                />
               </div>
+
+              {!formData.indefinite && (
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                    結束日期 <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.end_date}
+                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                    }}
+                    required={!formData.indefinite}
+                  />
+                </div>
+              )}
 
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
@@ -1289,7 +1107,7 @@ function TimeOffDialog({ open, coach, onClose }: TimeOffDialogProps) {
                   type="button"
                   onClick={() => {
                     setShowAddForm(false)
-                    setFormData({ start_date: '', end_date: '', reason: '' })
+                    setFormData({ start_date: '', end_date: '', reason: '', indefinite: false })
                   }}
                   disabled={loading}
                   style={{
@@ -1338,7 +1156,7 @@ function TimeOffDialog({ open, coach, onClose }: TimeOffDialogProps) {
                   }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
-                        📅 {record.start_date} ~ {record.end_date}
+                        📅 {record.start_date} ~ {record.end_date || '無限延期'}
                       </div>
                       {record.reason && (
                         <div style={{ fontSize: '14px', color: '#666' }}>
@@ -1403,10 +1221,6 @@ function BookingsDialog({ open, staff, onClose }: BookingsDialogProps) {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      // 根據角色判斷查詢欄位
-      const isCoach = (staff.roles || []).includes('coach')
-      const isDriver = (staff.roles || []).includes('driver')
-      
       let query = supabase
         .from('bookings')
         .select(`
@@ -1418,17 +1232,9 @@ function BookingsDialog({ open, staff, onClose }: BookingsDialogProps) {
             reported
           )
         `)
+        .or(`coach.eq.${staff.name},driver.eq.${staff.name}`)
         .order('start_at', { ascending: false })
         .limit(50)
-
-      // 根據角色過濾 - 如果兩者都是，顯示所有相關預約
-      if (isCoach && !isDriver) {
-        query = query.eq('coach', staff.name)
-      } else if (isDriver && !isCoach) {
-        query = query.eq('driver', staff.name)
-      } else if (isCoach && isDriver) {
-        query = query.or(`coach.eq.${staff.name},driver.eq.${staff.name}`)
-      }
 
       // 如果有日期過濾
       if (filterDate) {
@@ -1455,14 +1261,6 @@ function BookingsDialog({ open, staff, onClose }: BookingsDialogProps) {
   }
 
   if (!open) return null
-
-  const getRoleText = () => {
-    const roles = staff.roles || []
-    if (roles.includes('coach') && roles.includes('driver')) return '教練+駕駛'
-    if (roles.includes('coach')) return '教練'
-    if (roles.includes('driver')) return '駕駛'
-    return ''
-  }
 
   return (
     <div style={{
@@ -1502,7 +1300,7 @@ function BookingsDialog({ open, staff, onClose }: BookingsDialogProps) {
             marginBottom: '16px'
           }}>
             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-              {staff.name} - 預約記錄（{getRoleText()}）
+              {staff.name} - 預約記錄
             </h2>
             <button
               onClick={onClose}
