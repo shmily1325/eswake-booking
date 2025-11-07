@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { NewBookingDialog } from '../components/NewBookingDialog'
@@ -396,21 +396,21 @@ export function DayView({ user }: DayViewProps) {
           📅 {viewMode === 'list' ? '預約列表' : '預約時間軸'}
         </h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button
-            onClick={() => window.location.href = '/'}
+          <Link
+            to="/"
             style={{
               padding: '6px 12px',
               background: 'rgba(255, 255, 255, 0.15)',
               color: 'white',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+              textDecoration: 'none',
               borderRadius: '4px',
               fontSize: '13px',
-              cursor: 'pointer',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
               whiteSpace: 'nowrap'
             }}
           >
             ← HOME
-          </button>
+          </Link>
           <UserMenu user={user} />
         </div>
       </div>

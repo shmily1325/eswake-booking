@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
-import { UserMenu } from '../components/UserMenu'
+import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 
@@ -52,80 +52,15 @@ export function BaoHub({ user }: BaoHubProps) {
   return (
     <div style={{ 
       minHeight: '100vh',
-      background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)',
-      padding: '40px 20px',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center'
+      background: '#f5f5f5',
+      padding: isMobile ? '12px' : '20px'
     }}>
       <div style={{ 
         maxWidth: '800px', 
         width: '100%',
         margin: '0 auto'
       }}>
-        {/* Header with back button and user menu */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '40px'
-        }}>
-          <Link
-            to="/"
-            style={{
-              padding: isMobile ? '10px 16px' : '12px 20px',
-              background: 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(10px)',
-              color: '#000',
-              textDecoration: 'none',
-              borderRadius: '12px',
-              fontSize: isMobile ? '14px' : '15px',
-              border: '1px solid rgba(224, 224, 224, 0.5)',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)'
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'
-            }}
-          >
-            ← HOME
-          </Link>
-          <UserMenu user={user} />
-        </div>
-
-        {/* Title Section */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '50px'
-        }}>
-          <div style={{ fontSize: isMobile ? '56px' : '72px', marginBottom: '15px' }}>
-            🔧
-          </div>
-          <h1 style={{
-            margin: '0 0 10px 0',
-            fontSize: isMobile ? '28px' : '38px',
-            fontWeight: '800',
-            color: '#000',
-            letterSpacing: '1px'
-          }}>
-            BAO HUB
-          </h1>
-          <p style={{
-            margin: 0,
-            fontSize: isMobile ? '14px' : '16px',
-            color: '#666',
-            fontWeight: '500'
-          }}>
-            最大的人(?)專用後台
-          </p>
-        </div>
+        <PageHeader title="🔧 BAO HUB" user={user} />
 
         {/* Feature Cards Grid */}
         <div style={{

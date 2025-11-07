@@ -37,7 +37,6 @@ export function CoachQuery({ }: CoachQueryProps) {
   }
   const [selectedMonth, setSelectedMonth] = useState(getNextMonth())
 
-  // 生成月份選項（前後各3個月）
   const generateMonthOptions = () => {
     const options = []
     const now = new Date()

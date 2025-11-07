@@ -41,7 +41,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     setBoards(newBoards)
   }
 
-  // 统一的输入框样式
   const inputStyle = {
     width: '100%',
     padding: isMobile ? '12px' : '10px',
@@ -63,7 +62,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     e.preventDefault()
     
     if (!formData.name.trim()) {
-      alert('请输入姓名')
+      alert('請輸入姓名')
       return
     }
 

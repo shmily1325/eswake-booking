@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { UserMenu } from '../components/UserMenu'
+import { PageHeader } from '../components/PageHeader'
 
 interface BackupPageProps {
   user: User
@@ -16,7 +15,6 @@ export function BackupPage({ user }: BackupPageProps) {
   const exportToCSV = async () => {
     setLoading(true)
     try {
-      // 构建查询
       let query = supabase
         .from('bookings')
         .select(`
@@ -25,7 +23,6 @@ export function BackupPage({ user }: BackupPageProps) {
         `)
         .order('start_at', { ascending: false })
 
-      // 如果指定了日期范围
       if (startDate && endDate) {
         query = query
           .gte('start_at', `${startDate}T00:00:00`)
@@ -41,14 +38,12 @@ export function BackupPage({ user }: BackupPageProps) {
         return
       }
 
-      // 获取所有预约的教练信息和确认状态
       const bookingIds = bookings.map(b => b.id)
       const { data: coachesData } = await supabase
         .from('booking_coaches')
         .select('booking_id, coaches:coach_id(name), coach_confirmed, confirmed_at, actual_duration_min')
         .in('booking_id', bookingIds)
 
-      // 整理教练信息和确认状态
       const coachesByBooking: { [key: number]: string[] } = {}
       const confirmByBooking: { [key: number]: { confirmed: boolean, confirmedAt: string | null, actualDuration: number | null } } = {}
       
@@ -62,7 +57,6 @@ export function BackupPage({ user }: BackupPageProps) {
           coachesByBooking[bookingId].push(coach.name)
         }
         
-        // 收集确认状态（任一教练确认即算已确认）
         if (item.coach_confirmed) {
           confirmByBooking[bookingId] = {
             confirmed: true,
@@ -78,7 +72,6 @@ export function BackupPage({ user }: BackupPageProps) {
         }
       }
 
-      // 格式化时间函数
       const formatDateTime = (isoString: string | null): string => {
         if (!isoString) return ''
         const dt = isoString.substring(0, 16) // "2025-10-30T08:30"
@@ -88,8 +81,7 @@ export function BackupPage({ user }: BackupPageProps) {
         return `${year}/${month}/${day} ${time}`
       }
 
-      // 生成 CSV
-      let csv = '\uFEFF' // UTF-8 BOM
+      let csv = '\uFEFF'
       csv += '學生姓名,預約日期,抵達時間,下水時間,時長(分鐘),船隻,教練,活動類型,教練回報,回報時間,狀態,備註,創建時間\n'
 
       bookings.forEach(booking => {
@@ -98,23 +90,19 @@ export function BackupPage({ user }: BackupPageProps) {
         const activities = booking.activity_types?.join('+') || ''
         const notes = (booking.notes || '').replace(/"/g, '""').replace(/\n/g, ' ')
         
-        // 计算抵达时间（提前30分钟）
-        const startTime = booking.start_at.substring(11, 16) // "08:30"
+        const startTime = booking.start_at.substring(11, 16)
         const [startHour, startMin] = startTime.split(':').map(Number)
         const totalMinutes = startHour * 60 + startMin - 30
         const arrivalHour = Math.floor(totalMinutes / 60)
         const arrivalMin = totalMinutes % 60
         const arrivalTime = `${arrivalHour.toString().padStart(2, '0')}:${arrivalMin.toString().padStart(2, '0')}`
         
-        // 预约日期
         const bookingDate = booking.start_at.substring(0, 10).replace(/-/g, '/')
         
-        // 教练确认状态
         const confirmInfo = confirmByBooking[booking.id]
         const coachConfirmed = confirmInfo?.confirmed ? '已回報' : '未回報'
         const confirmedAt = formatDateTime(confirmInfo?.confirmedAt || null)
         
-        // 状态翻译
         const statusMap: { [key: string]: string } = {
           'Confirmed': '已確認',
           'Cancelled': '已取消'
@@ -124,7 +112,6 @@ export function BackupPage({ user }: BackupPageProps) {
         csv += `"${booking.contact_name}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${activities}","${coachConfirmed}","${confirmedAt}","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`
       })
 
-      // 下载文件
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -149,60 +136,7 @@ export function BackupPage({ user }: BackupPageProps) {
       padding: '15px'
     }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{
-          background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-          borderRadius: '8px',
-          padding: '15px',
-          marginBottom: '15px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
-          <h1 style={{
-            margin: 0,
-            fontSize: '18px',
-            color: 'white',
-            fontWeight: '600'
-          }}>
-            匯出
-          </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Link
-              to="/bao"
-              style={{
-                padding: '6px 12px',
-                background: '#f8f9fa',
-                color: '#333',
-                textDecoration: 'none',
-                borderRadius: '4px',
-                fontSize: '13px',
-                border: '1px solid #dee2e6',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              ← BAO
-            </Link>
-            <Link
-              to="/"
-              style={{
-                padding: '6px 12px',
-                background: '#f8f9fa',
-                color: '#333',
-                textDecoration: 'none',
-                borderRadius: '4px',
-                fontSize: '13px',
-                border: '1px solid #dee2e6',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              ← HOME
-            </Link>
-            <UserMenu user={user} />
-          </div>
-        </div>
+        <PageHeader title="📦 匯出資料" user={user} showBaoLink={true} />
 
         {/* 备份选项 */}
         <div style={{

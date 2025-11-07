@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import { PageHeader } from '../components/PageHeader'
 import { TransactionDialog } from '../components/TransactionDialog'
-import { UserMenu } from '../components/UserMenu'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 
@@ -85,64 +84,7 @@ export function QuickTransaction({ user }: QuickTransactionProps) {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      {/* 頂部導航列 */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '15px',
-        gap: '10px'
-      }}>
-        <Link
-          to="/"
-          style={{
-            padding: isMobile ? '8px 14px' : '8px 16px',
-            background: 'white',
-            color: '#333',
-            textDecoration: 'none',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '14px',
-            border: '1px solid #e0e0e0',
-            fontWeight: '500',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}
-        >
-          ← HOME
-        </Link>
-        <UserMenu user={user} />
-      </div>
-
-      {/* 標題區 */}
-      <div style={{
-        background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-        padding: '15px',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-        marginBottom: isMobile ? '15px' : '20px'
-      }}>
-        <h1 style={{
-          margin: 0,
-          fontSize: isMobile ? '18px' : '20px',
-          fontWeight: 'bold',
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          💳 快速記帳
-        </h1>
-        <p style={{
-          margin: '6px 0 0 0',
-          fontSize: isMobile ? '13px' : '14px',
-          color: 'rgba(255,255,255,0.85)'
-        }}>
-          搜尋會員，點擊即可快速記帳
-        </p>
-      </div>
+      <PageHeader title="💳 快速記帳" user={user} showBaoLink={true} />
 
       {/* 搜尋欄 */}
       <div style={{ marginBottom: isMobile ? '15px' : '20px' }}>

@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { AddMemberDialog } from '../components/AddMemberDialog'
 import { MemberDetailDialog } from '../components/MemberDetailDialog'
-import { UserMenu } from '../components/UserMenu'
+import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 
@@ -123,80 +122,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      {/* 標題列 */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: isMobile ? '15px' : '20px',
-        background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-        padding: '15px',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-        gap: isMobile ? '8px' : '10px',
-        flexWrap: 'wrap'
-      }}>
-        <h1 style={{ 
-          margin: 0, 
-          fontSize: isMobile ? '18px' : '20px', 
-          fontWeight: 'bold',
-          color: 'white'
-        }}>
-          👥 會員管理
-        </h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={() => setAddDialogOpen(true)}
-            style={{
-              padding: isMobile ? '8px 12px' : '6px 14px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: isMobile ? '14px' : '13px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              touchAction: 'manipulation'
-            }}
-          >
-            + 新增會員
-          </button>
-          <Link
-            to="/bao"
-            style={{
-              padding: isMobile ? '8px 12px' : '6px 12px',
-              background: '#f8f9fa',
-              color: '#333',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              fontSize: isMobile ? '14px' : '13px',
-              border: '1px solid #dee2e6',
-              whiteSpace: 'nowrap',
-              touchAction: 'manipulation'
-            }}
-          >
-            ← BAO
-          </Link>
-          <Link
-            to="/"
-            style={{
-              padding: isMobile ? '8px 12px' : '6px 12px',
-              background: '#f8f9fa',
-              color: '#333',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              fontSize: isMobile ? '14px' : '13px',
-              border: '1px solid #dee2e6',
-              whiteSpace: 'nowrap',
-              touchAction: 'manipulation'
-            }}
-          >
-            ← HOME
-          </Link>
-          <UserMenu user={user} />
-        </div>
-      </div>
+      <PageHeader title="👥 會員管理" user={user} showBaoLink={true} />
 
       {/* 搜尋欄 */}
       <div style={{ marginBottom: isMobile ? '15px' : '20px' }}>
@@ -438,6 +364,26 @@ export function MemberManagement({ user }: MemberManagementProps) {
             </div>
           ))
         )}
+      </div>
+
+      {/* 新增會員按鈕 */}
+      <div style={{ marginTop: '20px', textAlign: 'center' }}>
+        <button
+          onClick={() => setAddDialogOpen(true)}
+          style={{
+            padding: isMobile ? '12px 24px' : '14px 28px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: isMobile ? '16px' : '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+          }}
+        >
+          + 新增會員
+        </button>
       </div>
 
       {/* Footer */}
