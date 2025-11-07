@@ -19,12 +19,27 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     member_type: 'guest',  // 預設為客人
     notes: '',
     membership_expires_at: '',
-    // 置板相關
-    add_board_storage: false,
-    board_slot_number: '',
-    board_expires_at: '',
-    board_notes: '',
   })
+  
+  const [boards, setBoards] = useState<Array<{
+    slot_number: string
+    expires_at: string
+    notes: string
+  }>>([])
+
+  const addBoard = () => {
+    setBoards([...boards, { slot_number: '', expires_at: '', notes: '' }])
+  }
+
+  const removeBoard = (index: number) => {
+    setBoards(boards.filter((_, i) => i !== index))
+  }
+
+  const updateBoard = (index: number, field: string, value: string) => {
+    const newBoards = [...boards]
+    newBoards[index] = { ...newBoards[index], [field]: value }
+    setBoards(newBoards)
+  }
 
   // 统一的输入框样式
   const inputStyle = {
@@ -75,29 +90,39 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
       if (memberError) throw memberError
 
-      // 2. 如果要新增置板，插入置板記錄
-      if (formData.add_board_storage && formData.board_slot_number) {
-        const slotNumber = parseInt(formData.board_slot_number)
-        if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 145) {
-          throw new Error('格位編號必須是 1-145 之間的數字')
-        }
-
-        const { error: boardError } = await supabase
-          .from('board_storage')
-          .insert([{
+      // 2. 如果有置板，批量插入置板記錄
+      if (boards.length > 0) {
+        const boardsToInsert = []
+        
+        for (const board of boards) {
+          if (!board.slot_number) continue
+          
+          const slotNumber = parseInt(board.slot_number)
+          if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 145) {
+            throw new Error(`格位編號 ${board.slot_number} 必須是 1-145 之間的數字`)
+          }
+          
+          boardsToInsert.push({
             member_id: newMember.id,
             slot_number: slotNumber,
-            expires_at: formData.board_expires_at || null,
-            notes: formData.board_notes.trim() || null,
+            expires_at: board.expires_at || null,
+            notes: board.notes.trim() || null,
             status: 'active',
-          }])
+          })
+        }
 
-        if (boardError) {
-          // 如果格位已被佔用
-          if (boardError.code === '23505') {
-            throw new Error(`格位 ${slotNumber} 已被使用，請選擇其他格位`)
+        if (boardsToInsert.length > 0) {
+          const { error: boardError } = await supabase
+            .from('board_storage')
+            .insert(boardsToInsert)
+
+          if (boardError) {
+            // 如果格位已被佔用
+            if (boardError.code === '23505') {
+              throw new Error('有格位已被使用，請檢查格位編號')
+            }
+            throw boardError
           }
-          throw boardError
         }
       }
 
@@ -114,11 +139,8 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
         member_type: 'guest',
         notes: '',
         membership_expires_at: '',
-        add_board_storage: false,
-        board_slot_number: '',
-        board_expires_at: '',
-        board_notes: '',
       })
+      setBoards([])
     } catch (error) {
       console.error('新增會員失敗:', error)
       alert('新增會員失敗')
@@ -217,7 +239,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 type="text"
                 value={formData.nickname}
                 onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                placeholder="例如：小明、阿明、Ming"
+                placeholder="例如：小明+阿明+那個男人 或 小明/阿明/那個男人"
                 maxLength={100}
                 style={inputStyle}
                 onFocus={handleFocus}
@@ -299,28 +321,57 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               borderRadius: '8px',
               border: '2px solid #e0e0e0'
             }}>
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
-                cursor: 'pointer',
-                marginBottom: formData.add_board_storage ? '16px' : '0'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={formData.add_board_storage}
-                  onChange={(e) => setFormData({ ...formData, add_board_storage: e.target.checked })}
-                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                />
-                <span style={{ fontWeight: '500', fontSize: '15px' }}>🏄 新增置板服務</span>
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: boards.length > 0 ? '16px' : '0' }}>
+                <span style={{ fontWeight: '500', fontSize: '15px' }}>🏄 置板服務</span>
+                <button
+                  type="button"
+                  onClick={addBoard}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  + 新增置板
+                </button>
+              </div>
 
-              {/* 置板詳細資訊 - 只在勾選時顯示 */}
-              {formData.add_board_storage && (
-                <div style={{ marginTop: '12px' }}>
+              {/* 置板列表 */}
+              {boards.map((board, index) => (
+                <div key={index} style={{
+                  marginTop: index > 0 ? '12px' : '0',
+                  padding: '12px',
+                  background: 'white',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <span style={{ fontWeight: '500', fontSize: '14px' }}>置板 #{index + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeBoard(index)}
+                      style={{
+                        padding: '4px 10px',
+                        background: '#f44336',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      刪除
+                    </button>
+                  </div>
+
                   {/* 格位編號 */}
                   <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px' }}>
                       格位編號 <span style={{ color: 'red' }}>*</span>
                       <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>（1-145）</span>
                     </label>
@@ -328,47 +379,41 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                       type="number"
                       min="1"
                       max="145"
-                      value={formData.board_slot_number}
-                      onChange={(e) => setFormData({ ...formData, board_slot_number: e.target.value })}
+                      value={board.slot_number}
+                      onChange={(e) => updateBoard(index, 'slot_number', e.target.value)}
                       placeholder="請輸入格位編號"
-                      style={inputStyle}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
+                      style={{...inputStyle, fontSize: '14px', padding: '8px'}}
                     />
                   </div>
 
                   {/* 置板到期 */}
                   <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                      置板到期 <span style={{ fontSize: '13px' }}>（選填）</span>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#666' }}>
+                      置板到期 <span style={{ fontSize: '12px' }}>（選填）</span>
                     </label>
                     <input
                       type="date"
-                      value={formData.board_expires_at}
-                      onChange={(e) => setFormData({ ...formData, board_expires_at: e.target.value })}
-                      style={inputStyle}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
+                      value={board.expires_at}
+                      onChange={(e) => updateBoard(index, 'expires_at', e.target.value)}
+                      style={{...inputStyle, fontSize: '14px', padding: '8px'}}
                     />
                   </div>
 
                   {/* 置板備註 */}
                   <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                      置板備註 <span style={{ fontSize: '13px' }}>（選填）</span>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#666' }}>
+                      置板備註 <span style={{ fontSize: '12px' }}>（選填）</span>
                     </label>
                     <input
                       type="text"
-                      value={formData.board_notes}
-                      onChange={(e) => setFormData({ ...formData, board_notes: e.target.value })}
+                      value={board.notes}
+                      onChange={(e) => updateBoard(index, 'notes', e.target.value)}
                       placeholder="例如：藍色長板"
-                      style={inputStyle}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
+                      style={{...inputStyle, fontSize: '14px', padding: '8px'}}
                     />
                   </div>
                 </div>
-              )}
+              ))}
             </div>
 
             {/* 備註 */}
