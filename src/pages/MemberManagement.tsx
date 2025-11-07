@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import { AddMemberDialog } from '../components/AddMemberDialog'
+import { MemberDetailDialog } from '../components/MemberDetailDialog'
 
 interface Member {
   id: string
@@ -27,8 +29,12 @@ export function MemberManagement({ user }: MemberManagementProps) {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   
   // TODO: Will use user for creating/updating members and permission control
+  // Current user email will be logged for debugging
   console.log('Current user:', user.email)
 
   useEffect(() => {
@@ -97,7 +103,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
           👥 會員管理
         </h1>
         <button
-          onClick={() => alert('新增會員功能開發中...')}
+          onClick={() => setAddDialogOpen(true)}
           style={{
             padding: '12px 24px',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -213,7 +219,10 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 cursor: 'pointer',
                 border: '2px solid transparent'
               }}
-              onClick={() => alert(`查看會員詳情功能開發中...\n\n會員: ${member.name}`)}
+              onClick={() => {
+                setSelectedMemberId(member.id)
+                setDetailDialogOpen(true)
+              }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = '#667eea'
                 e.currentTarget.style.transform = 'translateY(-2px)'
@@ -325,6 +334,24 @@ export function MemberManagement({ user }: MemberManagementProps) {
           ))
         )}
       </div>
+
+      {/* 新增會員彈窗 */}
+      <AddMemberDialog
+        open={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        onSuccess={loadMembers}
+      />
+
+      {/* 會員詳情彈窗 */}
+      <MemberDetailDialog
+        open={detailDialogOpen}
+        memberId={selectedMemberId}
+        onClose={() => {
+          setDetailDialogOpen(false)
+          setSelectedMemberId(null)
+        }}
+        onUpdate={loadMembers}
+      />
     </div>
   )
 }
