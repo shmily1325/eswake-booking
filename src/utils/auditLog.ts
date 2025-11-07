@@ -24,7 +24,9 @@ interface UpdateBookingLogParams {
 interface DeleteBookingLogParams {
   userEmail: string
   studentName: string
+  boatName: string
   startTime: string
+  durationMin: number
 }
 
 /**
@@ -93,9 +95,13 @@ export async function logBookingUpdate(params: UpdateBookingLogParams) {
  * 記錄刪除預約
  */
 export async function logBookingDeletion(params: DeleteBookingLogParams) {
-  const { userEmail, studentName, startTime } = params
+  const { userEmail, studentName, boatName, startTime, durationMin } = params
 
-  const details = `刪除預約：${studentName} / ${startTime}`
+  // 格式化時間顯示
+  const datetime = startTime.substring(0, 16)
+  const [date, time] = datetime.split('T')
+  
+  const details = `刪除預約：${studentName} / ${boatName} / ${date} ${time} / ${durationMin}分鐘`
 
   try {
     await supabase.from('audit_log').insert({

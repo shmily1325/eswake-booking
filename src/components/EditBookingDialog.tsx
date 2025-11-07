@@ -52,6 +52,8 @@ export function EditBookingDialog({
   booking,
   user,
 }: EditBookingDialogProps) {
+  const [boats, setBoats] = useState<Boat[]>([])
+  const [selectedBoatId, setSelectedBoatId] = useState<number>(0)
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
   const [selectedDriver, setSelectedDriver] = useState<string>('') // 駕駛（可選）
@@ -79,9 +81,13 @@ export function EditBookingDialog({
 
   useEffect(() => {
     if (isOpen) {
+      fetchBoats()
       fetchCoaches()
       fetchMembers()
       if (booking) {
+        // 設置船只選擇
+        setSelectedBoatId(booking.boat_id)
+        
         // 設置教練選擇
         if (booking.coaches && booking.coaches.length > 0) {
           setSelectedCoaches(booking.coaches.map(c => c.id))
@@ -123,6 +129,20 @@ export function EditBookingDialog({
     }
   }, [isOpen, booking])
 
+  const fetchBoats = async () => {
+    const { data, error } = await supabase
+      .from('boats')
+      .select('id, name, color')
+      .order('id')
+    
+    if (error) {
+      console.error('Error fetching boats:', error)
+      return
+    }
+    
+    setBoats(data || [])
+  }
+
   const fetchCoaches = async () => {
     setLoadingCoaches(true)
     
@@ -130,7 +150,7 @@ export function EditBookingDialog({
     const bookingDate = startDate || (booking?.start_at ? booking.start_at.split('T')[0] : '')
     
     // 取得所有教練
-    const { data: allCoaches, error } = await supabase
+    const { data: allCoaches, error} = await supabase
       .from('coaches')
       .select('id, name')
       .order('name')
@@ -223,7 +243,7 @@ export function EditBookingDialog({
       const { data: existingBookings, error: checkError} = await supabase
         .from('bookings')
         .select('id, start_at, duration_min, contact_name')
-        .eq('boat_id', booking.boat_id)
+        .eq('boat_id', selectedBoatId)
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${startDate}T23:59:59`)
       
@@ -353,6 +373,7 @@ export function EditBookingDialog({
       const { error: updateError } = await supabase
         .from('bookings')
         .update({
+          boat_id: selectedBoatId,
           member_id: selectedMemberId || null,
           contact_name: finalStudentName,
           start_at: newStartAt,
@@ -395,8 +416,17 @@ export function EditBookingDialog({
 
       // 計算變更內容
       const changes: string[] = []
+      
+      // 檢查預約人變更
       if (booking.contact_name !== student) {
-        changes.push(`學生: ${booking.contact_name} → ${student}`)
+        changes.push(`預約人: ${booking.contact_name} → ${student}`)
+      }
+      
+      // 檢查船只變更
+      if (booking.boat_id !== selectedBoatId) {
+        const oldBoatName = booking.boats?.name || '未知'
+        const newBoatName = boats.find(b => b.id === selectedBoatId)?.name || '未知'
+        changes.push(`船只: ${oldBoatName} → ${newBoatName}`)
       }
       
       // 檢查教練變更
@@ -409,28 +439,44 @@ export function EditBookingDialog({
       if (oldCoachNames !== newCoachNames) {
         changes.push(`教練: ${oldCoachNames} → ${newCoachNames}`)
       }
+      
+      // 檢查駕駛變更
+      const oldDriverName = booking.driver?.name || '未指定'
+      const newDriverName = driverCoachId 
+        ? coaches.find(c => c.id === driverCoachId)?.name || '未指定'
+        : '未指定'
+      if (oldDriverName !== newDriverName) {
+        changes.push(`駕駛: ${oldDriverName} → ${newDriverName}`)
+      }
+      
+      // 檢查時間變更
       if (booking.start_at !== newStartAt) {
-        // 純字符串格式化（避免時區問題）
         const oldDatetime = booking.start_at.substring(0, 16)
         const [oldDate, oldTime] = oldDatetime.split('T')
         const newDatetime = newStartAt.substring(0, 16)
         const [newDate, newTime] = newDatetime.split('T')
         changes.push(`時間: ${oldDate} ${oldTime} → ${newDate} ${newTime}`)
       }
+      
+      // 檢查時長變更
       if (booking.duration_min !== durationMin) {
         changes.push(`時長: ${booking.duration_min}分 → ${durationMin}分`)
       }
+      
       // 檢查活動類型變更
       const oldActivities = (booking.activity_types || []).sort().join('+')
       const newActivities = activityTypes.sort().join('+')
       if (oldActivities !== newActivities) {
         changes.push(`活動類型: ${oldActivities || '無'} → ${newActivities || '無'}`)
       }
+      
       // 檢查備註變更
       const oldNotes = booking.notes || ''
       const newNotes = notes || ''
       if (oldNotes !== newNotes) {
-        changes.push(`備註已修改`)
+        const oldDisplay = oldNotes.length > 20 ? oldNotes.substring(0, 20) + '...' : oldNotes || '無'
+        const newDisplay = newNotes.length > 20 ? newNotes.substring(0, 20) + '...' : newNotes || '無'
+        changes.push(`備註: ${oldDisplay} → ${newDisplay}`)
       }
 
       await logBookingUpdate({
@@ -480,7 +526,9 @@ export function EditBookingDialog({
       await logBookingDeletion({
         userEmail: user.email || '',
         studentName: booking.contact_name,
-        startTime: booking.start_at
+        boatName: booking.boats?.name || '未知',
+        startTime: booking.start_at,
+        durationMin: booking.duration_min
       })
 
       // Success
@@ -843,6 +891,40 @@ export function EditBookingDialog({
                 清除會員選擇
               </button>
             )}
+          </div>
+
+          {/* 船只選擇 */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '6px', 
+              color: '#000',
+              fontSize: '15px',
+              fontWeight: '500',
+            }}>
+              選擇船 <span style={{ color: 'red' }}>*</span>
+            </label>
+            <select
+              value={selectedBoatId}
+              onChange={(e) => setSelectedBoatId(Number(e.target.value))}
+              required
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #ccc',
+                boxSizing: 'border-box',
+                fontSize: '16px',
+                touchAction: 'manipulation',
+              }}
+            >
+              <option value={0} disabled>請選擇船</option>
+              {boats.map((boat) => (
+                <option key={boat.id} value={boat.id}>
+                  {boat.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={{ marginBottom: '18px' }}>

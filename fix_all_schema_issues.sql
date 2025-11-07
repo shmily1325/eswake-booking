@@ -34,15 +34,17 @@ ON audit_log FOR SELECT TO authenticated USING (true);
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 2. 添加 activity_types 到 bookings 表
+-- 2. 修复 bookings 表
 -- ============================================
 
 -- 添加 activity_types 列（TEXT[] 数组，用于存储 WB, WS 等）
 ALTER TABLE bookings 
-ADD COLUMN IF NOT EXISTS activity_types TEXT[];
+ADD COLUMN IF NOT EXISTS activity_types TEXT[],
+ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES auth.users(id);
 
 -- 添加注释
 COMMENT ON COLUMN bookings.activity_types IS '活動類型（WB: 滑水板, WS: 滑水）';
+COMMENT ON COLUMN bookings.updated_by IS '最後修改人';
 
 -- ============================================
 -- 3. 验证表结构
