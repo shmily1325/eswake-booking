@@ -153,8 +153,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         }
         return
       }
-
-      alert('新增置板成功！')
       setBoardFormData({ slot_number: '', expires_at: '', notes: '' })
       setAddBoardDialogOpen(false)
       loadMemberData()
@@ -177,8 +175,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         .eq('id', boardId)
 
       if (error) throw error
-
-      alert('刪除成功！')
       loadMemberData()
       onUpdate()
     } catch (error) {
@@ -466,7 +462,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                           boxShadow: '0 2px 8px rgba(17, 153, 142, 0.3)',
                         }}
                       >
-                        💳 記賬
+                        💳 記帳
                       </button>
                     </div>
                   </>
@@ -502,7 +498,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         />
       )}
 
-      {/* 記賬對話框 */}
+      {/* 記帳對話框 */}
       {member && (
         <TransactionDialog
           open={transactionDialogOpen}

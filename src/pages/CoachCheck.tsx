@@ -227,8 +227,6 @@ export function CoachCheck({ user }: CoachCheckProps) {
         })))
 
       if (error) throw error
-
-      alert('✅ 回報成功！')
       setReportDialogOpen(false)
       setSelectedBooking(null)
       setParticipants([])

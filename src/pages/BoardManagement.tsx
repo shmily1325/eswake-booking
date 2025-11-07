@@ -117,8 +117,6 @@ export function BoardManagement({ user }: BoardManagementProps) {
         .eq('id', selectedSlot.id)
 
       if (error) throw error
-
-      alert('更新成功！')
       setEditing(false)
       setSelectedSlot(null)
       loadBoardData()
@@ -142,8 +140,6 @@ export function BoardManagement({ user }: BoardManagementProps) {
         .eq('id', selectedSlot.id)
 
       if (error) throw error
-
-      alert('刪除成功！')
       setSelectedSlot(null)
       loadBoardData()
     } catch (error) {

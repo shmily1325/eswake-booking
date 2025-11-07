@@ -69,8 +69,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         .eq('id', member.id)
 
       if (error) throw error
-
-      alert('更新成功！')
       onSuccess()
       onClose()
     } catch (error) {

@@ -68,7 +68,6 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
       setNewContent('')
       setNewDisplayDate(getLocalDateString())
       loadAnnouncements()
-      alert('✅ 新增成功！')
     } catch (error) {
       console.error('新增失敗:', error)
       alert('❌ 新增失敗，請重試')
@@ -89,7 +88,6 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
 
       setEditingId(null)
       loadAnnouncements()
-      alert('✅ 更新成功！')
     } catch (error) {
       console.error('更新失敗:', error)
       alert('❌ 更新失敗，請重試')
@@ -108,7 +106,6 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
       if (error) throw error
 
       loadAnnouncements()
-      alert('✅ 刪除成功！')
     } catch (error) {
       console.error('刪除失敗:', error)
       alert('❌ 刪除失敗，請重試')

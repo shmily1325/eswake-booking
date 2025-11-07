@@ -373,8 +373,6 @@ function TimeOffDialog({ open, coach, onClose }: TimeOffDialogProps) {
         }])
 
       if (error) throw error
-
-      alert('新增休假成功！')
       setFormData({ start_date: '', end_date: '', reason: '', indefinite: false })
       setShowAddForm(false)
       loadTimeOffRecords()
@@ -399,8 +397,6 @@ function TimeOffDialog({ open, coach, onClose }: TimeOffDialogProps) {
         .eq('id', id)
 
       if (error) throw error
-
-      alert('刪除成功！')
       loadTimeOffRecords()
     } catch (error) {
       console.error('刪除失敗:', error)

@@ -119,8 +119,6 @@ export function BackupPage({ user }: BackupPageProps) {
       link.download = `預約備份_${new Date().toISOString().split('T')[0]}.csv`
       link.click()
       URL.revokeObjectURL(url)
-
-      alert(`✅ 成功導出 ${bookings.length} 筆資料`)
     } catch (error) {
       console.error('Export error:', error)
       alert('❌ 導出失敗，請重試')

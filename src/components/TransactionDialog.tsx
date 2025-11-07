@@ -183,14 +183,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         .insert([transactionData])
 
       if (transactionError) throw transactionError
-
-      alert('記賬成功！')
       resetForm()
       onSuccess()
       onClose()
     } catch (error) {
-      console.error('記賬失敗:', error)
-      alert('記賬失敗')
+      console.error('記帳失敗:', error)
+      alert('記帳失敗')
     } finally {
       setLoading(false)
     }
@@ -261,7 +259,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           zIndex: 1,
         }}>
           <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-            💳 記賬 - {member.name}
+            💳 記帳 - {member.name}
           </h2>
           <button
             onClick={onClose}
@@ -574,7 +572,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                 fontWeight: 'bold',
               }}
             >
-              {loading ? '處理中...' : '確認記賬'}
+              {loading ? '處理中...' : '確認記帳'}
             </button>
           </div>
         </form>

@@ -125,8 +125,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           }
         }
       }
-
-      alert('新增成功！')
       onSuccess()
       onClose()
       
