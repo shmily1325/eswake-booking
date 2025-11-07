@@ -161,7 +161,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
             + 新增會員
           </button>
           <Link
-            to="/"
+            to="/bao"
             style={{
               padding: isMobile ? '8px 12px' : '6px 12px',
               background: '#f8f9fa',
@@ -174,7 +174,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
               touchAction: 'manipulation'
             }}
           >
-            ← 回主頁
+            ← 回 BAO 專區
           </Link>
           <UserMenu user={user} />
         </div>

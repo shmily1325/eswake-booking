@@ -151,22 +151,123 @@ export function BoardManagement({ user }: BoardManagementProps) {
     }
   }
 
-  const renderSection = (section: typeof BOARD_SECTIONS[0]) => {
-    // 上層（雙數）
-    const upperSlots = []
-    for (let i = section.start; i <= section.end; i++) {
-      if (i % 2 === 0) {
-        upperSlots.push(i)
-      }
-    }
+  const renderSlotCard = (num: number) => {
+    const slotInfo = getSlotInfo(num)
+    const isOccupied = !!slotInfo
     
-    // 下層（單數）
-    const lowerSlots = []
-    if (!section.upperOnly) {
-      for (let i = section.start; i <= section.end; i++) {
-        if (i % 2 === 1) {
-          lowerSlots.push(i)
+    return (
+      <div
+        key={num}
+        onClick={() => handleSlotClick(slotInfo, num)}
+        style={{
+          padding: isMobile ? '8px' : '10px',
+          background: isOccupied ? 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)' : '#f5f5f5',
+          color: isOccupied ? 'white' : '#999',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          border: isOccupied ? '2px solid #2e7d32' : '2px solid #e0e0e0',
+          transition: 'all 0.2s',
+          minHeight: isMobile ? '65px' : '75px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          position: 'relative'
+        }}
+        onMouseEnter={(e) => {
+          if (isOccupied) {
+            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)'
+          e.currentTarget.style.boxShadow = 'none'
+        }}
+      >
+        {/* 格位編號 */}
+        <div style={{ 
+          fontSize: isMobile ? '11px' : '12px', 
+          fontWeight: 'bold',
+          opacity: 0.8
+        }}>
+          #{num}
+        </div>
+        
+        {/* 會員資訊 */}
+        {isOccupied && slotInfo ? (
+          <>
+            <div style={{ 
+              fontSize: isMobile ? '13px' : '14px', 
+              fontWeight: 'bold',
+              marginTop: '4px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {slotInfo.member_name}
+            </div>
+            
+            {/* 到期日 */}
+            {slotInfo.expires_at && (
+              <div style={{ 
+                fontSize: isMobile ? '10px' : '11px',
+                opacity: 0.9,
+                marginTop: '2px'
+              }}>
+                📅 {slotInfo.expires_at}
+              </div>
+            )}
+            
+            {/* 備註指示 */}
+            {slotInfo.notes && (
+              <div style={{ 
+                fontSize: isMobile ? '10px' : '11px',
+                opacity: 0.9,
+                marginTop: '2px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                📝 {slotInfo.notes}
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ 
+            fontSize: isMobile ? '12px' : '13px',
+            textAlign: 'center',
+            marginTop: '8px'
+          }}>
+            空位
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderSection = (section: typeof BOARD_SECTIONS[0]) => {
+    // 創建配對的格位：每一組包含上層（雙數）和下層（單數）
+    const slotPairs: Array<{ upper: number | null; lower: number | null }> = []
+    
+    for (let i = section.start; i <= section.end; i += 2) {
+      const lower = i  // 單數（下層）
+      const upper = i + 1  // 雙數（上層）
+      
+      // 檢查是否在範圍內
+      const hasLower = lower <= section.end
+      const hasUpper = upper <= section.end
+      
+      if (section.upperOnly) {
+        // 第5排只有上層
+        if (hasUpper) {
+          slotPairs.push({ upper, lower: null })
         }
+      } else {
+        // 其他排有上下兩層
+        slotPairs.push({
+          upper: hasUpper ? upper : null,
+          lower: hasLower ? lower : null
+        })
       }
     }
 
@@ -174,7 +275,7 @@ export function BoardManagement({ user }: BoardManagementProps) {
       <div key={section.name} style={{ marginBottom: '30px' }}>
         <h3 style={{ 
           margin: '0 0 15px 0', 
-          fontSize: '18px', 
+          fontSize: isMobile ? '16px' : '18px', 
           fontWeight: 'bold',
           color: 'white',
           background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
@@ -186,109 +287,26 @@ export function BoardManagement({ user }: BoardManagementProps) {
         
         <div style={{ 
           background: 'white', 
-          padding: '20px', 
+          padding: isMobile ? '12px' : '20px', 
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
-          {/* 上層 */}
-          <div style={{ marginBottom: section.upperOnly ? 0 : '10px' }}>
-            <div style={{ 
-              fontSize: '12px', 
-              color: '#666', 
-              marginBottom: '8px',
-              fontWeight: 'bold'
-            }}>
-              上層（雙數）
-            </div>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '60px' : '70px'}, 1fr))`,
-              gap: '8px'
-            }}>
-              {upperSlots.map(num => {
-                const slotInfo = getSlotInfo(num)
-                return (
-                  <div
-                    key={num}
-                    onClick={() => handleSlotClick(slotInfo, num)}
-                    style={{
-                      padding: isMobile ? '10px 5px' : '12px 8px',
-                      background: slotInfo ? 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)' : '#f0f0f0',
-                      color: slotInfo ? 'white' : '#666',
-                      borderRadius: '8px',
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      fontSize: isMobile ? '13px' : '14px',
-                      fontWeight: 'bold',
-                      border: slotInfo ? '2px solid #2e7d32' : '2px solid #ddd',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.05)'
-                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)'
-                      e.currentTarget.style.boxShadow = 'none'
-                    }}
-                  >
-                    {num}
-                  </div>
-                )
-              })}
-            </div>
+          {/* 對齊的上下層格位 */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '80px' : '110px'}, 1fr))`,
+            gap: isMobile ? '10px' : '12px'
+          }}>
+            {slotPairs.map((pair, index) => (
+              <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* 上層（雙數） */}
+                {pair.upper && renderSlotCard(pair.upper)}
+                
+                {/* 下層（單數） */}
+                {pair.lower && renderSlotCard(pair.lower)}
+              </div>
+            ))}
           </div>
-
-          {/* 下層 */}
-          {!section.upperOnly && (
-            <div>
-              <div style={{ 
-                fontSize: '12px', 
-                color: '#666', 
-                marginBottom: '8px',
-                fontWeight: 'bold'
-              }}>
-                下層（單數）
-              </div>
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: `repeat(auto-fill, minmin(${isMobile ? '60px' : '70px'}, 1fr))`,
-                gap: '8px'
-              }}>
-                {lowerSlots.map(num => {
-                  const slotInfo = getSlotInfo(num)
-                  return (
-                    <div
-                      key={num}
-                      onClick={() => handleSlotClick(slotInfo, num)}
-                      style={{
-                        padding: isMobile ? '10px 5px' : '12px 8px',
-                        background: slotInfo ? 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)' : '#f0f0f0',
-                        color: slotInfo ? 'white' : '#666',
-                        borderRadius: '8px',
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '13px' : '14px',
-                        fontWeight: 'bold',
-                        border: slotInfo ? '2px solid #2e7d32' : '2px solid #ddd',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.05)'
-                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)'
-                        e.currentTarget.style.boxShadow = 'none'
-                      }}
-                    >
-                      {num}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     )
