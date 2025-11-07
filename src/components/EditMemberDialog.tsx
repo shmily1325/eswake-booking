@@ -160,13 +160,14 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             {/* 暱稱 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                暱稱
+                暱稱 <span style={{ fontSize: '13px', color: '#999' }}>（可輸入多個）</span>
               </label>
               <input
                 type="text"
                 value={formData.nickname}
                 onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                placeholder="請輸入暱稱"
+                placeholder="例如：小明、阿明、那個男人"
+                maxLength={100}
                 style={inputStyle}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
