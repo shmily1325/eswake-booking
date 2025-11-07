@@ -1,4 +1,3 @@
-import React from 'react'
 import { useMemberSearch } from '../hooks/useMemberSearch'
 
 interface Member {
@@ -40,7 +39,6 @@ export function MemberSearchField({
 }: MemberSearchFieldProps) {
   const {
     searchTerm,
-    selectedMemberId,
     showDropdown,
     filteredMembers,
     handleSearchChange,
