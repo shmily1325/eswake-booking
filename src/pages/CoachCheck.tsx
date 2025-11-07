@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { UserMenu } from '../components/UserMenu'
+import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
 
@@ -814,6 +815,9 @@ export function CoachCheck({ user }: CoachCheckProps) {
           </div>
           </div>
         )}
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }

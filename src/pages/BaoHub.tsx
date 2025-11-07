@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { UserMenu } from '../components/UserMenu'
+import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 
 interface BaoHubProps {
@@ -35,6 +36,11 @@ export function BaoHub({ user }: BaoHubProps) {
       title: '快速記帳',
       icon: '💳',
       link: '/quick-transaction'
+    },
+    {
+      title: '公告管理',
+      icon: '📢',
+      link: '/announcements'
     },
     {
       title: '匯出資料',
@@ -226,17 +232,7 @@ export function BaoHub({ user }: BaoHubProps) {
         </div>
 
         {/* Footer */}
-        <div style={{
-          textAlign: 'center',
-          marginTop: '40px',
-          paddingTop: '30px',
-          borderTop: '1px solid rgba(0, 0, 0, 0.1)',
-          color: '#666',
-          fontSize: isMobile ? '12px' : '13px',
-          opacity: 0.7
-        }}>
-          專業管理工具 · 提升營運效率
-        </div>
+        <Footer />
       </div>
     </div>
   )

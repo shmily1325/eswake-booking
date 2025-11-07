@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { UserMenu } from '../components/UserMenu'
+import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
 
@@ -98,6 +99,9 @@ export function HomePage({ user }: HomePageProps) {
             <UserMenu user={user} />
           </div>
         </div>
+
+        {/* Daily Announcement */}
+        <DailyAnnouncement />
 
         {/* Menu Grid */}
         <div style={{

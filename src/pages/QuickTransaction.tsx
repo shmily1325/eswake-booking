@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { TransactionDialog } from '../components/TransactionDialog'
 import { UserMenu } from '../components/UserMenu'
+import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 
 interface Member {
@@ -325,6 +326,9 @@ export function QuickTransaction({ user }: QuickTransactionProps) {
           onSuccess={handleTransactionSuccess}
         />
       )}
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }

@@ -15,6 +15,7 @@ import { BoardManagement } from './pages/BoardManagement'
 import { BaoHub } from './pages/BaoHub'
 import { StaffManagement } from './pages/StaffManagement'
 import { QuickTransaction } from './pages/QuickTransaction'
+import { AnnouncementManagement } from './pages/AnnouncementManagement'
 import { LoginPage } from './components/LoginPage'
 import './App.css'
 
@@ -72,7 +73,8 @@ function App() {
         <Route path="/members" element={<MemberManagement user={user} />} />
         <Route path="/boards" element={<BoardManagement user={user} />} />
         <Route path="/staff" element={<StaffManagement user={user} />} />
-              </Routes>
+        <Route path="/announcements" element={<AnnouncementManagement user={user} />} />
+      </Routes>
     </BrowserRouter>
   )
 }

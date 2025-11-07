@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { UserMenu } from '../components/UserMenu'
+import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 
 interface BoardSlot {
@@ -704,6 +705,9 @@ export function BoardManagement({ user }: BoardManagementProps) {
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }

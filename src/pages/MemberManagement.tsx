@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js'
 import { AddMemberDialog } from '../components/AddMemberDialog'
 import { MemberDetailDialog } from '../components/MemberDetailDialog'
 import { UserMenu } from '../components/UserMenu'
+import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 
 interface Member {
@@ -438,6 +439,9 @@ export function MemberManagement({ user }: MemberManagementProps) {
           ))
         )}
       </div>
+
+      {/* Footer */}
+      <Footer />
 
       {/* 新增會員彈窗 */}
       <AddMemberDialog
