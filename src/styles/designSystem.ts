@@ -3,6 +3,8 @@
 
 interface DesignSystem {
   fontSize: {
+    // 超大標題
+    display: { mobile: string; desktop: string }
     // 標題
     h1: { mobile: string; desktop: string }
     h2: { mobile: string; desktop: string }
@@ -209,7 +211,7 @@ export const getLabelStyle = (isMobile: boolean = false): React.CSSProperties =>
 
 // 文字樣式生成器
 export const getTextStyle = (
-  variant: 'h1' | 'h2' | 'h3' | 'body' | 'bodyLarge' | 'bodySmall' | 'caption',
+  variant: 'display' | 'h1' | 'h2' | 'h3' | 'body' | 'bodyLarge' | 'bodySmall' | 'caption',
   isMobile: boolean = false
 ): React.CSSProperties => ({
   fontSize: designSystem.fontSize[variant][isMobile ? 'mobile' : 'desktop'],
