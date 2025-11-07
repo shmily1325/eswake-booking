@@ -2,6 +2,14 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 
+// =============================================
+// 船券方案設定（每年可調整）
+// =============================================
+const BOAT_VOUCHER_PLANS = {
+  PLAN_10H: 600,   // 10小時本 = 600分鐘
+  PLAN_20H: 1200,  // 20小時本 = 1200分鐘
+}
+
 interface Member {
   id: string
   name: string
@@ -388,6 +396,71 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                   step="1"
                   required
                 />
+                
+                {/* 船券快捷按鈕 */}
+                {transactionType === 'purchase' && (category === 'boat_voucher_g23' || category === 'boat_voucher_g21') && (
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '8px', 
+                    marginTop: '10px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setMinutes(BOAT_VOUCHER_PLANS.PLAN_10H.toString())}
+                      style={{
+                        padding: '8px 16px',
+                        background: minutes === BOAT_VOUCHER_PLANS.PLAN_10H.toString() ? '#667eea' : 'white',
+                        color: minutes === BOAT_VOUCHER_PLANS.PLAN_10H.toString() ? 'white' : '#667eea',
+                        border: '2px solid #667eea',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (minutes !== BOAT_VOUCHER_PLANS.PLAN_10H.toString()) {
+                          e.currentTarget.style.background = '#f0f0ff'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (minutes !== BOAT_VOUCHER_PLANS.PLAN_10H.toString()) {
+                          e.currentTarget.style.background = 'white'
+                        }
+                      }}
+                    >
+                      📦 10小時本 ({BOAT_VOUCHER_PLANS.PLAN_10H}分)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMinutes(BOAT_VOUCHER_PLANS.PLAN_20H.toString())}
+                      style={{
+                        padding: '8px 16px',
+                        background: minutes === BOAT_VOUCHER_PLANS.PLAN_20H.toString() ? '#667eea' : 'white',
+                        color: minutes === BOAT_VOUCHER_PLANS.PLAN_20H.toString() ? 'white' : '#667eea',
+                        border: '2px solid #667eea',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (minutes !== BOAT_VOUCHER_PLANS.PLAN_20H.toString()) {
+                          e.currentTarget.style.background = '#f0f0ff'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (minutes !== BOAT_VOUCHER_PLANS.PLAN_20H.toString()) {
+                          e.currentTarget.style.background = 'white'
+                        }
+                      }}
+                    >
+                      📦 20小時本 ({BOAT_VOUCHER_PLANS.PLAN_20H}分)
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
