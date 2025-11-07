@@ -155,6 +155,21 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Link
+              to="/"
+              style={{
+                padding: '6px 12px',
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '4px',
+                fontSize: '13px',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              ← HOME
+            </Link>
+            <Link
               to="/bao"
               style={{
                 padding: '6px 12px',
@@ -181,14 +196,6 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
           marginBottom: '15px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
         }}>
-          <h2 style={{
-            margin: '0 0 15px 0',
-            fontSize: isMobile ? '16px' : '18px',
-            fontWeight: '600'
-          }}>
-            ➕ 新增交辦事項
-          </h2>
-
           <div style={{ marginBottom: '12px' }}>
             <label style={{
               display: 'block',

@@ -29,11 +29,11 @@ export function HomePage({ user }: HomePageProps) {
     {
       title: '明日提醒',
       icon: '⏰',
-      link: '/admin'
+      link: '/tomorrow'
     },
     {
       title: '教練回報',
-      icon: '👨‍🏫',
+      icon: '✅',
       link: '/coach-check'
     },
     {

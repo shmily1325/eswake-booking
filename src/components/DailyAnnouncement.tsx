@@ -13,11 +13,6 @@ interface Birthday {
   nickname: string | null
 }
 
-interface EarliestBooking {
-  coach_name: string
-  start_time: string
-}
-
 interface ExpiringMembership {
   name: string
   nickname: string | null
@@ -35,7 +30,6 @@ export function DailyAnnouncement() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [timeOffCoaches, setTimeOffCoaches] = useState<string[]>([])
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
-  const [earliestBookings, setEarliestBookings] = useState<EarliestBooking[]>([])
   const [expiringMemberships, setExpiringMemberships] = useState<ExpiringMembership[]>([])
   const [expiringBoards, setExpiringBoards] = useState<ExpiringBoard[]>([])
   const [isExpanded, setIsExpanded] = useState(false)
@@ -78,37 +72,6 @@ export function DailyAnnouncement() {
     
     if (birthdayData) setBirthdays(birthdayData)
 
-    // 獲取各教練最早船班
-    const { data: bookingData } = await supabase
-      .from('bookings')
-      .select(`
-        start_at,
-        booking_coaches(coaches(name))
-      `)
-      .gte('start_at', `${today}T00:00:00`)
-      .lt('start_at', `${today}T23:59:59`)
-      .order('start_at', { ascending: true })
-      .limit(20)
-
-    if (bookingData) {
-      const coachEarliestMap: { [key: string]: string } = {}
-      for (const booking of bookingData) {
-        const coaches = (booking as any).booking_coaches || []
-        for (const bc of coaches) {
-          const coachName = bc.coaches?.name
-          if (coachName && !coachEarliestMap[coachName]) {
-            coachEarliestMap[coachName] = booking.start_at.substring(11, 16)
-          }
-        }
-      }
-      
-      const earliestList = Object.entries(coachEarliestMap).map(([name, time]) => ({
-        coach_name: name,
-        start_time: time
-      }))
-      setEarliestBookings(earliestList)
-    }
-
     // 獲取即將到期的會籍（7天內）
     const sevenDaysLater = new Date()
     sevenDaysLater.setDate(sevenDaysLater.getDate() + 7)
@@ -144,18 +107,18 @@ export function DailyAnnouncement() {
   }
 
   const hasAnyData = announcements.length > 0 || timeOffCoaches.length > 0 || 
-                      birthdays.length > 0 || earliestBookings.length > 0 ||
-                      expiringMemberships.length > 0 || expiringBoards.length > 0
+                      birthdays.length > 0 || expiringMemberships.length > 0 || 
+                      expiringBoards.length > 0
 
   if (!hasAnyData) return null
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
       borderRadius: '12px',
       padding: isMobile ? '12px' : '16px',
       marginBottom: '20px',
-      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
       color: 'white'
     }}>
       {/* Header */}
@@ -213,34 +176,7 @@ export function DailyAnnouncement() {
             </div>
           )}
 
-          {/* 最早船班 */}
-          {earliestBookings.length > 0 && (
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              borderRadius: '8px',
-              padding: '8px 10px'
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>⏰ 最早船班</div>
-              <div style={{ 
-                display: 'flex', 
-                flexWrap: 'wrap', 
-                gap: '8px',
-                fontSize: isMobile ? '12px' : '13px'
-              }}>
-                {earliestBookings.map((eb, idx) => (
-                  <span key={idx} style={{
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    padding: '2px 8px',
-                    borderRadius: '4px'
-                  }}>
-                    {eb.coach_name} {eb.start_time}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 生日快乐 */}
+          {/* 生日快樂 */}
           {birthdays.length > 0 && (
             <div style={{
               background: 'rgba(255, 255, 255, 0.15)',

@@ -161,19 +161,18 @@ export function BoardManagement({ user }: BoardManagementProps) {
         key={num}
         onClick={() => handleSlotClick(slotInfo, num)}
         style={{
-          padding: isMobile ? '8px' : '10px',
+          padding: isMobile ? '6px' : '8px',
           background: isOccupied ? 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)' : '#f5f5f5',
           color: isOccupied ? 'white' : '#999',
-          borderRadius: '8px',
+          borderRadius: '6px',
           cursor: 'pointer',
           border: isOccupied ? '2px solid #2e7d32' : '2px solid #e0e0e0',
           transition: 'all 0.2s',
-          height: isMobile ? '85px' : '95px',
+          minHeight: isMobile ? '65px' : '75px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'flex-start',
-          position: 'relative',
-          overflow: 'hidden'
+          position: 'relative'
         }}
         onMouseEnter={(e) => {
           if (isOccupied) {
@@ -188,9 +187,10 @@ export function BoardManagement({ user }: BoardManagementProps) {
       >
         {/* 格位編號 */}
         <div style={{ 
-          fontSize: isMobile ? '11px' : '12px', 
+          fontSize: isMobile ? '10px' : '11px', 
           fontWeight: 'bold',
-          opacity: 0.8
+          opacity: 0.7,
+          marginBottom: '3px'
         }}>
           #{num}
         </div>
@@ -199,12 +199,12 @@ export function BoardManagement({ user }: BoardManagementProps) {
         {isOccupied && slotInfo ? (
           <>
             <div style={{ 
-              fontSize: isMobile ? '13px' : '14px', 
+              fontSize: isMobile ? '12px' : '13px', 
               fontWeight: 'bold',
-              marginTop: '4px',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              lineHeight: '1.3'
             }}>
               {slotInfo.member_name}
             </div>
@@ -212,9 +212,10 @@ export function BoardManagement({ user }: BoardManagementProps) {
             {/* 到期日 */}
             {slotInfo.expires_at && (
               <div style={{ 
-                fontSize: isMobile ? '10px' : '11px',
-                opacity: 0.9,
-                marginTop: '2px'
+                fontSize: isMobile ? '9px' : '10px',
+                opacity: 0.85,
+                marginTop: '3px',
+                lineHeight: '1.2'
               }}>
                 📅 {slotInfo.expires_at}
               </div>
@@ -222,9 +223,9 @@ export function BoardManagement({ user }: BoardManagementProps) {
           </>
         ) : (
           <div style={{ 
-            fontSize: isMobile ? '12px' : '13px',
+            fontSize: isMobile ? '11px' : '12px',
             textAlign: 'center',
-            marginTop: '8px'
+            marginTop: '6px'
           }}>
             空位
           </div>
@@ -286,19 +287,14 @@ export function BoardManagement({ user }: BoardManagementProps) {
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: `repeat(${columnsPerRow}, 1fr)`,
-            gap: isMobile ? '10px' : '12px',
-            rowGap: isMobile ? '20px' : '24px'
+            gap: isMobile ? '8px' : '10px'
           }}>
             {slotPairs.map((pair, index) => (
               <React.Fragment key={index}>
                 <div style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
-                  gap: '0',
-                  background: 'white',
-                  borderRadius: '10px',
-                  padding: '8px',
-                  border: '1px solid #e0e0e0'
+                  gap: '6px'
                 }}>
                   {/* 上層（雙數） */}
                   {pair.upper && renderSlotCard(pair.upper)}
@@ -306,25 +302,15 @@ export function BoardManagement({ user }: BoardManagementProps) {
                   {/* 分隔線 */}
                   {pair.upper && pair.lower && (
                     <div style={{
-                      height: '2px',
-                      background: 'linear-gradient(to right, transparent, #ccc, transparent)',
-                      margin: '6px 0'
+                      height: '1px',
+                      background: 'linear-gradient(to right, transparent, #999, transparent)',
+                      margin: '0'
                     }} />
                   )}
                   
                   {/* 下層（單數） */}
                   {pair.lower && renderSlotCard(pair.lower)}
                 </div>
-                
-                {/* 在每一行結束後加入分隔線 */}
-                {(index + 1) % columnsPerRow === 0 && index < slotPairs.length - 1 && (
-                  <div style={{
-                    gridColumn: `1 / -1`,
-                    height: '3px',
-                    background: 'linear-gradient(to right, transparent 10%, #999 50%, transparent 90%)',
-                    margin: '8px 0'
-                  }} />
-                )}
               </React.Fragment>
             ))}
           </div>

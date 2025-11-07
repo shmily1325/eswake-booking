@@ -8,7 +8,7 @@ import { SearchPage } from './pages/SearchPage'
 import { SearchBookings } from './pages/SearchBookings'
 import { CoachCheck } from './pages/CoachCheck'
 import { AuditLog } from './pages/AuditLog'
-import { AdminPage } from './pages/AdminPage'
+import { TomorrowReminder } from './pages/TomorrowReminder'
 import { BackupPage } from './pages/BackupPage'
 import { MemberManagement } from './pages/MemberManagement'
 import { BoardManagement } from './pages/BoardManagement'
@@ -66,7 +66,7 @@ function App() {
         <Route path="/search-bookings" element={<SearchBookings user={user} />} />
         <Route path="/coach-check" element={<CoachCheck user={user} />} />
         <Route path="/audit-log" element={<AuditLog user={user} />} />
-        <Route path="/admin" element={<AdminPage user={user} />} />
+              <Route path="/tomorrow" element={<TomorrowReminder user={user} />} />
         <Route path="/backup" element={<BackupPage user={user} />} />
         <Route path="/quick-transaction" element={<QuickTransaction user={user} />} />
         <Route path="/bao" element={<BaoHub user={user} />} />
