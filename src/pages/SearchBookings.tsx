@@ -7,7 +7,7 @@ interface Booking {
   id: number
   start_at: string
   duration_min: number
-  student: string
+  contact_name: string
   notes: string | null
   activity_types: string[] | null
   status: string
@@ -47,7 +47,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       let query = supabase
         .from('bookings')
         .select('*, boats:boat_id (name, color)')
-        .ilike('student', `%${searchName.trim()}%`)
+        .ilike('contact_name', `%${searchName.trim()}%`)
       
       // 根據篩選類型添加條件
       const now = new Date()
@@ -488,7 +488,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                           color: '#000',
                           marginBottom: '4px',
                         }}>
-                          {booking.student}
+                          {booking.contact_name}
                         </div>
                         <div style={{
                           fontSize: '14px',
