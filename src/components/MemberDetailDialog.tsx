@@ -483,9 +483,9 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
 // 輔助函數
 function getMemberTypeLabel(type: string): string {
   switch (type) {
-    case 'regular': return '一般會員'
-    case 'vip': return 'VIP 會員'
-    case 'board_only': return '僅置板會員'
+    case 'member': return '會員'
+    case 'member_with_board': return '會員+置板'
+    case 'board_only': return '僅置板'
     default: return type
   }
 }

@@ -16,9 +16,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     nickname: '',
     birthday: '',
     phone: '',
-    email: '',
-    line_id: '',
-    member_type: 'regular',
+    member_type: 'member',
     notes: '',
   })
 
@@ -50,6 +48,9 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
     setLoading(true)
     try {
+      // 根據會員類型設定置板狀態
+      const hasBoard = formData.member_type === 'member_with_board' || formData.member_type === 'board_only'
+      
       const { error } = await supabase
         .from('members')
         .insert([{
@@ -57,14 +58,12 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           nickname: formData.nickname.trim() || null,
           birthday: formData.birthday || null,
           phone: formData.phone.trim() || null,
-          email: formData.email.trim() || null,
-          line_id: formData.line_id.trim() || null,
           member_type: formData.member_type,
           notes: formData.notes.trim() || null,
           balance: 0,
           designated_lesson_minutes: 0,
           boat_voucher_minutes: 0,
-          has_board_storage: false,
+          has_board_storage: hasBoard,
           status: 'active',
         }])
 
@@ -80,9 +79,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
         nickname: '',
         birthday: '',
         phone: '',
-        email: '',
-        line_id: '',
-        member_type: 'regular',
+        member_type: 'member',
         notes: '',
       })
     } catch (error) {
@@ -176,8 +173,8 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
             {/* 暱稱 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                暱稱
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                暱稱 <span style={{ fontSize: '13px' }}>（選填）</span>
               </label>
               <input
                 type="text"
@@ -192,8 +189,8 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
             {/* 生日 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                生日
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                生日 <span style={{ fontSize: '13px' }}>（選填）</span>
               </label>
               <input
                 type="date"
@@ -207,8 +204,8 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
             {/* 電話 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                電話
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                電話 <span style={{ fontSize: '13px' }}>（選填）</span>
               </label>
               <input
                 type="tel"
@@ -221,42 +218,10 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               />
             </div>
 
-            {/* Email */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                Email
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="請輸入 Email"
-                style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
-            </div>
-
-            {/* LINE ID */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                LINE ID
-              </label>
-              <input
-                type="text"
-                value={formData.line_id}
-                onChange={(e) => setFormData({ ...formData, line_id: e.target.value })}
-                placeholder="請輸入 LINE ID"
-                style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
-            </div>
-
             {/* 會員類型 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                會員類型
+                會員類型 <span style={{ color: 'red' }}>*</span>
               </label>
               <select
                 value={formData.member_type}
@@ -264,17 +229,18 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 style={inputStyle}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
+                required
               >
-                <option value="regular">一般會員</option>
-                <option value="vip">VIP 會員</option>
-                <option value="board_only">僅置板會員</option>
+                <option value="member">會員</option>
+                <option value="member_with_board">會員+置板</option>
+                <option value="board_only">僅置板</option>
               </select>
             </div>
 
             {/* 備註 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                備註
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                備註 <span style={{ fontSize: '13px' }}>（選填）</span>
               </label>
               <textarea
                 value={formData.notes}

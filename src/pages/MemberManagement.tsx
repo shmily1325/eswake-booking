@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { AddMemberDialog } from '../components/AddMemberDialog'
 import { MemberDetailDialog } from '../components/MemberDetailDialog'
+import { UserMenu } from '../components/UserMenu'
+import { useResponsive } from '../hooks/useResponsive'
 
 interface Member {
   id: string
@@ -26,6 +29,7 @@ interface MemberManagementProps {
 }
 
 export function MemberManagement({ user }: MemberManagementProps) {
+  const { isMobile } = useResponsive()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -82,9 +86,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
 
   return (
     <div style={{ 
-      padding: '20px',
-      maxWidth: '1200px',
-      margin: '0 auto',
+      padding: isMobile ? '12px' : '20px',
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
@@ -93,66 +95,80 @@ export function MemberManagement({ user }: MemberManagementProps) {
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        marginBottom: '30px',
+        marginBottom: isMobile ? '15px' : '20px',
         background: 'white',
-        padding: '20px',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        padding: isMobile ? '12px' : '15px',
+        borderRadius: '8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        gap: isMobile ? '8px' : '10px',
+        flexWrap: 'wrap'
       }}>
-        <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 'bold' }}>
+        <h1 style={{ 
+          margin: 0, 
+          fontSize: isMobile ? '16px' : '18px', 
+          fontWeight: '600',
+          color: '#000'
+        }}>
           👥 會員管理
         </h1>
-        <button
-          onClick={() => setAddDialogOpen(true)}
-          style={{
-            padding: '12px 24px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)'
-          }}
-        >
-          + 新增會員
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={() => setAddDialogOpen(true)}
+            style={{
+              padding: isMobile ? '8px 12px' : '6px 14px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: isMobile ? '14px' : '13px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              touchAction: 'manipulation'
+            }}
+          >
+            + 新增會員
+          </button>
+          <Link
+            to="/"
+            style={{
+              padding: isMobile ? '8px 12px' : '6px 12px',
+              background: '#f8f9fa',
+              color: '#333',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              fontSize: isMobile ? '14px' : '13px',
+              border: '1px solid #dee2e6',
+              whiteSpace: 'nowrap',
+              touchAction: 'manipulation'
+            }}
+          >
+            ← 回主頁
+          </Link>
+          <UserMenu user={user} />
+        </div>
       </div>
 
       {/* 搜尋欄 */}
-      <div style={{ 
-        marginBottom: '20px',
-        background: 'white',
-        padding: '20px',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
+      <div style={{ marginBottom: isMobile ? '15px' : '20px' }}>
         <input
           type="text"
-          placeholder="搜尋會員（姓名、電話、LINE ID）"
+          placeholder="搜尋會員（姓名、暱稱、電話）"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
             width: '100%',
-            padding: '12px 16px',
-            fontSize: '16px',
-            border: '2px solid #e0e0e0',
+            padding: isMobile ? '10px 14px' : '12px 16px',
+            border: '1px solid #dee2e6',
             borderRadius: '8px',
+            fontSize: '14px',
             outline: 'none',
-            transition: 'border-color 0.2s'
+            transition: 'border-color 0.2s',
+            background: 'white',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}
           onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
-          onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+          onBlur={(e) => e.currentTarget.style.borderColor = '#dee2e6'}
         />
       </div>
 

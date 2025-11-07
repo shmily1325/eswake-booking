@@ -258,14 +258,22 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               </label>
               <select
                 value={formData.member_type}
-                onChange={(e) => setFormData({ ...formData, member_type: e.target.value })}
+                onChange={(e) => {
+                  const newType = e.target.value
+                  const hasBoard = newType === 'member_with_board' || newType === 'board_only'
+                  setFormData({ 
+                    ...formData, 
+                    member_type: newType,
+                    has_board_storage: hasBoard 
+                  })
+                }}
                 style={inputStyle}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
               >
-                <option value="regular">一般會員</option>
-                <option value="vip">VIP 會員</option>
-                <option value="board_only">僅置板會員</option>
+                <option value="member">會員</option>
+                <option value="member_with_board">會員+置板</option>
+                <option value="board_only">僅置板</option>
               </select>
             </div>
 
