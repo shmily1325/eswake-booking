@@ -174,15 +174,25 @@ export function CoachCheck({ user }: CoachCheckProps) {
         })
       })
 
-      // 合併資料
-      const bookingsWithData = (bookingsResult.data || []).map(booking => ({
-        ...booking,
-        boats: booking.boat_id ? boatsById[booking.boat_id] || null : null,
-        coaches: coachesByBooking[booking.id] || [],
-        has_report: (participantsByBooking[booking.id]?.length || 0) > 0,
-        participant_count: participantsByBooking[booking.id]?.length || 0,
-        reported_participants: participantsByBooking[booking.id] || []
-      }))
+      // 合併資料並過濾已結束的預約
+      const now = new Date()
+      const bookingsWithData = (bookingsResult.data || [])
+        .map(booking => {
+          // 計算預約結束時間
+          const startTime = new Date(booking.start_at)
+          const endTime = new Date(startTime.getTime() + booking.duration_min * 60000)
+          
+          return {
+            ...booking,
+            boats: booking.boat_id ? boatsById[booking.boat_id] || null : null,
+            coaches: coachesByBooking[booking.id] || [],
+            has_report: (participantsByBooking[booking.id]?.length || 0) > 0,
+            participant_count: participantsByBooking[booking.id]?.length || 0,
+            reported_participants: participantsByBooking[booking.id] || [],
+            isFinished: endTime < now
+          }
+        })
+        .filter(booking => booking.isFinished)
 
       setBookings(bookingsWithData as Booking[])
     } catch (error) {
@@ -207,8 +217,8 @@ export function CoachCheck({ user }: CoachCheckProps) {
         id: p.id,
         member_id: p.member_id,
         participant_name: p.participant_name,
-        duration_min: p.designated_fee_duration_min || 0,
-        is_designated: p.designated_fee_type === 'designated_lesson'
+        duration_min: p.duration_min || 0,
+        is_designated: p.is_designated || false
       })))
     } else {
       setParticipants([{
@@ -265,6 +275,8 @@ export function CoachCheck({ user }: CoachCheckProps) {
           booking_id: selectedBooking.id,
           member_id: p.member_id,
           participant_name: p.participant_name,
+          duration_min: p.duration_min,
+          is_designated: p.is_designated,
           boat_fee_duration_min: null,
           boat_fee_type: null,
           designated_fee_duration_min: p.is_designated ? p.duration_min : null,
@@ -294,6 +306,13 @@ export function CoachCheck({ user }: CoachCheckProps) {
   const formatTime = (isoString: string) => {
     const time = isoString.substring(11, 16)
     return time
+  }
+
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString)
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    return `${month}/${day}`
   }
 
   return (
@@ -450,7 +469,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
                         fontWeight: 'bold',
                         marginBottom: '4px'
                       }}>
-                        {formatTime(booking.start_at)} / {booking.duration_min}分 / {booking.contact_name}
+                        {formatDate(booking.start_at)} {formatTime(booking.start_at)} / {booking.duration_min}分 / {booking.contact_name}
                       </div>
                       <div style={{ fontSize: '14px', color: '#666' }}>
                         🚤 {booking.boats?.name || '未指定'} 

@@ -52,12 +52,18 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
   }
 
   try {
-    await supabase.from('audit_log').insert({
+    const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
       action: 'create',
       table_name: 'bookings',
       details
     })
+    
+    if (error) {
+      console.error('審計日誌寫入錯誤:', error)
+    } else {
+      console.log('審計日誌寫入成功:', details)
+    }
   } catch (error) {
     console.error('審計日誌記錄失敗:', error)
   }
