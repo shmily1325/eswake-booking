@@ -83,7 +83,7 @@ export function BaoHub({ user }: BaoHubProps) {
             letterSpacing: '2px',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
           }}>
-            BAO HUB
+            BAO
           </h1>
           <p style={{
             margin: '0 0 20px 0',

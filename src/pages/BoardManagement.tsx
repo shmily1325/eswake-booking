@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../components/PageHeader'
@@ -37,6 +36,16 @@ export function BoardManagement({ user }: BoardManagementProps) {
   const [selectedSlot, setSelectedSlot] = useState<BoardSlot | null>(null)
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState({
+    expires_at: '',
+    notes: ''
+  })
+  
+  // 新增置板相關狀態
+  const [isAddingBoard, setIsAddingBoard] = useState(false)
+  const [memberSearch, setMemberSearch] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [selectedMember, setSelectedMember] = useState<any>(null)
+  const [newBoardForm, setNewBoardForm] = useState({
     expires_at: '',
     notes: ''
   })
@@ -146,6 +155,70 @@ export function BoardManagement({ user }: BoardManagementProps) {
       console.error('刪除失敗:', error)
       alert('刪除失敗')
     }
+  }
+
+  // 會員搜尋
+  const searchMembers = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('id, name, nickname, phone')
+        .or(`name.ilike.%${query}%,nickname.ilike.%${query}%,phone.ilike.%${query}%`)
+        .eq('status', 'active')
+        .limit(10)
+
+      if (error) throw error
+      setSearchResults(data || [])
+    } catch (error) {
+      console.error('搜尋會員失敗:', error)
+    }
+  }
+
+  // 處理新增置板
+  const handleAddBoard = async () => {
+    if (!selectedMember || !selectedSlot) return
+
+    try {
+      const { error } = await supabase
+        .from('board_storage')
+        .insert({
+          slot_number: selectedSlot.slot_number,
+          member_id: selectedMember.id,
+          expires_at: newBoardForm.expires_at || null,
+          notes: newBoardForm.notes.trim() || null,
+          status: 'active'
+        })
+
+      if (error) throw error
+
+      // 重置狀態
+      setIsAddingBoard(false)
+      setSelectedSlot(null)
+      setSelectedMember(null)
+      setMemberSearch('')
+      setSearchResults([])
+      setNewBoardForm({ expires_at: '', notes: '' })
+      
+      loadBoardData()
+    } catch (error) {
+      console.error('新增置板失敗:', error)
+      alert('新增置板失敗')
+    }
+  }
+
+  // 開啟新增置板模式
+  const startAddingBoard = (slotNumber: number) => {
+    setSelectedSlot({ slot_number: slotNumber })
+    setIsAddingBoard(true)
+    setSelectedMember(null)
+    setMemberSearch('')
+    setSearchResults([])
+    setNewBoardForm({ expires_at: '', notes: '' })
   }
 
   const renderSlotCard = (num: number) => {
@@ -593,28 +666,209 @@ export function BoardManagement({ user }: BoardManagementProps) {
                   )}
                 </>
               ) : (
-                <div style={{ 
-                  padding: '40px 20px',
-                  textAlign: 'center',
-                  color: '#999'
-                }}>
-                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏄</div>
-                  <div style={{ fontSize: '16px', marginBottom: '20px' }}>此格位尚未使用</div>
-                  <Link
-                    to="/members"
-                    style={{
-                      display: 'inline-block',
-                      padding: '10px 20px',
-                      background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                      color: 'white',
-                      textDecoration: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    前往會員管理新增
-                  </Link>
+                <div style={{ padding: '20px' }}>
+                  {!isAddingBoard ? (
+                    <div style={{ 
+                      padding: '40px 20px',
+                      textAlign: 'center',
+                      color: '#999'
+                    }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏄</div>
+                      <div style={{ fontSize: '16px', marginBottom: '20px' }}>此格位尚未使用</div>
+                      <button
+                        onClick={() => startAddingBoard(selectedSlot.slot_number)}
+                        style={{
+                          padding: '12px 24px',
+                          background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '15px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        新增置板
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* 會員搜尋 */}
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                          選擇會員 <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={memberSearch}
+                          onChange={(e) => {
+                            setMemberSearch(e.target.value)
+                            searchMembers(e.target.value)
+                          }}
+                          placeholder="搜尋會員姓名/暱稱..."
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                          }}
+                        />
+                        
+                        {/* 搜尋結果 */}
+                        {searchResults.length > 0 && !selectedMember && (
+                          <div style={{
+                            marginTop: '8px',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            background: 'white'
+                          }}>
+                            {searchResults.map((member) => (
+                              <div
+                                key={member.id}
+                                onClick={() => {
+                                  setSelectedMember(member)
+                                  setMemberSearch(member.name)
+                                  setSearchResults([])
+                                }}
+                                style={{
+                                  padding: '10px',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid #f0f0f0'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                              >
+                                <div style={{ fontWeight: '500' }}>{member.name}</div>
+                                {member.nickname && (
+                                  <div style={{ fontSize: '13px', color: '#666' }}>
+                                    暱稱：{member.nickname}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 已選擇的會員 */}
+                        {selectedMember && (
+                          <div style={{
+                            marginTop: '8px',
+                            padding: '12px',
+                            background: '#e8f5e9',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <div>
+                              <div style={{ fontWeight: '500' }}>{selectedMember.name}</div>
+                              {selectedMember.nickname && (
+                                <div style={{ fontSize: '13px', color: '#666' }}>
+                                  暱稱：{selectedMember.nickname}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => {
+                                setSelectedMember(null)
+                                setMemberSearch('')
+                              }}
+                              style={{
+                                padding: '4px 8px',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '18px'
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 到期日 */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                          到期日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={newBoardForm.expires_at}
+                          onChange={(e) => setNewBoardForm({ ...newBoardForm, expires_at: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                          }}
+                        />
+                      </div>
+
+                      {/* 備註 */}
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                          備註 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newBoardForm.notes}
+                          onChange={(e) => setNewBoardForm({ ...newBoardForm, notes: e.target.value })}
+                          placeholder="例如：藍色長板"
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                          }}
+                        />
+                      </div>
+
+                      {/* 按鈕 */}
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                          onClick={() => {
+                            setIsAddingBoard(false)
+                            setSelectedSlot(null)
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '12px',
+                            background: '#f0f0f0',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          取消
+                        </button>
+                        <button
+                          onClick={handleAddBoard}
+                          disabled={!selectedMember}
+                          style={{
+                            flex: 1,
+                            padding: '12px',
+                            background: selectedMember ? 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)' : '#ccc',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                            cursor: selectedMember ? 'pointer' : 'not-allowed'
+                          }}
+                        >
+                          確認新增
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

@@ -42,7 +42,7 @@ export function HomePage({ user }: HomePageProps) {
       link: '/audit-log'
     },
     {
-      title: 'BAO HUB',
+      title: 'BAO',
       icon: '🔧',
       link: '/bao',
       isAdmin: true
