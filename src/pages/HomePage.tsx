@@ -36,6 +36,11 @@ export function HomePage({ user }: HomePageProps) {
       link: '/admin'
     },
     {
+      title: '快速記帳',
+      icon: '💳',
+      link: '/quick-transaction'
+    },
+    {
       title: '編輯記錄',
       icon: '📝',
       link: '/audit-log'
