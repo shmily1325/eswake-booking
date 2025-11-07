@@ -218,20 +218,6 @@ export function BoardManagement({ user }: BoardManagementProps) {
                 📅 {slotInfo.expires_at}
               </div>
             )}
-            
-            {/* 備註指示 */}
-            {slotInfo.notes && (
-              <div style={{ 
-                fontSize: isMobile ? '10px' : '11px',
-                opacity: 0.9,
-                marginTop: '2px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}>
-                📝 {slotInfo.notes}
-              </div>
-            )}
           </>
         ) : (
           <div style={{ 
