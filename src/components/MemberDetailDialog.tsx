@@ -54,6 +54,12 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'info' | 'transactions' | 'boards'>('info')
+  const [addBoardDialogOpen, setAddBoardDialogOpen] = useState(false)
+  const [boardFormData, setBoardFormData] = useState({
+    slot_number: '',
+    expires_at: '',
+    notes: ''
+  })
 
   useEffect(() => {
     if (open && memberId) {
@@ -113,6 +119,71 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
   const handleTransactionSuccess = () => {
     loadMemberData()
     onUpdate()
+  }
+
+  const handleAddBoard = async () => {
+    if (!memberId || !boardFormData.slot_number) {
+      alert('請輸入格位編號')
+      return
+    }
+
+    const slotNumber = parseInt(boardFormData.slot_number)
+    if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 145) {
+      alert('格位編號必須是 1-145 之間的數字')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('board_storage')
+        .insert([{
+          member_id: memberId,
+          slot_number: slotNumber,
+          expires_at: boardFormData.expires_at || null,
+          notes: boardFormData.notes.trim() || null,
+          status: 'active'
+        }])
+
+      if (error) {
+        if (error.code === '23505') {
+          alert(`格位 ${slotNumber} 已被使用，請選擇其他格位`)
+        } else {
+          throw error
+        }
+        return
+      }
+
+      alert('新增置板成功！')
+      setBoardFormData({ slot_number: '', expires_at: '', notes: '' })
+      setAddBoardDialogOpen(false)
+      loadMemberData()
+      onUpdate()
+    } catch (error) {
+      console.error('新增置板失敗:', error)
+      alert('新增置板失敗')
+    }
+  }
+
+  const handleDeleteBoard = async (boardId: number, slotNumber: number) => {
+    if (!confirm(`確定要刪除格位 ${slotNumber} 嗎？`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('board_storage')
+        .update({ status: 'cancelled' })
+        .eq('id', boardId)
+
+      if (error) throw error
+
+      alert('刪除成功！')
+      loadMemberData()
+      onUpdate()
+    } catch (error) {
+      console.error('刪除置板失敗:', error)
+      alert('刪除置板失敗')
+    }
   }
 
   if (!open || !memberId) return null
@@ -259,17 +330,81 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                     </div>
 
                     {/* 置板資訊 */}
-                    {boardStorage.length > 0 && (
-                      <div style={{ marginBottom: '30px' }}>
-                        <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>🏄 置板服務</h3>
-                        <div style={{ display: 'grid', gap: '12px' }}>
-                          <InfoRow label="置板數量" value={`${boardStorage.length} 格`} />
-                          <div style={{ marginTop: '8px', fontSize: '14px', color: '#666' }}>
-                            格位編號：{boardStorage.map(b => b.slot_number).join(', ')}
-                          </div>
-                        </div>
+                    <div style={{ marginBottom: '30px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                        <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>🏄 置板服務</h3>
+                        <button
+                          onClick={() => setAddBoardDialogOpen(true)}
+                          style={{
+                            padding: '6px 12px',
+                            background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          + 新增置板
+                        </button>
                       </div>
-                    )}
+                      
+                      {boardStorage.length === 0 ? (
+                        <div style={{ 
+                          padding: '20px', 
+                          textAlign: 'center', 
+                          color: '#999', 
+                          background: '#f8f9fa',
+                          borderRadius: '8px'
+                        }}>
+                          尚無置板記錄
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          {boardStorage.map(board => (
+                            <div key={board.id} style={{
+                              padding: '16px',
+                              background: '#f8f9fa',
+                              borderRadius: '8px',
+                              border: '1px solid #e0e0e0'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
+                                    格位 {board.slot_number}
+                                  </div>
+                                  {board.expires_at && (
+                                    <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                                      到期：{board.expires_at}
+                                    </div>
+                                  )}
+                                  {board.notes && (
+                                    <div style={{ fontSize: '13px', color: '#999', fontStyle: 'italic' }}>
+                                      {board.notes}
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteBoard(board.id, board.slot_number)}
+                                  style={{
+                                    padding: '4px 10px',
+                                    background: '#f44336',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  刪除
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
                     {/* 服務資訊 */}
                     {member.member_type === 'member' && (
@@ -368,6 +503,165 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
           onClose={() => setTransactionDialogOpen(false)}
           onSuccess={handleTransactionSuccess}
         />
+      )}
+
+      {/* 新增置板對話框 */}
+      {addBoardDialogOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '20px',
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          }}>
+            {/* 標題 */}
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
+                新增置板
+              </h2>
+              <button
+                onClick={() => {
+                  setAddBoardDialogOpen(false)
+                  setBoardFormData({ slot_number: '', expires_at: '', notes: '' })
+                }}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* 表單 */}
+            <div style={{ padding: '20px' }}>
+              {/* 格位編號 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  格位編號 <span style={{ color: 'red' }}>*</span>
+                  <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>（1-145）</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="145"
+                  value={boardFormData.slot_number}
+                  onChange={(e) => setBoardFormData({ ...boardFormData, slot_number: e.target.value })}
+                  placeholder="請輸入格位編號"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+
+              {/* 置板到期 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                  置板到期 <span style={{ fontSize: '13px' }}>（選填）</span>
+                </label>
+                <input
+                  type="date"
+                  value={boardFormData.expires_at}
+                  onChange={(e) => setBoardFormData({ ...boardFormData, expires_at: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+
+              {/* 置板備註 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                  置板備註 <span style={{ fontSize: '13px' }}>（選填）</span>
+                </label>
+                <input
+                  type="text"
+                  value={boardFormData.notes}
+                  onChange={(e) => setBoardFormData({ ...boardFormData, notes: e.target.value })}
+                  placeholder="例如：藍色長板"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* 按鈕 */}
+            <div style={{
+              padding: '20px',
+              borderTop: '1px solid #e0e0e0',
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={() => {
+                  setAddBoardDialogOpen(false)
+                  setBoardFormData({ slot_number: '', expires_at: '', notes: '' })
+                }}
+                style={{
+                  padding: '10px 20px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleAddBoard}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                }}
+              >
+                確認新增
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
