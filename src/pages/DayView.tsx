@@ -53,8 +53,7 @@ interface Coach {
 interface Booking {
   id: number
   boat_id: number
-  student: string
-  contact_name?: string
+  contact_name: string
   member_id?: string | null
   driver_coach_id?: string | null
   start_at: string
@@ -765,7 +764,7 @@ export function DayView({ user }: DayViewProps) {
                                     fontWeight: '700',
                                     color: '#000',
                                   }}>
-                                    {booking.contact_name || booking.student}
+                                    {booking.contact_name}
                                   </div>
                                   <div style={{
                                     fontSize: isMobile ? '12px' : '13px',
@@ -981,7 +980,7 @@ export function DayView({ user }: DayViewProps) {
                             textAlign: 'center',
                             lineHeight: '1.2',
                           }}>
-                            {booking.contact_name || booking.student}
+                            {booking.contact_name}
                           </div>
                           
                           <div style={{

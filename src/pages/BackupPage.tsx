@@ -121,7 +121,7 @@ export function BackupPage({ user }: BackupPageProps) {
         }
         const status = statusMap[booking.status] || booking.status
 
-        csv += `"${booking.student}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${activities}","${coachConfirmed}","${confirmedAt}","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`
+        csv += `"${booking.contact_name}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${activities}","${coachConfirmed}","${confirmedAt}","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`
       })
 
       // 下载文件

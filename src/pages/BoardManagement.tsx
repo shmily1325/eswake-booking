@@ -185,7 +185,6 @@ export function BoardManagement({ user }: BoardManagementProps) {
           e.currentTarget.style.boxShadow = 'none'
         }}
       >
-        {/* 格位編號 */}
         <div style={{ 
           fontSize: isMobile ? '10px' : '11px', 
           fontWeight: 'bold',
@@ -195,7 +194,6 @@ export function BoardManagement({ user }: BoardManagementProps) {
           #{num}
         </div>
         
-        {/* 會員資訊 */}
         {isOccupied && slotInfo ? (
           <>
             <div style={{ 
@@ -209,7 +207,6 @@ export function BoardManagement({ user }: BoardManagementProps) {
               {slotInfo.member_name}
             </div>
             
-            {/* 到期日 */}
             {slotInfo.expires_at && (
               <div style={{ 
                 fontSize: isMobile ? '9px' : '10px',
@@ -235,21 +232,17 @@ export function BoardManagement({ user }: BoardManagementProps) {
   }
 
   const renderSection = (section: typeof BOARD_SECTIONS[0]) => {
-    // 創建配對的格位：每一組包含上層（雙數）和下層（單數）
     const slotPairs: Array<{ upper: number | null; lower: number | null }> = []
     
     if (section.upperOnly) {
-      // 第5排：所有格位都顯示在上層，不分上下
       for (let i = section.start; i <= section.end; i++) {
         slotPairs.push({ upper: i, lower: null })
       }
     } else {
-      // 其他排：雙數在上層，單數在下層
       for (let i = section.start; i <= section.end; i += 2) {
-        const lower = i  // 單數（下層）
-        const upper = i + 1  // 雙數（上層）
+        const lower = i
+        const upper = i + 1
         
-        // 檢查是否在範圍內
         const hasLower = lower <= section.end
         const hasUpper = upper <= section.end
         
@@ -260,7 +253,6 @@ export function BoardManagement({ user }: BoardManagementProps) {
       }
     }
 
-    // 計算每行的格位數（桌面版9列，手機版3列）
     const columnsPerRow = isMobile ? 3 : 9
     
     return (
@@ -283,7 +275,6 @@ export function BoardManagement({ user }: BoardManagementProps) {
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
-          {/* 對齊的上下層格位 */}
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: `repeat(${columnsPerRow}, 1fr)`,
@@ -296,10 +287,8 @@ export function BoardManagement({ user }: BoardManagementProps) {
                   flexDirection: 'column', 
                   gap: '6px'
                 }}>
-                  {/* 上層（雙數） */}
                   {pair.upper && renderSlotCard(pair.upper)}
                   
-                  {/* 分隔線 */}
                   {pair.upper && pair.lower && (
                     <div style={{
                       height: '1px',
@@ -308,7 +297,6 @@ export function BoardManagement({ user }: BoardManagementProps) {
                     }} />
                   )}
                   
-                  {/* 下層（單數） */}
                   {pair.lower && renderSlotCard(pair.lower)}
                 </div>
               </React.Fragment>

@@ -11,7 +11,7 @@ interface Booking {
   id: number
   start_at: string
   duration_min: number
-  student: string
+  contact_name: string
   notes: string | null
   activity_types: string[] | null
   status: string
@@ -294,7 +294,7 @@ export function CoachQuery({ }: CoachQueryProps) {
                         color: '#000',
                         marginBottom: '4px',
                       }}>
-                        {booking.student}
+                        {booking.contact_name}
                       </div>
                       <div style={{
                         fontSize: '14px',

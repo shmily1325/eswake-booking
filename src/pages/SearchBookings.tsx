@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { UserMenu } from '../components/UserMenu'
+import { useResponsive } from '../hooks/useResponsive'
+import { Footer } from '../components/Footer'
 
 interface Booking {
   id: number
@@ -12,7 +14,14 @@ interface Booking {
   activity_types: string[] | null
   status: string
   boats: { name: string; color: string } | null
-  coaches: { id: string; name: string }[] // 改為數組
+  coaches: { id: string; name: string }[]
+}
+
+interface Member {
+  id: string
+  name: string
+  nickname: string | null
+  phone: string | null
 }
 
 interface SearchBookingsProps {
@@ -21,16 +30,52 @@ interface SearchBookingsProps {
 }
 
 export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps) {
+  const { isMobile } = useResponsive()
   const [searchName, setSearchName] = useState('')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   
-  // 新增的篩選選項
-  const [filterType, setFilterType] = useState<'all' | 'today' | 'range'>('all') // 預設顯示所有未來預約
+  const [filterType, setFilterType] = useState<'all' | 'today' | 'range'>('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [copySuccess, setCopySuccess] = useState(false)
+  
+  const [members, setMembers] = useState<Member[]>([])
+  const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadMembers()
+  }, [])
+
+  const loadMembers = async () => {
+    const { data } = await supabase
+      .from('members')
+      .select('id, name, nickname, phone')
+      .eq('status', 'active')
+      .order('name')
+    
+    if (data) {
+      setMembers(data)
+    }
+  }
+
+  useEffect(() => {
+    if (searchName.trim()) {
+      const filtered = members.filter(m =>
+        m.name.toLowerCase().includes(searchName.toLowerCase()) ||
+        m.nickname?.toLowerCase().includes(searchName.toLowerCase()) ||
+        m.phone?.includes(searchName)
+      )
+      setFilteredMembers(filtered)
+      setShowMemberDropdown(filtered.length > 0 && !selectedMemberId)
+    } else {
+      setFilteredMembers([])
+      setShowMemberDropdown(false)
+    }
+  }, [searchName, members, selectedMemberId])
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -203,7 +248,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
             color: 'white',
             fontWeight: '600'
           }}>
-            學生預約查詢
+            🔍 預約查詢
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <a
@@ -219,7 +264,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                 whiteSpace: 'nowrap'
               }}
             >
-              ← 回主頁
+              ← HOME
             </a>
             <UserMenu user={user} />
           </div>
@@ -235,8 +280,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
       }}>
         <form onSubmit={handleSearch}>
-          {/* 學生姓名 */}
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '20px', position: 'relative' }}>
             <label style={{
               display: 'block',
               marginBottom: '8px',
@@ -249,22 +293,78 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
             <input
               type="text"
               value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
-              placeholder="輸入學生姓名"
+              onChange={(e) => {
+                setSearchName(e.target.value)
+                setSelectedMemberId(null)
+              }}
+              onFocus={(e) => {
+                if (filteredMembers.length > 0) {
+                  setShowMemberDropdown(true)
+                }
+                e.target.style.borderColor = '#007bff'
+              }}
+              onBlur={(e) => {
+                setTimeout(() => setShowMemberDropdown(false), 200)
+                e.target.style.borderColor = '#e0e0e0'
+              }}
+              placeholder="搜尋會員或直接輸入姓名"
               required
               style={{
                 width: '100%',
                 padding: '14px 16px',
-                fontSize: '16px',
+                fontSize: isMobile ? '16px' : '15px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
                 outline: 'none',
                 boxSizing: 'border-box',
                 transition: 'border-color 0.2s'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#007bff'}
-              onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
             />
+            
+            {showMemberDropdown && filteredMembers.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                maxHeight: '200px',
+                overflowY: 'auto',
+                backgroundColor: 'white',
+                border: '1px solid #dee2e6',
+                borderRadius: '8px',
+                marginTop: '4px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                zIndex: 1000
+              }}>
+                {filteredMembers.map(member => (
+                  <div
+                    key={member.id}
+                    onClick={() => {
+                      setSearchName(member.name)
+                      setSelectedMemberId(member.id)
+                      setShowMemberDropdown(false)
+                    }}
+                    style={{
+                      padding: '12px 16px',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid #f0f0f0',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                  >
+                    <div style={{ fontWeight: '500', color: '#333' }}>{member.name}</div>
+                    {(member.nickname || member.phone) && (
+                      <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                        {member.nickname && `${member.nickname}`}
+                        {member.nickname && member.phone && ' · '}
+                        {member.phone}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 篩選選項 */}
@@ -566,6 +666,8 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
           )}
         </div>
       )}
+
+      {!isEmbedded && <Footer />}
     </div>
   )
 }
