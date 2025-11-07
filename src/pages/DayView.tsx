@@ -8,36 +8,7 @@ import { UserMenu } from '../components/UserMenu'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getLocalDateTimeString } from '../utils/date'
 import { Footer } from '../components/Footer'
-
-const buttonStyles = {
-  primary: {
-    padding: '8px 14px',
-    borderRadius: '6px',
-    border: '1px solid #dee2e6',
-    backgroundColor: '#f8f9fa',
-    color: '#333',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: '500',
-    minHeight: '36px',
-    touchAction: 'manipulation' as const,
-    whiteSpace: 'nowrap' as const,
-    transition: 'all 0.2s',
-  },
-  secondary: {
-    padding: '8px 12px',
-    borderRadius: '6px',
-    border: '1px solid #dee2e6',
-    backgroundColor: 'white',
-    color: '#333',
-    cursor: 'pointer',
-    fontSize: '14px',
-    minWidth: '36px',
-    minHeight: '36px',
-    touchAction: 'manipulation' as const,
-    transition: 'all 0.2s',
-  }
-}
+import { getButtonStyle } from '../styles/designSystem'
 
 interface Boat {
   id: number
@@ -426,7 +397,7 @@ export function DayView({ user }: DayViewProps) {
         <button
           onClick={() => changeDate(-1)}
           style={{
-            ...buttonStyles.secondary,
+            ...getButtonStyle('outline', 'medium', isMobile),
             padding: isMobile ? '6px 10px' : '8px 12px',
             fontSize: isMobile ? '16px' : '14px',
           }}
@@ -449,7 +420,7 @@ export function DayView({ user }: DayViewProps) {
         <button
           onClick={() => changeDate(1)}
           style={{
-            ...buttonStyles.secondary,
+            ...getButtonStyle('outline', 'medium', isMobile),
             padding: isMobile ? '6px 10px' : '8px 12px',
             fontSize: isMobile ? '16px' : '14px',
           }}
@@ -459,9 +430,8 @@ export function DayView({ user }: DayViewProps) {
         <button
           onClick={goToToday}
           style={{
-            ...buttonStyles.primary,
+            ...getButtonStyle('primary', 'medium', isMobile),
             padding: isMobile ? '6px 12px' : '8px 14px',
-            fontSize: isMobile ? '13px' : '13px',
           }}
         >
           今天
@@ -470,7 +440,7 @@ export function DayView({ user }: DayViewProps) {
         <button
           onClick={() => setViewMode(viewMode === 'timeline' ? 'list' : 'timeline')}
           style={{
-            ...buttonStyles.primary,
+            ...getButtonStyle('secondary', 'medium', isMobile),
             marginLeft: 'auto',
           }}
         >
@@ -485,12 +455,12 @@ export function DayView({ user }: DayViewProps) {
           marginBottom: '16px',
           flexWrap: 'wrap',
         }}>
-          <button
-            onClick={() => setTimeRange(timeRange === 'all' ? 'business' : 'all')}
-            style={{
-              ...buttonStyles.primary,
-            }}
-          >
+            <button
+              onClick={() => setTimeRange(timeRange === 'all' ? 'business' : 'all')}
+              style={{
+                ...getButtonStyle('secondary', 'medium', isMobile),
+              }}
+            >
             {timeRange === 'business' ? '營業時間' : '全天'}
           </button>
 
@@ -499,7 +469,7 @@ export function DayView({ user }: DayViewProps) {
               <button
                 onClick={() => setSingleBoatMode(!singleBoatMode)}
                 style={{
-                  ...buttonStyles.primary,
+                  ...getButtonStyle('secondary', 'medium', isMobile),
                 }}
               >
                 {singleBoatMode ? '全部' : '單船'}
@@ -511,7 +481,7 @@ export function DayView({ user }: DayViewProps) {
                     onClick={() => setCurrentBoatIndex(Math.max(0, currentBoatIndex - 1))}
                     disabled={currentBoatIndex === 0}
                     style={{
-                      ...buttonStyles.secondary,
+                      ...getButtonStyle('outline', 'medium', isMobile),
                       opacity: currentBoatIndex === 0 ? 0.5 : 1,
                       cursor: currentBoatIndex === 0 ? 'not-allowed' : 'pointer',
                     }}
@@ -525,7 +495,7 @@ export function DayView({ user }: DayViewProps) {
                     onClick={() => setCurrentBoatIndex(Math.min(boats.length - 1, currentBoatIndex + 1))}
                     disabled={currentBoatIndex >= boats.length - 1}
                     style={{
-                      ...buttonStyles.secondary,
+                      ...getButtonStyle('outline', 'medium', isMobile),
                       opacity: currentBoatIndex >= boats.length - 1 ? 0.5 : 1,
                       cursor: currentBoatIndex >= boats.length - 1 ? 'not-allowed' : 'pointer',
                     }}
