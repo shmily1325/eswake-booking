@@ -5,16 +5,10 @@ import { PageHeader } from '../components/PageHeader'
 
 interface AuditLogEntry {
   id: number
-  operation: string // '新增預約', '修改預約', '刪除預約'
   user_email: string
-  student_name: string
-  boat_name: string
-  coach_names: string | null
-  start_time: string
-  duration_min: number
-  activity_types: string[] | null
-  notes: string | null
-  changes: string | null
+  action: string // 'create', 'update', 'delete'
+  table_name: string
+  details: string
   created_at: string
 }
 
@@ -35,19 +29,22 @@ export function AuditLog({ user }: AuditLogProps) {
     setLoading(true)
     
     try {
+      // 只查詢預約相關的記錄
       let query = supabase
         .from('audit_log')
         .select('*')
+        .eq('table_name', 'bookings')
         .order('created_at', { ascending: false })
         .limit(100)
 
+      // 根據篩選條件過濾 action
       if (filter !== 'all') {
-        const operationMap = {
-          'add': '新增預約',
-          'edit': '修改預約',
-          'delete': '刪除預約',
+        const actionMap = {
+          'add': 'create',
+          'edit': 'update',
+          'delete': 'delete',
         }
-        query = query.eq('operation', operationMap[filter])
+        query = query.eq('action', actionMap[filter])
       }
 
       const { data, error } = await query
@@ -91,29 +88,42 @@ export function AuditLog({ user }: AuditLogProps) {
     }
   }
 
-  const getOperationColor = (operation: string) => {
-    switch (operation) {
-      case '新增預約':
+  const getOperationColor = (action: string) => {
+    switch (action) {
+      case 'create':
         return '#28a745'
-      case '修改預約':
+      case 'update':
         return '#007bff'
-      case '刪除預約':
+      case 'delete':
         return '#dc3545'
       default:
         return '#666'
     }
   }
 
-  const getOperationIcon = (operation: string) => {
-    switch (operation) {
-      case '新增預約':
+  const getOperationIcon = (action: string) => {
+    switch (action) {
+      case 'create':
         return '➕'
-      case '修改預約':
+      case 'update':
         return '✏️'
-      case '刪除預約':
+      case 'delete':
         return '🗑️'
       default:
         return '📝'
+    }
+  }
+
+  const getOperationText = (action: string) => {
+    switch (action) {
+      case 'create':
+        return '新增預約'
+      case 'update':
+        return '修改預約'
+      case 'delete':
+        return '刪除預約'
+      default:
+        return '未知操作'
     }
   }
 
@@ -232,7 +242,7 @@ export function AuditLog({ user }: AuditLogProps) {
                 borderRadius: '8px',
                 padding: '16px',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                borderLeft: `4px solid ${getOperationColor(log.operation)}`,
+                borderLeft: `4px solid ${getOperationColor(log.action)}`,
               }}
             >
               <div style={{
@@ -248,14 +258,14 @@ export function AuditLog({ user }: AuditLogProps) {
                     fontSize: '18px',
                     marginRight: '8px',
                   }}>
-                    {getOperationIcon(log.operation)}
+                    {getOperationIcon(log.action)}
                   </span>
                   <span style={{
                     fontSize: '16px',
                     fontWeight: '600',
-                    color: getOperationColor(log.operation),
+                    color: getOperationColor(log.action),
                   }}>
-                    {log.operation}
+                    {getOperationText(log.action)}
                   </span>
                 </div>
                 <div style={{
@@ -274,40 +284,18 @@ export function AuditLog({ user }: AuditLogProps) {
                 <div style={{ marginBottom: '8px' }}>
                   <strong>操作者：</strong>{log.user_email}
                 </div>
-                <div style={{ marginBottom: '8px' }}>
-                  <strong>學生：</strong>{log.student_name} | 
-                  <strong> 船：</strong>{log.boat_name} | 
-                  <strong> 時長：</strong>{log.duration_min}分鐘
+                <div style={{
+                  marginTop: '12px',
+                  padding: '12px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  color: '#333',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: '1.6'
+                }}>
+                  {log.details}
                 </div>
-                <div style={{ marginBottom: '8px' }}>
-                  <strong>教練：</strong>{log.coach_names || '未指定'}
-                </div>
-                <div style={{ marginBottom: '8px' }}>
-                  <strong>時間：</strong>{formatDateTime(log.start_time)}
-                </div>
-                {log.activity_types && log.activity_types.length > 0 && (
-                  <div style={{ marginBottom: '8px' }}>
-                    <strong>活動類型：</strong>{log.activity_types.join(', ')}
-                  </div>
-                )}
-                {log.notes && (
-                  <div style={{ marginBottom: '8px' }}>
-                    <strong>備註：</strong>{log.notes}
-                  </div>
-                )}
-                {log.changes && (
-                  <div style={{
-                    marginTop: '12px',
-                    padding: '10px',
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    color: '#555',
-                  }}>
-                    <strong>變更內容：</strong><br />
-                    {log.changes}
-                  </div>
-                )}
               </div>
             </div>
           ))}
