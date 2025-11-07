@@ -277,7 +277,7 @@ export function NewBookingDialog({
         // TEXT 格式查詢，直接字符串比較
         const { data: existingBookings, error: checkError } = await supabase
           .from('bookings')
-          .select('id, start_at, duration_min, student')
+          .select('id, start_at, duration_min, contact_name')
           .eq('boat_id', selectedBoatId)
           .gte('start_at', `${dateStr}T00:00:00`)
           .lte('start_at', `${dateStr}T23:59:59`)
@@ -302,7 +302,7 @@ export function NewBookingDialog({
             if (newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
               hasConflict = true
               const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
-              conflictReason = `與 ${existing.student} 的預約衝突：${existing.student} 在 ${existingEndTime} 結束，需要15分鐘接船時間。您的預約 ${timeStr} 太接近了。`
+              conflictReason = `與 ${existing.contact_name} 的預約衝突：${existing.contact_name} 在 ${existingEndTime} 結束，需要15分鐘接船時間。您的預約 ${timeStr} 太接近了。`
               break
             }
             
@@ -310,7 +310,7 @@ export function NewBookingDialog({
             if (existingStartMinutes >= newEndMinutes && existingStartMinutes < newCleanupEndMinutes) {
               hasConflict = true
               const newEndTime = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
-              conflictReason = `與 ${existing.student} 的預約衝突：您的預約 ${newEndTime} 結束，${existing.student} ${existingTime} 開始，需要15分鐘接船時間。`
+              conflictReason = `與 ${existing.contact_name} 的預約衝突：您的預約 ${newEndTime} 結束，${existing.contact_name} ${existingTime} 開始，需要15分鐘接船時間。`
               break
             }
             
@@ -319,7 +319,7 @@ export function NewBookingDialog({
               hasConflict = true
               const newEnd = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
               const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
-              conflictReason = `與 ${existing.student} 的預約時間重疊：您的時間 ${timeStr}-${newEnd}，${existing.student} 的時間 ${existingTime}-${existingEndTime}`
+              conflictReason = `與 ${existing.contact_name} 的預約時間重疊：您的時間 ${timeStr}-${newEnd}，${existing.contact_name} 的時間 ${existingTime}-${existingEndTime}`
               break
             }
           }
@@ -348,7 +348,7 @@ export function NewBookingDialog({
             const bookingIds = coachBookingIds.map(item => item.booking_id)
             const { data: allCoachBookings, error: bookingError } = await supabase
               .from('bookings')
-              .select('id, start_at, duration_min, student')
+              .select('id, start_at, duration_min, contact_name')
               .in('id', bookingIds)
             
             if (bookingError) {
@@ -376,7 +376,7 @@ export function NewBookingDialog({
               if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
                 const coach = coaches.find(c => c.id === coachId)
                 hasConflict = true
-                conflictReason = `教練 ${coach?.name || '未知'} 在此時段已有其他預約（${booking.student}）`
+                conflictReason = `教練 ${coach?.name || '未知'} 在此時段已有其他預約（${booking.contact_name}）`
                 break
               }
             }
