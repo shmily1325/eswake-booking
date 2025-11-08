@@ -293,23 +293,33 @@ export function CoachCheck({ user }: CoachCheckProps) {
         .delete()
         .eq('booking_id', selectedBooking.id)
 
+      // 準備寫入的數據
+      const dataToInsert = participants.map(p => ({
+        booking_id: selectedBooking.id,
+        member_id: p.member_id,
+        participant_name: p.participant_name,
+        duration_min: p.duration_min,
+        is_designated: p.is_designated,
+        boat_fee_duration_min: null,
+        boat_fee_type: null,
+        designated_fee_duration_min: p.is_designated ? p.duration_min : null,
+        designated_fee_type: p.is_designated ? 'designated_lesson' : null,
+        notes: null
+      }))
+      
+      console.log('準備寫入的參與者數據:', dataToInsert)
+
       // Insert new participants
       const { error } = await supabase
         .from('booking_participants')
-        .insert(participants.map(p => ({
-          booking_id: selectedBooking.id,
-          member_id: p.member_id,
-          participant_name: p.participant_name,
-          duration_min: p.duration_min,
-          is_designated: p.is_designated,
-          boat_fee_duration_min: null,
-          boat_fee_type: null,
-          designated_fee_duration_min: p.is_designated ? p.duration_min : null,
-          designated_fee_type: p.is_designated ? 'designated_lesson' : null,
-          notes: null
-        })))
+        .insert(dataToInsert)
 
-      if (error) throw error
+      if (error) {
+        console.error('寫入錯誤:', error)
+        throw error
+      }
+      
+      console.log('參與者數據寫入成功')
       setReportDialogOpen(false)
       setSelectedBooking(null)
       setParticipants([])
