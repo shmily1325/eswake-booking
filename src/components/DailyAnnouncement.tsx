@@ -42,9 +42,11 @@ export function DailyAnnouncement() {
     const today = getLocalDateString()
     const todayMD = today.substring(5) // MM-DD
     
-    const sevenDaysLater = new Date()
-    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7)
-    const sevenDaysLaterStr = `${sevenDaysLater.getFullYear()}-${String(sevenDaysLater.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysLater.getDate()).padStart(2, '0')}`
+    // 計算7天後的日期（純字符串計算，避免時區問題）
+    const [year, month, day] = today.split('-').map(Number)
+    const date = new Date(year, month - 1, day) // 使用本地日期
+    date.setDate(date.getDate() + 7)
+    const sevenDaysLaterStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
     // 並行執行所有查詢（重要：從串行改為並行，大幅提升速度）
     const [

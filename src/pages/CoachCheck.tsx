@@ -100,9 +100,13 @@ export function CoachCheck({ user }: CoachCheckProps) {
         .select('booking_id')
         .eq('coach_id', selectedCoachId)
 
+      console.log('查詢到的 booking_coaches:', coachBookings)
+
       const bookingIds = (coachBookings || []).map(b => b.booking_id)
+      console.log('booking IDs:', bookingIds)
       
       if (bookingIds.length === 0) {
+        console.log('教練沒有預約')
         setBookings([])
         setLoading(false)
         return
@@ -175,12 +179,18 @@ export function CoachCheck({ user }: CoachCheckProps) {
       })
 
       // 合併資料並過濾已結束的預約
-        const now = new Date()
+      const now = new Date()
+      const nowString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
+      
       const bookingsWithData = (bookingsResult.data || [])
         .map(booking => {
-          // 計算預約結束時間
-          const startTime = new Date(booking.start_at)
-          const endTime = new Date(startTime.getTime() + booking.duration_min * 60000)
+          // 計算預約結束時間（TEXT 格式計算）
+          const [datePart, timePart] = booking.start_at.split('T')
+          const [hours, minutes] = timePart.split(':').map(Number)
+          const totalMinutes = hours * 60 + minutes + booking.duration_min
+          const endHours = Math.floor(totalMinutes / 60)
+          const endMinutes = totalMinutes % 60
+          const endTimeString = `${datePart}T${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}:00`
           
           return {
             ...booking,
@@ -189,12 +199,16 @@ export function CoachCheck({ user }: CoachCheckProps) {
             has_report: (participantsByBooking[booking.id]?.length || 0) > 0,
             participant_count: participantsByBooking[booking.id]?.length || 0,
             reported_participants: participantsByBooking[booking.id] || [],
-            isFinished: endTime < now
+            isFinished: endTimeString < nowString
           }
         })
-        .filter(booking => booking.isFinished)
-
-      setBookings(bookingsWithData as Booking[])
+      
+      console.log('所有預約（過濾前）:', bookingsWithData.length)
+      console.log('已結束的預約:', bookingsWithData.filter(b => b.isFinished).length)
+      console.log('當前時間字符串:', nowString)
+      
+      const finishedBookings = bookingsWithData.filter(booking => booking.isFinished)
+      setBookings(finishedBookings as Booking[])
     } catch (error) {
       console.error('載入預約失敗:', error)
       alert('載入預約失敗')
