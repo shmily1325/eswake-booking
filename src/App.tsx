@@ -16,6 +16,7 @@ import { BaoHub } from './pages/BaoHub'
 import { StaffManagement } from './pages/StaffManagement'
 import { QuickTransaction } from './pages/QuickTransaction'
 import { AnnouncementManagement } from './pages/AnnouncementManagement'
+import { LineSettings } from './pages/LineSettings'
 import { LoginPage } from './components/LoginPage'
 import './App.css'
 
@@ -74,6 +75,7 @@ function App() {
         <Route path="/boards" element={<BoardManagement user={user} />} />
         <Route path="/staff" element={<StaffManagement user={user} />} />
         <Route path="/announcements" element={<AnnouncementManagement user={user} />} />
+        <Route path="/line-settings" element={<LineSettings user={user} />} />
       </Routes>
     </BrowserRouter>
   )

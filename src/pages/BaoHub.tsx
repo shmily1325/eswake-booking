@@ -47,6 +47,11 @@ export function BaoHub({ user }: BaoHubProps) {
       icon: '💾',
       link: '/backup'
     },
+    {
+      title: 'LINE 提醒設置',
+      icon: '📱',
+      link: '/line-settings'
+    },
   ]
 
   return (
