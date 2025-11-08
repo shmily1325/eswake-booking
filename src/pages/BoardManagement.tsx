@@ -22,11 +22,11 @@ interface BoardManagementProps {
 
 // 置板區配置
 const BOARD_SECTIONS = [
-  { name: '第1排', start: 1, end: 34 },
-  { name: '第2排', start: 35, end: 62 },
-  { name: '第3排', start: 63, end: 100 },
-  { name: '第4排', start: 101, end: 136 },
-  { name: '第5排', start: 137, end: 145, upperOnly: true },
+  { name: '第1排', start: 1, end: 30 },
+  { name: '第2排', start: 31, end: 62 },
+  { name: '第3排', start: 63, end: 94 },
+  { name: '第4排', start: 95, end: 134 },
+  { name: '第5排', start: 135, end: 145, upperOnly: true },
 ]
 
 export function BoardManagement({ user }: BoardManagementProps) {
