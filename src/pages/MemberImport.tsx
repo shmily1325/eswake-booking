@@ -103,7 +103,38 @@ export function MemberImport({ user }: MemberImportProps) {
     setSuccess('')
 
     try {
-      const membersToInsert = preview.map(member => ({
+      // 1. 查詢現有會員的電話號碼
+      const phonesToCheck = preview
+        .filter(m => m.phone && m.phone.trim())
+        .map(m => m.phone!.trim())
+      
+      let existingPhones = new Set<string>()
+      if (phonesToCheck.length > 0) {
+        const { data: existingMembers } = await supabase
+          .from('members')
+          .select('phone')
+          .in('phone', phonesToCheck)
+          .eq('status', 'active')
+        
+        existingPhones = new Set(existingMembers?.map(m => m.phone).filter(Boolean) || [])
+      }
+
+      // 2. 過濾掉重複的會員（根據電話號碼）
+      const newMembers = preview.filter(member => {
+        if (!member.phone || !member.phone.trim()) return true // 沒有電話號碼的照樣導入
+        return !existingPhones.has(member.phone.trim())
+      })
+
+      const skippedCount = preview.length - newMembers.length
+
+      if (newMembers.length === 0) {
+        setError('所有會員都已存在（根據電話號碼判斷），沒有新會員需要導入')
+        setImporting(false)
+        return
+      }
+
+      // 3. 插入新會員
+      const membersToInsert = newMembers.map(member => ({
         name: member.name,
         nickname: member.nickname || null,
         phone: member.phone || null,
@@ -125,7 +156,12 @@ export function MemberImport({ user }: MemberImportProps) {
 
       if (insertError) throw insertError
 
-      setSuccess(`✅ 成功導入 ${data?.length || preview.length} 位會員！`)
+      let successMsg = `✅ 成功導入 ${data?.length || newMembers.length} 位會員！`
+      if (skippedCount > 0) {
+        successMsg += `\n⚠️ 跳過 ${skippedCount} 位重複會員（電話號碼已存在）`
+      }
+
+      setSuccess(successMsg)
       setPreview([])
       setFile(null)
       
@@ -140,12 +176,35 @@ export function MemberImport({ user }: MemberImportProps) {
   }
 
   const downloadTemplate = () => {
-    const template = 'name,nickname,phone,birthday,member_type,membership_expires_at,balance,boat_voucher_minutes,notes\n林敏,Ming,0986937619,1990-01-01,member,2055-12-31,1000,120,\n潘姵如,PJ,0919318658,,guest,,,0,xxxxx\n小楊,楊翊/林楊翊,,,guest,,,0,不知道姓什麼\nIngrid,,,,guest,,,0,\n'
+    const template = 'name,nickname,phone,birthday,member_type,membership_expires_at,balance,boat_voucher_minutes,notes\n林敏,Ming,0986937619,1990-01-01,member,2055-12-31,1000,120,\n潘姵如,PJ,0919318658,,guest,,,0,xxxxx\n小楊,楊翊/林楊翊,,,member,,,0,不知道姓什麼\nIngrid,,,,member,,,0,\n'
     const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
     link.download = 'members_template.csv'
     link.click()
+  }
+
+  const handleDeleteAllMembers = async () => {
+    setDeleting(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      // 刪除所有 active 狀態的會員（改為 inactive）
+      const { error: deleteError } = await supabase
+        .from('members')
+        .update({ status: 'inactive' })
+        .eq('status', 'active')
+
+      if (deleteError) throw deleteError
+
+      setSuccess('✅ 已清空所有會員！')
+      setDeleteDialogOpen(false)
+    } catch (err: any) {
+      setError('清空失敗: ' + err.message)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -170,6 +229,33 @@ export function MemberImport({ user }: MemberImportProps) {
           </div>
         </div>
 
+        {/* 危險操作區 */}
+        <div style={{ 
+          ...getCardStyle(isMobile),
+          background: '#ffebee',
+          borderLeft: `4px solid ${designSystem.colors.danger}`,
+          marginBottom: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: designSystem.spacing.md }}>
+            <div>
+              <h3 style={{ ...getTextStyle('h3', isMobile), margin: 0, marginBottom: designSystem.spacing.xs, color: designSystem.colors.danger }}>
+                ⚠️ 危險操作
+              </h3>
+              <div style={{ ...getTextStyle('bodySmall', isMobile), color: '#c62828' }}>
+                清空所有會員資料（會員狀態改為停用）
+              </div>
+            </div>
+            <button
+              onClick={() => setDeleteDialogOpen(true)}
+              style={{
+                ...getButtonStyle('danger', 'medium', isMobile)
+              }}
+            >
+              🗑️ 清空所有會員
+            </button>
+          </div>
+        </div>
+
         {/* 說明 */}
         <div style={{ 
           ...getCardStyle(isMobile),
@@ -185,19 +271,23 @@ export function MemberImport({ user }: MemberImportProps) {
             </p>
             <code style={{ 
               display: 'block', 
-              background: 'white', 
-              padding: designSystem.spacing.sm, 
-              borderRadius: designSystem.borderRadius.sm,
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              marginBottom: designSystem.spacing.sm,
-              overflowX: 'auto'
+              background: '#f8f9fa', 
+              padding: designSystem.spacing.lg, 
+              borderRadius: designSystem.borderRadius.md,
+              fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+              fontSize: isMobile ? '13px' : '14px',
+              lineHeight: '1.8',
+              color: '#2c3e50',
+              marginBottom: designSystem.spacing.md,
+              overflowX: 'auto',
+              border: '1px solid #dee2e6',
+              whiteSpace: 'pre'
             }}>
-              name,nickname,phone,birthday,member_type,membership_expires_at,balance,boat_voucher_minutes,notes<br/>
-              林敏,Ming,0986937619,1990-01-01,member,2055-12-31,1000,120,<br/>
-              潘姵如,PJ,0919318658,,guest,,,0,xxxxx<br/>
-              小楊,楊翊/林楊翊,,,member,,,0,不知道姓什麼<br/>
-              Ingrid,,,,member,,,0,
+name,nickname,phone,birthday,member_type,membership_expires_at,balance,boat_voucher_minutes,notes{'\n'}
+林敏,Ming,0986937619,1990-01-01,member,2055-12-31,1000,120,{'\n'}
+潘姵如,PJ,0919318658,,guest,,,0,xxxxx{'\n'}
+小楊,楊翊/林楊翊,,,member,,,0,不知道姓什麼{'\n'}
+Ingrid,,,,member,,,0,
             </code>
             <p style={{ margin: 0 }}>
               • <strong>name</strong>（姓名）為必填，其他欄位選填<br/>
@@ -432,6 +522,65 @@ export function MemberImport({ user }: MemberImportProps) {
       </div>
 
       <Footer />
+
+      {/* 清空確認對話框 */}
+      {deleteDialogOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: designSystem.spacing.xl
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: designSystem.borderRadius.lg,
+            maxWidth: '400px',
+            width: '100%',
+            padding: designSystem.spacing.xl
+          }}>
+            <h2 style={{ ...getTextStyle('h2', isMobile), margin: 0, marginBottom: designSystem.spacing.md, color: designSystem.colors.danger }}>
+              ⚠️ 確認清空所有會員
+            </h2>
+            <p style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: designSystem.spacing.xl }}>
+              此操作會將所有會員的狀態改為「停用」。<br/>
+              此操作<strong>無法復原</strong>，請確認是否繼續？
+            </p>
+            <div style={{ display: 'flex', gap: designSystem.spacing.md }}>
+              <button
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleting}
+                style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
+                  flex: 1,
+                  opacity: deleting ? 0.5 : 1,
+                  cursor: deleting ? 'not-allowed' : 'pointer'
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDeleteAllMembers}
+                disabled={deleting}
+                style={{
+                  ...getButtonStyle('danger', 'medium', isMobile),
+                  flex: 1,
+                  opacity: deleting ? 0.5 : 1,
+                  cursor: deleting ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {deleting ? '清空中...' : '確認清空'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
