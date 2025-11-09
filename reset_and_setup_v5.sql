@@ -152,9 +152,15 @@ CREATE INDEX idx_coaches_status ON coaches(status);
 
 -- 初始教練資料
 INSERT INTO coaches (name) VALUES
-  ('教練A'),
-  ('教練B'),
-  ('教練C');
+  ('Casper'),
+  ('ED'),
+  ('Jerry'),
+  ('Kevin'),
+  ('小胖'),
+  ('巨陽尼'),
+  ('木鳥'),
+  ('義揚'),
+  ('阿賓');
 
 -- 6. 教練休假表 (Coach Time Off)
 CREATE TABLE coach_time_off (
