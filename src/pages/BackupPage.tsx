@@ -10,6 +10,7 @@ interface BackupPageProps {
 
 export function BackupPage({ user }: BackupPageProps) {
   const [loading, setLoading] = useState(false)
+  const [backupLoading, setBackupLoading] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [exportType, setExportType] = useState<'bookings' | 'member_hours' | 'coach_hours'>('bookings')
@@ -412,6 +413,46 @@ export function BackupPage({ user }: BackupPageProps) {
     }
   }
 
+  const backupToGoogleDrive = async () => {
+    setBackupLoading(true)
+    try {
+      const response = await fetch('/api/backup-to-drive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+          manual: true,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || '備份失敗')
+      }
+
+      if (result.webViewLink) {
+        alert(
+          `✅ ${result.message}\n\n` +
+          `檔案名稱: ${result.fileName}\n` +
+          `備份筆數: ${result.bookingsCount} 筆\n\n` +
+          `點擊確定後將在新視窗開啟 Google Drive 檔案`
+      )
+        window.open(result.webViewLink, '_blank')
+      } else {
+        alert(`✅ ${result.message}`)
+      }
+    } catch (error: any) {
+      console.error('Backup error:', error)
+      alert(`❌ 備份失敗: ${error.message || '請檢查環境變數設定'}`)
+    } finally {
+      setBackupLoading(false)
+    }
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -598,25 +639,46 @@ export function BackupPage({ user }: BackupPageProps) {
             </div>
           </div>
 
-          <button
-            onClick={handleExport}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '16px',
-              fontSize: '16px',
-              fontWeight: '600',
-              background: loading ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: loading ? 'none' : '0 4px 12px rgba(40, 167, 69, 0.3)',
-              transition: 'all 0.2s'
-            }}
-          >
-            {loading ? '⏳ 導出中...' : '💾 導出 CSV 文件'}
-          </button>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+            <button
+              onClick={handleExport}
+              disabled={loading || backupLoading}
+              style={{
+                flex: 1,
+                padding: '16px',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: loading || backupLoading ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: loading || backupLoading ? 'not-allowed' : 'pointer',
+                boxShadow: loading || backupLoading ? 'none' : '0 4px 12px rgba(40, 167, 69, 0.3)',
+                transition: 'all 0.2s'
+              }}
+            >
+              {loading ? '⏳ 導出中...' : '💾 導出 CSV 文件'}
+            </button>
+            <button
+              onClick={backupToGoogleDrive}
+              disabled={loading || backupLoading}
+              style={{
+                flex: 1,
+                padding: '16px',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: loading || backupLoading ? '#ccc' : 'linear-gradient(135deg, #4285f4 0%, #34a853 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: loading || backupLoading ? 'not-allowed' : 'pointer',
+                boxShadow: loading || backupLoading ? 'none' : '0 4px 12px rgba(66, 133, 244, 0.3)',
+                transition: 'all 0.2s'
+              }}
+            >
+              {backupLoading ? '⏳ 備份中...' : '☁️ 備份到 Google Drive'}
+            </button>
+          </div>
 
           <div style={{
             marginTop: '20px',
@@ -626,9 +688,18 @@ export function BackupPage({ user }: BackupPageProps) {
             border: '1px solid #ffc107',
             fontSize: '13px',
             color: '#856404',
-            textAlign: 'center'
+            textAlign: 'left'
           }}>
-            💡 CSV 文件可用 Excel 或 Google Sheets 打開
+            <div style={{ fontWeight: '600', marginBottom: '8px' }}>
+              💡 使用說明：
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li>CSV 文件可用 Excel 或 Google Sheets 打開</li>
+              <li>包含完整的預約、會員時數、教練時數等詳細資訊</li>
+              <li>所有時間已格式化為易讀格式（YYYY/MM/DD HH:mm）</li>
+              <li>系統會每天自動備份到 Google Drive（根據 vercel.json 中的 cron 設定）</li>
+              <li>也可以手動點擊「備份到 Google Drive」按鈕立即備份</li>
+            </ul>
           </div>
         </div>
       </div>

@@ -4,6 +4,12 @@
       "source": "/((?!api).*)",
       "destination": "/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/backup-to-drive",
+      "schedule": "15 16 * * *"
+    }
   ]
 }
 
