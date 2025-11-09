@@ -178,7 +178,7 @@ export function MemberImport({ user }: MemberImportProps) {
   }
 
   const downloadTemplate = () => {
-    const template = '姓名,暱稱,電話,生日,會員類型,會員到期日,餘額,G23船券,G21/黑豹船券,備註\n林敏,Ming,0986937619,1990-01-01,member,2055-12-31,9999999999,120000000,120000000,\n潘姵如,PJ,0919318658,,guest,,,0,0,0,xxxxx\n小楊,楊翊/林楊翊,,,member,,,0,0,0,不知道姓什麼\nIngrid,,,,member,,,0,0,0,\n'
+    const template = '姓名,暱稱,電話,生日,會員類型,會員到期日,餘額,G23船券,G21/黑豹船券,備註\n林敏,Ming,0986937619,1990-01-01,member,2055-12-31,9999999,9999999,9999999,\n潘姵如,PJ,0919318658,,guest,,,0,0,0,xxxxx\n小楊,楊翊/林楊翊,,,member,,,0,0,0,不知道姓什麼\nIngrid,,,,member,,,0,0,0,\n'
     const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -259,7 +259,7 @@ export function MemberImport({ user }: MemberImportProps) {
               whiteSpace: 'pre'
             }}>
 姓名,暱稱,電話,生日,會員類型,會員到期日,餘額,G23船券,G21/黑豹船券,備註{'\n'}
-林敏,Ming,0986937619,1990-01-01,member,2055-12-31,9999999999,120000000,120000000,{'\n'}
+林敏,Ming,0986937619,1990-01-01,member,2055-12-31,9999999,9999999,9999999,{'\n'}
 潘姵如,PJ,0919318658,,guest,,,0,0,0,xxxxx{'\n'}
 小楊,楊翊/林楊翊,,,member,,,0,0,0,不知道姓什麼{'\n'}
 Ingrid,,,,member,,,0,0,0,
@@ -470,6 +470,8 @@ Ingrid,,,,member,,,0,0,0,
                 onClick={() => {
                   setPreview([])
                   setFile(null)
+                  setError('')
+                  setSuccess('')
                   const fileInput = document.getElementById('csv-file-input') as HTMLInputElement
                   if (fileInput) fileInput.value = ''
                 }}
