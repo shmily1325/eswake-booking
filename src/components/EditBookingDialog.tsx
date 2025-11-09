@@ -718,7 +718,7 @@ export function EditBookingDialog({
             </label>
             
             {/* 已選會員和手動輸入標籤 */}
-            {(selectedMemberIds.length > 0 || manualStudentName.trim()) && (
+            {(selectedMemberIds.length > 0 || manualNames.length > 0 || manualStudentName.trim()) && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
                 {/* 會員標籤（藍色） */}
                 {selectedMemberIds.map((id) => {
@@ -1179,7 +1179,7 @@ export function EditBookingDialog({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="例如：初學者、需要救生衣、特殊需求..."
+              placeholder="例如：初學者、特殊需求..."
               style={{
                 width: '100%',
                 padding: '12px',
