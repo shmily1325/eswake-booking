@@ -437,7 +437,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
           {/* 底部按鈕 */}
           <div style={{
-            padding: '20px',
+            padding: isMobile ? '16px 20px calc(20px + env(safe-area-inset-bottom))' : '20px',
             borderTop: '1px solid #e0e0e0',
             display: 'flex',
             gap: '12px',
@@ -451,12 +451,13 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               onClick={onClose}
               disabled={loading}
               style={{
-                padding: '10px 20px',
+                padding: isMobile ? '14px 24px' : '10px 20px',
                 border: '1px solid #ddd',
                 borderRadius: '6px',
                 background: 'white',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
+                fontSize: isMobile ? '16px' : '14px',
+                minHeight: '44px',
               }}
             >
               取消
@@ -465,14 +466,15 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               type="submit"
               disabled={loading}
               style={{
-                padding: '10px 20px',
+                padding: isMobile ? '14px 24px' : '10px 20px',
                 border: 'none',
                 borderRadius: '6px',
                 background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
+                fontSize: isMobile ? '16px' : '14px',
                 fontWeight: 'bold',
+                minHeight: '44px',
               }}
             >
               {loading ? '新增中...' : '確認新增'}

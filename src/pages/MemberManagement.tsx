@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import { useNavigate } from 'react-router-dom'
 import { AddMemberDialog } from '../components/AddMemberDialog'
 import { MemberDetailDialog } from '../components/MemberDetailDialog'
 import { PageHeader } from '../components/PageHeader'
@@ -31,6 +32,7 @@ interface MemberManagementProps {
 
 export function MemberManagement({ user }: MemberManagementProps) {
   const { isMobile } = useResponsive()
+  const navigate = useNavigate()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -121,6 +123,78 @@ export function MemberManagement({ user }: MemberManagementProps) {
       background: '#f5f5f5'
     }}>
       <PageHeader title="👥 會員管理" user={user} showBaoLink={true} />
+
+      {/* 快捷功能按鈕 */}
+      <div style={{ 
+        display: 'flex', 
+        gap: isMobile ? '8px' : '12px', 
+        marginBottom: isMobile ? '15px' : '20px',
+        flexWrap: 'wrap'
+      }}>
+        <button
+          onClick={() => navigate('/member-import')}
+          style={{
+            flex: isMobile ? '1 1 100%' : '0 0 auto',
+            padding: isMobile ? '12px 16px' : '10px 20px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: isMobile ? '14px' : '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)'
+          }}
+        >
+          <span>📥</span>
+          <span>批量導入</span>
+        </button>
+
+        <button
+          onClick={() => navigate('/boards')}
+          style={{
+            flex: isMobile ? '1 1 100%' : '0 0 auto',
+            padding: isMobile ? '12px 16px' : '10px 20px',
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: isMobile ? '14px' : '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            boxShadow: '0 2px 8px rgba(245, 87, 108, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 87, 108, 0.4)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(245, 87, 108, 0.3)'
+          }}
+        >
+          <span>🏄</span>
+          <span>置板管理</span>
+        </button>
+      </div>
 
       {/* 搜尋欄 */}
       <div style={{ marginBottom: isMobile ? '15px' : '20px' }}>

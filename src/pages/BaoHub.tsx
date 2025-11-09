@@ -23,16 +23,6 @@ export function BaoHub({ user }: BaoHubProps) {
       link: '/members'
     },
     {
-      title: '會員批量導入',
-      icon: '📥',
-      link: '/member-import'
-    },
-    {
-      title: '置板區',
-      icon: '🏄',
-      link: '/boards'
-    },
-    {
       title: '人員管理',
       icon: '🎓',
       link: '/staff'
