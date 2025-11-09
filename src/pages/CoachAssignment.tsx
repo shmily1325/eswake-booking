@@ -172,111 +172,204 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     setSuccess('')
 
     try {
-      // 先檢查教練衝突
+      // 先檢查教練和駕駛衝突
       const conflicts: string[] = []
       
-      // 1. 在記憶體中檢查這次分配的內部衝突
-      const coachSchedule: Record<string, Array<{ start: Date; end: Date; bookingName: string; bookingId: number }>> = {}
+      // 1. 在記憶體中檢查這次分配的內部衝突（教練 + 駕駛）
+      // 注意：同一艘船的教練和駕駛可以是同一人，不算衝突
+      const personSchedule: Record<string, Array<{ start: Date; end: Date; bookingName: string; bookingId: number; boatId: number; role: string }>> = {}
       
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
-        if (!assignment || assignment.coachIds.length === 0) continue
+        if (!assignment) continue
         
         const startTime = new Date(booking.start_at)
         const endTime = new Date(startTime.getTime() + booking.duration_min * 60000)
         
+        // 檢查所有教練
         for (const coachId of assignment.coachIds) {
-          if (!coachSchedule[coachId]) {
-            coachSchedule[coachId] = []
+          if (!personSchedule[coachId]) {
+            personSchedule[coachId] = []
           }
           
-          // 檢查與該教練已有的時間是否衝突
-          for (const existing of coachSchedule[coachId]) {
+          // 檢查與該人已有的時間是否衝突（只有不同船才算衝突）
+          for (const existing of personSchedule[coachId]) {
             if (startTime < existing.end && endTime > existing.start) {
+              // 如果是同一艘船，不算衝突（教練可以同時是駕駛）
+              if (existing.boatId === booking.boat_id) continue
+              
               const coach = coaches.find(c => c.id === coachId)
-              const coachName = coach?.name || '未知教練'
+              const personName = coach?.name || '未知'
               conflicts.push(
-                `${coachName} 時間衝突：\n` +
-                `  ${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name})\n` +
-                `  與 ${existing.bookingName} 重疊`
+                `${personName} 時間衝突（不同船）：\n` +
+                `  ${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name}) [教練]\n` +
+                `  與 ${existing.bookingName} [${existing.role}] 重疊`
               )
             }
           }
           
-          coachSchedule[coachId].push({
+          personSchedule[coachId].push({
             start: startTime,
             end: endTime,
             bookingName: `${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name})`,
-            bookingId: booking.id
+            bookingId: booking.id,
+            boatId: booking.boat_id,
+            role: '教練'
+          })
+        }
+        
+        // 檢查所有駕駛
+        for (const driverId of assignment.driverIds) {
+          if (!personSchedule[driverId]) {
+            personSchedule[driverId] = []
+          }
+          
+          // 檢查與該人已有的時間是否衝突（只有不同船才算衝突）
+          for (const existing of personSchedule[driverId]) {
+            if (startTime < existing.end && endTime > existing.start) {
+              // 如果是同一艘船，不算衝突（教練可以同時是駕駛）
+              if (existing.boatId === booking.boat_id) continue
+              
+              const driver = coaches.find(c => c.id === driverId)
+              const personName = driver?.name || '未知'
+              conflicts.push(
+                `${personName} 時間衝突（不同船）：\n` +
+                `  ${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name}) [駕駛]\n` +
+                `  與 ${existing.bookingName} [${existing.role}] 重疊`
+              )
+            }
+          }
+          
+          personSchedule[driverId].push({
+            start: startTime,
+            end: endTime,
+            bookingName: `${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name})`,
+            bookingId: booking.id,
+            boatId: booking.boat_id,
+            role: '駕駛'
           })
         }
       }
       
-      // 2. 檢查與資料庫中其他預約的衝突（批量查詢）
+      // 2. 檢查與資料庫中其他預約的衝突（批量查詢，包含教練和駕駛）
       const dateStr = selectedDate
-      const allCoachIds = new Set<string>()
+      const allPersonIds = new Set<string>()
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
         if (assignment) {
-          assignment.coachIds.forEach(id => allCoachIds.add(id))
+          assignment.coachIds.forEach(id => allPersonIds.add(id))
+          assignment.driverIds.forEach(id => allPersonIds.add(id))
         }
       }
       
-      if (allCoachIds.size > 0) {
-        // 一次性查詢所有涉及教練在當天的預約
-        const { data: allOtherBookings } = await supabase
-          .from('booking_coaches')
-          .select('coach_id, booking_id, bookings:booking_id(id, start_at, duration_min, contact_name)')
-          .in('coach_id', Array.from(allCoachIds))
+      if (allPersonIds.size > 0) {
+        // 一次性查詢所有涉及人員在當天的預約（教練 + 駕駛），包含 boat_id
+        const [coachBookingsResult, driverBookingsResult] = await Promise.all([
+          supabase
+            .from('booking_coaches')
+            .select('coach_id, booking_id, bookings:booking_id(id, start_at, duration_min, contact_name, boat_id)')
+            .in('coach_id', Array.from(allPersonIds)),
+          supabase
+            .from('booking_drivers')
+            .select('driver_id, booking_id, bookings:booking_id(id, start_at, duration_min, contact_name, boat_id)')
+            .in('driver_id', Array.from(allPersonIds))
+        ])
         
-        // 建立教練的資料庫預約映射
-        const dbCoachBookings: Record<string, Array<{ id: number; start: Date; end: Date; name: string }>> = {}
+        // 建立人員的資料庫預約映射
+        const dbPersonBookings: Record<string, Array<{ id: number; start: Date; end: Date; name: string; boatId: number; role: string }>> = {}
         
-        if (allOtherBookings) {
-          for (const item of allOtherBookings) {
+        // 處理教練預約
+        if (coachBookingsResult.data) {
+          for (const item of coachBookingsResult.data) {
             const other = (item as any).bookings
             if (!other) continue
-            
-            // 只關心同一天的預約
             if (!other.start_at.startsWith(dateStr)) continue
             
-            const coachId = item.coach_id
-            if (!dbCoachBookings[coachId]) {
-              dbCoachBookings[coachId] = []
+            const personId = item.coach_id
+            if (!dbPersonBookings[personId]) {
+              dbPersonBookings[personId] = []
             }
             
-            dbCoachBookings[coachId].push({
+            dbPersonBookings[personId].push({
               id: other.id,
               start: new Date(other.start_at),
               end: new Date(new Date(other.start_at).getTime() + other.duration_min * 60000),
-              name: `${formatTimeRange(other.start_at, other.duration_min)} (${other.contact_name})`
+              name: `${formatTimeRange(other.start_at, other.duration_min)} (${other.contact_name})`,
+              boatId: other.boat_id,
+              role: '教練'
             })
           }
         }
         
-        // 檢查衝突
+        // 處理駕駛預約
+        if (driverBookingsResult.data) {
+          for (const item of driverBookingsResult.data) {
+            const other = (item as any).bookings
+            if (!other) continue
+            if (!other.start_at.startsWith(dateStr)) continue
+            
+            const personId = item.driver_id
+            if (!dbPersonBookings[personId]) {
+              dbPersonBookings[personId] = []
+            }
+            
+            dbPersonBookings[personId].push({
+              id: other.id,
+              start: new Date(other.start_at),
+              end: new Date(new Date(other.start_at).getTime() + other.duration_min * 60000),
+              name: `${formatTimeRange(other.start_at, other.duration_min)} (${other.contact_name})`,
+              boatId: other.boat_id,
+              role: '駕駛'
+            })
+          }
+        }
+        
+        // 檢查衝突（教練），只有不同船才算衝突
         for (const booking of bookings) {
           const assignment = assignments[booking.id]
-          if (!assignment || assignment.coachIds.length === 0) continue
+          if (!assignment) continue
           
           const thisStart = new Date(booking.start_at)
           const thisEnd = new Date(thisStart.getTime() + booking.duration_min * 60000)
           
           for (const coachId of assignment.coachIds) {
-            const dbBookings = dbCoachBookings[coachId] || []
+            const dbBookings = dbPersonBookings[coachId] || []
             
             for (const dbBooking of dbBookings) {
-              // 排除當前預約本身
               if (dbBooking.id === booking.id) continue
               
-              // 檢查時間重疊
               if (thisStart < dbBooking.end && thisEnd > dbBooking.start) {
+                // 如果是同一艘船，不算衝突
+                if (dbBooking.boatId === booking.boat_id) continue
+                
                 const coach = coaches.find(c => c.id === coachId)
-                const coachName = coach?.name || '未知教練'
+                const personName = coach?.name || '未知'
                 conflicts.push(
-                  `${coachName} 與資料庫中的預約衝突：\n` +
-                  `  ${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name})\n` +
-                  `  與 ${dbBooking.name} 重疊`
+                  `${personName} 與資料庫中的預約衝突（不同船）：\n` +
+                  `  ${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name}) [教練]\n` +
+                  `  與 ${dbBooking.name} [${dbBooking.role}] 重疊`
+                )
+              }
+            }
+          }
+          
+          // 檢查衝突（駕駛），只有不同船才算衝突
+          for (const driverId of assignment.driverIds) {
+            const dbBookings = dbPersonBookings[driverId] || []
+            
+            for (const dbBooking of dbBookings) {
+              if (dbBooking.id === booking.id) continue
+              
+              if (thisStart < dbBooking.end && thisEnd > dbBooking.start) {
+                // 如果是同一艘船，不算衝突
+                if (dbBooking.boatId === booking.boat_id) continue
+                
+                const driver = coaches.find(c => c.id === driverId)
+                const personName = driver?.name || '未知'
+                conflicts.push(
+                  `${personName} 與資料庫中的預約衝突（不同船）：\n` +
+                  `  ${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name}) [駕駛]\n` +
+                  `  與 ${dbBooking.name} [${dbBooking.role}] 重疊`
                 )
               }
             }
@@ -477,6 +570,16 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               }}
             >
               {saving ? '儲存中...' : '💾 儲存所有排班'}
+            </button>
+
+            <button
+              onClick={() => navigate(`/day?date=${selectedDate}`)}
+              style={{
+                ...getButtonStyle('secondary', 'large', isMobile),
+                flex: isMobile ? '1 1 100%' : '0 0 auto'
+              }}
+            >
+              ← 回預約表
             </button>
           </div>
 

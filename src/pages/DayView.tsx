@@ -767,102 +767,105 @@ export function DayView({ user }: DayViewProps) {
                                   fontSize: isMobile ? '15px' : '15px',
                                   fontWeight: '700',
                                   color: '#000',
-                                  marginBottom: '6px',
+                                  marginBottom: '8px',
                                 }}>
                                   {booking.contact_name}
                                 </div>
                                 
-                                {/* 教練 */}
+                                {/* 所有標籤統一排列 */}
                                 <div style={{
-                                  fontSize: isMobile ? '12px' : '13px',
-                                  color: '#666',
                                   display: 'flex',
+                                  gap: '6px',
+                                  flexWrap: 'wrap',
                                   alignItems: 'center',
-                                  gap: '4px',
-                                  marginBottom: '4px',
                                 }}>
-                                  <span>🎓</span>
-                                  <span>{booking.coaches && booking.coaches.length > 0
-                                    ? booking.coaches.map(c => c.name).join(' / ')
-                                    : '未指定'}</span>
-                                </div>
-                                
-                                {/* 駕駛 - 只有當駕駛與教練不同時才顯示 */}
-                                {(() => {
-                                  if (!booking.drivers || booking.drivers.length === 0) return null
-                                  
-                                  const coachIds = booking.coaches?.map(c => c.id).sort().join(',') || ''
-                                  const driverIds = booking.drivers.map(d => d.id).sort().join(',')
-                                  
-                                  if (coachIds === driverIds) return null
-                                  
-                                  return (
-                                    <div style={{
-                                      fontSize: isMobile ? '12px' : '13px',
-                                      color: '#4caf50',
+                                  {/* 教練標籤 */}
+                                  {booking.coaches && booking.coaches.length > 0 && (
+                                    <span style={{
+                                      padding: '3px 8px',
+                                      backgroundColor: '#e0e0e0',
+                                      color: '#424242',
+                                      borderRadius: '12px',
+                                      fontSize: isMobile ? '11px' : '12px',
+                                      fontWeight: '500',
                                       display: 'flex',
                                       alignItems: 'center',
                                       gap: '4px',
-                                      marginBottom: '4px',
-                                      fontWeight: '500',
                                     }}>
-                                      <span>🚤</span>
-                                      <span>{booking.drivers.map(d => d.name).join(' / ')}</span>
-                                    </div>
-                                  )
-                                })()}
-                                
-                                {/* 活動類型 */}
-                                {booking.activity_types && booking.activity_types.length > 0 && (
-                                  <div style={{
-                                    display: 'flex',
-                                    gap: '4px',
-                                    flexWrap: 'wrap',
-                                    marginBottom: '4px',
-                                  }}>
-                                    {booking.activity_types.map(type => (
-                                      <span
-                                        key={type}
-                                        style={{
-                                          padding: '2px 6px',
-                                          backgroundColor: '#e9ecef',
-                                          color: '#495057',
-                                          borderRadius: '8px',
-                                          fontSize: isMobile ? '10px' : '11px',
-                                          fontWeight: '500',
-                                        }}
-                                      >
-                                        {type}
+                                      🎓 {booking.coaches.map(c => c.name).join(' / ')}
+                                    </span>
+                                  )}
+                                  
+                                  {/* 駕駛標籤 - 只有當駕駛與教練不同時才顯示 */}
+                                  {(() => {
+                                    if (!booking.drivers || booking.drivers.length === 0) return null
+                                    
+                                    const coachIds = booking.coaches?.map(c => c.id).sort().join(',') || ''
+                                    const driverIds = booking.drivers.map(d => d.id).sort().join(',')
+                                    
+                                    if (coachIds === driverIds) return null
+                                    
+                                    return (
+                                      <span style={{
+                                        padding: '3px 8px',
+                                        backgroundColor: '#c8e6c9',
+                                        color: '#2e7d32',
+                                        borderRadius: '12px',
+                                        fontSize: isMobile ? '11px' : '12px',
+                                        fontWeight: '500',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                      }}>
+                                        🚤 {booking.drivers.map(d => d.name).join(' / ')}
                                       </span>
-                                    ))}
-                                  </div>
-                                )}
+                                    )
+                                  })()}
+                                  
+                                  {/* 活動類型標籤（不加 emoji，顏色已足夠區分） */}
+                                  {booking.activity_types && booking.activity_types.map(type => (
+                                    <span
+                                      key={type}
+                                      style={{
+                                        padding: '3px 8px',
+                                        backgroundColor: '#bbdefb',
+                                        color: '#1565c0',
+                                        borderRadius: '12px',
+                                        fontSize: isMobile ? '11px' : '12px',
+                                        fontWeight: '500',
+                                      }}
+                                    >
+                                      {type}
+                                    </span>
+                                  ))}
+                                  
+                                  {/* 排班備註標籤 */}
+                                  {booking.schedule_notes && (
+                                    <span style={{
+                                      padding: '3px 8px',
+                                      backgroundColor: '#ffe0b2',
+                                      color: '#e65100',
+                                      borderRadius: '12px',
+                                      fontSize: isMobile ? '11px' : '12px',
+                                      fontWeight: '500',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                    }}>
+                                      📝 {booking.schedule_notes}
+                                    </span>
+                                  )}
+                                </div>
                                 
-                                {/* 備註 */}
+                                {/* 備註 - 單獨一行 */}
                                 {booking.notes && (
                                   <div style={{
                                     fontSize: isMobile ? '11px' : '12px',
                                     color: '#999',
                                     fontStyle: 'italic',
-                                    marginBottom: '4px',
+                                    marginTop: '6px',
                                   }}>
                                     💬 {booking.notes}
-                                  </div>
-                                )}
-                                
-                                {/* 排班備註 */}
-                                {booking.schedule_notes && (
-                                  <div style={{
-                                    fontSize: isMobile ? '11px' : '12px',
-                                    color: '#666',
-                                    padding: '4px 8px',
-                                    background: '#fafafa',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '6px',
-                                    fontWeight: '500',
-                                    marginTop: '4px',
-                                  }}>
-                                    <span style={{ color: '#ff9800' }}>📝</span> {booking.schedule_notes}
                                   </div>
                                 )}
                               </div>
