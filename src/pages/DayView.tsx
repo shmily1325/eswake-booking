@@ -181,24 +181,25 @@ export function DayView({ user }: DayViewProps) {
 
     const bookingIds = bookingsData.map(b => b.id)
 
-    // 查詢教練
-    const { data: bookingCoachesData, error } = await supabase
-      .from('booking_coaches')
-      .select('booking_id, coaches:coach_id(id, name)')
-      .in('booking_id', bookingIds)
+    // 並行查詢教練和駕駛（提升效能）
+    const [coachesResult, driversResult] = await Promise.all([
+      supabase
+        .from('booking_coaches')
+        .select('booking_id, coaches:coach_id(id, name)')
+        .in('booking_id', bookingIds),
+      supabase
+        .from('booking_drivers')
+        .select('booking_id, coaches:driver_id(id, name)')
+        .in('booking_id', bookingIds)
+    ])
 
-    if (error) {
-      console.error('Error fetching booking coaches:', error)
+    if (coachesResult.error) {
+      console.error('Error fetching booking coaches:', coachesResult.error)
     }
 
-    // 查詢駕駛
-    const { data: bookingDriversData } = await supabase
-      .from('booking_drivers')
-      .select('booking_id, coaches:driver_id(id, name)')
-      .in('booking_id', bookingIds)
-
+    // 建立教練映射
     const coachesByBooking: { [key: number]: Coach[] } = {}
-    for (const item of bookingCoachesData || []) {
+    for (const item of coachesResult.data || []) {
       const bookingId = item.booking_id
       const coach = (item as any).coaches
       if (coach) {
@@ -209,8 +210,9 @@ export function DayView({ user }: DayViewProps) {
       }
     }
 
+    // 建立駕駛映射
     const driversByBooking: { [key: number]: Coach[] } = {}
-    for (const item of bookingDriversData || []) {
+    for (const item of driversResult.data || []) {
       const bookingId = item.booking_id
       const driver = (item as any).coaches
       if (driver) {
