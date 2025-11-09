@@ -1,7 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
+import { 
+  EARLY_BOOKING_HOUR_LIMIT,
+  MEMBER_SEARCH_DEBOUNCE_MS 
+} from '../constants/booking'
 
 interface Coach {
   id: string
@@ -68,6 +72,9 @@ export function NewBookingDialog({
   // 使用 useMemo 優化性能
   const selectedCoachesSet = useMemo(() => new Set(selectedCoaches), [selectedCoaches])
   const activityTypesSet = useMemo(() => new Set(activityTypes), [activityTypes])
+  
+  // 會員搜尋防抖動
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -237,8 +244,8 @@ export function NewBookingDialog({
 
     // 防呆檢查：08:00之前的預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
-    if (hour < 8 && selectedCoaches.length === 0) {
-      setError('⚠️ 08:00之前的預約必須指定教練')
+    if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
+      setError(`⚠️ ${EARLY_BOOKING_HOUR_LIMIT}:00之前的預約必須指定教練\n`)
       return
     }
 
@@ -728,10 +735,23 @@ export function NewBookingDialog({
               type="text"
               value={memberSearchTerm}
               onChange={(e) => {
-                setMemberSearchTerm(e.target.value)
-                setShowMemberDropdown(true)
+                const value = e.target.value
+                setMemberSearchTerm(value)
+                
+                // 防抖動：避免每次輸入都觸發搜尋
+                if (searchTimeoutRef.current) {
+                  clearTimeout(searchTimeoutRef.current)
+                }
+                
+                searchTimeoutRef.current = setTimeout(() => {
+                  setShowMemberDropdown(value.trim().length > 0)
+                }, MEMBER_SEARCH_DEBOUNCE_MS)
               }}
-              onFocus={() => setShowMemberDropdown(true)}
+              onFocus={() => {
+                if (memberSearchTerm.trim()) {
+                  setShowMemberDropdown(true)
+                }
+              }}
               placeholder="搜尋會員姓名/暱稱...（可多選）"
               style={{
                 width: '100%',
@@ -1230,6 +1250,11 @@ export function NewBookingDialog({
                     type="date"
                     value={repeatEndDate}
                     onChange={(e) => {
+                      // 驗證結束日期不能早於開始日期
+                      if (e.target.value && e.target.value < startDate) {
+                        setError('⚠️ 結束日期不能早於開始日期')
+                        return
+                      }
                       setRepeatEndDate(e.target.value)
                       if (e.target.value) {
                         setRepeatCount(1)

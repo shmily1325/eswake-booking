@@ -33,6 +33,7 @@ interface Booking {
   status: string
   boats?: Boat
   coaches?: Coach[]
+  drivers?: Coach[]  // 指定的駕駛列表
   driver_id?: string | null
   driver?: Coach | null
   schedule_notes?: string | null
@@ -180,6 +181,7 @@ export function DayView({ user }: DayViewProps) {
 
     const bookingIds = bookingsData.map(b => b.id)
 
+    // 查詢教練
     const { data: bookingCoachesData, error } = await supabase
       .from('booking_coaches')
       .select('booking_id, coaches:coach_id(id, name)')
@@ -188,6 +190,12 @@ export function DayView({ user }: DayViewProps) {
     if (error) {
       console.error('Error fetching booking coaches:', error)
     }
+
+    // 查詢駕駛
+    const { data: bookingDriversData } = await supabase
+      .from('booking_drivers')
+      .select('booking_id, coaches:driver_id(id, name)')
+      .in('booking_id', bookingIds)
 
     const coachesByBooking: { [key: number]: Coach[] } = {}
     for (const item of bookingCoachesData || []) {
@@ -201,9 +209,22 @@ export function DayView({ user }: DayViewProps) {
       }
     }
 
+    const driversByBooking: { [key: number]: Coach[] } = {}
+    for (const item of bookingDriversData || []) {
+      const bookingId = item.booking_id
+      const driver = (item as any).coaches
+      if (driver) {
+        if (!driversByBooking[bookingId]) {
+          driversByBooking[bookingId] = []
+        }
+        driversByBooking[bookingId].push(driver)
+      }
+    }
+
     const bookingsWithCoaches = bookingsData.map(booking => ({
       ...booking,
-      coaches: coachesByBooking[booking.id] || []
+      coaches: coachesByBooking[booking.id] || [],
+      drivers: driversByBooking[booking.id] || []
     }))
 
     setBookings(bookingsWithCoaches)
@@ -262,6 +283,17 @@ export function DayView({ user }: DayViewProps) {
     return false
   }
 
+  /**
+   * 檢查是否為清理時間（接船時間）
+   * 
+   * 特殊規則：
+   * - 彈簧床不需要清理時間（可立即再次預約）
+   * - 其他船隻需要15分鐘清理時間
+   * 
+   * @param boatId 船隻ID
+   * @param timeSlot 時間槽 "HH:MM"
+   * @returns 是否為清理時間
+   */
   const isCleanupTime = (boatId: number, timeSlot: string): boolean => {
     const boat = boats.find(b => b.id === boatId)
     if (boat && boat.name === '彈簧床') return false
@@ -308,13 +340,29 @@ export function DayView({ user }: DayViewProps) {
     return (
       <div style={{ 
         display: 'flex', 
+        flexDirection: 'column',
         justifyContent: 'center', 
         alignItems: 'center', 
         height: '100vh',
-        fontSize: '18px',
-        color: '#666'
+        gap: '20px'
       }}>
-        載入中...
+        <div style={{
+          width: '50px',
+          height: '50px',
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #667eea',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <div style={{ fontSize: '18px', color: '#666' }}>
+          載入預約資料中...
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     )
   }
@@ -741,7 +789,47 @@ export function DayView({ user }: DayViewProps) {
                                       ? booking.coaches.map(c => c.name).join(' / ')
                                       : '未指定'}</span>
                                   </div>
+                                  {/* 駕駛顯示 - 只有當駕駛與教練不同時才顯示 */}
+                                  {(() => {
+                                    if (!booking.drivers || booking.drivers.length === 0) return null
+                                    
+                                    const coachIds = booking.coaches?.map(c => c.id).sort().join(',') || ''
+                                    const driverIds = booking.drivers.map(d => d.id).sort().join(',')
+                                    
+                                    // 如果駕駛和教練完全一樣，不顯示
+                                    if (coachIds === driverIds) return null
+                                    
+                                    return (
+                                      <div style={{
+                                        fontSize: isMobile ? '12px' : '13px',
+                                        color: '#4caf50',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        fontWeight: '500',
+                                      }}>
+                                        <span>🚤</span>
+                                        <span>{booking.drivers.map(d => d.name).join(' / ')}</span>
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
+
+                                {/* 排班備註 */}
+                                {booking.schedule_notes && (
+                                  <div style={{
+                                    fontSize: isMobile ? '11px' : '12px',
+                                    color: '#ff9800',
+                                    marginTop: '4px',
+                                    marginBottom: '4px',
+                                    padding: '4px 8px',
+                                    background: '#fff3e0',
+                                    borderRadius: '4px',
+                                    fontWeight: '500',
+                                  }}>
+                                    📝 {booking.schedule_notes}
+                                  </div>
+                                )}
 
                                 {/* 活動類型和備註 */}
                                 <div style={{

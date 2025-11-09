@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
@@ -32,6 +32,7 @@ interface CoachAssignmentProps {
 export function CoachAssignment({ user }: CoachAssignmentProps) {
   const { isMobile } = useResponsive()
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   
   // 從 URL 參數獲取日期，如果沒有則使用明天
   const dateFromUrl = searchParams.get('date') || getTomorrowDate()
@@ -305,8 +306,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       }
 
       setSuccess('✅ 所有排班已儲存！')
-      // 立即重新載入以更新顯示
-      await loadBookings()
+      // 儲存成功後跳轉回預約表
+      setTimeout(() => {
+        navigate(`/day?date=${selectedDate}`)
+      }, 500)
     } catch (err: any) {
       console.error('儲存失敗:', err)
       setError('❌ 儲存失敗: ' + (err.message || '未知錯誤'))

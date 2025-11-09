@@ -139,7 +139,7 @@ if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
 setError('⚠️ 08:00之前的預約必須指定教練')
 
 // ✅ 改善後
-setError(`⚠️ ${EARLY_BOOKING_HOUR_LIMIT}:00之前的預約必須指定教練\n\n原因：早上時段需要確保有教練陪同，以維護安全。`)
+setError(`⚠️ ${EARLY_BOOKING_HOUR_LIMIT}:00之前的預約必須指定教練\n`)
 ```
 
 **同樣的改善** in EditBookingDialog.tsx line 245

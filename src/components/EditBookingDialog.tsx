@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
+import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 
 interface Coach {
   id: string
@@ -241,8 +242,8 @@ export function EditBookingDialog({
 
     // 防呆檢查：08:00之前的預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
-    if (hour < 8 && selectedCoaches.length === 0) {
-      setError('⚠️ 08:00之前的預約必須指定教練')
+    if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
+      setError(`⚠️ ${EARLY_BOOKING_HOUR_LIMIT}:00之前的預約必須指定教練\n`)
       return
     }
 
@@ -846,7 +847,7 @@ export function EditBookingDialog({
             {showMemberDropdown && filteredMembers.length > 0 && (
               <div style={{
                 position: 'absolute',
-                top: 'calc(100% + 50px)',
+                top: '100%',
                 left: 0,
                 right: 0,
                 maxHeight: '200px',
