@@ -3,6 +3,8 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
+import { useResponsive } from '../hooks/useResponsive'
+import { designSystem, getButtonStyle, getCardStyle, getInputStyle, getLabelStyle, getTextStyle } from '../styles/designSystem'
 
 interface Booking {
   id: number
@@ -35,6 +37,8 @@ interface CoachCheckProps {
 }
 
 export function CoachCheck({ user }: CoachCheckProps) {
+  const { isMobile } = useResponsive()
+  
   // 教練選擇
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [coaches, setCoaches] = useState<{ id: string; name: string }[]>([])
@@ -43,15 +47,15 @@ export function CoachCheck({ user }: CoachCheckProps) {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   
-  // 回报对话框
+  // 回報對話框
   const [reportDialogOpen, setReportDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   
-  // 驾驶回报
+  // 駕駛回報
   const [fuelAmount, setFuelAmount] = useState('')
   const [drivingDuration, setDrivingDuration] = useState('')
   
-  // 参与者回报
+  // 參與者回報
   const [participants, setParticipants] = useState<Participant[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [memberSearchTerms, setMemberSearchTerms] = useState<string[]>([])
@@ -101,7 +105,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      // 查詢该教練的所有預約
+      // 查詢該教練的所有預約
       const { data: coachBookings } = await supabase
         .from('booking_coaches')
         .select('booking_id')
@@ -115,7 +119,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
       const bookingIds = coachBookings.map(cb => cb.booking_id)
 
-      // 查詢預約详情
+      // 查詢預約詳情
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
@@ -137,13 +141,13 @@ export function CoachCheck({ user }: CoachCheckProps) {
         return
       }
 
-      // 查詢教練信息
+      // 查詢教練資訊
       const { data: coachesData } = await supabase
         .from('booking_coaches')
         .select('booking_id, coaches:coach_id(id, name)')
         .in('booking_id', bookingIds)
 
-      // 查詢该教練是否已回报
+      // 查詢該教練是否已回報
       const { data: reportsData } = await supabase
         .from('coach_reports')
         .select('booking_id')
@@ -152,7 +156,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
       const reportedBookingIds = new Set(reportsData?.map(r => r.booking_id) || [])
 
-      // 组装数据
+      // 組裝資料
       const bookingsWithCoaches = bookingsData.map((booking: any) => {
         const bookingCoaches = coachesData
           ?.filter((bc: any) => bc.booking_id === booking.id)
@@ -168,7 +172,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
       setBookings(bookingsWithCoaches)
     } catch (err) {
-      console.error('加载預約失败:', err)
+      console.error('載入預約失敗:', err)
     } finally {
       setLoading(false)
     }
@@ -250,9 +254,9 @@ export function CoachCheck({ user }: CoachCheckProps) {
   const handleSubmit = async () => {
     if (!selectedBooking || !selectedCoachId) return
 
-    // 验证
+    // 驗證
     if (!fuelAmount || !drivingDuration) {
-      setError('请填写油量和驾驶时数')
+      setError('請填寫油量和駕駛時數')
       return
     }
 
@@ -260,7 +264,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
       !p.participant_name || !p.duration_min || !p.payment_method
     )
     if (hasInvalidParticipant) {
-      setError('请完整填写所有参与者信息')
+      setError('請完整填寫所有參與者資訊')
       return
     }
 
@@ -268,7 +272,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
     setError('')
 
     try {
-      // 1. 插入教練驾驶回报
+      // 1. 插入教練駕駛回報
       const { error: reportError } = await supabase
         .from('coach_reports')
         .insert({
@@ -280,7 +284,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
       if (reportError) throw reportError
 
-      // 2. 插入参与者记录
+      // 2. 插入參與者記錄
       const participantsToInsert = participants.map(p => ({
         booking_id: selectedBooking.id,
         coach_id: selectedCoachId,
@@ -296,13 +300,13 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
       if (participantsError) throw participantsError
 
-      setSuccess('✅ 回报成功！')
+      setSuccess('✅ 回報成功！')
       setTimeout(() => {
         closeReportDialog()
-        loadBookings() // 重新加载列表
+        loadBookings() // 重新載入列表
       }, 1500)
     } catch (err: any) {
-      setError(err.message || '回报失败')
+      setError(err.message || '回報失敗')
     } finally {
       setSaving(false)
     }
@@ -315,30 +319,26 @@ export function CoachCheck({ user }: CoachCheckProps) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
-      <PageHeader user={user} title="教練回报" />
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
+      <PageHeader user={user} title="教練回報" />
       
-      <div style={{ flex: 1, padding: '20px', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
-        <h1 style={{ fontSize: '24px', marginBottom: '20px', color: '#333' }}>📋 教練回报</h1>
+      <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl, maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+        <h1 style={{ ...getTextStyle('h1', isMobile), marginBottom: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl }}>📋 教練回報</h1>
 
         {/* 教練選擇 */}
-        <div style={{ marginBottom: '20px', background: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#333' }}>
+        <div style={{ ...getCardStyle(isMobile) }}>
+          <label style={{ ...getLabelStyle(isMobile) }}>
             選擇教練
           </label>
           <select
             value={selectedCoachId}
             onChange={(e) => setSelectedCoachId(e.target.value)}
             style={{
-              width: '100%',
-              padding: '12px',
-              fontSize: '16px',
-              borderRadius: '8px',
-              border: '1px solid #ddd',
+              ...getInputStyle(isMobile),
               background: 'white'
             }}
           >
-            <option value="">-- 请選擇教練 --</option>
+            <option value="">-- 請選擇教練 --</option>
             {coaches.map(coach => (
               <option key={coach.id} value={coach.id}>{coach.name}</option>
             ))}
@@ -346,40 +346,38 @@ export function CoachCheck({ user }: CoachCheckProps) {
         </div>
 
         {/* 預約列表 */}
-        {loading && <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>載入中...</div>}
+        {loading && <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>載入中...</div>}
         
         {!loading && selectedCoachId && bookings.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-            暂无預約记录
+          <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
+            暫無預約記錄
           </div>
         )}
 
         {!loading && bookings.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.md }}>
             {bookings.map(booking => (
               <div
                 key={booking.id}
                 style={{
-                  background: 'white',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  borderLeft: `4px solid ${booking.boats?.color || '#999'}`
+                  ...getCardStyle(isMobile),
+                  marginBottom: 0,
+                  borderLeft: `4px solid ${booking.boats?.color || designSystem.colors.text.disabled}`
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: designSystem.spacing.md }}>
                   <div>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
+                    <div style={{ ...getTextStyle('bodyLarge', isMobile), fontWeight: 'bold', marginBottom: designSystem.spacing.xs }}>
                       {booking.contact_name}
                     </div>
-                    <div style={{ fontSize: '14px', color: '#666' }}>
-                      🚤 {booking.boats?.name || '未知'} | ⏱️ {booking.duration_min}分钟
+                    <div style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary }}>
+                      🚤 {booking.boats?.name || '未知'} | ⏱️ {booking.duration_min}分鐘
                     </div>
-                    <div style={{ fontSize: '13px', color: '#999', marginTop: '4px' }}>
+                    <div style={{ ...getTextStyle('bodySmall', isMobile), color: designSystem.colors.text.disabled, marginTop: designSystem.spacing.xs }}>
                       📅 {formatDateTime(booking.start_at)}
                     </div>
                     {booking.coaches.length > 1 && (
-                      <div style={{ fontSize: '13px', color: '#ff9800', marginTop: '4px' }}>
+                      <div style={{ ...getTextStyle('bodySmall', isMobile), color: designSystem.colors.warning, marginTop: designSystem.spacing.xs }}>
                         👥 多教練: {booking.coaches.map(c => c.name).join('、')}
                       </div>
                     )}
@@ -387,36 +385,32 @@ export function CoachCheck({ user }: CoachCheckProps) {
                   
                   {booking.has_coach_report ? (
                     <div style={{
-                      padding: '6px 12px',
-                      background: '#4caf50',
-                      color: 'white',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      fontWeight: '500'
+                      ...getButtonStyle('success', 'small', isMobile),
+                      cursor: 'default'
                     }}>
-                      ✓ 已回报
+                      ✓ 已回報
                     </div>
                   ) : (
                     <button
                       onClick={() => openReportDialog(booking)}
                       style={{
-                        padding: '8px 16px',
-                        background: '#2196f3',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: 'pointer'
+                        ...getButtonStyle('primary', 'medium', isMobile)
                       }}
                     >
-                      回报
+                      回報
                     </button>
                   )}
                 </div>
                 
                 {booking.notes && (
-                  <div style={{ fontSize: '13px', color: '#666', padding: '8px', background: '#f9f9f9', borderRadius: '6px', marginTop: '8px' }}>
+                  <div style={{ 
+                    ...getTextStyle('bodySmall', isMobile), 
+                    color: designSystem.colors.text.secondary, 
+                    padding: designSystem.spacing.sm, 
+                    background: designSystem.colors.background.hover, 
+                    borderRadius: designSystem.borderRadius.md, 
+                    marginTop: designSystem.spacing.sm 
+                  }}>
                     📝 {booking.notes}
                   </div>
                 )}
@@ -428,7 +422,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
       <Footer />
 
-      {/* 回报对话框 */}
+      {/* 回報對話框 */}
       {reportDialogOpen && selectedBooking && (
         <div style={{
           position: 'fixed',
@@ -442,44 +436,44 @@ export function CoachCheck({ user }: CoachCheckProps) {
           justifyContent: 'center',
           zIndex: 1000,
           overflowY: 'auto',
-          padding: '20px 0'
+          padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl
         }}>
           <div style={{
             background: 'white',
-            borderRadius: '12px',
+            borderRadius: designSystem.borderRadius.lg,
             maxWidth: '500px',
             width: '100%',
-            margin: '0 16px',
+            margin: isMobile ? `0 ${designSystem.spacing.md}` : '0 auto',
             maxHeight: 'calc(100vh - 40px)',
             overflowY: 'auto'
           }}>
-            {/* 标题 */}
+            {/* 標題 */}
             <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #eee',
+              padding: designSystem.spacing.xl,
+              borderBottom: `1px solid ${designSystem.colors.border}`,
               position: 'sticky',
               top: 0,
               background: 'white',
               zIndex: 1
             }}>
-              <h2 style={{ margin: 0, fontSize: '20px', color: '#333' }}>
-                📝 教練回报
+              <h2 style={{ ...getTextStyle('h2', isMobile), margin: 0 }}>
+                📝 教練回報
               </h2>
-              <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
+              <div style={{ ...getTextStyle('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginTop: designSystem.spacing.xs }}>
                 {selectedBooking.contact_name} | {selectedBooking.boats?.name}
               </div>
             </div>
 
-            {/* 内容 */}
-            <div style={{ padding: '20px' }}>
+            {/* 內容 */}
+            <div style={{ padding: designSystem.spacing.xl }}>
               {error && (
                 <div style={{
-                  padding: '12px',
+                  padding: designSystem.spacing.md,
                   background: '#ffebee',
-                  color: '#c62828',
-                  borderRadius: '8px',
-                  marginBottom: '16px',
-                  fontSize: '14px'
+                  color: designSystem.colors.danger,
+                  borderRadius: designSystem.borderRadius.md,
+                  marginBottom: designSystem.spacing.lg,
+                  fontSize: getTextStyle('bodySmall', isMobile).fontSize
                 }}>
                   {error}
                 </div>
@@ -487,25 +481,25 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
               {success && (
                 <div style={{
-                  padding: '12px',
+                  padding: designSystem.spacing.md,
                   background: '#e8f5e9',
-                  color: '#2e7d32',
-                  borderRadius: '8px',
-                  marginBottom: '16px',
-                  fontSize: '14px'
+                  color: designSystem.colors.success,
+                  borderRadius: designSystem.borderRadius.md,
+                  marginBottom: designSystem.spacing.lg,
+                  fontSize: getTextStyle('bodySmall', isMobile).fontSize
                 }}>
                   {success}
                 </div>
               )}
 
-              {/* 驾驶回报部分 */}
-              <div style={{ marginBottom: '24px', padding: '16px', background: '#e3f2fd', borderRadius: '8px' }}>
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1976d2' }}>
-                  🚤 驾驶回报
+              {/* 駕駛回報部分 */}
+              <div style={{ marginBottom: designSystem.spacing.xl, padding: designSystem.spacing.lg, background: '#e3f2fd', borderRadius: designSystem.borderRadius.md }}>
+                <h3 style={{ ...getTextStyle('h3', isMobile), margin: `0 0 ${designSystem.spacing.lg} 0`, color: designSystem.colors.info }}>
+                  🚤 駕駛回報
                 </h3>
                 
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>
+                <div style={{ marginBottom: designSystem.spacing.md }}>
+                  <label style={{ ...getLabelStyle(isMobile) }}>
                     油量（公升）<span style={{ color: 'red' }}>*</span>
                   </label>
                   <input
@@ -515,19 +509,14 @@ export function CoachCheck({ user }: CoachCheckProps) {
                     onChange={(e) => setFuelAmount(e.target.value)}
                     placeholder="例如: 25.5"
                     style={{
-                      width: '100%',
-                      padding: '12px',
-                      fontSize: '16px',
-                      borderRadius: '8px',
-                      border: '1px solid #ddd',
-                      boxSizing: 'border-box'
+                      ...getInputStyle(isMobile)
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>
-                    驾驶时数（分钟）<span style={{ color: 'red' }}>*</span>
+                  <label style={{ ...getLabelStyle(isMobile) }}>
+                    駕駛時數（分鐘）<span style={{ color: 'red' }}>*</span>
                   </label>
                   <input
                     type="number"
@@ -535,60 +524,43 @@ export function CoachCheck({ user }: CoachCheckProps) {
                     onChange={(e) => setDrivingDuration(e.target.value)}
                     placeholder="例如: 60"
                     style={{
-                      width: '100%',
-                      padding: '12px',
-                      fontSize: '16px',
-                      borderRadius: '8px',
-                      border: '1px solid #ddd',
-                      boxSizing: 'border-box'
+                      ...getInputStyle(isMobile)
                     }}
                   />
                 </div>
               </div>
 
-              {/* 参与者回报部分 */}
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', color: '#333' }}>
-                    👥 参与者回报
+              {/* 參與者回報部分 */}
+              <div style={{ marginBottom: designSystem.spacing.lg }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: designSystem.spacing.md }}>
+                  <h3 style={{ ...getTextStyle('h3', isMobile), margin: 0 }}>
+                    👥 參與者回報
                   </h3>
                   <button
                     onClick={addParticipant}
                     style={{
-                      padding: '6px 12px',
-                      background: '#4caf50',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      cursor: 'pointer'
+                      ...getButtonStyle('success', 'small', isMobile)
                     }}
                   >
-                    + 添加参与者
+                    + 新增參與者
                   </button>
                 </div>
 
                 {participants.map((participant, index) => (
                   <div key={index} style={{
-                    padding: '16px',
-                    background: '#f9f9f9',
-                    borderRadius: '8px',
-                    marginBottom: '12px',
+                    padding: designSystem.spacing.lg,
+                    background: designSystem.colors.background.hover,
+                    borderRadius: designSystem.borderRadius.md,
+                    marginBottom: designSystem.spacing.md,
                     position: 'relative'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <strong style={{ fontSize: '14px', color: '#333' }}>参与者 {index + 1}</strong>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: designSystem.spacing.md }}>
+                      <strong style={{ ...getTextStyle('body', isMobile) }}>參與者 {index + 1}</strong>
                       {participants.length > 1 && (
                         <button
                           onClick={() => removeParticipant(index)}
                           style={{
-                            padding: '4px 8px',
-                            background: '#f44336',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            cursor: 'pointer'
+                            ...getButtonStyle('danger', 'small', isMobile)
                           }}
                         >
                           刪除
@@ -596,9 +568,9 @@ export function CoachCheck({ user }: CoachCheckProps) {
                       )}
                     </div>
 
-                    {/* 会员搜索 */}
-                    <div style={{ marginBottom: '12px', position: 'relative' }}>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                    {/* 會員搜尋 */}
+                    <div style={{ marginBottom: designSystem.spacing.md, position: 'relative' }}>
+                      <label style={{ ...getLabelStyle(isMobile) }}>
                         姓名<span style={{ color: 'red' }}>*</span>
                       </label>
                       <input
@@ -609,7 +581,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
                           updatedSearchTerms[index] = e.target.value
                           setMemberSearchTerms(updatedSearchTerms)
                           
-                          // 如果用户手动输入，清空 member_id 并更新姓名
+                          // 如果使用者手動輸入，清空 member_id 並更新姓名
                           updateParticipant(index, 'participant_name', e.target.value)
                           if (participant.member_id) {
                             updateParticipant(index, 'member_id', null)
@@ -620,18 +592,14 @@ export function CoachCheck({ user }: CoachCheckProps) {
                           updatedDropdowns[index] = true
                           setShowMemberDropdowns(updatedDropdowns)
                         }}
-                        placeholder="搜索会员或手动输入..."
+                        placeholder="搜尋會員或手動輸入..."
                         style={{
-                          width: '100%',
-                          padding: '10px',
-                          fontSize: '15px',
-                          borderRadius: '6px',
-                          border: participant.member_id ? '2px solid #4caf50' : '1px solid #ddd',
-                          boxSizing: 'border-box'
+                          ...getInputStyle(isMobile),
+                          border: participant.member_id ? `2px solid ${designSystem.colors.success}` : `1px solid ${designSystem.colors.border}`
                         }}
                       />
 
-                      {/* 会员下拉 */}
+                      {/* 會員下拉 */}
                       {showMemberDropdowns[index] && getFilteredMembers(memberSearchTerms[index]).length > 0 && (
                         <div style={{
                           position: 'absolute',
@@ -641,9 +609,9 @@ export function CoachCheck({ user }: CoachCheckProps) {
                           maxHeight: '150px',
                           overflowY: 'auto',
                           background: 'white',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          marginTop: '4px',
+                          border: `1px solid ${designSystem.colors.border}`,
+                          borderRadius: designSystem.borderRadius.md,
+                          marginTop: designSystem.spacing.xs,
                           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                           zIndex: 100
                         }}>
@@ -652,68 +620,59 @@ export function CoachCheck({ user }: CoachCheckProps) {
                               key={member.id}
                               onClick={() => selectMember(index, member)}
                               style={{
-                                padding: '10px',
+                                padding: designSystem.spacing.sm,
                                 cursor: 'pointer',
-                                borderBottom: '1px solid #f0f0f0',
-                                fontSize: '14px'
+                                borderBottom: `1px solid ${designSystem.colors.background.hover}`,
+                                fontSize: getTextStyle('bodySmall', isMobile).fontSize
                               }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                              onMouseEnter={(e) => e.currentTarget.style.background = designSystem.colors.background.hover}
                               onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                             >
                               <div style={{ fontWeight: 'bold' }}>
                                 {member.name}
-                                {member.nickname && <span style={{ color: '#666', fontWeight: 'normal' }}> ({member.nickname})</span>}
+                                {member.nickname && <span style={{ color: designSystem.colors.text.secondary, fontWeight: 'normal' }}> ({member.nickname})</span>}
                               </div>
-                              {member.phone && <div style={{ fontSize: '12px', color: '#999' }}>📱 {member.phone}</div>}
+                              {member.phone && <div style={{ fontSize: getTextStyle('caption', isMobile).fontSize, color: designSystem.colors.text.disabled }}>📱 {member.phone}</div>}
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
 
-                    {/* 时数 */}
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
-                        时数（分钟）<span style={{ color: 'red' }}>*</span>
+                    {/* 時數 */}
+                    <div style={{ marginBottom: designSystem.spacing.md }}>
+                      <label style={{ ...getLabelStyle(isMobile) }}>
+                        時數（分鐘）<span style={{ color: 'red' }}>*</span>
                       </label>
                       <input
                         type="number"
                         value={participant.duration_min}
                         onChange={(e) => updateParticipant(index, 'duration_min', parseInt(e.target.value) || 0)}
                         style={{
-                          width: '100%',
-                          padding: '10px',
-                          fontSize: '15px',
-                          borderRadius: '6px',
-                          border: '1px solid #ddd',
-                          boxSizing: 'border-box'
+                          ...getInputStyle(isMobile)
                         }}
                       />
                     </div>
 
-                    {/* 收费方式 */}
+                    {/* 收費方式 */}
                     <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
-                        收费方式<span style={{ color: 'red' }}>*</span>
+                      <label style={{ ...getLabelStyle(isMobile) }}>
+                        收費方式<span style={{ color: 'red' }}>*</span>
                       </label>
                       <select
                         value={participant.payment_method}
                         onChange={(e) => updateParticipant(index, 'payment_method', e.target.value)}
                         style={{
-                          width: '100%',
-                          padding: '10px',
-                          fontSize: '15px',
-                          borderRadius: '6px',
-                          border: '1px solid #ddd',
-                          boxSizing: 'border-box'
+                          ...getInputStyle(isMobile),
+                          background: 'white'
                         }}
                       >
-                        <option value="cash">现金</option>
-                        <option value="transfer">汇款</option>
-                        <option value="deduct">扣储值</option>
+                        <option value="cash">現金</option>
+                        <option value="transfer">匯款</option>
+                        <option value="deduct">扣儲值</option>
                         <option value="voucher">票券</option>
-                        <option value="designated_paid">指定（需收费）</option>
-                        <option value="designated_free">指定（不需收费）</option>
+                        <option value="designated_paid">指定（需收費）</option>
+                        <option value="designated_free">指定（不需收費）</option>
                       </select>
                     </div>
                   </div>
@@ -721,12 +680,12 @@ export function CoachCheck({ user }: CoachCheckProps) {
               </div>
             </div>
 
-            {/* 底部按钮 */}
+            {/* 底部按鈕 */}
             <div style={{
-              padding: '16px 20px',
-              borderTop: '1px solid #eee',
+              padding: `${designSystem.spacing.lg} ${designSystem.spacing.xl}`,
+              borderTop: `1px solid ${designSystem.colors.border}`,
               display: 'flex',
-              gap: '12px',
+              gap: designSystem.spacing.md,
               position: 'sticky',
               bottom: 0,
               background: 'white'
@@ -735,15 +694,10 @@ export function CoachCheck({ user }: CoachCheckProps) {
                 onClick={closeReportDialog}
                 disabled={saving}
                 style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
                   flex: 1,
-                  padding: '12px',
-                  background: '#f5f5f5',
-                  color: '#333',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '15px',
                   cursor: saving ? 'not-allowed' : 'pointer',
-                  fontWeight: '500'
+                  opacity: saving ? 0.5 : 1
                 }}
               >
                 取消
@@ -752,18 +706,13 @@ export function CoachCheck({ user }: CoachCheckProps) {
                 onClick={handleSubmit}
                 disabled={saving}
                 style={{
+                  ...getButtonStyle('primary', 'medium', isMobile),
                   flex: 1,
-                  padding: '12px',
-                  background: saving ? '#ccc' : '#2196f3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '15px',
                   cursor: saving ? 'not-allowed' : 'pointer',
-                  fontWeight: '500'
+                  opacity: saving ? 0.5 : 1
                 }}
               >
-                {saving ? '提交中...' : '确认提交'}
+                {saving ? '提交中...' : '確認提交'}
               </button>
             </div>
           </div>
@@ -772,5 +721,3 @@ export function CoachCheck({ user }: CoachCheckProps) {
     </div>
   )
 }
-
-

@@ -3,6 +3,8 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
+import { useResponsive } from '../hooks/useResponsive'
+import { designSystem, getButtonStyle, getCardStyle, getInputStyle, getLabelStyle, getTextStyle } from '../styles/designSystem'
 
 interface Coach {
   id: string
@@ -26,13 +28,15 @@ interface CoachAssignmentProps {
 }
 
 export function CoachAssignment({ user }: CoachAssignmentProps) {
+  const { isMobile } = useResponsive()
+  
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDate())
-  const [dateRange, setDateRange] = useState<number>(1) // 1=今天, 3=三天, 7=一周
+  const [dateRange, setDateRange] = useState<number>(1) // 1=今天, 3=三天, 7=一週
   const [bookings, setBookings] = useState<Booking[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(false)
   
-  // 编辑对话框
+  // 編輯對話框
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
@@ -72,7 +76,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      // 计算日期范围
+      // 計算日期範圍
       const startDate = new Date(selectedDate)
       const endDate = new Date(selectedDate)
       endDate.setDate(endDate.getDate() + dateRange - 1)
@@ -106,13 +110,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       const bookingIds = bookingsData.map((b: any) => b.id)
 
-      // 查詢教練信息
+      // 查詢教練資訊
       const { data: coachesData } = await supabase
         .from('booking_coaches')
         .select('booking_id, coaches:coach_id(id, name)')
         .in('booking_id', bookingIds)
 
-      // 组装数据
+      // 組裝資料
       const bookingsWithCoaches = bookingsData.map((booking: any) => {
         const bookingCoaches = coachesData
           ?.filter((bc: any) => bc.booking_id === booking.id)
@@ -127,7 +131,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       setBookings(bookingsWithCoaches)
     } catch (err) {
-      console.error('加载預約失败:', err)
+      console.error('載入預約失敗:', err)
     } finally {
       setLoading(false)
     }
@@ -161,7 +165,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     setError('')
 
     try {
-      // 1. 更新排班备注
+      // 1. 更新排班備註
       const { error: notesError } = await supabase
         .from('bookings')
         .update({ schedule_notes: scheduleNotes || null })
@@ -169,7 +173,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       if (notesError) throw notesError
 
-      // 2. 刪除旧的教練分配
+      // 2. 刪除舊的教練分配
       const { error: deleteError } = await supabase
         .from('booking_coaches')
         .delete()
@@ -191,13 +195,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         if (insertError) throw insertError
       }
 
-      setSuccess('✅ 保存成功！')
+      setSuccess('✅ 儲存成功！')
       setTimeout(() => {
         closeEditDialog()
         loadBookings()
       }, 1000)
     } catch (err: any) {
-      setError(err.message || '保存失败')
+      setError(err.message || '儲存失敗')
     } finally {
       setSaving(false)
     }
@@ -215,7 +219,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     return `${year}/${month}/${day}`
   }
 
-  // 按日期分组預約
+  // 按日期分組預約
   const groupedBookings = bookings.reduce((acc, booking) => {
     const date = booking.start_at.substring(0, 10)
     if (!acc[date]) {
@@ -228,23 +232,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   const sortedDates = Object.keys(groupedBookings).sort()
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
       <PageHeader user={user} title="教練排班管理" />
       
-      <div style={{ flex: 1, padding: '20px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-        <h1 style={{ fontSize: '24px', marginBottom: '20px', color: '#333' }}>📅 教練排班管理</h1>
+      <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl, maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+        <h1 style={{ ...getTextStyle('h1', isMobile), marginBottom: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl }}>📅 教練排班管理</h1>
 
-        {/* 日期選擇和范围 */}
+        {/* 日期選擇和範圍 */}
         <div style={{ 
-          background: 'white', 
-          padding: '16px', 
-          borderRadius: '12px', 
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          marginBottom: '20px'
+          ...getCardStyle(isMobile)
         }}>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'end' }}>
+          <div style={{ display: 'flex', gap: designSystem.spacing.md, flexWrap: 'wrap', alignItems: 'end' }}>
             <div style={{ flex: '1', minWidth: '200px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '14px', color: '#333' }}>
+              <label style={{ ...getLabelStyle(isMobile) }}>
                 起始日期
               </label>
               <input
@@ -252,28 +252,16 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 style={{
-                  width: '100%',
-                  padding: '10px',
-                  fontSize: '15px',
-                  borderRadius: '8px',
-                  border: '1px solid #ddd',
-                  boxSizing: 'border-box'
+                  ...getInputStyle(isMobile)
                 }}
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: designSystem.spacing.sm }}>
               <button
                 onClick={() => setDateRange(1)}
                 style={{
-                  padding: '10px 16px',
-                  background: dateRange === 1 ? '#2196f3' : 'white',
-                  color: dateRange === 1 ? 'white' : '#333',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
+                  ...getButtonStyle(dateRange === 1 ? 'primary' : 'outline', 'medium', isMobile)
                 }}
               >
                 今天
@@ -281,14 +269,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               <button
                 onClick={() => setDateRange(3)}
                 style={{
-                  padding: '10px 16px',
-                  background: dateRange === 3 ? '#2196f3' : 'white',
-                  color: dateRange === 3 ? 'white' : '#333',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
+                  ...getButtonStyle(dateRange === 3 ? 'primary' : 'outline', 'medium', isMobile)
                 }}
               >
                 三天
@@ -296,106 +277,96 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               <button
                 onClick={() => setDateRange(7)}
                 style={{
-                  padding: '10px 16px',
-                  background: dateRange === 7 ? '#2196f3' : 'white',
-                  color: dateRange === 7 ? 'white' : '#333',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
+                  ...getButtonStyle(dateRange === 7 ? 'primary' : 'outline', 'medium', isMobile)
                 }}
               >
-                一周
+                一週
               </button>
             </div>
           </div>
         </div>
 
         {/* 預約列表 */}
-        {loading && <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>載入中...</div>}
+        {loading && <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>載入中...</div>}
         
         {!loading && bookings.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-            所选日期范围内暂无預約
+          <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
+            所選日期範圍內暫無預約
           </div>
         )}
 
         {!loading && sortedDates.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.xl }}>
             {sortedDates.map(date => (
               <div key={date}>
-                {/* 日期标题 */}
+                {/* 日期標題 */}
                 <h2 style={{ 
-                  fontSize: '18px', 
-                  fontWeight: 'bold', 
-                  color: '#333', 
-                  marginBottom: '12px',
-                  padding: '8px 12px',
-                  background: 'white',
-                  borderRadius: '8px',
+                  ...getTextStyle('h2', isMobile),
+                  fontWeight: 'bold',
+                  marginBottom: designSystem.spacing.md,
+                  padding: designSystem.spacing.sm,
+                  background: designSystem.colors.background.card,
+                  borderRadius: designSystem.borderRadius.md,
                   boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                 }}>
-                  📆 {formatFullDate(date)}（{groupedBookings[date].length} 个預約）
+                  📆 {formatFullDate(date)}（{groupedBookings[date].length} 個預約）
                 </h2>
 
-                {/* 该日期的預約列表 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* 該日期的預約列表 */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.md }}>
                   {groupedBookings[date].map(booking => (
                     <div
                       key={booking.id}
                       style={{
-                        background: 'white',
-                        padding: '16px',
-                        borderRadius: '12px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                        borderLeft: `4px solid ${booking.boats?.color || '#999'}`
+                        ...getCardStyle(isMobile),
+                        marginBottom: 0,
+                        borderLeft: `4px solid ${booking.boats?.color || designSystem.colors.text.disabled}`
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '6px' }}>
+                          <div style={{ ...getTextStyle('bodyLarge', isMobile), fontWeight: 'bold', marginBottom: designSystem.spacing.xs }}>
                             {formatDateTime(booking.start_at)} | {booking.contact_name}
                           </div>
                           
-                          <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                            🚤 {booking.boats?.name || '未知'} | ⏱️ {booking.duration_min}分钟
+                          <div style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: designSystem.spacing.xs }}>
+                            🚤 {booking.boats?.name || '未知'} | ⏱️ {booking.duration_min}分鐘
                           </div>
 
-                          {/* 教練信息 */}
-                          <div style={{ fontSize: '14px', color: '#333', marginBottom: '4px' }}>
+                          {/* 教練資訊 */}
+                          <div style={{ ...getTextStyle('body', isMobile), marginBottom: designSystem.spacing.xs }}>
                             👨‍🏫 教練: {booking.coaches.length > 0 
                               ? booking.coaches.map(c => c.name).join('、')
-                              : <span style={{ color: '#f44336', fontWeight: '500' }}>⚠️ 未分配教練</span>
+                              : <span style={{ color: designSystem.colors.danger, fontWeight: '500' }}>⚠️ 未分配教練</span>
                             }
                           </div>
 
-                          {/* 备注 */}
+                          {/* 備註 */}
                           {booking.notes && (
                             <div style={{ 
-                              fontSize: '13px', 
-                              color: '#666', 
-                              padding: '6px 8px', 
-                              background: '#f9f9f9', 
-                              borderRadius: '4px',
-                              marginTop: '6px'
+                              ...getTextStyle('bodySmall', isMobile),
+                              color: designSystem.colors.text.secondary, 
+                              padding: designSystem.spacing.xs, 
+                              background: designSystem.colors.background.hover, 
+                              borderRadius: designSystem.borderRadius.sm,
+                              marginTop: designSystem.spacing.xs
                             }}>
-                              📝 預約备注: {booking.notes}
+                              📝 預約備註: {booking.notes}
                             </div>
                           )}
 
-                          {/* 排班备注 */}
+                          {/* 排班備註 */}
                           {booking.schedule_notes && (
                             <div style={{ 
-                              fontSize: '13px', 
-                              color: '#ff9800', 
-                              padding: '6px 8px', 
+                              ...getTextStyle('bodySmall', isMobile),
+                              color: designSystem.colors.warning, 
+                              padding: designSystem.spacing.xs, 
                               background: '#fff8e1', 
-                              borderRadius: '4px',
-                              marginTop: '6px',
+                              borderRadius: designSystem.borderRadius.sm,
+                              marginTop: designSystem.spacing.xs,
                               fontWeight: '500'
                             }}>
-                              💡 排班备注: {booking.schedule_notes}
+                              💡 排班備註: {booking.schedule_notes}
                             </div>
                           )}
                         </div>
@@ -403,15 +374,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         <button
                           onClick={() => openEditDialog(booking)}
                           style={{
-                            padding: '8px 16px',
-                            background: '#2196f3',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                            cursor: 'pointer',
-                            marginLeft: '12px',
+                            ...getButtonStyle('primary', 'medium', isMobile),
+                            marginLeft: designSystem.spacing.md,
                             whiteSpace: 'nowrap'
                           }}
                         >
@@ -429,7 +393,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       <Footer />
 
-      {/* 编辑对话框 */}
+      {/* 編輯對話框 */}
       {editDialogOpen && selectedBooking && (
         <div style={{
           position: 'fixed',
@@ -442,43 +406,43 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: '20px'
+          padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl
         }}>
           <div style={{
             background: 'white',
-            borderRadius: '12px',
+            borderRadius: designSystem.borderRadius.lg,
             maxWidth: '500px',
             width: '100%',
             maxHeight: '90vh',
             overflowY: 'auto'
           }}>
-            {/* 标题 */}
+            {/* 標題 */}
             <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #eee',
+              padding: designSystem.spacing.xl,
+              borderBottom: `1px solid ${designSystem.colors.border}`,
               position: 'sticky',
               top: 0,
               background: 'white',
               zIndex: 1
             }}>
-              <h2 style={{ margin: 0, fontSize: '20px', color: '#333' }}>
+              <h2 style={{ ...getTextStyle('h2', isMobile), margin: 0 }}>
                 ⚙️ 排班管理
               </h2>
-              <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
+              <div style={{ ...getTextStyle('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginTop: designSystem.spacing.xs }}>
                 {formatDateTime(selectedBooking.start_at)} | {selectedBooking.contact_name}
               </div>
             </div>
 
-            {/* 内容 */}
-            <div style={{ padding: '20px' }}>
+            {/* 內容 */}
+            <div style={{ padding: designSystem.spacing.xl }}>
               {error && (
                 <div style={{
-                  padding: '12px',
+                  padding: designSystem.spacing.md,
                   background: '#ffebee',
-                  color: '#c62828',
-                  borderRadius: '8px',
-                  marginBottom: '16px',
-                  fontSize: '14px'
+                  color: designSystem.colors.danger,
+                  borderRadius: designSystem.borderRadius.md,
+                  marginBottom: designSystem.spacing.lg,
+                  fontSize: getTextStyle('bodySmall', isMobile).fontSize
                 }}>
                   {error}
                 </div>
@@ -486,33 +450,30 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
               {success && (
                 <div style={{
-                  padding: '12px',
+                  padding: designSystem.spacing.md,
                   background: '#e8f5e9',
-                  color: '#2e7d32',
-                  borderRadius: '8px',
-                  marginBottom: '16px',
-                  fontSize: '14px'
+                  color: designSystem.colors.success,
+                  borderRadius: designSystem.borderRadius.md,
+                  marginBottom: designSystem.spacing.lg,
+                  fontSize: getTextStyle('bodySmall', isMobile).fontSize
                 }}>
                   {success}
                 </div>
               )}
 
               {/* 教練選擇 */}
-              <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: designSystem.spacing.xl }}>
                 <label style={{ 
-                  display: 'block', 
-                  marginBottom: '8px', 
-                  fontWeight: '500', 
-                  fontSize: '15px',
-                  color: '#333'
+                  ...getLabelStyle(isMobile),
+                  marginBottom: designSystem.spacing.sm
                 }}>
-                  分配教練 <span style={{ fontSize: '13px', color: '#999' }}>（可多选）</span>
+                  分配教練 <span style={{ fontSize: getTextStyle('caption', isMobile).fontSize, color: designSystem.colors.text.disabled }}>（可多選）</span>
                 </label>
                 
                 <div style={{
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  padding: '8px',
+                  border: `1px solid ${designSystem.colors.border}`,
+                  borderRadius: designSystem.borderRadius.md,
+                  padding: designSystem.spacing.sm,
                   maxHeight: '240px',
                   overflowY: 'auto'
                 }}>
@@ -522,15 +483,15 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        padding: '10px',
+                        padding: designSystem.spacing.sm,
                         cursor: 'pointer',
-                        borderRadius: '6px',
+                        borderRadius: designSystem.borderRadius.sm,
                         transition: 'background 0.2s',
                         background: selectedCoaches.includes(coach.id) ? '#e3f2fd' : 'transparent'
                       }}
                       onMouseEnter={(e) => {
                         if (!selectedCoaches.includes(coach.id)) {
-                          e.currentTarget.style.background = '#f5f5f5'
+                          e.currentTarget.style.background = designSystem.colors.background.hover
                         }
                       }}
                       onMouseLeave={(e) => {
@@ -550,28 +511,25 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           }
                         }}
                         style={{
-                          marginRight: '10px',
+                          marginRight: designSystem.spacing.sm,
                           width: '18px',
                           height: '18px',
                           cursor: 'pointer'
                         }}
                       />
-                      <span style={{ fontSize: '15px' }}>{coach.name}</span>
+                      <span style={{ ...getTextStyle('body', isMobile) }}>{coach.name}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              {/* 排班备注 */}
+              {/* 排班備註 */}
               <div>
                 <label style={{ 
-                  display: 'block', 
-                  marginBottom: '8px', 
-                  fontWeight: '500', 
-                  fontSize: '15px',
-                  color: '#333'
+                  ...getLabelStyle(isMobile),
+                  marginBottom: designSystem.spacing.sm
                 }}>
-                  排班备注 <span style={{ fontSize: '13px', color: '#999' }}>（选填）</span>
+                  排班備註 <span style={{ fontSize: getTextStyle('caption', isMobile).fontSize, color: designSystem.colors.text.disabled }}>（選填）</span>
                 </label>
                 <textarea
                   value={scheduleNotes}
@@ -579,12 +537,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   placeholder="例如：寶哥指定、特殊安排等..."
                   rows={3}
                   style={{
-                    width: '100%',
-                    padding: '12px',
-                    fontSize: '15px',
-                    borderRadius: '8px',
-                    border: '1px solid #ddd',
-                    boxSizing: 'border-box',
+                    ...getInputStyle(isMobile),
                     resize: 'vertical',
                     fontFamily: 'inherit'
                   }}
@@ -592,12 +545,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               </div>
             </div>
 
-            {/* 底部按钮 */}
+            {/* 底部按鈕 */}
             <div style={{
-              padding: '16px 20px',
-              borderTop: '1px solid #eee',
+              padding: `${designSystem.spacing.lg} ${designSystem.spacing.xl}`,
+              borderTop: `1px solid ${designSystem.colors.border}`,
               display: 'flex',
-              gap: '12px',
+              gap: designSystem.spacing.md,
               position: 'sticky',
               bottom: 0,
               background: 'white'
@@ -606,15 +559,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 onClick={closeEditDialog}
                 disabled={saving}
                 style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
                   flex: 1,
-                  padding: '12px',
-                  background: '#f5f5f5',
-                  color: '#333',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '15px',
                   cursor: saving ? 'not-allowed' : 'pointer',
-                  fontWeight: '500'
+                  opacity: saving ? 0.5 : 1
                 }}
               >
                 取消
@@ -623,18 +571,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 onClick={handleSave}
                 disabled={saving}
                 style={{
+                  ...getButtonStyle('primary', 'medium', isMobile),
                   flex: 1,
-                  padding: '12px',
-                  background: saving ? '#ccc' : '#2196f3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '15px',
                   cursor: saving ? 'not-allowed' : 'pointer',
-                  fontWeight: '500'
+                  opacity: saving ? 0.5 : 1
                 }}
               >
-                {saving ? '保存中...' : '保存'}
+                {saving ? '儲存中...' : '儲存'}
               </button>
             </div>
           </div>
@@ -643,5 +586,3 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     </div>
   )
 }
-
-
