@@ -245,7 +245,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           marginBottom: designSystem.spacing.md,
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
-          <div style={{ display: 'flex', gap: designSystem.spacing.md, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: designSystem.spacing.md, alignItems: 'end', flexWrap: 'wrap' }}>
             <div style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
               <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px', display: 'block' }}>
                 選擇日期
