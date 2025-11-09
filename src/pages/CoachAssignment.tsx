@@ -84,8 +84,16 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       const startDateStr = formatDateForQuery(startDate)
       const endDateStr = formatDateForQuery(endDate)
 
+      console.log('🔍 查詢日期範圍:', {
+        selectedDate,
+        startDateStr,
+        endDateStr,
+        startQuery: `${startDateStr}T00:00:00`,
+        endQuery: `${endDateStr}T23:59:59`
+      })
+
       // 查詢預約（不過濾 status，顯示所有預約）
-      const { data: bookingsData } = await supabase
+      const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
           id,
@@ -101,7 +109,18 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         .lte('start_at', `${endDateStr}T23:59:59`)
         .order('start_at', { ascending: true })
 
+      console.log('📊 查詢結果:', { 
+        bookingsData, 
+        bookingsError,
+        count: bookingsData?.length || 0 
+      })
+
+      if (bookingsError) {
+        console.error('❌ 查詢錯誤:', bookingsError)
+      }
+
       if (!bookingsData || bookingsData.length === 0) {
+        console.log('⚠️ 沒有找到預約')
         setBookings([])
         setLoading(false)
         return
