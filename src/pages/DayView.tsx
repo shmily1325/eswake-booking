@@ -764,17 +764,41 @@ export function DayView({ user }: DayViewProps) {
 
                               {/* 預約詳情 */}
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                {/* 學生名字 */}
+                                {/* 學生名字 + 活動類型（同一行） */}
                                 <div style={{
-                                  fontSize: isMobile ? '15px' : '15px',
-                                  fontWeight: '700',
-                                  color: '#000',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
                                   marginBottom: '8px',
+                                  flexWrap: 'wrap',
                                 }}>
-                                  {booking.contact_name}
+                                  <span style={{
+                                    fontSize: isMobile ? '15px' : '15px',
+                                    fontWeight: '700',
+                                    color: '#000',
+                                  }}>
+                                    {booking.contact_name}
+                                  </span>
+                                  
+                                  {/* 活動類型標籤（有底色） */}
+                                  {booking.activity_types && booking.activity_types.map(type => (
+                                    <span
+                                      key={type}
+                                      style={{
+                                        padding: '3px 8px',
+                                        backgroundColor: '#fff3e0',
+                                        color: '#e65100',
+                                        borderRadius: '12px',
+                                        fontSize: isMobile ? '11px' : '12px',
+                                        fontWeight: '500',
+                                      }}
+                                    >
+                                      {type}
+                                    </span>
+                                  ))}
                                 </div>
                                 
-                                {/* 所有標籤統一排列 */}
+                                {/* 教練、駕駛、排班備註標籤 */}
                                 <div style={{
                                   display: 'flex',
                                   gap: '6px',
@@ -785,8 +809,8 @@ export function DayView({ user }: DayViewProps) {
                                   {booking.coaches && booking.coaches.length > 0 && (
                                     <span style={{
                                       padding: '3px 8px',
-                                      backgroundColor: '#e0e0e0',
-                                      color: '#424242',
+                                      backgroundColor: 'transparent',
+                                      color: '#666',
                                       borderRadius: '12px',
                                       fontSize: isMobile ? '11px' : '12px',
                                       fontWeight: '500',
@@ -810,8 +834,8 @@ export function DayView({ user }: DayViewProps) {
                                     return (
                                       <span style={{
                                         padding: '3px 8px',
-                                        backgroundColor: '#c8e6c9',
-                                        color: '#2e7d32',
+                                        backgroundColor: 'transparent',
+                                        color: '#666',
                                         borderRadius: '12px',
                                         fontSize: isMobile ? '11px' : '12px',
                                         fontWeight: '500',
@@ -824,29 +848,12 @@ export function DayView({ user }: DayViewProps) {
                                     )
                                   })()}
                                   
-                                  {/* 活動類型標籤（不加 emoji，顏色已足夠區分） */}
-                                  {booking.activity_types && booking.activity_types.map(type => (
-                                    <span
-                                      key={type}
-                                      style={{
-                                        padding: '3px 8px',
-                                        backgroundColor: '#bbdefb',
-                                        color: '#1565c0',
-                                        borderRadius: '12px',
-                                        fontSize: isMobile ? '11px' : '12px',
-                                        fontWeight: '500',
-                                      }}
-                                    >
-                                      {type}
-                                    </span>
-                                  ))}
-                                  
-                                  {/* 排班備註標籤 */}
+                                  {/* 排班備註 */}
                                   {booking.schedule_notes && (
                                     <span style={{
                                       padding: '3px 8px',
-                                      backgroundColor: '#ffe0b2',
-                                      color: '#e65100',
+                                      backgroundColor: 'transparent',
+                                      color: '#666',
                                       borderRadius: '12px',
                                       fontSize: isMobile ? '11px' : '12px',
                                       fontWeight: '500',
