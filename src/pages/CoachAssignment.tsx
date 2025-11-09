@@ -80,7 +80,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       const startDateStr = formatDateForQuery(startDate)
       const endDateStr = formatDateForQuery(endDate)
 
-      // 查詢预约
+      // 查詢預約
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
@@ -106,7 +106,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       const bookingIds = bookingsData.map((b: any) => b.id)
 
-      // 查詢教练信息
+      // 查詢教練信息
       const { data: coachesData } = await supabase
         .from('booking_coaches')
         .select('booking_id, coaches:coach_id(id, name)')
@@ -127,7 +127,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       setBookings(bookingsWithCoaches)
     } catch (err) {
-      console.error('加载预约失败:', err)
+      console.error('加载預約失败:', err)
     } finally {
       setLoading(false)
     }
@@ -169,7 +169,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       if (notesError) throw notesError
 
-      // 2. 删除旧的教练分配
+      // 2. 刪除旧的教練分配
       const { error: deleteError } = await supabase
         .from('booking_coaches')
         .delete()
@@ -177,7 +177,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       if (deleteError) throw deleteError
 
-      // 3. 插入新的教练分配
+      // 3. 插入新的教練分配
       if (selectedCoaches.length > 0) {
         const coachesToInsert = selectedCoaches.map(coachId => ({
           booking_id: selectedBooking.id,
@@ -215,7 +215,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     return `${year}/${month}/${day}`
   }
 
-  // 按日期分组预约
+  // 按日期分组預約
   const groupedBookings = bookings.reduce((acc, booking) => {
     const date = booking.start_at.substring(0, 10)
     if (!acc[date]) {
@@ -229,12 +229,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
-      <PageHeader user={user} title="教练排班管理" />
+      <PageHeader user={user} title="教練排班管理" />
       
       <div style={{ flex: 1, padding: '20px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-        <h1 style={{ fontSize: '24px', marginBottom: '20px', color: '#333' }}>📅 教练排班管理</h1>
+        <h1 style={{ fontSize: '24px', marginBottom: '20px', color: '#333' }}>📅 教練排班管理</h1>
 
-        {/* 日期选择和范围 */}
+        {/* 日期選擇和范围 */}
         <div style={{ 
           background: 'white', 
           padding: '16px', 
@@ -312,12 +312,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           </div>
         </div>
 
-        {/* 预约列表 */}
+        {/* 預約列表 */}
         {loading && <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>載入中...</div>}
         
         {!loading && bookings.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-            所选日期范围内暂无预约
+            所选日期范围内暂无預約
           </div>
         )}
 
@@ -336,10 +336,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   borderRadius: '8px',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                 }}>
-                  📆 {formatFullDate(date)}（{groupedBookings[date].length} 个预约）
+                  📆 {formatFullDate(date)}（{groupedBookings[date].length} 个預約）
                 </h2>
 
-                {/* 该日期的预约列表 */}
+                {/* 该日期的預約列表 */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {groupedBookings[date].map(booking => (
                     <div
@@ -362,11 +362,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             🚤 {booking.boats?.name || '未知'} | ⏱️ {booking.duration_min}分钟
                           </div>
 
-                          {/* 教练信息 */}
+                          {/* 教練信息 */}
                           <div style={{ fontSize: '14px', color: '#333', marginBottom: '4px' }}>
-                            👨‍🏫 教练: {booking.coaches.length > 0 
+                            👨‍🏫 教練: {booking.coaches.length > 0 
                               ? booking.coaches.map(c => c.name).join('、')
-                              : <span style={{ color: '#f44336', fontWeight: '500' }}>⚠️ 未分配教练</span>
+                              : <span style={{ color: '#f44336', fontWeight: '500' }}>⚠️ 未分配教練</span>
                             }
                           </div>
 
@@ -380,7 +380,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               borderRadius: '4px',
                               marginTop: '6px'
                             }}>
-                              📝 预约备注: {booking.notes}
+                              📝 預約备注: {booking.notes}
                             </div>
                           )}
 
@@ -497,7 +497,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 </div>
               )}
 
-              {/* 教练选择 */}
+              {/* 教練選擇 */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ 
                   display: 'block', 
@@ -506,7 +506,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   fontSize: '15px',
                   color: '#333'
                 }}>
-                  分配教练 <span style={{ fontSize: '13px', color: '#999' }}>（可多选）</span>
+                  分配教練 <span style={{ fontSize: '13px', color: '#999' }}>（可多选）</span>
                 </label>
                 
                 <div style={{

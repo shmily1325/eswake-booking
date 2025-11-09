@@ -35,11 +35,11 @@ interface CoachCheckProps {
 }
 
 export function CoachCheck({ user }: CoachCheckProps) {
-  // 教练选择
+  // 教練選擇
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [coaches, setCoaches] = useState<{ id: string; name: string }[]>([])
   
-  // 预约列表
+  // 預約列表
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   
@@ -101,7 +101,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      // 查詢该教练的所有预约
+      // 查詢该教練的所有預約
       const { data: coachBookings } = await supabase
         .from('booking_coaches')
         .select('booking_id')
@@ -115,7 +115,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
       const bookingIds = coachBookings.map(cb => cb.booking_id)
 
-      // 查詢预约详情
+      // 查詢預約详情
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
@@ -137,13 +137,13 @@ export function CoachCheck({ user }: CoachCheckProps) {
         return
       }
 
-      // 查詢教练信息
+      // 查詢教練信息
       const { data: coachesData } = await supabase
         .from('booking_coaches')
         .select('booking_id, coaches:coach_id(id, name)')
         .in('booking_id', bookingIds)
 
-      // 查詢该教练是否已回报
+      // 查詢该教練是否已回报
       const { data: reportsData } = await supabase
         .from('coach_reports')
         .select('booking_id')
@@ -168,7 +168,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
       setBookings(bookingsWithCoaches)
     } catch (err) {
-      console.error('加载预约失败:', err)
+      console.error('加载預約失败:', err)
     } finally {
       setLoading(false)
     }
@@ -268,7 +268,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
     setError('')
 
     try {
-      // 1. 插入教练驾驶回报
+      // 1. 插入教練驾驶回报
       const { error: reportError } = await supabase
         .from('coach_reports')
         .insert({
@@ -316,15 +316,15 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
-      <PageHeader user={user} title="教练回报" />
+      <PageHeader user={user} title="教練回报" />
       
       <div style={{ flex: 1, padding: '20px', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
-        <h1 style={{ fontSize: '24px', marginBottom: '20px', color: '#333' }}>📋 教练回报</h1>
+        <h1 style={{ fontSize: '24px', marginBottom: '20px', color: '#333' }}>📋 教練回报</h1>
 
-        {/* 教练选择 */}
+        {/* 教練選擇 */}
         <div style={{ marginBottom: '20px', background: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#333' }}>
-            选择教练
+            選擇教練
           </label>
           <select
             value={selectedCoachId}
@@ -338,19 +338,19 @@ export function CoachCheck({ user }: CoachCheckProps) {
               background: 'white'
             }}
           >
-            <option value="">-- 请选择教练 --</option>
+            <option value="">-- 请選擇教練 --</option>
             {coaches.map(coach => (
               <option key={coach.id} value={coach.id}>{coach.name}</option>
             ))}
           </select>
         </div>
 
-        {/* 预约列表 */}
+        {/* 預約列表 */}
         {loading && <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>載入中...</div>}
         
         {!loading && selectedCoachId && bookings.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-            暂无预约记录
+            暂无預約记录
           </div>
         )}
 
@@ -380,7 +380,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
                     </div>
                     {booking.coaches.length > 1 && (
                       <div style={{ fontSize: '13px', color: '#ff9800', marginTop: '4px' }}>
-                        👥 多教练: {booking.coaches.map(c => c.name).join('、')}
+                        👥 多教練: {booking.coaches.map(c => c.name).join('、')}
                       </div>
                     )}
                   </div>
@@ -463,7 +463,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
               zIndex: 1
             }}>
               <h2 style={{ margin: 0, fontSize: '20px', color: '#333' }}>
-                📝 教练回报
+                📝 教練回报
               </h2>
               <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
                 {selectedBooking.contact_name} | {selectedBooking.boats?.name}
@@ -591,7 +591,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
                             cursor: 'pointer'
                           }}
                         >
-                          删除
+                          刪除
                         </button>
                       )}
                     </div>
