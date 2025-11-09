@@ -20,7 +20,7 @@ interface Booking {
   boat_id: number
   boats: { name: string; color: string } | null
   currentCoaches: string[]
-  driver_id: string | null
+  currentDrivers: string[]
   schedule_notes: string | null
 }
 
@@ -42,7 +42,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   // 儲存每個預約的配置（key: booking_id）
   const [assignments, setAssignments] = useState<Record<number, {
     coachIds: string[]
-    driverId: string | null
+    driverIds: string[]
     notes: string
   }>>({})
 
@@ -108,26 +108,37 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         .select('booking_id, coach_id')
         .in('booking_id', bookingIds)
 
+      // 查詢駕駛資訊
+      const { data: driversData } = await supabase
+        .from('booking_drivers')
+        .select('booking_id, driver_id')
+        .in('booking_id', bookingIds)
+
       // 組裝資料
       const bookingsWithCoaches = bookingsData.map((booking: any) => {
         const bookingCoachIds = coachesData
           ?.filter((bc: any) => bc.booking_id === booking.id)
           .map((bc: any) => bc.coach_id) || []
         
+        const bookingDriverIds = driversData
+          ?.filter((bd: any) => bd.booking_id === booking.id)
+          .map((bd: any) => bd.driver_id) || []
+        
         return {
           ...booking,
-          currentCoaches: bookingCoachIds
+          currentCoaches: bookingCoachIds,
+          currentDrivers: bookingDriverIds
         }
       })
 
       setBookings(bookingsWithCoaches)
       
       // 初始化 assignments 為當前的配置
-      const initialAssignments: Record<number, { coachIds: string[], driverId: string | null, notes: string }> = {}
+      const initialAssignments: Record<number, { coachIds: string[], driverIds: string[], notes: string }> = {}
       bookingsWithCoaches.forEach((booking: Booking) => {
         initialAssignments[booking.id] = {
           coachIds: [...booking.currentCoaches],
-          driverId: booking.driver_id || null,
+          driverIds: [...booking.currentDrivers],
           notes: booking.schedule_notes || ''
         }
       })
@@ -141,7 +152,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     }
   }
 
-  const updateAssignment = (bookingId: number, field: 'coachIds' | 'driverId' | 'notes', value: any) => {
+  const updateAssignment = (bookingId: number, field: 'coachIds' | 'driverIds' | 'notes', value: any) => {
     setAssignments(prev => ({
       ...prev,
       [bookingId]: {
@@ -219,17 +230,16 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         if (!assignment) continue
         
         console.log(`更新預約 ${booking.id}:`, {
-          driver_id: assignment.driverId || null,
+          driverIds: assignment.driverIds,
           schedule_notes: assignment.notes || null,
           coachIds: assignment.coachIds
         })
         
-        // 1. 更新排班備註和專門駕駛
+        // 1. 更新排班備註
         const { error: updateError } = await supabase
           .from('bookings')
           .update({ 
-            schedule_notes: assignment.notes || null,
-            driver_id: assignment.driverId || null
+            schedule_notes: assignment.notes || null
           })
           .eq('id', booking.id)
         
@@ -244,7 +254,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           .delete()
           .eq('booking_id', booking.id)
 
-        // 3. 插入新的教練分配（只插入教練，不包含駕駛）
+        // 3. 插入新的教練分配
         if (assignment.coachIds.length > 0) {
           const coachesToInsert = assignment.coachIds.map(coachId => ({
             booking_id: booking.id,
@@ -254,6 +264,24 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           await supabase
             .from('booking_coaches')
             .insert(coachesToInsert)
+        }
+
+        // 4. 刪除舊的駕駛分配
+        await supabase
+          .from('booking_drivers')
+          .delete()
+          .eq('booking_id', booking.id)
+
+        // 5. 插入新的駕駛分配
+        if (assignment.driverIds.length > 0) {
+          const driversToInsert = assignment.driverIds.map(driverId => ({
+            booking_id: booking.id,
+            driver_id: driverId
+          }))
+
+          await supabase
+            .from('booking_drivers')
+            .insert(driversToInsert)
         }
       }
 
@@ -295,6 +323,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     } else {
       // 新增
       updateAssignment(bookingId, 'coachIds', [...currentCoaches, coachId])
+    }
+  }
+
+  const toggleDriver = (bookingId: number, driverId: string) => {
+    const assignment = assignments[bookingId]
+    const currentDrivers = assignment?.driverIds || []
+    
+    if (currentDrivers.includes(driverId)) {
+      // 移除
+      updateAssignment(bookingId, 'driverIds', currentDrivers.filter(id => id !== driverId))
+    } else {
+      // 新增
+      updateAssignment(bookingId, 'driverIds', [...currentDrivers, driverId])
     }
   }
 
@@ -528,26 +569,76 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         </select>
                       </td>
                       <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
+                        {/* 已選擇的駕駛標籤 */}
+                        {assignment.driverIds && assignment.driverIds.length > 0 && (
+                          <div style={{ 
+                            display: 'flex', 
+                            flexWrap: 'wrap', 
+                            gap: '6px',
+                            marginBottom: '8px'
+                          }}>
+                            {assignment.driverIds.map((driverId: string) => {
+                              const driver = coaches.find(c => c.id === driverId)
+                              return driver ? (
+                                <span key={driverId} style={{
+                                  padding: '4px 10px',
+                                  background: '#4caf50',
+                                  color: 'white',
+                                  borderRadius: '12px',
+                                  fontSize: '13px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  fontWeight: '500'
+                                }}>
+                                  {driver.name}
+                                  <button
+                                    onClick={() => toggleDriver(booking.id, driverId)}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: 'white',
+                                      cursor: 'pointer',
+                                      padding: '0 2px',
+                                      fontSize: '18px',
+                                      lineHeight: '1'
+                                    }}
+                                  >×</button>
+                                </span>
+                              ) : null
+                            })}
+                          </div>
+                        )}
+                        
+                        {/* 下拉選單選擇駕駛 */}
                         <select
-                          value={assignment.driverId || ''}
-                          onChange={(e) => updateAssignment(booking.id, 'driverId', e.target.value || null)}
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              toggleDriver(booking.id, e.target.value)
+                              e.target.value = ''
+                            }
+                          }}
                           style={{
                             width: '100%',
                             padding: '8px',
                             fontSize: '14px',
-                            border: `2px solid ${assignment.driverId ? '#4caf50' : '#ddd'}`,
+                            border: '1px solid #ddd',
                             borderRadius: '4px',
-                            background: assignment.driverId ? '#e8f5e9' : 'white',
-                            cursor: 'pointer',
-                            fontWeight: assignment.driverId ? '600' : 'normal'
+                            background: 'white',
+                            cursor: 'pointer'
                           }}
                         >
-                          <option value="">未指定駕駛</option>
-                          {coaches.map(coach => (
-                            <option key={coach.id} value={coach.id}>
-                              {coach.name}
-                            </option>
-                          ))}
+                          <option value="">
+                            {assignment.driverIds?.length === 0 ? '未指定駕駛' : '➕ 新增駕駛...'}
+                          </option>
+                          {coaches
+                            .filter(coach => !assignment.driverIds?.includes(coach.id))
+                            .map(coach => (
+                              <option key={coach.id} value={coach.id}>
+                                {coach.name}
+                              </option>
+                            ))}
                         </select>
                       </td>
                       <td style={{ padding: '8px 12px' }}>
@@ -704,28 +795,78 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       指定駕駛（選填）
                     </label>
                     
+                    {/* 已選擇的駕駛標籤 */}
+                    {assignment.driverIds && assignment.driverIds.length > 0 && (
+                      <div style={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        gap: '8px',
+                        marginBottom: '10px'
+                      }}>
+                        {assignment.driverIds.map((driverId: string) => {
+                          const driver = coaches.find(c => c.id === driverId)
+                          return driver ? (
+                            <span key={driverId} style={{
+                              padding: '8px 14px',
+                              background: '#4caf50',
+                              color: 'white',
+                              borderRadius: '16px',
+                              fontSize: '15px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              fontWeight: '600'
+                            }}>
+                              {driver.name}
+                              <button
+                                onClick={() => toggleDriver(booking.id, driverId)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: 'white',
+                                  cursor: 'pointer',
+                                  padding: '0 4px',
+                                  fontSize: '22px',
+                                  lineHeight: '1'
+                                }}
+                              >×</button>
+                            </span>
+                          ) : null
+                        })}
+                      </div>
+                    )}
+                    
+                    {/* 下拉選單選擇駕駛 */}
                     <select
-                      value={assignment.driverId || ''}
-                      onChange={(e) => updateAssignment(booking.id, 'driverId', e.target.value || null)}
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          toggleDriver(booking.id, e.target.value)
+                          e.target.value = ''
+                        }
+                      }}
                       style={{
                         width: '100%',
                         padding: '12px',
                         fontSize: '15px',
-                        border: `2px solid ${assignment.driverId ? '#4caf50' : '#ddd'}`,
+                        border: '2px solid #ddd',
                         borderRadius: '8px',
-                        background: assignment.driverId ? '#e8f5e9' : 'white',
+                        background: 'white',
                         cursor: 'pointer',
-                        fontWeight: assignment.driverId ? '600' : 'normal',
                         WebkitAppearance: 'none',
                         appearance: 'none'
                       }}
                     >
-                      <option value="">未指定駕駛</option>
-                      {coaches.map(coach => (
-                        <option key={coach.id} value={coach.id}>
-                          {coach.name}
-                        </option>
-                      ))}
+                      <option value="">
+                        {assignment.driverIds?.length === 0 ? '未指定駕駛' : '➕ 新增駕駛...'}
+                      </option>
+                      {coaches
+                        .filter(coach => !assignment.driverIds?.includes(coach.id))
+                        .map(coach => (
+                          <option key={coach.id} value={coach.id}>
+                            {coach.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
 
