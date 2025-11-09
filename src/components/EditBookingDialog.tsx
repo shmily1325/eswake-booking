@@ -90,9 +90,6 @@ export function EditBookingDialog({
           setSelectedCoaches([])
         }
         
-        // 設置學生/會員資訊（支援多會員）
-        setManualStudentName(booking.contact_name)
-        
         // 從 booking_members 表加載已選會員
         const loadBookingMembers = async () => {
           const { data: bookingMembersData } = await supabase
@@ -104,14 +101,19 @@ export function EditBookingDialog({
             const memberIds = bookingMembersData.map(bm => bm.member_id)
             setSelectedMemberIds(memberIds)
             
+            // 如果有會員，清空手動輸入
+            setManualStudentName('')
+            
             // 設置搜尋框顯示第一個會員名字
             const firstMemberName = (bookingMembersData[0] as any).members?.name
             if (firstMemberName) {
               setMemberSearchTerm(firstMemberName)
             }
           } else {
+            // 如果沒有會員，使用 contact_name 作為手動輸入
             setSelectedMemberIds([])
             setMemberSearchTerm('')
+            setManualStudentName(booking.contact_name)
           }
         }
         
