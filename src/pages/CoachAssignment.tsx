@@ -81,10 +81,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       const startOfDay = `${selectedDate}T00:00:00`
       const endOfDay = `${selectedDate}T23:59:59`
 
-      // 查詢預約
+      // 查詢預約（與 DayView 使用相同方式）
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
-        .select('id, start_at, duration_min, contact_name, boat_id, schedule_notes, boats:boat_id(name, color)')
+        .select('*, boats:boat_id(id, name, color)')
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
         .order('start_at', { ascending: true })
@@ -131,9 +131,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       })
       setAssignments(initialAssignments)
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('載入預約失敗:', err)
-      setError('載入預約失敗')
+      setError('載入預約失敗: ' + (err.message || JSON.stringify(err)))
     } finally {
       setLoading(false)
     }
