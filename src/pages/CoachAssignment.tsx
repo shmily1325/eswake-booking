@@ -80,7 +80,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       const startDateStr = formatDateForQuery(startDate)
       const endDateStr = formatDateForQuery(endDate)
 
-      // 查询预约
+      // 查詢预约
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
@@ -106,7 +106,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       const bookingIds = bookingsData.map((b: any) => b.id)
 
-      // 查询教练信息
+      // 查詢教练信息
       const { data: coachesData } = await supabase
         .from('booking_coaches')
         .select('booking_id, coaches:coach_id(id, name)')
@@ -643,4 +643,5 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     </div>
   )
 }
+
 

@@ -101,7 +101,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      // 查询该教练的所有预约
+      // 查詢该教练的所有预约
       const { data: coachBookings } = await supabase
         .from('booking_coaches')
         .select('booking_id')
@@ -115,7 +115,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
 
       const bookingIds = coachBookings.map(cb => cb.booking_id)
 
-      // 查询预约详情
+      // 查詢预约详情
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
@@ -137,13 +137,13 @@ export function CoachCheck({ user }: CoachCheckProps) {
         return
       }
 
-      // 查询教练信息
+      // 查詢教练信息
       const { data: coachesData } = await supabase
         .from('booking_coaches')
         .select('booking_id, coaches:coach_id(id, name)')
         .in('booking_id', bookingIds)
 
-      // 查询该教练是否已回报
+      // 查詢该教练是否已回报
       const { data: reportsData } = await supabase
         .from('coach_reports')
         .select('booking_id')
@@ -772,4 +772,5 @@ export function CoachCheck({ user }: CoachCheckProps) {
     </div>
   )
 }
+
 
