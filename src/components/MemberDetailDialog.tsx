@@ -302,105 +302,65 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                     {/* 財務資訊 */}
                     <div style={{ marginBottom: '30px' }}>
                       <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>💰 財務資訊</h3>
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '15px' }}>
-                        <BalanceCard
-                          icon="💵"
-                          label="餘額"
-                          value={`$${member.balance.toFixed(0)}`}
-                        />
-                        <BalanceCard
-                          icon="⏱️"
-                          label="指定課"
-                          value={`${member.designated_lesson_minutes} 分鐘`}
-                        />
-                        <BalanceCard
-                          icon="🚤"
-                          label="G23 船券"
-                          value={`${member.boat_voucher_g23_minutes} 分鐘`}
-                        />
-                        <BalanceCard
-                          icon="⛵"
-                          label="G21 船券"
-                          value={`${member.boat_voucher_g21_minutes} 分鐘`}
-                        />
+                      <div style={{ 
+                        background: '#f8f9fa',
+                        borderRadius: '8px',
+                        padding: '15px',
+                        border: '1px solid #e0e0e0'
+                      }}>
+                        <InfoRow label="💵 餘額" value={`$${member.balance.toFixed(0)}`} />
+                        <InfoRow label="⏱️ 指定課" value={`${member.designated_lesson_minutes} 分鐘`} />
+                        <InfoRow label="🚤 G23 船券" value={`${member.boat_voucher_g23_minutes} 分鐘`} />
+                        <InfoRow label="⛵ G21 船券" value={`${member.boat_voucher_g21_minutes} 分鐘`} />
                       </div>
                     </div>
 
                     {/* 置板資訊 */}
                     <div style={{ marginBottom: '30px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>🏄 置板服務</h3>
-                        <button
-                          onClick={() => setAddBoardDialogOpen(true)}
-                          style={{
-                            padding: '6px 12px',
-                            background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          + 新增置板
-                        </button>
-                      </div>
-                      
-                      {boardStorage.length === 0 ? (
-                        <div style={{ 
-                          padding: '20px', 
-                          textAlign: 'center', 
-                          color: '#999', 
-                          background: '#f8f9fa',
-                          borderRadius: '8px'
-                        }}>
-                          尚無置板記錄
-                        </div>
-                      ) : (
-                        <div style={{ display: 'grid', gap: '12px' }}>
-                          {boardStorage.map(board => (
-                            <div key={board.id} style={{
-                              padding: '16px',
-                              background: '#f8f9fa',
-                              borderRadius: '8px',
-                              border: '1px solid #e0e0e0'
-                            }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
-                                    格位 {board.slot_number}
+                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>🏄 置板服務</h3>
+                      <div style={{ 
+                        background: '#f8f9fa',
+                        borderRadius: '8px',
+                        padding: '15px',
+                        border: '1px solid #e0e0e0'
+                      }}>
+                        {boardStorage.length === 0 ? (
+                          <div style={{ textAlign: 'center', color: '#999', fontSize: '14px' }}>
+                            尚無置板記錄
+                          </div>
+                        ) : (
+                          <div>
+                            {boardStorage.map((board, index) => (
+                              <div key={board.id}>
+                                {index > 0 && <div style={{ height: '1px', background: '#dee2e6', margin: '10px 0' }} />}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ flex: 1 }}>
+                                    <span style={{ fontWeight: 'bold' }}>格位 {board.slot_number}</span>
+                                    {board.expires_at && <span style={{ color: '#666', marginLeft: '10px', fontSize: '13px' }}>({board.expires_at})</span>}
                                   </div>
-                                  {board.expires_at && (
-                                    <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                                      到期：{board.expires_at}
-                                    </div>
-                                  )}
-                                  {board.notes && (
-                                    <div style={{ fontSize: '13px', color: '#999', fontStyle: 'italic' }}>
-                                      {board.notes}
-                                    </div>
-                                  )}
+                                  <button
+                                    onClick={() => handleDeleteBoard(board.id, board.slot_number)}
+                                    style={{
+                                      padding: '4px 12px',
+                                      background: '#f44336',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer',
+                                      transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#d32f2f'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = '#f44336'}
+                                  >
+                                    移除
+                                  </button>
                                 </div>
-                                <button
-                                  onClick={() => handleDeleteBoard(board.id, board.slot_number)}
-                                  style={{
-                                    padding: '4px 10px',
-                                    background: '#f44336',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    fontSize: '12px',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  刪除
-                                </button>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* 服務資訊 */}
@@ -603,7 +563,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                   type="text"
                   value={boardFormData.notes}
                   onChange={(e) => setBoardFormData({ ...boardFormData, notes: e.target.value })}
-                  placeholder="例如：藍色長板"
+                  placeholder="例如：有三格"
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -678,22 +638,6 @@ function InfoRow({ label, value, highlight = false }: { label: string; value: st
       }}>
         {value}
       </span>
-    </div>
-  )
-}
-
-function BalanceCard({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <div style={{
-      background: 'white',
-      border: '1px solid #dee2e6',
-      borderRadius: '10px',
-      padding: '20px',
-      textAlign: 'center',
-    }}>
-      <div style={{ fontSize: '28px', marginBottom: '8px' }}>{icon}</div>
-      <div style={{ color: '#666', fontSize: '14px', marginBottom: '5px' }}>{label}</div>
-      <div style={{ color: '#333', fontSize: '20px', fontWeight: 'bold' }}>{value}</div>
     </div>
   )
 }

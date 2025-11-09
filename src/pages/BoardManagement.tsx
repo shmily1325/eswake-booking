@@ -556,7 +556,7 @@ export function BoardManagement({ user }: BoardManagementProps) {
                           type="text"
                           value={editForm.notes}
                           onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                          placeholder="例如：藍色長板"
+                          placeholder="例如：有三格"
                           style={{
                             width: '100%',
                             padding: '10px',
@@ -818,7 +818,7 @@ export function BoardManagement({ user }: BoardManagementProps) {
                           type="text"
                           value={newBoardForm.notes}
                           onChange={(e) => setNewBoardForm({ ...newBoardForm, notes: e.target.value })}
-                          placeholder="例如：藍色長板"
+                          placeholder="例如：有三格"
                           style={{
                             width: '100%',
                             padding: '10px',

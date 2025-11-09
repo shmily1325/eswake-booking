@@ -98,8 +98,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
     const lowerSearch = searchTerm.toLowerCase()
     return members.filter(member => 
       member.name.toLowerCase().includes(lowerSearch) ||
-      member.nickname?.toLowerCase().includes(lowerSearch) ||
-      member.phone?.includes(searchTerm)
+      member.nickname?.toLowerCase().includes(lowerSearch)
     )
   }, [members, searchTerm])
 
@@ -200,7 +199,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
       <div style={{ marginBottom: isMobile ? '15px' : '20px' }}>
         <input
           type="text"
-          placeholder="搜尋會員（姓名、暱稱、電話）"
+          placeholder="搜尋會員（姓名、暱稱）"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
