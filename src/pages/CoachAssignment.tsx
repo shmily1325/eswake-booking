@@ -206,12 +206,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     return time
   }
 
-  const getCoachNames = (coachIds: string[]) => {
-    if (coachIds.length === 0) return ''
-    return coachIds
-      .map(id => coaches.find(c => c.id === id)?.name || '?')
-      .join(', ')
-  }
 
   const toggleCoach = (bookingId: number, coachId: string) => {
     const assignment = assignments[bookingId]
@@ -228,11 +222,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
-      <PageHeader user={user} title="教練排班管理" />
+      <PageHeader user={user} title="排班管理" />
       
       <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl, maxWidth: '100%', margin: '0 auto', width: '100%' }}>
         <h1 style={{ ...getTextStyle('h1', isMobile), marginBottom: isMobile ? designSystem.spacing.md : designSystem.spacing.lg }}>
-          📅 教練排班管理
+          📅 排班管理
         </h1>
 
         {/* 日期選擇和保存 */}
@@ -382,57 +376,77 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         {booking.duration_min}分
                       </td>
                       <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
-                        <div style={{ 
-                          display: 'flex', 
-                          flexWrap: 'wrap', 
-                          gap: '6px'
-                        }}>
-                          {coaches.map(coach => {
-                            const isSelected = assignment.coachIds.includes(coach.id)
-                            return (
-                              <button
-                                key={coach.id}
-                                onClick={() => toggleCoach(booking.id, coach.id)}
-                                style={{
-                                  padding: '6px 12px',
-                                  border: `2px solid ${isSelected ? '#2196F3' : '#ddd'}`,
-                                  background: isSelected ? '#2196F3' : 'white',
-                                  color: isSelected ? 'white' : '#333',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  fontSize: '13px',
-                                  fontWeight: isSelected ? '600' : 'normal',
-                                  transition: 'all 0.2s',
-                                  whiteSpace: 'nowrap'
-                                }}
-                                onMouseEnter={(e) => {
-                                  if (!isSelected) {
-                                    e.currentTarget.style.background = '#f0f0f0'
-                                    e.currentTarget.style.borderColor = '#999'
-                                  }
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (!isSelected) {
-                                    e.currentTarget.style.background = 'white'
-                                    e.currentTarget.style.borderColor = '#ddd'
-                                  }
-                                }}
-                              >
-                                {coach.name}
-                              </button>
-                            )
-                          })}
-                        </div>
-                        {hasNoCoach && (
+                        {/* 已選擇的教練標籤 */}
+                        {assignment.coachIds.length > 0 && (
                           <div style={{ 
-                            marginTop: '6px', 
-                            color: '#d32f2f', 
-                            fontSize: '12px', 
-                            fontWeight: '600' 
+                            display: 'flex', 
+                            flexWrap: 'wrap', 
+                            gap: '6px',
+                            marginBottom: '8px'
                           }}>
-                            ⚠️ 未指定教練
+                            {assignment.coachIds.map(coachId => {
+                              const coach = coaches.find(c => c.id === coachId)
+                              return coach ? (
+                                <span key={coachId} style={{
+                                  padding: '4px 10px',
+                                  background: '#2196F3',
+                                  color: 'white',
+                                  borderRadius: '12px',
+                                  fontSize: '13px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  fontWeight: '500'
+                                }}>
+                                  {coach.name}
+                                  <button
+                                    onClick={() => toggleCoach(booking.id, coachId)}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: 'white',
+                                      cursor: 'pointer',
+                                      padding: '0 2px',
+                                      fontSize: '18px',
+                                      lineHeight: '1'
+                                    }}
+                                  >×</button>
+                                </span>
+                              ) : null
+                            })}
                           </div>
                         )}
+                        
+                        {/* 下拉選單選擇教練 */}
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              toggleCoach(booking.id, e.target.value)
+                              e.target.value = '' // 重置選單
+                            }
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '8px',
+                            fontSize: '14px',
+                            border: hasNoCoach ? '2px solid #d32f2f' : '1px solid #ddd',
+                            borderRadius: '4px',
+                            background: 'white',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="">
+                            {assignment.coachIds.length === 0 ? '⚠️ 請選擇教練...' : '➕ 新增教練...'}
+                          </option>
+                          {coaches
+                            .filter(coach => !assignment.coachIds.includes(coach.id))
+                            .map(coach => (
+                              <option key={coach.id} value={coach.id}>
+                                {coach.name}
+                              </option>
+                            ))}
+                        </select>
                       </td>
                       <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
                         <select
@@ -529,50 +543,80 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
                       指定教練 *
                     </label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {coaches.map(coach => {
-                        const isSelected = assignment.coachIds.includes(coach.id)
-                        return (
-                          <button
-                            key={coach.id}
-                            onClick={() => toggleCoach(booking.id, coach.id)}
-                            style={{
-                              padding: '10px 16px',
-                              border: `2px solid ${isSelected ? '#2196F3' : '#ddd'}`,
-                              background: isSelected ? '#2196F3' : 'white',
-                              color: isSelected ? 'white' : '#333',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
+                    
+                    {/* 已選擇的教練標籤 */}
+                    {assignment.coachIds.length > 0 && (
+                      <div style={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        gap: '8px',
+                        marginBottom: '10px'
+                      }}>
+                        {assignment.coachIds.map(coachId => {
+                          const coach = coaches.find(c => c.id === coachId)
+                          return coach ? (
+                            <span key={coachId} style={{
+                              padding: '8px 14px',
+                              background: '#2196F3',
+                              color: 'white',
+                              borderRadius: '16px',
                               fontSize: '15px',
-                              fontWeight: isSelected ? '600' : 'normal',
-                              transition: 'all 0.2s'
-                            }}
-                          >
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              fontWeight: '600'
+                            }}>
+                              {coach.name}
+                              <button
+                                onClick={() => toggleCoach(booking.id, coachId)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: 'white',
+                                  cursor: 'pointer',
+                                  padding: '0 4px',
+                                  fontSize: '22px',
+                                  lineHeight: '1'
+                                }}
+                              >×</button>
+                            </span>
+                          ) : null
+                        })}
+                      </div>
+                    )}
+                    
+                    {/* 下拉選單選擇教練 */}
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          toggleCoach(booking.id, e.target.value)
+                          e.target.value = ''
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        fontSize: '15px',
+                        border: hasNoCoach ? '2px solid #d32f2f' : '2px solid #ddd',
+                        borderRadius: '8px',
+                        background: 'white',
+                        cursor: 'pointer',
+                        WebkitAppearance: 'none',
+                        appearance: 'none'
+                      }}
+                    >
+                      <option value="">
+                        {assignment.coachIds.length === 0 ? '⚠️ 請選擇教練...' : '➕ 新增教練...'}
+                      </option>
+                      {coaches
+                        .filter(coach => !assignment.coachIds.includes(coach.id))
+                        .map(coach => (
+                          <option key={coach.id} value={coach.id}>
                             {coach.name}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    {hasNoCoach && (
-                      <div style={{ 
-                        marginTop: '8px', 
-                        color: '#d32f2f', 
-                        fontSize: '14px', 
-                        fontWeight: '600' 
-                      }}>
-                        ⚠️ 請指定教練
-                      </div>
-                    )}
-                    {!hasNoCoach && (
-                      <div style={{ 
-                        marginTop: '8px', 
-                        color: '#2196F3', 
-                        fontSize: '14px', 
-                        fontWeight: '600' 
-                      }}>
-                        已選: {getCoachNames(assignment.coachIds)}
-                      </div>
-                    )}
+                          </option>
+                        ))}
+                    </select>
                   </div>
 
                   {/* 指定駕駛 */}

@@ -18,7 +18,7 @@ export function BaoHub({ user }: BaoHubProps) {
     comingSoon?: boolean
   }> = [
     {
-      title: '教練排班管理',
+      title: '排班管理',
       icon: '📅',
       link: '/coach-assignment'
     },
