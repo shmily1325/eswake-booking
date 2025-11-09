@@ -61,7 +61,8 @@ CREATE TABLE members (
   -- 會員財務資訊
   balance DECIMAL(10, 2) DEFAULT 0,
   designated_lesson_minutes INTEGER DEFAULT 0,
-  boat_voucher_minutes INTEGER DEFAULT 0,
+  boat_voucher_g23_minutes INTEGER DEFAULT 0,
+  boat_voucher_g21_minutes INTEGER DEFAULT 0,
   membership_expires_at TEXT,
   
   -- 狀態
@@ -157,7 +158,7 @@ INSERT INTO coaches (name) VALUES
   ('Jerry'),
   ('Kevin'),
   ('小胖'),
-  ('巨陽尼'),
+  ('許書源'),
   ('木鳥'),
   ('義揚'),
   ('阿賓');
@@ -293,7 +294,8 @@ CREATE TABLE transactions (
   
   balance_after DECIMAL(10, 2),
   designated_lesson_minutes_after INTEGER,
-  boat_voucher_minutes_after INTEGER,
+  boat_voucher_g23_minutes_after INTEGER,
+  boat_voucher_g21_minutes_after INTEGER,
   
   description TEXT NOT NULL,
   notes TEXT,

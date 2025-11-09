@@ -18,7 +18,8 @@ interface ParsedMember {
   member_type?: string
   membership_expires_at?: string
   balance?: string
-  boat_voucher_minutes?: string
+  boat_voucher_g23_minutes?: string
+  boat_voucher_g21_minutes?: string
   notes?: string
 }
 
@@ -78,8 +79,9 @@ export function MemberImport({ user }: MemberImportProps) {
           member_type: parts[4] || undefined,
           membership_expires_at: parts[5] || undefined,
           balance: parts[6] || undefined,
-          boat_voucher_minutes: parts[7] || undefined,
-          notes: parts[8] || undefined
+          boat_voucher_g23_minutes: parts[7] || undefined,
+          boat_voucher_g21_minutes: parts[8] || undefined,
+          notes: parts[9] || undefined
         })
       }
 
@@ -141,7 +143,8 @@ export function MemberImport({ user }: MemberImportProps) {
         member_type: (member.member_type === 'member' || member.member_type === '會員') ? 'member' : 'guest',
         membership_expires_at: member.membership_expires_at || null,
         balance: member.balance ? parseFloat(member.balance) : 0,
-        boat_voucher_minutes: member.boat_voucher_minutes ? parseInt(member.boat_voucher_minutes) : 0,
+        boat_voucher_g23_minutes: member.boat_voucher_g23_minutes ? parseInt(member.boat_voucher_g23_minutes) : 0,
+        boat_voucher_g21_minutes: member.boat_voucher_g21_minutes ? parseInt(member.boat_voucher_g21_minutes) : 0,
         notes: member.notes || null,
         status: 'active',
         designated_lesson_minutes: 0,
@@ -175,7 +178,7 @@ export function MemberImport({ user }: MemberImportProps) {
   }
 
   const downloadTemplate = () => {
-    const template = 'name,nickname,phone,birthday,member_type,membership_expires_at,balance,boat_voucher_minutes,notes\n林敏,Ming,0986937619,1990-01-01,member,2055-12-31,1000,120,\n潘姵如,PJ,0919318658,,guest,,,0,xxxxx\n小楊,楊翊/林楊翊,,,member,,,0,不知道姓什麼\nIngrid,,,,member,,,0,\n'
+    const template = '姓名,暱稱,電話,生日,會員類型,會員到期日,餘額,G23船券,G21/黑豹船券,備註\n林敏,Ming,0986937619,1990-01-01,member,2055-12-31,9999999999,120000000,120000000,\n潘姵如,PJ,0919318658,,guest,,,0,0,0,xxxxx\n小楊,楊翊/林楊翊,,,member,,,0,0,0,不知道姓什麼\nIngrid,,,,member,,,0,0,0,\n'
     const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -228,33 +231,6 @@ export function MemberImport({ user }: MemberImportProps) {
           </div>
         </div>
 
-        {/* 危險操作區 */}
-        <div style={{ 
-          ...getCardStyle(isMobile),
-          background: '#ffebee',
-          borderLeft: `4px solid ${designSystem.colors.danger}`,
-          marginBottom: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: designSystem.spacing.md }}>
-            <div>
-              <h3 style={{ ...getTextStyle('h3', isMobile), margin: 0, marginBottom: designSystem.spacing.xs, color: designSystem.colors.danger }}>
-                ⚠️ 危險操作
-              </h3>
-              <div style={{ ...getTextStyle('bodySmall', isMobile), color: '#c62828' }}>
-                永久刪除所有會員資料（無法復原）
-              </div>
-            </div>
-            <button
-              onClick={() => setDeleteDialogOpen(true)}
-              style={{
-                ...getButtonStyle('danger', 'medium', isMobile)
-              }}
-            >
-              🗑️ 清空所有會員
-            </button>
-          </div>
-        </div>
-
         {/* 說明 */}
         <div style={{ 
           ...getCardStyle(isMobile),
@@ -282,20 +258,21 @@ export function MemberImport({ user }: MemberImportProps) {
               border: '1px solid #dee2e6',
               whiteSpace: 'pre'
             }}>
-name,nickname,phone,birthday,member_type,membership_expires_at,balance,boat_voucher_minutes,notes{'\n'}
-林敏,Ming,0986937619,1990-01-01,member,2055-12-31,1000,120,{'\n'}
-潘姵如,PJ,0919318658,,guest,,,0,xxxxx{'\n'}
-小楊,楊翊/林楊翊,,,member,,,0,不知道姓什麼{'\n'}
-Ingrid,,,,member,,,0,
+姓名,暱稱,電話,生日,會員類型,會員到期日,餘額,G23船券,G21/黑豹船券,備註{'\n'}
+林敏,Ming,0986937619,1990-01-01,member,2055-12-31,9999999999,120000000,120000000,{'\n'}
+潘姵如,PJ,0919318658,,guest,,,0,0,0,xxxxx{'\n'}
+小楊,楊翊/林楊翊,,,member,,,0,0,0,不知道姓什麼{'\n'}
+Ingrid,,,,member,,,0,0,0,
             </code>
             <p style={{ margin: 0 }}>
-              • <strong>name</strong>（姓名）為必填，其他欄位選填<br/>
-              • <strong>birthday</strong>: 生日（格式：YYYY-MM-DD）<br/>
-              • <strong>member_type</strong>: guest（客人）或 member（會員），預設為 guest<br/>
-              • <strong>membership_expires_at</strong>: 會員到期日（格式：YYYY-MM-DD）<br/>
-              • <strong>balance</strong>: 儲值餘額（數字），預設為 0<br/>
-              • <strong>boat_voucher_minutes</strong>: 船券時數（分鐘），預設為 0<br/>
-              • 第一行可以是標題行（包含 name 或 姓名 會自動跳過）<br/>
+              • <strong>姓名</strong>為必填，其他欄位選填<br/>
+              • <strong>生日</strong>: 格式為 YYYY-MM-DD<br/>
+              • <strong>會員類型</strong>: guest（客人）或 member（會員），預設為 guest<br/>
+              • <strong>會員到期日</strong>: 格式為 YYYY-MM-DD<br/>
+              • <strong>餘額</strong>: 儲值餘額（數字），預設為 0<br/>
+              • <strong>G23船券</strong>: G23 專用船券時數（分鐘），預設為 0<br/>
+              • <strong>G21/黑豹船券</strong>: G21 與黑豹通用船券時數（分鐘），預設為 0<br/>
+              • 第一行可以是標題行（包含「姓名」會自動跳過）<br/>
               • 空欄位可以留空或使用逗號佔位
             </p>
           </div>
@@ -395,7 +372,8 @@ Ingrid,,,,member,,,0,
                       <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>類型</th>
                       <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>會員到期</th>
                       <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>餘額</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>船券時數</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>G23船券</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>G21船券</th>
                       <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>備註</th>
                     </tr>
                   </thead>
@@ -420,7 +398,8 @@ Ingrid,,,,member,,,0,
                         </td>
                         <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.membership_expires_at || '-'}</td>
                         <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.balance || '0'}</td>
-                        <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.boat_voucher_minutes || '0'}</td>
+                        <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.boat_voucher_g23_minutes || '0'}</td>
+                        <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.boat_voucher_g21_minutes || '0'}</td>
                         <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.notes || '-'}</td>
                       </tr>
                     ))}
@@ -470,10 +449,11 @@ Ingrid,,,,member,,,0,
                       {member.nickname && <div>暱稱: {member.nickname}</div>}
                       {member.phone && <div>電話: {member.phone}</div>}
                       {member.birthday && <div>生日: {member.birthday}</div>}
-                      {member.membership_expires_at && <div>會員到期: {member.membership_expires_at}</div>}
-                      {(member.balance && member.balance !== '0') && <div>餘額: ${member.balance}</div>}
-                      {(member.boat_voucher_minutes && member.boat_voucher_minutes !== '0') && <div>船券: {member.boat_voucher_minutes}分鐘</div>}
-                      {member.notes && <div style={{ color: designSystem.colors.text.secondary }}>備註: {member.notes}</div>}
+                        {member.membership_expires_at && <div>會員到期: {member.membership_expires_at}</div>}
+                        {(member.balance && member.balance !== '0') && <div>餘額: ${member.balance}</div>}
+                        {(member.boat_voucher_g23_minutes && member.boat_voucher_g23_minutes !== '0') && <div>G23船券: {member.boat_voucher_g23_minutes}分鐘</div>}
+                        {(member.boat_voucher_g21_minutes && member.boat_voucher_g21_minutes !== '0') && <div>G21船券: {member.boat_voucher_g21_minutes}分鐘</div>}
+                        {member.notes && <div style={{ color: designSystem.colors.text.secondary }}>備註: {member.notes}</div>}
                     </div>
                   </div>
                 ))}
@@ -518,6 +498,33 @@ Ingrid,,,,member,,,0,
             </div>
           </div>
         )}
+
+        {/* 危險操作區 */}
+        <div style={{ 
+          ...getCardStyle(isMobile),
+          background: '#ffebee',
+          borderLeft: `4px solid ${designSystem.colors.danger}`,
+          marginTop: isMobile ? designSystem.spacing.xl : '40px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: designSystem.spacing.md }}>
+            <div>
+              <h3 style={{ ...getTextStyle('h3', isMobile), margin: 0, marginBottom: designSystem.spacing.xs, color: designSystem.colors.danger }}>
+                ⚠️ 危險操作
+              </h3>
+              <div style={{ ...getTextStyle('bodySmall', isMobile), color: '#c62828' }}>
+                永久刪除所有會員資料（無法復原）
+              </div>
+            </div>
+            <button
+              onClick={() => setDeleteDialogOpen(true)}
+              style={{
+                ...getButtonStyle('danger', 'medium', isMobile)
+              }}
+            >
+              🗑️ 清空所有會員
+            </button>
+          </div>
+        </div>
       </div>
 
       <Footer />

@@ -84,6 +84,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           boat_voucher_g21_minutes: 0,
           membership_expires_at: formData.member_type === 'member' ? (formData.membership_expires_at || null) : null,
           status: 'active',
+          created_at: new Date().toISOString()
         }])
         .select()
         .single()
