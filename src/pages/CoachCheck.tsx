@@ -15,6 +15,7 @@ interface Booking {
   boat_id: number
   boats: { name: string; color: string } | null
   coaches: { id: string; name: string }[]
+  drivers: string[]  // 指定的駕駛 ID 列表
   has_coach_report?: boolean
 }
 
@@ -147,6 +148,12 @@ export function CoachCheck({ user }: CoachCheckProps) {
         .select('booking_id, coaches:coach_id(id, name)')
         .in('booking_id', bookingIds)
 
+      // 查詢駕駛資訊
+      const { data: driversData } = await supabase
+        .from('booking_drivers')
+        .select('booking_id, driver_id')
+        .in('booking_id', bookingIds)
+
       // 查詢該教練是否已回報
       const { data: reportsData } = await supabase
         .from('coach_reports')
@@ -163,9 +170,14 @@ export function CoachCheck({ user }: CoachCheckProps) {
           .map((bc: any) => bc.coaches)
           .filter(Boolean) || []
         
+        const bookingDrivers = driversData
+          ?.filter((bd: any) => bd.booking_id === booking.id)
+          .map((bd: any) => bd.driver_id) || []
+        
         return {
           ...booking,
           coaches: bookingCoaches,
+          drivers: bookingDrivers,
           has_coach_report: reportedBookingIds.has(booking.id)
         }
       })
@@ -492,11 +504,18 @@ export function CoachCheck({ user }: CoachCheckProps) {
                 </div>
               )}
 
-              {/* 駕駛回報部分 */}
-              <div style={{ marginBottom: designSystem.spacing.xl, padding: designSystem.spacing.lg, background: '#e3f2fd', borderRadius: designSystem.borderRadius.md }}>
-                <h3 style={{ ...getTextStyle('h3', isMobile), margin: `0 0 ${designSystem.spacing.lg} 0`, color: designSystem.colors.info }}>
-                  🚤 駕駛回報
-                </h3>
+              {/* 駕駛回報部分 - 只有沒指定駕駛或當前教練是指定駕駛時才顯示 */}
+              {(() => {
+                const hasDrivers = selectedBooking.drivers && selectedBooking.drivers.length > 0
+                const needReportDriver = hasDrivers
+                  ? selectedBooking.drivers.includes(selectedCoachId)  // 有指定駕駛：只有指定的人回報
+                  : true  // 沒指定駕駛：所有教練都回報
+                
+                return needReportDriver ? (
+                  <div style={{ marginBottom: designSystem.spacing.xl, padding: designSystem.spacing.lg, background: '#e3f2fd', borderRadius: designSystem.borderRadius.md }}>
+                    <h3 style={{ ...getTextStyle('h3', isMobile), margin: `0 0 ${designSystem.spacing.lg} 0`, color: designSystem.colors.info }}>
+                      🚤 駕駛回報
+                    </h3>
                 
                 <div style={{ marginBottom: designSystem.spacing.md }}>
                   <label style={{ ...getLabelStyle(isMobile) }}>
@@ -529,6 +548,8 @@ export function CoachCheck({ user }: CoachCheckProps) {
                   />
                 </div>
               </div>
+                ) : null
+              })()}
 
               {/* 參與者回報部分 */}
               <div style={{ marginBottom: designSystem.spacing.lg }}>

@@ -424,10 +424,17 @@ export function NewBookingDialog({
           continue
         }
       
-        // 決定最終的學生名字
-        const finalStudentName = selectedMemberIds.length > 0
-          ? members.filter(m => selectedMemberIds.includes(m.id)).map(m => m.name).join(', ') || manualStudentName
-          : manualStudentName
+        // 決定最終的學生名字（會員 + 手動輸入）
+        const memberNames = selectedMemberIds.length > 0
+          ? members.filter(m => selectedMemberIds.includes(m.id)).map(m => m.name)
+          : []
+        
+        const allNames = [...memberNames]
+        if (manualStudentName.trim()) {
+          allNames.push(manualStudentName.trim())
+        }
+        
+        const finalStudentName = allNames.join(', ')
 
         // 創建預約
         const bookingToInsert = {

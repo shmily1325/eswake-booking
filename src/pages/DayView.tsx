@@ -36,6 +36,8 @@ interface Booking {
   driver_id?: string | null
   driver?: Coach | null
   schedule_notes?: string | null
+  members?: { id: string; name: string }[]  // 關聯的會員列表
+  manual_names?: string  // 手動輸入的非會員名稱
 }
 
 const generateTimeSlots = () => {
