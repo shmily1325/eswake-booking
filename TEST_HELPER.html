@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧪 預約系統測試輔助工具</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+    
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      border-left: 4px solid #667eea;
+    }
+    
+    .section h2 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 20px;
+    }
+    
+    .test-scenario {
+      background: white;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .test-scenario h3 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .test-scenario ul {
+      margin-left: 20px;
+      color: #666;
+      line-height: 1.8;
+    }
+    
+    .test-data {
+      background: #f0f0f0;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button.secondary {
+      background: #6c757d;
+    }
+    
+    button.danger {
+      background: #dc3545;
+    }
+    
+    button.success {
+      background: #28a745;
+    }
+    
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    
+    .status.pass {
+      background: #d4edda;
+      color: #155724;
+    }
+    
+    .status.fail {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    
+    .status.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+    
+    .checklist {
+      list-style: none;
+      margin-left: 0;
+    }
+    
+    .checklist li {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .checklist input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    
+    .timer {
+      background: #fff3cd;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #856404;
+    }
+    
+    .notes {
+      margin-top: 20px;
+      padding: 15px;
+      background: #e7f3ff;
+      border-radius: 8px;
+      border-left: 4px solid #2196F3;
+    }
+    
+    .notes h3 {
+      color: #2196F3;
+      margin-bottom: 10px;
+    }
+    
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+    }
+    
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .quick-link {
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid #e0e0e0;
+    }
+    
+    .quick-link:hover {
+      border-color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+    
+    .quick-link-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    
+    .quick-link-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    
+    .quick-link-desc {
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 預約系統測試輔助工具</h1>
+    <p class="subtitle">快速測試、追蹤進度、記錄問題 - 讓測試更有效率！</p>
+    
+    <!-- 快速連結 -->
+    <div class="section">
+      <h2>🚀 快速動作</h2>
+      <div class="quick-links">
+        <div class="quick-link" onclick="window.location.href='/'">
+          <div class="quick-link-icon">🏠</div>
+          <div class="quick-link-title">開啟系統</div>
+          <div class="quick-link-desc">前往主系統</div>
+        </div>
+        <div class="quick-link" onclick="generateTestData()">
+          <div class="quick-link-icon">📊</div>
+          <div class="quick-link-title">生成測試數據</div>
+          <div class="quick-link-desc">自動創建測試預約</div>
+        </div>
+        <div class="quick-link" onclick="copyTestData()">
+          <div class="quick-link-icon">📋</div>
+          <div class="quick-link-title">複製測試資料</div>
+          <div class="quick-link-desc">複製到剪貼板</div>
+        </div>
+        <div class="quick-link" onclick="startTimer()">
+          <div class="quick-link-icon">⏱️</div>
+          <div class="quick-link-title">開始計時</div>
+          <div class="quick-link-desc">測試時間追蹤</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 測試計時器 -->
+    <div class="timer" id="timer" style="display: none;">
+      測試時間: <span id="timerDisplay">00:00:00</span>
+    </div>
+    
+    <!-- 核心測試場景 -->
+    <div class="section">
+      <h2>🎯 核心測試場景</h2>
+      
+      <div class="test-scenario">
+        <h3>
+          <span>場景1: 船隻時間衝突</span>
+          <span class="status pending">待測試</span>
+        </h3>
+        <ul>
+          <li>創建預約：G23, 明天 10:00-11:00, 學生A</li>
+          <li>嘗試創建：G23, 明天 10:30-11:30, 學生B</li>
+          <li>✅ 應該顯示時間重疊錯誤</li>
+        </ul>
+        <div class="test-data">
+          預約1: boat=G23, time=10:00, duration=60min
+          預約2: boat=G23, time=10:30, duration=60min
+          預期: ❌ 衝突錯誤
+        </div>
+        <button onclick="markTest(this, 'pass')">✅ 通過</button>
+        <button onclick="markTest(this, 'fail')" class="danger">❌ 失敗</button>
+      </div>
+      
+      <div class="test-scenario">
+        <h3>
+          <span>場景2: 接船時間衝突（15分鐘規則）</span>
+          <span class="status pending">待測試</span>
+        </h3>
+        <ul>
+          <li>創建預約：G23, 明天 10:00-11:00, 學生A</li>
+          <li>嘗試創建：G23, 明天 11:10-12:00, 學生B</li>
+          <li>✅ 應該顯示需要15分鐘接船時間錯誤</li>
+          <li>嘗試創建：G23, 明天 11:15-12:00, 學生C</li>
+          <li>✅ 應該成功（剛好15分鐘後）</li>
+        </ul>
+        <div class="test-data">
+          預約1結束: 11:00
+          預約2開始: 11:10 → ❌ 錯誤（需11:15）
+          預約3開始: 11:15 → ✅ 成功
+        </div>
+        <button onclick="markTest(this, 'pass')">✅ 通過</button>
+        <button onclick="markTest(this, 'fail')" class="danger">❌ 失敗</button>
+      </div>
+      
+      <div class="test-scenario">
+        <h3>
+          <span>場景3: 教練時間衝突</span>
+          <span class="status pending">待測試</span>
+        </h3>
+        <ul>
+          <li>創建預約：G23, 明天 10:00-11:00, 學生A, 教練王</li>
+          <li>嘗試創建：G21, 明天 10:30-11:30, 學生B, 教練王</li>
+          <li>✅ 應該顯示教練王時間衝突錯誤</li>
+          <li>改選教練李，應該成功</li>
+        </ul>
+        <div class="test-data">
+          教練王: 10:00-11:00 已被指派 (G23)
+          嘗試指派: 10:30-11:30 (G21) → ❌ 衝突
+          教練李: 無預約 → ✅ 成功
+        </div>
+        <button onclick="markTest(this, 'pass')">✅ 通過</button>
+        <button onclick="markTest(this, 'fail')" class="danger">❌ 失敗</button>
+      </div>
+      
+      <div class="test-scenario">
+        <h3>
+          <span>場景4: 08:00前必須指定教練</span>
+          <span class="status pending">待測試</span>
+        </h3>
+        <ul>
+          <li>嘗試創建：G23, 明天 07:30-08:30, 學生A, 不指定教練</li>
+          <li>❌ 應該阻止並顯示"08:00之前的預約必須指定教練"</li>
+          <li>選擇教練王，應該成功</li>
+        </ul>
+        <div class="test-data">
+          時間: 07:30 (< 08:00)
+          教練: 未指定 → ❌ 阻止
+          教練: 教練王 → ✅ 成功
+        </div>
+        <button onclick="markTest(this, 'pass')">✅ 通過</button>
+        <button onclick="markTest(this, 'fail')" class="danger">❌ 失敗</button>
+      </div>
+      
+      <div class="test-scenario">
+        <h3>
+          <span>場景5: 重複預約部分衝突</span>
+          <span class="status pending">待測試</span>
+        </h3>
+        <ul>
+          <li>創建預約：G23, 下週一 10:00-11:00, 學生A</li>
+          <li>創建重複預約：G23, 下週一 10:30-11:30, 學生B, 重複4週</li>
+          <li>✅ 第1週應該被跳過（衝突），第2-4週成功</li>
+          <li>應該顯示詳細報告：成功3個，跳過1個</li>
+        </ul>
+        <div class="test-data">
+          週1: 10:30-11:30 → ❌ 與學生A衝突（跳過）
+          週2: 10:30-11:30 → ✅ 成功
+          週3: 10:30-11:30 → ✅ 成功
+          週4: 10:30-11:30 → ✅ 成功
+        </div>
+        <button onclick="markTest(this, 'pass')">✅ 通過</button>
+        <button onclick="markTest(this, 'fail')" class="danger">❌ 失敗</button>
+      </div>
+      
+      <div class="test-scenario">
+        <h3>
+          <span>場景6: 多會員預約</span>
+          <span class="status pending">待測試</span>
+        </h3>
+        <ul>
+          <li>搜尋並選擇會員A、會員B</li>
+          <li>手動輸入"訪客C"</li>
+          <li>創建預約</li>
+          <li>✅ contact_name 應該是 "會員A名字, 會員B名字, 訪客C"</li>
+          <li>✅ booking_members 表應該有2筆記錄</li>
+          <li>編輯該預約，確認會員和訪客都正確顯示</li>
+        </ul>
+        <div class="test-data">
+          選擇: 會員A(ID:123), 會員B(ID:456)
+          手動: 訪客C
+          
+          bookings.contact_name = "陳大明, 李小華, 訪客C"
+          bookings.member_id = "123" (第一位)
+          
+          booking_members:
+          - booking_id=999, member_id=123
+          - booking_id=999, member_id=456
+        </div>
+        <button onclick="markTest(this, 'pass')">✅ 通過</button>
+        <button onclick="markTest(this, 'fail')" class="danger">❌ 失敗</button>
+      </div>
+    </div>
+    
+    <!-- 快速檢查清單 -->
+    <div class="section">
+      <h2>✅ 快速檢查清單</h2>
+      <ul class="checklist">
+        <li><input type="checkbox" id="check1"> <label for="check1">時間顯示正確（無時區問題）</label></li>
+        <li><input type="checkbox" id="check2"> <label for="check2">船隻衝突檢測正常</label></li>
+        <li><input type="checkbox" id="check3"> <label for="check3">教練衝突檢測正常</label></li>
+        <li><input type="checkbox" id="check4"> <label for="check4">08:00前規則正確執行</label></li>
+        <li><input type="checkbox" id="check5"> <label for="check5">重複預約功能正常</label></li>
+        <li><input type="checkbox" id="check6"> <label for="check6">多會員選擇和顯示正確</label></li>
+        <li><input type="checkbox" id="check7"> <label for="check7">編輯預約衝突檢查正確（排除自己）</label></li>
+        <li><input type="checkbox" id="check8"> <label for="check8">錯誤訊息清晰易懂</label></li>
+        <li><input type="checkbox" id="check9"> <label for="check9">手機版UI正常</label></li>
+        <li><input type="checkbox" id="check10"> <label for="check10">列表/時間軸切換正常</label></li>
+      </ul>
+      <button onclick="calculateProgress()" class="success" style="margin-top: 15px;">📊 計算完成度</button>
+    </div>
+    
+    <!-- 問題記錄 -->
+    <div class="notes">
+      <h3>📝 測試記錄 & 問題</h3>
+      <textarea id="testNotes" placeholder="在這裡記錄測試中發現的問題、bug、改善建議...&#10;&#10;例如：&#10;- [BUG] 教練衝突檢查失敗，可以重複指派同一教練&#10;- [改善] 錯誤訊息可以更明確指出哪個教練衝突&#10;- [待確認] 重複預約超過10週時是否會有性能問題"></textarea>
+      <button onclick="saveNotes()" style="margin-top: 10px;" class="success">💾 儲存筆記</button>
+      <button onclick="exportReport()" style="margin-top: 10px;">📄 匯出測試報告</button>
+    </div>
+  </div>
+  
+  <script>
+    let timerInterval = null;
+    let startTime = null;
+    
+    function markTest(button, result) {
+      const scenario = button.closest('.test-scenario');
+      const statusEl = scenario.querySelector('.status');
+      
+      if (result === 'pass') {
+        statusEl.textContent = '通過';
+        statusEl.className = 'status pass';
+      } else {
+        statusEl.textContent = '失敗';
+        statusEl.className = 'status fail';
+      }
+      
+      // 保存結果到 localStorage
+      saveTestResults();
+    }
+    
+    function startTimer() {
+      const timerEl = document.getElementById('timer');
+      const displayEl = document.getElementById('timerDisplay');
+      
+      if (timerInterval) {
+        // 停止計時
+        clearInterval(timerInterval);
+        timerInterval = null;
+        timerEl.style.display = 'none';
+        alert('測試時間: ' + displayEl.textContent);
+        return;
+      }
+      
+      // 開始計時
+      startTime = Date.now();
+      timerEl.style.display = 'block';
+      
+      timerInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const hours = Math.floor(elapsed / 3600000);
+        const minutes = Math.floor((elapsed % 3600000) / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        
+        displayEl.textContent = 
+          String(hours).padStart(2, '0') + ':' +
+          String(minutes).padStart(2, '0') + ':' +
+          String(seconds).padStart(2, '0');
+      }, 1000);
+    }
+    
+    function calculateProgress() {
+      const total = document.querySelectorAll('.checklist input[type="checkbox"]').length;
+      const checked = document.querySelectorAll('.checklist input[type="checkbox"]:checked').length;
+      const percentage = Math.round((checked / total) * 100);
+      
+      alert(`測試完成度: ${checked}/${total} (${percentage}%)\n\n${percentage === 100 ? '🎉 恭喜！所有項目都已完成！' : '繼續加油！'}`);
+    }
+    
+    function generateTestData() {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dateStr = tomorrow.toISOString().split('T')[0];
+      
+      const testData = `
+測試數據生成器
+============
+
+明天日期: ${dateStr}
+
+場景1 - 船隻衝突:
+  預約1: G23, ${dateStr} 10:00, 60分鐘, 學生A
+  預約2: G23, ${dateStr} 10:30, 60分鐘, 學生B (應該衝突)
+
+場景2 - 接船時間:
+  預約1: G23, ${dateStr} 10:00, 60分鐘, 學生A
+  預約2: G23, ${dateStr} 11:10, 60分鐘, 學生B (應該衝突)
+  預約3: G23, ${dateStr} 11:15, 60分鐘, 學生C (應該成功)
+
+場景3 - 教練衝突:
+  預約1: G23, ${dateStr} 10:00, 60分鐘, 學生A, 教練王
+  預約2: G21, ${dateStr} 10:30, 60分鐘, 學生B, 教練王 (應該衝突)
+
+測試提示:
+- 按照順序逐一測試
+- 每個測試後記錄結果
+- 發現問題立即在下方筆記區記錄
+      `.trim();
+      
+      alert('測試數據已生成！\n\n點擊"複製測試資料"按鈕複製到剪貼板。');
+      return testData;
+    }
+    
+    function copyTestData() {
+      const data = generateTestData();
+      navigator.clipboard.writeText(data).then(() => {
+        alert('✅ 測試數據已複製到剪貼板！');
+      });
+    }
+    
+    function saveNotes() {
+      const notes = document.getElementById('testNotes').value;
+      localStorage.setItem('testNotes', notes);
+      alert('✅ 筆記已儲存！');
+    }
+    
+    function loadNotes() {
+      const notes = localStorage.getItem('testNotes');
+      if (notes) {
+        document.getElementById('testNotes').value = notes;
+      }
+    }
+    
+    function exportReport() {
+      const notes = document.getElementById('testNotes').value;
+      const checkboxes = document.querySelectorAll('.checklist input[type="checkbox"]');
+      const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+      const total = checkboxes.length;
+      
+      const scenarios = document.querySelectorAll('.test-scenario');
+      let scenarioResults = '';
+      scenarios.forEach((s, i) => {
+        const title = s.querySelector('h3 span:first-child').textContent;
+        const status = s.querySelector('.status').textContent;
+        scenarioResults += `${i + 1}. ${title}: ${status}\n`;
+      });
+      
+      const report = `
+預約系統測試報告
+================
+測試日期: ${new Date().toLocaleString('zh-TW')}
+完成度: ${checked}/${total} (${Math.round(checked/total*100)}%)
+
+場景測試結果:
+${scenarioResults}
+
+問題記錄:
+${notes || '無'}
+
+---
+測試人員: ___________
+      `.trim();
+      
+      const blob = new Blob([report], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `測試報告_${new Date().toISOString().split('T')[0]}.txt`;
+      a.click();
+    }
+    
+    function saveTestResults() {
+      const scenarios = document.querySelectorAll('.test-scenario');
+      const results = {};
+      scenarios.forEach((s, i) => {
+        const status = s.querySelector('.status').className;
+        results[i] = status;
+      });
+      localStorage.setItem('testResults', JSON.stringify(results));
+    }
+    
+    function loadTestResults() {
+      const results = localStorage.getItem('testResults');
+      if (results) {
+        const parsed = JSON.parse(results);
+        const scenarios = document.querySelectorAll('.test-scenario');
+        scenarios.forEach((s, i) => {
+          if (parsed[i]) {
+            s.querySelector('.status').className = parsed[i];
+          }
+        });
+      }
+    }
+    
+    // 頁面載入時恢復狀態
+    window.onload = () => {
+      loadNotes();
+      loadTestResults();
+    };
+    
+    // 自動儲存
+    setInterval(() => {
+      const notes = document.getElementById('testNotes').value;
+      if (notes) {
+        localStorage.setItem('testNotes', notes);
+      }
+    }, 30000); // 每30秒自動儲存
+  </script>
+</body>
+</html>
+

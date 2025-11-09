@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
@@ -30,8 +31,11 @@ interface CoachAssignmentProps {
 
 export function CoachAssignment({ user }: CoachAssignmentProps) {
   const { isMobile } = useResponsive()
+  const [searchParams] = useSearchParams()
   
-  const [selectedDate, setSelectedDate] = useState<string>(getTomorrowDate())
+  // 從 URL 參數獲取日期，如果沒有則使用明天
+  const dateFromUrl = searchParams.get('date') || getTomorrowDate()
+  const [selectedDate, setSelectedDate] = useState<string>(dateFromUrl)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(false)
@@ -301,10 +305,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       }
 
       setSuccess('✅ 所有排班已儲存！')
-      // 重新載入以更新顯示
-      setTimeout(() => {
-        loadBookings()
-      }, 1000)
+      // 立即重新載入以更新顯示
+      await loadBookings()
     } catch (err: any) {
       console.error('儲存失敗:', err)
       setError('❌ 儲存失敗: ' + (err.message || '未知錯誤'))
