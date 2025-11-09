@@ -30,8 +30,7 @@ interface CoachAssignmentProps {
 export function CoachAssignment({ user }: CoachAssignmentProps) {
   const { isMobile } = useResponsive()
   
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayDate())
-  const [dateRange, setDateRange] = useState<number>(1) // 1=今天, 3=三天, 7=一週
+  const [selectedDate, setSelectedDate] = useState<string>(getTomorrowDate())
   const [bookings, setBookings] = useState<Booking[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(false)
@@ -51,13 +50,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
   useEffect(() => {
     loadBookings()
-  }, [selectedDate, dateRange])
+  }, [selectedDate])
 
-  function getTodayDate() {
-    const today = new Date()
-    const year = today.getFullYear()
-    const month = String(today.getMonth() + 1).padStart(2, '0')
-    const day = String(today.getDate()).padStart(2, '0')
+  function getTomorrowDate() {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const year = tomorrow.getFullYear()
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0')
+    const day = String(tomorrow.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   }
 
@@ -76,37 +76,21 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      // 計算日期範圍
-      const startDate = new Date(selectedDate)
-      const endDate = new Date(selectedDate)
-      endDate.setDate(endDate.getDate() + dateRange - 1)
+      const startOfDay = `${selectedDate}T00:00:00`
+      const endOfDay = `${selectedDate}T23:59:59`
 
-      const startDateStr = formatDateForQuery(startDate)
-      const endDateStr = formatDateForQuery(endDate)
-
-      console.log('🔍 查詢日期範圍:', {
+      console.log('🔍 查詢日期:', {
         selectedDate,
-        startDateStr,
-        endDateStr,
-        startQuery: `${startDateStr}T00:00:00`,
-        endQuery: `${endDateStr}T23:59:59`
+        startOfDay,
+        endOfDay
       })
 
-      // 查詢預約（不過濾 status，顯示所有預約）
+      // 查詢預約（使用 * 選擇所有欄位，與預約列表一致）
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
-        .select(`
-          id,
-          start_at,
-          duration_min,
-          contact_name,
-          notes,
-          boat_id,
-          schedule_notes,
-          boats:boat_id(name, color)
-        `)
-        .gte('start_at', `${startDateStr}T00:00:00`)
-        .lte('start_at', `${endDateStr}T23:59:59`)
+        .select('*, boats:boat_id(id, name, color)')
+        .gte('start_at', startOfDay)
+        .lte('start_at', endOfDay)
         .order('start_at', { ascending: true })
 
       console.log('📊 查詢結果:', { 
@@ -153,13 +137,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     } finally {
       setLoading(false)
     }
-  }
-
-  function formatDateForQuery(date: Date) {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
   }
 
   const openEditDialog = (booking: Booking) => {
@@ -256,14 +233,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl, maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
         <h1 style={{ ...getTextStyle('h1', isMobile), marginBottom: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl }}>📅 教練排班管理</h1>
 
-        {/* 日期選擇和範圍 */}
+        {/* 日期選擇 */}
         <div style={{ 
           ...getCardStyle(isMobile)
         }}>
-          <div style={{ display: 'flex', gap: designSystem.spacing.md, flexWrap: 'wrap', alignItems: 'end' }}>
-            <div style={{ flex: '1', minWidth: '200px' }}>
+          <div style={{ display: 'flex', gap: designSystem.spacing.md, alignItems: 'end' }}>
+            <div style={{ flex: '1', minWidth: '200px', maxWidth: '300px' }}>
               <label style={{ ...getLabelStyle(isMobile) }}>
-                起始日期
+                選擇日期（預設為明天）
               </label>
               <input
                 type="date"
@@ -274,33 +251,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 }}
               />
             </div>
-
-            <div style={{ display: 'flex', gap: designSystem.spacing.sm }}>
-              <button
-                onClick={() => setDateRange(1)}
-                style={{
-                  ...getButtonStyle(dateRange === 1 ? 'primary' : 'outline', 'medium', isMobile)
-                }}
-              >
-                今天
-              </button>
-              <button
-                onClick={() => setDateRange(3)}
-                style={{
-                  ...getButtonStyle(dateRange === 3 ? 'primary' : 'outline', 'medium', isMobile)
-                }}
-              >
-                三天
-              </button>
-              <button
-                onClick={() => setDateRange(7)}
-                style={{
-                  ...getButtonStyle(dateRange === 7 ? 'primary' : 'outline', 'medium', isMobile)
-                }}
-              >
-                一週
-              </button>
-            </div>
           </div>
         </div>
 
@@ -309,7 +259,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         
         {!loading && bookings.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
-            所選日期範圍內暫無預約
+            所選日期暫無預約
           </div>
         )}
 
