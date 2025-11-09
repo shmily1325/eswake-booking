@@ -762,105 +762,107 @@ export function DayView({ user }: DayViewProps) {
 
                               {/* 預約詳情 */}
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                {/* 1. 學生、教練、駕駛 */}
+                                {/* 學生名字 */}
                                 <div style={{
-                                  display: 'flex',
-                                  gap: isMobile ? '8px' : '12px',
-                                  alignItems: 'center',
+                                  fontSize: isMobile ? '15px' : '15px',
+                                  fontWeight: '700',
+                                  color: '#000',
                                   marginBottom: '6px',
-                                  flexWrap: 'wrap',
                                 }}>
-                                  <div style={{
-                                    fontSize: isMobile ? '14px' : '15px',
-                                    fontWeight: '700',
-                                    color: '#000',
-                                  }}>
-                                    {booking.contact_name}
-                                  </div>
-                                  <div style={{
-                                    fontSize: isMobile ? '12px' : '13px',
-                                    color: '#666',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                  }}>
-                                    <span>🎓</span>
-                                    <span>{booking.coaches && booking.coaches.length > 0
-                                      ? booking.coaches.map(c => c.name).join(' / ')
-                                      : '未指定'}</span>
-                                  </div>
-                                  {/* 駕駛顯示 - 只有當駕駛與教練不同時才顯示 */}
-                                  {(() => {
-                                    if (!booking.drivers || booking.drivers.length === 0) return null
-                                    
-                                    const coachIds = booking.coaches?.map(c => c.id).sort().join(',') || ''
-                                    const driverIds = booking.drivers.map(d => d.id).sort().join(',')
-                                    
-                                    // 如果駕駛和教練完全一樣，不顯示
-                                    if (coachIds === driverIds) return null
-                                    
-                                    return (
-                                      <div style={{
-                                        fontSize: isMobile ? '12px' : '13px',
-                                        color: '#4caf50',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        fontWeight: '500',
-                                      }}>
-                                        <span>🚤</span>
-                                        <span>{booking.drivers.map(d => d.name).join(' / ')}</span>
-                                      </div>
-                                    )
-                                  })()}
+                                  {booking.contact_name}
                                 </div>
-
-                                {/* 2. 活動類型和備註 */}
+                                
+                                {/* 教練 */}
                                 <div style={{
+                                  fontSize: isMobile ? '12px' : '13px',
+                                  color: '#666',
                                   display: 'flex',
-                                  gap: '6px',
-                                  flexWrap: 'wrap',
                                   alignItems: 'center',
-                                  marginBottom: '6px',
+                                  gap: '4px',
+                                  marginBottom: '4px',
                                 }}>
-                                  {booking.activity_types && booking.activity_types.map(type => (
-                                    <span
-                                      key={type}
-                                      style={{
-                                        padding: '3px 8px',
-                                        backgroundColor: '#e9ecef',
-                                        color: '#495057',
-                                        borderRadius: '10px',
-                                        fontSize: isMobile ? '10px' : '11px',
-                                        fontWeight: '500',
-                                      }}
-                                    >
-                                      {type}
-                                    </span>
-                                  ))}
-                                  {booking.notes && (
-                                    <span style={{
-                                      fontSize: isMobile ? '11px' : '12px',
-                                      color: '#999',
-                                      fontStyle: 'italic',
+                                  <span>🎓</span>
+                                  <span>{booking.coaches && booking.coaches.length > 0
+                                    ? booking.coaches.map(c => c.name).join(' / ')
+                                    : '未指定'}</span>
+                                </div>
+                                
+                                {/* 駕駛 - 只有當駕駛與教練不同時才顯示 */}
+                                {(() => {
+                                  if (!booking.drivers || booking.drivers.length === 0) return null
+                                  
+                                  const coachIds = booking.coaches?.map(c => c.id).sort().join(',') || ''
+                                  const driverIds = booking.drivers.map(d => d.id).sort().join(',')
+                                  
+                                  if (coachIds === driverIds) return null
+                                  
+                                  return (
+                                    <div style={{
+                                      fontSize: isMobile ? '12px' : '13px',
+                                      color: '#4caf50',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      marginBottom: '4px',
+                                      fontWeight: '500',
                                     }}>
-                                      💬 {booking.notes}
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* 3. 排班備註 */}
+                                      <span>🚤</span>
+                                      <span>{booking.drivers.map(d => d.name).join(' / ')}</span>
+                                    </div>
+                                  )
+                                })()}
+                                
+                                {/* 活動類型 */}
+                                {booking.activity_types && booking.activity_types.length > 0 && (
+                                  <div style={{
+                                    display: 'flex',
+                                    gap: '4px',
+                                    flexWrap: 'wrap',
+                                    marginBottom: '4px',
+                                  }}>
+                                    {booking.activity_types.map(type => (
+                                      <span
+                                        key={type}
+                                        style={{
+                                          padding: '2px 6px',
+                                          backgroundColor: '#e9ecef',
+                                          color: '#495057',
+                                          borderRadius: '8px',
+                                          fontSize: isMobile ? '10px' : '11px',
+                                          fontWeight: '500',
+                                        }}
+                                      >
+                                        {type}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                
+                                {/* 備註 */}
+                                {booking.notes && (
+                                  <div style={{
+                                    fontSize: isMobile ? '11px' : '12px',
+                                    color: '#999',
+                                    fontStyle: 'italic',
+                                    marginBottom: '4px',
+                                  }}>
+                                    💬 {booking.notes}
+                                  </div>
+                                )}
+                                
+                                {/* 排班備註 */}
                                 {booking.schedule_notes && (
                                   <div style={{
                                     fontSize: isMobile ? '11px' : '12px',
-                                    color: '#f57c00',
+                                    color: '#666',
                                     padding: '4px 8px',
-                                    background: 'transparent',
-                                    border: '1px solid #ffb74d',
+                                    background: '#fafafa',
+                                    border: '1px solid #ddd',
                                     borderRadius: '6px',
                                     fontWeight: '500',
+                                    marginTop: '4px',
                                   }}>
-                                    📝 {booking.schedule_notes}
+                                    <span style={{ color: '#ff9800' }}>📝</span> {booking.schedule_notes}
                                   </div>
                                 )}
                               </div>
@@ -1109,15 +1111,15 @@ export function DayView({ user }: DayViewProps) {
                           {booking.schedule_notes && (
                             <div style={{
                               fontSize: isMobile ? '9px' : '11px',
-                              color: '#f57c00',
+                              color: '#666',
                               marginTop: isMobile ? '2px' : '4px',
                               padding: '2px 4px',
-                              border: '1px solid #ffb74d',
+                              border: '1px solid #ddd',
                               borderRadius: '4px',
                               textAlign: 'center',
                               lineHeight: '1.2',
                             }}>
-                              📝 {booking.schedule_notes}
+                              <span style={{ color: '#ff9800' }}>📝</span> {booking.schedule_notes}
                             </div>
                           )}
                         </td>
