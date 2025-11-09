@@ -437,27 +437,33 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
           {/* 底部按鈕 */}
           <div style={{
-            padding: isMobile ? '16px 20px calc(20px + env(safe-area-inset-bottom))' : '20px',
+            padding: isMobile ? '20px 20px calc(20px + env(safe-area-inset-bottom))' : '20px',
             borderTop: '1px solid #e0e0e0',
             display: 'flex',
-            gap: '12px',
+            gap: isMobile ? '12px' : '12px',
             justifyContent: 'flex-end',
+            flexDirection: isMobile ? 'column' : 'row',
             position: 'sticky',
             bottom: 0,
             background: 'white',
+            zIndex: 10,
+            boxShadow: '0 -2px 8px rgba(0,0,0,0.1)',
           }}>
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
               style={{
-                padding: isMobile ? '14px 24px' : '10px 20px',
+                padding: isMobile ? '16px 24px' : '10px 20px',
                 border: '1px solid #ddd',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 background: 'white',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: isMobile ? '16px' : '14px',
-                minHeight: '44px',
+                fontSize: isMobile ? '17px' : '14px',
+                minHeight: isMobile ? '52px' : '44px',
+                flex: isMobile ? '1' : '0',
+                fontWeight: isMobile ? '600' : 'normal',
+                touchAction: 'manipulation',
               }}
             >
               取消
@@ -466,15 +472,17 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               type="submit"
               disabled={loading}
               style={{
-                padding: isMobile ? '14px 24px' : '10px 20px',
+                padding: isMobile ? '16px 24px' : '10px 20px',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: isMobile ? '16px' : '14px',
+                fontSize: isMobile ? '17px' : '14px',
                 fontWeight: 'bold',
-                minHeight: '44px',
+                minHeight: isMobile ? '52px' : '44px',
+                flex: isMobile ? '1' : '0',
+                touchAction: 'manipulation',
               }}
             >
               {loading ? '新增中...' : '確認新增'}

@@ -34,6 +34,35 @@ export function DailyAnnouncement() {
   const [expiringBoards, setExpiringBoards] = useState<ExpiringBoard[]>([])
   const [isExpanded, setIsExpanded] = useState(true)
 
+  // 格式化日期為 YYYY/MM/DD
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return ''
+    
+    // 嘗試解析不同格式的日期
+    let date: Date | null = null
+    
+    // 格式 1: YYYY-MM-DD
+    if (dateStr.includes('-') && dateStr.split('-').length === 3) {
+      const [year, month, day] = dateStr.split('-')
+      date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    }
+    // 格式 2: MM/DD/YYYY
+    else if (dateStr.includes('/')) {
+      const parts = dateStr.split('/')
+      if (parts.length === 3) {
+        const [month, day, year] = parts
+        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      }
+    }
+    
+    if (!date || isNaN(date.getTime())) return dateStr // 無法解析則返回原值
+    
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}/${month}/${day}`
+  }
+
   useEffect(() => {
     loadData()
   }, [])
@@ -199,7 +228,7 @@ export function DailyAnnouncement() {
                   color: '#666',
                   marginBottom: '2px'
                 }}>
-                  {m.name} ({m.membership_expires_at})
+                  {m.name} ({formatDate(m.membership_expires_at)})
                 </div>
               ))}
             </div>
@@ -215,7 +244,7 @@ export function DailyAnnouncement() {
                   color: '#666',
                   marginBottom: '2px'
                 }}>
-                  {b.slot_number}號 - {b.member_name} ({b.expires_at})
+                  {b.slot_number}號 - {b.member_name} ({formatDate(b.expires_at)})
                 </div>
               ))}
             </div>

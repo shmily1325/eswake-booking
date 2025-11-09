@@ -264,17 +264,18 @@ export function MemberImport({ user }: MemberImportProps) {
 小楊,楊翊/林楊翊,,,member,,,0,0,0,不知道姓什麼{'\n'}
 Ingrid,,,,member,,,0,0,0,
             </code>
-            <p style={{ margin: 0 }}>
-              • <strong>姓名</strong>為必填，其他欄位選填<br/>
-              • <strong>生日</strong>: 格式為 YYYY-MM-DD<br/>
-              • <strong>會員類型</strong>: guest（客人）或 member（會員），預設為 guest<br/>
-              • <strong>會員到期日</strong>: 格式為 YYYY-MM-DD<br/>
-              • <strong>餘額</strong>: 儲值餘額（數字），預設為 0<br/>
-              • <strong>G23船券</strong>: G23 專用船券時數（分鐘），預設為 0<br/>
-              • <strong>G21/黑豹船券</strong>: G21 與黑豹通用船券時數（分鐘），預設為 0<br/>
-              • 第一行可以是標題行（包含「姓名」會自動跳過）<br/>
-              • 空欄位可以留空或使用逗號佔位
-            </p>
+                  <p style={{ margin: 0 }}>
+                    • <strong>姓名</strong>為必填，其他欄位選填<br/>
+                    • <strong>生日</strong>: 格式為 <code style={{ background: '#fff3cd', padding: '2px 6px', borderRadius: '3px' }}>YYYY-MM-DD</code>（例：1990-01-01）<br/>
+                    • <strong>會員類型</strong>: guest（客人）或 member（會員），預設為 guest<br/>
+                    • <strong>會員到期日</strong>: 格式為 <code style={{ background: '#fff3cd', padding: '2px 6px', borderRadius: '3px' }}>YYYY-MM-DD</code>（例：2055-12-31）<br/>
+                    • <strong>餘額</strong>: 儲值餘額（數字），預設為 0<br/>
+                    • <strong>G23船券</strong>: G23 專用船券時數（分鐘），預設為 0<br/>
+                    • <strong>G21/黑豹船券</strong>: G21 與黑豹通用船券時數（分鐘），預設為 0<br/>
+                    • ⚠️ <strong>重要</strong>：所有日期必須使用 <code style={{ background: '#ffebee', padding: '2px 6px', borderRadius: '3px', fontWeight: 'bold' }}>YYYY-MM-DD</code> 格式（年-月-日）<br/>
+                    • 第一行可以是標題行（包含「姓名」會自動跳過）<br/>
+                    • 空欄位可以留空或使用逗號佔位
+                  </p>
           </div>
           <button
             onClick={downloadTemplate}
