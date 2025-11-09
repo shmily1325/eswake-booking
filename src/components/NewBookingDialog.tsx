@@ -626,21 +626,23 @@ export function NewBookingDialog({
               預約人 {selectedMemberIds.length > 0 && <span style={{ color: '#4caf50', fontSize: '13px' }}>（已選 {selectedMemberIds.length} 位）</span>}
             </label>
             
-            {/* 已選擇的會員列表 */}
-            {selectedMemberIds.length > 0 && (
+            {/* 已選會員和手動輸入標籤 */}
+            {(selectedMemberIds.length > 0 || manualStudentName.trim()) && (
               <div style={{ marginBottom: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {/* 會員標籤（藍色） */}
                 {selectedMemberIds.map(memberId => {
                   const member = members.find(m => m.id === memberId)
                   return member ? (
                     <span key={memberId} style={{
-                      padding: '4px 8px',
-                      background: '#4caf50',
+                      padding: '6px 12px',
+                      background: '#2196F3',
                       color: 'white',
-                      borderRadius: '12px',
-                      fontSize: '13px',
+                      borderRadius: '16px',
+                      fontSize: '14px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '6px',
+                      fontWeight: '500'
                     }}>
                       {member.name}
                       <button
@@ -651,13 +653,66 @@ export function NewBookingDialog({
                           border: 'none',
                           color: 'white',
                           cursor: 'pointer',
-                          padding: '0 2px',
-                          fontSize: '16px'
+                          padding: '0',
+                          fontSize: '18px',
+                          lineHeight: '1'
                         }}
                       >×</button>
                     </span>
                   ) : null
                 })}
+                
+                {/* 手動輸入標籤（橘色） */}
+                {manualStudentName.trim() && (
+                  <span style={{
+                    padding: '6px 12px',
+                    background: '#FF9800',
+                    color: 'white',
+                    borderRadius: '16px',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: '500'
+                  }}>
+                    {manualStudentName}
+                    <button
+                      type="button"
+                      onClick={() => setManualStudentName('')}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'white',
+                        cursor: 'pointer',
+                        padding: '0',
+                        fontSize: '18px',
+                        lineHeight: '1'
+                      }}
+                    >×</button>
+                  </span>
+                )}
+                
+                {/* 清除全部按鈕 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMemberIds([])
+                    setMemberSearchTerm('')
+                    setManualStudentName('')
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    background: '#f44336',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '16px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    fontWeight: '500'
+                  }}
+                >
+                  清除全部
+                </button>
               </div>
             )}
             
@@ -1207,7 +1262,12 @@ export function NewBookingDialog({
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '12px', 
+            marginTop: '20px',
+            paddingBottom: 'calc(20px + env(safe-area-inset-bottom))'
+          }}>
             <button
               type="button"
               onClick={handleClose}
@@ -1224,6 +1284,7 @@ export function NewBookingDialog({
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.5 : 1,
                 touchAction: 'manipulation',
+                minHeight: '52px',
               }}
             >
               取消
@@ -1242,6 +1303,7 @@ export function NewBookingDialog({
                 fontWeight: '500',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
+                minHeight: '52px',
               }}
             >
               {loading ? '處理中...' : '確認新增'}

@@ -703,9 +703,10 @@ export function EditBookingDialog({
               預約人 {selectedMemberIds.length > 0 && <span style={{ color: '#4caf50', fontSize: '13px' }}>（已選 {selectedMemberIds.length} 位會員）</span>}
             </label>
             
-            {/* 已選會員標籤 */}
-            {selectedMemberIds.length > 0 && (
+            {/* 已選會員和手動輸入標籤 */}
+            {(selectedMemberIds.length > 0 || manualStudentName.trim()) && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                {/* 會員標籤（藍色） */}
                 {selectedMemberIds.map((id) => {
                   const member = members.find(m => m.id === id)
                   if (!member) return null
@@ -716,11 +717,11 @@ export function EditBookingDialog({
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '6px',
-                        padding: '4px 10px',
-                        background: '#4caf50',
+                        padding: '6px 12px',
+                        background: '#2196F3',
                         color: 'white',
                         borderRadius: '16px',
-                        fontSize: '13px',
+                        fontSize: '14px',
                         fontWeight: '500',
                       }}
                     >
@@ -736,7 +737,7 @@ export function EditBookingDialog({
                           color: 'white',
                           cursor: 'pointer',
                           padding: '0',
-                          fontSize: '16px',
+                          fontSize: '18px',
                           lineHeight: '1',
                         }}
                       >
@@ -745,19 +746,56 @@ export function EditBookingDialog({
                     </span>
                   )
                 })}
+                
+                {/* 手動輸入標籤（橘色） */}
+                {manualStudentName.trim() && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      background: '#FF9800',
+                      color: 'white',
+                      borderRadius: '16px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                    }}
+                  >
+                    {manualStudentName}
+                    <button
+                      type="button"
+                      onClick={() => setManualStudentName('')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'white',
+                        cursor: 'pointer',
+                        padding: '0',
+                        fontSize: '18px',
+                        lineHeight: '1',
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                
+                {/* 清除全部按鈕 */}
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedMemberIds([])
                     setMemberSearchTerm('')
+                    setManualStudentName('')
                   }}
                   style={{
-                    padding: '4px 10px',
+                    padding: '6px 12px',
                     background: '#f44336',
                     color: 'white',
                     border: 'none',
                     borderRadius: '16px',
-                    fontSize: '12px',
+                    fontSize: '13px',
                     cursor: 'pointer',
                   }}
                 >

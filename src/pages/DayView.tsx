@@ -33,6 +33,9 @@ interface Booking {
   status: string
   boats?: Boat
   coaches?: Coach[]
+  driver_id?: string | null
+  driver?: Coach | null
+  schedule_notes?: string | null
 }
 
 const generateTimeSlots = () => {

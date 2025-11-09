@@ -259,7 +259,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
 
           {/* 底部按鈕 */}
           <div style={{
-            padding: isMobile ? '20px 20px calc(20px + env(safe-area-inset-bottom))' : '20px',
+            padding: isMobile ? '24px 20px calc(40px + env(safe-area-inset-bottom))' : '20px',
             borderTop: '1px solid #e0e0e0',
             display: 'flex',
             gap: isMobile ? '12px' : '12px',
@@ -269,7 +269,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             bottom: 0,
             background: 'white',
             zIndex: 10,
-            boxShadow: '0 -2px 8px rgba(0,0,0,0.1)',
+            boxShadow: '0 -4px 16px rgba(0,0,0,0.2)',
           }}>
             <button
               type="button"
