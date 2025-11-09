@@ -379,7 +379,7 @@ export function EditBookingDialog({
           duration_min: durationMin,
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
-          updated_by: user.id,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', booking.id)
 
