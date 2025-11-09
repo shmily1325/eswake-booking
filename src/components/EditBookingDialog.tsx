@@ -239,6 +239,12 @@ export function EditBookingDialog({
     e.preventDefault()
     setError('')
 
+    // 檢查預約人是否為空
+    if (selectedMemberIds.length === 0 && manualNames.length === 0 && !manualStudentName.trim()) {
+      setError('⚠️ 請至少選擇一位會員或輸入預約人姓名')
+      return
+    }
+
     // 防呆檢查：08:00之前的預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
     if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
