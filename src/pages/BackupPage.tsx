@@ -415,7 +415,15 @@ export function BackupPage({ user }: BackupPageProps) {
 
   const backupToGoogleDrive = async () => {
     setBackupLoading(true)
+    const startTime = Date.now()
+    
     try {
+      // 创建带超时的 fetch（60秒超时）
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60秒超时
+
+      console.log('开始备份...', { startDate, endDate })
+      
       const response = await fetch('/api/backup-to-drive', {
         method: 'POST',
         headers: {
@@ -426,28 +434,58 @@ export function BackupPage({ user }: BackupPageProps) {
           endDate: endDate || undefined,
           manual: true,
         }),
+        signal: controller.signal,
       })
 
+      clearTimeout(timeoutId)
+      const elapsed = Date.now() - startTime
+      console.log(`收到响应 (${elapsed}ms)`, response.status)
+
       const result = await response.json()
+      console.log('响应结果:', result)
 
       if (!response.ok) {
-        throw new Error(result.message || result.error || '備份失敗')
+        const errorMsg = result.message || result.error || '備份失敗'
+        const details = result.details ? `\n\n詳細資訊: ${result.details}` : ''
+        const step = result.step ? `\n\n失敗步驟: ${result.step}` : ''
+        const execTime = result.executionTime ? `\n\n執行時間: ${result.executionTime}ms` : ''
+        throw new Error(`${errorMsg}${details}${step}${execTime}`)
       }
 
+      const execTime = result.executionTime ? `\n\n執行時間: ${result.executionTime}ms` : ''
+      
       if (result.webViewLink) {
         alert(
-          `✅ ${result.message}\n\n` +
+          `✅ ${result.message}${execTime}\n\n` +
           `檔案名稱: ${result.fileName}\n` +
           `備份筆數: ${result.bookingsCount} 筆\n\n` +
           `點擊確定後將在新視窗開啟 Google Drive 檔案`
       )
         window.open(result.webViewLink, '_blank')
       } else {
-        alert(`✅ ${result.message}`)
+        alert(`✅ ${result.message}${execTime}`)
       }
     } catch (error: any) {
-      console.error('Backup error:', error)
-      alert(`❌ 備份失敗: ${error.message || '請檢查環境變數設定'}`)
+      const elapsed = Date.now() - startTime
+      console.error('Backup error:', error, { elapsed: `${elapsed}ms` })
+      
+      let errorMessage = '備份失敗'
+      
+      if (error.name === 'AbortError') {
+        errorMessage = '❌ 備份超時（超過60秒）\n\n可能原因：\n1. 數據量太大\n2. Google Drive API 響應慢\n3. 網絡連接問題\n\n請檢查 Vercel 函數日誌以獲取詳細信息'
+      } else if (error.message) {
+        errorMessage = `❌ ${error.message}`
+      } else {
+        errorMessage = '❌ 備份失敗，請檢查環境變數設定'
+      }
+      
+      errorMessage += `\n\n執行時間: ${elapsed}ms`
+      errorMessage += '\n\n💡 調試提示：'
+      errorMessage += '\n1. 打開瀏覽器開發者工具 (F12) → Console 查看詳細錯誤'
+      errorMessage += '\n2. 檢查 Vercel Dashboard → Functions → backup-to-drive 的日誌'
+      errorMessage += '\n3. 確認所有環境變數已正確設定'
+      
+      alert(errorMessage)
     } finally {
       setBackupLoading(false)
     }

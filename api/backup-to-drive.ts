@@ -1,3 +1,4 @@
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
 
@@ -7,17 +8,23 @@ interface BackupRequest {
   manual?: boolean;
 }
 
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const startTime = Date.now();
+  const logStep = (step: string, data?: any) => {
+    const elapsed = Date.now() - startTime;
+    console.log(`[${elapsed}ms] ${step}`, data ? JSON.stringify(data).substring(0, 200) : '');
+  };
+
   // 允许 GET (cron job) 和 POST (手动触发) 请求
   if (req.method !== 'GET' && req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    logStep('1. 开始备份流程');
+    
     // 获取环境变量
+    logStep('2. 检查环境变量');
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const googleClientEmail = process.env.GOOGLE_CLIENT_EMAIL;
@@ -25,23 +32,29 @@ export default async function handler(req: Request): Promise<Response> {
     const googleDriveFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
     if (!supabaseUrl || !supabaseServiceKey) {
+      logStep('错误: Missing Supabase credentials');
       throw new Error('Missing Supabase credentials');
     }
     if (!googleClientEmail || !googlePrivateKey || !googleDriveFolderId) {
+      logStep('错误: Missing Google Drive credentials');
       throw new Error('Missing Google Drive credentials');
     }
+    logStep('2.1 环境变量检查完成');
 
     // 解析请求体（仅 POST 请求）
     let body: BackupRequest = {};
     if (req.method === 'POST') {
-      body = await req.json().catch(() => ({}));
+      body = req.body || {};
     }
     const { startDate, endDate, manual = false } = body;
+    logStep('3. 请求参数', { startDate, endDate, manual });
 
     // 创建 Supabase 客户端（使用 service role key 以绕过 RLS）
+    logStep('4. 创建 Supabase 客户端');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 构建查询
+    logStep('5. 查询预约数据');
     let query = supabase
       .from('bookings')
       .select(`
@@ -58,33 +71,47 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const { data: bookings, error: bookingsError } = await query;
+    logStep('5.1 预约数据查询完成', { count: bookings?.length || 0, error: bookingsError?.message });
 
-    if (bookingsError) throw bookingsError;
-
-    if (!bookings || bookings.length === 0) {
-      return new Response(
-        JSON.stringify({ error: '沒有數據可以備份', bookingsCount: 0 }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+    if (bookingsError) {
+      logStep('错误: 预约查询失败', bookingsError);
+      throw bookingsError;
     }
 
-    // 获取所有预约的教练信息和确认状态
+    if (!bookings || bookings.length === 0) {
+      logStep('警告: 没有数据可以备份');
+      return res.status(400).json({ error: '沒有數據可以備份', bookingsCount: 0 });
+    }
+
+    // 获取所有预约的教练信息、参与者和驾驶信息
+    logStep('6. 查询关联数据（教练、参与者、驾驶）');
     const bookingIds = bookings.map((b) => b.id);
-    const { data: coachesData } = await supabase
-      .from('booking_coaches')
-      .select('booking_id, coaches:coach_id(name), coach_confirmed, confirmed_at, actual_duration_min')
-      .in('booking_id', bookingIds);
+    logStep('6.1 预约ID列表', { count: bookingIds.length });
+    
+    const [coachesResult, participantsResult, driversResult] = await Promise.all([
+      supabase
+        .from('booking_coaches')
+        .select('booking_id, coaches:coach_id(name)')
+        .in('booking_id', bookingIds),
+      supabase
+        .from('booking_participants')
+        .select('booking_id, participant_name, duration_min, is_designated')
+        .in('booking_id', bookingIds),
+      supabase
+        .from('bookings')
+        .select('id, driver_coach_id')
+        .in('id', bookingIds)
+        .not('driver_coach_id', 'is', null)
+    ]);
+    logStep('6.2 关联数据查询完成', {
+      coaches: coachesResult.data?.length || 0,
+      participants: participantsResult.data?.length || 0,
+      drivers: driversResult.data?.length || 0
+    });
 
-    // 整理教练信息和确认状态
+    // 整理教练信息
     const coachesByBooking: { [key: number]: string[] } = {};
-    const confirmByBooking: {
-      [key: number]: { confirmed: boolean; confirmedAt: string | null; actualDuration: number | null };
-    } = {};
-
-    for (const item of coachesData || []) {
+    for (const item of coachesResult.data || []) {
       const bookingId = item.booking_id;
       const coach = (item as any).coaches;
       if (coach) {
@@ -93,22 +120,40 @@ export default async function handler(req: Request): Promise<Response> {
         }
         coachesByBooking[bookingId].push(coach.name);
       }
-
-      // 收集确认状态（任一教练确认即算已确认）
-      if (item.coach_confirmed) {
-        confirmByBooking[bookingId] = {
-          confirmed: true,
-          confirmedAt: item.confirmed_at,
-          actualDuration: item.actual_duration_min,
-        };
-      } else if (!confirmByBooking[bookingId]) {
-        confirmByBooking[bookingId] = {
-          confirmed: false,
-          confirmedAt: null,
-          actualDuration: null,
-        };
-      }
     }
+    
+    // 整理参与者信息
+    const participantsByBooking: { [key: number]: Array<{ name: string, duration: number, designated: boolean }> } = {};
+    for (const p of participantsResult.data || []) {
+      if (!participantsByBooking[p.booking_id]) {
+        participantsByBooking[p.booking_id] = [];
+      }
+      participantsByBooking[p.booking_id].push({
+        name: p.participant_name,
+        duration: p.duration_min,
+        designated: p.is_designated
+      });
+    }
+    
+    // 查询驾驶名称
+    const driverIds = driversResult.data?.filter(b => b.driver_coach_id).map(b => b.driver_coach_id) || [];
+    const driversById: { [key: string]: string } = {};
+    if (driverIds.length > 0) {
+      const { data: driversData } = await supabase
+        .from('coaches')
+        .select('id, name')
+        .in('id', driverIds);
+      driversData?.forEach(d => {
+        driversById[d.id] = d.name;
+      });
+    }
+    
+    const driverByBooking: { [key: number]: string } = {};
+    driversResult.data?.forEach(b => {
+      if (b.driver_coach_id) {
+        driverByBooking[b.id] = driversById[b.driver_coach_id] || '';
+      }
+    });
 
     // 格式化时间函数
     const formatDateTime = (isoString: string | null): string => {
@@ -121,12 +166,14 @@ export default async function handler(req: Request): Promise<Response> {
     };
 
     // 生成 CSV
+    logStep('7. 生成 CSV 数据');
     let csv = '\uFEFF'; // UTF-8 BOM
-    csv += '學生姓名,預約日期,抵達時間,下水時間,時長(分鐘),船隻,教練,活動類型,教練回報,回報時間,狀態,備註,創建時間\n';
+    csv += '預約人,預約日期,抵達時間,下水時間,預約時長(分鐘),船隻,教練,駕駛,活動類型,回報狀態,參與者,參與者時長,指定課,狀態,備註,創建時間\n';
 
     bookings.forEach((booking) => {
       const boat = (booking as any).boats?.name || '未指定';
       const coaches = coachesByBooking[booking.id]?.join('/') || '未指定';
+      const driver = driverByBooking[booking.id] || '';
       const activities = booking.activity_types?.join('+') || '';
       const notes = (booking.notes || '').replace(/"/g, '""').replace(/\n/g, ' ');
 
@@ -141,22 +188,43 @@ export default async function handler(req: Request): Promise<Response> {
       // 预约日期
       const bookingDate = booking.start_at.substring(0, 10).replace(/-/g, '/');
 
-      // 教练确认状态
-      const confirmInfo = confirmByBooking[booking.id];
-      const coachConfirmed = confirmInfo?.confirmed ? '已回報' : '未回報';
-      const confirmedAt = formatDateTime(confirmInfo?.confirmedAt || null);
+      // 回報資訊
+      const participants = participantsByBooking[booking.id] || [];
+      const hasReport = participants.length > 0;
+      const reportStatus = hasReport ? '已回報' : '未回報';
 
       // 状态翻译
       const statusMap: { [key: string]: string } = {
         Confirmed: '已確認',
+        confirmed: '已確認',
         Cancelled: '已取消',
+        cancelled: '已取消',
       };
       const status = statusMap[booking.status] || booking.status;
 
-      csv += `"${booking.student}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${activities}","${coachConfirmed}","${confirmedAt}","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`;
+      if (participants.length > 0) {
+        // 每個參與者一行
+        participants.forEach((p, idx) => {
+          const participantName = p.name;
+          const participantDuration = p.duration;
+          const isDesignated = p.designated ? '是' : '否';
+          
+          // 第一個參與者顯示完整預約資訊，其他只顯示參與者資訊
+          if (idx === 0) {
+            csv += `"${booking.contact_name}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${driver}","${activities}","${reportStatus}","${participantName}",${participantDuration},"${isDesignated}","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`;
+          } else {
+            csv += `"","","","",,"","","","","","${participantName}",${participantDuration},"${isDesignated}","","",""\n`;
+          }
+        });
+      } else {
+        // 沒有回報的預約
+        csv += `"${booking.contact_name}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${driver}","${activities}","${reportStatus}","","","","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`;
+      }
     });
+    logStep('7.1 CSV 生成完成', { csvLength: csv.length });
 
     // 创建 Google Drive 客户端
+    logStep('8. 初始化 Google Drive 客户端');
     const auth = new google.auth.JWT({
       email: googleClientEmail,
       key: googlePrivateKey,
@@ -164,12 +232,15 @@ export default async function handler(req: Request): Promise<Response> {
     });
 
     const drive = google.drive({ version: 'v3', auth });
+    logStep('8.1 Google Drive 客户端创建完成');
 
     // 生成文件名
+    logStep('9. 准备上传到 Google Drive');
     const dateStr = new Date().toISOString().split('T')[0];
     const timeStr = new Date().toISOString().split('T')[1].substring(0, 5).replace(':', '');
     const prefix = manual ? '手動備份' : '自動備份';
     const fileName = `${prefix}_預約備份_${dateStr}_${timeStr}.csv`;
+    logStep('9.1 文件名', { fileName });
 
     // 上传文件到 Google Drive
     const fileMetadata = {
@@ -182,39 +253,41 @@ export default async function handler(req: Request): Promise<Response> {
       body: csv,
     };
 
+    logStep('9.2 开始上传文件到 Google Drive');
     const uploadResponse = await drive.files.create({
       requestBody: fileMetadata,
       media: media,
       fields: 'id, name, webViewLink',
     });
+    logStep('9.3 文件上传完成', { fileId: uploadResponse.data.id });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `✅ 成功備份 ${bookings.length} 筆資料到 Google Drive`,
-        fileName: uploadResponse.data.name,
-        fileId: uploadResponse.data.id,
-        webViewLink: uploadResponse.data.webViewLink,
-        bookingsCount: bookings.length,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    const totalTime = Date.now() - startTime;
+    logStep('10. 备份完成', { totalTime: `${totalTime}ms`, bookingsCount: bookings.length });
+    
+    return res.status(200).json({
+      success: true,
+      message: `✅ 成功備份 ${bookings.length} 筆資料到 Google Drive`,
+      fileName: uploadResponse.data.name,
+      fileId: uploadResponse.data.id,
+      webViewLink: uploadResponse.data.webViewLink,
+      bookingsCount: bookings.length,
+      executionTime: totalTime,
+    });
   } catch (error: any) {
+    const totalTime = Date.now() - startTime;
+    logStep('错误: 备份失败', { 
+      error: error.message, 
+      stack: error.stack?.substring(0, 500),
+      totalTime: `${totalTime}ms`
+    });
     console.error('Backup error:', error);
-    return new Response(
-      JSON.stringify({
-        error: '備份失敗',
-        message: error.message || 'Unknown error',
-        details: error.toString(),
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return res.status(500).json({
+      error: '備份失敗',
+      message: error.message || 'Unknown error',
+      details: error.toString(),
+      step: error.step || 'unknown',
+      executionTime: totalTime,
+    });
   }
 }
 
