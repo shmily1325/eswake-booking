@@ -15,6 +15,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`[${elapsed}ms] ${step}`, data ? JSON.stringify(data).substring(0, 200) : '');
   };
 
+  let appendLogEntry: (status: 'SUCCESS' | 'ERROR', payload: {
+    manual: boolean;
+    bookingsCount: number;
+    sheetTitle?: string;
+    sheetUrl?: string;
+    executionTime: number;
+    message: string;
+    details?: string;
+  }) => Promise<void> = async () => {};
+  let bookingsForLog = 0;
+  let manualFlag = false;
+
   // 允许 GET (cron job) 和 POST (手动触发) 请求
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -29,17 +41,103 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const googleClientEmail = process.env.GOOGLE_CLIENT_EMAIL;
     const googlePrivateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    const googleDriveFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    const googleSheetsSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
 
     if (!supabaseUrl || !supabaseServiceKey) {
       logStep('错误: Missing Supabase credentials');
       throw new Error('Missing Supabase credentials');
     }
-    if (!googleClientEmail || !googlePrivateKey || !googleDriveFolderId) {
-      logStep('错误: Missing Google Drive credentials');
-      throw new Error('Missing Google Drive credentials');
+    if (!googleClientEmail || !googlePrivateKey || !googleSheetsSpreadsheetId) {
+      logStep('错误: Missing Google Sheets credentials');
+      throw new Error('Missing Google Sheets credentials');
     }
-    logStep('2.1 环境变量检查完成');
+
+    // 验证試算表 ID
+    const cleanedSpreadsheetId = googleSheetsSpreadsheetId.split('?')[0].split('&')[0].trim();
+    if (!/^[a-zA-Z0-9_-]+$/.test(cleanedSpreadsheetId)) {
+      logStep('错误: 无效的 Google Sheets 試算表 ID', { spreadsheetId: cleanedSpreadsheetId });
+      throw new Error(`無效的 Google Sheets 試算表 ID。請確認 GOOGLE_SHEETS_SPREADSHEET_ID 只包含 ID，本次取得: ${cleanedSpreadsheetId.substring(0, 50)}`);
+    }
+
+    logStep('2.1 环境变量检查完成', { 
+      spreadsheetIdLength: cleanedSpreadsheetId.length,
+      spreadsheetIdPreview: cleanedSpreadsheetId.substring(0, 12) + '...'
+    });
+
+    logStep('2.2 初始化 Google Sheets 客户端');
+    const auth = new google.auth.JWT({
+      email: googleClientEmail,
+      key: googlePrivateKey,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+    const sheets = google.sheets({ version: 'v4', auth });
+    logStep('2.3 Google Sheets 客户端初始化完成');
+
+    const spreadsheetId = cleanedSpreadsheetId;
+    const logSheetTitle = 'Backup Logs';
+    let logSheetReady = false;
+
+    const ensureLogSheet = async () => {
+      if (logSheetReady) return;
+      const meta = await sheets.spreadsheets.get({
+        spreadsheetId,
+        fields: 'sheets.properties.title',
+      });
+      const exists = meta.data.sheets?.some((sheet) => sheet.properties?.title === logSheetTitle);
+      if (!exists) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [
+              {
+                addSheet: {
+                  properties: {
+                    title: logSheetTitle,
+                  },
+                },
+              },
+            ],
+          },
+        });
+      }
+      logSheetReady = true;
+    };
+
+    appendLogEntry = async (status: 'SUCCESS' | 'ERROR', payload: {
+      manual: boolean;
+      bookingsCount: number;
+      sheetTitle?: string;
+      sheetUrl?: string;
+      executionTime: number;
+      message: string;
+      details?: string;
+    }) => {
+      try {
+        await ensureLogSheet();
+        const timestamp = new Date().toISOString();
+        await sheets.spreadsheets.values.append({
+          spreadsheetId,
+          range: `'${logSheetTitle}'!A1`,
+          valueInputOption: 'RAW',
+          insertDataOption: 'INSERT_ROWS',
+          requestBody: {
+            values: [[
+              timestamp,
+              status,
+              payload.manual ? '手動' : '自動',
+              payload.bookingsCount,
+              payload.sheetTitle ?? '',
+              payload.sheetUrl ?? '',
+              payload.executionTime,
+              payload.message,
+              payload.details ?? '',
+            ]],
+          },
+        });
+      } catch (logError) {
+        console.error('Backup log append failed:', logError);
+      }
+    };
 
     // 解析请求体（仅 POST 请求）
     let body: BackupRequest = {};
@@ -47,7 +145,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body = req.body || {};
     }
     const { startDate, endDate, manual = false } = body;
-    logStep('3. 请求参数', { startDate, endDate, manual });
+    manualFlag = Boolean(manual);
+    logStep('3. 请求参数', { startDate, endDate, manual: manualFlag });
 
     // 创建 Supabase 客户端（使用 service role key 以绕过 RLS）
     logStep('4. 创建 Supabase 客户端');
@@ -82,6 +181,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       logStep('警告: 没有数据可以备份');
       return res.status(400).json({ error: '沒有數據可以備份', bookingsCount: 0 });
     }
+    bookingsForLog = bookings.length;
 
     // 获取所有预约的教练信息、参与者和驾驶信息
     logStep('6. 查询关联数据（教练、参与者、驾驶）');
@@ -158,42 +258,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 格式化时间函数
     const formatDateTime = (isoString: string | null): string => {
       if (!isoString) return '';
-      const dt = isoString.substring(0, 16); // "2025-10-30T08:30"
+      const dt = isoString.substring(0, 16);
       const [date, time] = dt.split('T');
       if (!date || !time) return '';
       const [year, month, day] = date.split('-');
       return `${year}/${month}/${day} ${time}`;
     };
 
-    // 生成 CSV
-    logStep('7. 生成 CSV 数据');
-    let csv = '\uFEFF'; // UTF-8 BOM
-    csv += '預約人,預約日期,抵達時間,下水時間,預約時長(分鐘),船隻,教練,駕駛,活動類型,回報狀態,參與者,參與者時長,指定課,狀態,備註,創建時間\n';
+    logStep('7. 生成工作表資料');
+    const headerRow = ['預約人', '預約日期', '抵達時間', '下水時間', '預約時長(分鐘)', '船隻', '教練', '駕駛', '活動類型', '回報狀態', '參與者', '參與者時長', '指定課', '狀態', '備註', '創建時間'];
+    const sheetRows: Array<Array<string | number>> = [headerRow];
 
     bookings.forEach((booking) => {
       const boat = (booking as any).boats?.name || '未指定';
       const coaches = coachesByBooking[booking.id]?.join('/') || '未指定';
       const driver = driverByBooking[booking.id] || '';
       const activities = booking.activity_types?.join('+') || '';
-      const notes = (booking.notes || '').replace(/"/g, '""').replace(/\n/g, ' ');
+      const notes = (booking.notes || '').replace(/\n/g, ' ');
 
-      // 计算抵达时间（提前30分钟）
-      const startTime = booking.start_at.substring(11, 16); // "08:30"
-      const [startHour, startMin] = startTime.split(':').map(Number);
+      const startTimeStr = booking.start_at.substring(11, 16);
+      const [startHour, startMin] = startTimeStr.split(':').map(Number);
       const totalMinutes = startHour * 60 + startMin - 30;
       const arrivalHour = Math.floor(totalMinutes / 60);
       const arrivalMin = totalMinutes % 60;
       const arrivalTime = `${arrivalHour.toString().padStart(2, '0')}:${arrivalMin.toString().padStart(2, '0')}`;
 
-      // 预约日期
       const bookingDate = booking.start_at.substring(0, 10).replace(/-/g, '/');
 
-      // 回報資訊
       const participants = participantsByBooking[booking.id] || [];
-      const hasReport = participants.length > 0;
-      const reportStatus = hasReport ? '已回報' : '未回報';
+      const reportStatus = participants.length > 0 ? '已回報' : '未回報';
 
-      // 状态翻译
       const statusMap: { [key: string]: string } = {
         Confirmed: '已確認',
         confirmed: '已確認',
@@ -203,73 +297,129 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const status = statusMap[booking.status] || booking.status;
 
       if (participants.length > 0) {
-        // 每個參與者一行
         participants.forEach((p, idx) => {
-          const participantName = p.name;
-          const participantDuration = p.duration;
-          const isDesignated = p.designated ? '是' : '否';
-          
-          // 第一個參與者顯示完整預約資訊，其他只顯示參與者資訊
+          const row: Array<string | number> = new Array(headerRow.length).fill('');
           if (idx === 0) {
-            csv += `"${booking.contact_name}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${driver}","${activities}","${reportStatus}","${participantName}",${participantDuration},"${isDesignated}","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`;
-          } else {
-            csv += `"","","","",,"","","","","","${participantName}",${participantDuration},"${isDesignated}","","",""\n`;
+            row[0] = booking.contact_name;
+            row[1] = bookingDate;
+            row[2] = arrivalTime;
+            row[3] = startTimeStr;
+            row[4] = booking.duration_min;
+            row[5] = boat;
+            row[6] = coaches;
+            row[7] = driver;
+            row[8] = activities;
+            row[9] = reportStatus;
+            row[13] = status;
+            row[14] = notes;
+            row[15] = formatDateTime(booking.created_at);
           }
+          row[10] = p.name;
+          row[11] = p.duration;
+          row[12] = p.designated ? '是' : '否';
+          sheetRows.push(row);
         });
       } else {
-        // 沒有回報的預約
-        csv += `"${booking.contact_name}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${driver}","${activities}","${reportStatus}","","","","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`;
+        sheetRows.push([
+          booking.contact_name,
+          bookingDate,
+          arrivalTime,
+          startTimeStr,
+          booking.duration_min,
+          boat,
+          coaches,
+          driver,
+          activities,
+          reportStatus,
+          '',
+          '',
+          '',
+          status,
+          notes,
+          formatDateTime(booking.created_at),
+        ]);
       }
     });
-    logStep('7.1 CSV 生成完成', { csvLength: csv.length });
+    logStep('7.1 工作表資料生成完成', { rowCount: sheetRows.length });
 
-    // 创建 Google Drive 客户端
-    logStep('8. 初始化 Google Drive 客户端');
-    const auth = new google.auth.JWT({
-      email: googleClientEmail,
-      key: googlePrivateKey,
-      scopes: ['https://www.googleapis.com/auth/drive.file'],
-    });
-
-    const drive = google.drive({ version: 'v3', auth });
-    logStep('8.1 Google Drive 客户端创建完成');
-
-    // 生成文件名
-    logStep('9. 准备上传到 Google Drive');
     const dateStr = new Date().toISOString().split('T')[0];
     const timeStr = new Date().toISOString().split('T')[1].substring(0, 5).replace(':', '');
-    const prefix = manual ? '手動備份' : '自動備份';
-    const fileName = `${prefix}_預約備份_${dateStr}_${timeStr}.csv`;
-    logStep('9.1 文件名', { fileName });
+    const prefix = manualFlag ? '手動備份' : '自動備份';
+    let sheetTitle = `${prefix}_${dateStr}_${timeStr}`;
+    logStep('9. 建立工作表', { sheetTitle });
 
-    // 上传文件到 Google Drive
-    const fileMetadata = {
-      name: fileName,
-      parents: [googleDriveFolderId],
-    };
+    let sheetId: number | undefined;
+    try {
+      const addSheetResponse = await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              addSheet: {
+                properties: {
+                  title: sheetTitle,
+                },
+              },
+            },
+          ],
+        },
+      });
+      sheetId = addSheetResponse.data.replies?.[0]?.addSheet?.properties?.sheetId ?? undefined;
+      logStep('9.1 工作表建立完成', { sheetId, sheetTitle });
+    } catch (sheetError: any) {
+      if (sheetError.message?.includes('already exists')) {
+        sheetTitle = `${sheetTitle}_${Date.now().toString().slice(-4)}`;
+        logStep('9.1 工作表名稱重複，使用新名稱', { sheetTitle });
+        const retryResponse = await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [
+              {
+                addSheet: {
+                  properties: {
+                    title: sheetTitle,
+                  },
+                },
+              },
+            ],
+          },
+        });
+        sheetId = retryResponse.data.replies?.[0]?.addSheet?.properties?.sheetId ?? undefined;
+      } else {
+        (sheetError as any).step = 'create_sheet';
+        throw sheetError;
+      }
+    }
 
-    const media = {
-      mimeType: 'text/csv',
-      body: csv,
-    };
-
-    logStep('9.2 开始上传文件到 Google Drive');
-    const uploadResponse = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id, name, webViewLink',
+    logStep('9.2 寫入備份資料', { sheetTitle, rows: sheetRows.length });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${sheetTitle}'!A1`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: sheetRows,
+      },
     });
-    logStep('9.3 文件上传完成', { fileId: uploadResponse.data.id });
+    logStep('9.3 工作表資料寫入完成');
 
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#gid=${sheetId ?? 0}`;
     const totalTime = Date.now() - startTime;
-    logStep('10. 备份完成', { totalTime: `${totalTime}ms`, bookingsCount: bookings.length });
-    
+    logStep('10. 备份完成', { totalTime: `${totalTime}ms`, bookingsCount: bookings.length, sheetTitle });
+
+    await appendLogEntry('SUCCESS', {
+      manual: manualFlag,
+      bookingsCount: bookings.length,
+      sheetTitle,
+      sheetUrl,
+      executionTime: totalTime,
+      message: '備份成功',
+    });
+
     return res.status(200).json({
       success: true,
-      message: `✅ 成功備份 ${bookings.length} 筆資料到 Google Drive`,
-      fileName: uploadResponse.data.name,
-      fileId: uploadResponse.data.id,
-      webViewLink: uploadResponse.data.webViewLink,
+      message: `✅ 成功備份 ${bookings.length} 筆資料到 Google Sheets`,
+      sheetTitle,
+      sheetUrl,
       bookingsCount: bookings.length,
       executionTime: totalTime,
     });
@@ -281,6 +431,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       totalTime: `${totalTime}ms`
     });
     console.error('Backup error:', error);
+
+    try {
+      const message = error.message || '未知錯誤';
+      const details = error.details || error.stack?.substring(0, 1000);
+      await appendLogEntry('ERROR', {
+        manual: manualFlag,
+        bookingsCount: bookingsForLog,
+        executionTime: totalTime,
+        message,
+        details,
+      });
+    } catch (logError) {
+      console.error('寫入失敗紀錄時發生錯誤', logError);
+    }
     return res.status(500).json({
       error: '備份失敗',
       message: error.message || 'Unknown error',

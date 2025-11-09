@@ -413,7 +413,7 @@ export function BackupPage({ user }: BackupPageProps) {
     }
   }
 
-  const backupToGoogleDrive = async () => {
+  const backupToGoogleSheets = async () => {
     setBackupLoading(true)
     const startTime = Date.now()
     
@@ -422,7 +422,7 @@ export function BackupPage({ user }: BackupPageProps) {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 60000) // 60秒超时
 
-      console.log('开始备份...', { startDate, endDate })
+      console.log('開始備份 (Google Sheets)...', { startDate, endDate })
       
       const response = await fetch('/api/backup-to-drive', {
         method: 'POST',
@@ -442,7 +442,7 @@ export function BackupPage({ user }: BackupPageProps) {
       console.log(`收到响应 (${elapsed}ms)`, response.status)
 
       const result = await response.json()
-      console.log('响应结果:', result)
+      console.log('響應結果 (Google Sheets):', result)
 
       if (!response.ok) {
         const errorMsg = result.message || result.error || '備份失敗'
@@ -454,14 +454,14 @@ export function BackupPage({ user }: BackupPageProps) {
 
       const execTime = result.executionTime ? `\n\n執行時間: ${result.executionTime}ms` : ''
       
-      if (result.webViewLink) {
+      if (result.sheetUrl) {
         alert(
           `✅ ${result.message}${execTime}\n\n` +
-          `檔案名稱: ${result.fileName}\n` +
+          `工作表名稱: ${result.sheetTitle}\n` +
           `備份筆數: ${result.bookingsCount} 筆\n\n` +
-          `點擊確定後將在新視窗開啟 Google Drive 檔案`
-      )
-        window.open(result.webViewLink, '_blank')
+          `點擊確定後將在新視窗開啟 Google Sheets`
+        )
+        window.open(result.sheetUrl, '_blank')
       } else {
         alert(`✅ ${result.message}${execTime}`)
       }
@@ -472,7 +472,7 @@ export function BackupPage({ user }: BackupPageProps) {
       let errorMessage = '備份失敗'
       
       if (error.name === 'AbortError') {
-        errorMessage = '❌ 備份超時（超過60秒）\n\n可能原因：\n1. 數據量太大\n2. Google Drive API 響應慢\n3. 網絡連接問題\n\n請檢查 Vercel 函數日誌以獲取詳細信息'
+        errorMessage = '❌ 備份超時（超過60秒）\n\n可能原因：\n1. 數據量太大\n2. Google Sheets API 響應慢\n3. 網絡連接問題\n\n請檢查 Vercel 函數日誌以獲取詳細信息'
       } else if (error.message) {
         errorMessage = `❌ ${error.message}`
       } else {
@@ -483,7 +483,7 @@ export function BackupPage({ user }: BackupPageProps) {
       errorMessage += '\n\n💡 調試提示：'
       errorMessage += '\n1. 打開瀏覽器開發者工具 (F12) → Console 查看詳細錯誤'
       errorMessage += '\n2. 檢查 Vercel Dashboard → Functions → backup-to-drive 的日誌'
-      errorMessage += '\n3. 確認所有環境變數已正確設定'
+      errorMessage += '\n3. 確認所有 Google Sheets / Supabase 環境變數已正確設定'
       
       alert(errorMessage)
     } finally {
@@ -698,7 +698,7 @@ export function BackupPage({ user }: BackupPageProps) {
               {loading ? '⏳ 導出中...' : '💾 導出 CSV 文件'}
             </button>
             <button
-              onClick={backupToGoogleDrive}
+              onClick={backupToGoogleSheets}
               disabled={loading || backupLoading}
               style={{
                 flex: 1,
@@ -714,7 +714,7 @@ export function BackupPage({ user }: BackupPageProps) {
                 transition: 'all 0.2s'
               }}
             >
-              {backupLoading ? '⏳ 備份中...' : '☁️ 備份到 Google Drive'}
+              {backupLoading ? '⏳ 備份中...' : '☁️ 備份到 Google Sheets'}
             </button>
           </div>
 
@@ -735,8 +735,8 @@ export function BackupPage({ user }: BackupPageProps) {
               <li>CSV 文件可用 Excel 或 Google Sheets 打開</li>
               <li>包含完整的預約、會員時數、教練時數等詳細資訊</li>
               <li>所有時間已格式化為易讀格式（YYYY/MM/DD HH:mm）</li>
-              <li>系統會每天自動備份到 Google Drive（根據 vercel.json 中的 cron 設定）</li>
-              <li>也可以手動點擊「備份到 Google Drive」按鈕立即備份</li>
+              <li>系統會每天自動備份到 Google Sheets（根據 vercel.json 中的 cron 設定）</li>
+              <li>也可以手動點擊「備份到 Google Sheets」按鈕立即備份</li>
             </ul>
           </div>
         </div>
