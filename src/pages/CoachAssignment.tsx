@@ -261,16 +261,26 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             coach_id: coachId
           }))
 
-          await supabase
+          const { error: coachInsertError } = await supabase
             .from('booking_coaches')
             .insert(coachesToInsert)
+          
+          if (coachInsertError) {
+            console.error(`插入教練分配失敗 (預約 ${booking.id}):`, coachInsertError)
+            throw new Error(`插入教練分配失敗: ${coachInsertError.message}`)
+          }
         }
 
         // 4. 刪除舊的駕駛分配
-        await supabase
+        const { error: driverDeleteError } = await supabase
           .from('booking_drivers')
           .delete()
           .eq('booking_id', booking.id)
+        
+        if (driverDeleteError) {
+          console.error(`刪除舊駕駛分配失敗 (預約 ${booking.id}):`, driverDeleteError)
+          // 不中斷，繼續執行
+        }
 
         // 5. 插入新的駕駛分配
         if (assignment.driverIds.length > 0) {
@@ -279,9 +289,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             driver_id: driverId
           }))
 
-          await supabase
+          const { error: driverInsertError } = await supabase
             .from('booking_drivers')
             .insert(driversToInsert)
+          
+          if (driverInsertError) {
+            console.error(`插入駕駛分配失敗 (預約 ${booking.id}):`, driverInsertError)
+            throw new Error(`插入駕駛分配失敗: ${driverInsertError.message}`)
+          }
         }
       }
 
