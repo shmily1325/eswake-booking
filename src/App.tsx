@@ -19,7 +19,6 @@ import { QuickTransaction } from './pages/QuickTransaction'
 import { AnnouncementManagement } from './pages/AnnouncementManagement'
 import { LineSettings } from './pages/LineSettings'
 import { LoginPage } from './components/LoginPage'
-import './App.css'
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
