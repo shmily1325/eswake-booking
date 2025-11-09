@@ -1,5 +1,9 @@
 # ESWake Booking System V5 实作进度
 
+## 🎉 全部完成！准备测试
+
+---
+
 ## ✅ 已完成的任务
 
 ### 1. 数据库 V5 迁移 ✅
@@ -42,96 +46,114 @@
   - 移除 `driverName` 参数
   - 简化日志记录格式
 
----
-
-## ⚠️ 进行中/待修复
-
-### 6. 编辑预约对话框 ⚠️
-- ⚠️ `EditBookingDialog.tsx`:
+### 6. 编辑预约对话框 ✅
+- ✅ `EditBookingDialog.tsx`:
   - ✅ 移除 interface 中的 driver 字段
   - ✅ 改为支持 `selectedMemberIds` 数组
-  - ❌ **还有 35 个 linter 错误需要修复**（类似 NewBookingDialog 的修改）
-  - 需要：
-    - 移除所有 `selectedDriver`, `setSelectedDriver` 引用
-    - 移除所有 `student`, `setStudent` 引用
-    - 修复所有 `selectedMemberId` -> `selectedMemberIds`
-    - 修复所有 `setSelectedMemberId` -> `setSelectedMemberIds`
-    - 更新 UI 支持多会员选择
-    - 加载现有预约的会员列表
+  - ✅ 移除所有驾驶相关逻辑
+  - ✅ 更新 UI 支持多会员选择（标签显示）
+  - ✅ 加载现有预约的会员列表
+  - ✅ 更新 booking_members 表
+
+### 7. 教练回报页面 ✅
+- ✅ `CoachCheck.tsx`:
+  - ✅ 完全重构为手机优先设计
+  - ✅ 驾驶回报：油量（手动输入）、驾驶时数（分钟）
+  - ✅ 参与者回报：可搜索会员或手动输入、时数、收费方式
+  - ✅ 单一收费方式选择（现金/汇款/扣储值/票券/指定收费/指定免费）
+  - ✅ 插入 `coach_reports` 和 `booking_participants` 表
+  - ✅ 支持多教练预约（每个教练分别回报）
+  - ✅ 显示回报状态（已回报/待回报）
+
+### 8. 教练排班管理页面 ✅
+- ✅ `CoachAssignment.tsx`:
+  - ✅ 完整版排班管理功能
+  - ✅ 可查看多日预约（今天/三天/一周）
+  - ✅ 手动分配/调整教练
+  - ✅ 添加排班备注
+  - ✅ 按日期分组显示
+  - ✅ 未分配教练警告
+  - ✅ 更新 booking_coaches 和 schedule_notes
 
 ---
 
-## 📋 尚未开始的任务
+## 🚀 部署步骤
 
-### 7. 教练指派页面（可选）⏸️
-- ⏸️ `CoachAssignment.tsx`:
-  - 创建新页面供 Bao 使用
-  - 可以查看今日预约
-  - 可以手动添加教练排班备注
-  - **你提到这个功能可能不需要那么复杂**
+### 1. Push 代码到 GitHub
+```bash
+git push origin v2
+```
 
-### 8. 教练回报页面（重要）🚨
-- 🚨 `CoachCheck.tsx`:
-  - **重构为手机友善界面**
-  - 每个教练分别回报：
-    - 驾驶部分：油量、驾驶时数
-    - 参与者部分：姓名、时数、收费方式
-  - 需要插入 `coach_reports` 表
-  - 简化 `booking_participants` 插入（只用 payment_method）
+### 2. Vercel 自动部署
+- Vercel 会自动检测到新的 commit
+- 等待构建完成
 
----
+### 3. 设置 Supabase 数据库
 
-## 🎯 接下来的步骤建议
+**选项 A：全新设置（推荐测试环境）**
+```sql
+-- 在 Supabase SQL Editor 执行
+-- 文件: reset_and_setup_v5.sql
+-- 这会删除所有现有数据并创建新的 V5 结构
+```
 
-### 选项 A：先完成基础功能（推荐）
-1. 修复 `EditBookingDialog.tsx` 的所有错误
-2. 测试基本的预约创建/编辑流程
-3. Git commit & push，部署到 Vercel
-4. 测试数据库和 API 是否正常工作
+**选项 B：从 V4 迁移（生产环境）**
+```sql
+-- 在 Supabase SQL Editor 执行
+-- 文件: migrate_v4_to_v5.sql
+-- 这会保留现有数据并升级到 V5 结构
+```
 
-### 选项 B：先实作教练回报
-1. 跳过 EditBookingDialog 的修复（暂时不编辑预约）
-2. 直接重构 `CoachCheck.tsx` 为手机友善的回报界面
-3. 这样教练可以立即开始使用新的回报功能
+### 4. 配置 LINE API（可选）
+- 确保 Vercel 环境变量已设置：
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+  - `LINE_CHANNEL_ACCESS_TOKEN`
+- LINE webhook URL: `https://your-domain.vercel.app/api/line-webhook`
 
-### 选项 C：最小可用版本
-1. 只修复 `EditBookingDialog.tsx` 中最关键的错误（让它能编译通过）
-2. 简单重构 `CoachCheck.tsx`（只改 UI，暂不加驾驶回报）
-3. 先部署，再慢慢完善
-
----
-
-## 💬 需要你决定
-
-1. **EditBookingDialog 要修复吗？**
-   - 如果需要编辑预约功能，我会立即修复所有 35 个错误
-   - 如果暂时不用，可以先跳过
-
-2. **教练指派页面还需要吗？**
-   - 你之前提到"不用那么复杂"
-   - 如果不需要，我会跳过这个功能
-
-3. **教练回报是重点吗？**
-   - 如果是，我会优先重构 `CoachCheck.tsx`
-   - 手机友善 + 驾驶回报 + 简化参与者回报
+### 5. 测试功能
+- ✅ 创建新预约（多会员选择）
+- ✅ 编辑预约（多会员选择）
+- ✅ 查看预约（不显示驾驶）
+- ✅ 教练回报（驾驶 + 参与者）
+- ✅ 教练排班管理
+- ✅ LINE User ID 收集
 
 ---
 
-## 📊 当前文件状态
+## 📊 已完成的文件
 
-### ✅ 没有错误
-- `src/pages/DayView.tsx`
-- `src/components/NewBookingDialog.tsx`
-- `src/utils/auditLog.ts`
-- `api/line-webhook.ts`
-- `api/line-reminder.ts`
-- `database_schema_v5.sql`
-- `reset_and_setup_v5.sql`
+### 数据库
+- ✅ `database_schema_v5.sql` - 完整 V5 Schema
+- ✅ `reset_and_setup_v5.sql` - 全新设置脚本（含初始数据）
+- ✅ `migrate_v4_to_v5.sql` - V4 到 V5 迁移脚本
 
-### ❌ 有错误（35个）
-- `src/components/EditBookingDialog.tsx`
+### 前端组件
+- ✅ `src/pages/DayView.tsx` - 移除驾驶显示
+- ✅ `src/components/NewBookingDialog.tsx` - 多会员选择
+- ✅ `src/components/EditBookingDialog.tsx` - 多会员选择
+- ✅ `src/pages/CoachCheck.tsx` - 全新手机友善回报界面
+- ✅ `src/pages/CoachAssignment.tsx` - 教练排班管理
+- ✅ `src/utils/auditLog.ts` - 简化日志
 
-### ⏸️ 未开始
-- `src/pages/CoachCheck.tsx`（需要大幅重构）
-- `src/pages/CoachAssignment.tsx`（可能不需要）
+### API
+- ✅ `api/line-webhook.ts` - 自动收集 LINE User IDs + 静默模式
+- ✅ `api/line-reminder.ts` - 多会员 LINE 提醒
+
+### 路由和菜单
+- ✅ `src/App.tsx` - 添加 CoachAssignment 路由
+- ✅ `src/pages/BaoHub.tsx` - 添加排班管理链接
+
+---
+
+## 📈 V5 新增功能总览
+
+1. **多会员支持** - 一个预约可绑定多个会员（用于 LINE 通知）
+2. **简化驾驶逻辑** - 教练 = 驾驶，不再单独显示
+3. **教练回报系统** - 驾驶回报（油量、时数）+ 参与者回报
+4. **排班管理** - 寶哥专用的教练分配和排班备注
+5. **LINE 集成增强** - 自动收集 User IDs + 静默模式
+6. **简化收费方式** - 单一 payment_method 字段
+7. **数据库触发器** - 自动审计日志
+8. **时区一致性** - 所有时间字段使用 TEXT 格式
 
