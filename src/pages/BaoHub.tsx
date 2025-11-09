@@ -18,6 +18,11 @@ export function BaoHub({ user }: BaoHubProps) {
     comingSoon?: boolean
   }> = [
     {
+      title: '教練排班管理',
+      icon: '📅',
+      link: '/coach-assignment'
+    },
+    {
       title: '會員管理',
       icon: '👥',
       link: '/members'
@@ -26,11 +31,6 @@ export function BaoHub({ user }: BaoHubProps) {
       title: '人員管理',
       icon: '🎓',
       link: '/staff'
-    },
-    {
-      title: '教練排班管理',
-      icon: '📅',
-      link: '/coach-assignment'
     },
     {
       title: '快速記帳',
