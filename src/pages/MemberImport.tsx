@@ -15,6 +15,8 @@ interface ParsedMember {
   nickname?: string
   phone?: string
   email?: string
+  member_type?: string
+  membership_expires_at?: string
   notes?: string
 }
 
@@ -69,7 +71,9 @@ export function MemberImport({ user }: MemberImportProps) {
           nickname: parts[1] || undefined,
           phone: parts[2] || undefined,
           email: parts[3] || undefined,
-          notes: parts[4] || undefined
+          member_type: parts[4] || undefined,
+          membership_expires_at: parts[5] || undefined,
+          notes: parts[6] || undefined
         })
       }
 
@@ -100,9 +104,14 @@ export function MemberImport({ user }: MemberImportProps) {
         nickname: member.nickname || null,
         phone: member.phone || null,
         email: member.email || null,
+        member_type: (member.member_type === 'member' || member.member_type === '會員') ? 'member' : 'guest',
+        membership_expires_at: member.membership_expires_at || null,
         notes: member.notes || null,
         status: 'active',
         balance: 0,
+        designated_lesson_minutes: 0,
+        boat_voucher_g23_minutes: 0,
+        boat_voucher_g21_minutes: 0,
         created_at: new Date().toISOString()
       }))
 
@@ -128,7 +137,7 @@ export function MemberImport({ user }: MemberImportProps) {
   }
 
   const downloadTemplate = () => {
-    const template = 'name,nickname,phone,email,notes\n王小明,小明,0912345678,ming@example.com,VIP會員\n李大華,大華,0923456789,,\n'
+    const template = 'name,nickname,phone,email,member_type,membership_expires_at,notes\n王小明,小明,0912345678,ming@example.com,member,2025-12-31,VIP會員\n李大華,大華,0923456789,,guest,,一般客人\n'
     const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -165,14 +174,17 @@ export function MemberImport({ user }: MemberImportProps) {
               borderRadius: designSystem.borderRadius.sm,
               fontFamily: 'monospace',
               fontSize: '12px',
-              marginBottom: designSystem.spacing.sm
+              marginBottom: designSystem.spacing.sm,
+              overflowX: 'auto'
             }}>
-              name,nickname,phone,email,notes<br/>
-              王小明,小明,0912345678,ming@example.com,VIP會員<br/>
-              李大華,大華,0923456789,,
+              name,nickname,phone,email,member_type,membership_expires_at,notes<br/>
+              王小明,小明,0912345678,ming@example.com,member,2025-12-31,VIP會員<br/>
+              李大華,大華,0923456789,,guest,,一般客人
             </code>
             <p style={{ margin: 0 }}>
               • <strong>name</strong>（姓名）為必填，其他欄位選填<br/>
+              • <strong>member_type</strong>: guest（客人）或 member（會員）<br/>
+              • <strong>membership_expires_at</strong>: 會員到期日（格式：YYYY-MM-DD）<br/>
               • 第一行可以是標題行（會自動跳過）<br/>
               • 空欄位可以留空或使用逗號佔位
             </p>
@@ -267,6 +279,8 @@ export function MemberImport({ user }: MemberImportProps) {
                     <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>暱稱</th>
                     <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>電話</th>
                     <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>Email</th>
+                    <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>類型</th>
+                    <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>會員到期</th>
                     <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}` }}>備註</th>
                   </tr>
                 </thead>
@@ -278,6 +292,18 @@ export function MemberImport({ user }: MemberImportProps) {
                       <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.nickname || '-'}</td>
                       <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.phone || '-'}</td>
                       <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.email || '-'}</td>
+                      <td style={{ padding: designSystem.spacing.sm }}>
+                        <span style={{ 
+                          padding: '2px 8px', 
+                          borderRadius: '4px', 
+                          fontSize: '12px',
+                          background: member.member_type === 'member' || member.member_type === '會員' ? '#e3f2fd' : '#f5f5f5',
+                          color: member.member_type === 'member' || member.member_type === '會員' ? designSystem.colors.info : designSystem.colors.text.secondary
+                        }}>
+                          {member.member_type === 'member' || member.member_type === '會員' ? '會員' : '客人'}
+                        </span>
+                      </td>
+                      <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.membership_expires_at || '-'}</td>
                       <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.notes || '-'}</td>
                     </tr>
                   ))}
