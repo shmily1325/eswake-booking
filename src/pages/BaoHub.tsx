@@ -33,6 +33,11 @@ export function BaoHub({ user }: BaoHubProps) {
       link: '/staff'
     },
     {
+      title: '教練排班管理',
+      icon: '📅',
+      link: '/coach-assignment'
+    },
+    {
       title: '快速記帳',
       icon: '💳',
       link: '/quick-transaction'
