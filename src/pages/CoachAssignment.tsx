@@ -313,7 +313,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         </div>
 
         {/* 预约列表 */}
-        {loading && <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>加载中...</div>}
+        {loading && <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>載入中...</div>}
         
         {!loading && bookings.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>

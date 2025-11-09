@@ -207,6 +207,9 @@ CREATE INDEX idx_bookings_boat ON bookings(boat_id);
 CREATE INDEX idx_bookings_member ON bookings(member_id);
 CREATE INDEX idx_bookings_start_at ON bookings(start_at);
 CREATE INDEX idx_bookings_status ON bookings(status);
+-- 複合索引優化常用查詢
+CREATE INDEX idx_bookings_boat_date ON bookings(boat_id, start_at);
+CREATE INDEX idx_bookings_status_date ON bookings(status, start_at);
 
 -- 8. 預約會員關聯表 (Booking Members) ⭐ V5 新增
 CREATE TABLE booking_members (
