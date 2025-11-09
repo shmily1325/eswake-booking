@@ -3,7 +3,6 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
-import { useResponsive } from '../hooks/useResponsive'
 
 interface Booking {
   id: number
@@ -11,12 +10,10 @@ interface Booking {
   duration_min: number
   contact_name: string
   notes: string | null
-  status: string
+  boat_id: number
   boats: { name: string; color: string } | null
-  coaches: { name: string }[]
-  has_report: boolean
-  participant_count: number
-  reported_participants?: { participant_name: string; duration_min: number; is_designated: boolean }[]
+  coaches: { id: string; name: string }[]
+  has_coach_report?: boolean
 }
 
 interface Member {
@@ -24,19 +21,13 @@ interface Member {
   name: string
   nickname: string | null
   phone: string | null
-  balance: number
-  designated_lesson_minutes: number
-  boat_voucher_g23_minutes: number
-  boat_voucher_g21_minutes: number
 }
 
 interface Participant {
-  id?: string
   member_id: string | null
   participant_name: string
   duration_min: number
-  is_designated: boolean
-  member?: Member
+  payment_method: string
 }
 
 interface CoachCheckProps {
@@ -44,18 +35,31 @@ interface CoachCheckProps {
 }
 
 export function CoachCheck({ user }: CoachCheckProps) {
-  const { isMobile } = useResponsive()
+  // 教练选择
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [coaches, setCoaches] = useState<{ id: string; name: string }[]>([])
+  
+  // 预约列表
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // 回报对话框
   const [reportDialogOpen, setReportDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  
+  // 驾驶回报
+  const [fuelAmount, setFuelAmount] = useState('')
+  const [drivingDuration, setDrivingDuration] = useState('')
+  
+  // 参与者回报
   const [participants, setParticipants] = useState<Participant[]>([])
   const [members, setMembers] = useState<Member[]>([])
-  const [memberSearchTerm, setMemberSearchTerm] = useState('')
-  const [showMemberDropdown, setShowMemberDropdown] = useState(false)
+  const [memberSearchTerms, setMemberSearchTerms] = useState<string[]>([])
+  const [showMemberDropdowns, setShowMemberDropdowns] = useState<boolean[]>([])
+  
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   useEffect(() => {
     loadCoaches()
@@ -65,6 +69,8 @@ export function CoachCheck({ user }: CoachCheckProps) {
   useEffect(() => {
     if (selectedCoachId) {
       loadBookings()
+    } else {
+      setBookings([])
     }
   }, [selectedCoachId])
 
@@ -72,6 +78,7 @@ export function CoachCheck({ user }: CoachCheckProps) {
     const { data } = await supabase
       .from('coaches')
       .select('id, name')
+      .eq('status', 'active')
       .order('name')
     
     if (data) {
@@ -80,13 +87,13 @@ export function CoachCheck({ user }: CoachCheckProps) {
   }
 
   const loadMembers = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('members')
-      .select('id, name, nickname, phone, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes')
+      .select('id, name, nickname, phone')
       .eq('status', 'active')
       .order('name')
 
-    if (!error && data) {
+    if (data) {
       setMembers(data)
     }
   }
@@ -94,26 +101,22 @@ export function CoachCheck({ user }: CoachCheckProps) {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      // 先找出這個教練的所有預約 ID
+      // 查询该教练的所有预约
       const { data: coachBookings } = await supabase
         .from('booking_coaches')
         .select('booking_id')
         .eq('coach_id', selectedCoachId)
 
-      console.log('查詢到的 booking_coaches:', coachBookings)
-
-      const bookingIds = (coachBookings || []).map(b => b.booking_id)
-      console.log('booking IDs:', bookingIds)
-      
-      if (bookingIds.length === 0) {
-        console.log('教練沒有預約')
+      if (!coachBookings || coachBookings.length === 0) {
         setBookings([])
         setLoading(false)
         return
       }
 
-      // 查詢這些預約的詳細資料
-      const bookingsResult = await supabase
+      const bookingIds = coachBookings.map(cb => cb.booking_id)
+
+      // 查询预约详情
+      const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
           id,
@@ -121,155 +124,93 @@ export function CoachCheck({ user }: CoachCheckProps) {
           duration_min,
           contact_name,
           notes,
-          status,
-          boat_id
+          boat_id,
+          boats:boat_id(name, color)
         `)
         .in('id', bookingIds)
-        .order('start_at', { ascending: true })
+        .eq('status', 'confirmed')
+        .order('start_at', { ascending: false })
 
-      if (bookingsResult.error) throw bookingsResult.error
+      if (!bookingsData) {
+        setBookings([])
+        setLoading(false)
+        return
+      }
 
-      // 並行查詢船隻、教練和參與者資料
-      const [boatResult, coachResult, participantResult] = await Promise.all([
-        supabase
-          .from('boats')
-          .select('id, name, color')
-          .in('id', (bookingsResult.data || []).filter(b => b.boat_id).map(b => b.boat_id)),
+      // 查询教练信息
+      const { data: coachesData } = await supabase
+        .from('booking_coaches')
+        .select('booking_id, coaches:coach_id(id, name)')
+        .in('booking_id', bookingIds)
+
+      // 查询该教练是否已回报
+      const { data: reportsData } = await supabase
+        .from('coach_reports')
+        .select('booking_id')
+        .eq('coach_id', selectedCoachId)
+        .in('booking_id', bookingIds)
+
+      const reportedBookingIds = new Set(reportsData?.map(r => r.booking_id) || [])
+
+      // 组装数据
+      const bookingsWithCoaches = bookingsData.map((booking: any) => {
+        const bookingCoaches = coachesData
+          ?.filter((bc: any) => bc.booking_id === booking.id)
+          .map((bc: any) => bc.coaches)
+          .filter(Boolean) || []
         
-        supabase
-          .from('booking_coaches')
-          .select('booking_id, coaches:coach_id(name)')
-          .in('booking_id', bookingIds),
-        
-        supabase
-          .from('booking_participants')
-          .select('booking_id, participant_name, duration_min, is_designated')
-          .in('booking_id', bookingIds)
-      ])
-
-      // 處理船隻資料
-      const boatsById: Record<string, { name: string; color: string }> = {}
-      boatResult.data?.forEach(boat => {
-        boatsById[boat.id] = { name: boat.name, color: boat.color }
-      })
-
-      // 處理教練資料
-      const coachesByBooking: Record<number, { name: string }[]> = {}
-      coachResult.data?.forEach(item => {
-        if (!coachesByBooking[item.booking_id]) {
-          coachesByBooking[item.booking_id] = []
-        }
-          const coach = (item as any).coaches
-          if (coach) {
-          coachesByBooking[item.booking_id].push(coach)
+        return {
+          ...booking,
+          coaches: bookingCoaches,
+          has_coach_report: reportedBookingIds.has(booking.id)
         }
       })
 
-      // 處理參與者資料
-      const participantsByBooking: Record<number, { participant_name: string; duration_min: number; is_designated: boolean }[]> = {}
-      participantResult.data?.forEach(p => {
-        if (!participantsByBooking[p.booking_id]) {
-          participantsByBooking[p.booking_id] = []
-        }
-        participantsByBooking[p.booking_id].push({
-          participant_name: p.participant_name,
-          duration_min: p.duration_min,
-          is_designated: p.is_designated
-        })
-      })
-
-      // 合併資料並過濾已結束的預約
-      const now = new Date()
-      const nowString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
-      
-      const bookingsWithData = (bookingsResult.data || [])
-        .map(booking => {
-          // 計算預約結束時間（TEXT 格式計算）
-          const [datePart, timePart] = booking.start_at.split('T')
-          const [hours, minutes] = timePart.split(':').map(Number)
-          const totalMinutes = hours * 60 + minutes + booking.duration_min
-          const endHours = Math.floor(totalMinutes / 60)
-          const endMinutes = totalMinutes % 60
-          const endTimeString = `${datePart}T${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}:00`
-          
-          return {
-            ...booking,
-            boats: booking.boat_id ? boatsById[booking.boat_id] || null : null,
-            coaches: coachesByBooking[booking.id] || [],
-            has_report: (participantsByBooking[booking.id]?.length || 0) > 0,
-            participant_count: participantsByBooking[booking.id]?.length || 0,
-            reported_participants: participantsByBooking[booking.id] || [],
-            isFinished: endTimeString < nowString
-          }
-        })
-      
-      console.log('所有預約（過濾前）:', bookingsWithData.length)
-      console.log('已結束的預約:', bookingsWithData.filter(b => b.isFinished).length)
-      console.log('當前時間字符串:', nowString)
-      
-      const finishedBookings = bookingsWithData.filter(booking => booking.isFinished)
-      setBookings(finishedBookings as Booking[])
-    } catch (error) {
-      console.error('載入預約失敗:', error)
-      alert('載入預約失敗')
+      setBookings(bookingsWithCoaches)
+    } catch (err) {
+      console.error('加载预约失败:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const openReportDialog = async (booking: Booking) => {
+  const openReportDialog = (booking: Booking) => {
     setSelectedBooking(booking)
-    
-    // Load existing participants
-    const { data, error } = await supabase
-      .from('booking_participants')
-      .select('*')
-      .eq('booking_id', booking.id)
-
-    if (!error && data && data.length > 0) {
-      setParticipants(data.map(p => ({
-        id: p.id,
-        member_id: p.member_id,
-        participant_name: p.participant_name,
-        duration_min: p.duration_min || 0,
-        is_designated: p.is_designated || false
-      })))
-    } else {
-      // 查詢預約人是否為會員
-      const { data: memberData } = await supabase
-        .from('members')
-        .select('id, name, nickname, phone, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes')
-        .eq('status', 'active')
-        .or(`name.eq.${booking.contact_name},nickname.cs.{${booking.contact_name}}`)
-        .limit(1)
-      
-      const matchedMember = memberData?.[0] as Member | undefined
-      
-      setParticipants([{
-        member_id: matchedMember?.id || null,
-        participant_name: booking.contact_name,
-        duration_min: booking.duration_min,
-        is_designated: false,
-        member: matchedMember
-      }])
-    }
-    
+    setFuelAmount('')
+    setDrivingDuration('')
+    setParticipants([{
+      member_id: null,
+      participant_name: '',
+      duration_min: 60,
+      payment_method: 'cash'
+    }])
+    setMemberSearchTerms([''])
+    setShowMemberDropdowns([false])
+    setError('')
+    setSuccess('')
     setReportDialogOpen(true)
   }
 
-  const addParticipant = (member: Member | null, name?: string) => {
+  const closeReportDialog = () => {
+    setReportDialogOpen(false)
+    setSelectedBooking(null)
+  }
+
+  const addParticipant = () => {
     setParticipants([...participants, {
-      member_id: member?.id || null,
-      participant_name: member?.name || name || '',
-      duration_min: selectedBooking?.duration_min || 60,
-      is_designated: false,
-      member: member || undefined
+      member_id: null,
+      participant_name: '',
+      duration_min: 60,
+      payment_method: 'cash'
     }])
-    setMemberSearchTerm('')
+    setMemberSearchTerms([...memberSearchTerms, ''])
+    setShowMemberDropdowns([...showMemberDropdowns, false])
   }
 
   const removeParticipant = (index: number) => {
     setParticipants(participants.filter((_, i) => i !== index))
+    setMemberSearchTerms(memberSearchTerms.filter((_, i) => i !== index))
+    setShowMemberDropdowns(showMemberDropdowns.filter((_, i) => i !== index))
   }
 
   const updateParticipant = (index: number, field: keyof Participant, value: any) => {
@@ -278,283 +219,216 @@ export function CoachCheck({ user }: CoachCheckProps) {
     setParticipants(updated)
   }
 
-  const handleSaveReport = async () => {
-    if (!selectedBooking) return
-    if (participants.length === 0) {
-      alert('請至少添加一位參與者')
+  const selectMember = (index: number, member: Member) => {
+    const updated = [...participants]
+    updated[index] = {
+      ...updated[index],
+      member_id: member.id,
+      participant_name: member.name
+    }
+    setParticipants(updated)
+    
+    const updatedSearchTerms = [...memberSearchTerms]
+    updatedSearchTerms[index] = member.name
+    setMemberSearchTerms(updatedSearchTerms)
+    
+    const updatedDropdowns = [...showMemberDropdowns]
+    updatedDropdowns[index] = false
+    setShowMemberDropdowns(updatedDropdowns)
+  }
+
+  const getFilteredMembers = (searchTerm: string) => {
+    if (!searchTerm) return []
+    const term = searchTerm.toLowerCase()
+    return members.filter(m => 
+      m.name.toLowerCase().includes(term) || 
+      m.nickname?.toLowerCase().includes(term) ||
+      m.phone?.includes(term)
+    )
+  }
+
+  const handleSubmit = async () => {
+    if (!selectedBooking || !selectedCoachId) return
+
+    // 验证
+    if (!fuelAmount || !drivingDuration) {
+      setError('请填写油量和驾驶时数')
+      return
+    }
+
+    const hasInvalidParticipant = participants.some(p => 
+      !p.participant_name || !p.duration_min || !p.payment_method
+    )
+    if (hasInvalidParticipant) {
+      setError('请完整填写所有参与者信息')
       return
     }
 
     setSaving(true)
-    try {
-      // Delete existing participants
-      await supabase
-        .from('booking_participants')
-        .delete()
-        .eq('booking_id', selectedBooking.id)
+    setError('')
 
-      // 準備寫入的數據
-      const dataToInsert = participants.map(p => ({
+    try {
+      // 1. 插入教练驾驶回报
+      const { error: reportError } = await supabase
+        .from('coach_reports')
+        .insert({
+          booking_id: selectedBooking.id,
+          coach_id: selectedCoachId,
+          fuel_amount: parseFloat(fuelAmount),
+          driving_duration_min: parseInt(drivingDuration)
+        })
+
+      if (reportError) throw reportError
+
+      // 2. 插入参与者记录
+      const participantsToInsert = participants.map(p => ({
         booking_id: selectedBooking.id,
+        coach_id: selectedCoachId,
         member_id: p.member_id,
         participant_name: p.participant_name,
         duration_min: p.duration_min,
-        is_designated: p.is_designated,
-        boat_fee_duration_min: null,
-        boat_fee_type: null,
-        designated_fee_duration_min: p.is_designated ? p.duration_min : null,
-        designated_fee_type: p.is_designated ? 'designated_lesson' : null,
-        notes: null
+        payment_method: p.payment_method
       }))
-      
-      console.log('準備寫入的參與者數據:', dataToInsert)
 
-      // Insert new participants
-      const { error } = await supabase
+      const { error: participantsError } = await supabase
         .from('booking_participants')
-        .insert(dataToInsert)
+        .insert(participantsToInsert)
 
-      if (error) {
-        console.error('寫入錯誤:', error)
-        throw error
-      }
-      
-      console.log('參與者數據寫入成功')
-      setReportDialogOpen(false)
-      setSelectedBooking(null)
-      setParticipants([])
-      loadBookings()
-    } catch (error) {
-      console.error('回報失敗:', error)
-      alert('❌ 回報失敗，請重試')
+      if (participantsError) throw participantsError
+
+      setSuccess('✅ 回报成功！')
+      setTimeout(() => {
+        closeReportDialog()
+        loadBookings() // 重新加载列表
+      }, 1500)
+    } catch (err: any) {
+      setError(err.message || '回报失败')
     } finally {
       setSaving(false)
     }
   }
 
-  const filteredMembers = members.filter(m =>
-    m.name.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
-    m.nickname?.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
-    m.phone?.includes(memberSearchTerm)
-  ).slice(0, 10)
-
-  const formatTime = (isoString: string) => {
-    const time = isoString.substring(11, 16)
-    return time
-  }
-
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString)
-    const month = date.getMonth() + 1
-    const day = date.getDate()
-    return `${month}/${day}`
+  const formatDateTime = (dateTimeStr: string) => {
+    const [date, time] = dateTimeStr.substring(0, 16).split('T')
+    const [, month, day] = date.split('-')
+    return `${month}/${day} ${time}`
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      padding: isMobile ? '12px' : '20px'
-    }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <PageHeader title="✅ 教練回報" user={user} />
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+      <PageHeader user={user} title="教练回报" />
+      
+      <div style={{ flex: 1, padding: '20px', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+        <h1 style={{ fontSize: '24px', marginBottom: '20px', color: '#333' }}>📋 教练回报</h1>
 
-        {/* Date Selector */}
-        <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '20px',
-          marginBottom: '15px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-        }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-            fontSize: '14px',
-            color: '#666',
-              fontWeight: '500'
-            }}>
-            選擇教練
-            </label>
-            <select
-              value={selectedCoachId}
-              onChange={(e) => setSelectedCoachId(e.target.value)}
-              style={{
-                width: '100%',
-              padding: isMobile ? '14px' : '12px',
-              fontSize: isMobile ? '16px' : '15px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                boxSizing: 'border-box',
-              backgroundColor: 'white',
-              cursor: 'pointer'
-              }}
-            >
-              <option value="">請選擇教練</option>
-              {coaches.map(coach => (
+        {/* 教练选择 */}
+        <div style={{ marginBottom: '20px', background: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#333' }}>
+            选择教练
+          </label>
+          <select
+            value={selectedCoachId}
+            onChange={(e) => setSelectedCoachId(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px',
+              fontSize: '16px',
+              borderRadius: '8px',
+              border: '1px solid #ddd',
+              background: 'white'
+            }}
+          >
+            <option value="">-- 请选择教练 --</option>
+            {coaches.map(coach => (
               <option key={coach.id} value={coach.id}>{coach.name}</option>
-              ))}
-            </select>
-          </div>
+            ))}
+          </select>
+        </div>
 
-        {/* Statistics */}
-        {bookings.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '15px',
-            marginBottom: '20px'
-          }}>
-            <div style={{
-              background: 'white',
-              padding: '15px',
-              borderRadius: '10px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '13px', color: '#666', marginBottom: '5px' }}>總預約</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#667eea' }}>
-                {bookings.length}
-              </div>
-            </div>
-            <div style={{
-              background: 'white',
-              padding: '15px',
-              borderRadius: '10px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '13px', color: '#666', marginBottom: '5px' }}>已回報</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#28a745' }}>
-                {bookings.filter(b => b.has_report).length}
-              </div>
-            </div>
-            <div style={{
-              background: 'white',
-              padding: '15px',
-              borderRadius: '10px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '13px', color: '#666', marginBottom: '5px' }}>未回報</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#dc3545' }}>
-                {bookings.filter(b => !b.has_report).length}
-              </div>
-            </div>
+        {/* 预约列表 */}
+        {loading && <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>加载中...</div>}
+        
+        {!loading && selectedCoachId && bookings.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            暂无预约记录
           </div>
         )}
 
-        {/* Bookings List */}
-          <div style={{
-            background: 'white',
-          borderRadius: '12px',
-            padding: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-          }}>
-            {loading && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                載入中...
-              </div>
-            )}
-
-            {!loading && bookings.length === 0 && selectedCoachId && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              😔 該教練暫無預約
-              </div>
-            )}
-            
-            {!loading && !selectedCoachId && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              請先選擇教練
-              </div>
-            )}
-
-            {!loading && bookings.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {bookings.map((booking) => (
-                  <div
-                    key={booking.id}
-                    style={{
-                      padding: '16px',
-                    background: booking.has_report ? '#f8f9fa' : 'white',
-                      borderRadius: '8px',
-                    border: `2px solid ${booking.has_report ? '#28a745' : '#e0e0e0'}`,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onClick={() => openReportDialog(booking)}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)'
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = 'none'
-                    }}
-                  >
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                    alignItems: 'start',
-                    marginBottom: '8px'
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{
-                        fontSize: isMobile ? '16px' : '18px',
-                        fontWeight: 'bold',
-                        marginBottom: '4px'
-                      }}>
-                        {formatDate(booking.start_at)} {formatTime(booking.start_at)} / {booking.duration_min}分 / {booking.contact_name}
-                      </div>
-                      <div style={{ fontSize: '14px', color: '#666' }}>
-                        🚤 {booking.boats?.name || '未指定'} 
-                        {booking.coaches.length > 0 && ` / 👨‍🏫 ${booking.coaches.map(c => c.name).join(', ')}`}
-                      </div>
+        {!loading && bookings.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {bookings.map(booking => (
+              <div
+                key={booking.id}
+                style={{
+                  background: 'white',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  borderLeft: `4px solid ${booking.boats?.color || '#999'}`
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
+                      {booking.contact_name}
                     </div>
+                    <div style={{ fontSize: '14px', color: '#666' }}>
+                      🚤 {booking.boats?.name || '未知'} | ⏱️ {booking.duration_min}分钟
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#999', marginTop: '4px' }}>
+                      📅 {formatDateTime(booking.start_at)}
+                    </div>
+                    {booking.coaches.length > 1 && (
+                      <div style={{ fontSize: '13px', color: '#ff9800', marginTop: '4px' }}>
+                        👥 多教练: {booking.coaches.map(c => c.name).join('、')}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {booking.has_coach_report ? (
                     <div style={{
-                      padding: '4px 10px',
-                      background: booking.has_report ? '#d4edda' : '#fff3cd',
-                      color: booking.has_report ? '#155724' : '#856404',
+                      padding: '6px 12px',
+                      background: '#4caf50',
+                      color: 'white',
                       borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      whiteSpace: 'nowrap'
+                      fontSize: '13px',
+                      fontWeight: '500'
                     }}>
-                      {booking.has_report ? `✅ 已回報 (${booking.participant_count}人)` : '⚠️ 未回報'}
+                      ✓ 已回报
                     </div>
-                      </div>
-                      
-                      {/* 顯示回報資訊 */}
-                      {booking.has_report && booking.reported_participants && booking.reported_participants.length > 0 && (
-                        <div style={{
-                          marginTop: '8px',
-                          paddingTop: '8px',
-                          borderTop: '1px solid #dee2e6',
-                          fontSize: isMobile ? '13px' : '14px',
-                          color: '#495057'
-                        }}>
-                          {booking.reported_participants.map((p, idx) => (
-                            <div key={idx} style={{ 
-                              marginBottom: idx < booking.reported_participants!.length - 1 ? '4px' : '0',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}>
-                              <span>👤 {p.participant_name}</span>
-                              <span style={{ color: '#666' }}>• {p.duration_min}分</span>
-                              {p.is_designated && <span style={{ color: '#28a745', fontWeight: 'bold' }}>• ✅指定</span>}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      </div>
-              ))}
-                        </div>
-                      )}
-                      </div>
-                    </div>
+                  ) : (
+                    <button
+                      onClick={() => openReportDialog(booking)}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#2196f3',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      回报
+                    </button>
+                  )}
+                </div>
+                
+                {booking.notes && (
+                  <div style={{ fontSize: '13px', color: '#666', padding: '8px', background: '#f9f9f9', borderRadius: '6px', marginTop: '8px' }}>
+                    📝 {booking.notes}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-      {/* Report Dialog */}
+      <Footer />
+
+      {/* 回报对话框 */}
       {reportDialogOpen && selectedBooking && (
         <div style={{
           position: 'fixed',
@@ -564,369 +438,338 @@ export function CoachCheck({ user }: CoachCheckProps) {
           bottom: 0,
           background: 'rgba(0,0,0,0.5)',
           display: 'flex',
-          alignItems: isMobile ? 'flex-end' : 'center',
+          alignItems: 'flex-start',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: isMobile ? '0' : '20px'
+          overflowY: 'auto',
+          padding: '20px 0'
         }}>
           <div style={{
             background: 'white',
-            borderRadius: isMobile ? '12px 12px 0 0' : '12px',
-            maxWidth: isMobile ? '100%' : '700px',
+            borderRadius: '12px',
+            maxWidth: '500px',
             width: '100%',
-            maxHeight: isMobile ? '95vh' : '90vh',
-            overflow: 'auto',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+            margin: '0 16px',
+            maxHeight: 'calc(100vh - 40px)',
+            overflowY: 'auto'
           }}>
-            {/* Dialog Header */}
+            {/* 标题 */}
             <div style={{
               padding: '20px',
-              borderBottom: '1px solid #e0e0e0',
+              borderBottom: '1px solid #eee',
               position: 'sticky',
               top: 0,
               background: 'white',
               zIndex: 1
             }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
-                  回報預約
-                </h2>
-                <button
-                  onClick={() => {
-                    setReportDialogOpen(false)
-                    setSelectedBooking(null)
-                    setParticipants([])
-                  }}
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: '#666'
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-                      <div style={{
-                marginTop: '10px',
-                        padding: '10px',
-                background: '#f8f9fa',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}>
-                {formatTime(selectedBooking.start_at)} / {selectedBooking.duration_min}分 / 
-                {selectedBooking.boats?.name || '未指定'} / {selectedBooking.contact_name}
+              <h2 style={{ margin: 0, fontSize: '20px', color: '#333' }}>
+                📝 教练回报
+              </h2>
+              <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
+                {selectedBooking.contact_name} | {selectedBooking.boats?.name}
               </div>
             </div>
 
-            {/* Participants List */}
+            {/* 内容 */}
             <div style={{ padding: '20px' }}>
-              <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>參與者</h3>
-              
-              {participants.map((participant, index) => (
-                <div
-                  key={index}
-                  style={{
-                    padding: isMobile ? '12px' : '15px',
-                    background: 'white',
+              {error && (
+                <div style={{
+                  padding: '12px',
+                  background: '#ffebee',
+                  color: '#c62828',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  fontSize: '14px'
+                }}>
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div style={{
+                  padding: '12px',
+                  background: '#e8f5e9',
+                  color: '#2e7d32',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  fontSize: '14px'
+                }}>
+                  {success}
+                </div>
+              )}
+
+              {/* 驾驶回报部分 */}
+              <div style={{ marginBottom: '24px', padding: '16px', background: '#e3f2fd', borderRadius: '8px' }}>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1976d2' }}>
+                  🚤 驾驶回报
+                </h3>
+                
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>
+                    油量（公升）<span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={fuelAmount}
+                    onChange={(e) => setFuelAmount(e.target.value)}
+                    placeholder="例如: 25.5"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: '16px',
+                      borderRadius: '8px',
+                      border: '1px solid #ddd',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>
+                    驾驶时数（分钟）<span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={drivingDuration}
+                    onChange={(e) => setDrivingDuration(e.target.value)}
+                    placeholder="例如: 60"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: '16px',
+                      borderRadius: '8px',
+                      border: '1px solid #ddd',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* 参与者回报部分 */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: '#333' }}>
+                    👥 参与者回报
+                  </h3>
+                  <button
+                    onClick={addParticipant}
+                    style={{
+                      padding: '6px 12px',
+                      background: '#4caf50',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    + 添加参与者
+                  </button>
+                </div>
+
+                {participants.map((participant, index) => (
+                  <div key={index} style={{
+                    padding: '16px',
+                    background: '#f9f9f9',
                     borderRadius: '8px',
                     marginBottom: '12px',
-                    border: '2px solid #e0e0e0',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-                  }}
-                >
-                  {/* Header: Name + Delete */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'start',
-                    marginBottom: '10px'
+                    position: 'relative'
                   }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ 
-                        fontSize: '16px', 
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        flexWrap: 'wrap'
-                      }}>
-                        <span>👤 {participant.participant_name}</span>
-                        {participant.member_id ? (
-                          <span style={{
-                            fontSize: '12px',
-                            padding: '2px 8px',
-                            background: '#e7f3ff',
-                            color: '#007bff',
-                            borderRadius: '4px',
-                            fontWeight: 'normal'
-                          }}>
-                            會員
-                          </span>
-                        ) : (
-                          <span style={{
-                            fontSize: '12px',
-                            padding: '2px 8px',
-                            background: '#f8f9fa',
-                            color: '#666',
-                            borderRadius: '4px',
-                            fontWeight: 'normal'
-                          }}>
-                            非會員
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => removeParticipant(index)}
-                      style={{
-                        padding: '6px 12px',
-                        background: '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        fontWeight: '500'
-                      }}
-                    >
-                      刪除
-                    </button>
-                  </div>
-
-                  {/* Duration Quick Select */}
-                  <div style={{ marginBottom: '10px' }}>
-                          <label style={{
-                            display: 'block',
-                      fontSize: '14px', 
-                      fontWeight: '500', 
-                      marginBottom: '6px' 
-                    }}>
-                      ⏱️ 時長（分鐘）
-                    </label>
-                    <div style={{ 
-                      display: 'flex', 
-                      gap: '6px', 
-                      alignItems: 'center',
-                      flexWrap: 'wrap'
-                    }}>
-                      {[20, 30, 60, 90].map(min => (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <strong style={{ fontSize: '14px', color: '#333' }}>参与者 {index + 1}</strong>
+                      {participants.length > 1 && (
                         <button
-                          key={min}
-                          type="button"
-                          onClick={() => updateParticipant(index, 'duration_min', min)}
+                          onClick={() => removeParticipant(index)}
                           style={{
-                            padding: isMobile ? '10px 16px' : '8px 14px',
-                            border: participant.duration_min === min ? '2px solid #007bff' : '1px solid #dee2e6',
-                            background: participant.duration_min === min ? '#e7f3ff' : 'white',
-                            borderRadius: '6px',
-                            fontSize: isMobile ? '15px' : '14px',
-                            fontWeight: participant.duration_min === min ? 'bold' : 'normal',
-                            color: participant.duration_min === min ? '#007bff' : '#495057',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
+                            padding: '4px 8px',
+                            background: '#f44336',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            cursor: 'pointer'
                           }}
                         >
-                          {min}
+                          删除
                         </button>
-                      ))}
-                      <span style={{ 
-                        fontSize: '14px', 
-                        color: '#666',
-                        margin: '0 4px'
-                      }}>或</span>
+                      )}
+                    </div>
+
+                    {/* 会员搜索 */}
+                    <div style={{ marginBottom: '12px', position: 'relative' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                        姓名<span style={{ color: 'red' }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={memberSearchTerms[index] || participant.participant_name}
+                        onChange={(e) => {
+                          const updatedSearchTerms = [...memberSearchTerms]
+                          updatedSearchTerms[index] = e.target.value
+                          setMemberSearchTerms(updatedSearchTerms)
+                          
+                          // 如果用户手动输入，清空 member_id 并更新姓名
+                          updateParticipant(index, 'participant_name', e.target.value)
+                          if (participant.member_id) {
+                            updateParticipant(index, 'member_id', null)
+                          }
+                        }}
+                        onFocus={() => {
+                          const updatedDropdowns = [...showMemberDropdowns]
+                          updatedDropdowns[index] = true
+                          setShowMemberDropdowns(updatedDropdowns)
+                        }}
+                        placeholder="搜索会员或手动输入..."
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          fontSize: '15px',
+                          borderRadius: '6px',
+                          border: participant.member_id ? '2px solid #4caf50' : '1px solid #ddd',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+
+                      {/* 会员下拉 */}
+                      {showMemberDropdowns[index] && getFilteredMembers(memberSearchTerms[index]).length > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          background: 'white',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          marginTop: '4px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          zIndex: 100
+                        }}>
+                          {getFilteredMembers(memberSearchTerms[index]).map(member => (
+                            <div
+                              key={member.id}
+                              onClick={() => selectMember(index, member)}
+                              style={{
+                                padding: '10px',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid #f0f0f0',
+                                fontSize: '14px'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                            >
+                              <div style={{ fontWeight: 'bold' }}>
+                                {member.name}
+                                {member.nickname && <span style={{ color: '#666', fontWeight: 'normal' }}> ({member.nickname})</span>}
+                              </div>
+                              {member.phone && <div style={{ fontSize: '12px', color: '#999' }}>📱 {member.phone}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 时数 */}
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                        时数（分钟）<span style={{ color: 'red' }}>*</span>
+                      </label>
                       <input
                         type="number"
                         value={participant.duration_min}
                         onChange={(e) => updateParticipant(index, 'duration_min', parseInt(e.target.value) || 0)}
                         style={{
-                          width: isMobile ? '70px' : '60px',
-                          padding: isMobile ? '10px 8px' : '8px 6px',
-                          border: '1px solid #dee2e6',
+                          width: '100%',
+                          padding: '10px',
+                          fontSize: '15px',
                           borderRadius: '6px',
-                          fontSize: isMobile ? '15px' : '14px',
-                          textAlign: 'center'
+                          border: '1px solid #ddd',
+                          boxSizing: 'border-box'
                         }}
                       />
                     </div>
-                  </div>
 
-                  {/* Is Designated */}
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px',
-                    background: participant.is_designated ? '#e8f5e9' : '#f8f9fa',
-                    border: `2px solid ${participant.is_designated ? '#4caf50' : '#e0e0e0'}`,
-                    borderRadius: '6px',
-                    cursor: 'pointer'
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={participant.is_designated}
-                      onChange={(e) => updateParticipant(index, 'is_designated', e.target.checked)}
-                      style={{ 
-                        width: isMobile ? '18px' : '16px',
-                        height: isMobile ? '18px' : '16px',
-                        marginRight: '8px',
-                        cursor: 'pointer'
-                      }}
-                    />
-                    <span style={{ fontSize: isMobile ? '15px' : '14px', fontWeight: '500' }}>
-                      ✅ 指定課
-                    </span>
-                          </label>
-                </div>
-              ))}
-
-              {/* Add Participant Buttons */}
-              <div style={{ marginTop: '15px' }}>
-                <div style={{ position: 'relative', marginBottom: '10px' }}>
-                          <input
-                            type="text"
-                    value={memberSearchTerm}
-                            onChange={(e) => {
-                      setMemberSearchTerm(e.target.value)
-                      setShowMemberDropdown(true)
-                            }}
-                    onFocus={() => setShowMemberDropdown(true)}
-                    placeholder="搜尋會員姓名/暱稱..."
-                            style={{
-                              width: '100%',
-                      padding: '10px',
-                      border: '2px solid #667eea',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
-                  
-                  {showMemberDropdown && filteredMembers.length > 0 && memberSearchTerm && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      background: 'white',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px',
-                      marginTop: '4px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                      zIndex: 1000
-                    }}>
-                      {filteredMembers.map((member) => (
-                        <div
-                          key={member.id}
-                          onClick={() => {
-                            addParticipant(member)
-                            setShowMemberDropdown(false)
-                          }}
-                          style={{
-                            padding: '12px',
-                            cursor: 'pointer',
-                            borderBottom: '1px solid #f0f0f0'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                        >
-                          <div style={{ fontWeight: 'bold' }}>
-                            {member.name}
-                            {member.nickname && <span style={{ color: '#666', fontWeight: 'normal' }}> ({member.nickname})</span>}
-                      </div>
-                          {member.phone && (
-                            <div style={{ fontSize: '13px', color: '#999' }}>
-                              📱 {member.phone}
-                      </div>
-                    )}
+                    {/* 收费方式 */}
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                        收费方式<span style={{ color: 'red' }}>*</span>
+                      </label>
+                      <select
+                        value={participant.payment_method}
+                        onChange={(e) => updateParticipant(index, 'payment_method', e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          fontSize: '15px',
+                          borderRadius: '6px',
+                          border: '1px solid #ddd',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        <option value="cash">现金</option>
+                        <option value="transfer">汇款</option>
+                        <option value="deduct">扣储值</option>
+                        <option value="voucher">票券</option>
+                        <option value="designated_paid">指定（需收费）</option>
+                        <option value="designated_free">指定（不需收费）</option>
+                      </select>
+                    </div>
                   </div>
                 ))}
               </div>
-            )}
-                </div>
-
-                <button
-                  onClick={() => {
-                    const name = prompt('輸入非會員姓名：')
-                    if (name && name.trim()) {
-                      addParticipant(null, name.trim())
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    background: 'white',
-                    color: '#667eea',
-                    border: '2px solid #667eea',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  + 新增非會員
-                </button>
-              </div>
             </div>
 
-            {/* Dialog Footer */}
+            {/* 底部按钮 */}
             <div style={{
-              padding: '20px',
-              borderTop: '1px solid #e0e0e0',
+              padding: '16px 20px',
+              borderTop: '1px solid #eee',
+              display: 'flex',
+              gap: '12px',
               position: 'sticky',
               bottom: 0,
-              background: 'white',
-              display: 'flex',
-              gap: '12px'
+              background: 'white'
             }}>
               <button
-                onClick={() => {
-                  setReportDialogOpen(false)
-                  setSelectedBooking(null)
-                  setParticipants([])
-                }}
+                onClick={closeReportDialog}
                 disabled={saving}
                 style={{
                   flex: 1,
                   padding: '12px',
-                  border: '1px solid #ddd',
+                  background: '#f5f5f5',
+                  color: '#333',
+                  border: 'none',
                   borderRadius: '8px',
-                  background: 'white',
+                  fontSize: '15px',
                   cursor: saving ? 'not-allowed' : 'pointer',
-                  fontSize: '15px'
+                  fontWeight: '500'
                 }}
               >
                 取消
               </button>
               <button
-                onClick={handleSaveReport}
-                disabled={saving || participants.length === 0}
+                onClick={handleSubmit}
+                disabled={saving}
                 style={{
-                  flex: 2,
+                  flex: 1,
                   padding: '12px',
+                  background: saving ? '#ccc' : '#2196f3',
+                  color: 'white',
                   border: 'none',
                   borderRadius: '8px',
-                  background: saving || participants.length === 0 ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
-                  color: 'white',
-                  cursor: saving || participants.length === 0 ? 'not-allowed' : 'pointer',
                   fontSize: '15px',
-                  fontWeight: 'bold'
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  fontWeight: '500'
                 }}
               >
-                {saving ? '儲存中...' : '✅ 確認回報'}
+                {saving ? '提交中...' : '确认提交'}
               </button>
             </div>
           </div>
-          </div>
-        )}
-
-      {/* Footer */}
-      <Footer />
+        </div>
+      )}
     </div>
   )
 }
+
