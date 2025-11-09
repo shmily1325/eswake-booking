@@ -6,7 +6,6 @@ import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getButtonStyle, getInputStyle, getLabelStyle, getTextStyle } from '../styles/designSystem'
-import { checkCoachConflict } from '../utils/bookingConflict'
 
 interface Coach {
   id: string
@@ -176,47 +175,109 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       // 先檢查教練衝突
       const conflicts: string[] = []
       
+      // 1. 在記憶體中檢查這次分配的內部衝突
+      const coachSchedule: Record<string, Array<{ start: Date; end: Date; bookingName: string; bookingId: number }>> = {}
+      
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
         if (!assignment || assignment.coachIds.length === 0) continue
         
-        const dateStr = booking.start_at.substring(0, 10) // YYYY-MM-DD
-        const startTime = booking.start_at.substring(11, 16) // HH:MM
+        const startTime = new Date(booking.start_at)
+        const endTime = new Date(startTime.getTime() + booking.duration_min * 60000)
         
-        // 檢查每個教練是否有衝突
         for (const coachId of assignment.coachIds) {
-          const coach = coaches.find(c => c.id === coachId)
-          const coachName = coach?.name || '未知教練'
+          if (!coachSchedule[coachId]) {
+            coachSchedule[coachId] = []
+          }
           
-          // 檢查與其他預約的衝突（排除當前預約）
-          const conflictResult = await checkCoachConflict(
-            coachId,
-            dateStr,
-            startTime,
-            booking.duration_min
-          )
+          // 檢查與該教練已有的時間是否衝突
+          for (const existing of coachSchedule[coachId]) {
+            if (startTime < existing.end && endTime > existing.start) {
+              const coach = coaches.find(c => c.id === coachId)
+              const coachName = coach?.name || '未知教練'
+              conflicts.push(
+                `${coachName} 時間衝突：\n` +
+                `  ${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name})\n` +
+                `  與 ${existing.bookingName} 重疊`
+              )
+            }
+          }
           
-          if (conflictResult.hasConflict) {
-            // 需要確認這個衝突不是來自當前預約本身
-            const { data: coachBookings } = await supabase
-              .from('booking_coaches')
-              .select('booking_id')
-              .eq('coach_id', coachId)
+          coachSchedule[coachId].push({
+            start: startTime,
+            end: endTime,
+            bookingName: `${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name})`,
+            bookingId: booking.id
+          })
+        }
+      }
+      
+      // 2. 檢查與資料庫中其他預約的衝突（批量查詢）
+      const dateStr = selectedDate
+      const allCoachIds = new Set<string>()
+      for (const booking of bookings) {
+        const assignment = assignments[booking.id]
+        if (assignment) {
+          assignment.coachIds.forEach(id => allCoachIds.add(id))
+        }
+      }
+      
+      if (allCoachIds.size > 0) {
+        // 一次性查詢所有涉及教練在當天的預約
+        const { data: allOtherBookings } = await supabase
+          .from('booking_coaches')
+          .select('coach_id, booking_id, bookings:booking_id(id, start_at, duration_min, contact_name)')
+          .in('coach_id', Array.from(allCoachIds))
+        
+        // 建立教練的資料庫預約映射
+        const dbCoachBookings: Record<string, Array<{ id: number; start: Date; end: Date; name: string }>> = {}
+        
+        if (allOtherBookings) {
+          for (const item of allOtherBookings) {
+            const other = (item as any).bookings
+            if (!other) continue
             
-            const otherBookingIds = coachBookings
-              ?.map(b => b.booking_id)
-              .filter(id => id !== booking.id) || []
+            // 只關心同一天的預約
+            if (!other.start_at.startsWith(dateStr)) continue
             
-            if (otherBookingIds.length > 0) {
-              const { data: conflictingBookings } = await supabase
-                .from('bookings')
-                .select('id, start_at, duration_min, contact_name')
-                .in('id', otherBookingIds)
-                .gte('start_at', `${dateStr}T00:00:00`)
-                .lte('start_at', `${dateStr}T23:59:59`)
+            const coachId = item.coach_id
+            if (!dbCoachBookings[coachId]) {
+              dbCoachBookings[coachId] = []
+            }
+            
+            dbCoachBookings[coachId].push({
+              id: other.id,
+              start: new Date(other.start_at),
+              end: new Date(new Date(other.start_at).getTime() + other.duration_min * 60000),
+              name: `${formatTimeRange(other.start_at, other.duration_min)} (${other.contact_name})`
+            })
+          }
+        }
+        
+        // 檢查衝突
+        for (const booking of bookings) {
+          const assignment = assignments[booking.id]
+          if (!assignment || assignment.coachIds.length === 0) continue
+          
+          const thisStart = new Date(booking.start_at)
+          const thisEnd = new Date(thisStart.getTime() + booking.duration_min * 60000)
+          
+          for (const coachId of assignment.coachIds) {
+            const dbBookings = dbCoachBookings[coachId] || []
+            
+            for (const dbBooking of dbBookings) {
+              // 排除當前預約本身
+              if (dbBooking.id === booking.id) continue
               
-              if (conflictingBookings && conflictingBookings.length > 0) {
-                conflicts.push(`${coachName} 在 ${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name}) 與其他預約衝突`)
+              // 檢查時間重疊
+              if (thisStart < dbBooking.end && thisEnd > dbBooking.start) {
+                const coach = coaches.find(c => c.id === coachId)
+                const coachName = coach?.name || '未知教練'
+                conflicts.push(
+                  `${coachName} 與資料庫中的預約衝突：\n` +
+                  `  ${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name})\n` +
+                  `  與 ${dbBooking.name} 重疊`
+                )
               }
             }
           }
@@ -229,79 +290,91 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         return
       }
       
-      // 沒有衝突，開始更新
+      // 沒有衝突，開始批量更新（只更新有變動的）
+      const changedBookingIds: number[] = []
+      const allCoachesToInsert = []
+      const allDriversToInsert = []
+      
+      // 找出有變動的預約
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
         if (!assignment) continue
         
-        console.log(`更新預約 ${booking.id}:`, {
-          driverIds: assignment.driverIds,
-          schedule_notes: assignment.notes || null,
-          coachIds: assignment.coachIds
-        })
+        // 檢查是否有變動
+        const currentCoachIds = booking.currentCoaches.sort().join(',')
+        const newCoachIds = assignment.coachIds.sort().join(',')
+        const currentDriverIds = booking.currentDrivers.sort().join(',')
+        const newDriverIds = assignment.driverIds.sort().join(',')
+        const currentNotes = booking.schedule_notes || ''
+        const newNotes = assignment.notes || ''
         
-        // 1. 更新排班備註
-        const { error: updateError } = await supabase
-          .from('bookings')
-          .update({ 
-            schedule_notes: assignment.notes || null
-          })
-          .eq('id', booking.id)
+        const hasChanges = 
+          currentCoachIds !== newCoachIds ||
+          currentDriverIds !== newDriverIds ||
+          currentNotes !== newNotes
         
-        if (updateError) {
-          console.error(`更新預約 ${booking.id} 失敗:`, updateError)
-          throw updateError
+        if (hasChanges) {
+          changedBookingIds.push(booking.id)
+          
+          // 準備新的教練分配
+          for (const coachId of assignment.coachIds) {
+            allCoachesToInsert.push({
+              booking_id: booking.id,
+              coach_id: coachId
+            })
+          }
+          
+          // 準備新的駕駛分配
+          for (const driverId of assignment.driverIds) {
+            allDriversToInsert.push({
+              booking_id: booking.id,
+              driver_id: driverId
+            })
+          }
+          
+          // 更新排班備註
+          if (currentNotes !== newNotes) {
+            await supabase
+              .from('bookings')
+              .update({ schedule_notes: newNotes || null })
+              .eq('id', booking.id)
+          }
         }
+      }
+      
+      // 如果沒有任何變動，直接返回
+      if (changedBookingIds.length === 0) {
+        setSuccess('✅ 沒有變動，無需儲存')
+        setSaving(false)
+        return
+      }
 
-        // 2. 刪除舊的教練分配
-        await supabase
+      // 批量刪除有變動預約的舊分配
+      await Promise.all([
+        supabase.from('booking_coaches').delete().in('booking_id', changedBookingIds),
+        supabase.from('booking_drivers').delete().in('booking_id', changedBookingIds)
+      ])
+
+      // 批量插入新的分配
+      if (allCoachesToInsert.length > 0) {
+        const { error: coachInsertError } = await supabase
           .from('booking_coaches')
-          .delete()
-          .eq('booking_id', booking.id)
-
-        // 3. 插入新的教練分配
-        if (assignment.coachIds.length > 0) {
-          const coachesToInsert = assignment.coachIds.map(coachId => ({
-            booking_id: booking.id,
-            coach_id: coachId
-          }))
-
-          const { error: coachInsertError } = await supabase
-            .from('booking_coaches')
-            .insert(coachesToInsert)
-          
-          if (coachInsertError) {
-            console.error(`插入教練分配失敗 (預約 ${booking.id}):`, coachInsertError)
-            throw new Error(`插入教練分配失敗: ${coachInsertError.message}`)
-          }
-        }
-
-        // 4. 刪除舊的駕駛分配
-        const { error: driverDeleteError } = await supabase
-          .from('booking_drivers')
-          .delete()
-          .eq('booking_id', booking.id)
+          .insert(allCoachesToInsert)
         
-        if (driverDeleteError) {
-          console.error(`刪除舊駕駛分配失敗 (預約 ${booking.id}):`, driverDeleteError)
-          // 不中斷，繼續執行
+        if (coachInsertError) {
+          console.error('批量插入教練失敗:', coachInsertError)
+          throw new Error(`插入教練分配失敗: ${coachInsertError.message}`)
         }
-
-        // 5. 插入新的駕駛分配
-        if (assignment.driverIds.length > 0) {
-          const driversToInsert = assignment.driverIds.map(driverId => ({
-            booking_id: booking.id,
-            driver_id: driverId
-          }))
-
-          const { error: driverInsertError } = await supabase
-            .from('booking_drivers')
-            .insert(driversToInsert)
-          
-          if (driverInsertError) {
-            console.error(`插入駕駛分配失敗 (預約 ${booking.id}):`, driverInsertError)
-            throw new Error(`插入駕駛分配失敗: ${driverInsertError.message}`)
-          }
+      }
+      
+      if (allDriversToInsert.length > 0) {
+        const { error: driverInsertError } = await supabase
+          .from('booking_drivers')
+          .insert(allDriversToInsert)
+        
+        if (driverInsertError) {
+          console.error('批量插入駕駛失敗:', driverInsertError)
+          throw new Error(`插入駕駛分配失敗: ${driverInsertError.message}`)
         }
       }
 
