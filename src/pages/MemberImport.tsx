@@ -29,6 +29,8 @@ export function MemberImport({ user }: MemberImportProps) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [preview, setPreview] = useState<ParsedMember[]>([])
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -103,32 +105,29 @@ export function MemberImport({ user }: MemberImportProps) {
     setSuccess('')
 
     try {
-      // 1. 查詢現有會員的電話號碼
-      const phonesToCheck = preview
-        .filter(m => m.phone && m.phone.trim())
-        .map(m => m.phone!.trim())
+      // 1. 查詢現有會員的姓名
+      const namesToCheck = preview.map(m => m.name.trim())
       
-      let existingPhones = new Set<string>()
-      if (phonesToCheck.length > 0) {
+      let existingNames = new Set<string>()
+      if (namesToCheck.length > 0) {
         const { data: existingMembers } = await supabase
           .from('members')
-          .select('phone')
-          .in('phone', phonesToCheck)
+          .select('name')
+          .in('name', namesToCheck)
           .eq('status', 'active')
         
-        existingPhones = new Set(existingMembers?.map(m => m.phone).filter(Boolean) || [])
+        existingNames = new Set(existingMembers?.map(m => m.name) || [])
       }
 
-      // 2. 過濾掉重複的會員（根據電話號碼）
+      // 2. 過濾掉重複的會員（根據姓名）
       const newMembers = preview.filter(member => {
-        if (!member.phone || !member.phone.trim()) return true // 沒有電話號碼的照樣導入
-        return !existingPhones.has(member.phone.trim())
+        return !existingNames.has(member.name.trim())
       })
 
       const skippedCount = preview.length - newMembers.length
 
       if (newMembers.length === 0) {
-        setError('所有會員都已存在（根據電話號碼判斷），沒有新會員需要導入')
+        setError('所有會員都已存在（根據姓名判斷），沒有新會員需要導入')
         setImporting(false)
         return
       }
@@ -158,7 +157,7 @@ export function MemberImport({ user }: MemberImportProps) {
 
       let successMsg = `✅ 成功導入 ${data?.length || newMembers.length} 位會員！`
       if (skippedCount > 0) {
-        successMsg += `\n⚠️ 跳過 ${skippedCount} 位重複會員（電話號碼已存在）`
+        successMsg += `\n⚠️ 跳過 ${skippedCount} 位重複會員（姓名已存在）`
       }
 
       setSuccess(successMsg)
@@ -190,10 +189,10 @@ export function MemberImport({ user }: MemberImportProps) {
     setSuccess('')
 
     try {
-      // 刪除所有 active 狀態的會員（改為 inactive）
+      // 真正刪除所有 active 狀態的會員（無法復原）
       const { error: deleteError } = await supabase
         .from('members')
-        .update({ status: 'inactive' })
+        .delete()
         .eq('status', 'active')
 
       if (deleteError) throw deleteError
@@ -242,7 +241,7 @@ export function MemberImport({ user }: MemberImportProps) {
                 ⚠️ 危險操作
               </h3>
               <div style={{ ...getTextStyle('bodySmall', isMobile), color: '#c62828' }}>
-                清空所有會員資料（會員狀態改為停用）
+                永久刪除所有會員資料（無法復原）
               </div>
             </div>
             <button
@@ -549,7 +548,7 @@ Ingrid,,,,member,,,0,
               ⚠️ 確認清空所有會員
             </h2>
             <p style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: designSystem.spacing.xl }}>
-              此操作會將所有會員的狀態改為「停用」。<br/>
+              此操作會<strong>永久刪除</strong>所有會員資料。<br/>
               此操作<strong>無法復原</strong>，請確認是否繼續？
             </p>
             <div style={{ display: 'flex', gap: designSystem.spacing.md }}>
