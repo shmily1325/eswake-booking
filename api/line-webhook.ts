@@ -12,6 +12,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // 檢查 LINE webhook 是否啟用
+    const { data: webhookSetting } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'line_webhook_enabled')
+      .single();
+
     const body = req.body;
     const events = body.events || [];
 
@@ -19,6 +26,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (event.type === 'message' && event.message.type === 'text') {
         const lineUserId = event.source.userId;
         const messageText = event.message.text.trim();
+
+        // 🆕 記錄所有發送消息的用戶（用於批量匹配）- 永遠執行
+        await supabase
+          .from('line_bindings')
+          .upsert({
+            line_user_id: lineUserId,
+            status: 'pending',
+            created_at: new Date().toISOString()
+          }, {
+            onConflict: 'line_user_id',
+            ignoreDuplicates: false
+          });
+
+        // 🛡️ 靜默模式：只記錄 user ID，不回覆
+        if (!webhookSetting || webhookSetting.setting_value !== 'true') {
+          continue; // 跳過回覆，只記錄
+        }
 
         // Handle binding command
         if (messageText.startsWith('綁定')) {
@@ -32,10 +56,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .single();
 
           if (member) {
+            // 更新 line_bindings 表
             await supabase
-              .from('members')
-              .update({ line_user_id: lineUserId })
-              .eq('id', member.id);
+              .from('line_bindings')
+              .upsert({
+                line_user_id: lineUserId,
+                member_id: member.id,
+                phone: member.phone,
+                status: 'active',
+                completed_at: new Date().toISOString(),
+                created_at: new Date().toISOString()
+              }, {
+                onConflict: 'line_user_id'
+              });
 
             await replyMessage(
               event.replyToken, 
@@ -49,9 +82,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
         else if (messageText === '取消綁定') {
+          // 更新 line_bindings 表狀態為 inactive
           await supabase
-            .from('members')
-            .update({ line_user_id: null })
+            .from('line_bindings')
+            .update({ 
+              status: 'inactive',
+              member_id: null
+            })
             .eq('line_user_id', lineUserId);
 
           await replyMessage(

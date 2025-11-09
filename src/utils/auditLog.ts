@@ -12,7 +12,6 @@ interface CreateBookingLogParams {
   startTime: string
   durationMin: number
   coachNames: string[]
-  driverName?: string
 }
 
 interface UpdateBookingLogParams {
@@ -39,18 +38,13 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
     boatName,
     startTime,
     durationMin,
-    coachNames,
-    driverName
+    coachNames
   } = params
 
   let details = `新增預約：${studentName} / ${boatName} / ${startTime} / ${durationMin}分鐘`
   
   if (coachNames.length > 0) {
     details += ` / 教練：${coachNames.join('、')}`
-  }
-  
-  if (driverName) {
-    details += ` / 駕駛：${driverName}`
   }
 
   try {

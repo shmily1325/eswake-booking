@@ -26,7 +26,6 @@ interface Booking {
   boat_id: number
   contact_name: string
   member_id?: string | null
-  driver_coach_id?: string | null
   start_at: string
   duration_min: number
   activity_types?: string[] | null
@@ -34,7 +33,6 @@ interface Booking {
   status: string
   boats?: Boat
   coaches?: Coach[]
-  driver?: { name: string } | null
 }
 
 const generateTimeSlots = () => {
@@ -186,24 +184,6 @@ export function DayView({ user }: DayViewProps) {
       console.error('Error fetching booking coaches:', error)
     }
 
-    const driverCoachIds = bookingsData
-      .map(b => b.driver_coach_id)
-      .filter(id => id != null)
-    
-    let driversData: any[] = []
-    if (driverCoachIds.length > 0) {
-      const { data, error: driverError } = await supabase
-        .from('coaches')
-        .select('id, name')
-        .in('id', driverCoachIds)
-      
-      if (driverError) {
-        console.error('Error fetching drivers:', driverError)
-      } else {
-        driversData = data || []
-      }
-    }
-
     const coachesByBooking: { [key: number]: Coach[] } = {}
     for (const item of bookingCoachesData || []) {
       const bookingId = item.booking_id
@@ -216,15 +196,9 @@ export function DayView({ user }: DayViewProps) {
       }
     }
 
-    const driversMap: { [key: string]: { name: string } } = {}
-    for (const driver of driversData) {
-      driversMap[driver.id] = { name: driver.name }
-    }
-
     const bookingsWithCoaches = bookingsData.map(booking => ({
       ...booking,
-      coaches: coachesByBooking[booking.id] || [],
-      driver: booking.driver_coach_id ? driversMap[booking.driver_coach_id] : null
+      coaches: coachesByBooking[booking.id] || []
     }))
 
     setBookings(bookingsWithCoaches)
@@ -748,18 +722,6 @@ export function DayView({ user }: DayViewProps) {
                                       ? booking.coaches.map(c => c.name).join(' / ')
                                       : '未指定'}</span>
                                   </div>
-                                  {booking.driver && (
-                                    <div style={{
-                                      fontSize: isMobile ? '12px' : '13px',
-                                      color: '#666',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                    }}>
-                                      <span>🚤</span>
-                                      <span>{booking.driver.name}</span>
-                                    </div>
-                                  )}
                                 </div>
 
                                 {/* 活動類型和備註 */}
@@ -971,18 +933,6 @@ export function DayView({ user }: DayViewProps) {
                               lineHeight: '1.2',
                             }}>
                               {isMobile ? booking.coaches.map(c => c.name).join('/') : `🎓 ${booking.coaches.map(c => c.name).join(' / ')}`}
-                            </div>
-                          )}
-                          
-                          {booking.driver && (
-                            <div style={{
-                              fontSize: isMobile ? '9px' : '12px',
-                              opacity: 0.9,
-                              marginTop: isMobile ? '2px' : '4px',
-                              textAlign: 'center',
-                              lineHeight: '1.2',
-                            }}>
-                              {isMobile ? booking.driver.name : `🚤 ${booking.driver.name}`}
                             </div>
                           )}
                           

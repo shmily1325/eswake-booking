@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-    // Query bookings for tomorrow
+    // Query bookings for tomorrow with booking_members
     const { data: bookings } = await supabase
       .from('bookings')
       .select(`
@@ -33,8 +33,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         start_at,
         duration_min,
         contact_name,
-        member_id,
-        members:member_id(line_user_id, name, phone),
         boats:boat_id(name)
       `)
       .gte('start_at', `${tomorrowStr}T00:00:00`)
@@ -44,12 +42,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ message: 'No bookings tomorrow' });
     }
 
-    // Query coach information
     const bookingIds = bookings.map((b: any) => b.id);
+
+    // Query booking members (多個會員)
+    const { data: bookingMembersData } = await supabase
+      .from('booking_members')
+      .select('booking_id, member_id')
+      .in('booking_id', bookingIds);
+
+    // Query coach information
     const { data: coachData } = await supabase
       .from('booking_coaches')
       .select('booking_id, coaches:coach_id(name)')
       .in('booking_id', bookingIds);
+
+    // Query LINE bindings for active users
+    const memberIds = bookingMembersData?.map((bm: any) => bm.member_id) || [];
+    const { data: lineBindings } = await supabase
+      .from('line_bindings')
+      .select('member_id, line_user_id, members:member_id(name)')
+      .eq('status', 'active')
+      .in('member_id', memberIds);
+
+    // Map booking IDs to members with LINE
+    const membersByBooking: Record<string, any[]> = {};
+    bookingMembersData?.forEach((item: any) => {
+      if (!membersByBooking[item.booking_id]) {
+        membersByBooking[item.booking_id] = [];
+      }
+      const binding = lineBindings?.find((lb: any) => lb.member_id === item.member_id);
+      if (binding) {
+        membersByBooking[item.booking_id].push(binding);
+      }
+    });
 
     // Map booking IDs to coaches
     const coachesByBooking: Record<string, string[]> = {};
@@ -64,34 +89,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let sentCount = 0;
 
-    // Send reminders
+    // Send reminders to all members in each booking
     for (const booking of bookings) {
-      const member = (booking as any).members;
+      const members = membersByBooking[(booking as any).id] || [];
       
-      if (!member || !member.line_user_id) continue;
+      if (members.length === 0) continue;
+      
+      for (const memberBinding of members) {
+        const member = (memberBinding as any).members;
 
-      const [date, time] = (booking as any).start_at.split('T');
-      const [year, month, day] = date.split('-');
-      const dateStr = `${month}/${day}`;
-      const timeStr = time.substring(0, 5);
-      const coaches = coachesByBooking[(booking as any).id]?.join('、') || '未指定';
-      const boat = (booking as any).boats?.name || '未指定';
+        const [date, time] = (booking as any).start_at.split('T');
+        const [year, month, day] = date.split('-');
+        const dateStr = `${month}/${day}`;
+        const timeStr = time.substring(0, 5);
+        const coaches = coachesByBooking[(booking as any).id]?.join('、') || '未指定';
+        const boat = (booking as any).boats?.name || '未指定';
 
-      const message = `🌊 明日預約提醒\n\n${member.name} 您好！\n📅 明天 ${dateStr} ${timeStr}\n🚤 ${boat}\n👨‍🏫 教練：${coaches}\n⏱️ 時長：${(booking as any).duration_min}分鐘\n\n請提前10分鐘到場 🏄`;
+        const message = `🌊 明日預約提醒\n\n${member?.name || '會員'} 您好！\n📅 明天 ${dateStr} ${timeStr}\n🚤 ${boat}\n👨‍🏫 教練：${coaches}\n⏱️ 時長：${(booking as any).duration_min}分鐘\n\n請提前10分鐘到場 🏄`;
 
-      await fetch('https://api.line.me/v2/bot/message/push', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${channelAccessToken}`
-        },
-        body: JSON.stringify({
-          to: member.line_user_id,
-          messages: [{ type: 'text', text: message }]
-        })
-      });
+        await fetch('https://api.line.me/v2/bot/message/push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${channelAccessToken}`
+          },
+          body: JSON.stringify({
+            to: memberBinding.line_user_id,
+            messages: [{ type: 'text', text: message }]
+          })
+        });
 
-      sentCount++;
+        sentCount++;
+      }
     }
 
     return res.status(200).json({ 

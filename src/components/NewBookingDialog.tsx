@@ -43,16 +43,14 @@ export function NewBookingDialog({
   const [selectedBoatId, setSelectedBoatId] = useState(defaultBoatId)
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
-  const [selectedDriver, setSelectedDriver] = useState<string>('') // 駕駛（可選）
   
-  // 會員搜尋相關
+  // 會員搜尋相關（支援多會員）
   const [members, setMembers] = useState<Member[]>([])
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]) // 改為陣列
   const [showMemberDropdown, setShowMemberDropdown] = useState(false)
   const [manualStudentName, setManualStudentName] = useState('') // 手動輸入的名字
   
-  const [student, setStudent] = useState('')
   const [startDate, setStartDate] = useState('')
   const [startTime, setStartTime] = useState('00:00')
   const [durationMin, setDurationMin] = useState(60)
@@ -227,7 +225,7 @@ export function NewBookingDialog({
     setError('')
 
     // 驗證必填欄位
-    if (!selectedMemberId && !manualStudentName.trim()) {
+    if (selectedMemberIds.length === 0 && !manualStudentName.trim()) {
       setError('⚠️ 請選擇會員或輸入姓名')
       return
     }
@@ -242,16 +240,6 @@ export function NewBookingDialog({
     if (hour < 8 && selectedCoaches.length === 0) {
       setError('⚠️ 08:00之前的預約必須指定教練')
       return
-    }
-
-    // 防呆檢查：教練和駕駛不能是同一人
-    if (selectedDriver) {
-      const driverCoach = coaches.find(c => c.name === selectedDriver)
-      if (driverCoach && selectedCoaches.includes(driverCoach.id)) {
-        const conflictName = driverCoach.name
-        setError(`⚠️ ${conflictName} 不能同時擔任教練和駕駛`)
-        return
-      }
     }
 
     setLoading(true)
@@ -376,24 +364,9 @@ export function NewBookingDialog({
               break
             }
             
-            // 第二步：查詢該教練作為駕駛的所有預約
-            const { data: driverBookings, error: driverCheckError } = await supabase
-              .from('bookings')
-              .select('id, start_at, duration_min, contact_name')
-              .eq('driver_coach_id', coachId)
-            
-            console.log(`🚗 教練 ${coachName} 作為駕駛的預約數量: ${driverBookings?.length || 0}`)
-            
-            if (driverCheckError) {
-              hasConflict = true
-              conflictReason = '檢查教練衝突時發生錯誤'
-              break
-            }
-            
             // 合併所有預約ID
             const allBookingIds = [
-              ...(coachBookingIds?.map(item => item.booking_id) || []),
-              ...(driverBookings?.map(item => item.id) || [])
+              ...(coachBookingIds?.map(item => item.booking_id) || [])
             ]
             
             if (allBookingIds.length === 0) {
@@ -445,79 +418,6 @@ export function NewBookingDialog({
           }
         }
         
-        // 檢查駕駛衝突（如果有選擇駕駛）
-        if (!hasConflict && selectedDriver) {
-          console.log(`🚗 開始檢查駕駛衝突: ${selectedDriver}`)
-          // 找到駕駛的 ID
-          const driverCoach = coaches.find(c => c.name === selectedDriver)
-          if (driverCoach) {
-            console.log(`🚗 駕駛 ID: ${driverCoach.id}`)
-            
-            // 查詢該駕駛作為駕駛的所有預約
-            const { data: driverBookings, error: driverCheckError1 } = await supabase
-              .from('bookings')
-              .select('id, start_at, duration_min, contact_name')
-              .eq('driver_coach_id', driverCoach.id)
-            
-            console.log(`🚗 駕駛 ${selectedDriver} 作為駕駛的預約數量: ${driverBookings?.length || 0}`)
-            
-            // 查詢該駕駛作為教練的所有預約
-            const { data: coachBookingIds, error: driverCheckError2 } = await supabase
-              .from('booking_coaches')
-              .select('booking_id')
-              .eq('coach_id', driverCoach.id)
-            
-            console.log(`📋 駕駛 ${selectedDriver} 作為教練的預約數量: ${coachBookingIds?.length || 0}`)
-            
-            if (driverCheckError1 || driverCheckError2) {
-              hasConflict = true
-              conflictReason = '檢查駕駛衝突時發生錯誤'
-            } else {
-              // 合併所有預約ID
-              const allBookingIds = [
-                ...(driverBookings?.map(item => item.id) || []),
-                ...(coachBookingIds?.map(item => item.booking_id) || [])
-              ]
-              
-              if (allBookingIds.length > 0) {
-                // 查詢所有預約的詳細信息
-                const { data: allBookings } = await supabase
-                  .from('bookings')
-                  .select('id, start_at, duration_min, contact_name')
-                  .in('id', allBookingIds)
-                
-                // 篩選出同一天的預約
-                const sameDayBookings = (allBookings || []).filter(booking => {
-                  const bookingDate = booking.start_at.substring(0, 10)
-                  return bookingDate === dateStr
-                })
-                
-                console.log(`📅 駕駛 ${selectedDriver} 在 ${dateStr} 的所有預約數（教練+駕駛）: ${sameDayBookings.length}`)
-                
-                // 檢查時間重疊
-                for (const booking of sameDayBookings) {
-                  const bookingDatetime = booking.start_at.substring(0, 16)
-                  const [, bookingTime] = bookingDatetime.split('T')
-                  const [bookingHour, bookingMinute] = bookingTime.split(':').map(Number)
-                  
-                  const bookingStartMinutes = bookingHour * 60 + bookingMinute
-                  const bookingEndMinutes = bookingStartMinutes + booking.duration_min
-                  
-                  console.log(`⏰ 檢查時段: 新預約 ${newStartMinutes}-${newEndMinutes} vs 現有預約 ${bookingStartMinutes}-${bookingEndMinutes} (${booking.contact_name})`)
-                  
-                  // 檢查時間重疊
-                  if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
-                    hasConflict = true
-                    conflictReason = `${selectedDriver} 在此時段已有其他預約（${booking.contact_name}）`
-                    console.log(`❌ 衝突！${conflictReason}`)
-                    break
-                  }
-                }
-              }
-            }
-          }
-        }
-        
         // 如果有衝突，跳過這個日期
         if (hasConflict) {
           results.skipped.push({ date: displayDate, reason: conflictReason })
@@ -525,24 +425,18 @@ export function NewBookingDialog({
         }
       
         // 決定最終的學生名字
-        const finalStudentName = selectedMemberId 
-          ? (members.find(m => m.id === selectedMemberId)?.name || manualStudentName)
+        const finalStudentName = selectedMemberIds.length > 0
+          ? members.filter(m => selectedMemberIds.includes(m.id)).map(m => m.name).join(', ') || manualStudentName
           : manualStudentName
-
-        // 找到駕駛的 ID（如果有選擇）
-        const driverCoachId = selectedDriver 
-          ? (coaches.find(c => c.name === selectedDriver)?.id || null)
-          : null
 
         // 創建預約
         const bookingToInsert = {
           boat_id: selectedBoatId,
-          member_id: selectedMemberId || null,  // 會員 ID（可選）
-          contact_name: finalStudentName,        // 聯絡人姓名
-          contact_phone: null,                   // TODO: 之後可以加電話
+          member_id: selectedMemberIds[0] || null,  // 主要會員 ID（向下相容）
+          contact_name: finalStudentName,           // 聯絡人姓名
+          contact_phone: null,                      // TODO: 之後可以加電話
           start_at: newStartAt,
           duration_min: durationMin,
-          driver_coach_id: driverCoachId,        // 駕駛 ID（可選）
           notes: notes || null,
           status: 'confirmed',
           created_by: user.id,
@@ -584,22 +478,36 @@ export function NewBookingDialog({
           }
         }
 
+        // 插入會員關聯（V5 新增：支援多會員）
+        if (selectedMemberIds.length > 0 && insertedBooking) {
+          const bookingMembersToInsert = selectedMemberIds.map(memberId => ({
+            booking_id: insertedBooking.id,
+            member_id: memberId,
+            created_at: new Date().toISOString()
+          }))
+
+          const { error: memberInsertError } = await supabase
+            .from('booking_members')
+            .insert(bookingMembersToInsert)
+
+          if (memberInsertError) {
+            console.error('插入會員關聯失敗:', memberInsertError)
+            // 不中斷流程，只記錄錯誤
+          }
+        }
+
         // 記錄到審計日誌（人類可讀格式）
         const coachNames = selectedCoaches.length > 0
           ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
           : []
-        const driverName = selectedDriver
-          ? coaches.find(c => c.id === selectedDriver)?.name
-          : undefined
 
         await logBookingCreation({
           userEmail: user.email || '',
-          studentName: student,
+          studentName: finalStudentName,
           boatName,
           startTime: newStartAt,
           durationMin,
-          coachNames,
-          driverName
+          coachNames
         })
 
         // 記錄成功
@@ -630,12 +538,10 @@ export function NewBookingDialog({
 
       // Success - 重置表單
       setSelectedCoaches([])
-      setSelectedDriver('') // 清除駕駛選擇
-      setSelectedMemberId(null) // 清除會員選擇
+      setSelectedMemberIds([]) // 清除會員選擇
       setMemberSearchTerm('') // 清除會員搜尋
       setManualStudentName('') // 清除手動輸入名字
       setShowMemberDropdown(false) // 關閉下拉選單
-      setStudent('')
       setStartDate('')
       setStartTime('00:00')
       setDurationMin(60)
@@ -656,12 +562,10 @@ export function NewBookingDialog({
   const handleClose = () => {
     if (!loading) {
       setSelectedCoaches([])
-      setSelectedDriver('') // 清除駕駛選擇
-      setSelectedMemberId(null) // 清除會員選擇
+      setSelectedMemberIds([]) // 清除會員選擇
       setMemberSearchTerm('') // 清除會員搜尋
       setManualStudentName('') // 清除手動輸入名字
       setShowMemberDropdown(false) // 關閉下拉選單
-      setStudent('')
       setStartDate('')
       setStartTime('00:00')
       setDurationMin(60)
@@ -719,8 +623,43 @@ export function NewBookingDialog({
               fontSize: '15px',
               fontWeight: '500',
             }}>
-              預約人 {selectedMemberId && <span style={{ color: '#4caf50', fontSize: '13px' }}>（已選擇會員）</span>}
+              預約人 {selectedMemberIds.length > 0 && <span style={{ color: '#4caf50', fontSize: '13px' }}>（已選 {selectedMemberIds.length} 位）</span>}
             </label>
+            
+            {/* 已選擇的會員列表 */}
+            {selectedMemberIds.length > 0 && (
+              <div style={{ marginBottom: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {selectedMemberIds.map(memberId => {
+                  const member = members.find(m => m.id === memberId)
+                  return member ? (
+                    <span key={memberId} style={{
+                      padding: '4px 8px',
+                      background: '#4caf50',
+                      color: 'white',
+                      borderRadius: '12px',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      {member.name}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMemberIds(prev => prev.filter(id => id !== memberId))}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'white',
+                          cursor: 'pointer',
+                          padding: '0 2px',
+                          fontSize: '16px'
+                        }}
+                      >×</button>
+                    </span>
+                  ) : null
+                })}
+              </div>
+            )}
             
             {/* 搜尋會員 */}
             <input
@@ -729,17 +668,14 @@ export function NewBookingDialog({
               onChange={(e) => {
                 setMemberSearchTerm(e.target.value)
                 setShowMemberDropdown(true)
-                if (!e.target.value) {
-                  setSelectedMemberId(null)
-                }
               }}
               onFocus={() => setShowMemberDropdown(true)}
-              placeholder="搜尋會員姓名/暱稱..."
+              placeholder="搜尋會員姓名/暱稱...（可多選）"
               style={{
                 width: '100%',
                 padding: '12px',
                 borderRadius: '8px',
-                border: selectedMemberId ? '2px solid #4caf50' : '1px solid #ccc',
+                border: selectedMemberIds.length > 0 ? '2px solid #4caf50' : '1px solid #ccc',
                 boxSizing: 'border-box',
                 fontSize: '16px',
                 touchAction: 'manipulation',
@@ -762,67 +698,71 @@ export function NewBookingDialog({
                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 zIndex: 1000,
               }}>
-                {filteredMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    onClick={() => {
-                      setSelectedMemberId(member.id)
-                      setMemberSearchTerm(member.name + (member.nickname ? ` (${member.nickname})` : ''))
-                      setManualStudentName(member.name)
-                      setShowMemberDropdown(false)
-                    }}
-                    style={{
-                      padding: '12px',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #f0f0f0',
-                      transition: 'background 0.2s',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                  >
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                      {member.name}
-                      {member.nickname && <span style={{ color: '#666', fontWeight: 'normal' }}> ({member.nickname})</span>}
-                    </div>
-                    {member.phone && (
-                      <div style={{ fontSize: '13px', color: '#999' }}>
-                        📱 {member.phone}
+                {filteredMembers.map((member) => {
+                  const isSelected = selectedMemberIds.includes(member.id)
+                  return (
+                    <div
+                      key={member.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedMemberIds(prev => prev.filter(id => id !== member.id))
+                        } else {
+                          setSelectedMemberIds(prev => [...prev, member.id])
+                        }
+                        setMemberSearchTerm('')
+                        setShowMemberDropdown(false)
+                      }}
+                      style={{
+                        padding: '12px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f0f0f0',
+                        transition: 'background 0.2s',
+                        background: isSelected ? '#e8f5e9' : 'white'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = isSelected ? '#c8e6c9' : '#f5f5f5'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? '#e8f5e9' : 'white'}
+                    >
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                        {isSelected && '✓ '}{member.name}
+                        {member.nickname && <span style={{ color: '#666', fontWeight: 'normal' }}> ({member.nickname})</span>}
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {member.phone && (
+                        <div style={{ fontSize: '13px', color: '#999' }}>
+                          📱 {member.phone}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
             
-            {/* 或手動輸入 */}
-            {!selectedMemberId && (
-              <div style={{ marginTop: '8px' }}>
-                <input
-                  type="text"
-                  value={manualStudentName}
-                  onChange={(e) => setManualStudentName(e.target.value)}
-                  placeholder="或直接輸入姓名（非會員/首次體驗）"
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #ff9800',
-                    boxSizing: 'border-box',
-                    fontSize: '16px',
-                    touchAction: 'manipulation',
-                  }}
-                />
-              </div>
-            )}
+            {/* 或手動輸入（非會員） */}
+            <div style={{ marginTop: '8px' }}>
+              <input
+                type="text"
+                value={manualStudentName}
+                onChange={(e) => setManualStudentName(e.target.value)}
+                placeholder="或直接輸入姓名（非會員/首次體驗）"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ff9800',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                  touchAction: 'manipulation',
+                }}
+              />
+            </div>
             
-            {/* 清除會員選擇 */}
-            {selectedMemberId && (
+            {/* 清除所有會員選擇 */}
+            {selectedMemberIds.length > 0 && (
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedMemberId(null)
+                  setSelectedMemberIds([])
                   setMemberSearchTerm('')
-                  setManualStudentName('')
                 }}
                 style={{
                   marginTop: '8px',
@@ -835,7 +775,7 @@ export function NewBookingDialog({
                   cursor: 'pointer',
                 }}
               >
-                清除會員選擇
+                清除所有會員
               </button>
             )}
           </div>
@@ -913,94 +853,6 @@ export function NewBookingDialog({
                       type="checkbox"
                       checked={selectedCoachesSet.has(coach.id)}
                       onChange={() => toggleCoach(coach.id)}
-                      style={{
-                        marginRight: '10px',
-                        width: '18px',
-                        height: '18px',
-                        cursor: 'pointer',
-                      }}
-                    />
-                    <span style={{ fontSize: '15px' }}>{coach.name}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 駕駛選擇 */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '500',
-            }}>
-              駕駛（選填）
-            </label>
-            
-            {loadingCoaches ? (
-              <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
-                載入駕駛列表中...
-              </div>
-            ) : (
-              <div style={{
-                maxHeight: '180px',
-                overflowY: 'auto',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                padding: '8px',
-                WebkitOverflowScrolling: 'touch',
-              }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '10px',
-                  cursor: 'pointer',
-                  borderRadius: '6px',
-                  transition: 'background 0.2s',
-                  backgroundColor: selectedDriver === '' ? '#f0f0f0' : 'transparent',
-                }}>
-                  <input
-                    type="radio"
-                    checked={selectedDriver === ''}
-                    onChange={() => setSelectedDriver('')}
-                    style={{
-                      marginRight: '10px',
-                      width: '18px',
-                      height: '18px',
-                      cursor: 'pointer',
-                    }}
-                  />
-                  <span style={{ fontSize: '15px', color: '#666' }}>不指定駕駛</span>
-                </label>
-                {coaches.map((coach) => (
-                  <label
-                    key={coach.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '10px',
-                      cursor: 'pointer',
-                      borderRadius: '6px',
-                      transition: 'background 0.2s',
-                      backgroundColor: selectedDriver === coach.name ? '#e3f2fd' : 'transparent',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedDriver !== coach.name) {
-                        e.currentTarget.style.backgroundColor = '#f5f5f5'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedDriver !== coach.name) {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      checked={selectedDriver === coach.name}
-                      onChange={() => setSelectedDriver(coach.name)}
                       style={{
                         marginRight: '10px',
                         width: '18px',
