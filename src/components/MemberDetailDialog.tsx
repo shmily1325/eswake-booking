@@ -265,7 +265,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                 >
                   基本資料
                 </button>
-                <button
+                {/* 暫時隱藏交易記錄功能 */}
+                {/* <button
                   onClick={() => setActiveTab('transactions')}
                   style={{
                     flex: 1,
@@ -279,7 +280,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                   }}
                 >
                   交易記錄 ({transactions.length})
-                </button>
+                </button> */}
               </div>
 
               {/* 內容區 */}
@@ -400,7 +401,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                       >
                         ✏️ 編輯資料
                       </button>
-                      <button
+                      {/* 暫時隱藏記帳功能 */}
+                      {/* <button
                         onClick={() => setTransactionDialogOpen(true)}
                         style={{
                           flex: isMobile ? '1 1 100%' : '1',
@@ -415,7 +417,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         }}
                       >
                         💳 記帳
-                      </button>
+                      </button> */}
                     </div>
                   </>
                 ) : (

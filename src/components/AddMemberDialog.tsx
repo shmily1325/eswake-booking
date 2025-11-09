@@ -407,7 +407,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                       type="text"
                       value={board.notes}
                       onChange={(e) => updateBoard(index, 'notes', e.target.value)}
-                      placeholder="例如：藍色長板"
+                      placeholder="例如：有三格"
                       style={{...inputStyle, fontSize: '14px', padding: '8px'}}
                     />
                   </div>

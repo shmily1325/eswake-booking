@@ -9,9 +9,10 @@ interface PageHeaderProps {
   user: User
   showBaoLink?: boolean
   showHomeLink?: boolean
+  breadcrumbs?: Array<{ label: string; link: string }>
 }
 
-export function PageHeader({ title, user, showBaoLink = false, showHomeLink = true }: PageHeaderProps) {
+export function PageHeader({ title, user, showBaoLink = false, showHomeLink = true, breadcrumbs }: PageHeaderProps) {
   const { isMobile } = useResponsive()
 
   const navButtonStyle: React.CSSProperties = {
@@ -29,34 +30,72 @@ export function PageHeader({ title, user, showBaoLink = false, showHomeLink = tr
 
   return (
     <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
       marginBottom: isMobile ? designSystem.spacing.md : designSystem.spacing.xl,
       background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
       padding: designSystem.spacing.lg,
       borderRadius: designSystem.borderRadius.lg,
       boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
     }}>
-      <h1 style={{
-        ...getTextStyle('h1', isMobile),
-        fontWeight: 'bold',
-        color: 'white'
+      {/* 面包屑導航 */}
+      {breadcrumbs && breadcrumbs.length > 0 && (
+        <div style={{
+          marginBottom: designSystem.spacing.sm,
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '4px',
+          fontSize: designSystem.fontSize.bodySmall[isMobile ? 'mobile' : 'desktop'],
+          color: 'rgba(255, 255, 255, 0.7)'
+        }}>
+          {breadcrumbs.map((crumb, index) => (
+            <span key={index} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Link
+                to={crumb.link}
+                style={{
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  textDecoration: 'none',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)'}
+              >
+                {crumb.label}
+              </Link>
+              {index < breadcrumbs.length - 1 && <span style={{ opacity: 0.5 }}>›</span>}
+            </span>
+          ))}
+          <span style={{ opacity: 0.5 }}>›</span>
+          <span style={{ color: 'white' }}>{title}</span>
+        </div>
+      )}
+      
+      {/* 標題和導航 */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
       }}>
-        {title}
-      </h1>
-      <div style={{ display: 'flex', gap: designSystem.spacing.sm, alignItems: 'center' }}>
-        {showBaoLink && (
-          <Link to="/bao" style={navButtonStyle}>
-            ← BAO
-          </Link>
-        )}
-        {showHomeLink && (
-          <Link to="/" style={navButtonStyle}>
-            ← HOME
-          </Link>
-        )}
-        <UserMenu user={user} />
+        <h1 style={{
+          ...getTextStyle('h1', isMobile),
+          fontWeight: 'bold',
+          color: 'white',
+          margin: 0
+        }}>
+          {title}
+        </h1>
+        <div style={{ display: 'flex', gap: designSystem.spacing.sm, alignItems: 'center' }}>
+          {showBaoLink && (
+            <Link to="/bao" style={navButtonStyle}>
+              ← BAO
+            </Link>
+          )}
+          {showHomeLink && (
+            <Link to="/" style={navButtonStyle}>
+              ← HOME
+            </Link>
+          )}
+          <UserMenu user={user} />
+        </div>
       </div>
     </div>
   )

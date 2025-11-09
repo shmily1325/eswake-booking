@@ -84,7 +84,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       const startDateStr = formatDateForQuery(startDate)
       const endDateStr = formatDateForQuery(endDate)
 
-      // 查詢預約
+      // 查詢預約（不過濾 status，顯示所有預約）
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
@@ -99,7 +99,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         `)
         .gte('start_at', `${startDateStr}T00:00:00`)
         .lte('start_at', `${endDateStr}T23:59:59`)
-        .eq('status', 'confirmed')
         .order('start_at', { ascending: true })
 
       if (!bookingsData || bookingsData.length === 0) {

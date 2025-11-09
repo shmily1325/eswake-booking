@@ -32,11 +32,12 @@ export function BaoHub({ user }: BaoHubProps) {
       icon: '🎓',
       link: '/staff'
     },
-    {
-      title: '快速記帳',
-      icon: '💳',
-      link: '/quick-transaction'
-    },
+    // 暫時隱藏快速記帳功能
+    // {
+    //   title: '快速記帳',
+    //   icon: '💳',
+    //   link: '/quick-transaction'
+    // },
     {
       title: '公告管理',
       icon: '📢',
