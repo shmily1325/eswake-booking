@@ -101,8 +101,16 @@ export function EditBookingDialog({
             const memberIds = bookingMembersData.map(bm => bm.member_id)
             setSelectedMemberIds(memberIds)
             
-            // 如果有會員，清空手動輸入
-            setManualStudentName('')
+            // 從 contact_name 中提取非會員名字
+            const memberNames = bookingMembersData
+              .map((bm: any) => bm.members?.name)
+              .filter(Boolean)
+            
+            // contact_name 可能是 "會員1, 會員2, 非會員1, 非會員2"
+            // 需要移除會員名字，剩下的就是手動輸入的非會員
+            const allNames = booking.contact_name.split(',').map(n => n.trim())
+            const manualNames = allNames.filter(name => !memberNames.includes(name))
+            setManualStudentName(manualNames.join(', '))
             
             // 設置搜尋框顯示第一個會員名字
             const firstMemberName = (bookingMembersData[0] as any).members?.name
