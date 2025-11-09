@@ -160,10 +160,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         const assignment = assignments[booking.id]
         if (!assignment) continue
         
-        // 1. 更新排班備註
+        // 1. 更新排班備註和專門駕駛
         await supabase
           .from('bookings')
-          .update({ schedule_notes: assignment.notes || null })
+          .update({ 
+            schedule_notes: assignment.notes || null,
+            driver_id: assignment.driverId || null
+          })
           .eq('id', booking.id)
 
         // 2. 刪除舊的教練分配
@@ -172,14 +175,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           .delete()
           .eq('booking_id', booking.id)
 
-        // 3. 插入新的教練分配
-        const allCoachIds = new Set([...assignment.coachIds])
-        if (assignment.driverId) {
-          allCoachIds.add(assignment.driverId)
-        }
-
-        if (allCoachIds.size > 0) {
-          const coachesToInsert = Array.from(allCoachIds).map(coachId => ({
+        // 3. 插入新的教練分配（只插入教練，不包含駕駛）
+        if (assignment.coachIds.length > 0) {
+          const coachesToInsert = assignment.coachIds.map(coachId => ({
             booking_id: booking.id,
             coach_id: coachId
           }))
