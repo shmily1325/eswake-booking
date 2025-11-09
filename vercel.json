@@ -8,7 +8,7 @@
   "crons": [
     {
       "path": "/api/backup-to-drive",
-      "schedule": "15 16 * * *"
+      "schedule": "45 16 * * *"
     }
   ]
 }
