@@ -762,7 +762,7 @@ export function DayView({ user }: DayViewProps) {
 
                               {/* 預約詳情 */}
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                {/* 學生、教練和駕駛 */}
+                                {/* 1. 學生、教練、駕駛 */}
                                 <div style={{
                                   display: 'flex',
                                   gap: isMobile ? '8px' : '12px',
@@ -815,28 +815,13 @@ export function DayView({ user }: DayViewProps) {
                                   })()}
                                 </div>
 
-                                {/* 排班備註 */}
-                                {booking.schedule_notes && (
-                                  <div style={{
-                                    fontSize: isMobile ? '11px' : '12px',
-                                    color: '#ff9800',
-                                    marginTop: '4px',
-                                    marginBottom: '4px',
-                                    padding: '4px 8px',
-                                    background: '#fff3e0',
-                                    borderRadius: '4px',
-                                    fontWeight: '500',
-                                  }}>
-                                    📝 {booking.schedule_notes}
-                                  </div>
-                                )}
-
-                                {/* 活動類型和備註 */}
+                                {/* 2. 活動類型和備註 */}
                                 <div style={{
                                   display: 'flex',
                                   gap: '6px',
                                   flexWrap: 'wrap',
                                   alignItems: 'center',
+                                  marginBottom: '6px',
                                 }}>
                                   {booking.activity_types && booking.activity_types.map(type => (
                                     <span
@@ -863,6 +848,21 @@ export function DayView({ user }: DayViewProps) {
                                     </span>
                                   )}
                                 </div>
+
+                                {/* 3. 排班備註 */}
+                                {booking.schedule_notes && (
+                                  <div style={{
+                                    fontSize: isMobile ? '11px' : '12px',
+                                    color: '#f57c00',
+                                    padding: '4px 8px',
+                                    background: 'transparent',
+                                    border: '1px solid #ffb74d',
+                                    borderRadius: '6px',
+                                    fontWeight: '500',
+                                  }}>
+                                    📝 {booking.schedule_notes}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )
@@ -1043,6 +1043,30 @@ export function DayView({ user }: DayViewProps) {
                             </div>
                           )}
                           
+                          {/* 駕駛顯示（只有當駕駛與教練不同時才顯示） */}
+                          {(() => {
+                            if (!booking.drivers || booking.drivers.length === 0) return null
+                            
+                            const coachIds = booking.coaches?.map(c => c.id).sort().join(',') || ''
+                            const driverIds = booking.drivers.map(d => d.id).sort().join(',')
+                            
+                            // 如果駕駛和教練完全一樣，不顯示
+                            if (coachIds === driverIds) return null
+                            
+                            return (
+                              <div style={{
+                                fontSize: isMobile ? '9px' : '12px',
+                                color: '#4caf50',
+                                marginTop: isMobile ? '2px' : '4px',
+                                textAlign: 'center',
+                                lineHeight: '1.2',
+                              }}>
+                                {isMobile ? `🚤${booking.drivers.map(d => d.name).join('/')}` : `🚤 ${booking.drivers.map(d => d.name).join(' / ')}`}
+                              </div>
+                            )
+                          })()}
+                          
+                          {/* 活動類型 */}
                           {booking.activity_types && booking.activity_types.length > 0 && (
                             <div style={{
                               display: 'flex',
@@ -1064,6 +1088,36 @@ export function DayView({ user }: DayViewProps) {
                                   {type}
                                 </span>
                               ))}
+                            </div>
+                          )}
+                          
+                          {/* 備註 */}
+                          {booking.notes && (
+                            <div style={{
+                              fontSize: isMobile ? '9px' : '11px',
+                              color: '#999',
+                              fontStyle: 'italic',
+                              marginTop: isMobile ? '2px' : '4px',
+                              textAlign: 'center',
+                              lineHeight: '1.2',
+                            }}>
+                              💬 {booking.notes}
+                            </div>
+                          )}
+                          
+                          {/* 排班備註 */}
+                          {booking.schedule_notes && (
+                            <div style={{
+                              fontSize: isMobile ? '9px' : '11px',
+                              color: '#f57c00',
+                              marginTop: isMobile ? '2px' : '4px',
+                              padding: '2px 4px',
+                              border: '1px solid #ffb74d',
+                              borderRadius: '4px',
+                              textAlign: 'center',
+                              lineHeight: '1.2',
+                            }}>
+                              📝 {booking.schedule_notes}
                             </div>
                           )}
                         </td>

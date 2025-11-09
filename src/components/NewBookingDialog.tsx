@@ -53,7 +53,8 @@ export function NewBookingDialog({
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]) // 改為陣列
   const [showMemberDropdown, setShowMemberDropdown] = useState(false)
-  const [manualStudentName, setManualStudentName] = useState('') // 手動輸入的名字
+  const [manualStudentName, setManualStudentName] = useState('') // 手動輸入框的暫存值
+  const [manualNames, setManualNames] = useState<string[]>([]) // 已新增的非會員名字陣列
   
   const [startDate, setStartDate] = useState('')
   const [startTime, setStartTime] = useState('00:00')
@@ -232,8 +233,8 @@ export function NewBookingDialog({
     setError('')
 
     // 驗證必填欄位
-    if (selectedMemberIds.length === 0 && !manualStudentName.trim()) {
-      setError('⚠️ 請選擇會員或輸入姓名')
+    if (selectedMemberIds.length === 0 && manualNames.length === 0) {
+      setError('⚠️ 請選擇會員或新增非會員姓名')
       return
     }
 
@@ -431,15 +432,12 @@ export function NewBookingDialog({
           continue
         }
       
-        // 決定最終的學生名字（會員 + 手動輸入）
+        // 決定最終的學生名字（會員 + 非會員）
         const memberNames = selectedMemberIds.length > 0
           ? members.filter(m => selectedMemberIds.includes(m.id)).map(m => m.name)
           : []
         
-        const allNames = [...memberNames]
-        if (manualStudentName.trim()) {
-          allNames.push(manualStudentName.trim())
-        }
+        const allNames = [...memberNames, ...manualNames]
         
         const finalStudentName = allNames.join(', ')
 
@@ -554,7 +552,8 @@ export function NewBookingDialog({
       setSelectedCoaches([])
       setSelectedMemberIds([]) // 清除會員選擇
       setMemberSearchTerm('') // 清除會員搜尋
-      setManualStudentName('') // 清除手動輸入名字
+      setManualStudentName('') // 清除手動輸入框
+      setManualNames([]) // 清除非會員名字陣列
       setShowMemberDropdown(false) // 關閉下拉選單
       setStartDate('')
       setStartTime('00:00')
@@ -676,12 +675,13 @@ export function NewBookingDialog({
                   ) : null
                 })}
                 
-                {/* 手動輸入標籤（橘色） */}
-                {manualStudentName.trim() && (
-                  <span style={{
+                {/* 非會員標籤（橘色邊框） */}
+                {manualNames.map((name, index) => (
+                  <span key={index} style={{
                     padding: '6px 12px',
-                    background: '#FF9800',
-                    color: 'white',
+                    background: 'white',
+                    color: '#f57c00',
+                    border: '1.5px solid #ffb74d',
                     borderRadius: '16px',
                     fontSize: '14px',
                     display: 'flex',
@@ -689,14 +689,14 @@ export function NewBookingDialog({
                     gap: '6px',
                     fontWeight: '500'
                   }}>
-                    {manualStudentName}
+                    {name}
                     <button
                       type="button"
-                      onClick={() => setManualStudentName('')}
+                      onClick={() => setManualNames(prev => prev.filter((_, i) => i !== index))}
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        color: 'white',
+                        color: '#f57c00',
                         cursor: 'pointer',
                         padding: '0',
                         fontSize: '18px',
@@ -704,7 +704,7 @@ export function NewBookingDialog({
                       }}
                     >×</button>
                   </span>
-                )}
+                ))}
                 
                 {/* 清除全部按鈕 */}
                 <button
@@ -713,6 +713,7 @@ export function NewBookingDialog({
                     setSelectedMemberIds([])
                     setMemberSearchTerm('')
                     setManualStudentName('')
+                    setManualNames([])
                   }}
                   style={{
                     padding: '6px 12px',
@@ -820,14 +821,21 @@ export function NewBookingDialog({
             )}
             
             {/* 或手動輸入（非會員） */}
-            <div style={{ marginTop: '8px' }}>
+            <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'stretch' }}>
               <input
                 type="text"
                 value={manualStudentName}
                 onChange={(e) => setManualStudentName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && manualStudentName.trim()) {
+                    e.preventDefault()
+                    setManualNames(prev => [...prev, manualStudentName.trim()])
+                    setManualStudentName('')
+                  }
+                }}
                 placeholder="或直接輸入姓名（非會員/首次體驗）"
                 style={{
-                  width: '100%',
+                  flex: 1,
                   padding: '12px',
                   borderRadius: '8px',
                   border: '1px solid #ff9800',
@@ -836,6 +844,30 @@ export function NewBookingDialog({
                   touchAction: 'manipulation',
                 }}
               />
+              <button
+                type="button"
+                onClick={() => {
+                  if (manualStudentName.trim()) {
+                    setManualNames(prev => [...prev, manualStudentName.trim()])
+                    setManualStudentName('')
+                  }
+                }}
+                disabled={!manualStudentName.trim()}
+                style={{
+                  padding: '0 20px',
+                  background: manualStudentName.trim() ? '#ff9800' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  cursor: manualStudentName.trim() ? 'pointer' : 'not-allowed',
+                  minWidth: '52px',
+                  touchAction: 'manipulation',
+                }}
+              >
+                +
+              </button>
             </div>
             
             {/* 清除所有會員選擇 */}
