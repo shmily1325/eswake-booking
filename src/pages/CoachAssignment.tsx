@@ -5,6 +5,7 @@ import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getButtonStyle, getInputStyle, getLabelStyle, getTextStyle } from '../styles/designSystem'
+import { checkCoachConflict } from '../utils/bookingConflict'
 
 interface Coach {
   id: string
@@ -155,7 +156,63 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     setSuccess('')
 
     try {
-      // 逐一更新每個預約的配置
+      // 先檢查教練衝突
+      const conflicts: string[] = []
+      
+      for (const booking of bookings) {
+        const assignment = assignments[booking.id]
+        if (!assignment || assignment.coachIds.length === 0) continue
+        
+        const dateStr = booking.start_at.substring(0, 10) // YYYY-MM-DD
+        const startTime = booking.start_at.substring(11, 16) // HH:MM
+        
+        // 檢查每個教練是否有衝突
+        for (const coachId of assignment.coachIds) {
+          const coach = coaches.find(c => c.id === coachId)
+          const coachName = coach?.name || '未知教練'
+          
+          // 檢查與其他預約的衝突（排除當前預約）
+          const conflictResult = await checkCoachConflict(
+            coachId,
+            dateStr,
+            startTime,
+            booking.duration_min
+          )
+          
+          if (conflictResult.hasConflict) {
+            // 需要確認這個衝突不是來自當前預約本身
+            const { data: coachBookings } = await supabase
+              .from('booking_coaches')
+              .select('booking_id')
+              .eq('coach_id', coachId)
+            
+            const otherBookingIds = coachBookings
+              ?.map(b => b.booking_id)
+              .filter(id => id !== booking.id) || []
+            
+            if (otherBookingIds.length > 0) {
+              const { data: conflictingBookings } = await supabase
+                .from('bookings')
+                .select('id, start_at, duration_min, contact_name')
+                .in('id', otherBookingIds)
+                .gte('start_at', `${dateStr}T00:00:00`)
+                .lte('start_at', `${dateStr}T23:59:59`)
+              
+              if (conflictingBookings && conflictingBookings.length > 0) {
+                conflicts.push(`${coachName} 在 ${formatTimeRange(booking.start_at, booking.duration_min)} (${booking.contact_name}) 與其他預約衝突`)
+              }
+            }
+          }
+        }
+      }
+      
+      if (conflicts.length > 0) {
+        setError('⚠️ 教練時間衝突：\n' + conflicts.join('\n'))
+        setSaving(false)
+        return
+      }
+      
+      // 沒有衝突，開始更新
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
         if (!assignment) continue
@@ -204,6 +261,15 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   const formatTime = (dateTimeStr: string) => {
     const [, time] = dateTimeStr.substring(0, 16).split('T')
     return time
+  }
+
+  // 格式化時間範圍（顯示開始和結束時間）
+  const formatTimeRange = (startAt: string, durationMin: number) => {
+    const startTime = formatTime(startAt)
+    const startDate = new Date(startAt)
+    const endDate = new Date(startDate.getTime() + durationMin * 60000)
+    const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
+    return `${startTime} - ${endTime}`
   }
 
 
@@ -353,7 +419,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       }}
                     >
                       <td style={{ padding: '10px 12px', fontWeight: '600', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
-                        {formatTime(booking.start_at)}
+                        {formatTimeRange(booking.start_at, booking.duration_min)}
                       </td>
                       <td style={{ padding: '10px 12px', borderRight: '1px solid #e0e0e0' }}>
                         {booking.contact_name}
@@ -519,7 +585,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   {/* 基本資訊 */}
                   <div style={{ marginBottom: designSystem.spacing.md, paddingBottom: designSystem.spacing.md, borderBottom: '2px solid #e0e0e0' }}>
                     <div style={{ ...getTextStyle('h3', isMobile), fontWeight: 'bold', marginBottom: '6px' }}>
-                      {formatTime(booking.start_at)} | {booking.contact_name}
+                      {formatTimeRange(booking.start_at, booking.duration_min)} | {booking.contact_name}
                     </div>
                     <div style={{ display: 'flex', gap: designSystem.spacing.sm, alignItems: 'center' }}>
                       <span style={{
