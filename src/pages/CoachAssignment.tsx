@@ -43,12 +43,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+  const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list') // 視圖模式
   
   // 儲存每個預約的配置（key: booking_id）
   const [assignments, setAssignments] = useState<Record<number, {
     coachIds: string[]
     driverIds: string[]
     notes: string
+    conflicts: string[] // 即時衝突提示
   }>>({})
 
   useEffect(() => {
@@ -139,12 +141,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       setBookings(bookingsWithCoaches)
       
       // 初始化 assignments 為當前的配置
-      const initialAssignments: Record<number, { coachIds: string[], driverIds: string[], notes: string }> = {}
+      const initialAssignments: Record<number, { coachIds: string[], driverIds: string[], notes: string, conflicts: string[] }> = {}
       bookingsWithCoaches.forEach((booking: Booking) => {
         initialAssignments[booking.id] = {
           coachIds: [...booking.currentCoaches],
           driverIds: [...booking.currentDrivers],
-          notes: booking.schedule_notes || ''
+          notes: booking.schedule_notes || '',
+          conflicts: []
         }
       })
       setAssignments(initialAssignments)
@@ -167,9 +170,46 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       ...prev,
       [bookingId]: {
         ...prev[bookingId],
-        [field]: value
+        [field]: value,
+        conflicts: field === 'coachIds' ? checkCoachConflictRealtime(bookingId, value) : (prev[bookingId]?.conflicts || [])
       }
     }))
+  }
+
+  // 即時檢查教練衝突
+  const checkCoachConflictRealtime = (bookingId: number, newCoachIds: string[]): string[] => {
+    const conflicts: string[] = []
+    const currentBooking = bookings.find(b => b.id === bookingId)
+    if (!currentBooking) return conflicts
+
+    const currentStart = new Date(currentBooking.start_at)
+    const currentEnd = new Date(currentStart.getTime() + currentBooking.duration_min * 60000)
+
+    // 檢查每個選中的教練
+    for (const coachId of newCoachIds) {
+      // 檢查這個教練在其他預約中的時間
+      for (const otherBooking of bookings) {
+        if (otherBooking.id === bookingId) continue // 跳過自己
+
+        const otherAssignment = assignments[otherBooking.id]
+        if (!otherAssignment) continue
+
+        // 檢查這個教練是否也在其他預約中
+        if (otherAssignment.coachIds.includes(coachId)) {
+          const otherStart = new Date(otherBooking.start_at)
+          const otherEnd = new Date(otherStart.getTime() + otherBooking.duration_min * 60000)
+
+          // 檢查時間是否重疊
+          if (currentStart < otherEnd && currentEnd > otherStart) {
+            const coachName = coaches.find(c => c.id === coachId)?.name || '未知'
+            const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
+            conflicts.push(`${coachName} 與 ${otherTime} (${otherBooking.contact_name}) 時間衝突`)
+          }
+        }
+      }
+    }
+
+    return conflicts
   }
 
   const handleSaveAll = async () => {
@@ -612,6 +652,48 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               />
             </div>
 
+            {/* 視圖切換按鈕 */}
+            {!isMobile && (
+              <div style={{ display: 'flex', gap: '4px', background: '#f0f0f0', borderRadius: '8px', padding: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  style={{
+                    padding: '8px 16px',
+                    background: viewMode === 'list' ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: viewMode === 'list' ? '600' : '400',
+                    fontSize: '14px',
+                    color: viewMode === 'list' ? '#1976d2' : '#666',
+                    transition: 'all 0.2s',
+                    boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  📋 列表
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('timeline')}
+                  style={{
+                    padding: '8px 16px',
+                    background: viewMode === 'timeline' ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: viewMode === 'timeline' ? '600' : '400',
+                    fontSize: '14px',
+                    color: viewMode === 'timeline' ? '#1976d2' : '#666',
+                    transition: 'all 0.2s',
+                    boxShadow: viewMode === 'timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  ⏰ 時間軸
+                </button>
+              </div>
+            )}
+
             <button
               onClick={handleSaveAll}
               disabled={saving || loading}
@@ -679,8 +761,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           </div>
         )}
 
-        {/* Excel 風格表格 - 桌面版 */}
-        {!loading && bookings.length > 0 && !isMobile && (
+        {/* Excel 風格表格 - 桌面版 (列表模式) */}
+        {!loading && bookings.length > 0 && !isMobile && viewMode === 'list' && (
           <div style={{
             background: 'white',
             borderRadius: designSystem.borderRadius.md,
@@ -816,6 +898,26 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               </option>
                             ))}
                         </select>
+                        
+                        {/* 即時衝突警告 */}
+                        {assignment.conflicts && assignment.conflicts.length > 0 && (
+                          <div style={{
+                            marginTop: '8px',
+                            padding: '8px',
+                            background: '#ffebee',
+                            border: '1px solid #f44336',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            color: '#d32f2f'
+                          }}>
+                            {assignment.conflicts.map((conflict, idx) => (
+                              <div key={idx} style={{ display: 'flex', alignItems: 'start', gap: '4px' }}>
+                                <span>⚠️</span>
+                                <span>{conflict}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
                         {/* 已選擇的駕駛標籤 */}
@@ -914,6 +1016,143 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* 時間軸視圖 - 桌面版 */}
+        {!loading && bookings.length > 0 && !isMobile && viewMode === 'timeline' && (
+          <div style={{
+            background: 'white',
+            borderRadius: designSystem.borderRadius.md,
+            padding: designSystem.spacing.lg,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            overflow: 'auto'
+          }}>
+            <div style={{ display: 'flex', minWidth: '1200px' }}>
+              {/* 左側時間軸 */}
+              <div style={{ width: '80px', flexShrink: 0, borderRight: '2px solid #e0e0e0', paddingRight: '12px' }}>
+                <div style={{ height: '40px', fontWeight: 'bold', display: 'flex', alignItems: 'center', color: '#2c3e50' }}>
+                  時間
+                </div>
+                {Array.from({ length: 16 }, (_, i) => i + 5).map(hour => (
+                  <div
+                    key={hour}
+                    style={{
+                      height: '60px',
+                      borderTop: '1px solid #e0e0e0',
+                      padding: '4px 0',
+                      fontSize: '13px',
+                      color: '#666',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {String(hour).padStart(2, '0')}:00
+                  </div>
+                ))}
+              </div>
+
+              {/* 右側預約區域 */}
+              <div style={{ flex: 1, position: 'relative', paddingLeft: '12px' }}>
+                <div style={{ height: '40px', fontWeight: 'bold', display: 'flex', alignItems: 'center', color: '#2c3e50' }}>
+                  預約時間軸
+                </div>
+                <div style={{ position: 'relative', height: `${16 * 60}px` }}>
+                  {/* 時間格線 */}
+                  {Array.from({ length: 16 }, (_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        position: 'absolute',
+                        top: `${i * 60}px`,
+                        left: 0,
+                        right: 0,
+                        height: '60px',
+                        borderTop: '1px solid #e0e0e0',
+                        background: i % 2 === 0 ? '#fafafa' : 'white'
+                      }}
+                    />
+                  ))}
+
+                  {/* 預約卡片 */}
+                  {bookings.map((booking, index) => {
+                    const startTime = new Date(booking.start_at)
+                    const startHour = startTime.getHours()
+                    const startMinute = startTime.getMinutes()
+                    const topPosition = (startHour - 5) * 60 + startMinute // 5:00 開始
+                    const height = booking.duration_min
+                    const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [] }
+                    const hasConflict = assignment.conflicts && assignment.conflicts.length > 0
+                    const hasNoCoach = assignment.coachIds.length === 0
+
+                    return (
+                      <div
+                        key={booking.id}
+                        style={{
+                          position: 'absolute',
+                          top: `${topPosition}px`,
+                          left: `${(index % 3) * 33}%`,
+                          width: '32%',
+                          height: `${height}px`,
+                          background: hasConflict ? '#ffebee' : hasNoCoach ? '#fff3cd' : booking.boats?.color || '#ccc',
+                          border: hasConflict ? '2px solid #f44336' : hasNoCoach ? '2px solid #ffc107' : '1px solid rgba(0,0,0,0.2)',
+                          borderRadius: '6px',
+                          padding: '8px',
+                          cursor: 'pointer',
+                          overflow: 'hidden',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                          color: hasNoCoach || hasConflict ? '#000' : 'white',
+                          fontSize: '12px',
+                          transition: 'all 0.2s',
+                          zIndex: hasConflict ? 10 : 1
+                        }}
+                        title={`${booking.contact_name}\n${formatTimeRange(booking.start_at, booking.duration_min)}\n教練: ${assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ') || '未指定'}`}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.02)'
+                          e.currentTarget.style.zIndex = '100'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)'
+                          e.currentTarget.style.zIndex = hasConflict ? '10' : '1'
+                        }}
+                      >
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {formatTime(booking.start_at)} {booking.contact_name}
+                        </div>
+                        <div style={{ fontSize: '11px', opacity: 0.9 }}>
+                          {booking.boats?.name} | {booking.duration_min}分
+                        </div>
+                        {assignment.coachIds.length > 0 && (
+                          <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: '600' }}>
+                            👨‍🏫 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
+                          </div>
+                        )}
+                        {hasNoCoach && (
+                          <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: '600', color: '#d32f2f' }}>
+                            ⚠️ 未指定教練
+                          </div>
+                        )}
+                        {hasConflict && (
+                          <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: '600', color: '#d32f2f' }}>
+                            ⚠️ 教練衝突
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+            
+            <div style={{
+              marginTop: designSystem.spacing.lg,
+              padding: designSystem.spacing.md,
+              background: '#f8f9fa',
+              borderRadius: '6px',
+              fontSize: '13px',
+              color: '#666'
+            }}>
+              💡 <strong>提示：</strong>時間軸視圖可以快速查看預約密度和衝突。點擊上方「📋 列表」切換回編輯模式。
+            </div>
           </div>
         )}
 

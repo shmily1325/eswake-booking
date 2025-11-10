@@ -644,7 +644,7 @@ export function NewBookingDialog({
             </label>
             
             {/* 已選會員和手動輸入標籤 */}
-            {(selectedMemberIds.length > 0 || manualStudentName.trim()) && (
+            {(selectedMemberIds.length > 0 || manualNames.length > 0) && (
               <div style={{ marginBottom: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {/* 會員標籤（藍色） */}
                 {selectedMemberIds.map(memberId => {
@@ -898,6 +898,40 @@ export function NewBookingDialog({
             )}
           </div>
 
+          {/* 船隻選擇 */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '6px', 
+              color: '#000',
+              fontSize: '15px',
+              fontWeight: '500',
+            }}>
+              船
+            </label>
+            <select
+              value={selectedBoatId}
+              onChange={(e) => setSelectedBoatId(Number(e.target.value))}
+              required
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #ccc',
+                boxSizing: 'border-box',
+                fontSize: '16px',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              {boats.map(boat => (
+                <option key={boat.id} value={boat.id}>
+                  {boat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div style={{ marginBottom: '18px' }}>
             <label style={{ 
               display: 'block', 
@@ -985,38 +1019,37 @@ export function NewBookingDialog({
             )}
           </div>
 
-          {/* 船隻選擇 */}
+          {/* 需要駕駛勾選框 */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '6px', 
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '500',
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              padding: '12px',
+              backgroundColor: requiresDriver ? '#e3f2fd' : '#f8f9fa',
+              borderRadius: '8px',
+              border: requiresDriver ? '2px solid #1976d2' : '1px solid #e0e0e0',
+              transition: 'all 0.2s',
             }}>
-              船
+              <input
+                type="checkbox"
+                checked={requiresDriver}
+                onChange={(e) => setRequiresDriver(e.target.checked)}
+                style={{ 
+                  marginRight: '10px', 
+                  width: '18px', 
+                  height: '18px',
+                  cursor: 'pointer',
+                }}
+              />
+              <span style={{
+                fontSize: '15px',
+                fontWeight: '500',
+                color: requiresDriver ? '#1976d2' : '#333',
+              }}>
+                🚤 需要駕駛（勾選後在排班時必須指定駕駛）
+              </span>
             </label>
-            <select
-              value={selectedBoatId}
-              onChange={(e) => setSelectedBoatId(Number(e.target.value))}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                boxSizing: 'border-box',
-                fontSize: '16px',
-                backgroundColor: 'white',
-                cursor: 'pointer',
-              }}
-            >
-              {boats.map(boat => (
-                <option key={boat.id} value={boat.id}>
-                  {boat.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div style={{ marginBottom: '18px' }}>
@@ -1231,40 +1264,8 @@ export function NewBookingDialog({
             />
           </div>
 
-          {/* 需要駕駛勾選框 */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              padding: '12px',
-              backgroundColor: requiresDriver ? '#e3f2fd' : '#f8f9fa',
-              borderRadius: '8px',
-              border: requiresDriver ? '2px solid #1976d2' : '1px solid #e0e0e0',
-              transition: 'all 0.2s',
-            }}>
-              <input
-                type="checkbox"
-                checked={requiresDriver}
-                onChange={(e) => setRequiresDriver(e.target.checked)}
-                style={{ 
-                  marginRight: '10px', 
-                  width: '18px', 
-                  height: '18px',
-                  cursor: 'pointer',
-                }}
-              />
-              <span style={{
-                fontSize: '15px',
-                fontWeight: '500',
-                color: requiresDriver ? '#1976d2' : '#333',
-              }}>
-                🚤 需要駕駛（勾選後在排班時必須指定駕駛）
-              </span>
-            </label>
-          </div>
-
-          <div style={{ marginBottom: '18px', padding: '14px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+          {/* 重複預約功能 - 暫時隱藏，保留程式碼供未來使用 */}
+          {false && <div style={{ marginBottom: '18px', padding: '14px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
             <label style={{
               display: 'flex',
               alignItems: 'center',
@@ -1341,7 +1342,7 @@ export function NewBookingDialog({
                 </div>
               </div>
             )}
-          </div>
+          </div>}
 
           {/* 錯誤訊息 */}
           {error && (
