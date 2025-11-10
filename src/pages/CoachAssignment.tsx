@@ -18,7 +18,7 @@ interface Booking {
   duration_min: number
   contact_name: string
   boat_id: number
-  boats: { name: string; color: string } | null
+  boats: { id: number; name: string; color: string } | null
   currentCoaches: string[]
   currentDrivers: string[]
   schedule_notes: string | null
@@ -43,7 +43,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
-  const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list') // 視圖模式
+  const [viewMode, setViewMode] = useState<'list' | 'timeline' | 'boat-timeline'>('boat-timeline') // 視圖模式
+  const [editingBookingId, setEditingBookingId] = useState<number | null>(null) // 正在編輯的預約
   
   // 儲存每個預約的配置（key: booking_id）
   const [assignments, setAssignments] = useState<Record<number, {
@@ -657,6 +658,24 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               <div style={{ display: 'flex', gap: '4px', background: '#f0f0f0', borderRadius: '8px', padding: '4px' }}>
                 <button
                   type="button"
+                  onClick={() => setViewMode('boat-timeline')}
+                  style={{
+                    padding: '8px 16px',
+                    background: viewMode === 'boat-timeline' ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: viewMode === 'boat-timeline' ? '600' : '400',
+                    fontSize: '14px',
+                    color: viewMode === 'boat-timeline' ? '#1976d2' : '#666',
+                    transition: 'all 0.2s',
+                    boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  🚤 船隻
+                </button>
+                <button
+                  type="button"
                   onClick={() => setViewMode('list')}
                   style={{
                     padding: '8px 16px',
@@ -1155,6 +1174,283 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             </div>
           </div>
         )}
+
+        {/* 船隻時間軸視圖 - Excel風格 */}
+        {!loading && bookings.length > 0 && !isMobile && viewMode === 'boat-timeline' && (() => {
+          // 獲取所有船隻
+          const boats = Array.from(new Set(bookings.map(b => b.boats).filter(Boolean)))
+          // 按時間分組預約
+          const timeSlots: { hour: number, minute: number }[] = []
+          for (let h = 5; h <= 20; h++) {
+            timeSlots.push({ hour: h, minute: 0 })
+          }
+          
+          // 按船隻分組預約
+          const bookingsByBoat: Record<number, typeof bookings> = {}
+          bookings.forEach(booking => {
+            if (!booking.boats) return
+            if (!bookingsByBoat[booking.boats.id]) {
+              bookingsByBoat[booking.boats.id] = []
+            }
+            bookingsByBoat[booking.boats.id].push(booking)
+          })
+
+          return (
+            <div style={{
+              background: 'white',
+              borderRadius: designSystem.borderRadius.md,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              overflow: 'auto'
+            }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '13px',
+                minWidth: '1000px'
+              }}>
+                <thead>
+                  <tr style={{ background: '#2c3e50', color: 'white', position: 'sticky', top: 0, zIndex: 10 }}>
+                    <th style={{ padding: '14px 12px', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '80px', textAlign: 'center' }}>
+                      時間
+                    </th>
+                    {boats.map(boat => (
+                      <th key={boat!.id} style={{
+                        padding: '14px 12px',
+                        fontWeight: '600',
+                        borderRight: '1px solid #34495e',
+                        minWidth: '200px',
+                        background: boat!.color,
+                        color: 'white'
+                      }}>
+                        {boat!.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {timeSlots.map((slot, index) => {
+                    const timeStr = `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`
+                    
+                    return (
+                      <tr key={timeStr} style={{
+                        borderBottom: '1px solid #e0e0e0',
+                        background: index % 2 === 0 ? '#fafafa' : 'white',
+                        height: '80px'
+                      }}>
+                        <td style={{
+                          padding: '12px',
+                          fontWeight: '600',
+                          textAlign: 'center',
+                          borderRight: '1px solid #e0e0e0',
+                          verticalAlign: 'top',
+                          color: '#2c3e50'
+                        }}>
+                          {timeStr}
+                        </td>
+                        {boats.map(boat => {
+                          // 找出在這個時段開始的預約
+                          const boatBookings = bookingsByBoat[boat!.id] || []
+                          const bookingsInSlot = boatBookings.filter(booking => {
+                            const bookingStartTime = new Date(booking.start_at)
+                            const bookingStartHour = bookingStartTime.getHours()
+                            return bookingStartHour === slot.hour
+                          })
+                          
+                          // 檢測重疊並計算排列
+                          const bookingsWithLayout = bookingsInSlot.map((booking, idx) => {
+                            // 檢查與前面的預約是否有時間重疊
+                            let column = 0
+                            for (let i = 0; i < idx; i++) {
+                              const otherBooking = bookingsInSlot[i]
+                              const bookingStart = new Date(booking.start_at)
+                              const bookingEnd = new Date(bookingStart.getTime() + booking.duration_min * 60000)
+                              const otherStart = new Date(otherBooking.start_at)
+                              const otherEnd = new Date(otherStart.getTime() + otherBooking.duration_min * 60000)
+                              
+                              // 如果時間重疊，放到下一欄
+                              if (bookingStart < otherEnd && bookingEnd > otherStart) {
+                                column++
+                              }
+                            }
+                            return { booking, column }
+                          })
+                          
+                          const maxColumns = Math.max(1, ...bookingsWithLayout.map(b => b.column + 1))
+                          
+                          return (
+                            <td key={boat!.id} style={{
+                              padding: '6px',
+                              borderRight: '1px solid #e0e0e0',
+                              verticalAlign: 'top',
+                              position: 'relative'
+                            }}>
+                              <div style={{ display: 'flex', gap: '4px', flexDirection: maxColumns > 1 ? 'row' : 'column' }}>
+                              {bookingsWithLayout.map(({ booking }) => {
+                                
+                                const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [] }
+                                const hasConflict = assignment.conflicts && assignment.conflicts.length > 0
+                                const hasNoCoach = assignment.coachIds.length === 0
+                                const isEditing = editingBookingId === booking.id
+                                
+                                return (
+                                  <div
+                                    key={booking.id}
+                                    onClick={() => setEditingBookingId(isEditing ? null : booking.id)}
+                                    style={{
+                                      padding: '8px',
+                                      marginBottom: maxColumns > 1 ? '0' : '6px',
+                                      background: hasConflict ? '#ffebee' : hasNoCoach ? '#fff3cd' : '#e8f5e9',
+                                      border: `2px solid ${hasConflict ? '#f44336' : hasNoCoach ? '#ffc107' : '#4caf50'}`,
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s',
+                                      position: 'relative',
+                                      flex: maxColumns > 1 ? 1 : 'none',
+                                      minWidth: maxColumns > 1 ? '0' : 'auto'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                  >
+                                    {/* 預約資訊 */}
+                                    <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#2c3e50' }}>
+                                      {formatTimeRange(booking.start_at, booking.duration_min)}
+                                    </div>
+                                    <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '4px', color: '#000' }}>
+                                      {booking.contact_name}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '6px' }}>
+                                      {booking.duration_min}分
+                                      {booking.requires_driver && <span style={{ marginLeft: '4px', color: '#1976d2' }}>🚤</span>}
+                                    </div>
+                                    
+                                    {/* 快速編輯區域 */}
+                                    {isEditing && (
+                                      <div onClick={(e) => e.stopPropagation()} style={{
+                                        marginTop: '8px',
+                                        paddingTop: '8px',
+                                        borderTop: '1px solid #ddd'
+                                      }}>
+                                        {/* 教練選擇 */}
+                                        <div style={{ marginBottom: '6px' }}>
+                                          <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px', color: '#666' }}>
+                                            教練：
+                                          </div>
+                                          {assignment.coachIds.length > 0 && (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
+                                              {assignment.coachIds.map(coachId => {
+                                                const coach = coaches.find(c => c.id === coachId)
+                                                return coach ? (
+                                                  <span key={coachId} style={{
+                                                    padding: '2px 6px',
+                                                    background: '#2196F3',
+                                                    color: 'white',
+                                                    borderRadius: '10px',
+                                                    fontSize: '11px',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                  }}>
+                                                    {coach.name}
+                                                    <button
+                                                      onClick={() => toggleCoach(booking.id, coachId)}
+                                                      style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: 'white',
+                                                        cursor: 'pointer',
+                                                        padding: '0',
+                                                        fontSize: '14px',
+                                                        lineHeight: '1'
+                                                      }}
+                                                    >×</button>
+                                                  </span>
+                                                ) : null
+                                              })}
+                                            </div>
+                                          )}
+                                          <select
+                                            value=""
+                                            onChange={(e) => {
+                                              if (e.target.value) {
+                                                toggleCoach(booking.id, e.target.value)
+                                              }
+                                            }}
+                                            style={{
+                                              width: '100%',
+                                              padding: '4px',
+                                              fontSize: '11px',
+                                              border: hasNoCoach ? '1px solid #f44336' : '1px solid #ddd',
+                                              borderRadius: '4px',
+                                              background: 'white'
+                                            }}
+                                          >
+                                            <option value="">{hasNoCoach ? '⚠️ 請選擇' : '➕ 新增'}</option>
+                                            {coaches.filter(c => !assignment.coachIds.includes(c.id)).map(coach => (
+                                              <option key={coach.id} value={coach.id}>{coach.name}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                        
+                                        {/* 衝突警告 */}
+                                        {hasConflict && (
+                                          <div style={{
+                                            padding: '4px',
+                                            background: '#ffebee',
+                                            border: '1px solid #f44336',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            color: '#d32f2f',
+                                            marginTop: '4px'
+                                          }}>
+                                            ⚠️ {assignment.conflicts[0]}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    
+                                    {/* 未編輯時顯示教練 */}
+                                    {!isEditing && assignment.coachIds.length > 0 && (
+                                      <div style={{ fontSize: '11px', color: '#2196F3', fontWeight: '600' }}>
+                                        👨‍🏫 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
+                                      </div>
+                                    )}
+                                    
+                                    {/* 狀態標記 */}
+                                    {!isEditing && hasNoCoach && (
+                                      <div style={{ fontSize: '11px', color: '#f57c00', fontWeight: '600', marginTop: '4px' }}>
+                                        ⚠️ 未指定教練
+                                      </div>
+                                    )}
+                                    {!isEditing && hasConflict && (
+                                      <div style={{ fontSize: '11px', color: '#d32f2f', fontWeight: '600', marginTop: '4px' }}>
+                                        ⚠️ 教練衝突
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              
+              <div style={{
+                padding: designSystem.spacing.md,
+                background: '#f8f9fa',
+                borderTop: '1px solid #e0e0e0',
+                fontSize: '13px',
+                color: '#666'
+              }}>
+                💡 <strong>提示：</strong>點擊預約卡片可以快速編輯教練。綠色=已排班，黃色=未指定教練，紅色=有衝突。
+              </div>
+            </div>
+          )
+        })()}
 
         {/* 手機版卡片列表 */}
         {!loading && bookings.length > 0 && isMobile && (

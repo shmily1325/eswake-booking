@@ -628,93 +628,6 @@ export function EditBookingDialog({
         <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px' }}>編輯預約</h2>
         
         <form onSubmit={handleUpdate}>
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '500',
-            }}>
-              教練（可複選）
-            </label>
-            
-            {loadingCoaches ? (
-              <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
-                載入教練列表中...
-              </div>
-            ) : (
-              <div style={{
-                maxHeight: '180px',
-                overflowY: 'auto',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                padding: '8px',
-                WebkitOverflowScrolling: 'touch',
-              }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '10px',
-                  cursor: 'pointer',
-                  borderRadius: '6px',
-                  transition: 'background 0.2s',
-                  backgroundColor: selectedCoaches.length === 0 ? '#f0f0f0' : 'transparent',
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedCoaches.length === 0}
-                    onChange={() => setSelectedCoaches([])}
-                    style={{
-                      marginRight: '10px',
-                      width: '18px',
-                      height: '18px',
-                      cursor: 'pointer',
-                    }}
-                  />
-                  <span style={{ fontSize: '15px', color: '#666' }}>不指定教練</span>
-                </label>
-                {coaches.map((coach) => (
-                  <label
-                    key={coach.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '10px',
-                      cursor: 'pointer',
-                      borderRadius: '6px',
-                      transition: 'background 0.2s',
-                      backgroundColor: selectedCoachesSet.has(coach.id) ? '#e3f2fd' : 'transparent',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!selectedCoachesSet.has(coach.id)) {
-                        e.currentTarget.style.backgroundColor = '#f5f5f5'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!selectedCoachesSet.has(coach.id)) {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedCoachesSet.has(coach.id)}
-                      onChange={() => toggleCoach(coach.id)}
-                      style={{
-                        marginRight: '10px',
-                        width: '18px',
-                        height: '18px',
-                        cursor: 'pointer',
-                      }}
-                    />
-                    <span style={{ fontSize: '15px' }}>{coach.name}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* 預約人選擇（支援多會員選擇或手動輸入） */}
           <div style={{ marginBottom: '18px', position: 'relative' }}>
             <label style={{ 
@@ -728,7 +641,7 @@ export function EditBookingDialog({
             </label>
             
             {/* 已選會員和手動輸入標籤 */}
-            {(selectedMemberIds.length > 0 || manualNames.length > 0 || manualStudentName.trim()) && (
+            {(selectedMemberIds.length > 0 || manualNames.length > 0) && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
                 {/* 會員標籤（藍色） */}
                 {selectedMemberIds.map((id) => {
@@ -967,7 +880,7 @@ export function EditBookingDialog({
               fontSize: '15px',
               fontWeight: '500',
             }}>
-              選擇船 <span style={{ color: 'red' }}>*</span>
+              船 <span style={{ color: 'red' }}>*</span>
             </label>
             <select
               value={selectedBoatId}
@@ -990,6 +903,126 @@ export function EditBookingDialog({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              color: '#000',
+              fontSize: '15px',
+              fontWeight: '500',
+            }}>
+              教練（可複選）
+            </label>
+            
+            {loadingCoaches ? (
+              <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
+                載入教練列表中...
+              </div>
+            ) : (
+              <div style={{
+                maxHeight: '180px',
+                overflowY: 'auto',
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                padding: '8px',
+                WebkitOverflowScrolling: 'touch',
+              }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  transition: 'background 0.2s',
+                  backgroundColor: selectedCoaches.length === 0 ? '#f0f0f0' : 'transparent',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedCoaches.length === 0}
+                    onChange={() => setSelectedCoaches([])}
+                    style={{
+                      marginRight: '10px',
+                      width: '18px',
+                      height: '18px',
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <span style={{ fontSize: '15px', color: '#666' }}>不指定教練</span>
+                </label>
+                {coaches.map((coach) => (
+                  <label
+                    key={coach.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '10px',
+                      cursor: 'pointer',
+                      borderRadius: '6px',
+                      transition: 'background 0.2s',
+                      backgroundColor: selectedCoachesSet.has(coach.id) ? '#e3f2fd' : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!selectedCoachesSet.has(coach.id)) {
+                        e.currentTarget.style.backgroundColor = '#f5f5f5'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selectedCoachesSet.has(coach.id)) {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCoachesSet.has(coach.id)}
+                      onChange={() => toggleCoach(coach.id)}
+                      style={{
+                        marginRight: '10px',
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <span style={{ fontSize: '15px' }}>{coach.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 需要駕駛勾選框 */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              padding: '12px',
+              backgroundColor: requiresDriver ? '#e3f2fd' : '#f8f9fa',
+              borderRadius: '8px',
+              border: requiresDriver ? '2px solid #1976d2' : '1px solid #e0e0e0',
+              transition: 'all 0.2s',
+            }}>
+              <input
+                type="checkbox"
+                checked={requiresDriver}
+                onChange={(e) => setRequiresDriver(e.target.checked)}
+                style={{ 
+                  marginRight: '10px', 
+                  width: '18px', 
+                  height: '18px',
+                  cursor: 'pointer',
+                }}
+              />
+              <span style={{
+                fontSize: '15px',
+                fontWeight: '500',
+                color: requiresDriver ? '#1976d2' : '#333',
+              }}>
+                🚤 需要駕駛（勾選後在排班時必須指定駕駛）
+              </span>
+            </label>
           </div>
 
           <div style={{ marginBottom: '18px' }}>
@@ -1202,39 +1235,6 @@ export function EditBookingDialog({
                 touchAction: 'manipulation',
               }}
             />
-          </div>
-
-          {/* 需要駕駛勾選框 */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              padding: '12px',
-              backgroundColor: requiresDriver ? '#e3f2fd' : '#f8f9fa',
-              borderRadius: '8px',
-              border: requiresDriver ? '2px solid #1976d2' : '1px solid #e0e0e0',
-              transition: 'all 0.2s',
-            }}>
-              <input
-                type="checkbox"
-                checked={requiresDriver}
-                onChange={(e) => setRequiresDriver(e.target.checked)}
-                style={{ 
-                  marginRight: '10px', 
-                  width: '18px', 
-                  height: '18px',
-                  cursor: 'pointer',
-                }}
-              />
-              <span style={{
-                fontSize: '15px',
-                fontWeight: '500',
-                color: requiresDriver ? '#1976d2' : '#333',
-              }}>
-                🚤 需要駕駛（勾選後在排班時必須指定駕駛）
-              </span>
-            </label>
           </div>
 
           {/* 錯誤訊息 */}
