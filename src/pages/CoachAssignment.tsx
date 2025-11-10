@@ -215,8 +215,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               const person = coaches.find(c => c.id === personId)
               const personName = person?.name || '未知'
               
-              // 建立唯一的衝突標識（避免重複）
-              const conflictKey = `${personName}|${startTime}-${endTime}|${booking.contact_name}|${existing.start}-${existing.end}|${existing.name}`
+              // 建立唯一的衝突標識（雙向去重）
+              const times = [
+                `${startTime}-${endTime}|${booking.contact_name}`,
+                `${existing.start}-${existing.end}|${existing.name}`
+              ].sort()
+              const conflictKey = `${personName}|${times[0]}|${times[1]}`
               
               if (!conflictSet.has(conflictKey)) {
                 conflictSet.add(conflictKey)
@@ -335,9 +339,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           }
         }
         
-        // 檢查衝突（教練和駕駛一起檢查）
-        const conflictSet = new Set<string>() // 用於去重
-        
+        // 檢查衝突（教練和駕駛一起檢查，使用同一個 conflictSet 避免重複）
         for (const booking of bookings) {
           const assignment = assignments[booking.id]
           if (!assignment) continue
@@ -370,8 +372,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 const personName = person?.name || '未知'
                 const roleText = Array.from(dbBooking.roles).join('/')
                 
-                // 建立唯一的衝突標識（避免重複）
-                const conflictKey = `${personName}|${thisStart}-${thisEnd}|${booking.contact_name}|${dbBooking.start}-${dbBooking.end}|${dbBooking.name}`
+                // 建立唯一的衝突標識（雙向去重）
+                const times = [
+                  `${thisStart}-${thisEnd}|${booking.contact_name}`,
+                  `${dbBooking.start}-${dbBooking.end}|${dbBooking.name}`
+                ].sort()
+                const conflictKey = `${personName}|${times[0]}|${times[1]}`
                 
                 if (!conflictSet.has(conflictKey)) {
                   conflictSet.add(conflictKey)
