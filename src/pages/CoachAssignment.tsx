@@ -22,6 +22,7 @@ interface Booking {
   currentCoaches: string[]
   currentDrivers: string[]
   schedule_notes: string | null
+  requires_driver: boolean
 }
 
 interface CoachAssignmentProps {
@@ -189,6 +190,24 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       
       if (missingCoaches.length > 0) {
         setError('⚠️ 以下預約尚未指定教練：\n\n' + missingCoaches.map(m => `• ${m}`).join('\n'))
+        setSaving(false)
+        return
+      }
+
+      // 0.1 檢查「需要駕駛」的預約是否都有指定駕駛
+      const missingDrivers: string[] = []
+      for (const booking of bookings) {
+        if (booking.requires_driver) {
+          const assignment = assignments[booking.id]
+          if (!assignment || assignment.driverIds.length === 0) {
+            const timeStr = formatTimeRange(booking.start_at, booking.duration_min)
+            missingDrivers.push(`${timeStr} (${booking.contact_name})`)
+          }
+        }
+      }
+      
+      if (missingDrivers.length > 0) {
+        setError('⚠️ 以下預約標記為「需要駕駛」，必須指定駕駛：\n\n' + missingDrivers.map(m => `• ${m}`).join('\n'))
         setSaving(false)
         return
       }
@@ -921,7 +940,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     <div style={{ ...getTextStyle('h3', isMobile), fontWeight: 'bold', marginBottom: '6px' }}>
                       {formatTimeRange(booking.start_at, booking.duration_min)} | {booking.contact_name}
                     </div>
-                    <div style={{ display: 'flex', gap: designSystem.spacing.sm, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: designSystem.spacing.sm, alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{
                         padding: '6px 14px',
                         background: booking.boats?.color || '#ccc',
@@ -935,6 +954,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       <span style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary }}>
                         {booking.duration_min} 分鐘
                       </span>
+                      {booking.requires_driver && (
+                        <span style={{
+                          padding: '6px 12px',
+                          background: '#e3f2fd',
+                          color: '#1976d2',
+                          borderRadius: '6px',
+                          fontWeight: '600',
+                          fontSize: '12px',
+                          border: '2px solid #1976d2',
+                        }}>
+                          🚤 需要駕駛
+                        </span>
+                      )}
                     </div>
                   </div>
 

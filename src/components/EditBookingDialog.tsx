@@ -31,6 +31,7 @@ interface Booking {
   duration_min: number
   activity_types?: string[] | null
   notes?: string | null
+  requires_driver?: boolean
   status: string
   boats?: Boat
   coaches?: Coach[]
@@ -68,6 +69,7 @@ export function EditBookingDialog({
   const [durationMin, setDurationMin] = useState(60)
   const [activityTypes, setActivityTypes] = useState<string[]>([])
   const [notes, setNotes] = useState('')
+  const [requiresDriver, setRequiresDriver] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingCoaches, setLoadingCoaches] = useState(true)
@@ -130,6 +132,7 @@ export function EditBookingDialog({
         setDurationMin(booking.duration_min)
         setActivityTypes(booking.activity_types || [])
         setNotes(booking.notes || '')
+        setRequiresDriver(booking.requires_driver || false)
         
         // Parse start_at into date and time（純字符串解析，避免時區問題）
         // booking.start_at 格式: "2025-10-30T17:00:00"
@@ -399,6 +402,7 @@ export function EditBookingDialog({
           duration_min: durationMin,
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
+          requires_driver: requiresDriver,
           updated_at: new Date().toISOString(),
         })
         .eq('id', booking.id)
@@ -1198,6 +1202,39 @@ export function EditBookingDialog({
                 touchAction: 'manipulation',
               }}
             />
+          </div>
+
+          {/* 需要駕駛勾選框 */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              padding: '12px',
+              backgroundColor: requiresDriver ? '#e3f2fd' : '#f8f9fa',
+              borderRadius: '8px',
+              border: requiresDriver ? '2px solid #1976d2' : '1px solid #e0e0e0',
+              transition: 'all 0.2s',
+            }}>
+              <input
+                type="checkbox"
+                checked={requiresDriver}
+                onChange={(e) => setRequiresDriver(e.target.checked)}
+                style={{ 
+                  marginRight: '10px', 
+                  width: '18px', 
+                  height: '18px',
+                  cursor: 'pointer',
+                }}
+              />
+              <span style={{
+                fontSize: '15px',
+                fontWeight: '500',
+                color: requiresDriver ? '#1976d2' : '#333',
+              }}>
+                🚤 需要駕駛（勾選後在排班時必須指定駕駛）
+              </span>
+            </label>
           </div>
 
           {/* 錯誤訊息 */}

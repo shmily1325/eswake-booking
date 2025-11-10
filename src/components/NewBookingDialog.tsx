@@ -61,6 +61,7 @@ export function NewBookingDialog({
   const [durationMin, setDurationMin] = useState(60)
   const [activityTypes, setActivityTypes] = useState<string[]>([])
   const [notes, setNotes] = useState('')
+  const [requiresDriver, setRequiresDriver] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingCoaches, setLoadingCoaches] = useState(true)
@@ -450,6 +451,7 @@ export function NewBookingDialog({
           start_at: newStartAt,
           duration_min: durationMin,
           notes: notes || null,
+          requires_driver: requiresDriver,          // 是否需要駕駛
           status: 'confirmed',
           created_by: user.id,
         }
@@ -560,6 +562,7 @@ export function NewBookingDialog({
       setDurationMin(60)
       setActivityTypes([])
       setNotes('')
+      setRequiresDriver(false)
       setIsRepeat(false)
       setRepeatCount(8)
       setRepeatEndDate('')
@@ -584,6 +587,7 @@ export function NewBookingDialog({
       setDurationMin(60)
       setActivityTypes([])
       setNotes('')
+      setRequiresDriver(false)
       setError('')
       setIsRepeat(false)
       setRepeatCount(8)
@@ -1225,6 +1229,39 @@ export function NewBookingDialog({
                 touchAction: 'manipulation',
               }}
             />
+          </div>
+
+          {/* 需要駕駛勾選框 */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              padding: '12px',
+              backgroundColor: requiresDriver ? '#e3f2fd' : '#f8f9fa',
+              borderRadius: '8px',
+              border: requiresDriver ? '2px solid #1976d2' : '1px solid #e0e0e0',
+              transition: 'all 0.2s',
+            }}>
+              <input
+                type="checkbox"
+                checked={requiresDriver}
+                onChange={(e) => setRequiresDriver(e.target.checked)}
+                style={{ 
+                  marginRight: '10px', 
+                  width: '18px', 
+                  height: '18px',
+                  cursor: 'pointer',
+                }}
+              />
+              <span style={{
+                fontSize: '15px',
+                fontWeight: '500',
+                color: requiresDriver ? '#1976d2' : '#333',
+              }}>
+                🚤 需要駕駛（勾選後在排班時必須指定駕駛）
+              </span>
+            </label>
           </div>
 
           <div style={{ marginBottom: '18px', padding: '14px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>

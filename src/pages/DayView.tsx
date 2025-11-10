@@ -30,6 +30,7 @@ interface Booking {
   duration_min: number
   activity_types?: string[] | null
   notes?: string | null
+  requires_driver?: boolean
   status: string
   boats?: Boat
   coaches?: Coach[]
@@ -797,6 +798,22 @@ export function DayView({ user }: DayViewProps) {
                                     </span>
                                   ))}
                                   
+                                  {booking.requires_driver && (
+                                    <span
+                                      style={{
+                                        padding: '2px 6px',
+                                        backgroundColor: '#e3f2fd',
+                                        color: '#1976d2',
+                                        borderRadius: '10px',
+                                        fontSize: isMobile ? '10px' : '11px',
+                                        fontWeight: '600',
+                                        border: '1px solid #1976d2',
+                                      }}
+                                    >
+                                      🚤
+                                    </span>
+                                  )}
+                                  
                                   <span style={{
                                     fontSize: isMobile ? '12px' : '13px',
                                     color: '#999',
@@ -1028,6 +1045,21 @@ export function DayView({ user }: DayViewProps) {
                                 {type}
                               </span>
                             ))}
+                            {booking.requires_driver && (
+                              <span
+                                style={{
+                                  padding: '2px 6px',
+                                  backgroundColor: '#e3f2fd',
+                                  color: '#1976d2',
+                                  borderRadius: '8px',
+                                  fontSize: isMobile ? '10px' : '11px',
+                                  fontWeight: '600',
+                                  border: '1px solid #1976d2',
+                                }}
+                              >
+                                🚤
+                              </span>
+                            )}
                             {booking.schedule_notes && (
                               <span style={{
                                 padding: '2px 6px',
