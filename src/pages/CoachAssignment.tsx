@@ -1067,7 +1067,16 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
         {/* 船隻時間軸視圖 - Excel風格 */}
         {!loading && bookings.length > 0 && viewMode === 'boat-timeline' && (() => {
-          // 獲取所有船隻（去重）並按指定順序排序
+          // 定義所有船隻（固定顯示）
+          const allBoats = [
+            { id: 1, name: 'G23', color: '#ff6b6b' },
+            { id: 2, name: 'G21', color: '#4ecdc4' },
+            { id: 3, name: '黑豹', color: '#2c3e50' },
+            { id: 4, name: '粉紅', color: '#ff69b4' },
+            { id: 5, name: '彈簧床', color: '#95e1d3' }
+          ]
+          
+          // 從實際預約中獲取船隻資訊，補充到固定列表
           const boatsMap = new Map<number, { id: number; name: string; color: string }>()
           bookings.forEach(b => {
             if (b.boats) {
@@ -1075,19 +1084,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             }
           })
           
-          // 定義船隻顯示順序
-          const boatOrder = ['G23', 'G21', '黑豹', '粉紅', '彈簧床']
-          const boats = Array.from(boatsMap.values()).sort((a, b) => {
-            const indexA = boatOrder.indexOf(a.name)
-            const indexB = boatOrder.indexOf(b.name)
-            // 如果都在排序列表中，按順序排
-            if (indexA !== -1 && indexB !== -1) return indexA - indexB
-            // 如果只有 A 在列表中，A 排前面
-            if (indexA !== -1) return -1
-            // 如果只有 B 在列表中，B 排前面
-            if (indexB !== -1) return 1
-            // 都不在列表中，按名稱排序
-            return a.name.localeCompare(b.name)
+          // 合併固定船隻和實際船隻，以實際船隻的資訊為準
+          const boats = allBoats.map(fixedBoat => {
+            const actualBoat = Array.from(boatsMap.values()).find(b => b.name === fixedBoat.name)
+            return actualBoat || fixedBoat
           })
           
           // 按時間分組預約
@@ -1608,7 +1608,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   {/* 指定教練 */}
                   <div style={{ marginBottom: designSystem.spacing.md }}>
                     <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
-                      指定教練 *
+                      👨‍🏫 指定教練 *
                     </label>
                     
                     {/* 已選擇的教練標籤 */}
@@ -1689,7 +1689,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   {/* 指定駕駛 */}
                   <div style={{ marginBottom: designSystem.spacing.md }}>
                     <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
-                      指定駕駛（選填）
+                      🚤 指定駕駛（選填）
                     </label>
                     
                     {/* 已選擇的駕駛標籤 */}
@@ -1804,10 +1804,22 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         booking={fullEditBookingId ? (() => {
           const found = bookings.find(b => b.id === fullEditBookingId)
           if (!found) return null
+          const assignment = assignments[fullEditBookingId]
+          
+          // 組裝教練資訊
+          const coachesData = assignment?.coachIds.map(coachId => {
+            const coach = coaches.find(c => c.id === coachId)
+            return coach ? { id: coach.id, name: coach.name } : null
+          }).filter(Boolean) as Array<{id: string, name: string}> || []
+          
           return {
             ...found,
             status: found.status || 'confirmed',
-            boats: found.boats || undefined
+            boats: found.boats || undefined,
+            coaches: coachesData,
+            requires_driver: assignment?.requiresDriver ?? found.requires_driver,
+            notes: found.notes || assignment?.notes || null,
+            schedule_notes: assignment?.notes || found.schedule_notes || null
           } as any
         })() : null}
         user={user}
