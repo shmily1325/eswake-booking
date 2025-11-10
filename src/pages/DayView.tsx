@@ -764,65 +764,59 @@ export function DayView({ user }: DayViewProps) {
 
                               {/* 預約詳情 */}
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                {/* 學生名字 + 活動類型（同一行） */}
+                                {/* 第一行：姓名 + 活動類型 + 時長 */}
                                 <div style={{
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '8px',
-                                  marginBottom: '8px',
+                                  gap: '6px',
+                                  marginBottom: '6px',
                                   flexWrap: 'wrap',
                                 }}>
                                   <span style={{
-                                    fontSize: isMobile ? '15px' : '15px',
+                                    fontSize: isMobile ? '15px' : '16px',
                                     fontWeight: '700',
                                     color: '#000',
                                   }}>
                                     {booking.contact_name}
                                   </span>
                                   
-                                  {/* 活動類型標籤（有底色） */}
+                                  {/* 活動類型標籤（藍色底） */}
                                   {booking.activity_types && booking.activity_types.map(type => (
                                     <span
                                       key={type}
                                       style={{
-                                        padding: '3px 8px',
-                                        backgroundColor: '#fff3e0',
-                                        color: '#e65100',
-                                        borderRadius: '12px',
-                                        fontSize: isMobile ? '11px' : '12px',
+                                        padding: '2px 6px',
+                                        backgroundColor: '#e3f2fd',
+                                        color: '#1565c0',
+                                        borderRadius: '10px',
+                                        fontSize: isMobile ? '10px' : '11px',
                                         fontWeight: '500',
                                       }}
                                     >
                                       {type}
                                     </span>
                                   ))}
+                                  
+                                  <span style={{
+                                    fontSize: isMobile ? '12px' : '13px',
+                                    color: '#999',
+                                  }}>
+                                    {booking.duration_min}分
+                                  </span>
                                 </div>
                                 
-                                {/* 教練、駕駛、排班備註標籤 */}
+                                {/* 第二行：教練 / 駕駛 */}
                                 <div style={{
-                                  display: 'flex',
-                                  gap: '6px',
-                                  flexWrap: 'wrap',
-                                  alignItems: 'center',
+                                  fontSize: isMobile ? '12px' : '13px',
+                                  color: '#666',
+                                  marginBottom: '4px',
+                                  lineHeight: '1.5',
                                 }}>
-                                  {/* 教練標籤 */}
                                   {booking.coaches && booking.coaches.length > 0 && (
-                                    <span style={{
-                                      padding: '3px 8px',
-                                      backgroundColor: 'transparent',
-                                      color: '#666',
-                                      borderRadius: '12px',
-                                      fontSize: isMobile ? '11px' : '12px',
-                                      fontWeight: '500',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                    }}>
-                                      🎓 {booking.coaches.map(c => c.name).join(' / ')}
-                                    </span>
+                                    <span>🎓 {booking.coaches.map(c => c.name).join('/')}</span>
                                   )}
                                   
-                                  {/* 駕駛標籤 - 只有當駕駛與教練不同時才顯示 */}
+                                  {/* 駕駛 - 只有當駕駛與教練不同時才顯示 */}
                                   {(() => {
                                     if (!booking.drivers || booking.drivers.length === 0) return null
                                     
@@ -832,49 +826,28 @@ export function DayView({ user }: DayViewProps) {
                                     if (coachIds === driverIds) return null
                                     
                                     return (
-                                      <span style={{
-                                        padding: '3px 8px',
-                                        backgroundColor: 'transparent',
-                                        color: '#666',
-                                        borderRadius: '12px',
-                                        fontSize: isMobile ? '11px' : '12px',
-                                        fontWeight: '500',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                      }}>
-                                        🚤 {booking.drivers.map(d => d.name).join(' / ')}
-                                      </span>
+                                      <>
+                                        {booking.coaches && booking.coaches.length > 0 && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
+                                        <span>🚤 {booking.drivers.map(d => d.name).join('/')}</span>
+                                      </>
                                     )
                                   })()}
-                                  
-                                  {/* 排班備註 */}
-                                  {booking.schedule_notes && (
-                                    <span style={{
-                                      padding: '3px 8px',
-                                      backgroundColor: 'transparent',
-                                      color: '#666',
-                                      borderRadius: '12px',
-                                      fontSize: isMobile ? '11px' : '12px',
-                                      fontWeight: '500',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                    }}>
-                                      📝 {booking.schedule_notes}
-                                    </span>
-                                  )}
                                 </div>
                                 
-                                {/* 備註 - 單獨一行 */}
-                                {booking.notes && (
+                                {/* 第三行：備註 / 排班備註 */}
+                                {(booking.notes || booking.schedule_notes) && (
                                   <div style={{
                                     fontSize: isMobile ? '11px' : '12px',
                                     color: '#999',
-                                    fontStyle: 'italic',
-                                    marginTop: '6px',
+                                    lineHeight: '1.4',
                                   }}>
-                                    💬 {booking.notes}
+                                    {booking.notes && (
+                                      <span style={{ fontStyle: 'italic' }}>💬 {booking.notes}</span>
+                                    )}
+                                    {booking.notes && booking.schedule_notes && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
+                                    {booking.schedule_notes && (
+                                      <span>📝 {booking.schedule_notes}</span>
+                                    )}
                                   </div>
                                 )}
                               </div>

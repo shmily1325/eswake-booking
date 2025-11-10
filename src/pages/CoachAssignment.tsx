@@ -157,6 +157,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   }
 
   const updateAssignment = (bookingId: number, field: 'coachIds' | 'driverIds' | 'notes', value: any) => {
+    // 清除錯誤訊息（當用戶修改配置時）
+    if (error) {
+      setError('')
+    }
+    
     setAssignments(prev => ({
       ...prev,
       [bookingId]: {
