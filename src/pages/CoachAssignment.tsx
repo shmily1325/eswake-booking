@@ -117,32 +117,41 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       const bookingIds = bookingsData.map((b: any) => b.id)
 
-      // 查詢教練資訊
-      const { data: coachesData } = await supabase
-        .from('booking_coaches')
-        .select('booking_id, coach_id')
-        .in('booking_id', bookingIds)
+      // 並行查詢教練和駕駛資訊（提升效能）
+      const [coachesResult, driversResult] = await Promise.all([
+        supabase
+          .from('booking_coaches')
+          .select('booking_id, coach_id')
+          .in('booking_id', bookingIds),
+        supabase
+          .from('booking_drivers')
+          .select('booking_id, driver_id')
+          .in('booking_id', bookingIds)
+      ])
 
-      // 查詢駕駛資訊
-      const { data: driversData } = await supabase
-        .from('booking_drivers')
-        .select('booking_id, driver_id')
-        .in('booking_id', bookingIds)
+      // 使用 Map 加速查找（O(n) 而不是 O(n²)）
+      const coachesMap = new Map<number, string[]>()
+      coachesResult.data?.forEach((bc: any) => {
+        if (!coachesMap.has(bc.booking_id)) {
+          coachesMap.set(bc.booking_id, [])
+        }
+        coachesMap.get(bc.booking_id)!.push(bc.coach_id)
+      })
 
-      // 組裝資料
+      const driversMap = new Map<number, string[]>()
+      driversResult.data?.forEach((bd: any) => {
+        if (!driversMap.has(bd.booking_id)) {
+          driversMap.set(bd.booking_id, [])
+        }
+        driversMap.get(bd.booking_id)!.push(bd.driver_id)
+      })
+
+      // 組裝資料（使用 Map 快速查找）
       const bookingsWithCoaches = bookingsData.map((booking: any) => {
-        const bookingCoachIds = coachesData
-          ?.filter((bc: any) => bc.booking_id === booking.id)
-          .map((bc: any) => bc.coach_id) || []
-        
-        const bookingDriverIds = driversData
-          ?.filter((bd: any) => bd.booking_id === booking.id)
-          .map((bd: any) => bd.driver_id) || []
-        
         return {
           ...booking,
-          currentCoaches: bookingCoachIds,
-          currentDrivers: bookingDriverIds
+          currentCoaches: coachesMap.get(booking.id) || [],
+          currentDrivers: driversMap.get(booking.id) || []
         }
       })
 
