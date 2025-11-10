@@ -339,6 +339,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           }
         }
         
+        // 建立正在編輯的預約 ID 集合（用於排除）
+        const editingBookingIds = new Set(bookings.map(b => b.id))
+        
         // 檢查衝突（教練和駕駛一起檢查，使用同一個 conflictSet 避免重複）
         for (const booking of bookings) {
           const assignment = assignments[booking.id]
@@ -361,7 +364,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             if (!bookingMap) continue
             
             for (const [dbBookingId, dbBooking] of bookingMap.entries()) {
-              if (dbBookingId === booking.id) continue
+              // 跳過所有正在編輯的預約（避免與自己或其他正在編輯的預約衝突）
+              if (editingBookingIds.has(dbBookingId)) continue
               
               // 檢查時間是否重疊（字串比較）
               if (thisStart < dbBooking.end && thisEnd > dbBooking.start) {
