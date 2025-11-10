@@ -1209,10 +1209,31 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               <div style={{ display: 'flex', gap: '4px', flexDirection: maxColumns > 1 ? 'row' : 'column' }}>
                               {bookingsWithLayout.filter(item => item.isStartSlot).map(({ booking }) => {
                                 
-                                const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [] }
+                                const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
                                 const hasConflict = assignment.conflicts && assignment.conflicts.length > 0
                                 const hasNoCoach = assignment.coachIds.length === 0
                                 const isEditing = editingBookingId === booking.id
+                                
+                                // 檢查駕駛配置是否符合要求
+                                let hasDriverIssue = false
+                                let driverIssueMessage = ''
+                                if (assignment.requiresDriver) {
+                                  const coachCount = assignment.coachIds.length
+                                  const driverCount = assignment.driverIds.length
+                                  const onlyDriverIds = assignment.driverIds.filter(id => !assignment.coachIds.includes(id))
+                                  const totalPeople = coachCount + onlyDriverIds.length
+                                  
+                                  if (driverCount === 0) {
+                                    hasDriverIssue = true
+                                    driverIssueMessage = '需要指定駕駛'
+                                  } else if (coachCount === 1 && onlyDriverIds.length === 0) {
+                                    hasDriverIssue = true
+                                    driverIssueMessage = '駕駛必須是另一個人'
+                                  } else if (totalPeople === 1) {
+                                    hasDriverIssue = true
+                                    driverIssueMessage = '需要額外的駕駛或第2位教練'
+                                  }
+                                }
                                 
                                 return (
                                   <div
@@ -1220,8 +1241,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                     style={{
                                       padding: '8px',
                                       marginBottom: maxColumns > 1 ? '0' : '6px',
-                                      background: hasConflict ? '#ffebee' : hasNoCoach ? '#fff3cd' : '#e8f5e9',
-                                      border: `2px solid ${hasConflict ? '#f44336' : hasNoCoach ? '#ffc107' : '#4caf50'}`,
+                                      background: hasConflict || hasDriverIssue ? '#ffebee' : hasNoCoach ? '#fff3cd' : '#e8f5e9',
+                                      border: `2px solid ${hasConflict || hasDriverIssue ? '#f44336' : hasNoCoach ? '#ffc107' : '#4caf50'}`,
                                       borderRadius: '6px',
                                       transition: 'all 0.2s',
                                       position: 'relative',
@@ -1294,12 +1315,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                     <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '2px', color: '#2c3e50', paddingRight: '85px' }}>
                                       {formatTimeRange(booking.start_at, booking.duration_min)}
                                     </div>
-                                    <div style={{ fontSize: '10px', color: '#999', marginBottom: '4px' }}>
-                                      (接船至 {(() => {
-                                        const endTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
-                                        return `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
-                                      })()})
-                                    </div>
+                                    {booking.boats?.name !== '彈簧床' && (
+                                      <div style={{ fontSize: '10px', color: '#999', marginBottom: '4px' }}>
+                                        (接船至 {(() => {
+                                          const endTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
+                                          return `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
+                                        })()})
+                                      </div>
+                                    )}
                                     <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '4px', color: '#000' }}>
                                       {booking.contact_name}
                                     </div>
@@ -1502,10 +1525,15 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                       </div>
                                     )}
                                     
-                                    {/* 未編輯時顯示教練 */}
+                                    {/* 未編輯時顯示教練和駕駛 */}
                                     {!isEditing && assignment.coachIds.length > 0 && (
                                       <div style={{ fontSize: '11px', color: '#2196F3', fontWeight: '600' }}>
                                         👨‍🏫 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
+                                      </div>
+                                    )}
+                                    {!isEditing && assignment.driverIds && assignment.driverIds.length > 0 && (
+                                      <div style={{ fontSize: '11px', color: '#4caf50', fontWeight: '600', marginTop: '2px' }}>
+                                        🚤 {assignment.driverIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
                                       </div>
                                     )}
                                     
@@ -1518,6 +1546,26 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                     {!isEditing && hasConflict && (
                                       <div style={{ fontSize: '11px', color: '#d32f2f', fontWeight: '600', marginTop: '4px' }}>
                                         ⚠️ 教練衝突
+                                      </div>
+                                    )}
+                                    {!isEditing && hasDriverIssue && (
+                                      <div style={{ fontSize: '11px', color: '#d32f2f', fontWeight: '600', marginTop: '4px' }}>
+                                        ⚠️ {driverIssueMessage}
+                                      </div>
+                                    )}
+                                    
+                                    {/* 編輯模式下的駕駛警告 */}
+                                    {isEditing && hasDriverIssue && (
+                                      <div style={{ 
+                                        marginTop: '8px', 
+                                        padding: '6px', 
+                                        background: '#ffebee', 
+                                        borderRadius: '4px',
+                                        fontSize: '11px', 
+                                        color: '#d32f2f', 
+                                        fontWeight: '600'
+                                      }}>
+                                        ⚠️ {driverIssueMessage}
                                       </div>
                                     )}
                                   </div>
