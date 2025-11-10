@@ -177,6 +177,22 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     setSuccess('')
 
     try {
+      // 0. 先檢查是否所有預約都有指定教練
+      const missingCoaches: string[] = []
+      for (const booking of bookings) {
+        const assignment = assignments[booking.id]
+        if (!assignment || assignment.coachIds.length === 0) {
+          const timeStr = formatTimeRange(booking.start_at, booking.duration_min)
+          missingCoaches.push(`${timeStr} (${booking.contact_name})`)
+        }
+      }
+      
+      if (missingCoaches.length > 0) {
+        setError('⚠️ 以下預約尚未指定教練：\n\n' + missingCoaches.map(m => `• ${m}`).join('\n'))
+        setSaving(false)
+        return
+      }
+      
       // 先檢查教練和駕駛衝突
       const conflicts: string[] = []
       
