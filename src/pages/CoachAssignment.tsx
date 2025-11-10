@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
+import { EditBookingDialog } from '../components/EditBookingDialog'
 import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getButtonStyle, getInputStyle, getLabelStyle, getTextStyle } from '../styles/designSystem'
 
@@ -23,6 +24,10 @@ interface Booking {
   currentDrivers: string[]
   schedule_notes: string | null
   requires_driver: boolean
+  status?: string
+  member_id?: string | null
+  activity_types?: string[] | null
+  notes?: string | null
 }
 
 interface CoachAssignmentProps {
@@ -43,8 +48,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
-  const [viewMode, setViewMode] = useState<'list' | 'timeline' | 'boat-timeline'>('boat-timeline') // 視圖模式
-  const [editingBookingId, setEditingBookingId] = useState<number | null>(null) // 正在編輯的預約
+  const [viewMode, setViewMode] = useState<'list' | 'boat-timeline'>('boat-timeline') // 視圖模式
+  const [editingBookingId, setEditingBookingId] = useState<number | null>(null) // 正在快速編輯的預約
+  const [fullEditBookingId, setFullEditBookingId] = useState<number | null>(null) // 正在完整編輯的預約
   
   // 儲存每個預約的配置（key: booking_id）
   const [assignments, setAssignments] = useState<Record<number, {
@@ -52,6 +58,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     driverIds: string[]
     notes: string
     conflicts: string[] // 即時衝突提示
+    requiresDriver: boolean
   }>>({})
 
   useEffect(() => {
@@ -142,13 +149,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       setBookings(bookingsWithCoaches)
       
       // 初始化 assignments 為當前的配置
-      const initialAssignments: Record<number, { coachIds: string[], driverIds: string[], notes: string, conflicts: string[] }> = {}
+      const initialAssignments: Record<number, { coachIds: string[], driverIds: string[], notes: string, conflicts: string[], requiresDriver: boolean }> = {}
       bookingsWithCoaches.forEach((booking: Booking) => {
         initialAssignments[booking.id] = {
           coachIds: [...booking.currentCoaches],
           driverIds: [...booking.currentDrivers],
           notes: booking.schedule_notes || '',
-          conflicts: []
+          conflicts: [],
+          requiresDriver: booking.requires_driver
         }
       })
       setAssignments(initialAssignments)
@@ -235,20 +243,44 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         return
       }
 
-      // 0.1 檢查「需要駕駛」的預約是否都有指定駕駛
-      const missingDrivers: string[] = []
+      // 0.1 檢查「需要駕駛」的預約是否符合人力需求
+      const driverIssues: string[] = []
       for (const booking of bookings) {
-        if (booking.requires_driver) {
-          const assignment = assignments[booking.id]
-          if (!assignment || assignment.driverIds.length === 0) {
-            const timeStr = formatTimeRange(booking.start_at, booking.duration_min)
-            missingDrivers.push(`${timeStr} (${booking.contact_name})`)
+        const assignment = assignments[booking.id]
+        if (!assignment) continue
+        
+        if (assignment.requiresDriver) {
+          
+          const coachCount = assignment.coachIds.length
+          const driverCount = assignment.driverIds.length
+          
+          // 計算總人力（教練 + 只是駕駛的人）
+          const onlyDriverIds = assignment.driverIds.filter(id => !assignment.coachIds.includes(id))
+          const totalPeople = coachCount + onlyDriverIds.length
+          
+          const timeStr = formatTimeRange(booking.start_at, booking.duration_min)
+          
+          // 如果沒有指定駕駛
+          if (driverCount === 0) {
+            driverIssues.push(`${timeStr} (${booking.contact_name}) - 需要指定駕駛`)
+            continue
+          }
+          
+          // 如果只有1個教練，駕駛不能是教練本人
+          if (coachCount === 1 && onlyDriverIds.length === 0) {
+            driverIssues.push(`${timeStr} (${booking.contact_name}) - 只有1個教練時，駕駛必須是另一個人`)
+            continue
+          }
+          
+          // 如果總人力只有1人（教練兼駕駛），不符合需求
+          if (totalPeople === 1) {
+            driverIssues.push(`${timeStr} (${booking.contact_name}) - 需要額外的駕駛或第2位教練`)
           }
         }
       }
       
-      if (missingDrivers.length > 0) {
-        setError('⚠️ 以下預約標記為「需要駕駛」，必須指定駕駛：\n\n' + missingDrivers.map(m => `• ${m}`).join('\n'))
+      if (driverIssues.length > 0) {
+        setError('⚠️ 以下預約的駕駛配置不符合要求：\n\n' + driverIssues.map(m => `• ${m}`).join('\n'))
         setSaving(false)
         return
       }
@@ -494,11 +526,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         const newDriverIds = assignment.driverIds.sort().join(',')
         const currentNotes = booking.schedule_notes || ''
         const newNotes = assignment.notes || ''
+        const currentRequiresDriver = booking.requires_driver
+        const newRequiresDriver = assignment.requiresDriver
         
         const hasChanges = 
           currentCoachIds !== newCoachIds ||
           currentDriverIds !== newDriverIds ||
-          currentNotes !== newNotes
+          currentNotes !== newNotes ||
+          currentRequiresDriver !== newRequiresDriver
         
         if (hasChanges) {
           changedBookingIds.push(booking.id)
@@ -519,11 +554,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             })
           }
           
-          // 更新排班備註
-          if (currentNotes !== newNotes) {
+          // 更新排班備註和是否需要駕駛
+          if (currentNotes !== newNotes || currentRequiresDriver !== newRequiresDriver) {
             await supabase
               .from('bookings')
-              .update({ schedule_notes: newNotes || null })
+              .update({ 
+                schedule_notes: newNotes || null,
+                requires_driver: newRequiresDriver
+              })
               .eq('id', booking.id)
           }
         }
@@ -654,64 +692,53 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             </div>
 
             {/* 視圖切換按鈕 */}
-            {!isMobile && (
-              <div style={{ display: 'flex', gap: '4px', background: '#f0f0f0', borderRadius: '8px', padding: '4px' }}>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('boat-timeline')}
-                  style={{
-                    padding: '8px 16px',
-                    background: viewMode === 'boat-timeline' ? 'white' : 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: viewMode === 'boat-timeline' ? '600' : '400',
-                    fontSize: '14px',
-                    color: viewMode === 'boat-timeline' ? '#1976d2' : '#666',
-                    transition: 'all 0.2s',
-                    boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                >
-                  🚤 船隻
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('list')}
-                  style={{
-                    padding: '8px 16px',
-                    background: viewMode === 'list' ? 'white' : 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: viewMode === 'list' ? '600' : '400',
-                    fontSize: '14px',
-                    color: viewMode === 'list' ? '#1976d2' : '#666',
-                    transition: 'all 0.2s',
-                    boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                >
-                  📋 列表
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('timeline')}
-                  style={{
-                    padding: '8px 16px',
-                    background: viewMode === 'timeline' ? 'white' : 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: viewMode === 'timeline' ? '600' : '400',
-                    fontSize: '14px',
-                    color: viewMode === 'timeline' ? '#1976d2' : '#666',
-                    transition: 'all 0.2s',
-                    boxShadow: viewMode === 'timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                >
-                  ⏰ 時間軸
-                </button>
-              </div>
-            )}
+            <div style={{ 
+              display: 'flex', 
+              gap: '4px', 
+              background: '#f0f0f0', 
+              borderRadius: '8px', 
+              padding: '4px',
+              flex: isMobile ? '1 1 100%' : '0 0 auto'
+            }}>
+              <button
+                type="button"
+                onClick={() => setViewMode('boat-timeline')}
+                style={{
+                  flex: isMobile ? 1 : 'none',
+                  padding: isMobile ? '12px 16px' : '8px 16px',
+                  background: viewMode === 'boat-timeline' ? 'white' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: viewMode === 'boat-timeline' ? '600' : '400',
+                  fontSize: isMobile ? '15px' : '14px',
+                  color: viewMode === 'boat-timeline' ? '#1976d2' : '#666',
+                  transition: 'all 0.2s',
+                  boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                }}
+              >
+                🚤 船隻
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                style={{
+                  flex: isMobile ? 1 : 'none',
+                  padding: isMobile ? '12px 16px' : '8px 16px',
+                  background: viewMode === 'list' ? 'white' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: viewMode === 'list' ? '600' : '400',
+                  fontSize: isMobile ? '15px' : '14px',
+                  color: viewMode === 'list' ? '#1976d2' : '#666',
+                  transition: 'all 0.2s',
+                  boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                }}
+              >
+                📋 列表
+              </button>
+            </div>
 
             <button
               onClick={handleSaveAll}
@@ -1038,147 +1065,31 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           </div>
         )}
 
-        {/* 時間軸視圖 - 桌面版 */}
-        {!loading && bookings.length > 0 && !isMobile && viewMode === 'timeline' && (
-          <div style={{
-            background: 'white',
-            borderRadius: designSystem.borderRadius.md,
-            padding: designSystem.spacing.lg,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            overflow: 'auto'
-          }}>
-            <div style={{ display: 'flex', minWidth: '1200px' }}>
-              {/* 左側時間軸 */}
-              <div style={{ width: '80px', flexShrink: 0, borderRight: '2px solid #e0e0e0', paddingRight: '12px' }}>
-                <div style={{ height: '40px', fontWeight: 'bold', display: 'flex', alignItems: 'center', color: '#2c3e50' }}>
-                  時間
-                </div>
-                {Array.from({ length: 16 }, (_, i) => i + 5).map(hour => (
-                  <div
-                    key={hour}
-                    style={{
-                      height: '60px',
-                      borderTop: '1px solid #e0e0e0',
-                      padding: '4px 0',
-                      fontSize: '13px',
-                      color: '#666',
-                      fontWeight: '500'
-                    }}
-                  >
-                    {String(hour).padStart(2, '0')}:00
-                  </div>
-                ))}
-              </div>
-
-              {/* 右側預約區域 */}
-              <div style={{ flex: 1, position: 'relative', paddingLeft: '12px' }}>
-                <div style={{ height: '40px', fontWeight: 'bold', display: 'flex', alignItems: 'center', color: '#2c3e50' }}>
-                  預約時間軸
-                </div>
-                <div style={{ position: 'relative', height: `${16 * 60}px` }}>
-                  {/* 時間格線 */}
-                  {Array.from({ length: 16 }, (_, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        position: 'absolute',
-                        top: `${i * 60}px`,
-                        left: 0,
-                        right: 0,
-                        height: '60px',
-                        borderTop: '1px solid #e0e0e0',
-                        background: i % 2 === 0 ? '#fafafa' : 'white'
-                      }}
-                    />
-                  ))}
-
-                  {/* 預約卡片 */}
-                  {bookings.map((booking, index) => {
-                    const startTime = new Date(booking.start_at)
-                    const startHour = startTime.getHours()
-                    const startMinute = startTime.getMinutes()
-                    const topPosition = (startHour - 5) * 60 + startMinute // 5:00 開始
-                    const height = booking.duration_min
-                    const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [] }
-                    const hasConflict = assignment.conflicts && assignment.conflicts.length > 0
-                    const hasNoCoach = assignment.coachIds.length === 0
-
-                    return (
-                      <div
-                        key={booking.id}
-                        style={{
-                          position: 'absolute',
-                          top: `${topPosition}px`,
-                          left: `${(index % 3) * 33}%`,
-                          width: '32%',
-                          height: `${height}px`,
-                          background: hasConflict ? '#ffebee' : hasNoCoach ? '#fff3cd' : booking.boats?.color || '#ccc',
-                          border: hasConflict ? '2px solid #f44336' : hasNoCoach ? '2px solid #ffc107' : '1px solid rgba(0,0,0,0.2)',
-                          borderRadius: '6px',
-                          padding: '8px',
-                          cursor: 'pointer',
-                          overflow: 'hidden',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                          color: hasNoCoach || hasConflict ? '#000' : 'white',
-                          fontSize: '12px',
-                          transition: 'all 0.2s',
-                          zIndex: hasConflict ? 10 : 1
-                        }}
-                        title={`${booking.contact_name}\n${formatTimeRange(booking.start_at, booking.duration_min)}\n教練: ${assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ') || '未指定'}`}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.02)'
-                          e.currentTarget.style.zIndex = '100'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'scale(1)'
-                          e.currentTarget.style.zIndex = hasConflict ? '10' : '1'
-                        }}
-                      >
-                        <div style={{ fontWeight: 'bold', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {formatTime(booking.start_at)} {booking.contact_name}
-                        </div>
-                        <div style={{ fontSize: '11px', opacity: 0.9 }}>
-                          {booking.boats?.name} | {booking.duration_min}分
-                        </div>
-                        {assignment.coachIds.length > 0 && (
-                          <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: '600' }}>
-                            👨‍🏫 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
-                          </div>
-                        )}
-                        {hasNoCoach && (
-                          <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: '600', color: '#d32f2f' }}>
-                            ⚠️ 未指定教練
-                          </div>
-                        )}
-                        {hasConflict && (
-                          <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: '600', color: '#d32f2f' }}>
-                            ⚠️ 教練衝突
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-            
-            <div style={{
-              marginTop: designSystem.spacing.lg,
-              padding: designSystem.spacing.md,
-              background: '#f8f9fa',
-              borderRadius: '6px',
-              fontSize: '13px',
-              color: '#666'
-            }}>
-              💡 <strong>提示：</strong>時間軸視圖可以快速查看預約密度和衝突。點擊上方「📋 列表」切換回編輯模式。
-            </div>
-          </div>
-        )}
-
         {/* 船隻時間軸視圖 - Excel風格 */}
-        {!loading && bookings.length > 0 && !isMobile && viewMode === 'boat-timeline' && (() => {
-          // 獲取所有船隻
-          const boats = Array.from(new Set(bookings.map(b => b.boats).filter(Boolean)))
+        {!loading && bookings.length > 0 && viewMode === 'boat-timeline' && (() => {
+          // 獲取所有船隻（去重）並按指定順序排序
+          const boatsMap = new Map<number, { id: number; name: string; color: string }>()
+          bookings.forEach(b => {
+            if (b.boats) {
+              boatsMap.set(b.boats.id, b.boats)
+            }
+          })
+          
+          // 定義船隻顯示順序
+          const boatOrder = ['G23', 'G21', '黑豹', '粉紅', '彈簧床']
+          const boats = Array.from(boatsMap.values()).sort((a, b) => {
+            const indexA = boatOrder.indexOf(a.name)
+            const indexB = boatOrder.indexOf(b.name)
+            // 如果都在排序列表中，按順序排
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB
+            // 如果只有 A 在列表中，A 排前面
+            if (indexA !== -1) return -1
+            // 如果只有 B 在列表中，B 排前面
+            if (indexB !== -1) return 1
+            // 都不在列表中，按名稱排序
+            return a.name.localeCompare(b.name)
+          })
+          
           // 按時間分組預約
           const timeSlots: { hour: number, minute: number }[] = []
           for (let h = 5; h <= 20; h++) {
@@ -1248,31 +1159,42 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           {timeStr}
                         </td>
                         {boats.map(boat => {
-                          // 找出在這個時段開始的預約
+                          // 找出在這個時段存在的預約（包括跨時段的）
                           const boatBookings = bookingsByBoat[boat!.id] || []
                           const bookingsInSlot = boatBookings.filter(booking => {
                             const bookingStartTime = new Date(booking.start_at)
-                            const bookingStartHour = bookingStartTime.getHours()
-                            return bookingStartHour === slot.hour
+                            const bookingEndTime = new Date(bookingStartTime.getTime() + booking.duration_min * 60000)
+                            const slotStartTime = new Date(bookingStartTime)
+                            slotStartTime.setHours(slot.hour, 0, 0, 0)
+                            const slotEndTime = new Date(slotStartTime)
+                            slotEndTime.setHours(slot.hour + 1, 0, 0, 0)
+                            
+                            // 檢查預約是否與這個時段重疊
+                            return bookingStartTime < slotEndTime && bookingEndTime > slotStartTime
+                          }).map(booking => {
+                            // 標記是否為起始時段
+                            const bookingStartTime = new Date(booking.start_at)
+                            const isStartSlot = bookingStartTime.getHours() === slot.hour
+                            return { booking, isStartSlot }
                           })
                           
                           // 檢測重疊並計算排列
-                          const bookingsWithLayout = bookingsInSlot.map((booking, idx) => {
+                          const bookingsWithLayout = bookingsInSlot.map((item, idx) => {
                             // 檢查與前面的預約是否有時間重疊
                             let column = 0
                             for (let i = 0; i < idx; i++) {
-                              const otherBooking = bookingsInSlot[i]
-                              const bookingStart = new Date(booking.start_at)
-                              const bookingEnd = new Date(bookingStart.getTime() + booking.duration_min * 60000)
-                              const otherStart = new Date(otherBooking.start_at)
-                              const otherEnd = new Date(otherStart.getTime() + otherBooking.duration_min * 60000)
+                              const otherItem = bookingsInSlot[i]
+                              const bookingStart = new Date(item.booking.start_at)
+                              const bookingEnd = new Date(bookingStart.getTime() + item.booking.duration_min * 60000)
+                              const otherStart = new Date(otherItem.booking.start_at)
+                              const otherEnd = new Date(otherStart.getTime() + otherItem.booking.duration_min * 60000)
                               
                               // 如果時間重疊，放到下一欄
                               if (bookingStart < otherEnd && bookingEnd > otherStart) {
                                 column++
                               }
                             }
-                            return { booking, column }
+                            return { ...item, column }
                           })
                           
                           const maxColumns = Math.max(1, ...bookingsWithLayout.map(b => b.column + 1))
@@ -1285,7 +1207,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               position: 'relative'
                             }}>
                               <div style={{ display: 'flex', gap: '4px', flexDirection: maxColumns > 1 ? 'row' : 'column' }}>
-                              {bookingsWithLayout.map(({ booking }) => {
+                              {bookingsWithLayout.filter(item => item.isStartSlot).map(({ booking }) => {
                                 
                                 const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [] }
                                 const hasConflict = assignment.conflicts && assignment.conflicts.length > 0
@@ -1295,25 +1217,88 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 return (
                                   <div
                                     key={booking.id}
-                                    onClick={() => setEditingBookingId(isEditing ? null : booking.id)}
                                     style={{
                                       padding: '8px',
                                       marginBottom: maxColumns > 1 ? '0' : '6px',
                                       background: hasConflict ? '#ffebee' : hasNoCoach ? '#fff3cd' : '#e8f5e9',
                                       border: `2px solid ${hasConflict ? '#f44336' : hasNoCoach ? '#ffc107' : '#4caf50'}`,
                                       borderRadius: '6px',
-                                      cursor: 'pointer',
                                       transition: 'all 0.2s',
                                       position: 'relative',
                                       flex: maxColumns > 1 ? 1 : 'none',
                                       minWidth: maxColumns > 1 ? '0' : 'auto'
                                     }}
-                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                                   >
+                                    {/* 右上角按鈕區 */}
+                                    <div style={{ position: 'absolute', top: '6px', right: '6px', display: 'flex', gap: '4px', zIndex: 10 }}>
+                                      {/* 完整編輯按鈕 */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setFullEditBookingId(booking.id)
+                                        }}
+                                        style={{
+                                          background: '#f0f0f0',
+                                          color: '#666',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          padding: '4px 6px',
+                                          fontSize: '12px',
+                                          cursor: 'pointer',
+                                          transition: 'all 0.2s',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#e0e0e0'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = '#f0f0f0'}
+                                        title="編輯預約詳情"
+                                      >
+                                        ⚙️
+                                      </button>
+                                      
+                                      {/* 快速排班按鈕 */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setEditingBookingId(isEditing ? null : booking.id)
+                                        }}
+                                        style={{
+                                          background: isEditing ? '#1976d2' : '#f0f0f0',
+                                          color: isEditing ? 'white' : '#666',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          padding: '4px 8px',
+                                          fontSize: '10px',
+                                          cursor: 'pointer',
+                                          fontWeight: '600',
+                                          transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          if (!isEditing) {
+                                            e.currentTarget.style.background = '#e0e0e0'
+                                          }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          if (!isEditing) {
+                                            e.currentTarget.style.background = '#f0f0f0'
+                                          }
+                                        }}
+                                        title="快速排班"
+                                      >
+                                        {isEditing ? '✓ 完成' : '✏️ 排班'}
+                                      </button>
+                                    </div>
+                                    
                                     {/* 預約資訊 */}
-                                    <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#2c3e50' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '2px', color: '#2c3e50', paddingRight: '85px' }}>
                                       {formatTimeRange(booking.start_at, booking.duration_min)}
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#999', marginBottom: '4px' }}>
+                                      (接船至 {(() => {
+                                        const endTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
+                                        return `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
+                                      })()})
                                     </div>
                                     <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '4px', color: '#000' }}>
                                       {booking.contact_name}
@@ -1405,6 +1390,115 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                             ⚠️ {assignment.conflicts[0]}
                                           </div>
                                         )}
+                                        
+                                        {/* 是否需要駕駛 */}
+                                        <div style={{ marginTop: '8px', marginBottom: '6px' }}>
+                                          <label style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '11px',
+                                            fontWeight: '600',
+                                            color: '#666'
+                                          }}>
+                                            <input
+                                              type="checkbox"
+                                              checked={assignment.requiresDriver}
+                                              onChange={(e) => {
+                                                e.stopPropagation()
+                                                updateAssignment(booking.id, 'requiresDriver' as any, e.target.checked)
+                                              }}
+                                              style={{ cursor: 'pointer' }}
+                                            />
+                                            需要駕駛 {assignment.requiresDriver && <span style={{ color: '#1976d2' }}>🚤</span>}
+                                          </label>
+                                        </div>
+                                        
+                                        {/* 駕駛選擇 */}
+                                        {assignment.requiresDriver && (
+                                        <div style={{ marginTop: '8px' }}>
+                                          <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px', color: '#666' }}>
+                                            駕駛：
+                                          </div>
+                                          {assignment.driverIds && assignment.driverIds.length > 0 && (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
+                                              {assignment.driverIds.map((driverId: string) => {
+                                                const driver = coaches.find(c => c.id === driverId)
+                                                return driver ? (
+                                                  <span key={driverId} style={{
+                                                    padding: '2px 6px',
+                                                    background: '#4caf50',
+                                                    color: 'white',
+                                                    borderRadius: '10px',
+                                                    fontSize: '11px',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                  }}>
+                                                    {driver.name}
+                                                    <button
+                                                      onClick={() => toggleDriver(booking.id, driverId)}
+                                                      style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: 'white',
+                                                        cursor: 'pointer',
+                                                        padding: '0',
+                                                        fontSize: '14px',
+                                                        lineHeight: '1'
+                                                      }}
+                                                    >×</button>
+                                                  </span>
+                                                ) : null
+                                              })}
+                                            </div>
+                                          )}
+                                          <select
+                                            value=""
+                                            onChange={(e) => {
+                                              if (e.target.value) {
+                                                toggleDriver(booking.id, e.target.value)
+                                              }
+                                            }}
+                                            style={{
+                                              width: '100%',
+                                              padding: '4px',
+                                              fontSize: '11px',
+                                              border: '1px solid #ddd',
+                                              borderRadius: '4px',
+                                              background: 'white'
+                                            }}
+                                          >
+                                            <option value="">➕ 新增駕駛</option>
+                                            {coaches.filter(c => !assignment.driverIds?.includes(c.id)).map(coach => (
+                                              <option key={coach.id} value={coach.id}>{coach.name}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                        )}
+                                        
+                                        {/* 排班註解 */}
+                                        <div style={{ marginTop: '8px' }}>
+                                          <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px', color: '#666' }}>
+                                            排班註解：
+                                          </div>
+                                          <input
+                                            type="text"
+                                            value={assignment.notes}
+                                            onChange={(e) => updateAssignment(booking.id, 'notes', e.target.value)}
+                                            placeholder="排班備註..."
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{
+                                              width: '100%',
+                                              padding: '4px',
+                                              fontSize: '11px',
+                                              border: '1px solid #ddd',
+                                              borderRadius: '4px',
+                                              background: 'white'
+                                            }}
+                                          />
+                                        </div>
                                       </div>
                                     )}
                                     
@@ -1443,17 +1537,17 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 padding: designSystem.spacing.md,
                 background: '#f8f9fa',
                 borderTop: '1px solid #e0e0e0',
-                fontSize: '13px',
+                fontSize: isMobile ? '12px' : '13px',
                 color: '#666'
               }}>
-                💡 <strong>提示：</strong>點擊預約卡片可以快速編輯教練。綠色=已排班，黃色=未指定教練，紅色=有衝突。
+                💡 <strong>提示：</strong>{isMobile && '可左右滑動查看。'}點擊預約卡片可以快速編輯教練。綠色=已排班，黃色=未指定教練，紅色=有衝突。
               </div>
             </div>
           )
         })()}
 
         {/* 手機版卡片列表 */}
-        {!loading && bookings.length > 0 && isMobile && (
+        {!loading && bookings.length > 0 && isMobile && viewMode === 'list' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.md }}>
             {bookings.map((booking) => {
               const assignment = assignments[booking.id] || { coachIds: [], driverId: '', notes: '' }
@@ -1472,8 +1566,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 >
                   {/* 基本資訊 */}
                   <div style={{ marginBottom: designSystem.spacing.md, paddingBottom: designSystem.spacing.md, borderBottom: '2px solid #e0e0e0' }}>
-                    <div style={{ ...getTextStyle('h3', isMobile), fontWeight: 'bold', marginBottom: '6px' }}>
+                    <div style={{ ...getTextStyle('h3', isMobile), fontWeight: 'bold', marginBottom: '2px' }}>
                       {formatTimeRange(booking.start_at, booking.duration_min)} | {booking.contact_name}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#999', marginBottom: '8px' }}>
+                      (接船至 {(() => {
+                        const endTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
+                        return `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
+                      })()})
                     </div>
                     <div style={{ display: 'flex', gap: designSystem.spacing.sm, alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{
@@ -1692,6 +1792,26 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           </div>
         )}
       </div>
+
+      {/* 完整編輯對話框 */}
+      <EditBookingDialog
+        isOpen={fullEditBookingId !== null}
+        onClose={() => setFullEditBookingId(null)}
+        onSuccess={() => {
+          setFullEditBookingId(null)
+          loadBookings() // 重新載入以更新卡片位置
+        }}
+        booking={fullEditBookingId ? (() => {
+          const found = bookings.find(b => b.id === fullEditBookingId)
+          if (!found) return null
+          return {
+            ...found,
+            status: found.status || 'confirmed',
+            boats: found.boats || undefined
+          } as any
+        })() : null}
+        user={user}
+      />
 
       <Footer />
     </div>
