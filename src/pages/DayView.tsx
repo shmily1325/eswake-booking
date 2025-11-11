@@ -903,30 +903,31 @@ export function DayView({ user }: DayViewProps) {
                                   position: 'absolute',
                                   top: isMobile ? '8px' : '10px',
                                   right: isMobile ? '8px' : '12px',
-                                  padding: isMobile ? '6px 10px' : '6px 12px',
-                                  background: copySuccess === booking.id ? '#28a745' : '#007bff',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  fontSize: isMobile ? '11px' : '12px',
+                                  padding: isMobile ? '4px 8px' : '5px 10px',
+                                  background: copySuccess === booking.id ? '#e8f5e9' : '#f5f5f5',
+                                  color: copySuccess === booking.id ? '#28a745' : '#666',
+                                  border: copySuccess === booking.id ? '1px solid #28a745' : '1px solid #ddd',
+                                  borderRadius: '4px',
+                                  fontSize: isMobile ? '14px' : '15px',
                                   cursor: 'pointer',
-                                  fontWeight: '500',
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '4px',
-                                  transition: 'all 0.2s',
-                                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                  transition: 'all 0.2s'
                                 }}
                                 onMouseEnter={(e) => {
                                   if (copySuccess !== booking.id) {
-                                    e.currentTarget.style.background = '#0056b3'
+                                    e.currentTarget.style.background = '#e0e0e0'
+                                    e.currentTarget.style.borderColor = '#999'
                                   }
                                 }}
                                 onMouseLeave={(e) => {
                                   if (copySuccess !== booking.id) {
-                                    e.currentTarget.style.background = '#007bff'
+                                    e.currentTarget.style.background = '#f5f5f5'
+                                    e.currentTarget.style.borderColor = '#ddd'
                                   }
                                 }}
+                                title="複製到剪貼簿"
                               >
                                 {copySuccess === booking.id ? '✓' : '📋'}
                               </button>

@@ -2073,7 +2073,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         {coachBookings.map((booking: any) => {
                           const position = calculateGridPosition(
                             booking.start_at,
-                            booking.duration_minutes,
+                            booking.duration_min,
                             booking.boats?.name
                           )
                           
@@ -2097,7 +2097,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
                           // 時間顯示
                           const startTime = new Date(booking.start_at)
-                          const endTime = new Date(startTime.getTime() + booking.duration_minutes * 60000)
+                          const endTime = new Date(startTime.getTime() + booking.duration_min * 60000)
                           const pickupTime = !isFacility(booking.boats?.name)
                             ? new Date(endTime.getTime() + 15 * 60000)
                             : null
@@ -2156,7 +2156,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 }}>
                                   <div>{startTime.getHours().toString().padStart(2, '0')}:{startTime.getMinutes().toString().padStart(2, '0')} - {endTime.getHours().toString().padStart(2, '0')}:{endTime.getMinutes().toString().padStart(2, '0')}</div>
                                   <div style={{ fontSize: '12px', color: '#666' }}>
-                                    ({booking.duration_minutes}分{pickupTime && `，接船至 ${pickupTime.getHours().toString().padStart(2, '0')}:${pickupTime.getMinutes().toString().padStart(2, '0')}`})
+                                    ({booking.duration_min}分{pickupTime && `，接船至 ${pickupTime.getHours().toString().padStart(2, '0')}:${pickupTime.getMinutes().toString().padStart(2, '0')}`})
                                   </div>
                                 </div>
 
@@ -2167,7 +2167,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                   fontWeight: '500',
                                   marginBottom: '4px'
                                 }}>
-                                  {booking.booking_contacts?.map((bc: any) => bc.members?.name || bc.guest_name).filter(Boolean).join(', ') || '無聯絡人'}
+                                  {booking.contact_name}
+                                  {booking.requires_driver && <span style={{ marginLeft: '6px', color: '#1976d2', fontWeight: '600', fontSize: '13px' }}>🚤</span>}
                                 </div>
 
                                 {/* 快速編輯區域 */}
