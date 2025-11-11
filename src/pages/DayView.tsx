@@ -6,7 +6,7 @@ import { NewBookingDialog } from '../components/NewBookingDialog'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { UserMenu } from '../components/UserMenu'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString, getLocalDateTimeString } from '../utils/date'
+import { getLocalDateString } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { getButtonStyle } from '../styles/designSystem'
 import { formatSingleBookingWithName } from '../utils/bookingFormat'
@@ -258,7 +258,7 @@ export function DayView({ user }: DayViewProps) {
     return hour * 60 + minute
   }
 
-  const handleCellClick = (boatId: number, timeSlot: string, booking?: Booking) => {
+  const handleCellClick = (_boatId: number, _timeSlot: string, booking?: Booking) => {
     if (booking) {
       setSelectedBooking(booking)
       setEditDialogOpen(true)
