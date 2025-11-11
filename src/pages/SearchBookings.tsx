@@ -231,14 +231,8 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
   const generateLineMessage = () => {
     if (bookings.length === 0) return ''
     
-    // 取得第一個預約的聯絡人名稱
-    const firstBooking = bookings[0]
-    const contactNames = firstBooking.booking_members
-      ?.map(bm => bm.members?.name)
-      .filter(Boolean)
-      .join(', ') || searchName
-    
-    return formatBookingsForLine(bookings, `${contactNames}的預約`)
+    // 直接使用搜尋的名字作為標題
+    return formatBookingsForLine(bookings, `${searchName}的預約`)
   }
   
   const handleCopyToClipboard = async () => {

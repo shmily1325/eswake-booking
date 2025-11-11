@@ -1298,146 +1298,119 @@ export function DayView({ user }: DayViewProps) {
                             e.currentTarget.style.boxShadow = '0 3px 10px rgba(0,0,0,0.1)'
                           }}
                         >
-                          {/* 時間範圍 + 時長說明 */}
+                          {/* 第一行：時間範圍 */}
                           <div style={{
-                            fontSize: isMobile ? '11px' : '13px',
+                            fontSize: isMobile ? '12px' : '14px',
                             fontWeight: '600',
                             color: '#2c3e50',
-                            marginBottom: '6px',
+                            marginBottom: '4px',
                             textAlign: 'center',
-                            lineHeight: '1.5',
+                            lineHeight: '1.3',
                           }}>
                             {(() => {
                               const start = new Date(booking.start_at)
                               const isFacility = booking.boats?.name === '彈簧床'
-                              // 彈簧床不需要接船時間
-                              const totalDuration = isFacility ? booking.duration_min : booking.duration_min + 15
-                              const end = new Date(start.getTime() + totalDuration * 60000)
+                              const actualEndTime = new Date(start.getTime() + booking.duration_min * 60000)
+                              const pickupEndTime = new Date(start.getTime() + (booking.duration_min + 15) * 60000)
                               const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
-                              const endTime = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
+                              const endTime = isFacility 
+                                ? `${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
+                                : `${String(pickupEndTime.getHours()).padStart(2, '0')}:${String(pickupEndTime.getMinutes()).padStart(2, '0')}`
                               
-                              // 時間範圍
-                              let display = `${startTime} - ${endTime}`
-                              
-                              // 時長說明
-                              if (isFacility) {
-                                display += ` (${booking.duration_min}分)`
-                              } else {
-                                display += ` (${booking.duration_min}分，接船至 ${endTime})`
-                              }
-                              
-                              return display
+                              return `${startTime} - ${endTime}`
                             })()}
                           </div>
 
-                          {/* 預約人 + 活動類型 + 排班備註 */}
+                          {/* 第二行：時長說明 */}
                           <div style={{
-                            fontSize: isMobile ? '13px' : '15px',
+                            fontSize: isMobile ? '11px' : '12px',
+                            color: '#666',
+                            marginBottom: '8px',
+                            textAlign: 'center',
+                          }}>
+                            {(() => {
+                              const isFacility = booking.boats?.name === '彈簧床'
+                              if (isFacility) {
+                                return `(${booking.duration_min}分)`
+                              } else {
+                                const start = new Date(booking.start_at)
+                                const pickupTime = new Date(start.getTime() + (booking.duration_min + 15) * 60000)
+                                const pickupTimeStr = `${String(pickupTime.getHours()).padStart(2, '0')}:${String(pickupTime.getMinutes()).padStart(2, '0')}`
+                                return `(${booking.duration_min}分，接船至 ${pickupTimeStr})`
+                              }
+                            })()}
+                          </div>
+
+                          {/* 第三行：預約人 */}
+                          <div style={{
+                            fontSize: isMobile ? '14px' : '16px',
                             fontWeight: '700',
                             marginBottom: '6px',
                             textAlign: 'center',
-                            lineHeight: '1.4',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                            flexWrap: 'wrap',
+                            color: '#1a1a1a',
                           }}>
-                            <span style={{ color: '#1a1a1a' }}>{booking.contact_name}</span>
-                            {booking.activity_types && booking.activity_types.map(type => (
-                              <span
-                                key={type}
-                                style={{
-                                  padding: '2px 6px',
-                                  backgroundColor: '#e3f2fd',
-                                  color: '#1565c0',
-                                  borderRadius: '6px',
-                                  fontSize: isMobile ? '10px' : '11px',
-                                  fontWeight: '600',
-                                }}
-                              >
-                                {type}
-                              </span>
-                            ))}
-                            {booking.requires_driver && (
-                              <span
-                                style={{
-                                  fontSize: isMobile ? '12px' : '14px',
-                                }}
-                              >
-                                🚤
-                              </span>
-                            )}
-                            {booking.schedule_notes && (
-                              <span style={{
-                                padding: '2px 6px',
-                                backgroundColor: '#fff3e0',
-                                color: '#e65100',
-                                borderRadius: '8px',
-                                fontSize: isMobile ? '10px' : '11px',
-                                fontWeight: '500',
-                              }}>
-                                {booking.schedule_notes}
-                              </span>
-                            )}
+                            {booking.contact_name}
                           </div>
-                          
-                          {/* 時長 */}
-                          <div style={{
-                            fontSize: isMobile ? '10px' : '12px',
-                            color: '#666',
-                            marginBottom: '4px',
-                            textAlign: 'center',
-                          }}>
-                            {booking.duration_min}分
-                          </div>
-                          
-                          {/* 教練和駕駛 */}
-                          <div style={{
-                            fontSize: isMobile ? '10px' : '12px',
-                            color: '#555',
-                            textAlign: 'center',
-                            lineHeight: '1.4',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '2px',
-                          }}>
-                            {booking.coaches && booking.coaches.length > 0 && (
-                              <div>🎓 {booking.coaches.map(c => c.name).join('/')}</div>
-                            )}
-                            
-                            {/* 駕駛顯示（只有當駕駛與教練不同時才顯示） */}
-                            {(() => {
-                              if (!booking.drivers || booking.drivers.length === 0) return null
-                              
-                              const coachIds = booking.coaches?.map(c => c.id).sort().join(',') || ''
-                              const driverIds = booking.drivers.map(d => d.id).sort().join(',')
-                              
-                              if (coachIds === driverIds) return null
-                              
-                              return <div>🚤 {booking.drivers.map(d => d.name).join('/')}</div>
-                            })()}
-                          </div>
-                          
-                          {/* 預約備註 */}
+
+                          {/* 第四行：備註 */}
                           {booking.notes && (
                             <div style={{
-                              marginTop: '6px',
-                              padding: '6px 8px',
-                              backgroundColor: 'rgba(0,0,0,0.03)',
-                              borderLeft: '2px solid #bbb',
-                              borderRadius: '4px',
-                              fontSize: isMobile ? '9px' : '11px',
-                              color: '#555',
-                              textAlign: 'left',
-                              lineHeight: '1.4',
-                              maxHeight: isMobile ? '40px' : '60px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
+                              fontSize: isMobile ? '11px' : '12px',
+                              color: '#666',
+                              marginBottom: '6px',
+                              textAlign: 'center',
+                              fontStyle: 'italic',
                             }}>
-                              💬 {booking.notes}
+                              {booking.notes}
                             </div>
                           )}
+
+                          {/* 第五行：排班備註 */}
+                          {booking.schedule_notes && (
+                            <div style={{
+                              fontSize: isMobile ? '11px' : '12px',
+                              color: '#e65100',
+                              marginBottom: '6px',
+                              textAlign: 'center',
+                              fontWeight: '500',
+                            }}>
+                              📝 {booking.schedule_notes}
+                            </div>
+                          )}
+                          
+                          {/* 第六行：教練 */}
+                          {booking.coaches && booking.coaches.length > 0 && (
+                            <div style={{
+                              fontSize: isMobile ? '12px' : '13px',
+                              color: '#555',
+                              marginBottom: '2px',
+                              textAlign: 'center',
+                              fontWeight: '500',
+                            }}>
+                              🎓 {booking.coaches.map(c => c.name).join('/')}
+                            </div>
+                          )}
+                          
+                          {/* 第七行：駕駛（只有當駕駛與教練不同時才顯示） */}
+                          {(() => {
+                            if (!booking.drivers || booking.drivers.length === 0) return null
+                            
+                            const coachIds = booking.coaches?.map(c => c.id).sort().join(',') || ''
+                            const driverIds = booking.drivers.map(d => d.id).sort().join(',')
+                            
+                            if (coachIds === driverIds) return null
+                            
+                            return (
+                              <div style={{
+                                fontSize: isMobile ? '12px' : '13px',
+                                color: '#555',
+                                textAlign: 'center',
+                                fontWeight: '500',
+                              }}>
+                                🚤 {booking.drivers.map(d => d.name).join('/')}
+                              </div>
+                            )
+                          })()}
                         </td>
                       )
                     } else if (booking) {

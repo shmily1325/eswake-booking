@@ -1764,7 +1764,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         // 使用船隻顏色作為卡片底色（類似 DayView）
                         const boatColor = boat!.color || '#ccc'
                         const cardStyle = {
-                          bg: `linear-gradient(135deg, ${boatColor}18 0%, ${boatColor}28 100%)`,
+                          bg: `linear-gradient(135deg, ${boatColor}CC 0%, ${boatColor}E8 100%)`,
                           border: boatColor,
                           borderLeft: hasConflict || hasDriverIssue ? '#f87171' : hasNoCoach ? '#fbbf24' : boatColor,
                           shadow: 'rgba(0, 0, 0, 0.1)'
@@ -2449,7 +2449,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           
                           // 獲取船隻顏色
                           const boatColor = booking.boats?.color || '#ccc'
-                          const cardBg = `linear-gradient(135deg, ${boatColor}18 0%, ${boatColor}28 100%)`
+                          const cardBg = `linear-gradient(135deg, ${boatColor}CC 0%, ${boatColor}E8 100%)`
                           const borderColor = boatColor
                           const borderLeftColor = hasConflict ? '#ef5350' : !isComplete ? '#ffc107' : boatColor
 
@@ -2849,81 +2849,73 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     ✏️
                   </button>
 
-                  {/* 標題行：時間 | 客人名稱 */}
+                  {/* 第一行：時間範圍（實際預約時間，不含接船） */}
+                  <div style={{ 
+                    fontSize: '15px', 
+                    fontWeight: '700', 
+                    marginBottom: '4px',
+                    color: '#1a1a1a',
+                  }}>
+                    {(() => {
+                      const startDate = new Date(booking.start_at)
+                      const endDate = new Date(startDate.getTime() + booking.duration_min * 60000)
+                      const startTime = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`
+                      const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
+                      return `${startTime} - ${endTime}`
+                    })()}
+                  </div>
+
+                  {/* 第二行：時長說明 */}
+                  <div style={{ 
+                    fontSize: '13px', 
+                    color: '#666', 
+                    marginBottom: '10px' 
+                  }}>
+                    {(() => {
+                      const isFacilityBoat = isFacility(booking.boats?.name)
+                      if (isFacilityBoat) {
+                        return `(${booking.duration_min}分)`
+                      } else {
+                        const startDate = new Date(booking.start_at)
+                        const pickupTime = new Date(startDate.getTime() + (booking.duration_min + 15) * 60000)
+                        const pickupTimeStr = `${String(pickupTime.getHours()).padStart(2, '0')}:${String(pickupTime.getMinutes()).padStart(2, '0')}`
+                        return `(${booking.duration_min}分，接船至 ${pickupTimeStr})`
+                      }
+                    })()}
+                  </div>
+
+                  {/* 第三行：客人名稱 */}
                   <div style={{ 
                     fontSize: '16px', 
                     fontWeight: '700', 
                     marginBottom: '6px',
                     color: '#1a1a1a',
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    gap: '8px',
-                    flexWrap: 'wrap'
                   }}>
-                    <span>{formatTimeRange(booking.start_at, booking.duration_min)}</span>
-                    <span style={{ color: '#ddd', fontWeight: '400', fontSize: '16px' }}>|</span>
-                    <span>{booking.contact_name}</span>
-                    </div>
-
-                  {/* 第二行：接船時間 */}
-                  {!isFacility(booking.boats?.name) && (
-                    <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
-                      接船至 {(() => {
-                        const endTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
-                        return `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
-                      })()}
-                    </div>
-                  )}
-
-                  {/* 標籤行：船隻、時長、需要駕駛 */}
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '14px' }}>
-                      <span style={{
-                      padding: '4px 10px',
-                        background: booking.boats?.color || '#ccc',
-                        color: 'white',
-                      borderRadius: '4px',
-                        fontWeight: '600',
-                        fontSize: '13px'
-                      }}>
-                        {booking.boats?.name || '?'}
-                      </span>
-                    <span style={{ 
-                      padding: '4px 10px',
-                      background: '#f5f5f5',
-                      color: '#666',
-                      borderRadius: '4px',
-                      fontSize: '13px',
-                      fontWeight: '500'
-                    }}>
-                      {booking.duration_min}分
-                      </span>
-                    {!isFacility(booking.boats?.name) && (
-                        <span style={{
-                        padding: '4px 10px',
-                          background: '#e3f2fd',
-                          color: '#1976d2',
-                        borderRadius: '4px',
-                          fontWeight: '600',
-                        fontSize: '13px',
-                        border: '1px solid #1976d2'
-                        }}>
-                        🚤
-                        </span>
-                      )}
+                    {booking.contact_name}
                   </div>
 
-                  {/* 教練顯示（未展開時） */}
+                  {/* 第四行：船名 */}
+                  <div style={{ 
+                    fontSize: '14px', 
+                    color: '#555',
+                    marginBottom: '10px',
+                    fontWeight: '500'
+                  }}>
+                    {booking.boats?.name || '?'}
+                  </div>
+
+                  {/* 第五行：教練（未展開時） */}
                   {!isEditing && assignment.coachIds.length > 0 && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ fontSize: '12px', fontWeight: '600', marginBottom: '4px', display: 'block', color: '#999' }}>
-                        教練
-                      </label>
-                      <div style={{ fontSize: '14px', color: '#333', fontWeight: '500' }}>
-                        {assignment.coachIds.map(coachId => {
-                          const coach = coaches.find(c => c.id === coachId)
-                          return coach?.name
-                        }).filter(Boolean).join('、') || '未指定'}
-                      </div>
+                    <div style={{ 
+                      fontSize: '14px', 
+                      color: '#555', 
+                      marginBottom: '10px',
+                      fontWeight: '500'
+                    }}>
+                      🎓 {assignment.coachIds.map(coachId => {
+                        const coach = coaches.find(c => c.id === coachId)
+                        return coach?.name
+                      }).filter(Boolean).join('、') || '未指定'}
                     </div>
                   )}
 
@@ -3011,20 +3003,29 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     </div>
                   )}
 
-                  {/* 駕駛顯示（未展開時） */}
-                  {!isEditing && assignment.driverIds && assignment.driverIds.length > 0 && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ fontSize: '12px', fontWeight: '600', marginBottom: '4px', display: 'block', color: '#999' }}>
-                        駕駛
-                      </label>
-                      <div style={{ fontSize: '14px', color: '#333', fontWeight: '500' }}>
-                        {assignment.driverIds.map((driverId: string) => {
+                  {/* 第六行：駕駛（未展開時，只在與教練不同時顯示） */}
+                  {!isEditing && (() => {
+                    if (!assignment.driverIds || assignment.driverIds.length === 0) return null
+                    
+                    const coachIds = assignment.coachIds.sort().join(',')
+                    const driverIds = assignment.driverIds.sort().join(',')
+                    
+                    if (coachIds === driverIds) return null
+                    
+                    return (
+                      <div style={{ 
+                        fontSize: '14px', 
+                        color: '#555', 
+                        marginBottom: '10px',
+                        fontWeight: '500'
+                      }}>
+                        🚤 {assignment.driverIds.map((driverId: string) => {
                           const driver = coaches.find(c => c.id === driverId)
                           return driver?.name
                         }).filter(Boolean).join('、') || '未指定'}
                       </div>
-                    </div>
-                  )}
+                    )
+                  })()}
 
                   {/* 駕駛編輯（展開時） */}
                   {isEditing && (

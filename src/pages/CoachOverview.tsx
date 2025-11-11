@@ -183,10 +183,11 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           const needsDriverReport = !isFacilityBooking && (isExplicitDriver || isImplicitDriver)
 
           // 已回報的判斷
-          // 教練回報：檢查 booking_participants 表中是否有該教練的記錄
-          // 注意：如果教練提交空回報（確認無客人），則不會有記錄，這是目前的限制
+          // 教練回報：檢查 booking_participants 表中是否有該教練的記錄，或者 coach_reports 表中有記錄（空回報）
           const hasCoachReport = participantsResult.data?.some(
             p => p.booking_id === bookingId && p.coach_id === coach.id
+          ) || coachReportsResult.data?.some(
+            cr => cr.booking_id === bookingId && cr.coach_id === coach.id
           ) || false
           
           // 駕駛回報：檢查 coach_reports 表
@@ -576,7 +577,8 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           >
             📊 工作統計
           </button>
-          <button
+          {/* TODO: 數據分析頁面待優化 */}
+          {/* <button
             onClick={() => setActiveTab('data-analysis')}
             style={{
               ...getButtonStyle(activeTab === 'data-analysis' ? 'primary' : 'secondary'),
@@ -584,7 +586,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
             }}
           >
             📈 數據分析
-          </button>
+          </button> */}
         </div>
 
         {/* 載入中 */}
@@ -762,217 +764,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           </div>
         )}
 
-        {/* Tab 3: 數據分析 */}
-        {!loading && activeTab === 'data-analysis' && (
-          <div>
-            {workStats.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                😔 沒有找到相關資料
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                {/* 總覽卡片 */}
-                <div style={{
-                  ...getCardStyle(isMobile),
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white'
-                }}>
-                  <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: '600' }}>
-                    📊 當日總覽
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '16px' }}>
-                    <div>
-                      <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>總教學時數</div>
-                      <div style={{ fontSize: '24px', fontWeight: '700' }}>
-                        {workStats.reduce((sum, s) => sum + s.coachMinutes, 0)} 分
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>總駕駛時數</div>
-                      <div style={{ fontSize: '24px', fontWeight: '700' }}>
-                        {workStats.reduce((sum, s) => sum + s.driverMinutes, 0)} 分
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>總學員數</div>
-                      <div style={{ fontSize: '24px', fontWeight: '700' }}>
-                        {workStats.reduce((sum, s) => sum + s.coachStudents, 0)} 人
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>平均油量</div>
-                      <div style={{ fontSize: '24px', fontWeight: '700' }}>
-                        {(workStats.reduce((sum, s) => sum + s.avgFuelRemaining, 0) / workStats.length).toFixed(1)}%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 教練工作量排行 */}
-                <div style={{ ...getCardStyle(isMobile) }}>
-                  <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>
-                    🏆 教練工作量排行
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {[...workStats]
-                      .sort((a, b) => b.coachMinutes - a.coachMinutes)
-                      .map((stats, index) => {
-                        const maxMinutes = Math.max(...workStats.map(s => s.coachMinutes))
-                        const percentage = maxMinutes > 0 ? (stats.coachMinutes / maxMinutes) * 100 : 0
-                        
-                        return (
-                          <div key={stats.coachId}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '14px' }}>
-                              <span style={{ fontWeight: '600' }}>
-                                {index + 1}. {stats.coachName}
-                              </span>
-                              <span style={{ color: '#666' }}>
-                                {stats.coachMinutes} 分 ({stats.coachBookings} 筆)
-                              </span>
-                            </div>
-                            <div style={{
-                              width: '100%',
-                              height: '8px',
-                              background: '#e0e0e0',
-                              borderRadius: '4px',
-                              overflow: 'hidden'
-                            }}>
-                              <div style={{
-                                width: `${percentage}%`,
-                                height: '100%',
-                                background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#2196F3',
-                                transition: 'width 0.3s'
-                              }} />
-                            </div>
-                          </div>
-                        )
-                      })}
-                  </div>
-                </div>
-
-                {/* 收費方式分布 */}
-                <div style={{ ...getCardStyle(isMobile) }}>
-                  <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>
-                    💰 收費方式分布
-                  </h3>
-                  {(() => {
-                    const allPayments: { [key: string]: number } = {}
-                    workStats.forEach(stats => {
-                      Object.entries(stats.paymentMethods).forEach(([method, count]) => {
-                        allPayments[method] = (allPayments[method] || 0) + count
-                      })
-                    })
-                    
-                    const total = Object.values(allPayments).reduce((sum, count) => sum + count, 0)
-                    
-                    const methodLabels: { [key: string]: string } = {
-                      'cash': '現金',
-                      'transfer': '匯款',
-                      'balance': '扣儲值',
-                      'voucher': '票券',
-                      'designated_paid': '指定（需收費）',
-                      'designated_free': '指定（不需收費）'
-                    }
-                    
-                    const colors = ['#4caf50', '#2196F3', '#ff9800', '#9c27b0', '#f44336', '#607d8b']
-                    
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {Object.entries(allPayments).map(([method, count], index) => {
-                          const percentage = (count / total) * 100
-                          
-                          return (
-                            <div key={method}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '14px' }}>
-                                <span style={{ fontWeight: '600' }}>
-                                  {methodLabels[method] || method}
-                                </span>
-                                <span style={{ color: '#666' }}>
-                                  {count} 筆 ({percentage.toFixed(1)}%)
-                                </span>
-                              </div>
-                              <div style={{
-                                width: '100%',
-                                height: '8px',
-                                background: '#e0e0e0',
-                                borderRadius: '4px',
-                                overflow: 'hidden'
-                              }}>
-                                <div style={{
-                                  width: `${percentage}%`,
-                                  height: '100%',
-                                  background: colors[index % colors.length],
-                                  transition: 'width 0.3s'
-                                }} />
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )
-                  })()}
-                </div>
-
-                {/* 油量狀況 */}
-                <div style={{ ...getCardStyle(isMobile) }}>
-                  <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>
-                    ⛽ 油量狀況
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {workStats
-                      .filter(s => s.driverBookings > 0)
-                      .sort((a, b) => a.avgFuelRemaining - b.avgFuelRemaining)
-                      .map(stats => {
-                        const fuelColor = stats.avgFuelRemaining < 30 ? '#f44336' : 
-                                         stats.avgFuelRemaining < 60 ? '#ff9800' : '#4caf50'
-                        
-                        return (
-                          <div key={stats.coachId}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '14px' }}>
-                              <span style={{ fontWeight: '600' }}>
-                                {stats.coachName}
-                              </span>
-                              <span style={{ color: fuelColor, fontWeight: '600' }}>
-                                平均剩餘 {stats.avgFuelRemaining.toFixed(1)}%
-                              </span>
-                            </div>
-                            <div style={{
-                              width: '100%',
-                              height: '8px',
-                              background: '#e0e0e0',
-                              borderRadius: '4px',
-                              overflow: 'hidden'
-                            }}>
-                              <div style={{
-                                width: `${stats.avgFuelRemaining}%`,
-                                height: '100%',
-                                background: fuelColor,
-                                transition: 'width 0.3s'
-                              }} />
-                            </div>
-                          </div>
-                        )
-                      })}
-                  </div>
-                </div>
-
-                {/* 匯出按鈕 */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                  <button
-                    onClick={() => exportData()}
-                    style={{
-                      ...getButtonStyle('primary'),
-                      padding: '12px 32px',
-                      fontSize: '16px'
-                    }}
-                  >
-                    📥 匯出數據報表
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* TODO: Tab 3 數據分析頁面待優化，暫時隱藏 */}
       </div>
 
       <Footer />
