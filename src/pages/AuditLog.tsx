@@ -47,7 +47,14 @@ export function AuditLog({ user }: AuditLogProps) {
       // 只查詢預約相關的記錄（最近 7 天）
       const sevenDaysAgo = new Date()
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-      const sevenDaysAgoStr = sevenDaysAgo.toISOString()
+      
+      // 使用本地時間格式 YYYY-MM-DDTHH:MM:SS
+      const year = sevenDaysAgo.getFullYear()
+      const month = String(sevenDaysAgo.getMonth() + 1).padStart(2, '0')
+      const day = String(sevenDaysAgo.getDate()).padStart(2, '0')
+      const sevenDaysAgoStr = `${year}-${month}-${day}T00:00:00`
+      
+      console.log('Querying audit logs from:', sevenDaysAgoStr)
       
       let query = supabase
         .from('audit_log')

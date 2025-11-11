@@ -55,11 +55,21 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
 
   // 非阻塞寫入：在後台默默記錄，不等待完成
   void (async () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hour = String(now.getHours()).padStart(2, '0')
+    const minute = String(now.getMinutes()).padStart(2, '0')
+    const second = String(now.getSeconds()).padStart(2, '0')
+    const created_at = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+    
     const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
       action: 'create',
       table_name: 'bookings',
-      details
+      details,
+      created_at
     })
     if (error) {
       console.error('審計日誌寫入錯誤:', error)
@@ -77,11 +87,21 @@ export async function logBookingUpdate(params: UpdateBookingLogParams) {
 
   // 非阻塞寫入
   void (async () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hour = String(now.getHours()).padStart(2, '0')
+    const minute = String(now.getMinutes()).padStart(2, '0')
+    const second = String(now.getSeconds()).padStart(2, '0')
+    const created_at = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+    
     const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
       action: 'update',
       table_name: 'bookings',
-      details
+      details,
+      created_at
     })
     if (error) {
       console.error('審計日誌寫入錯誤:', error)
@@ -105,11 +125,21 @@ export async function logBookingDeletion(params: DeleteBookingLogParams) {
 
   // 非阻塞寫入
   void (async () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hour = String(now.getHours()).padStart(2, '0')
+    const minute = String(now.getMinutes()).padStart(2, '0')
+    const second = String(now.getSeconds()).padStart(2, '0')
+    const created_at = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+    
     const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
       action: 'delete',
       table_name: 'bookings',
-      details
+      details,
+      created_at
     })
     if (error) {
       console.error('審計日誌寫入錯誤:', error)

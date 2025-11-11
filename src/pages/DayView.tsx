@@ -921,7 +921,7 @@ export function DayView({ user }: DayViewProps) {
                                   lineHeight: '1.5',
                                 }}>
                                   {booking.coaches && booking.coaches.length > 0 && (
-                                    <span>{booking.coaches.map(c => c.name).join('/')}</span>
+                                    <span>🎓 {booking.coaches.map(c => c.name).join('/')}</span>
                                   )}
                                   
                                   {/* 駕駛 - 只有當駕駛與教練不同時才顯示 */}
@@ -1226,7 +1226,7 @@ export function DayView({ user }: DayViewProps) {
                             gap: '2px',
                           }}>
                             {booking.coaches && booking.coaches.length > 0 && (
-                              <div>{booking.coaches.map(c => c.name).join('/')}</div>
+                              <div>🎓 {booking.coaches.map(c => c.name).join('/')}</div>
                             )}
                             
                             {/* 駕駛顯示（只有當駕駛與教練不同時才顯示） */}
