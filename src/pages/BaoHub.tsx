@@ -142,7 +142,7 @@ export function BaoHub({ user }: BaoHubProps) {
         {/* Feature Cards Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)',
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
           gap: '15px',
           marginBottom: '40px'
         }}>
