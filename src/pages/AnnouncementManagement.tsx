@@ -60,17 +60,21 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
         .insert({
           content: newContent.trim(),
           display_date: newDisplayDate,
-          created_by: user.email
+          created_by: user.id
         })
 
-      if (error) throw error
+      if (error) {
+        console.error('新增失敗:', error)
+        alert(`❌ 新增失敗：${error.message}`)
+        return
+      }
 
       setNewContent('')
       setNewDisplayDate(getLocalDateString())
       loadAnnouncements()
-    } catch (error) {
+    } catch (error: any) {
       console.error('新增失敗:', error)
-      alert('❌ 新增失敗，請重試')
+      alert(`❌ 新增失敗：${error.message || '請重試'}`)
     }
   }
 
@@ -195,14 +199,18 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
             style={{
               width: '100%',
               padding: '12px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: '#5a5a5a',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               fontSize: '15px',
-              fontWeight: 'bold',
-              cursor: 'pointer'
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              transition: 'all 0.2s'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'}
+            onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'}
           >
             新增
           </button>

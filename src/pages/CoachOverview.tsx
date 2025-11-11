@@ -260,7 +260,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
       minHeight: '100vh',
       backgroundColor: '#f5f5f5',
     }}>
-      <PageHeader title="📊 教練工作狀況總覽" user={user} />
+      <PageHeader title="📊 教練狀況總覽" user={user} />
 
       {/* 篩選區域 */}
       <div style={{

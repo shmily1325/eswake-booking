@@ -136,7 +136,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
           style={{
             flex: isMobile ? '1 1 100%' : '0 0 auto',
             padding: isMobile ? '12px 16px' : '10px 20px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: '#5a5a5a',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
@@ -144,7 +144,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -152,11 +152,11 @@ export function MemberManagement({ user }: MemberManagementProps) {
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)'
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
           }}
         >
           <span>📥</span>
@@ -168,7 +168,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
           style={{
             flex: isMobile ? '1 1 100%' : '0 0 auto',
             padding: isMobile ? '12px 16px' : '10px 20px',
-            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            background: '#5a5a5a',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
@@ -176,7 +176,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            boxShadow: '0 2px 8px rgba(245, 87, 108, 0.3)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -184,11 +184,11 @@ export function MemberManagement({ user }: MemberManagementProps) {
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 87, 108, 0.4)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(245, 87, 108, 0.3)'
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
           }}
         >
           <span>🏄</span>
@@ -222,45 +222,45 @@ export function MemberManagement({ user }: MemberManagementProps) {
       {/* 統計資訊 */}
       <div style={{ 
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '15px',
+        gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)',
+        gap: '12px',
         marginBottom: '20px'
       }}>
         <div style={{
           background: 'white',
-          padding: '20px',
+          padding: isMobile ? '16px 12px' : '20px',
           borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>總人數</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#667eea' }}>
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>總人數</div>
+          <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: '#2196F3' }}>
             {filteredMembers.length}
           </div>
         </div>
         
         <div style={{
           background: 'white',
-          padding: '20px',
+          padding: isMobile ? '16px 12px' : '20px',
           borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>會員</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#1976d2' }}>
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>會員</div>
+          <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: '#2196F3' }}>
             {filteredMembers.filter(m => m.member_type === 'member').length}
           </div>
         </div>
 
         <div style={{
           background: 'white',
-          padding: '20px',
+          padding: isMobile ? '16px 12px' : '20px',
           borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>置板數</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4caf50' }}>
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>置板數</div>
+          <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: '#2196F3' }}>
             {filteredMembers.reduce((sum, m) => sum + (m.board_count || 0), 0)}
           </div>
         </div>
