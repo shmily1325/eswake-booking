@@ -487,6 +487,11 @@ export function EditBookingDialog({
         changes.push(`教練: ${oldCoachNames} → ${newCoachNames}`)
       }
       
+      // 檢查需要駕駛變更
+      if (booking.requires_driver !== requiresDriver) {
+        changes.push(`需要駕駛: ${booking.requires_driver ? '是' : '否'} → ${requiresDriver ? '是' : '否'}`)
+      }
+      
       // 檢查時間變更
       if (booking.start_at !== newStartAt) {
         const oldDatetime = booking.start_at.substring(0, 16)
@@ -517,12 +522,15 @@ export function EditBookingDialog({
         changes.push(`備註: ${oldDisplay} → ${newDisplay}`)
       }
 
-      await logBookingUpdate({
-        userEmail: user.email || '',
-        studentName: finalStudentName,
-        startTime: newStartAt,  // 使用更新後的時間
-        changes
-      })
+      // 只在有變更時才記錄
+      if (changes.length > 0) {
+        await logBookingUpdate({
+          userEmail: user.email || '',
+          studentName: finalStudentName,
+          startTime: newStartAt,  // 使用更新後的時間
+          changes
+        })
+      }
 
       // Success
       setSelectedCoaches([])

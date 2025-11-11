@@ -48,12 +48,14 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
 
-  // 格式：日期時間在最前面，方便搜尋
-  let details = `${formattedTime} 新增預約：${studentName} / ${boatName} / ${durationMin}分`
+  // 格式：11/20 14:45 60分 G23 小楊 小胖教練
+  let details = `${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
   
   if (coachNames.length > 0) {
-    details += ` / 教練：${coachNames.join('、')}`
+    details += ` ${coachNames.map(name => `${name}教練`).join('、')}`
   }
+  
+  details = `新增預約：${details}`
 
   // 非阻塞寫入：在後台默默記錄，不等待完成
   void (async () => {
@@ -91,8 +93,8 @@ export async function logBookingUpdate(params: UpdateBookingLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
 
-  // 格式：日期時間在最前面，方便搜尋
-  const details = `${formattedTime} 修改預約：${studentName}，變更：${changes.join('、')}`
+  // 格式：11/20 14:45 小楊，變更：...
+  const details = `修改預約：${formattedTime} ${studentName}，變更：${changes.join('、')}`
 
   // 非阻塞寫入
   void (async () => {
@@ -130,8 +132,8 @@ export async function logBookingDeletion(params: DeleteBookingLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
   
-  // 格式：日期時間在最前面，方便搜尋
-  const details = `${formattedTime} 刪除預約：${studentName} / ${boatName} / ${durationMin}分`
+  // 格式：11/20 14:45 60分 G23 小楊
+  const details = `刪除預約：${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
 
   // 非阻塞寫入
   void (async () => {
@@ -255,8 +257,8 @@ export async function logCoachAssignment(params: CoachAssignmentLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
 
-  // 格式：日期時間在最前面，方便搜尋
-  const details = `${formattedTime} 排班：${studentName} / ${boatName}，變更：${changes.join('、')}`
+  // 格式：11/20 14:45 G23 小楊，變更：...
+  const details = `排班：${formattedTime} ${boatName} ${studentName}，變更：${changes.join('、')}`
 
   // 非阻塞寫入
   void (async () => {

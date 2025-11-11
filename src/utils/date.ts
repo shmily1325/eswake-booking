@@ -48,3 +48,41 @@ export function parseDbTimestamp(dbTimestamp: string): {
 export function compareDateTimeStr(dt1: string, dt2: string): number {
   return dt1.localeCompare(dt2)
 }
+
+/**
+ * 格式化時長顯示（統一格式）
+ * @param durationMin - 預約時長（分鐘）
+ * @param requiresDriver - 是否需要駕駛
+ * @param boatName - 船隻名稱（用於判斷是否為彈簧床）
+ * @param startTime - 開始時間（用於計算接船時間）
+ * @returns 格式化的時長字串，例如：「165分，接船至 14:15」或「60分」
+ */
+export function formatDurationWithPickup(
+  durationMin: number,
+  requiresDriver: boolean,
+  boatName?: string,
+  startTime?: string
+): string {
+  const isFacility = boatName === '彈簧床'
+  
+  // 如果不需要駕駛或是彈簧床，只顯示時長
+  if (!requiresDriver || isFacility) {
+    return `${durationMin}分`
+  }
+  
+  // 需要駕駛且有開始時間，計算接船時間
+  if (startTime) {
+    const cleanupTime = 15 // 整理船時間
+    const totalDuration = durationMin + cleanupTime
+    
+    // 計算接船時間
+    const startDate = new Date(startTime)
+    const pickupDate = new Date(startDate.getTime() + totalDuration * 60000)
+    const pickupTime = `${String(pickupDate.getHours()).padStart(2, '0')}:${String(pickupDate.getMinutes()).padStart(2, '0')}`
+    
+    return `${totalDuration}分，接船至 ${pickupTime}`
+  }
+  
+  // 需要駕駛但沒有開始時間，顯示總時長
+  return `${durationMin + 15}分`
+}
