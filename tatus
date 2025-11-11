@@ -1,0 +1,85 @@
+[1mdiff --git a/src/pages/CoachAssignment.tsx b/src/pages/CoachAssignment.tsx[m
+[1mindex 49ef278..6a3772f 100644[m
+[1m--- a/src/pages/CoachAssignment.tsx[m
+[1m+++ b/src/pages/CoachAssignment.tsx[m
+[36m@@ -1196,17 +1196,17 @@[m [mexport function CoachAssignment({ user }: CoachAssignmentProps) {[m
+               <thead>[m
+                 <tr style={{ background: '#2c3e50', color: 'white' }}>[m
+                   <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>時間</th>[m
+[31m-                  <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '120px' }}>客人</th>[m
+[31m-                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>船隻</th>[m
+                   <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>時長</th>[m
+[31m-                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>[m
+[31m-                    <div>需要</div>[m
+[31m-                    <div>駕駛</div>[m
+[31m-                  </th>[m
+[32m+[m[32m                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>船隻</th>[m
+[32m+[m[32m                  <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '120px' }}>客人</th>[m
+                   <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '180px' }}>[m
+                     <div>教練 *</div>[m
+                     <div style={{ fontSize: '11px', fontWeight: 'normal', opacity: 0.8 }}>（點選多個）</div>[m
+                   </th>[m
+[32m+[m[32m                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>[m
+[32m+[m[32m                    <div>需要</div>[m
+[32m+[m[32m                    <div>駕駛</div>[m
+[32m+[m[32m                  </th>[m
+                   <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '130px' }}>[m
+                     <div>駕駛</div>[m
+                     <div style={{ fontSize: '11px', fontWeight: 'normal', opacity: 0.8 }}>（選填）</div>[m
+[36m@@ -1227,12 +1227,15 @@[m [mexport function CoachAssignment({ user }: CoachAssignmentProps) {[m
+                         background: hasNoCoach ? '#fff3cd' : (index % 2 === 0 ? '#fafafa' : 'white')[m
+                       }}[m
+                     >[m
+[32m+[m[32m                      {/* 時間 */}[m
+                       <td style={{ padding: '10px 12px', fontWeight: '600', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>[m
+                         {formatTimeRange(booking.start_at, booking.duration_min)}[m
+                       </td>[m
+[31m-                      <td style={{ padding: '10px 12px', borderRight: '1px solid #e0e0e0' }}>[m
+[31m-                        {booking.contact_name}[m
+[32m+[m[32m                      {/* 時長 */}[m
+[32m+[m[32m                      <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>[m
+[32m+[m[32m                        {booking.duration_min}分[m
+                       </td>[m
+[32m+[m[32m                      {/* 船隻 */}[m
+                       <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0' }}>[m
+                         <span style={{[m
+                           display: 'inline-block',[m
+[36m@@ -1247,10 +1250,17 @@[m [mexport function CoachAssignment({ user }: CoachAssignmentProps) {[m
+                           {booking.boats?.name || '?'}[m
+                         </span>[m
+                       </td>[m
+[31m-                      <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>[m
+[31m-                        {booking.duration_min}分[m
+[32m+[m[32m                      {/* 客人 */}[m
+[32m+[m[32m                      <td style={{ padding: '10px 12px', borderRight: '1px solid #e0e0e0' }}>[m
+[32m+[m[32m                        {booking.contact_name}[m
+                       </td>[m
+[31m-                      <td [m
+[32m+[m[32m                      {/* 教練 */}[m
+[32m+[m[32m                      <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>[m
+[32m+[m[32m                        {/* 已選擇的教練標籤 */}[m
+[32m+[m[32m                        {assignment.coachIds.length > 0 && ([m
+[32m+[m[32m                          <div style={{[m[41m [m
+[32m+[m[32m                            display: 'flex',[m[41m [m
+[32m+[m[32m                            flexWrap: 'wrap',[m[41m [m
+                         style={{ [m
+                           padding: '10px 12px', [m
+                           textAlign: 'center', [m
+[36m@@ -1740,7 +1750,7 @@[m [mexport function CoachAssignment({ user }: CoachAssignmentProps) {[m
+                         // 使用船隻顏色作為卡片底色（類似 DayView）[m
+                         const boatColor = boat!.color || '#ccc'[m
+                         const cardStyle = {[m
+[31m-                          bg: `linear-gradient(135deg, ${boatColor}08 0%, ${boatColor}15 100%)`,[m
+[32m+[m[32m                          bg: `linear-gradient(135deg, ${boatColor}18 0%, ${boatColor}28 100%)`,[m
+                           border: boatColor,[m
+                           borderLeft: hasConflict || hasDriverIssue ? '#f87171' : hasNoCoach ? '#fbbf24' : boatColor,[m
+                           shadow: 'rgba(0, 0, 0, 0.1)'[m
+[36m@@ -2414,7 +2424,7 @@[m [mexport function CoachAssignment({ user }: CoachAssignmentProps) {[m
+                           [m
+                           // 獲取船隻顏色[m
+                           const boatColor = booking.boats?.color || '#ccc'[m
+[31m-                          const cardBg = `linear-gradient(135deg, ${boatColor}08 0%, ${boatColor}15 100%)`[m
+[32m+[m[32m                          const cardBg = `linear-gradient(135deg, ${boatColor}18 0%, ${boatColor}28 100%)`[m
+                           const borderColor = boatColor[m
+                           const borderLeftColor = hasConflict ? '#ef5350' : !isComplete ? '#ffc107' : boatColor[m
+ [m

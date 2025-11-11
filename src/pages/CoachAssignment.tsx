@@ -233,7 +233,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     if (!currentBooking) return conflicts
 
     const currentStart = new Date(currentBooking.start_at)
-    const currentEnd = new Date(currentStart.getTime() + currentBooking.duration_min * 60000)
+    // 加上整理船時間（彈簧床除外）
+    const cleanupTime = isFacility(currentBooking.boats?.name) ? 0 : 15
+    const currentEnd = new Date(currentStart.getTime() + (currentBooking.duration_min + cleanupTime) * 60000)
 
     // 1. 檢查教練與駕駛是否為同一人
     for (const coachId of newCoachIds) {
@@ -257,7 +259,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         
         if (isCoachInOther || isDriverInOther) {
           const otherStart = new Date(otherBooking.start_at)
-          const otherEnd = new Date(otherStart.getTime() + otherBooking.duration_min * 60000)
+          // 加上整理船時間（彈簧床除外）
+          const otherCleanupTime = isFacility(otherBooking.boats?.name) ? 0 : 15
+          const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
 
           if (currentStart < otherEnd && currentEnd > otherStart) {
             const personName = coaches.find(c => c.id === coachId)?.name || '未知'
@@ -283,7 +287,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         
         if (isCoachInOther || isDriverInOther) {
           const otherStart = new Date(otherBooking.start_at)
-          const otherEnd = new Date(otherStart.getTime() + otherBooking.duration_min * 60000)
+          // 加上整理船時間（彈簧床除外）
+          const otherCleanupTime = isFacility(otherBooking.boats?.name) ? 0 : 15
+          const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
 
           if (currentStart < otherEnd && currentEnd > otherStart) {
             const personName = coaches.find(c => c.id === driverId)?.name || '未知'
@@ -1196,16 +1202,16 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               <thead>
                 <tr style={{ background: '#2c3e50', color: 'white' }}>
                   <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>時間</th>
-                  <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '120px' }}>客人</th>
-                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>船隻</th>
                   <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>時長</th>
-                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>
-                    <div>需要</div>
-                    <div>駕駛</div>
-                  </th>
+                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>船隻</th>
+                  <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '120px' }}>客人</th>
                   <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '180px' }}>
                     <div>教練 *</div>
                     <div style={{ fontSize: '11px', fontWeight: 'normal', opacity: 0.8 }}>（點選多個）</div>
+                  </th>
+                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>
+                    <div>需要</div>
+                    <div>駕駛</div>
                   </th>
                   <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '130px' }}>
                     <div>駕駛</div>
@@ -1227,12 +1233,15 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         background: hasNoCoach ? '#fff3cd' : (index % 2 === 0 ? '#fafafa' : 'white')
                       }}
                     >
+                      {/* 時間 */}
                       <td style={{ padding: '10px 12px', fontWeight: '600', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
                         {formatTimeRange(booking.start_at, booking.duration_min)}
                       </td>
-                      <td style={{ padding: '10px 12px', borderRight: '1px solid #e0e0e0' }}>
-                        {booking.contact_name}
+                      {/* 時長 */}
+                      <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        {booking.duration_min}分
                       </td>
+                      {/* 船隻 */}
                       <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0' }}>
                         <span style={{
                           display: 'inline-block',
@@ -1247,49 +1256,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           {booking.boats?.name || '?'}
                         </span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
-                        {booking.duration_min}分
+                      {/* 客人 */}
+                      <td style={{ padding: '10px 12px', borderRight: '1px solid #e0e0e0' }}>
+                        {booking.contact_name}
                       </td>
-                      <td 
-                        style={{ 
-                          padding: '10px 12px', 
-                          textAlign: 'center', 
-                          borderRight: '1px solid #e0e0e0',
-                          cursor: 'pointer'
-                        }}
-                        onClick={async () => {
-                          const newValue = !booking.requires_driver
-                          const { error } = await supabase
-                            .from('bookings')
-                            .update({ requires_driver: newValue })
-                            .eq('id', booking.id)
-                          
-                          if (error) {
-                            console.error('更新失敗:', error)
-                            setError('更新失敗')
-                          } else {
-                            // 更新本地狀態
-                            setBookings(bookings.map(b => 
-                              b.id === booking.id ? { ...b, requires_driver: newValue } : b
-                            ))
-                            // 同時更新 assignments 狀態
-                            updateAssignment(booking.id, 'requiresDriver', newValue)
-                          }
-                        }}
-                      >
-                        {booking.requires_driver ? (
-                          <span style={{
-                            display: 'inline-block',
-                            fontSize: '20px',
-                            color: '#1976d2',
-                            fontWeight: 'bold'
-                          }}>
-                            ✓
-                          </span>
-                        ) : (
-                          <span style={{ color: '#ccc', fontSize: '20px' }}>✗</span>
-                        )}
-                      </td>
+                      {/* 教練 */}
                       <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
                         {/* 已選擇的教練標籤 */}
                         {assignment.coachIds.length > 0 && (
@@ -1383,6 +1354,48 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           </div>
                         )}
                       </td>
+                      {/* 需要駕駛 */}
+                      <td 
+                        style={{ 
+                          padding: '10px 12px', 
+                          textAlign: 'center', 
+                          borderRight: '1px solid #e0e0e0',
+                          cursor: 'pointer'
+                        }}
+                        onClick={async () => {
+                          const newValue = !booking.requires_driver
+                          const { error } = await supabase
+                            .from('bookings')
+                            .update({ requires_driver: newValue })
+                            .eq('id', booking.id)
+                          
+                          if (error) {
+                            console.error('更新失敗:', error)
+                            setError('更新失敗')
+                          } else {
+                            // 更新本地狀態
+                            setBookings(bookings.map(b => 
+                              b.id === booking.id ? { ...b, requires_driver: newValue } : b
+                            ))
+                            // 同時更新 assignments 狀態
+                            updateAssignment(booking.id, 'requiresDriver', newValue)
+                          }
+                        }}
+                      >
+                        {booking.requires_driver ? (
+                          <span style={{
+                            display: 'inline-block',
+                            fontSize: '20px',
+                            color: '#1976d2',
+                            fontWeight: 'bold'
+                          }}>
+                            ✓
+                          </span>
+                        ) : (
+                          <span style={{ color: '#ccc', fontSize: '20px' }}>✗</span>
+                        )}
+                      </td>
+                      {/* 駕駛 */}
                       <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
                         {/* 已選擇的駕駛標籤 */}
                         {assignment.driverIds && assignment.driverIds.length > 0 && (
@@ -1740,11 +1753,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         // 使用船隻顏色作為卡片底色（類似 DayView）
                         const boatColor = boat!.color || '#ccc'
                         const cardStyle = {
-                          bg: `linear-gradient(135deg, ${boatColor}08 0%, ${boatColor}15 100%)`,
+                          bg: `linear-gradient(135deg, ${boatColor}18 0%, ${boatColor}28 100%)`,
                           border: boatColor,
                           borderLeft: hasConflict || hasDriverIssue ? '#f87171' : hasNoCoach ? '#fbbf24' : boatColor,
                           shadow: 'rgba(0, 0, 0, 0.1)'
-                        }
+                                }
                                 
                                 return (
                                   <div
@@ -1818,7 +1831,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 const endTime = new Date(new Date(booking.start_at).getTime() + totalDuration * 60000)
                                 const pickupTime = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
                                 return `${totalDuration}分，接船至 ${pickupTime}`
-                              })()})
+                                        })()})
                                       </div>
                             {/* 客人名稱 */}
                             <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '6px', color: '#1a1a1a' }}>
@@ -2414,7 +2427,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           
                           // 獲取船隻顏色
                           const boatColor = booking.boats?.color || '#ccc'
-                          const cardBg = `linear-gradient(135deg, ${boatColor}08 0%, ${boatColor}15 100%)`
+                          const cardBg = `linear-gradient(135deg, ${boatColor}18 0%, ${boatColor}28 100%)`
                           const borderColor = boatColor
                           const borderLeftColor = hasConflict ? '#ef5350' : !isComplete ? '#ffc107' : boatColor
 
