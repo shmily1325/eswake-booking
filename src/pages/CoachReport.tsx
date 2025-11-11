@@ -145,48 +145,63 @@ export function CoachReport({ user }: CoachReportProps) {
         .order('start_at')
       
       if (bookingsError) throw bookingsError
+      if (!bookingsData || bookingsData.length === 0) {
+        setBookings([])
+        setLoading(false)
+        return
+      }
       
-      const bookingsWithDetails: Booking[] = []
+      const bookingIds = bookingsData.map(b => b.id)
       
-      for (const booking of bookingsData || []) {
-        // 載入教練
-        const { data: coachesData } = await supabase
-          .from('booking_coaches')
-          .select('coach_id, coaches(id, name)')
-          .eq('booking_id', booking.id)
+      // 批次載入所有教練
+      const { data: allCoachesData } = await supabase
+        .from('booking_coaches')
+        .select('booking_id, coach_id, coaches(id, name)')
+        .in('booking_id', bookingIds)
+      
+      // 批次載入所有駕駛
+      const { data: allDriversData } = await supabase
+        .from('booking_drivers')
+        .select('booking_id, driver_id, coaches(id, name)')
+        .in('booking_id', bookingIds)
+      
+      // 批次載入所有駕駛回報
+      const { data: allCoachReports } = await supabase
+        .from('coach_reports')
+        .select('*')
+        .in('booking_id', bookingIds)
+      
+      // 批次載入所有教練回報（參與者）
+      const { data: allParticipants } = await supabase
+        .from('booking_participants')
+        .select('*')
+        .in('booking_id', bookingIds)
+      
+      // 組裝資料
+      const bookingsWithDetails: Booking[] = bookingsData.map(booking => {
+        const coaches = allCoachesData
+          ?.filter((bc: any) => bc.booking_id === booking.id)
+          .map((bc: any) => bc.coaches)
+          .filter(Boolean) || []
         
-        const coaches = coachesData?.map((bc: any) => bc.coaches).filter(Boolean) || []
+        const drivers = allDriversData
+          ?.filter((bd: any) => bd.booking_id === booking.id)
+          .map((bd: any) => bd.coaches)
+          .filter(Boolean) || []
         
-        // 載入駕駛
-        const { data: driversData } = await supabase
-          .from('booking_drivers')
-          .select('driver_id, coaches(id, name)')
-          .eq('booking_id', booking.id)
+        const coachReport = allCoachReports?.find((cr: any) => cr.booking_id === booking.id)
         
-        const drivers = driversData?.map((bd: any) => bd.coaches).filter(Boolean) || []
+        const participants = allParticipants?.filter((p: any) => p.booking_id === booking.id) || []
         
-        // 載入駕駛回報
-        const { data: coachReportData } = await supabase
-          .from('coach_reports')
-          .select('*')
-          .eq('booking_id', booking.id)
-          .maybeSingle()
-        
-        // 載入教練回報（參與者）
-        const { data: participantsData } = await supabase
-          .from('booking_participants')
-          .select('*')
-          .eq('booking_id', booking.id)
-        
-        bookingsWithDetails.push({
+        return {
           ...booking,
           boats: Array.isArray(booking.boats) && booking.boats.length > 0 ? booking.boats[0] : null,
           coaches,
           drivers,
-          coach_report: coachReportData || undefined,
-          participants: participantsData || []
-        })
-      }
+          coach_report: coachReport || undefined,
+          participants
+        }
+      })
       
       // 篩選教練
       let filteredBookings = bookingsWithDetails
