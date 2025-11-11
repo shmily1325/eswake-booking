@@ -438,111 +438,210 @@ export function DayView({ user }: DayViewProps) {
       </div>
 
 
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: isMobile ? '6px' : '10px',
-        marginBottom: '16px',
-        flexWrap: 'wrap',
-      }}>
-        <button
-          onClick={() => changeDate(-1)}
-          style={{
-            ...getButtonStyle('outline', 'medium', isMobile),
-            padding: isMobile ? '6px 10px' : '8px 12px',
-            fontSize: isMobile ? '16px' : '14px',
-          }}
-        >
-          ←
-        </button>
-        <input
-          type="date"
-          value={dateParam}
-          onChange={handleDateInputChange}
-          style={{
-            padding: isMobile ? '6px 10px' : '8px 12px',
-            borderRadius: '6px',
-            border: '1px solid #dee2e6',
-            fontSize: isMobile ? '14px' : '14px',
-            flex: isMobile ? '1 1 auto' : '0 0 auto',
-            minWidth: isMobile ? '140px' : 'auto',
-          }}
-        />
-        <button
-          onClick={() => changeDate(1)}
-          style={{
-            ...getButtonStyle('outline', 'medium', isMobile),
-            padding: isMobile ? '6px 10px' : '8px 12px',
-            fontSize: isMobile ? '16px' : '14px',
-          }}
-        >
-          →
-        </button>
-        <button
-          onClick={goToToday}
-          style={{
-            ...getButtonStyle('secondary', 'medium', isMobile),
-            minWidth: isMobile ? 'auto' : '90px'
-          }}
-        >
-          今天
-        </button>
-
-        <Link
-          to={`/coach-assignment?date=${dateParam}`}
-          style={{
-            ...getButtonStyle('secondary', 'medium', isMobile),
-            textDecoration: 'none',
-            minWidth: isMobile ? 'auto' : '110px'
-          }}
-        >
-          📅 排班管理
-        </Link>
-
-        <div style={{ 
-          marginLeft: 'auto', 
-          display: 'flex', 
-          background: '#f0f0f0', 
-          borderRadius: '8px', 
-          padding: '4px',
-          flex: '0 0 auto'
+      {/* 手機版：兩行佈局 */}
+      {isMobile ? (
+        <div style={{ marginBottom: '16px' }}>
+          {/* 第一行：日期選擇 */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            marginBottom: '8px',
+          }}>
+            <button
+              onClick={() => changeDate(-1)}
+              style={{
+                ...getButtonStyle('outline', 'medium', true),
+                padding: '8px 12px',
+                fontSize: '16px',
+              }}
+            >
+              ←
+            </button>
+            <input
+              type="date"
+              value={dateParam}
+              onChange={handleDateInputChange}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid #dee2e6',
+                fontSize: '14px',
+                flex: '1',
+              }}
+            />
+            <button
+              onClick={() => changeDate(1)}
+              style={{
+                ...getButtonStyle('outline', 'medium', true),
+                padding: '8px 12px',
+                fontSize: '16px',
+              }}
+            >
+              →
+            </button>
+            <button
+              onClick={goToToday}
+              style={{
+                ...getButtonStyle('secondary', 'medium', true),
+                padding: '8px 12px',
+              }}
+            >
+              今天
+            </button>
+          </div>
+          
+          {/* 第二行：視圖切換 */}
+          <div style={{
+            display: 'flex',
+            background: '#f0f0f0',
+            borderRadius: '8px',
+            padding: '4px',
+          }}>
+            <button
+              onClick={() => setViewMode('list')}
+              style={{
+                flex: 1,
+                padding: '10px',
+                background: viewMode === 'list' ? 'white' : 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: viewMode === 'list' ? '600' : '400',
+                fontSize: '14px',
+                color: viewMode === 'list' ? '#5a5a5a' : '#666',
+                transition: 'all 0.2s',
+                boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              📋 列表
+            </button>
+            <button
+              onClick={() => setViewMode('timeline')}
+              style={{
+                flex: 1,
+                padding: '10px',
+                background: viewMode === 'timeline' ? 'white' : 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: viewMode === 'timeline' ? '600' : '400',
+                fontSize: '14px',
+                color: viewMode === 'timeline' ? '#5a5a5a' : '#666',
+                transition: 'all 0.2s',
+                boxShadow: viewMode === 'timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              📅 時間軸
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* 桌面版：單行佈局 */
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          marginBottom: '16px',
+          flexWrap: 'wrap',
         }}>
           <button
-            onClick={() => setViewMode('list')}
+            onClick={() => changeDate(-1)}
             style={{
-              padding: '8px 16px',
-              background: viewMode === 'list' ? 'white' : 'transparent',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: viewMode === 'list' ? '600' : '400',
+              ...getButtonStyle('outline', 'medium', false),
+              padding: '8px 12px',
               fontSize: '14px',
-              color: viewMode === 'list' ? '#5a5a5a' : '#666',
-              transition: 'all 0.2s',
-              boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
             }}
           >
-            📋 列表
+            ←
+          </button>
+          <input
+            type="date"
+            value={dateParam}
+            onChange={handleDateInputChange}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: '1px solid #dee2e6',
+              fontSize: '14px',
+            }}
+          />
+          <button
+            onClick={() => changeDate(1)}
+            style={{
+              ...getButtonStyle('outline', 'medium', false),
+              padding: '8px 12px',
+              fontSize: '14px',
+            }}
+          >
+            →
           </button>
           <button
-            onClick={() => setViewMode('timeline')}
+            onClick={goToToday}
             style={{
-              padding: '8px 16px',
-              background: viewMode === 'timeline' ? 'white' : 'transparent',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: viewMode === 'timeline' ? '600' : '400',
-              fontSize: '14px',
-              color: viewMode === 'timeline' ? '#5a5a5a' : '#666',
-              transition: 'all 0.2s',
-              boxShadow: viewMode === 'timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+              ...getButtonStyle('secondary', 'medium', false),
+              minWidth: '90px'
             }}
           >
-            📅 時間軸
+            今天
           </button>
+
+          <Link
+            to={`/coach-assignment?date=${dateParam}`}
+            style={{
+              ...getButtonStyle('secondary', 'medium', false),
+              textDecoration: 'none',
+              minWidth: '110px'
+            }}
+          >
+            📅 排班管理
+          </Link>
+
+          <div style={{ 
+            marginLeft: 'auto', 
+            display: 'flex', 
+            background: '#f0f0f0', 
+            borderRadius: '8px', 
+            padding: '4px',
+            flex: '0 0 auto'
+          }}>
+            <button
+              onClick={() => setViewMode('list')}
+              style={{
+                padding: '8px 16px',
+                background: viewMode === 'list' ? 'white' : 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: viewMode === 'list' ? '600' : '400',
+                fontSize: '14px',
+                color: viewMode === 'list' ? '#5a5a5a' : '#666',
+                transition: 'all 0.2s',
+                boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              📋 列表
+            </button>
+            <button
+              onClick={() => setViewMode('timeline')}
+              style={{
+                padding: '8px 16px',
+                background: viewMode === 'timeline' ? 'white' : 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: viewMode === 'timeline' ? '600' : '400',
+                fontSize: '14px',
+                color: viewMode === 'timeline' ? '#5a5a5a' : '#666',
+                transition: 'all 0.2s',
+                boxShadow: viewMode === 'timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              📅 時間軸
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
 
       {viewMode === 'timeline' && (
