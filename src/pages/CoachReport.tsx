@@ -303,59 +303,80 @@ export function CoachReport({ user }: CoachReportProps) {
   // 載入預約的會員資訊（排除已被其他教練回報的會員）
   const loadBookingMembers = async (bookingId: number, defaultDuration: number) => {
     try {
+      const booking = bookings.find(b => b.id === bookingId)
+      
       // 1. 載入預約的所有會員
       const { data: bookingMembersData } = await supabase
         .from('booking_members')
         .select('member_id, members(id, name)')
         .eq('booking_id', bookingId)
 
-      if (!bookingMembersData || bookingMembersData.length === 0) {
-        // 沒有會員資料，使用預約人姓名
-        const booking = bookings.find(b => b.id === bookingId)
-        setParticipants([{
-          member_id: null,
-          participant_name: booking?.contact_name || '',
-          duration_min: defaultDuration,
-          payment_method: 'cash'
-        }])
-        return
-      }
-
-      // 2. 載入已被其他教練回報的會員
+      // 2. 載入已被其他教練回報的參與者（會員和非會員）
       const { data: reportedParticipants } = await supabase
         .from('booking_participants')
-        .select('member_id, coach_id')
+        .select('member_id, participant_name, coach_id')
         .eq('booking_id', bookingId)
         .not('coach_id', 'is', null)
 
-      // 3. 找出已被其他教練回報的會員 ID
-      const reportedByOthers = new Set<string>()
+      // 3. 找出已被其他教練回報的會員 ID 和姓名
+      const reportedMemberIds = new Set<string>()
+      const reportedNames = new Set<string>()
       if (reportedParticipants) {
         reportedParticipants.forEach(rp => {
           // 排除當前教練自己的回報
-          if (rp.coach_id !== selectedCoachId && rp.member_id) {
-            reportedByOthers.add(rp.member_id)
+          if (rp.coach_id !== selectedCoachId) {
+            if (rp.member_id) {
+              reportedMemberIds.add(rp.member_id)
+            }
+            if (rp.participant_name) {
+              reportedNames.add(rp.participant_name.trim())
+            }
           }
         })
       }
 
       // 4. 過濾掉已被其他教練回報的會員
-      const availableMembers = bookingMembersData.filter(
-        (bm: any) => !reportedByOthers.has(bm.member_id)
+      const availableMembers = (bookingMembersData || []).filter(
+        (bm: any) => !reportedMemberIds.has(bm.member_id)
       )
 
-      if (availableMembers.length > 0) {
-        // 有可用的會員，為每個會員建立一筆參與者記錄
-        const memberParticipants = availableMembers.map((bm: any) => ({
+      // 5. 建立參與者列表
+      const participants: any[] = []
+      
+      // 5.1 加入可用的會員
+      availableMembers.forEach((bm: any) => {
+        participants.push({
           member_id: bm.member_id,
           participant_name: bm.members?.name || '未知',
           duration_min: defaultDuration,
           payment_method: 'cash'
-        }))
-        setParticipants(memberParticipants)
+        })
+      })
+
+      // 5.2 檢查預約人是否是非會員且未被回報
+      if (booking?.contact_name) {
+        const contactName = booking.contact_name.trim()
+        const isContactMember = (bookingMembersData || []).some(
+          (bm: any) => bm.members?.name === contactName
+        )
+        const isContactReported = reportedNames.has(contactName)
+        
+        // 如果預約人不是會員，且未被其他教練回報，則加入列表
+        if (!isContactMember && !isContactReported) {
+          participants.push({
+            member_id: null,
+            participant_name: contactName,
+            duration_min: defaultDuration,
+            payment_method: 'cash'
+          })
+        }
+      }
+
+      // 6. 設定參與者列表
+      if (participants.length > 0) {
+        setParticipants(participants)
       } else {
-        // 所有會員都已被其他教練回報，但當前教練仍需確認「沒有其他客人」
-        // 提供一個空白的參與者欄位，讓教練可以新增非會員或確認無客人
+        // 所有人都已被其他教練回報，提供空白欄位讓教練確認或新增
         setParticipants([{
           member_id: null,
           participant_name: '',

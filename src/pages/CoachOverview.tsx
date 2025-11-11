@@ -58,7 +58,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     const today = new Date()
     return today.toISOString().split('T')[0]
   })
-  const [timeRange, setTimeRange] = useState<'this-month' | 'next-month' | 'custom'>('this-month')
+  const [timeRange, setTimeRange] = useState<'last-month' | 'this-month' | 'next-month' | 'custom'>('this-month')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [coaches, setCoaches] = useState<Coach[]>([])
@@ -103,10 +103,11 @@ export function CoachOverview({ user }: CoachOverviewProps) {
   const loadReportStatus = async () => {
     setLoading(true)
     try {
-      const startOfDay = `${selectedDate}T00:00:00`
-      const endOfDay = `${selectedDate}T23:59:59`
+      // 載入從今天開始的所有未來預約（包括今天）
+      const today = new Date()
+      const startOfToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}T00:00:00`
 
-      // 載入預約
+      // 載入預約（從今天到未來 30 天）
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -116,10 +117,10 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           boat_id,
           boats (name)
         `)
-        .gte('start_at', startOfDay)
-        .lte('start_at', endOfDay)
+        .gte('start_at', startOfToday)
         .eq('status', 'confirmed')
         .order('start_at')
+        .limit(500)
 
       if (bookingsError) throw bookingsError
       if (!bookingsData || bookingsData.length === 0) {
@@ -177,31 +178,42 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           const isFacilityBooking = isFacility(boatName)
 
           const isCoach = coachBookingIds.includes(bookingId)
-          const isDriver = driverBookingIds.includes(bookingId)
+          const isExplicitDriver = driverBookingIds.includes(bookingId)
           const hasNoDriver = !driversResult.data?.some(bd => bd.booking_id === bookingId)
           const isImplicitDriver = isCoach && hasNoDriver && !isFacilityBooking
 
+          // 需要回報的判斷
           const needsCoachReport = isCoach
-          const needsDriverReport = !isFacilityBooking && (isDriver || isImplicitDriver)
+          const needsDriverReport = !isFacilityBooking && (isExplicitDriver || isImplicitDriver)
 
+          // 已回報的判斷
+          // 教練回報：檢查 booking_participants 表中是否有該教練的記錄
+          // 注意：如果教練提交空回報（確認無客人），則不會有記錄，這是目前的限制
           const hasCoachReport = participantsResult.data?.some(
             p => p.booking_id === bookingId && p.coach_id === coach.id
-          )
+          ) || false
+          
+          // 駕駛回報：檢查 coach_reports 表
           const hasDriverReport = coachReportsResult.data?.some(
             cr => cr.booking_id === bookingId && cr.coach_id === coach.id
-          )
+          ) || false
 
-          if (hasCoachReport) coachReported++
-          if (hasDriverReport) driverReported++
+          // 計數已回報的數量
+          if (needsCoachReport && hasCoachReport) coachReported++
+          if (needsDriverReport && hasDriverReport) driverReported++
 
-          if ((needsCoachReport && !hasCoachReport) || (needsDriverReport && !hasDriverReport)) {
+          // 收集未回報的預約
+          const missingCoachReport = needsCoachReport && !hasCoachReport
+          const missingDriverReport = needsDriverReport && !hasDriverReport
+          
+          if (missingCoachReport || missingDriverReport) {
             missingReports.push({
               bookingId,
               startAt: booking.start_at,
               contactName: booking.contact_name,
               boatName: (booking.boats as any)?.name || '未知',
-              needsCoachReport: needsCoachReport && !hasCoachReport,
-              needsDriverReport: needsDriverReport && !hasDriverReport
+              needsCoachReport: missingCoachReport,
+              needsDriverReport: missingDriverReport
             })
           }
         }
@@ -228,7 +240,13 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     const now = new Date()
     let start: string, end: string
 
-    if (timeRange === 'this-month') {
+    if (timeRange === 'last-month') {
+      const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()
+      const month = now.getMonth() === 0 ? 11 : now.getMonth() - 1
+      start = `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00`
+      const lastDay = new Date(year, month + 1, 0).getDate()
+      end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`
+    } else if (timeRange === 'this-month') {
       const year = now.getFullYear()
       const month = now.getMonth()
       start = `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00`
@@ -408,24 +426,18 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           flexDirection: 'column',
           gap: '16px'
         }}>
-          {/* 回報狀況用日期選擇 */}
+          {/* 回報狀況：自動顯示今天和未來的預約 */}
           {activeTab === 'report-status' && (
-            <div>
-              <label style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', display: 'block', color: '#666' }}>
-                日期
-              </label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px'
-                }}
-              />
+            <div style={{
+              padding: '12px 16px',
+              background: 'linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)',
+              border: '1px solid #90caf9',
+              borderRadius: '8px',
+              fontSize: '13px',
+              color: '#1565c0',
+              lineHeight: '1.6'
+            }}>
+              💡 <strong>提示：</strong>顯示今天及未來的所有預約回報狀況
             </div>
           )}
 
@@ -436,6 +448,15 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                 時間範圍
               </label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setTimeRange('last-month')}
+                  style={{
+                    ...getButtonStyle(timeRange === 'last-month' ? 'primary' : 'secondary'),
+                    flex: isMobile ? '1 1 auto' : '0 0 auto'
+                  }}
+                >
+                  上月
+                </button>
                 <button
                   onClick={() => setTimeRange('this-month')}
                   style={{
@@ -461,7 +482,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                     flex: isMobile ? '1 1 auto' : '0 0 auto'
                   }}
                 >
-                  自訂範圍
+                  自訂
                 </button>
               </div>
 
