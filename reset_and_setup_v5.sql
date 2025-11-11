@@ -161,7 +161,7 @@ INSERT INTO coaches (name) VALUES
   ('許書源'),
   ('木鳥'),
   ('義揚'),
-  ('阿賓');
+  ('阿寶');
 
 -- 6. 教練休假表 (Coach Time Off)
 CREATE TABLE coach_time_off (

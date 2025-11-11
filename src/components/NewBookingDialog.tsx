@@ -898,50 +898,141 @@ export function NewBookingDialog({
             )}
           </div>
 
-          {/* 船隻選擇 */}
+          {/* 船隻選擇 - 大按鈕 */}
           <div style={{ marginBottom: '18px' }}>
             <label style={{ 
               display: 'block', 
-              marginBottom: '6px', 
+              marginBottom: '10px', 
               color: '#000',
               fontSize: '15px',
-              fontWeight: '500',
+              fontWeight: '600',
             }}>
-              船
+              船隻
             </label>
-            <select
-              value={selectedBoatId}
-              onChange={(e) => setSelectedBoatId(Number(e.target.value))}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                boxSizing: 'border-box',
-                fontSize: '16px',
-                backgroundColor: 'white',
-                cursor: 'pointer',
-              }}
-            >
-              {boats.map(boat => (
-                <option key={boat.id} value={boat.id}>
-                  {boat.name}
-                </option>
-              ))}
-            </select>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '10px',
+            }}>
+              {boats.map(boat => {
+                const isSelected = selectedBoatId === boat.id
+                return (
+                  <button
+                    key={boat.id}
+                    type="button"
+                    onClick={() => setSelectedBoatId(boat.id)}
+                    style={{
+                      padding: '14px 8px',
+                      border: isSelected ? `3px solid ${boat.color}` : '2px solid #e0e0e0',
+                      borderRadius: '10px',
+                      background: isSelected ? boat.color : 'white',
+                      color: isSelected ? 'white' : '#333',
+                      fontSize: '15px',
+                      fontWeight: isSelected ? '700' : '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: isSelected ? `0 4px 12px ${boat.color}40` : '0 2px 4px rgba(0,0,0,0.05)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                    onTouchStart={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.transform = 'scale(0.95)'
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)'
+                    }}
+                  >
+                    {/* 左側色條（未選中時） */}
+                    {!isSelected && (
+                      <div style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: '4px',
+                        background: boat.color,
+                      }} />
+                    )}
+                    {boat.name}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
+          {/* 教練選擇 - 大按鈕 */}
           <div style={{ marginBottom: '18px' }}>
             <label style={{ 
               display: 'block', 
-              marginBottom: '8px', 
+              marginBottom: '10px', 
               color: '#000',
               fontSize: '15px',
-              fontWeight: '500',
+              fontWeight: '600',
             }}>
               教練（可複選）
             </label>
+            
+            {/* 已選教練顯示 */}
+            {selectedCoaches.length > 0 && (
+              <div style={{
+                marginBottom: '12px',
+                padding: '12px',
+                background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '8px',
+              }}>
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px',
+                  flex: 1,
+                }}>
+                  <span style={{ color: 'white', fontSize: '14px', fontWeight: '500', marginRight: '4px' }}>
+                    已選：
+                  </span>
+                  {selectedCoaches.map(coachId => {
+                    const coach = coaches.find(c => c.id === coachId)
+                    return coach ? (
+                      <span
+                        key={coachId}
+                        style={{
+                          padding: '4px 8px',
+                          background: 'rgba(255,255,255,0.25)',
+                          borderRadius: '6px',
+                          color: 'white',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                        }}
+                      >
+                        {coach.name}
+                      </span>
+                    ) : null
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCoaches([])}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'rgba(255,255,255,0.2)',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    borderRadius: '6px',
+                    color: 'white',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                  }}
+                >
+                  ✕ 清除
+                </button>
+              </div>
+            )}
             
             {loadingCoaches ? (
               <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
@@ -949,72 +1040,77 @@ export function NewBookingDialog({
               </div>
             ) : (
               <div style={{
-                maxHeight: '180px',
-                overflowY: 'auto',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                padding: '8px',
-                WebkitOverflowScrolling: 'touch',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '10px',
               }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '10px',
-                  cursor: 'pointer',
-                  borderRadius: '6px',
-                  transition: 'background 0.2s',
-                  backgroundColor: selectedCoaches.length === 0 ? '#f0f0f0' : 'transparent',
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedCoaches.length === 0}
-                    onChange={() => setSelectedCoaches([])}
-                    style={{
-                      marginRight: '10px',
-                      width: '18px',
-                      height: '18px',
-                      cursor: 'pointer',
-                    }}
-                  />
-                  <span style={{ fontSize: '15px', color: '#666' }}>不指定教練</span>
-                </label>
-                {coaches.map((coach) => (
-                  <label
-                    key={coach.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '10px',
-                      cursor: 'pointer',
-                      borderRadius: '6px',
-                      transition: 'background 0.2s',
-                      backgroundColor: selectedCoachesSet.has(coach.id) ? '#e3f2fd' : 'transparent',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!selectedCoachesSet.has(coach.id)) {
-                        e.currentTarget.style.backgroundColor = '#f5f5f5'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!selectedCoachesSet.has(coach.id)) {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedCoachesSet.has(coach.id)}
-                      onChange={() => toggleCoach(coach.id)}
+                {/* 不指定教練 */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCoaches([])}
+                  style={{
+                    padding: '14px 10px',
+                    border: selectedCoaches.length === 0 ? '3px solid #1976d2' : '2px solid #e0e0e0',
+                    borderRadius: '10px',
+                    background: selectedCoaches.length === 0 ? '#1976d2' : 'white',
+                    color: selectedCoaches.length === 0 ? 'white' : '#666',
+                    fontSize: '15px',
+                    fontWeight: selectedCoaches.length === 0 ? '700' : '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: selectedCoaches.length === 0 ? '0 4px 12px rgba(25,118,210,0.3)' : '0 2px 4px rgba(0,0,0,0.05)',
+                    gridColumn: '1 / -1',
+                  }}
+                  onTouchStart={(e) => {
+                    if (selectedCoaches.length > 0) {
+                      e.currentTarget.style.transform = 'scale(0.95)'
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)'
+                  }}
+                >
+                  不指定教練
+                </button>
+                
+                {/* 教練列表 */}
+                {coaches.map((coach) => {
+                  const isSelected = selectedCoachesSet.has(coach.id)
+                  return (
+                    <button
+                      key={coach.id}
+                      type="button"
+                      onClick={() => toggleCoach(coach.id)}
                       style={{
-                        marginRight: '10px',
-                        width: '18px',
-                        height: '18px',
+                        padding: '14px 10px',
+                        border: isSelected ? '3px solid #1976d2' : '2px solid #e0e0e0',
+                        borderRadius: '10px',
+                        background: isSelected ? '#e3f2fd' : 'white',
+                        color: isSelected ? '#1976d2' : '#333',
+                        fontSize: '15px',
+                        fontWeight: isSelected ? '700' : '500',
                         cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: isSelected ? '0 4px 12px rgba(25,118,210,0.15)' : '0 2px 4px rgba(0,0,0,0.05)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
                       }}
-                    />
-                    <span style={{ fontSize: '15px' }}>{coach.name}</span>
-                  </label>
-                ))}
+                      onTouchStart={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.transform = 'scale(0.95)'
+                        }
+                      }}
+                      onTouchEnd={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)'
+                      }}
+                    >
+                      {isSelected && <span style={{ fontSize: '16px' }}>✓</span>}
+                      {coach.name}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -1143,40 +1239,88 @@ export function NewBookingDialog({
             </div>
           </div>
 
+          {/* 時長選擇 - 常用按鈕 + 自訂輸入 */}
           <div style={{ marginBottom: '18px' }}>
             <label style={{ 
               display: 'block', 
-              marginBottom: '6px', 
+              marginBottom: '10px', 
               color: '#000',
               fontSize: '15px',
-              fontWeight: '500',
+              fontWeight: '600',
             }}>
               時長（分鐘）
             </label>
-            <select
-              value={durationMin}
-              onChange={(e) => setDurationMin(Number(e.target.value))}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                boxSizing: 'border-box',
-                fontSize: '16px',
-                touchAction: 'manipulation',
-              }}
-            >
-              <option value={30}>30 分鐘</option>
-              <option value={60}>60 分鐘</option>
-              <option value={90}>90 分鐘</option>
-              <option value={120}>120 分鐘</option>
-              <option value={150}>150 分鐘</option>
-              <option value={180}>180 分鐘</option>
-              <option value={210}>210 分鐘</option>
-              <option value={240}>240 分鐘</option>
-              <option value={270}>270 分鐘</option>
-              <option value={300}>300 分鐘</option>
-            </select>
+            
+            {/* 常用時長按鈕 */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '8px',
+              marginBottom: '12px',
+            }}>
+              {[30, 60, 90, 120, 150, 180, 210, 240].map(minutes => {
+                const isSelected = durationMin === minutes
+                return (
+                  <button
+                    key={minutes}
+                    type="button"
+                    onClick={() => setDurationMin(minutes)}
+                    style={{
+                      padding: '12px 8px',
+                      border: isSelected ? '3px solid #1976d2' : '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      background: isSelected ? '#e3f2fd' : 'white',
+                      color: isSelected ? '#1976d2' : '#333',
+                      fontSize: '14px',
+                      fontWeight: isSelected ? '700' : '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: isSelected ? '0 2px 8px rgba(25,118,210,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
+                    }}
+                    onTouchStart={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.transform = 'scale(0.95)'
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)'
+                    }}
+                  >
+                    {minutes}
+                  </button>
+                )
+              })}
+            </div>
+            
+            {/* 自訂時長輸入 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>自訂：</span>
+              <input
+                type="number"
+                value={durationMin}
+                onChange={(e) => {
+                  const value = Number(e.target.value)
+                  if (value > 0 && value <= 999) {
+                    setDurationMin(value)
+                  }
+                }}
+                min="1"
+                max="999"
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  color: '#333',
+                  boxSizing: 'border-box',
+                }}
+                placeholder="輸入分鐘數"
+              />
+              <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>分</span>
+            </div>
           </div>
 
           <div style={{ marginBottom: '18px' }}>
