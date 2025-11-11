@@ -256,27 +256,18 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     const now = new Date()
     let start: string, end: string
 
-    if (timeRange === 'last-month') {
-      const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()
-      const month = now.getMonth() === 0 ? 11 : now.getMonth() - 1
-      start = `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00`
-      const lastDay = new Date(year, month + 1, 0).getDate()
-      end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`
-    } else if (timeRange === 'this-month') {
+    if (timeRange === 'this-month') {
       const year = now.getFullYear()
       const month = now.getMonth()
       start = `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00`
       const lastDay = new Date(year, month + 1, 0).getDate()
       end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`
-    } else if (timeRange === 'next-month') {
+    } else { // next-month
       const year = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear()
       const month = now.getMonth() === 11 ? 0 : now.getMonth() + 1
       start = `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00`
       const lastDay = new Date(year, month + 1, 0).getDate()
       end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`
-    } else {
-      start = startDate ? `${startDate}T00:00:00` : ''
-      end = endDate ? `${endDate}T23:59:59` : ''
     }
 
     return { start, end }
@@ -620,8 +611,8 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           <div style={{
             ...getCardStyle(isMobile),
             marginBottom: '24px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white'
+            background: 'white',
+            border: '1px solid #e0e0e0'
           }}>
             <div style={{ 
               display: 'flex', 
@@ -629,18 +620,20 @@ export function CoachOverview({ user }: CoachOverviewProps) {
               justifyContent: 'space-between',
               marginBottom: '20px',
               flexWrap: 'wrap',
-              gap: '12px'
+              gap: '12px',
+              borderBottom: '2px solid #f5f5f5',
+              paddingBottom: '16px'
             }}>
-              <h3 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: '600' }}>
+              <h3 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: '600', color: '#333' }}>
                 📅 未來 7 天預約概覽
               </h3>
               <button
                 onClick={() => loadFutureBookingsSummary()}
                 style={{
                   padding: '6px 12px',
-                  background: 'rgba(255,255,255,0.2)',
-                  color: 'white',
-                  border: '1px solid rgba(255,255,255,0.3)',
+                  background: '#f5f5f5',
+                  color: '#666',
+                  border: '1px solid #e0e0e0',
                   borderRadius: '6px',
                   fontSize: '12px',
                   cursor: 'pointer',

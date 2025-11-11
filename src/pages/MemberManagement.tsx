@@ -39,6 +39,10 @@ export function MemberManagement({ user }: MemberManagementProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [memberToDelete, setMemberToDelete] = useState<Member | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   
   // TODO: Will use user for creating/updating members and permission control
   // Current user email will be logged for debugging
@@ -89,6 +93,47 @@ export function MemberManagement({ user }: MemberManagementProps) {
       alert('載入會員失敗')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteMember = async () => {
+    if (!memberToDelete) return
+    
+    setDeleting(true)
+    setDeleteError('')
+    
+    try {
+      // 檢查該會員是否有預約記錄
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('member_id', memberToDelete.id)
+        .limit(1)
+      
+      if (bookingsError) throw bookingsError
+      
+      if (bookings && bookings.length > 0) {
+        setDeleteError('❌ 無法刪除：此會員有預約記錄。請先刪除相關預約，或使用「標記為無效」功能來隱藏會員。')
+        setDeleting(false)
+        return
+      }
+      
+      // 沒有預約記錄，可以安全刪除
+      const { error: deleteError } = await supabase
+        .from('members')
+        .delete()
+        .eq('id', memberToDelete.id)
+      
+      if (deleteError) throw deleteError
+      
+      // 刪除成功，重新載入會員列表
+      await loadMembers()
+      setDeleteDialogOpen(false)
+      setMemberToDelete(null)
+    } catch (err: any) {
+      setDeleteError('刪除失敗: ' + err.message)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -293,7 +338,8 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 transition: 'all 0.2s',
                 cursor: 'pointer',
-                border: '2px solid transparent'
+                border: '2px solid transparent',
+                position: 'relative'
               }}
               onClick={() => {
                 setSelectedMemberId(member.id)
@@ -310,6 +356,39 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
               }}
             >
+              {/* 刪除按鈕 */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation() // 防止觸發卡片的 onClick
+                  setMemberToDelete(member)
+                  setDeleteDialogOpen(true)
+                  setDeleteError('')
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  background: '#ff4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  zIndex: 10
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#cc0000'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#ff4444'
+                }}
+              >
+                🗑️ 刪除
+              </button>
+              
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                 {/* 左側：基本資訊 */}
                 <div style={{ flex: 1 }}>
@@ -478,6 +557,127 @@ export function MemberManagement({ user }: MemberManagementProps) {
         }}
         onUpdate={loadMembers}
       />
+
+      {/* 刪除確認對話框 */}
+      {deleteDialogOpen && memberToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '450px',
+            width: '100%',
+            padding: '24px'
+          }}>
+            <h2 style={{ 
+              margin: '0 0 16px 0', 
+              fontSize: '20px', 
+              fontWeight: 'bold',
+              color: '#ff4444'
+            }}>
+              ⚠️ 確認刪除會員
+            </h2>
+            
+            <div style={{ 
+              background: '#f5f5f5',
+              padding: '16px',
+              borderRadius: '8px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
+                {memberToDelete.name}
+              </div>
+              {memberToDelete.phone && (
+                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                  📱 {memberToDelete.phone}
+                </div>
+              )}
+              {memberToDelete.notes && (
+                <div style={{ fontSize: '13px', color: '#999', marginTop: '8px', fontStyle: 'italic' }}>
+                  {memberToDelete.notes}
+                </div>
+              )}
+            </div>
+
+            <p style={{ 
+              fontSize: '14px', 
+              color: '#666', 
+              marginBottom: '20px',
+              lineHeight: '1.6'
+            }}>
+              此操作會<strong>永久刪除</strong>此會員資料。<br/>
+              如果此會員有預約記錄，將無法刪除。<br/>
+              此操作<strong>無法復原</strong>，請確認是否繼續？
+            </p>
+
+            {deleteError && (
+              <div style={{
+                background: '#ffebee',
+                color: '#c62828',
+                padding: '12px',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                fontSize: '14px',
+                lineHeight: '1.5'
+              }}>
+                {deleteError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setDeleteDialogOpen(false)
+                  setMemberToDelete(null)
+                  setDeleteError('')
+                }}
+                disabled={deleting}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: deleting ? '#e0e0e0' : 'white',
+                  color: deleting ? '#999' : '#666',
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  cursor: deleting ? 'not-allowed' : 'pointer'
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDeleteMember}
+                disabled={deleting}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: deleting ? '#ffcccb' : '#ff4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: 'bold',
+                  cursor: deleting ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {deleting ? '刪除中...' : '確認刪除'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

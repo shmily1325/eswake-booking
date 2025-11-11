@@ -1764,7 +1764,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         // 使用船隻顏色作為卡片底色（類似 DayView）
                         const boatColor = boat!.color || '#ccc'
                         const cardStyle = {
-                          bg: `linear-gradient(135deg, ${boatColor}CC 0%, ${boatColor}E8 100%)`,
+                          bg: `linear-gradient(135deg, ${boatColor}18 0%, ${boatColor}28 100%)`,
                           border: boatColor,
                           borderLeft: hasConflict || hasDriverIssue ? '#f87171' : hasNoCoach ? '#fbbf24' : boatColor,
                           shadow: 'rgba(0, 0, 0, 0.1)'
@@ -2449,7 +2449,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           
                           // 獲取船隻顏色
                           const boatColor = booking.boats?.color || '#ccc'
-                          const cardBg = `linear-gradient(135deg, ${boatColor}CC 0%, ${boatColor}E8 100%)`
+                          const cardBg = `linear-gradient(135deg, ${boatColor}18 0%, ${boatColor}28 100%)`
                           const borderColor = boatColor
                           const borderLeftColor = hasConflict ? '#ef5350' : !isComplete ? '#ffc107' : boatColor
 
