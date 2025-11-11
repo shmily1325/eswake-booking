@@ -646,20 +646,21 @@ export function NewBookingDialog({
             {/* 已選會員和手動輸入標籤 */}
             {(selectedMemberIds.length > 0 || manualNames.length > 0) && (
               <div style={{ marginBottom: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {/* 會員標籤（藍色） */}
+                {/* 會員標籤（淺藍底色 - 與教練統一） */}
                 {selectedMemberIds.map(memberId => {
                   const member = members.find(m => m.id === memberId)
                   return member ? (
                     <span key={memberId} style={{
                       padding: '6px 12px',
-                      background: '#2196F3',
-                      color: 'white',
-                      borderRadius: '16px',
-                      fontSize: '14px',
+                      background: '#dbeafe',
+                      color: '#1e40af',
+                      border: '1px solid #3b82f6',
+                      borderRadius: '6px',
+                      fontSize: '15px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
-                      fontWeight: '500'
+                      fontWeight: '600'
                     }}>
                       {member.name}
                       <button
@@ -668,7 +669,7 @@ export function NewBookingDialog({
                         style={{
                           background: 'transparent',
                           border: 'none',
-                          color: 'white',
+                          color: '#1e40af',
                           cursor: 'pointer',
                           padding: '0',
                           fontSize: '18px',
@@ -679,15 +680,15 @@ export function NewBookingDialog({
                   ) : null
                 })}
                 
-                {/* 非會員標籤（橘色邊框） */}
+                {/* 非會員標籤（白底虛線邊框） */}
                 {manualNames.map((name, index) => (
                   <span key={index} style={{
                     padding: '6px 12px',
                     background: 'white',
-                    color: '#f57c00',
-                    border: '1.5px solid #ffb74d',
-                    borderRadius: '16px',
-                    fontSize: '14px',
+                    color: '#666',
+                    border: '1.5px dashed #ccc',
+                    borderRadius: '6px',
+                    fontSize: '15px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
@@ -700,7 +701,7 @@ export function NewBookingDialog({
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        color: '#f57c00',
+                        color: '#999',
                         cursor: 'pointer',
                         padding: '0',
                         fontSize: '18px',
@@ -709,29 +710,6 @@ export function NewBookingDialog({
                     >×</button>
                   </span>
                 ))}
-                
-                {/* 清除全部按鈕 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedMemberIds([])
-                    setMemberSearchTerm('')
-                    setManualStudentName('')
-                    setManualNames([])
-                  }}
-                  style={{
-                    padding: '6px 12px',
-                    background: '#f44336',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '16px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    fontWeight: '500'
-                  }}
-                >
-                  清除全部
-                </button>
               </div>
             )}
             
@@ -961,38 +939,36 @@ export function NewBookingDialog({
             {selectedCoaches.length > 0 && (
               <div style={{
                 marginBottom: '12px',
-                padding: '10px 12px',
-                background: '#f5f5f5',
+                padding: '12px 14px',
+                background: '#dbeafe',
                 borderRadius: '8px',
-                border: '1px solid #e0e0e0',
+                border: '2px solid #3b82f6',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
                 gap: '8px',
               }}>
+                <span style={{ color: '#1e40af', fontSize: '15px', fontWeight: '600', flexShrink: 0 }}>
+                  已選：
+                </span>
                 <div style={{
                   display: 'flex',
                   flexWrap: 'wrap',
-                  alignItems: 'center',
-                  gap: '6px',
+                  gap: '8px',
                   flex: 1,
                 }}>
-                  <span style={{ color: '#666', fontSize: '14px', fontWeight: '500' }}>
-                    已選：
-                  </span>
                   {selectedCoaches.map(coachId => {
                     const coach = coaches.find(c => c.id === coachId)
                     return coach ? (
                       <span
                         key={coachId}
                         style={{
-                          padding: '4px 10px',
+                          padding: '6px 12px',
                           background: 'white',
-                          borderRadius: '4px',
-                          border: '1px solid #d0d0d0',
-                          color: '#333',
-                          fontSize: '14px',
-                          fontWeight: '500',
+                          borderRadius: '6px',
+                          border: '1px solid #3b82f6',
+                          color: '#1e40af',
+                          fontSize: '15px',
+                          fontWeight: '600',
                         }}
                       >
                         {coach.name}
@@ -1000,22 +976,6 @@ export function NewBookingDialog({
                     ) : null
                   })}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCoaches([])}
-                  style={{
-                    padding: '4px 10px',
-                    background: 'white',
-                    border: '1px solid #d0d0d0',
-                    borderRadius: '4px',
-                    color: '#666',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                  }}
-                >
-                  清除
-                </button>
               </div>
             )}
             
@@ -1087,67 +1047,37 @@ export function NewBookingDialog({
             )}
           </div>
 
-          {/* 需要駕駛 - 大按鈕 */}
+          {/* 需要駕駛勾選框 */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '10px', 
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '600',
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              padding: '12px',
+              backgroundColor: requiresDriver ? '#dbeafe' : '#f8f9fa',
+              borderRadius: '8px',
+              border: requiresDriver ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+              transition: 'all 0.2s',
             }}>
-              需要駕駛
+              <input
+                type="checkbox"
+                checked={requiresDriver}
+                onChange={(e) => setRequiresDriver(e.target.checked)}
+                style={{ 
+                  marginRight: '10px', 
+                  width: '18px', 
+                  height: '18px',
+                  cursor: 'pointer',
+                }}
+              />
+              <span style={{
+                fontSize: '15px',
+                fontWeight: '500',
+                color: requiresDriver ? '#3b82f6' : '#333',
+              }}>
+                需要駕駛（勾選後在排班時必須指定駕駛）
+              </span>
             </label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '10px',
-            }}>
-              <button
-                type="button"
-                onClick={() => setRequiresDriver(false)}
-                style={{
-                  padding: '14px 10px',
-                  border: !requiresDriver ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  background: !requiresDriver ? '#dbeafe' : 'white',
-                  color: '#333',
-                  fontSize: '15px',
-                  fontWeight: !requiresDriver ? '600' : '500',
-                  cursor: 'pointer',
-                }}
-                onTouchStart={(e) => {
-                  e.currentTarget.style.background = !requiresDriver ? '#dbeafe' : '#fafafa'
-                }}
-                onTouchEnd={(e) => {
-                  e.currentTarget.style.background = !requiresDriver ? '#dbeafe' : 'white'
-                }}
-              >
-                不需要
-              </button>
-              <button
-                type="button"
-                onClick={() => setRequiresDriver(true)}
-                style={{
-                  padding: '14px 10px',
-                  border: requiresDriver ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  background: requiresDriver ? '#dbeafe' : 'white',
-                  color: '#333',
-                  fontSize: '15px',
-                  fontWeight: requiresDriver ? '600' : '500',
-                  cursor: 'pointer',
-                }}
-                onTouchStart={(e) => {
-                  e.currentTarget.style.background = requiresDriver ? '#dbeafe' : '#fafafa'
-                }}
-                onTouchEnd={(e) => {
-                  e.currentTarget.style.background = requiresDriver ? '#dbeafe' : 'white'
-                }}
-              >
-                需要駕駛
-              </button>
-            </div>
           </div>
 
           <div style={{ marginBottom: '18px' }}>

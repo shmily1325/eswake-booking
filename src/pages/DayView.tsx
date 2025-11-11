@@ -90,8 +90,6 @@ export function DayView({ user }: DayViewProps) {
   const [currentBoatIndex, setCurrentBoatIndex] = useState(0)
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('list')
   const [copySuccess, setCopySuccess] = useState<number | null>(null) // 記錄哪個預約剛複製成功
-  const [searchQuery, setSearchQuery] = useState('') // 搜尋關鍵字
-  const [selectedBoatFilter, setSelectedBoatFilter] = useState<number | null>(null) // 船隻篩選
 
   const changeDate = (offset: number) => {
     const [year, month, day] = dateParam.split('-').map(Number)
@@ -357,35 +355,6 @@ export function DayView({ user }: DayViewProps) {
     return boats
   }, [singleBoatMode, currentBoatIndex, boats])
 
-  // 搜尋和篩選預約
-  const filteredBookings = useMemo(() => {
-    let result = bookings
-
-    // 船隻篩選
-    if (selectedBoatFilter !== null) {
-      result = result.filter(b => b.boat_id === selectedBoatFilter)
-    }
-
-    // 搜尋關鍵字（客人名、教練名、備註）
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      result = result.filter(booking => {
-        // 搜尋客人名
-        if (booking.contact_name?.toLowerCase().includes(query)) return true
-        
-        // 搜尋教練名
-        if (booking.coaches?.some(c => c.name.toLowerCase().includes(query))) return true
-        
-        // 搜尋備註
-        if (booking.notes?.toLowerCase().includes(query)) return true
-        if (booking.schedule_notes?.toLowerCase().includes(query)) return true
-        
-        return false
-      })
-    }
-
-    return result
-  }, [bookings, selectedBoatFilter, searchQuery])
 
   if (loading) {
     return (
@@ -540,147 +509,6 @@ export function DayView({ user }: DayViewProps) {
         </button>
       </div>
 
-      {/* 搜尋和篩選區 */}
-      {viewMode === 'list' && (
-        <div style={{
-          marginBottom: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-        }}>
-          {/* 搜尋框 */}
-          <div style={{ position: 'relative' }}>
-            <input
-              type="text"
-              placeholder="🔍 搜尋客人、教練或備註..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                padding: isMobile ? '10px 12px 10px 36px' : '12px 14px 12px 40px',
-                borderRadius: '8px',
-                border: '2px solid #e0e0e0',
-                fontSize: isMobile ? '14px' : '15px',
-                boxSizing: 'border-box',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#e0e0e0'
-              }}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: '#e0e0e0',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '20px',
-                  height: '20px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#666',
-                }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* 船隻篩選 */}
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            paddingBottom: '4px',
-          }}>
-            <button
-              onClick={() => setSelectedBoatFilter(null)}
-              style={{
-                padding: '8px 16px',
-                border: selectedBoatFilter === null ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                borderRadius: '20px',
-                background: selectedBoatFilter === null ? '#dbeafe' : 'white',
-                color: '#333',
-                fontSize: isMobile ? '13px' : '14px',
-                fontWeight: selectedBoatFilter === null ? '600' : '500',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-            >
-              全部
-            </button>
-            {boats.map(boat => (
-              <button
-                key={boat.id}
-                onClick={() => setSelectedBoatFilter(boat.id)}
-                style={{
-                  padding: '8px 16px',
-                  border: selectedBoatFilter === boat.id ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                  borderRadius: '20px',
-                  background: selectedBoatFilter === boat.id ? '#dbeafe' : 'white',
-                  color: '#333',
-                  fontSize: isMobile ? '13px' : '14px',
-                  fontWeight: selectedBoatFilter === boat.id ? '600' : '500',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                }}
-              >
-                {boat.name}
-              </button>
-            ))}
-          </div>
-
-          {/* 搜尋結果提示 */}
-          {(searchQuery || selectedBoatFilter !== null) && (
-            <div style={{
-              fontSize: isMobile ? '12px' : '13px',
-              color: '#666',
-              padding: '8px 12px',
-              background: '#f5f5f5',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
-              <span>
-                找到 <strong style={{ color: '#3b82f6' }}>{filteredBookings.length}</strong> 筆預約
-              </span>
-              <button
-                onClick={() => {
-                  setSearchQuery('')
-                  setSelectedBoatFilter(null)
-                }}
-                style={{
-                  padding: '4px 10px',
-                  background: 'white',
-                  border: '1px solid #d0d0d0',
-                  borderRadius: '4px',
-                  color: '#666',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                }}
-              >
-                清除篩選
-              </button>
-            </div>
-          )}
-        </div>
-      )}
 
       {viewMode === 'timeline' && (
         <div style={{
@@ -812,7 +640,7 @@ export function DayView({ user }: DayViewProps) {
             overflow: 'hidden',
           }}>
             {boats.map((boat, index) => {
-              const boatBookings = filteredBookings
+              const boatBookings = bookings
                 .filter(b => b.boat_id === boat.id)
                 .sort((a, b) => {
                   // 純字符串比較排序（避免時區問題）
