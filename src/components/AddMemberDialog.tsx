@@ -485,7 +485,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 padding: isMobile ? '16px 24px' : '10px 20px',
                 border: 'none',
                 borderRadius: '8px',
-                background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
                 color: 'white',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontSize: isMobile ? '17px' : '14px',

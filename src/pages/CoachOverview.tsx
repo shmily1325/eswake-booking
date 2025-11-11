@@ -58,6 +58,9 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     const today = new Date()
     return today.toISOString().split('T')[0]
   })
+  const [timeRange, setTimeRange] = useState<'this-month' | 'next-month' | 'custom'>('this-month')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoachId, setSelectedCoachId] = useState<string>('all')
 
@@ -73,10 +76,14 @@ export function CoachOverview({ user }: CoachOverviewProps) {
   useEffect(() => {
     if (activeTab === 'report-status') {
       loadReportStatus()
-    } else if (activeTab === 'work-stats') {
+    } else if (activeTab === 'work-stats' || activeTab === 'data-analysis') {
       loadWorkStats()
     }
-  }, [activeTab, selectedDate, selectedCoachId])
+  }, [activeTab, selectedDate, timeRange, startDate, endDate, selectedCoachId])
+
+  const isFacility = (boatName?: string | null) => {
+    return boatName === '彈簧床'
+  }
 
   const loadCoaches = async () => {
     const { data, error } = await supabase
@@ -166,13 +173,16 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           const booking = bookingsData.find(b => b.id === bookingId)
           if (!booking) continue
 
+          const boatName = (booking.boats as any)?.name
+          const isFacilityBooking = isFacility(boatName)
+
           const isCoach = coachBookingIds.includes(bookingId)
           const isDriver = driverBookingIds.includes(bookingId)
           const hasNoDriver = !driversResult.data?.some(bd => bd.booking_id === bookingId)
-          const isImplicitDriver = isCoach && hasNoDriver
+          const isImplicitDriver = isCoach && hasNoDriver && !isFacilityBooking
 
           const needsCoachReport = isCoach
-          const needsDriverReport = isDriver || isImplicitDriver
+          const needsDriverReport = !isFacilityBooking && (isDriver || isImplicitDriver)
 
           const hasCoachReport = participantsResult.data?.some(
             p => p.booking_id === bookingId && p.coach_id === coach.id
@@ -214,18 +224,47 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     }
   }
 
+  const getDateRange = () => {
+    const now = new Date()
+    let start: string, end: string
+
+    if (timeRange === 'this-month') {
+      const year = now.getFullYear()
+      const month = now.getMonth()
+      start = `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00`
+      const lastDay = new Date(year, month + 1, 0).getDate()
+      end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`
+    } else if (timeRange === 'next-month') {
+      const year = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear()
+      const month = now.getMonth() === 11 ? 0 : now.getMonth() + 1
+      start = `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00`
+      const lastDay = new Date(year, month + 1, 0).getDate()
+      end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`
+    } else {
+      start = startDate ? `${startDate}T00:00:00` : ''
+      end = endDate ? `${endDate}T23:59:59` : ''
+    }
+
+    return { start, end }
+  }
+
   const loadWorkStats = async () => {
     setLoading(true)
     try {
-      const startOfDay = `${selectedDate}T00:00:00`
-      const endOfDay = `${selectedDate}T23:59:59`
+      const { start, end } = getDateRange()
+      
+      if (!start || !end) {
+        setWorkStats([])
+        setLoading(false)
+        return
+      }
 
       // 載入預約
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select('id')
-        .gte('start_at', startOfDay)
-        .lte('start_at', endOfDay)
+        .gte('start_at', start)
+        .lte('start_at', end)
         .eq('status', 'confirmed')
 
       if (bookingsError) throw bookingsError
@@ -366,29 +405,109 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           ...getCardStyle(isMobile),
           marginBottom: '24px',
           display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          gap: '16px',
-          alignItems: isMobile ? 'stretch' : 'center'
+          flexDirection: 'column',
+          gap: '16px'
         }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', display: 'block', color: '#666' }}>
-              日期
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-            />
-          </div>
+          {/* 回報狀況用日期選擇 */}
+          {activeTab === 'report-status' && (
+            <div>
+              <label style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', display: 'block', color: '#666' }}>
+                日期
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+          )}
+
+          {/* 工作統計和數據分析用月份選擇 */}
+          {(activeTab === 'work-stats' || activeTab === 'data-analysis') && (
+            <div>
+              <label style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', display: 'block', color: '#666' }}>
+                時間範圍
+              </label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setTimeRange('this-month')}
+                  style={{
+                    ...getButtonStyle(timeRange === 'this-month' ? 'primary' : 'secondary'),
+                    flex: isMobile ? '1 1 auto' : '0 0 auto'
+                  }}
+                >
+                  本月
+                </button>
+                <button
+                  onClick={() => setTimeRange('next-month')}
+                  style={{
+                    ...getButtonStyle(timeRange === 'next-month' ? 'primary' : 'secondary'),
+                    flex: isMobile ? '1 1 auto' : '0 0 auto'
+                  }}
+                >
+                  下月
+                </button>
+                <button
+                  onClick={() => setTimeRange('custom')}
+                  style={{
+                    ...getButtonStyle(timeRange === 'custom' ? 'primary' : 'secondary'),
+                    flex: isMobile ? '1 1 auto' : '0 0 auto'
+                  }}
+                >
+                  自訂範圍
+                </button>
+              </div>
+
+              {timeRange === 'custom' && (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexDirection: isMobile ? 'column' : 'row' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '4px', display: 'block', color: '#666' }}>
+                      開始日期
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '4px', display: 'block', color: '#666' }}>
+                      結束日期
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           
-          <div style={{ flex: 1 }}>
+          {/* 教練篩選 */}
+          <div>
             <label style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', display: 'block', color: '#666' }}>
               教練篩選
             </label>

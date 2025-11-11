@@ -855,7 +855,7 @@ export function BoardManagement({ user }: BoardManagementProps) {
                           style={{
                             flex: 1,
                             padding: '12px',
-                            background: selectedMember ? 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)' : '#ccc',
+                            background: selectedMember ? 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)' : '#ccc',
                             color: 'white',
                             border: 'none',
                             borderRadius: '8px',

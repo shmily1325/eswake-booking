@@ -510,7 +510,7 @@ function TimeOffDialog({ open, coach, onClose }: TimeOffDialogProps) {
                   style={{
                     flex: 1,
                     padding: '10px',
-                    background: loading ? '#ccc' : 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                    background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '6px',

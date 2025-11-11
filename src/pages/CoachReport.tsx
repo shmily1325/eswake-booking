@@ -295,11 +295,46 @@ export function CoachReport({ user }: CoachReportProps) {
     if (booking.participants && booking.participants.length > 0) {
       setParticipants(booking.participants)
     } else {
-      // 預設帶入預約人
+      // 載入這筆預約的所有會員
+      loadBookingMembers(booking.id, booking.duration_min)
+    }
+  }
+
+  // 載入預約的會員資訊
+  const loadBookingMembers = async (bookingId: number, defaultDuration: number) => {
+    try {
+      const { data: bookingMembersData } = await supabase
+        .from('booking_members')
+        .select('member_id, members(id, name)')
+        .eq('booking_id', bookingId)
+
+      if (bookingMembersData && bookingMembersData.length > 0) {
+        // 有會員資料，為每個會員建立一筆參與者記錄
+        const memberParticipants = bookingMembersData.map((bm: any) => ({
+          member_id: bm.member_id,
+          participant_name: bm.members?.name || '未知',
+          duration_min: defaultDuration,
+          payment_method: 'cash'
+        }))
+        setParticipants(memberParticipants)
+      } else {
+        // 沒有會員資料，使用預約人姓名
+        const booking = bookings.find(b => b.id === bookingId)
+        setParticipants([{
+          member_id: null,
+          participant_name: booking?.contact_name || '',
+          duration_min: defaultDuration,
+          payment_method: 'cash'
+        }])
+      }
+    } catch (error) {
+      console.error('載入會員資訊失敗:', error)
+      // 發生錯誤時使用預約人姓名
+      const booking = bookings.find(b => b.id === bookingId)
       setParticipants([{
         member_id: null,
-        participant_name: booking.contact_name,
-        duration_min: booking.duration_min,
+        participant_name: booking?.contact_name || '',
+        duration_min: defaultDuration,
         payment_method: 'cash'
       }])
     }

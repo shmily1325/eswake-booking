@@ -250,6 +250,11 @@ export function EditBookingDialog({
       return
     }
 
+    if (!selectedBoatId || selectedBoatId === 0) {
+      setError('⚠️ 請選擇船隻')
+      return
+    }
+
     // 防呆檢查：08:00之前的預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
     if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
@@ -1450,7 +1455,7 @@ export function EditBookingDialog({
                 padding: '14px',
                 borderRadius: '8px',
                 border: 'none',
-                backgroundColor: loading ? '#ccc' : '#007bff',
+                background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
                 color: 'white',
                 fontSize: '16px',
                 fontWeight: '500',
