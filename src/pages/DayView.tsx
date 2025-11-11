@@ -9,7 +9,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getLocalDateTimeString } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { getButtonStyle } from '../styles/designSystem'
-import { formatBookingForLine } from '../utils/bookingFormat'
+import { formatSingleBookingWithName } from '../utils/bookingFormat'
 
 interface Boat {
   id: number
@@ -110,7 +110,7 @@ export function DayView({ user }: DayViewProps) {
 
   // 複製單個預約的 LINE 格式訊息
   const copyBookingToClipboard = async (booking: Booking) => {
-    const message = formatBookingForLine(booking)
+    const message = formatSingleBookingWithName(booking)
     
     try {
       await navigator.clipboard.writeText(message)

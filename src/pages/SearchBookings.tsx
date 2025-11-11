@@ -664,7 +664,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                         </span>
                       </div>
                       <div>
-                        <span style={{ color: '#666' }}>👤 教練：</span>
+                        <span style={{ color: '#666' }}>🎓 教練：</span>
                         <span style={{ fontWeight: '500', color: '#000' }}>
                           {booking.coaches && booking.coaches.length > 0
                             ? booking.coaches.map(c => c.name).join(' / ')

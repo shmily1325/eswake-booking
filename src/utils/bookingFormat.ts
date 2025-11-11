@@ -3,13 +3,14 @@
 interface BookingFormatData {
   start_at: string
   duration_min: number
+  contact_name?: string
   boats?: { name: string } | null
   coaches?: { name: string }[]
   activity_types?: string[] | null
 }
 
 /**
- * 格式化單個預約為 LINE 訊息格式
+ * 格式化單個預約為 LINE 訊息格式（不含人名）
  * 格式：月/日 時間 船 教練 時長 活動類型
  * 範例：11/11 05:00 G23 ED 60分 SUP
  */
@@ -31,7 +32,19 @@ export function formatBookingForLine(booking: BookingFormatData): string {
 }
 
 /**
+ * 格式化單個預約為 LINE 訊息格式（含人名）
+ * 格式：人名的預約\n月/日 時間 船 教練 時長 活動類型
+ * 範例：林敏的預約\n11/11 05:00 G23 ED 60分 SUP
+ */
+export function formatSingleBookingWithName(booking: BookingFormatData): string {
+  const name = booking.contact_name || '客人'
+  const bookingLine = formatBookingForLine(booking)
+  return `${name}的預約\n${bookingLine}`
+}
+
+/**
  * 格式化多個預約為 LINE 訊息（含標題）
+ * 格式：人名的預約\n月/日 時間 船 教練 時長\n月/日 時間 船 教練 時長
  */
 export function formatBookingsForLine(bookings: BookingFormatData[], title: string): string {
   if (bookings.length === 0) return ''
