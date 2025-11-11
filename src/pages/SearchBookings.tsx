@@ -361,15 +361,6 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
 
           {/* 篩選選項：固定為未來預約 */}
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ 
-              marginBottom: '12px', 
-              fontSize: '13px', 
-              color: '#868e96',
-              fontWeight: '500'
-            }}>
-              📅 搜尋未來預約
-            </div>
-
             {/* 今日新增 checkbox */}
             <label style={{
               display: 'flex',
@@ -470,7 +461,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
             )}
           </div>
 
-          {bookings.length === 0 ? (
+          {!loading && bookings.length === 0 ? (
             <div style={{
               padding: '40px',
               backgroundColor: 'white',
@@ -481,7 +472,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
             }}>
               😔 沒有找到相關預約記錄
             </div>
-          ) : (
+          ) : bookings.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {bookings.map((booking) => {
                 const isPast = isPastBooking(booking.start_at)
@@ -608,7 +599,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                 )
               })}
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
