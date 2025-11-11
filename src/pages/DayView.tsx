@@ -597,7 +597,7 @@ export function DayView({ user }: DayViewProps) {
             onClick={goToToday}
             style={{
               ...getButtonStyle('secondary', 'medium', false),
-              minWidth: '90px'
+              minWidth: '100px'
             }}
           >
             今天
@@ -608,7 +608,7 @@ export function DayView({ user }: DayViewProps) {
             style={{
               ...getButtonStyle('secondary', 'medium', false),
               textDecoration: 'none',
-              minWidth: '110px'
+              minWidth: '100px'
             }}
           >
             排班管理
