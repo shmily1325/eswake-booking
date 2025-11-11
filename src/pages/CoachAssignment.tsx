@@ -1347,7 +1347,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           
           // 定義所有船隻（固定顯示）
           const allBoats = [
-            { id: 1, name: 'G23', color: '#ff6b6b' },
+            { id: 1, name: 'G23', color: '#9E9E9E' },  // 銀灰色
             { id: 2, name: 'G21', color: '#4ecdc4' },
             { id: 3, name: '黑豹', color: '#2c3e50' },
             { id: 4, name: '粉紅', color: '#ff69b4' },
