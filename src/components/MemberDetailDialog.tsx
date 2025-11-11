@@ -434,7 +434,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                     </div>
 
                     {isMobile && (
-                      <div style={{ height: '16px' }} />
+                      <div style={{ height: '160px' }} />
                     )}
                   </>
                 ) : (
