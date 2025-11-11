@@ -156,7 +156,11 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
         tomorrow.setDate(tomorrow.getDate() + 1)
         const tomorrowDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
         
-        query = query.gte('created_at', `${todayDate}T00:00:00`).lt('created_at', `${tomorrowDate}T00:00:00`)
+        // 篩選今日創建的預約（created_at 不為空且在今天範圍內）
+        query = query
+          .not('created_at', 'is', null)
+          .gte('created_at', `${todayDate}T00:00:00`)
+          .lt('created_at', `${tomorrowDate}T00:00:00`)
       }
       
       // 執行預約查詢（根據時間範圍決定排序）

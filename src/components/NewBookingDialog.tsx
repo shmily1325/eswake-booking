@@ -454,6 +454,7 @@ export function NewBookingDialog({
           requires_driver: requiresDriver,          // 是否需要駕駛
           status: 'confirmed',
           created_by: user.id,
+          created_at: new Date().toISOString(),     // 記錄創建時間
         }
 
         const { data: insertedBooking, error: insertError } = await supabase
