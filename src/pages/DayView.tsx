@@ -1032,14 +1032,17 @@ export function DayView({ user }: DayViewProps) {
           margin: isMobile ? '0 -10px' : '0',
           padding: isMobile ? '0 10px' : '0',
         }}>
+        <div style={{
+          overflow: 'auto',
+          maxHeight: 'calc(100vh - 250px)',
+          borderRadius: '8px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        }}>
         <table style={{
           width: isMobile ? 'auto' : '100%',
           borderCollapse: 'separate',
           borderSpacing: 0,
           backgroundColor: 'white',
-          borderRadius: '8px',
-          overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         }}>
           <thead>
             <tr>
@@ -1160,7 +1163,38 @@ export function DayView({ user }: DayViewProps) {
                             e.currentTarget.style.boxShadow = '0 3px 10px rgba(0,0,0,0.1)'
                           }}
                         >
-                          {/* 預約人 + 活動類型 + 排班備註（第一行） */}
+                          {/* 時間範圍 */}
+                          <div style={{
+                            fontSize: isMobile ? '11px' : '13px',
+                            fontWeight: '600',
+                            color: '#2c3e50',
+                            marginBottom: '4px',
+                            textAlign: 'center',
+                          }}>
+                            {(() => {
+                              const start = new Date(booking.start_at)
+                              const end = new Date(start.getTime() + booking.duration_min * 60000)
+                              const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
+                              const endTime = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
+                              return `${startTime} - ${endTime}`
+                            })()}
+                          </div>
+                          
+                          {/* 時長和接船時間 */}
+                          <div style={{
+                            fontSize: isMobile ? '10px' : '11px',
+                            color: '#888',
+                            marginBottom: '6px',
+                            textAlign: 'center',
+                          }}>
+                            ({booking.duration_min}分
+                            {booking.requires_driver && booking.boats?.name !== '彈簧床' && (() => {
+                              const pickupTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
+                              return `，接船至 ${String(pickupTime.getHours()).padStart(2, '0')}:${String(pickupTime.getMinutes()).padStart(2, '0')}`
+                            })()})
+                          </div>
+
+                          {/* 預約人 + 活動類型 + 排班備註 */}
                           <div style={{
                             fontSize: isMobile ? '13px' : '15px',
                             fontWeight: '700',
@@ -1296,6 +1330,7 @@ export function DayView({ user }: DayViewProps) {
             })}
           </tbody>
         </table>
+        </div>
         </div>
       )}
 
