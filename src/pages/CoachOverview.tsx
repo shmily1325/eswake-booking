@@ -350,60 +350,6 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     return Math.round((completed / totalNeeded) * 100)
   }
 
-  const exportData = () => {
-    if (workStats.length === 0) {
-      alert('沒有資料可以匯出')
-      return
-    }
-
-    // 生成 CSV 內容
-    const today = new Date()
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-    
-    let csv = '\uFEFF' // UTF-8 BOM for Excel
-    csv += `教練工作狀況報表\n`
-    csv += `匯出日期：${dateStr}\n`
-    csv += `時間範圍：${timeRange === 'last-month' ? '上月' : timeRange === 'this-month' ? '本月' : timeRange === 'next-month' ? '下月' : `${startDate} ~ ${endDate}`}\n`
-    csv += `\n`
-
-    // 教練統計
-    csv += `教練,預約數,教學時數(分),學員數,現金,匯款,扣儲值,票券,指定(需收費),指定(不需收費)\n`
-    workStats.forEach(stats => {
-      csv += `${stats.coachName},`
-      csv += `${stats.coachBookings},`
-      csv += `${stats.coachMinutes},`
-      csv += `${stats.coachStudents},`
-      csv += `${stats.paymentMethods['cash'] || 0},`
-      csv += `${stats.paymentMethods['transfer'] || 0},`
-      csv += `${stats.paymentMethods['balance'] || 0},`
-      csv += `${stats.paymentMethods['voucher'] || 0},`
-      csv += `${stats.paymentMethods['designated_paid'] || 0},`
-      csv += `${stats.paymentMethods['designated_free'] || 0}\n`
-    })
-
-    csv += `\n`
-
-    // 駕駛統計
-    csv += `教練,駕駛預約數,駕駛時數(分),平均剩餘油量(%)\n`
-    workStats.forEach(stats => {
-      csv += `${stats.coachName},`
-      csv += `${stats.driverBookings},`
-      csv += `${stats.driverMinutes},`
-      csv += `${stats.avgFuelRemaining.toFixed(1)}\n`
-    })
-
-    // 下載
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `教練工作狀況_${dateStr}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       <PageHeader 
