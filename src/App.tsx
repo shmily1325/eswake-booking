@@ -7,6 +7,7 @@ import { DayView } from './pages/DayView'
 import { SearchPage } from './pages/SearchPage'
 import { SearchBookings } from './pages/SearchBookings'
 // import { CoachCheck } from './pages/CoachCheck'
+import { CoachReport } from './pages/CoachReport'
 import { CoachAssignment } from './pages/CoachAssignment'
 import { CoachOverview } from './pages/CoachOverview'
 import { MemberImport } from './pages/MemberImport'
@@ -68,8 +69,9 @@ function App() {
         <Route path="/search" element={<SearchPage user={user} />} />
         <Route path="/search-bookings" element={<SearchBookings user={user} />} />
         {/* <Route path="/coach-check" element={<CoachCheck user={user} />} /> */}
-          <Route path="/coach-assignment" element={<CoachAssignment user={user} />} />
-          <Route path="/coach-overview" element={<CoachOverview user={user} />} />
+        <Route path="/coach-report" element={<CoachReport user={user} />} />
+        <Route path="/coach-assignment" element={<CoachAssignment user={user} />} />
+        <Route path="/coach-overview" element={<CoachOverview user={user} />} />
           <Route path="/member-import" element={<MemberImport user={user} />} />
         <Route path="/audit-log" element={<AuditLog user={user} />} />
               <Route path="/tomorrow" element={<TomorrowReminder user={user} />} />
