@@ -225,3 +225,49 @@ export async function logAction(
   }
 }
 
+interface CoachAssignmentLogParams {
+  userEmail: string
+  studentName: string
+  boatName: string
+  startTime: string
+  changes: string[]
+}
+
+/**
+ * 記錄排班操作（教練/駕駛分配、排班註解）
+ */
+export async function logCoachAssignment(params: CoachAssignmentLogParams) {
+  const { userEmail, studentName, boatName, startTime, changes } = params
+
+  // 格式化時間：2025-11-09T23:15:00 → 11/09 23:15
+  const datetime = startTime.substring(0, 16)
+  const [dateStr, timeStr] = datetime.split('T')
+  const [, month, day] = dateStr.split('-')
+  const formattedTime = `${month}/${day} ${timeStr}`
+
+  const details = `排班：${studentName} / ${boatName} / ${formattedTime}，變更：${changes.join('、')}`
+
+  // 非阻塞寫入
+  void (async () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hour = String(now.getHours()).padStart(2, '0')
+    const minute = String(now.getMinutes()).padStart(2, '0')
+    const second = String(now.getSeconds()).padStart(2, '0')
+    const created_at = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+    
+    const { error } = await supabase.from('audit_log').insert({
+      user_email: userEmail,
+      action: 'update',
+      table_name: 'coach_assignment',
+      details,
+      created_at
+    })
+    if (error) {
+      console.error('審計日誌寫入錯誤:', error)
+    }
+  })()
+}
+

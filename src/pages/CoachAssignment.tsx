@@ -9,6 +9,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getButtonStyle, getInputStyle, getLabelStyle, getTextStyle } from '../styles/designSystem'
 import { useRequireAdmin, isAdmin } from '../utils/auth'
 import { isFacility } from '../utils/facility'
+import { logCoachAssignment } from '../utils/auditLog'
 
 interface Coach {
   id: string
@@ -546,7 +547,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       const allCoachesToInsert = []
       const allDriversToInsert = []
       
-      // 找出有變動的預約
+      // 找出有變動的預約，並記錄變更內容
+      const changedBookingsInfo: Array<{
+        booking: Booking
+        changes: string[]
+      }> = []
+      
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
         if (!assignment) continue
@@ -569,6 +575,43 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         
         if (hasChanges) {
           changedBookingIds.push(booking.id)
+          
+          // 記錄變更內容
+          const changes: string[] = []
+          
+          if (currentCoachIds !== newCoachIds) {
+            const oldCoachNames = booking.currentCoaches
+              .map(id => coaches.find(c => c.id === id)?.name)
+              .filter(Boolean)
+              .join('、')
+            const newCoachNames = assignment.coachIds
+              .map(id => coaches.find(c => c.id === id)?.name)
+              .filter(Boolean)
+              .join('、')
+            changes.push(`教練：${oldCoachNames || '無'} → ${newCoachNames || '無'}`)
+          }
+          
+          if (currentDriverIds !== newDriverIds) {
+            const oldDriverNames = booking.currentDrivers
+              .map(id => coaches.find(c => c.id === id)?.name)
+              .filter(Boolean)
+              .join('、')
+            const newDriverNames = assignment.driverIds
+              .map(id => coaches.find(c => c.id === id)?.name)
+              .filter(Boolean)
+              .join('、')
+            changes.push(`駕駛：${oldDriverNames || '無'} → ${newDriverNames || '無'}`)
+          }
+          
+          if (currentNotes !== newNotes) {
+            changes.push(`排班註解：${currentNotes || '無'} → ${newNotes || '無'}`)
+          }
+          
+          if (currentRequiresDriver !== newRequiresDriver) {
+            changes.push(`需要駕駛：${currentRequiresDriver ? '是' : '否'} → ${newRequiresDriver ? '是' : '否'}`)
+          }
+          
+          changedBookingsInfo.push({ booking, changes })
           
           // 準備新的教練分配
           for (const coachId of assignment.coachIds) {
@@ -632,6 +675,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         if (driverInsertError) {
           console.error('批量插入駕駛失敗:', driverInsertError)
           throw new Error(`插入駕駛分配失敗: ${driverInsertError.message}`)
+        }
+      }
+
+      // 記錄 audit log（非阻塞）
+      if (user?.email && changedBookingsInfo.length > 0) {
+        for (const { booking, changes } of changedBookingsInfo) {
+          logCoachAssignment({
+            userEmail: user.email,
+            studentName: booking.contact_name,
+            boatName: booking.boats?.name || '未知船隻',
+            startTime: booking.start_at,
+            changes
+          })
         }
       }
 
