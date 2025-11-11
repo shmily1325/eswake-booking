@@ -595,9 +595,7 @@ export function DayView({ user }: DayViewProps) {
             style={{
               ...getButtonStyle('secondary', 'medium', false),
               minWidth: '100px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              boxSizing: 'border-box'
             }}
           >
             今天
@@ -609,9 +607,7 @@ export function DayView({ user }: DayViewProps) {
               ...getButtonStyle('secondary', 'medium', false),
               textDecoration: 'none',
               minWidth: '100px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              boxSizing: 'border-box'
             }}
           >
             排班管理
@@ -1040,7 +1036,8 @@ export function DayView({ user }: DayViewProps) {
               <th style={{
                 position: 'sticky',
                 left: 0,
-                zIndex: 12,
+                top: 0,
+                zIndex: 13,
                 backgroundColor: '#5a5a5a',
                 color: 'white',
                 padding: isMobile ? '8px 4px' : '12px',

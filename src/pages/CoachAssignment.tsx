@@ -851,7 +851,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         </div>
 
         {/* 操作提示 */}
-        {!loading && bookings.length > 0 && viewMode !== 'list' && (
+        {!loading && bookings.length > 0 && (
           <div style={{
             padding: '14px 20px',
             background: 'white',
@@ -866,7 +866,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             gap: '8px'
           }}>
             <span style={{ fontSize: '18px' }}>💡</span>
-            <span>點擊卡片快速排班，點「✏️」完整編輯。</span>
+            <span>
+              {viewMode === 'list' 
+                ? '列表可直接快速排班，點「✏️」完整編輯預約詳情。'
+                : '點擊卡片快速排班，點「✏️」完整編輯。'}
+            </span>
           </div>
         )}
 
@@ -1181,8 +1185,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         <button
                           onClick={() => setFullEditBookingId(booking.id)}
                           style={{
-                            background: '#2196F3',
-                            color: 'white',
+                            background: '#f0f0f0',
+                            color: '#666',
                             border: 'none',
                             borderRadius: '6px',
                             padding: '8px 12px',
@@ -1192,8 +1196,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                             transition: 'background 0.2s'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#1976d2'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = '#2196F3'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#e0e0e0'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#f0f0f0'}
                           title="完整編輯"
                         >
                           ✏️
@@ -2179,7 +2183,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             >
                               {/* 卡片內容 */}
                               <div style={{ 
-                                paddingRight: '65px',
+                                paddingRight: '40px',
                                 minHeight: '100%'
                               }}>
                                 {/* 時間 */}
@@ -2441,49 +2445,34 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
                               </div>
 
-                              {/* 右上角按鈕 */}
+                              {/* 右上角編輯按鈕 */}
                               <div style={{
                                 position: 'absolute',
-                                top: '8px',
-                                right: '8px',
-                                display: 'flex',
-                                gap: '6px'
+                                top: '6px',
+                                right: '6px',
+                                zIndex: 10
                               }}>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setEditingBookingId(isEditing ? null : booking.id)
-                                  }}
-                                  style={{
-                                    padding: '6px 10px',
-                                    background: 'white',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    lineHeight: '1',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                  }}
-                                  title="快速排班"
-                                >
-                                  <span style={{ padding: '2px 6px', background: 'white', borderRadius: '4px', fontSize: '12px' }}>🎓</span>
-                                </button>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     setFullEditBookingId(booking.id)
                                   }}
                                   style={{
-                                    padding: '6px 10px',
-                                    background: 'white',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
+                                    background: '#f0f0f0',
+                                    color: '#666',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '4px 8px',
                                     fontSize: '14px',
-                                    lineHeight: '1',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    fontWeight: '500'
                                   }}
-                                  title="完整編輯"
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#e0e0e0'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#f0f0f0'}
+                                  title="編輯預約詳情"
                                 >
                                   ✏️
                                 </button>
