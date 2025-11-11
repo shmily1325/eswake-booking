@@ -977,6 +977,27 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             .sort((a, b) => b[1].count - a[1].count)
             .slice(0, 5)
           
+          // 駕駛使用統計（筆數 + 總時長）
+          const driverStats = new Map<string, { count: number, totalMinutes: number }>()
+          bookings.forEach(booking => {
+            const assignment = assignments[booking.id]
+            if (assignment?.driverIds) {
+              assignment.driverIds.forEach(driverId => {
+                const driver = coaches.find(c => c.id === driverId)
+                if (driver) {
+                  const current = driverStats.get(driver.name) || { count: 0, totalMinutes: 0 }
+                  driverStats.set(driver.name, {
+                    count: current.count + 1,
+                    totalMinutes: current.totalMinutes + booking.duration_min
+                  })
+                }
+              })
+            }
+          })
+          const topDrivers = Array.from(driverStats.entries())
+            .sort((a, b) => b[1].count - a[1].count)
+            .slice(0, 5)
+          
           // 船隻使用統計（筆數 + 總時長）
           const boatStats = new Map<string, { count: number, totalMinutes: number }>()
           bookings.forEach(booking => {
@@ -1083,6 +1104,22 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#166534', lineHeight: '1.6' }}>
                     {topCoaches.length > 0 
                       ? topCoaches.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')
+                      : '無'}
+                  </div>
+                </div>
+                
+                {/* 駕駛使用 */}
+                <div style={{
+                  padding: isMobile ? '10px' : '12px',
+                  backgroundColor: '#eff6ff',
+                  borderRadius: '8px',
+                  border: '1px solid #bfdbfe',
+                  gridColumn: isMobile ? 'span 2' : 'auto',
+                }}>
+                  <div style={{ fontSize: '11px', color: '#1e40af', marginBottom: '4px' }}>駕駛</div>
+                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#1e3a8a', lineHeight: '1.6' }}>
+                    {topDrivers.length > 0 
+                      ? topDrivers.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')
                       : '無'}
                   </div>
                 </div>
