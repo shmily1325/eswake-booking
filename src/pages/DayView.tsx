@@ -85,7 +85,6 @@ export function DayView({ user }: DayViewProps) {
   
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
-  const [timeRange, setTimeRange] = useState<'all' | 'business'>('business')
   const [singleBoatMode, setSingleBoatMode] = useState(false)
   const [currentBoatIndex, setCurrentBoatIndex] = useState(0)
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('list')
@@ -343,14 +342,11 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const filteredTimeSlots = useMemo(() => {
-    if (timeRange === 'business') {
-      return TIME_SLOTS.filter(slot => {
-        const [hour] = slot.split(':').map(Number)
-        return hour >= 5 && hour < 20
-      })
-    }
-    return TIME_SLOTS
-  }, [timeRange])
+    return TIME_SLOTS.filter(slot => {
+      const [hour] = slot.split(':').map(Number)
+      return hour >= 5 && hour < 20
+    })
+  }, [])
 
   const displayBoats = useMemo(() => {
     if (singleBoatMode && boats.length > 0) {
@@ -672,15 +668,6 @@ export function DayView({ user }: DayViewProps) {
           marginBottom: '16px',
           flexWrap: 'wrap',
         }}>
-            <button
-              onClick={() => setTimeRange(timeRange === 'all' ? 'business' : 'all')}
-              style={{
-                ...getButtonStyle('secondary', 'medium', isMobile),
-              }}
-            >
-            {timeRange === 'business' ? '營業時間' : '全天'}
-          </button>
-
           {isMobile && boats.length > 1 && (
             <>
               <button
