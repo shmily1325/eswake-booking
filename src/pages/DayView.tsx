@@ -495,11 +495,27 @@ export function DayView({ user }: DayViewProps) {
           📅 排班管理
         </Link>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+        <div style={{ 
+          marginLeft: 'auto', 
+          display: 'flex', 
+          background: '#f0f0f0', 
+          borderRadius: '8px', 
+          padding: '4px',
+          flex: '0 0 auto'
+        }}>
           <button
             onClick={() => setViewMode('list')}
             style={{
-              ...getButtonStyle(viewMode === 'list' ? 'primary' : 'outline', 'medium', isMobile),
+              padding: '8px 16px',
+              background: viewMode === 'list' ? 'white' : 'transparent',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: viewMode === 'list' ? '600' : '400',
+              fontSize: '14px',
+              color: viewMode === 'list' ? '#5a5a5a' : '#666',
+              transition: 'all 0.2s',
+              boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
             }}
           >
             📋 列表
@@ -507,7 +523,16 @@ export function DayView({ user }: DayViewProps) {
           <button
             onClick={() => setViewMode('timeline')}
             style={{
-              ...getButtonStyle(viewMode === 'timeline' ? 'primary' : 'outline', 'medium', isMobile),
+              padding: '8px 16px',
+              background: viewMode === 'timeline' ? 'white' : 'transparent',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: viewMode === 'timeline' ? '600' : '400',
+              fontSize: '14px',
+              color: viewMode === 'timeline' ? '#5a5a5a' : '#666',
+              transition: 'all 0.2s',
+              boxShadow: viewMode === 'timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
             }}
           >
             📅 時間軸

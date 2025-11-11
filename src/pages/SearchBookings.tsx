@@ -41,8 +41,9 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   
-  const [filterType, setFilterType] = useState<'all' | 'today' | 'range'>('all')
-  const [timeFilter, setTimeFilter] = useState<'future' | 'past'>('future') // 新增：未來/過去切換
+  // 簡化的篩選邏輯
+  const [timeRange, setTimeRange] = useState<'future' | 'past' | 'range'>('future') // 時間範圍
+  const [onlyToday, setOnlyToday] = useState(false) // 是否只顯示今日新增
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [copySuccess, setCopySuccess] = useState(false)
@@ -139,30 +140,27 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
         .select('*, boats:boat_id (name, color), booking_members(member_id, members(id, name))')
         .in('id', Array.from(bookingIds))
       
-      // 根據篩選類型添加條件
-      if (filterType === 'all') {
-        // 根據時間篩選（未來/過去）
-        if (timeFilter === 'future') {
-          query = query.gte('start_at', nowStr)
-        } else {
-          query = query.lt('start_at', nowStr)
-        }
-      } else if (filterType === 'today') {
-        // 今日新增的預約（不限時間）
+      // 根據時間範圍篩選
+      if (timeRange === 'future') {
+        query = query.gte('start_at', nowStr)
+      } else if (timeRange === 'past') {
+        query = query.lt('start_at', nowStr)
+      } else if (timeRange === 'range' && startDate && endDate) {
+        query = query.gte('start_at', `${startDate}T00:00:00`).lte('start_at', `${endDate}T23:59:59`)
+      }
+      
+      // 如果勾選「只顯示今日新增」
+      if (onlyToday) {
         const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
         const tomorrow = new Date(now)
         tomorrow.setDate(tomorrow.getDate() + 1)
         const tomorrowDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
         
         query = query.gte('created_at', `${todayDate}T00:00:00`).lt('created_at', `${tomorrowDate}T00:00:00`)
-      } else if (filterType === 'range' && startDate && endDate) {
-        // 特定區間內的未來預約
-        query = query.gte('start_at', `${startDate}T00:00:00`).lte('start_at', `${endDate}T23:59:59`)
-        query = query.gte('start_at', nowStr)
       }
       
-      // 執行預約查詢（根據時間篩選決定排序）
-      const bookingsResult = await query.order('start_at', { ascending: timeFilter === 'future' })
+      // 執行預約查詢（根據時間範圍決定排序）
+      const bookingsResult = await query.order('start_at', { ascending: timeRange === 'future' })
 
       console.log('預約詳細查詢結果:', bookingsResult.data)
       console.log('查詢錯誤:', bookingsResult.error)
@@ -373,113 +371,103 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
               color: '#868e96',
               fontWeight: '500'
             }}>
-              查詢模式
+              時間範圍
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
               <button
                 type="button"
-                onClick={() => setFilterType('all')}
+                onClick={() => setTimeRange('future')}
                 style={{
                   flex: 1,
-                  minWidth: '120px',
+                  minWidth: '100px',
                   padding: '12px 16px',
                   borderRadius: '8px',
-                  border: filterType === 'all' ? '2px solid #007bff' : '1px solid #e9ecef',
-                  backgroundColor: filterType === 'all' ? '#e7f3ff' : 'white',
-                  color: filterType === 'all' ? '#007bff' : '#495057',
+                  border: timeRange === 'future' ? '2px solid #007bff' : '1px solid #e9ecef',
+                  backgroundColor: timeRange === 'future' ? '#e7f3ff' : 'white',
+                  color: timeRange === 'future' ? '#007bff' : '#495057',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
               >
-                全部預約
+                📅 未來預約
               </button>
               <button
                 type="button"
-                onClick={() => setFilterType('today')}
+                onClick={() => setTimeRange('past')}
                 style={{
                   flex: 1,
-                  minWidth: '120px',
+                  minWidth: '100px',
                   padding: '12px 16px',
                   borderRadius: '8px',
-                  border: filterType === 'today' ? '2px solid #28a745' : '1px solid #e9ecef',
-                  backgroundColor: filterType === 'today' ? '#d4edda' : 'white',
-                  color: filterType === 'today' ? '#28a745' : '#495057',
+                  border: timeRange === 'past' ? '2px solid #6c757d' : '1px solid #e9ecef',
+                  backgroundColor: timeRange === 'past' ? '#e9ecef' : 'white',
+                  color: timeRange === 'past' ? '#495057' : '#6c757d',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
               >
-                今日新增
+                📜 過去預約
               </button>
               <button
                 type="button"
-                onClick={() => setFilterType('range')}
+                onClick={() => setTimeRange('range')}
                 style={{
                   flex: 1,
-                  minWidth: '120px',
+                  minWidth: '100px',
                   padding: '12px 16px',
                   borderRadius: '8px',
-                  border: filterType === 'range' ? '2px solid #ffc107' : '1px solid #e9ecef',
-                  backgroundColor: filterType === 'range' ? '#fff8e1' : 'white',
-                  color: filterType === 'range' ? '#f59f00' : '#495057',
+                  border: timeRange === 'range' ? '2px solid #ffc107' : '1px solid #e9ecef',
+                  backgroundColor: timeRange === 'range' ? '#fff8e1' : 'white',
+                  color: timeRange === 'range' ? '#f59f00' : '#495057',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
               >
-                指定日期
+                📆 指定日期
               </button>
             </div>
-            
-            {/* 時間範圍切換（僅在全部預約模式顯示） */}
-            {filterType === 'all' && (
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => setTimeFilter('future')}
-                  style={{
-                    flex: 1,
-                    padding: '10px 16px',
-                    borderRadius: '8px',
-                    border: timeFilter === 'future' ? '2px solid #007bff' : '1px solid #e9ecef',
-                    backgroundColor: timeFilter === 'future' ? '#e7f3ff' : 'white',
-                    color: timeFilter === 'future' ? '#007bff' : '#495057',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  📅 未來預約
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTimeFilter('past')}
-                  style={{
-                    flex: 1,
-                    padding: '10px 16px',
-                    borderRadius: '8px',
-                    border: timeFilter === 'past' ? '2px solid #6c757d' : '1px solid #e9ecef',
-                    backgroundColor: timeFilter === 'past' ? '#e9ecef' : 'white',
-                    color: timeFilter === 'past' ? '#495057' : '#6c757d',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  📜 過去預約
-                </button>
-              </div>
-            )}
+
+            {/* 今日新增 checkbox */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px',
+              backgroundColor: onlyToday ? '#d4edda' : '#f8f9fa',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              border: onlyToday ? '2px solid #28a745' : '1px solid #e9ecef',
+              transition: 'all 0.2s',
+              marginBottom: '12px',
+            }}>
+              <input
+                type="checkbox"
+                checked={onlyToday}
+                onChange={(e) => setOnlyToday(e.target.checked)}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                }}
+              />
+              <span style={{
+                fontSize: '14px',
+                fontWeight: '500',
+                color: onlyToday ? '#28a745' : '#495057',
+              }}>
+                🆕 只顯示今日新增
+              </span>
+            </label>
           </div>
 
           {/* 日期區間選擇 */}
-          {filterType === 'range' && (
+          {timeRange === 'range' && (
             <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff8e1', borderRadius: '8px', border: '1px solid #ffe082' }}>
               <div style={{ marginBottom: '14px' }}>
                 <input

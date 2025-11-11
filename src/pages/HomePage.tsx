@@ -4,6 +4,7 @@ import { UserMenu } from '../components/UserMenu'
 import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
+import { isAdmin } from '../utils/auth'
 
 interface HomePageProps {
   user: User
@@ -15,6 +16,8 @@ export function HomePage({ user }: HomePageProps) {
   // Detect V2 environment
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
   const isV2Environment = supabaseUrl.includes('v2') || supabaseUrl.includes('staging')
+  const userIsAdmin = isAdmin(user)
+  
   const menuItems = [
     {
       title: '預約表',
@@ -110,7 +113,9 @@ export function HomePage({ user }: HomePageProps) {
           gap: '15px',
           marginBottom: '30px'
         }}>
-          {menuItems.map((item, index) => (
+          {menuItems
+            .filter(item => !item.isAdmin || userIsAdmin)
+            .map((item, index) => (
             <Link
               key={index}
               to={item.link}

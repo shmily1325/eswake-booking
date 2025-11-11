@@ -7,6 +7,7 @@ import { Footer } from '../components/Footer'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getButtonStyle, getInputStyle, getLabelStyle, getTextStyle } from '../styles/designSystem'
+import { useRequireAdmin } from '../utils/auth'
 
 interface Coach {
   id: string
@@ -46,6 +47,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   const { isMobile } = useResponsive()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  
+  // 權限檢查：只有管理員可以進入排班管理
+  useRequireAdmin(user)
   
   // 從 URL 參數獲取日期，如果沒有則使用明天
   const dateFromUrl = searchParams.get('date') || getTomorrowDate()
@@ -754,7 +758,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     cursor: 'pointer',
                     fontWeight: viewMode === 'list' ? '600' : '400',
                     fontSize: '14px',
-                    color: viewMode === 'list' ? '#1976d2' : '#666',
+                    color: viewMode === 'list' ? '#5a5a5a' : '#666',
                     transition: 'all 0.2s',
                     boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                   }}
@@ -772,7 +776,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   cursor: 'pointer',
                   fontWeight: viewMode === 'boat-timeline' ? '600' : '400',
                     fontSize: '14px',
-                  color: viewMode === 'boat-timeline' ? '#1976d2' : '#666',
+                  color: viewMode === 'boat-timeline' ? '#5a5a5a' : '#666',
                   transition: 'all 0.2s',
                   boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                 }}
@@ -790,7 +794,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   cursor: 'pointer',
                     fontWeight: viewMode === 'coach-timeline' ? '600' : '400',
                     fontSize: '14px',
-                    color: viewMode === 'coach-timeline' ? '#1976d2' : '#666',
+                    color: viewMode === 'coach-timeline' ? '#5a5a5a' : '#666',
                   transition: 'all 0.2s',
                     boxShadow: viewMode === 'coach-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                 }}
@@ -804,7 +808,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               onClick={handleSaveAll}
               disabled={saving || loading}
               style={{
-                ...getButtonStyle('primary', 'large', isMobile),
+                ...getButtonStyle('secondary', 'large', isMobile),
                 flex: isMobile ? '1 1 100%' : '0 0 auto',
                 opacity: (saving || loading) ? 0.5 : 1,
                 cursor: (saving || loading) ? 'not-allowed' : 'pointer'
