@@ -831,7 +831,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             }}>
               <span>💡 操作說明：</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ padding: '2px 6px', background: 'white', borderRadius: '4px', fontSize: '12px' }}>👨‍🏫</span>
+                <span style={{ padding: '2px 6px', background: 'white', borderRadius: '4px', fontSize: '12px' }}>🎓</span>
                 排班 = 快速排教練/駕駛
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1420,7 +1420,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 }}
                                 title={isEditing ? "收起排班" : "排班"}
                               >
-                                👨‍🏫
+                                🎓
                               </button>
                               
                               {/* 編輯按鈕 */}
@@ -1492,7 +1492,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 {/* 教練選擇 */}
                                 <div style={{ marginBottom: '6px' }}>
                                   <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px', color: '#666' }}>
-                                    教練：
+                                    🎓 教練：
                                   </div>
                                   {assignment.coachIds.length > 0 && (
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
@@ -1681,7 +1681,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             {/* 未編輯時顯示教練和駕駛 */}
                             {!isEditing && assignment.coachIds.length > 0 && (
                               <div style={{ fontSize: '13px', color: '#2196F3', fontWeight: '700', marginBottom: '4px' }}>
-                                👨‍🏫 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
+                                🎓 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
                               </div>
                             )}
                             {!isEditing && !isFacility(booking.boats?.name) && assignment.driverIds && assignment.driverIds.length > 0 && (
@@ -1820,7 +1820,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   {/* 指定教練 */}
                   <div style={{ marginBottom: designSystem.spacing.md }}>
                     <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
-                      👨‍🏫 指定教練 *
+                      🎓 指定教練 *
                     </label>
                     
                     {/* 已選擇的教練標籤 */}
