@@ -350,10 +350,10 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const filteredTimeSlots = useMemo(() => {
-    return TIME_SLOTS.filter(slot => {
-      const [hour] = slot.split(':').map(Number)
-      return hour >= 5 && hour < 20
-    })
+      return TIME_SLOTS.filter(slot => {
+        const [hour] = slot.split(':').map(Number)
+        return hour >= 5 && hour < 20
+      })
   }, [])
 
   const displayBoats = useMemo(() => {
@@ -443,54 +443,54 @@ export function DayView({ user }: DayViewProps) {
       {isMobile ? (
         <div style={{ marginBottom: '16px' }}>
           {/* 第一行：日期選擇 */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
             gap: '6px',
             marginBottom: '8px',
-          }}>
-            <button
-              onClick={() => changeDate(-1)}
-              style={{
+      }}>
+        <button
+          onClick={() => changeDate(-1)}
+          style={{
                 ...getButtonStyle('outline', 'medium', true),
                 padding: '8px 12px',
                 fontSize: '16px',
-              }}
-            >
-              ←
-            </button>
-            <input
-              type="date"
-              value={dateParam}
-              onChange={handleDateInputChange}
-              style={{
+          }}
+        >
+          ←
+        </button>
+        <input
+          type="date"
+          value={dateParam}
+          onChange={handleDateInputChange}
+          style={{
                 padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #dee2e6',
+            borderRadius: '6px',
+            border: '1px solid #dee2e6',
                 fontSize: '14px',
                 flex: '1',
-              }}
-            />
-            <button
-              onClick={() => changeDate(1)}
-              style={{
+          }}
+        />
+        <button
+          onClick={() => changeDate(1)}
+          style={{
                 ...getButtonStyle('outline', 'medium', true),
                 padding: '8px 12px',
                 fontSize: '16px',
-              }}
-            >
-              →
-            </button>
-            <button
-              onClick={goToToday}
-              style={{
+          }}
+        >
+          →
+        </button>
+        <button
+          onClick={goToToday}
+          style={{
                 ...getButtonStyle('secondary', 'medium', true),
                 padding: '8px 12px',
                 minWidth: '70px',
-              }}
-            >
-              今天
-            </button>
+          }}
+        >
+          今天
+        </button>
           </div>
           
           {/* 第二行：視圖切換 + 排班管理 */}
@@ -507,7 +507,7 @@ export function DayView({ user }: DayViewProps) {
             }}>
               <button
                 onClick={() => setViewMode('list')}
-                style={{
+          style={{
                   flex: 1,
                   padding: '10px',
                   background: viewMode === 'list' ? 'white' : 'transparent',
@@ -523,9 +523,9 @@ export function DayView({ user }: DayViewProps) {
               >
                 📋 列表
               </button>
-              <button
+        <button
                 onClick={() => setViewMode('timeline')}
-                style={{
+          style={{
                   flex: 1,
                   padding: '10px',
                   background: viewMode === 'timeline' ? 'white' : 'transparent',
@@ -540,9 +540,9 @@ export function DayView({ user }: DayViewProps) {
                 }}
               >
                 📅 時間軸
-              </button>
-            </div>
-            
+        </button>
+      </div>
+
             <Link
               to={`/coach-assignment?date=${dateParam}`}
               style={{
@@ -569,14 +569,14 @@ export function DayView({ user }: DayViewProps) {
           marginBottom: '16px',
           flexWrap: 'wrap',
         }}>
-          <button
+            <button
             onClick={() => changeDate(-1)}
-            style={{
+              style={{
               ...getButtonStyle('outline', 'medium', false),
               padding: '8px 12px',
               fontSize: '14px',
-            }}
-          >
+              }}
+            >
             ←
           </button>
           <input
@@ -590,9 +590,9 @@ export function DayView({ user }: DayViewProps) {
               fontSize: '14px',
             }}
           />
-          <button
+              <button
             onClick={() => changeDate(1)}
-            style={{
+                style={{
               ...getButtonStyle('outline', 'medium', false),
               padding: '8px 12px',
               fontSize: '14px',
@@ -609,8 +609,8 @@ export function DayView({ user }: DayViewProps) {
             }}
           >
             今天
-          </button>
-
+              </button>
+              
           <Link
             to={`/coach-assignment?date=${dateParam}`}
             style={{
@@ -631,9 +631,9 @@ export function DayView({ user }: DayViewProps) {
             padding: '4px',
             flex: '0 0 auto'
           }}>
-            <button
+                  <button
               onClick={() => setViewMode('list')}
-              style={{
+                    style={{
                 padding: '8px 16px',
                 background: viewMode === 'list' ? 'white' : 'transparent',
                 border: 'none',
@@ -647,10 +647,10 @@ export function DayView({ user }: DayViewProps) {
               }}
             >
               📋 列表
-            </button>
-            <button
+                  </button>
+                  <button
               onClick={() => setViewMode('timeline')}
-              style={{
+                    style={{
                 padding: '8px 16px',
                 background: viewMode === 'timeline' ? 'white' : 'transparent',
                 border: 'none',
@@ -664,8 +664,8 @@ export function DayView({ user }: DayViewProps) {
               }}
             >
               📅 時間軸
-            </button>
-          </div>
+                  </button>
+                </div>
         </div>
       )}
 
@@ -1260,7 +1260,7 @@ export function DayView({ user }: DayViewProps) {
                             padding: isMobile ? '8px 6px' : '10px 12px',
                             borderBottom: '1px solid #e9ecef',
                             borderRight: '1px solid #e9ecef',
-                            backgroundColor: 'rgba(200, 200, 200, 0.3)',
+                            backgroundColor: 'transparent',
                             textAlign: 'center',
                             fontSize: isMobile ? '16px' : '18px',
                             cursor: 'not-allowed',
