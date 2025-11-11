@@ -300,17 +300,53 @@ export function CoachReport({ user }: CoachReportProps) {
     }
   }
 
-  // 載入預約的會員資訊
+  // 載入預約的會員資訊（排除已被其他教練回報的會員）
   const loadBookingMembers = async (bookingId: number, defaultDuration: number) => {
     try {
+      // 1. 載入預約的所有會員
       const { data: bookingMembersData } = await supabase
         .from('booking_members')
         .select('member_id, members(id, name)')
         .eq('booking_id', bookingId)
 
-      if (bookingMembersData && bookingMembersData.length > 0) {
-        // 有會員資料，為每個會員建立一筆參與者記錄
-        const memberParticipants = bookingMembersData.map((bm: any) => ({
+      if (!bookingMembersData || bookingMembersData.length === 0) {
+        // 沒有會員資料，使用預約人姓名
+        const booking = bookings.find(b => b.id === bookingId)
+        setParticipants([{
+          member_id: null,
+          participant_name: booking?.contact_name || '',
+          duration_min: defaultDuration,
+          payment_method: 'cash'
+        }])
+        return
+      }
+
+      // 2. 載入已被其他教練回報的會員
+      const { data: reportedParticipants } = await supabase
+        .from('booking_participants')
+        .select('member_id, coach_id')
+        .eq('booking_id', bookingId)
+        .not('coach_id', 'is', null)
+
+      // 3. 找出已被其他教練回報的會員 ID
+      const reportedByOthers = new Set<string>()
+      if (reportedParticipants) {
+        reportedParticipants.forEach(rp => {
+          // 排除當前教練自己的回報
+          if (rp.coach_id !== selectedCoachId && rp.member_id) {
+            reportedByOthers.add(rp.member_id)
+          }
+        })
+      }
+
+      // 4. 過濾掉已被其他教練回報的會員
+      const availableMembers = bookingMembersData.filter(
+        (bm: any) => !reportedByOthers.has(bm.member_id)
+      )
+
+      if (availableMembers.length > 0) {
+        // 有可用的會員，為每個會員建立一筆參與者記錄
+        const memberParticipants = availableMembers.map((bm: any) => ({
           member_id: bm.member_id,
           participant_name: bm.members?.name || '未知',
           duration_min: defaultDuration,
@@ -318,11 +354,11 @@ export function CoachReport({ user }: CoachReportProps) {
         }))
         setParticipants(memberParticipants)
       } else {
-        // 沒有會員資料，使用預約人姓名
-        const booking = bookings.find(b => b.id === bookingId)
+        // 所有會員都已被其他教練回報，但當前教練仍需確認「沒有其他客人」
+        // 提供一個空白的參與者欄位，讓教練可以新增非會員或確認無客人
         setParticipants([{
           member_id: null,
-          participant_name: booking?.contact_name || '',
+          participant_name: '',
           duration_min: defaultDuration,
           payment_method: 'cash'
         }])
@@ -385,12 +421,11 @@ export function CoachReport({ user }: CoachReportProps) {
       return
     }
     
-    // 驗證
-    for (const p of participants) {
-      if (!p.participant_name.trim()) {
-        alert('請填寫客人姓名')
-        return
-      }
+    // 過濾掉空白的參與者（允許教練確認「沒有客人」）
+    const validParticipants = participants.filter(p => p.participant_name.trim())
+    
+    // 驗證有效的參與者
+    for (const p of validParticipants) {
       if (p.duration_min <= 0) {
         alert('時數必須大於 0')
         return
@@ -408,25 +443,30 @@ export function CoachReport({ user }: CoachReportProps) {
         .eq('booking_id', bookingId)
         .eq('coach_id', selectedCoachId)
       
-      // 插入新的參與者記錄
-      const participantsToInsert = participants.map(p => ({
-        booking_id: bookingId,
-        coach_id: selectedCoachId,
-        member_id: p.member_id,
-        participant_name: p.participant_name,
-        duration_min: p.duration_min,
-        payment_method: p.payment_method,
-        notes: p.notes || null,
-        created_at
-      }))
+      // 只插入有效的參與者記錄（有姓名的）
+      if (validParticipants.length > 0) {
+        const participantsToInsert = validParticipants.map(p => ({
+          booking_id: bookingId,
+          coach_id: selectedCoachId,
+          member_id: p.member_id,
+          participant_name: p.participant_name,
+          duration_min: p.duration_min,
+          payment_method: p.payment_method,
+          notes: p.notes || null,
+          created_at
+        }))
+        
+        const { error } = await supabase
+          .from('booking_participants')
+          .insert(participantsToInsert)
+        
+        if (error) throw error
+      }
       
-      const { error } = await supabase
-        .from('booking_participants')
-        .insert(participantsToInsert)
-      
-      if (error) throw error
-      
-      alert('教練回報已儲存')
+      // 無論是否有參與者，都視為已回報（教練確認了沒有客人）
+      alert(validParticipants.length > 0 
+        ? '教練回報已儲存' 
+        : '已確認無客人，回報已儲存')
       loadBookings()
     } catch (error) {
       console.error('提交教練回報失敗:', error)
@@ -705,6 +745,25 @@ export function CoachReport({ user }: CoachReportProps) {
                 <h3 style={{ fontSize: '18px', marginBottom: '16px', color: '#4caf50' }}>
                   🎓 教練回報
                 </h3>
+                
+                {/* 提示訊息 */}
+                <div style={{
+                  marginBottom: '16px',
+                  padding: '12px 16px',
+                  background: 'linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)',
+                  border: '1px solid #90caf9',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  color: '#1565c0',
+                  lineHeight: '1.6'
+                }}>
+                  💡 <strong>提示：</strong>
+                  {participants.length === 1 && !participants[0].participant_name ? (
+                    <span>所有會員已被其他教練回報。若無其他客人，可直接提交確認；若有非會員客人，請新增客人資料。</span>
+                  ) : (
+                    <span>已自動帶入尚未被其他教練回報的會員。若有非會員客人，請點擊「+ 新增客人」。</span>
+                  )}
+                </div>
                 
                 {participants.map((participant, index) => (
                   <div key={index} style={{
