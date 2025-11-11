@@ -63,6 +63,15 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
   })
 
   useEffect(() => {
+    if (!open) {
+      setEditDialogOpen(false)
+      setTransactionDialogOpen(false)
+      setAddBoardDialogOpen(false)
+      setActiveTab('info')
+    }
+  }, [open])
+
+  useEffect(() => {
     if (open && memberId) {
       loadMemberData()
     }
@@ -207,6 +216,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
           overflow: 'auto',
           boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
           margin: isMobile ? 'auto 0 0 0' : 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}>
           {/* 標題欄 */}
           <div style={{
@@ -386,6 +396,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                       marginTop: '30px',
                     }}>
                       <button
+                        type="button"
                         onClick={() => setEditDialogOpen(true)}
                         style={{
                           flex: isMobile ? '1 1 100%' : '1',
@@ -397,6 +408,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                           fontSize: '16px',
                           fontWeight: '600',
                           cursor: 'pointer',
+                          touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent',
                         }}
                       >
                         ✏️ 編輯資料

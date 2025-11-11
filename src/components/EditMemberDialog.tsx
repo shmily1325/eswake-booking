@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 
@@ -32,6 +32,20 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     notes: member.notes || '',
     membership_expires_at: member.membership_expires_at || '',
   })
+
+  useEffect(() => {
+    if (!open) return
+
+    setFormData({
+      name: member.name,
+      nickname: member.nickname || '',
+      birthday: member.birthday || '',
+      phone: member.phone || '',
+      member_type: member.member_type,
+      notes: member.notes || '',
+      membership_expires_at: member.membership_expires_at || '',
+    })
+  }, [member, open])
 
   const inputStyle = {
     width: '100%',
@@ -104,6 +118,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         overflow: 'auto',
         boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
         margin: isMobile ? 'auto 0 0 0' : 'auto',
+        WebkitOverflowScrolling: 'touch',
       }}>
         {/* 標題欄 */}
         <div style={{
