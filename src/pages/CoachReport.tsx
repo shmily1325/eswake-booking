@@ -225,16 +225,22 @@ export function CoachReport({ user }: CoachReportProps) {
   // 判斷需要回報的類型
   const getReportType = (booking: Booking, coachId: string): 'coach' | 'driver' | 'both' | null => {
     const isCoach = booking.coaches.some(c => c.id === coachId)
-    const isDriver = booking.drivers.some(d => d.id === coachId)
-    const isCoachAsDriver = isCoach && booking.drivers.length === 0
+    const isExplicitDriver = booking.drivers.some(d => d.id === coachId)
+    const hasNoDriver = booking.drivers.length === 0
+    const isImplicitDriver = isCoach && hasNoDriver // 教練兼駕駛
     
-    if (isCoach && (isDriver || isCoachAsDriver)) {
+    // 判斷這個人需要回報什麼
+    const needsCoachReport = isCoach
+    const needsDriverReport = isExplicitDriver || isImplicitDriver
+    
+    if (needsCoachReport && needsDriverReport) {
       return 'both'
-    } else if (isCoach) {
+    } else if (needsCoachReport) {
       return 'coach'
-    } else if (isDriver || isCoachAsDriver) {
+    } else if (needsDriverReport) {
       return 'driver'
     }
+    
     return null
   }
 
@@ -252,9 +258,24 @@ export function CoachReport({ user }: CoachReportProps) {
 
   // 開始回報
   const startReport = (booking: Booking) => {
-    const type = selectedCoachId === 'all' 
-      ? 'coach' // 預設教練回報
-      : getReportType(booking, selectedCoachId)
+    // 每一筆預約都需要駕駛回報（油量 + 駕駛時數）
+    // 如果有教練，也需要教練回報
+    let type: 'coach' | 'driver' | 'both' | null = null
+    
+    if (selectedCoachId === 'all') {
+      // 判斷這個預約需要什麼類型的回報
+      const hasCoaches = booking.coaches.length > 0
+      
+      if (hasCoaches) {
+        // 有教練 = 需要教練回報 + 駕駛回報
+        type = 'both'
+      } else {
+        // 沒有教練 = 只需要駕駛回報
+        type = 'driver'
+      }
+    } else {
+      type = getReportType(booking, selectedCoachId)
+    }
     
     if (!type) return
     
