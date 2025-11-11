@@ -9,6 +9,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getLocalDateTimeString } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { getButtonStyle } from '../styles/designSystem'
+import { formatBookingForLine } from '../utils/bookingFormat'
 
 interface Boat {
   id: number
@@ -88,6 +89,7 @@ export function DayView({ user }: DayViewProps) {
   const [singleBoatMode, setSingleBoatMode] = useState(false)
   const [currentBoatIndex, setCurrentBoatIndex] = useState(0)
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('list')
+  const [copySuccess, setCopySuccess] = useState<number | null>(null) // 記錄哪個預約剛複製成功
 
   const changeDate = (offset: number) => {
     const [year, month, day] = dateParam.split('-').map(Number)
@@ -104,6 +106,20 @@ export function DayView({ user }: DayViewProps) {
 
   const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParams({ date: e.target.value })
+  }
+
+  // 複製單個預約的 LINE 格式訊息
+  const copyBookingToClipboard = async (booking: Booking) => {
+    const message = formatBookingForLine(booking)
+    
+    try {
+      await navigator.clipboard.writeText(message)
+      setCopySuccess(booking.id)
+      setTimeout(() => setCopySuccess(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+      alert('複製失敗')
+    }
   }
 
   useEffect(() => {
@@ -712,10 +728,6 @@ export function DayView({ user }: DayViewProps) {
                           return (
                             <div
                               key={booking.id}
-                              onClick={() => {
-                                setSelectedBooking(booking)
-                                setEditDialogOpen(true)
-                              }}
                               style={{
                                 padding: isMobile ? '12px' : '14px 16px',
                                 borderBottom: bookingIndex < boatBookings.length - 1 ? '1px solid #f0f0f0' : 'none',
@@ -725,6 +737,15 @@ export function DayView({ user }: DayViewProps) {
                                 gap: isMobile ? '10px' : '14px',
                                 alignItems: 'center',
                                 backgroundColor: 'white',
+                                position: 'relative',
+                              }}
+                              onClick={(e) => {
+                                // 如果點擊的是複製按鈕，不打開編輯對話框
+                                if ((e.target as HTMLElement).closest('.copy-button')) {
+                                  return
+                                }
+                                setSelectedBooking(booking)
+                                setEditDialogOpen(true)
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.backgroundColor = '#f8f9fa'
@@ -764,7 +785,7 @@ export function DayView({ user }: DayViewProps) {
                               </div>
 
                               {/* 預約詳情 */}
-                              <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ flex: 1, minWidth: 0, paddingRight: isMobile ? '50px' : '60px' }}>
                                 {/* 第一行：姓名 + 活動類型 + 時長 */}
                                 <div style={{
                                   display: 'flex',
@@ -868,6 +889,45 @@ export function DayView({ user }: DayViewProps) {
                                   </div>
                                 )}
                               </div>
+
+                              {/* 複製按鈕 */}
+                              <button
+                                className="copy-button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  copyBookingToClipboard(booking)
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  top: isMobile ? '8px' : '10px',
+                                  right: isMobile ? '8px' : '12px',
+                                  padding: isMobile ? '6px 10px' : '6px 12px',
+                                  background: copySuccess === booking.id ? '#28a745' : '#007bff',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  fontSize: isMobile ? '11px' : '12px',
+                                  cursor: 'pointer',
+                                  fontWeight: '500',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  transition: 'all 0.2s',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (copySuccess !== booking.id) {
+                                    e.currentTarget.style.background = '#0056b3'
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (copySuccess !== booking.id) {
+                                    e.currentTarget.style.background = '#007bff'
+                                  }
+                                }}
+                              >
+                                {copySuccess === booking.id ? '✓' : '📋'}
+                              </button>
                             </div>
                           )
                         })}

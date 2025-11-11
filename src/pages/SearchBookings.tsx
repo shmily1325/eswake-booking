@@ -4,17 +4,22 @@ import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { useResponsive } from '../hooks/useResponsive'
 import { Footer } from '../components/Footer'
+import { formatBookingsForLine } from '../utils/bookingFormat'
 
 interface Booking {
   id: number
   start_at: string
   duration_min: number
-  contact_name: string
   notes: string | null
   activity_types: string[] | null
   status: string
   boats: { name: string; color: string } | null
   coaches: { id: string; name: string }[]
+  booking_contacts?: Array<{
+    member_id: string | null
+    guest_name: string | null
+    members: { id: string; name: string } | null
+  }>
 }
 
 interface Member {
@@ -89,15 +94,44 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
     setCopySuccess(false)
 
     try {
-      let query = supabase
-        .from('bookings')
-        .select('*, boats:boat_id (name, color)')
-        .ilike('contact_name', `%${searchName.trim()}%`)
-      
-      // 根據篩選類型添加條件
       const now = new Date()
       const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
       
+      // 步驟 1: 從 booking_contacts 查詢匹配的預約 ID
+      let contactQuery = supabase
+        .from('booking_contacts')
+        .select('booking_id, members!inner(name)')
+        .ilike('members.name', `%${searchName.trim()}%`)
+      
+      // 也查詢 guest_name
+      const guestQuery = supabase
+        .from('booking_contacts')
+        .select('booking_id')
+        .ilike('guest_name', `%${searchName.trim()}%`)
+      
+      const [contactResult, guestResult] = await Promise.all([
+        contactQuery,
+        guestQuery
+      ])
+      
+      // 合併找到的預約 ID
+      const bookingIds = new Set<number>()
+      contactResult.data?.forEach(item => bookingIds.add(item.booking_id))
+      guestResult.data?.forEach(item => bookingIds.add(item.booking_id))
+      
+      if (bookingIds.size === 0) {
+        setBookings([])
+        setLoading(false)
+        return
+      }
+      
+      // 步驟 2: 查詢這些預約的詳細資訊
+      let query = supabase
+        .from('bookings')
+        .select('*, boats:boat_id (name, color), booking_contacts(member_id, guest_name, members(id, name))')
+        .in('id', Array.from(bookingIds))
+      
+      // 根據篩選類型添加條件
       if (filterType === 'all') {
         // 顯示所有未來的預約
         query = query.gte('start_at', nowStr)
@@ -169,12 +203,12 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
     const [dateStr, timeStr] = datetime.split('T')
     const [year, month, day] = dateStr.split('-')
     
-    // 計算星期幾
+    // 計算星期幾（英文縮寫）
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     const weekday = weekdays[date.getDay()]
     
-    return `${year}/${month}/${day} (週${weekday}) ${timeStr}`
+    return `${year}/${month}/${day}(${weekday}) ${timeStr}`
   }
 
   const isPastBooking = (isoString: string) => {
@@ -188,26 +222,14 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
   const generateLineMessage = () => {
     if (bookings.length === 0) return ''
     
-    let message = `${searchName}的預約\n`
+    // 取得第一個預約的聯絡人名稱
+    const firstBooking = bookings[0]
+    const contactNames = firstBooking.booking_contacts
+      ?.map(bc => bc.members?.name || bc.guest_name)
+      .filter(Boolean)
+      .join(', ') || searchName
     
-    bookings.forEach((booking) => {
-      const datetime = booking.start_at.substring(0, 16)
-      const [dateStr, timeStr] = datetime.split('T')
-      const [, month, day] = dateStr.split('-')
-      
-      // 組合一行：日期 時間 船 教練 時長 活動類型
-      const coaches = booking.coaches && booking.coaches.length > 0 
-        ? booking.coaches.map(c => c.name).join('/')
-        : '不指定'
-      
-      const activities = booking.activity_types && booking.activity_types.length > 0
-        ? ` ${booking.activity_types.join('+')}`
-        : ''
-      
-      message += `${month}/${day} ${timeStr} ${booking.boats?.name || '?'} ${coaches} ${booking.duration_min}分${activities}\n`
-    })
-    
-    return message.trim()
+    return formatBookingsForLine(bookings, `${contactNames}的預約`)
   }
   
   const handleCopyToClipboard = async () => {
@@ -549,7 +571,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                           color: '#000',
                           marginBottom: '4px',
                         }}>
-                          {booking.contact_name}
+                          {booking.booking_contacts?.map(bc => bc.members?.name || bc.guest_name).filter(Boolean).join(', ') || '無聯絡人'}
                         </div>
                         <div style={{
                           fontSize: '14px',
