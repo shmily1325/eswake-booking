@@ -491,49 +491,70 @@ export function DayView({ user }: DayViewProps) {
             </button>
           </div>
           
-          {/* 第二行：視圖切換 */}
+          {/* 第二行：視圖切換 + 排班管理 */}
           <div style={{
             display: 'flex',
-            background: '#f0f0f0',
-            borderRadius: '8px',
-            padding: '4px',
+            gap: '8px',
           }}>
-            <button
-              onClick={() => setViewMode('list')}
+            <div style={{
+              display: 'flex',
+              background: '#f0f0f0',
+              borderRadius: '8px',
+              padding: '4px',
+              flex: 1,
+            }}>
+              <button
+                onClick={() => setViewMode('list')}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  background: viewMode === 'list' ? 'white' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: viewMode === 'list' ? '600' : '400',
+                  fontSize: '14px',
+                  color: viewMode === 'list' ? '#5a5a5a' : '#666',
+                  transition: 'all 0.2s',
+                  boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                }}
+              >
+                📋 列表
+              </button>
+              <button
+                onClick={() => setViewMode('timeline')}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  background: viewMode === 'timeline' ? 'white' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: viewMode === 'timeline' ? '600' : '400',
+                  fontSize: '14px',
+                  color: viewMode === 'timeline' ? '#5a5a5a' : '#666',
+                  transition: 'all 0.2s',
+                  boxShadow: viewMode === 'timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                }}
+              >
+                📅 時間軸
+              </button>
+            </div>
+            
+            <Link
+              to={`/coach-assignment?date=${dateParam}`}
               style={{
-                flex: 1,
-                padding: '10px',
-                background: viewMode === 'list' ? 'white' : 'transparent',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: viewMode === 'list' ? '600' : '400',
-                fontSize: '14px',
-                color: viewMode === 'list' ? '#5a5a5a' : '#666',
-                transition: 'all 0.2s',
-                boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                ...getButtonStyle('secondary', 'medium', true),
+                textDecoration: 'none',
+                padding: '10px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                whiteSpace: 'nowrap',
               }}
             >
-              📋 列表
-            </button>
-            <button
-              onClick={() => setViewMode('timeline')}
-              style={{
-                flex: 1,
-                padding: '10px',
-                background: viewMode === 'timeline' ? 'white' : 'transparent',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: viewMode === 'timeline' ? '600' : '400',
-                fontSize: '14px',
-                color: viewMode === 'timeline' ? '#5a5a5a' : '#666',
-                transition: 'all 0.2s',
-                boxShadow: viewMode === 'timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-              }}
-            >
-              📅 時間軸
-            </button>
+              排班
+            </Link>
           </div>
         </div>
       ) : (
@@ -594,7 +615,7 @@ export function DayView({ user }: DayViewProps) {
               minWidth: '110px'
             }}
           >
-            📅 排班管理
+            排班管理
           </Link>
 
           <div style={{ 

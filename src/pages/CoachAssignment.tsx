@@ -1283,7 +1283,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               {/* 標題列 - 固定於頂部（不滾動） */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: `80px repeat(${boats.length}, 200px)`,
+                gridTemplateColumns: `80px repeat(${boats.length}, minmax(200px, 1fr))`,
                 background: 'linear-gradient(180deg, #2c3e50 0%, #34495e 100%)',
                 color: 'white',
                 borderBottom: '3px solid #1a252f',
@@ -1326,7 +1326,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 {/* Grid 容器 */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: `80px repeat(${boats.length}, 200px)`,
+                  gridTemplateColumns: `80px repeat(${boats.length}, minmax(200px, 1fr))`,
                   gridTemplateRows: `repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT}px)`,
                   minWidth: '1000px',
                   position: 'relative'
