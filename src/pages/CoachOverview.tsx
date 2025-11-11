@@ -42,6 +42,23 @@ interface WorkStats {
   avgFuelRemaining: number
 }
 
+interface FutureBookingsSummary {
+  totalBookings: number
+  totalMinutes: number
+  coachWorkload: Array<{
+    coachId: string
+    coachName: string
+    bookingCount: number
+    totalMinutes: number
+  }>
+  dailyDistribution: Array<{
+    date: string
+    bookingCount: number
+  }>
+  busiestDate: string
+  busiestDateCount: number
+}
+
 interface CoachOverviewProps {
   user: User
 }
@@ -63,10 +80,12 @@ export function CoachOverview({ user }: CoachOverviewProps) {
   // 數據
   const [reportStatuses, setReportStatuses] = useState<ReportStatus[]>([])
   const [workStats, setWorkStats] = useState<WorkStats[]>([])
+  const [futureBookingsSummary, setFutureBookingsSummary] = useState<FutureBookingsSummary | null>(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     loadCoaches()
+    loadFutureBookingsSummary()
   }, [])
 
   useEffect(() => {
@@ -344,6 +363,104 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     }
   }
 
+  const loadFutureBookingsSummary = async () => {
+    try {
+      const now = new Date()
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+      const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      const sevenDaysEnd = new Date(sevenDaysLater.getFullYear(), sevenDaysLater.getMonth(), sevenDaysLater.getDate(), 23, 59, 59).toISOString()
+
+      // 獲取未來7天的預約
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          start_at,
+          duration_min,
+          boats (name),
+          booking_coaches (coach_id, coaches (name))
+        `)
+        .gte('start_at', todayStart)
+        .lte('start_at', sevenDaysEnd)
+        .eq('status', 'confirmed')
+        .order('start_at', { ascending: true })
+
+      if (error) throw error
+      if (!bookings || bookings.length === 0) {
+        setFutureBookingsSummary({
+          totalBookings: 0,
+          totalMinutes: 0,
+          coachWorkload: [],
+          dailyDistribution: [],
+          busiestDate: '',
+          busiestDateCount: 0
+        })
+        return
+      }
+
+      // 計算總數
+      const totalBookings = bookings.length
+      const totalMinutes = bookings.reduce((sum, b) => sum + b.duration_min, 0)
+
+      // 教練工作量統計
+      const coachMap = new Map<string, { name: string, count: number, minutes: number }>()
+      bookings.forEach(booking => {
+        const coachesData = booking.booking_coaches || []
+        coachesData.forEach((bc: any) => {
+          const coachId = bc.coach_id
+          const coachName = bc.coaches?.name || '未知'
+          const existing = coachMap.get(coachId) || { name: coachName, count: 0, minutes: 0 }
+          coachMap.set(coachId, {
+            name: coachName,
+            count: existing.count + 1,
+            minutes: existing.minutes + booking.duration_min
+          })
+        })
+      })
+
+      const coachWorkload = Array.from(coachMap.entries())
+        .map(([coachId, data]) => ({
+          coachId,
+          coachName: data.name,
+          bookingCount: data.count,
+          totalMinutes: data.minutes
+        }))
+        .sort((a, b) => b.bookingCount - a.bookingCount)
+
+      // 每日預約分布
+      const dailyMap = new Map<string, number>()
+      bookings.forEach(booking => {
+        const date = booking.start_at.split('T')[0]
+        dailyMap.set(date, (dailyMap.get(date) || 0) + 1)
+      })
+
+      const dailyDistribution = Array.from(dailyMap.entries())
+        .map(([date, count]) => ({ date, bookingCount: count }))
+        .sort((a, b) => a.date.localeCompare(b.date))
+
+      // 找出最忙的日期
+      let busiestDate = ''
+      let busiestDateCount = 0
+      dailyMap.forEach((count, date) => {
+        if (count > busiestDateCount) {
+          busiestDateCount = count
+          busiestDate = date
+        }
+      })
+
+      setFutureBookingsSummary({
+        totalBookings,
+        totalMinutes,
+        coachWorkload,
+        dailyDistribution,
+        busiestDate,
+        busiestDateCount
+      })
+    } catch (error) {
+      console.error('載入未來預約統計失敗:', error)
+    }
+  }
+
   const getCompletionRate = (status: ReportStatus) => {
     const totalNeeded = status.totalBookings * 2 // 教練 + 駕駛
     const completed = status.coachReported + status.driverReported
@@ -497,6 +614,157 @@ export function CoachOverview({ user }: CoachOverviewProps) {
             </select>
           </div>
         </div>
+
+        {/* 未來預約概覽 */}
+        {futureBookingsSummary && futureBookingsSummary.totalBookings > 0 && (
+          <div style={{
+            ...getCardStyle(isMobile),
+            marginBottom: '24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              marginBottom: '20px',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <h3 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: '600' }}>
+                📅 未來 7 天預約概覽
+              </h3>
+              <button
+                onClick={() => loadFutureBookingsSummary()}
+                style={{
+                  padding: '6px 12px',
+                  background: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+              >
+                🔄 重新整理
+              </button>
+            </div>
+
+            {/* 總覽數字 */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', 
+              gap: isMobile ? '12px' : '16px',
+              marginBottom: '24px'
+            }}>
+              <div style={{
+                background: 'rgba(255,255,255,0.15)',
+                padding: isMobile ? '12px' : '16px',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>總預約數</div>
+                <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '700' }}>
+                  {futureBookingsSummary.totalBookings}
+                </div>
+                <div style={{ fontSize: '12px', opacity: 0.8 }}>筆</div>
+              </div>
+              <div style={{
+                background: 'rgba(255,255,255,0.15)',
+                padding: isMobile ? '12px' : '16px',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>總時數</div>
+                <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '700' }}>
+                  {(futureBookingsSummary.totalMinutes / 60).toFixed(1)}
+                </div>
+                <div style={{ fontSize: '12px', opacity: 0.8 }}>小時</div>
+              </div>
+              <div style={{
+                background: 'rgba(255,255,255,0.15)',
+                padding: isMobile ? '12px' : '16px',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>最忙日期</div>
+                <div style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: '700', marginTop: '4px' }}>
+                  {futureBookingsSummary.busiestDate ? 
+                    new Date(futureBookingsSummary.busiestDate).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' }) 
+                    : '-'}
+                </div>
+                <div style={{ fontSize: '12px', opacity: 0.8 }}>
+                  {futureBookingsSummary.busiestDateCount} 筆預約
+                </div>
+              </div>
+              <div style={{
+                background: 'rgba(255,255,255,0.15)',
+                padding: isMobile ? '12px' : '16px',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>平均每日</div>
+                <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '700' }}>
+                  {(futureBookingsSummary.totalBookings / 7).toFixed(1)}
+                </div>
+                <div style={{ fontSize: '12px', opacity: 0.8 }}>筆</div>
+              </div>
+            </div>
+
+            {/* 教練工作量預測 */}
+            {futureBookingsSummary.coachWorkload.length > 0 && (
+              <div>
+                <h4 style={{ 
+                  margin: '0 0 12px 0', 
+                  fontSize: isMobile ? '15px' : '16px', 
+                  fontWeight: '600',
+                  opacity: 0.95
+                }}>
+                  👨‍🏫 教練工作量預測
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '10px' }}>
+                  {futureBookingsSummary.coachWorkload.slice(0, 5).map((coach, index) => {
+                    const maxCount = futureBookingsSummary.coachWorkload[0].bookingCount
+                    const percentage = (coach.bookingCount / maxCount) * 100
+                    
+                    return (
+                      <div key={coach.coachId}>
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          marginBottom: '4px', 
+                          fontSize: isMobile ? '13px' : '14px',
+                          opacity: 0.95
+                        }}>
+                          <span style={{ fontWeight: '600' }}>
+                            {index + 1}. {coach.coachName}
+                          </span>
+                          <span>
+                            {coach.bookingCount} 筆 · {(coach.totalMinutes / 60).toFixed(1)} 小時
+                          </span>
+                        </div>
+                        <div style={{
+                          width: '100%',
+                          height: '8px',
+                          background: 'rgba(255,255,255,0.2)',
+                          borderRadius: '4px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${percentage}%`,
+                            height: '100%',
+                            background: index === 0 ? '#ffd700' : 
+                                       index === 1 ? '#c0c0c0' : 
+                                       index === 2 ? '#cd7f32' : 
+                                       'rgba(255,255,255,0.8)',
+                            transition: 'width 0.3s'
+                          }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tab 切換 */}
         <div style={{

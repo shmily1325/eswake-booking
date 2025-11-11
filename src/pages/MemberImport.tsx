@@ -192,16 +192,71 @@ export function MemberImport({ user }: MemberImportProps) {
     setSuccess('')
 
     try {
-      // 真正刪除所有 active 狀態的會員（無法復原）
-      const { error: deleteError } = await supabase
+      // 先檢查哪些會員有預約記錄
+      const { data: allMembers, error: fetchError } = await supabase
         .from('members')
-        .delete()
+        .select('id')
         .eq('status', 'active')
 
-      if (deleteError) throw deleteError
+      if (fetchError) throw fetchError
+      if (!allMembers || allMembers.length === 0) {
+        setSuccess('✅ 沒有會員需要清空')
+        setDeleteDialogOpen(false)
+        setDeleting(false)
+        return
+      }
 
-      setSuccess('✅ 已清空所有會員！')
-      setDeleteDialogOpen(false)
+      // 檢查這些會員是否有預約記錄
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('member_id')
+        .in('member_id', allMembers.map(m => m.id))
+        .limit(1)
+
+      if (bookingsError) throw bookingsError
+
+      if (bookingsData && bookingsData.length > 0) {
+        // 有預約記錄的會員無法刪除，只能刪除沒有預約記錄的
+        const { data: membersWithBookings, error: memberBookingsError } = await supabase
+          .from('bookings')
+          .select('member_id')
+          .in('member_id', allMembers.map(m => m.id))
+
+        if (memberBookingsError) throw memberBookingsError
+
+        const memberIdsWithBookings = new Set(membersWithBookings?.map(b => b.member_id) || [])
+        const memberIdsWithoutBookings = allMembers
+          .filter(m => !memberIdsWithBookings.has(m.id))
+          .map(m => m.id)
+
+        if (memberIdsWithoutBookings.length === 0) {
+          setError('❌ 無法清空：所有會員都有預約記錄。請先在「預約管理」中刪除相關預約，或使用「標記為無效」功能來隱藏會員。')
+          setDeleting(false)
+          return
+        }
+
+        // 只刪除沒有預約記錄的會員
+        const { error: deleteError } = await supabase
+          .from('members')
+          .delete()
+          .in('id', memberIdsWithoutBookings)
+
+        if (deleteError) throw deleteError
+
+        setSuccess(`✅ 已刪除 ${memberIdsWithoutBookings.length} 位沒有預約記錄的會員。仍有 ${memberIdsWithBookings.size} 位會員因有預約記錄而無法刪除。`)
+        setDeleteDialogOpen(false)
+      } else {
+        // 沒有預約記錄，可以安全刪除所有會員
+        const { error: deleteError } = await supabase
+          .from('members')
+          .delete()
+          .eq('status', 'active')
+
+        if (deleteError) throw deleteError
+
+        setSuccess(`✅ 已清空所有會員（共 ${allMembers.length} 位）！`)
+        setDeleteDialogOpen(false)
+      }
     } catch (err: any) {
       setError('清空失敗: ' + err.message)
     } finally {

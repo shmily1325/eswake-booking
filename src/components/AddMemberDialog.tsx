@@ -446,8 +446,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           </div>
 
           {/* 底部按鈕 */}
-          <div style={{
-            padding: isMobile ? '24px 20px calc(40px + env(safe-area-inset-bottom))' : '20px 20px 30px',
+          <div style={{            padding: isMobile ? '24px 20px calc(40px + env(safe-area-inset-bottom))' : '20px 20px 30px',
             borderTop: '1px solid #e0e0e0',
             display: 'flex',
             gap: isMobile ? '12px' : '12px',

@@ -142,12 +142,13 @@ export const getButtonStyle = (
   // 顏色變體
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: {
-      background: designSystem.colors.primary,
+      background: designSystem.colors.secondary, // 使用深灰色统一风格
       color: 'white',
     },
     secondary: {
-      background: designSystem.colors.secondary,
-      color: 'white',
+      background: '#f5f5f5', // 浅灰色背景，明显区分未选中状态
+      color: designSystem.colors.text.secondary,
+      border: '1px solid #e0e0e0',
     },
     success: {
       background: designSystem.colors.success,
