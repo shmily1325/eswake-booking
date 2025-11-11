@@ -1696,27 +1696,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 }
                                 
                         // 狀態配色
-                        const statusColors = {
-                          error: {
-                            bg: 'linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%)',
-                            border: '#f87171',
-                            shadow: 'rgba(248, 113, 113, 0.2)'
-                          },
-                          warning: {
-                            bg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-                            border: '#fbbf24',
-                            shadow: 'rgba(251, 191, 36, 0.2)'
-                          },
-                          success: {
-                            bg: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                            border: '#38bdf8',
-                            shadow: 'rgba(56, 189, 248, 0.2)'
-                          }
+                        // 使用船隻顏色作為卡片底色（類似 DayView）
+                        const boatColor = boat!.color || '#ccc'
+                        const cardStyle = {
+                          bg: `linear-gradient(135deg, ${boatColor}08 0%, ${boatColor}15 100%)`,
+                          border: boatColor,
+                          borderLeft: hasConflict || hasDriverIssue ? '#f87171' : hasNoCoach ? '#fbbf24' : boatColor,
+                          shadow: 'rgba(0, 0, 0, 0.1)'
                         }
-                        
-                        const currentStatus = hasConflict || hasDriverIssue ? statusColors.error 
-                                            : hasNoCoach ? statusColors.warning 
-                                            : statusColors.success
                                 
                                 return (
                                   <div
@@ -1727,16 +1714,16 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               gridRow: `${gridPos.gridRowStart} / ${gridPos.gridRowEnd}`,
                                       padding: '8px',
                               margin: '8px 12px',
-                              background: currentStatus.bg,
-                              border: `2px solid ${currentStatus.border}`,
-                              borderLeft: `5px solid ${currentStatus.border}`,
+                              background: cardStyle.bg,
+                              border: `2px solid ${cardStyle.border}`,
+                              borderLeft: `5px solid ${cardStyle.borderLeft}`,
                               borderRadius: '10px',
                               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                               overflow: isEditing ? 'auto' : 'hidden',
                               zIndex: isEditing ? 50 : 1,
                               boxShadow: isEditing 
-                                ? `0 10px 25px ${currentStatus.shadow}, 0 0 0 3px ${currentStatus.border}40` 
-                                : `0 2px 6px ${currentStatus.shadow}`,
+                                ? `0 10px 25px ${cardStyle.shadow}, 0 0 0 3px ${cardStyle.border}40` 
+                                : `0 3px 10px ${cardStyle.shadow}`,
                               pointerEvents: 'auto',
                               maxHeight: isEditing ? '400px' : 'none',
                                       position: 'relative',
@@ -2375,20 +2362,15 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
                           const isEditing = editingBookingId === booking.id
                           
-                          // 卡片狀態
+                          // 卡片狀態 - 使用船隻顏色（類似 DayView）
                           const isComplete = assignment.coachIds && assignment.coachIds.length > 0
                           const hasConflict = assignment.conflicts && assignment.conflicts.length > 0
                           
-                          let cardBg = 'linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%)'
-                          let borderColor = '#ffc107'
-                          
-                          if (hasConflict) {
-                            cardBg = 'linear-gradient(135deg, #ffe5e5 0%, #ffcccc 100%)'
-                            borderColor = '#ef5350'
-                          } else if (isComplete) {
-                            cardBg = 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)'
-                            borderColor = '#38bdf8'
-                          }
+                          // 獲取船隻顏色
+                          const boatColor = booking.boats?.color || '#ccc'
+                          const cardBg = `linear-gradient(135deg, ${boatColor}08 0%, ${boatColor}15 100%)`
+                          const borderColor = boatColor
+                          const borderLeftColor = hasConflict ? '#ef5350' : !isComplete ? '#ffc107' : boatColor
 
                           return (
                             <div
@@ -2400,6 +2382,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 padding: '10px',
                                 background: cardBg,
                                 border: `2px solid ${borderColor}`,
+                                borderLeft: `5px solid ${borderLeftColor}`,
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontSize: '13px',
@@ -2408,7 +2391,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 zIndex: isEditing ? 50 : 1,
                                 boxShadow: isEditing 
                                   ? '0 8px 24px rgba(0,0,0,0.15)' 
-                                  : '0 2px 4px rgba(0,0,0,0.08)',
+                                  : '0 3px 10px rgba(0,0,0,0.1)',
                                 transition: 'all 0.2s',
                                 overflow: isEditing ? 'auto' : 'hidden',
                                 maxHeight: isEditing ? '400px' : 'none',
