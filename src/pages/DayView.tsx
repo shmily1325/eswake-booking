@@ -669,7 +669,128 @@ export function DayView({ user }: DayViewProps) {
         </div>
       )}
 
-
+      {/* 今日總覽卡片 */}
+      {!loading && bookings.length > 0 && (() => {
+        // 統計數據
+        const totalBookings = bookings.length
+        
+        // 教練使用統計
+        const coachStats = new Map<string, number>()
+        bookings.forEach(booking => {
+          booking.coaches?.forEach(coach => {
+            coachStats.set(coach.name, (coachStats.get(coach.name) || 0) + 1)
+          })
+        })
+        const topCoaches = Array.from(coachStats.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+        
+        // 船隻使用統計
+        const boatStats = new Map<string, number>()
+        bookings.forEach(booking => {
+          if (booking.boats?.name) {
+            boatStats.set(booking.boats.name, (boatStats.get(booking.boats.name) || 0) + 1)
+          }
+        })
+        const topBoats = Array.from(boatStats.entries())
+          .sort((a, b) => b[1] - a[1])
+        
+        // 找出最忙時段（預約數最多的連續2小時）
+        const hourStats = new Map<number, number>()
+        bookings.forEach(booking => {
+          const startHour = new Date(booking.start_at).getHours()
+          const endHour = new Date(new Date(booking.start_at).getTime() + booking.duration_min * 60000).getHours()
+          for (let h = startHour; h <= endHour; h++) {
+            hourStats.set(h, (hourStats.get(h) || 0) + 1)
+          }
+        })
+        const busiestHour = Array.from(hourStats.entries())
+          .sort((a, b) => b[1] - a[1])[0]
+        
+        return (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: isMobile ? '12px' : '16px 20px',
+            marginBottom: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          }}>
+            <div style={{
+              fontSize: isMobile ? '14px' : '16px',
+              fontWeight: '700',
+              color: '#2c3e50',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}>
+              📊 今日總覽
+            </div>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: isMobile ? '12px' : '16px',
+            }}>
+              {/* 總預約數 */}
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#f0f9ff',
+                borderRadius: '8px',
+                border: '1px solid #bae6fd',
+              }}>
+                <div style={{ fontSize: '12px', color: '#0369a1', marginBottom: '4px' }}>總預約數</div>
+                <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: '700', color: '#0c4a6e' }}>
+                  {totalBookings} 筆
+                </div>
+              </div>
+              
+              {/* 教練使用 */}
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#f0fdf4',
+                borderRadius: '8px',
+                border: '1px solid #bbf7d0',
+              }}>
+                <div style={{ fontSize: '12px', color: '#15803d', marginBottom: '4px' }}>🎓 教練使用</div>
+                <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#166534', lineHeight: '1.6' }}>
+                  {topCoaches.length > 0 
+                    ? topCoaches.map(([name, count]) => `${name}(${count})`).join('、')
+                    : '無'}
+                </div>
+              </div>
+              
+              {/* 船隻使用 */}
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#fef3c7',
+                borderRadius: '8px',
+                border: '1px solid #fde68a',
+              }}>
+                <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '4px' }}>🚤 船隻使用</div>
+                <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#78350f', lineHeight: '1.6' }}>
+                  {topBoats.map(([name, count]) => `${name}(${count})`).join('、')}
+                </div>
+              </div>
+              
+              {/* 最忙時段 */}
+              {busiestHour && (
+                <div style={{
+                  padding: '12px',
+                  backgroundColor: '#fef2f2',
+                  borderRadius: '8px',
+                  border: '1px solid #fecaca',
+                }}>
+                  <div style={{ fontSize: '12px', color: '#991b1b', marginBottom: '4px' }}>⏰ 最忙時段</div>
+                  <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#7f1d1d' }}>
+                    {String(busiestHour[0]).padStart(2, '0')}:00 ({busiestHour[1]}筆)
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {viewMode === 'list' && (
         <div style={{
@@ -1108,7 +1229,7 @@ export function DayView({ user }: DayViewProps) {
                     left: 0,
                     zIndex: 10,
                     backgroundColor: 'white',
-                    padding: isMobile ? '6px 2px' : '10px 12px',
+                    padding: isMobile ? '4px 2px' : '6px 8px',
                     borderBottom: showPracticeLine ? '3px solid #ffc107' : '1px solid #e9ecef',
                     fontSize: isMobile ? '10px' : '13px',
                     fontWeight: '500',
@@ -1282,6 +1403,26 @@ export function DayView({ user }: DayViewProps) {
                               return <div>🚤 {booking.drivers.map(d => d.name).join('/')}</div>
                             })()}
                           </div>
+                          
+                          {/* 預約備註 */}
+                          {booking.notes && (
+                            <div style={{
+                              marginTop: '6px',
+                              padding: '6px 8px',
+                              backgroundColor: 'rgba(0,0,0,0.03)',
+                              borderLeft: '2px solid #bbb',
+                              borderRadius: '4px',
+                              fontSize: isMobile ? '9px' : '11px',
+                              color: '#555',
+                              textAlign: 'left',
+                              lineHeight: '1.4',
+                              maxHeight: isMobile ? '40px' : '60px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}>
+                              💬 {booking.notes}
+                            </div>
+                          )}
                         </td>
                       )
                     } else if (booking) {
@@ -1291,7 +1432,7 @@ export function DayView({ user }: DayViewProps) {
                         <td
                           key={boat.id}
                           style={{
-                            padding: isMobile ? '8px 6px' : '10px 12px',
+                            padding: isMobile ? '4px 4px' : '6px 8px',
                             borderBottom: '1px solid #e9ecef',
                             borderRight: '1px solid #e9ecef',
                             backgroundColor: 'transparent',
@@ -1309,13 +1450,13 @@ export function DayView({ user }: DayViewProps) {
                           key={boat.id}
                           onClick={() => handleCellClick(boat.id, timeSlot)}
                           style={{
-                            padding: isMobile ? '8px 6px' : '10px 12px',
+                            padding: isMobile ? '4px 4px' : '6px 8px',
                             borderBottom: '1px solid #e9ecef',
                             borderRight: '1px solid #e9ecef',
                             cursor: 'pointer',
                             textAlign: 'center',
                             transition: 'background 0.2s',
-                            minHeight: isMobile ? '40px' : '50px',
+                            minHeight: isMobile ? '30px' : '35px',
                           }}
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}

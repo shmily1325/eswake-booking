@@ -951,6 +951,152 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           )}
         </div>
 
+        {/* 今日總覽卡片 */}
+        {!loading && bookings.length > 0 && (() => {
+          // 統計數據
+          const totalBookings = bookings.length
+          
+          // 教練使用統計
+          const coachStats = new Map<string, number>()
+          bookings.forEach(booking => {
+            const assignment = assignments[booking.id]
+            if (assignment?.coachIds) {
+              assignment.coachIds.forEach(coachId => {
+                const coach = coaches.find(c => c.id === coachId)
+                if (coach) {
+                  coachStats.set(coach.name, (coachStats.get(coach.name) || 0) + 1)
+                }
+              })
+            }
+          })
+          const topCoaches = Array.from(coachStats.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+          
+          // 船隻使用統計
+          const boatStats = new Map<string, number>()
+          bookings.forEach(booking => {
+            if (booking.boats?.name) {
+              boatStats.set(booking.boats.name, (boatStats.get(booking.boats.name) || 0) + 1)
+            }
+          })
+          const topBoats = Array.from(boatStats.entries())
+            .sort((a, b) => b[1] - a[1])
+          
+          // 未排班統計
+          const unassignedCount = bookings.filter(booking => {
+            const assignment = assignments[booking.id]
+            return !assignment || assignment.coachIds.length === 0
+          }).length
+          
+          // 需要駕駛但未指定駕駛
+          const needDriverCount = bookings.filter(booking => {
+            const assignment = assignments[booking.id]
+            return assignment?.requiresDriver && (!assignment.driverIds || assignment.driverIds.length === 0)
+          }).length
+          
+          return (
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: isMobile ? '12px' : '16px 20px',
+              marginBottom: designSystem.spacing.md,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            }}>
+              <div style={{
+                fontSize: isMobile ? '14px' : '16px',
+                fontWeight: '700',
+                color: '#2c3e50',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                📊 今日總覽
+              </div>
+              
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: isMobile ? '10px' : '12px',
+              }}>
+                {/* 總預約數 */}
+                <div style={{
+                  padding: isMobile ? '10px' : '12px',
+                  backgroundColor: '#f0f9ff',
+                  borderRadius: '8px',
+                  border: '1px solid #bae6fd',
+                }}>
+                  <div style={{ fontSize: '11px', color: '#0369a1', marginBottom: '4px' }}>總預約數</div>
+                  <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#0c4a6e' }}>
+                    {totalBookings} 筆
+                  </div>
+                </div>
+                
+                {/* 未排班 */}
+                {unassignedCount > 0 && (
+                  <div style={{
+                    padding: isMobile ? '10px' : '12px',
+                    backgroundColor: '#fef2f2',
+                    borderRadius: '8px',
+                    border: '1px solid #fecaca',
+                  }}>
+                    <div style={{ fontSize: '11px', color: '#991b1b', marginBottom: '4px' }}>⚠️ 未排班</div>
+                    <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#7f1d1d' }}>
+                      {unassignedCount} 筆
+                    </div>
+                  </div>
+                )}
+                
+                {/* 缺駕駛 */}
+                {needDriverCount > 0 && (
+                  <div style={{
+                    padding: isMobile ? '10px' : '12px',
+                    backgroundColor: '#fff7ed',
+                    borderRadius: '8px',
+                    border: '1px solid #fed7aa',
+                  }}>
+                    <div style={{ fontSize: '11px', color: '#c2410c', marginBottom: '4px' }}>🚤 缺駕駛</div>
+                    <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#9a3412' }}>
+                      {needDriverCount} 筆
+                    </div>
+                  </div>
+                )}
+                
+                {/* 教練使用 */}
+                <div style={{
+                  padding: isMobile ? '10px' : '12px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '8px',
+                  border: '1px solid #bbf7d0',
+                  gridColumn: isMobile ? 'span 2' : 'auto',
+                }}>
+                  <div style={{ fontSize: '11px', color: '#15803d', marginBottom: '4px' }}>🎓 教練使用</div>
+                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#166534', lineHeight: '1.6' }}>
+                    {topCoaches.length > 0 
+                      ? topCoaches.map(([name, count]) => `${name}(${count})`).join('、')
+                      : '無'}
+                  </div>
+                </div>
+                
+                {/* 船隻使用 */}
+                <div style={{
+                  padding: isMobile ? '10px' : '12px',
+                  backgroundColor: '#fef3c7',
+                  borderRadius: '8px',
+                  border: '1px solid #fde68a',
+                  gridColumn: isMobile ? 'span 2' : 'auto',
+                }}>
+                  <div style={{ fontSize: '11px', color: '#92400e', marginBottom: '4px' }}>🚤 船隻使用</div>
+                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#78350f', lineHeight: '1.6' }}>
+                    {topBoats.map(([name, count]) => `${name}(${count})`).join('、')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* 操作提示 */}
         {!loading && bookings.length > 0 && (
           <div style={{
