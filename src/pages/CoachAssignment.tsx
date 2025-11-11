@@ -125,6 +125,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         .lte('start_at', endOfDay)
         .eq('status', 'confirmed')
         .order('start_at', { ascending: true })
+        .limit(200) // 限制最多 200 筆，避免單日預約過多
 
       if (bookingsError) throw bookingsError
 
@@ -868,7 +869,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             <span style={{ fontSize: '18px' }}>💡</span>
             <span>
               {viewMode === 'list' 
-                ? '列表可直接快速排班，點「✏️」完整編輯預約詳情。'
+                ? '列表可直接快速排班，點「✏️」完整編輯。'
                 : '點擊卡片快速排班，點「✏️」完整編輯。'}
             </span>
           </div>
@@ -1215,7 +1216,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               fontSize: '13px',
               color: '#666'
             }}>
-              💡 列表可直接快速排班，點「✏️」完整編輯預約詳情。
+              💡 列表可直接快速排班，點「✏️」完整編輯。
             </div>
           </div>
         )}

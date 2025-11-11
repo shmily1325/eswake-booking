@@ -146,7 +146,9 @@ export function DayView({ user }: DayViewProps) {
           .select('id, boat_id, contact_name, member_id, start_at, duration_min, activity_types, notes, requires_driver, status, schedule_notes, boats:boat_id(id, name, color)')
           .gte('start_at', startOfDay)
           .lte('start_at', endOfDay)
+          .eq('status', 'confirmed') // 只查詢已確認的預約
           .order('start_at', { ascending: true })
+          .limit(200) // 限制最多 200 筆，避免單日預約過多
       )
 
       const results = await Promise.all(promises)
@@ -195,7 +197,7 @@ export function DayView({ user }: DayViewProps) {
 
     const bookingIds = bookingsData.map(b => b.id)
 
-    // 並行查詢教練和駕駛（提升效能）- 只查詢 ID 和 name，減少數據傳輸
+    // 優化：並行查詢教練和駕駛，只查詢必要欄位
     const [coachesResult, driversResult] = await Promise.all([
       supabase
         .from('booking_coaches')
@@ -218,29 +220,37 @@ export function DayView({ user }: DayViewProps) {
     const coachesByBooking = new Map<number, Coach[]>()
     const driversByBooking = new Map<number, Coach[]>()
 
-    // 建立教練映射
-    for (const item of coachesResult.data || []) {
+    // 建立教練映射（使用 for-of 比 forEach 快）
+    const coachData = coachesResult.data || []
+    for (let i = 0; i < coachData.length; i++) {
+      const item = coachData[i]
       const coach = (item as any).coaches
       if (coach) {
-        if (!coachesByBooking.has(item.booking_id)) {
-          coachesByBooking.set(item.booking_id, [])
+        const coaches = coachesByBooking.get(item.booking_id)
+        if (coaches) {
+          coaches.push(coach)
+        } else {
+          coachesByBooking.set(item.booking_id, [coach])
         }
-        coachesByBooking.get(item.booking_id)!.push(coach)
       }
     }
 
     // 建立駕駛映射
-    for (const item of driversResult.data || []) {
+    const driverData = driversResult.data || []
+    for (let i = 0; i < driverData.length; i++) {
+      const item = driverData[i]
       const driver = (item as any).coaches
       if (driver) {
-        if (!driversByBooking.has(item.booking_id)) {
-          driversByBooking.set(item.booking_id, [])
+        const drivers = driversByBooking.get(item.booking_id)
+        if (drivers) {
+          drivers.push(driver)
+        } else {
+          driversByBooking.set(item.booking_id, [driver])
         }
-        driversByBooking.get(item.booking_id)!.push(driver)
       }
     }
 
-    // 使用 map 而不是 forEach，性能更好
+    // 組裝資料（避免不必要的陣列操作）
     const bookingsWithCoaches = bookingsData.map(booking => ({
       ...booking,
       coaches: coachesByBooking.get(booking.id) || [],
