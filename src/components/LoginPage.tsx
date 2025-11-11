@@ -9,6 +9,14 @@ interface LoginPageProps {
 export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isInLineApp, setIsInLineApp] = useState(false)
+
+  useEffect(() => {
+    // 檢測是否在 LINE 內建瀏覽器中
+    const userAgent = navigator.userAgent || navigator.vendor
+    const isLine = /Line/i.test(userAgent)
+    setIsInLineApp(isLine)
+  }, [])
 
   useEffect(() => {
     // Check if user is already logged in
@@ -110,6 +118,27 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         }}>
           請使用 Google 帳號登入
         </p>
+
+        {isInLineApp && (
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#fff3cd',
+            color: '#856404',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            fontSize: '14px',
+            lineHeight: '1.6',
+            textAlign: 'left',
+            border: '1px solid #ffeaa7',
+          }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+              ⚠️ 在 LINE 中無法登入
+            </div>
+            <div>
+              請點擊右下角「⋯」→「在瀏覽器中開啟」
+            </div>
+          </div>
+        )}
 
         {error && (
           <div style={{

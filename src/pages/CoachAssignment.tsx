@@ -208,18 +208,26 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       setError('')
     }
     
-    setAssignments(prev => ({
-      ...prev,
-      [bookingId]: {
-        ...prev[bookingId],
-        [field]: value,
-        conflicts: field === 'coachIds' ? checkCoachConflictRealtime(bookingId, value) : (prev[bookingId]?.conflicts || [])
+    setAssignments(prev => {
+      const currentAssignment = prev[bookingId] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
+      const newCoachIds = field === 'coachIds' ? value : currentAssignment.coachIds
+      const newDriverIds = field === 'driverIds' ? value : currentAssignment.driverIds
+      
+      return {
+        ...prev,
+        [bookingId]: {
+          ...currentAssignment,
+          [field]: value,
+          conflicts: (field === 'coachIds' || field === 'driverIds') 
+            ? checkConflictRealtime(bookingId, newCoachIds, newDriverIds) 
+            : currentAssignment.conflicts
+        }
       }
-    }))
+    })
   }
 
-  // 即時檢查教練衝突
-  const checkCoachConflictRealtime = (bookingId: number, newCoachIds: string[]): string[] => {
+  // 即時檢查教練/駕駛衝突
+  const checkConflictRealtime = (bookingId: number, newCoachIds: string[], newDriverIds: string[]): string[] => {
     const conflicts: string[] = []
     const currentBooking = bookings.find(b => b.id === bookingId)
     if (!currentBooking) return conflicts
@@ -227,25 +235,61 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     const currentStart = new Date(currentBooking.start_at)
     const currentEnd = new Date(currentStart.getTime() + currentBooking.duration_min * 60000)
 
-    // 檢查每個選中的教練
+    // 1. 檢查教練與駕駛是否為同一人
     for (const coachId of newCoachIds) {
-      // 檢查這個教練在其他預約中的時間
+      if (newDriverIds.includes(coachId)) {
+        const personName = coaches.find(c => c.id === coachId)?.name || '未知'
+        conflicts.push(`${personName} 同時擔任教練和駕駛`)
+      }
+    }
+
+    // 2. 檢查教練的時間衝突（包括作為教練或駕駛）
+    for (const coachId of newCoachIds) {
       for (const otherBooking of bookings) {
-        if (otherBooking.id === bookingId) continue // 跳過自己
+        if (otherBooking.id === bookingId) continue
 
         const otherAssignment = assignments[otherBooking.id]
         if (!otherAssignment) continue
 
-        // 檢查這個教練是否也在其他預約中
-        if (otherAssignment.coachIds.includes(coachId)) {
+        // 檢查這個人是否在其他預約中（作為教練或駕駛）
+        const isCoachInOther = otherAssignment.coachIds.includes(coachId)
+        const isDriverInOther = otherAssignment.driverIds.includes(coachId)
+        
+        if (isCoachInOther || isDriverInOther) {
           const otherStart = new Date(otherBooking.start_at)
           const otherEnd = new Date(otherStart.getTime() + otherBooking.duration_min * 60000)
 
-          // 檢查時間是否重疊
           if (currentStart < otherEnd && currentEnd > otherStart) {
-            const coachName = coaches.find(c => c.id === coachId)?.name || '未知'
+            const personName = coaches.find(c => c.id === coachId)?.name || '未知'
+            const roleText = isDriverInOther ? '[駕駛]' : '[教練]'
             const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
-            conflicts.push(`${coachName} 與 ${otherTime} (${otherBooking.contact_name}) 時間衝突`)
+            conflicts.push(`${personName} 與 ${otherTime} (${otherBooking.contact_name}) ${roleText} 時間衝突`)
+          }
+        }
+      }
+    }
+
+    // 3. 檢查駕駛的時間衝突（包括作為教練或駕駛）
+    for (const driverId of newDriverIds) {
+      for (const otherBooking of bookings) {
+        if (otherBooking.id === bookingId) continue
+
+        const otherAssignment = assignments[otherBooking.id]
+        if (!otherAssignment) continue
+
+        // 檢查這個人是否在其他預約中（作為教練或駕駛）
+        const isCoachInOther = otherAssignment.coachIds.includes(driverId)
+        const isDriverInOther = otherAssignment.driverIds.includes(driverId)
+        
+        if (isCoachInOther || isDriverInOther) {
+          const otherStart = new Date(otherBooking.start_at)
+          const otherEnd = new Date(otherStart.getTime() + otherBooking.duration_min * 60000)
+
+          if (currentStart < otherEnd && currentEnd > otherStart) {
+            const personName = coaches.find(c => c.id === driverId)?.name || '未知'
+            const roleText = isDriverInOther ? '[駕駛]' : '[教練]'
+            const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
+            conflicts.push(`${personName} 與 ${otherTime} (${otherBooking.contact_name}) ${roleText} 時間衝突`)
           }
         }
       }
@@ -1037,6 +1081,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             setBookings(bookings.map(b => 
                               b.id === booking.id ? { ...b, requires_driver: newValue } : b
                             ))
+                            // 同時更新 assignments 狀態
+                            updateAssignment(booking.id, 'requiresDriver', newValue)
                           }
                         }}
                       >

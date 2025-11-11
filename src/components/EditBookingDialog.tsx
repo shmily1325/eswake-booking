@@ -518,6 +518,7 @@ export function EditBookingDialog({
       await logBookingUpdate({
         userEmail: user.email || '',
         studentName: finalStudentName,
+        startTime: newStartAt,  // 使用更新後的時間
         changes
       })
 

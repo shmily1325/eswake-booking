@@ -17,6 +17,7 @@ interface CreateBookingLogParams {
 interface UpdateBookingLogParams {
   userEmail: string
   studentName: string
+  startTime: string  // 新增：預約的開始時間
   changes: string[]
 }
 
@@ -47,7 +48,8 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
 
-  let details = `新增預約：${studentName} / ${boatName} / ${formattedTime} / ${durationMin}分鐘`
+  // 格式：日期時間在最前面，方便搜尋
+  let details = `${formattedTime} 新增預約：${studentName} / ${boatName} / ${durationMin}分`
   
   if (coachNames.length > 0) {
     details += ` / 教練：${coachNames.join('、')}`
@@ -81,9 +83,16 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
  * 記錄更新預約
  */
 export async function logBookingUpdate(params: UpdateBookingLogParams) {
-  const { userEmail, studentName, changes } = params
+  const { userEmail, studentName, startTime, changes } = params
 
-  const details = `修改預約：${studentName}，變更：${changes.join('、')}`
+  // 格式化時間：2025-11-09T23:15:00 → 11/09 23:15
+  const datetime = startTime.substring(0, 16)
+  const [dateStr, timeStr] = datetime.split('T')
+  const [, month, day] = dateStr.split('-')
+  const formattedTime = `${month}/${day} ${timeStr}`
+
+  // 格式：日期時間在最前面，方便搜尋
+  const details = `${formattedTime} 修改預約：${studentName}，變更：${changes.join('、')}`
 
   // 非阻塞寫入
   void (async () => {
@@ -121,7 +130,8 @@ export async function logBookingDeletion(params: DeleteBookingLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
   
-  const details = `刪除預約：${studentName} / ${boatName} / ${formattedTime} / ${durationMin}分鐘`
+  // 格式：日期時間在最前面，方便搜尋
+  const details = `${formattedTime} 刪除預約：${studentName} / ${boatName} / ${durationMin}分`
 
   // 非阻塞寫入
   void (async () => {
@@ -245,7 +255,8 @@ export async function logCoachAssignment(params: CoachAssignmentLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
 
-  const details = `排班：${studentName} / ${boatName} / ${formattedTime}，變更：${changes.join('、')}`
+  // 格式：日期時間在最前面，方便搜尋
+  const details = `${formattedTime} 排班：${studentName} / ${boatName}，變更：${changes.join('、')}`
 
   // 非阻塞寫入
   void (async () => {
