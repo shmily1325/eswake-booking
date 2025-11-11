@@ -625,8 +625,6 @@ export function EditBookingDialog({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px' }}>編輯預約</h2>
-        
         <form onSubmit={handleUpdate}>
           {/* 預約人選擇（支援多會員選擇或手動輸入） */}
           <div style={{ marginBottom: '18px', position: 'relative' }}>

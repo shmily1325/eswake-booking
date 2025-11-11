@@ -85,8 +85,6 @@ export function DayView({ user }: DayViewProps) {
   
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
-  const [singleBoatMode, setSingleBoatMode] = useState(false)
-  const [currentBoatIndex, setCurrentBoatIndex] = useState(0)
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('list')
   const [copySuccess, setCopySuccess] = useState<number | null>(null) // 記錄哪個預約剛複製成功
 
@@ -349,11 +347,8 @@ export function DayView({ user }: DayViewProps) {
   }, [])
 
   const displayBoats = useMemo(() => {
-    if (singleBoatMode && boats.length > 0) {
-      return [boats[currentBoatIndex]]
-    }
     return boats
-  }, [singleBoatMode, currentBoatIndex, boats])
+  }, [boats])
 
 
   if (loading) {
@@ -661,57 +656,6 @@ export function DayView({ user }: DayViewProps) {
       )}
 
 
-      {viewMode === 'timeline' && (
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-          marginBottom: '16px',
-          flexWrap: 'wrap',
-        }}>
-          {isMobile && boats.length > 1 && (
-            <>
-              <button
-                onClick={() => setSingleBoatMode(!singleBoatMode)}
-                style={{
-                  ...getButtonStyle('secondary', 'medium', isMobile),
-                }}
-              >
-                {singleBoatMode ? '全部' : '單船'}
-              </button>
-              
-              {singleBoatMode && (
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button
-                    onClick={() => setCurrentBoatIndex(Math.max(0, currentBoatIndex - 1))}
-                    disabled={currentBoatIndex === 0}
-                    style={{
-                      ...getButtonStyle('outline', 'medium', isMobile),
-                      opacity: currentBoatIndex === 0 ? 0.5 : 1,
-                      cursor: currentBoatIndex === 0 ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    ←
-                  </button>
-                  <span style={{ fontSize: '14px', fontWeight: '500', minWidth: '60px', textAlign: 'center' }}>
-                    {boats[currentBoatIndex]?.name}
-                  </span>
-                  <button
-                    onClick={() => setCurrentBoatIndex(Math.min(boats.length - 1, currentBoatIndex + 1))}
-                    disabled={currentBoatIndex >= boats.length - 1}
-                    style={{
-                      ...getButtonStyle('outline', 'medium', isMobile),
-                      opacity: currentBoatIndex >= boats.length - 1 ? 0.5 : 1,
-                      cursor: currentBoatIndex >= boats.length - 1 ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    →
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
 
       {viewMode === 'list' && (
         <div style={{
@@ -1180,16 +1124,16 @@ export function DayView({ user }: DayViewProps) {
                           rowSpan={slots}
                           onClick={() => handleCellClick(boat.id, timeSlot, booking)}
                           style={{
-                            padding: isMobile ? '4px 2px' : '12px',
+                            padding: isMobile ? '6px 4px' : '12px',
                             borderBottom: '1px solid #e9ecef',
                             borderRight: '1px solid #e9ecef',
-                            backgroundColor: '#5a5a5a',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                             color: 'white',
                             cursor: 'pointer',
                             verticalAlign: 'top',
                             position: 'relative',
-                            borderRadius: '4px',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+                            borderRadius: isMobile ? '6px' : '8px',
+                            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
                             transition: 'all 0.2s',
                           }}
                           onMouseEnter={(e) => {
@@ -1203,28 +1147,29 @@ export function DayView({ user }: DayViewProps) {
                         >
                           {/* 預約人 + 活動類型 + 排班備註（第一行） */}
                           <div style={{
-                            fontSize: isMobile ? '12px' : '15px',
+                            fontSize: isMobile ? '13px' : '15px',
                             fontWeight: '700',
-                            marginBottom: '4px',
+                            marginBottom: '6px',
                             textAlign: 'center',
-                            lineHeight: '1.3',
+                            lineHeight: '1.4',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '6px',
+                            gap: '4px',
                             flexWrap: 'wrap',
                           }}>
-                            <span>{booking.contact_name}</span>
+                            <span style={{ textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>{booking.contact_name}</span>
                             {booking.activity_types && booking.activity_types.map(type => (
                               <span
                                 key={type}
                                 style={{
                                   padding: '2px 6px',
-                                  backgroundColor: '#e3f2fd',
-                                  color: '#1565c0',
-                                  borderRadius: '8px',
+                                  backgroundColor: 'rgba(255,255,255,0.25)',
+                                  color: 'white',
+                                  borderRadius: '6px',
                                   fontSize: isMobile ? '10px' : '11px',
-                                  fontWeight: '500',
+                                  fontWeight: '600',
+                                  border: '1px solid rgba(255,255,255,0.3)',
                                 }}
                               >
                                 {type}
@@ -1234,12 +1179,12 @@ export function DayView({ user }: DayViewProps) {
                               <span
                                 style={{
                                   padding: '2px 6px',
-                                  backgroundColor: '#e3f2fd',
-                                  color: '#1976d2',
-                                  borderRadius: '8px',
+                                  backgroundColor: 'rgba(255,255,255,0.25)',
+                                  color: 'white',
+                                  borderRadius: '6px',
                                   fontSize: isMobile ? '10px' : '11px',
                                   fontWeight: '600',
-                                  border: '1px solid #1976d2',
+                                  border: '1px solid rgba(255,255,255,0.3)',
                                 }}
                               >
                                 🚤

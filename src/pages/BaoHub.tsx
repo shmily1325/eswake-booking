@@ -32,11 +32,12 @@ export function BaoHub({ user }: BaoHubProps) {
       icon: '👥',
       link: '/members'
     },
-    {
-      title: '人員管理',
-      icon: '🎓',
-      link: '/staff'
-    },
+    // 暫時移除人員管理功能
+    // {
+    //   title: '人員管理',
+    //   icon: '🎓',
+    //   link: '/staff'
+    // },
     // 暫時隱藏快速記帳功能
     // {
     //   title: '快速記帳',

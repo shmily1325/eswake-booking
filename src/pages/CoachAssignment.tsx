@@ -1518,14 +1518,28 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                       </div>
                             {/* 客人名稱 */}
                             <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '6px', color: '#1a1a1a' }}>
-                                      {booking.contact_name}
-                                    </div>
+                              {booking.contact_name}
+                            </div>
 
-                            {/* 船隻名稱 */}
+                            {/* 船隻名稱（無符號） */}
                             {!isEditing && booking.boats?.name && (
-                              <div style={{ fontSize: '13px', color: '#666', fontWeight: '600', marginBottom: '3px' }}>
+                              <div style={{ fontSize: '13px', color: '#666', fontWeight: '600', marginBottom: '4px' }}>
                                 {booking.boats.name}
-                                    </div>
+                              </div>
+                            )}
+
+                            {/* 教練 */}
+                            {!isEditing && assignment.coachIds.length > 0 && (
+                              <div style={{ fontSize: '12px', color: '#2196F3', fontWeight: '500', marginBottom: '2px' }}>
+                                🎓 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
+                              </div>
+                            )}
+
+                            {/* 駕駛 */}
+                            {!isEditing && booking.requires_driver && assignment.driverIds && assignment.driverIds.length > 0 && (
+                              <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '500', marginBottom: '2px' }}>
+                                🚤 {assignment.driverIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
+                              </div>
                             )}
 
                             {/* 預約註解 */}
@@ -1533,7 +1547,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               <div style={{ 
                                 fontSize: '12px', 
                                 color: '#555',
-                                marginBottom: '6px',
+                                marginTop: '6px',
                                 padding: '4px 6px',
                                 background: 'rgba(0,0,0,0.05)',
                                 borderRadius: '4px',
@@ -1553,7 +1567,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                         {/* 教練選擇 */}
                                         <div style={{ marginBottom: '6px' }}>
                                           <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px', color: '#666' }}>
-                                    🎓 教練：
+                                    🎓 教練 *
                                           </div>
                                           {assignment.coachIds.length > 0 && (
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
@@ -1736,18 +1750,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                             }}
                                           />
                                         </div>
-                                      </div>
-                                    )}
-                                    
-                                    {/* 未編輯時顯示教練和駕駛 */}
-                                    {!isEditing && assignment.coachIds.length > 0 && (
-                              <div style={{ fontSize: '12px', color: '#2196F3', fontWeight: '500', marginBottom: '2px' }}>
-                                🎓 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
-                                      </div>
-                                    )}
-                            {!isEditing && booking.requires_driver && assignment.driverIds && assignment.driverIds.length > 0 && (
-                              <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '500', marginBottom: '2px' }}>
-                                        🚤 {assignment.driverIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
                                       </div>
                                     )}
                             
@@ -2658,7 +2660,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   {/* 指定駕駛 */}
                   <div style={{ marginBottom: designSystem.spacing.md }}>
                     <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
-                      🚤 指定駕駛（選填）
+                      🚤 駕駛
                     </label>
                     
                     {/* 已選擇的駕駛標籤 */}
