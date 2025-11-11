@@ -454,7 +454,17 @@ export function NewBookingDialog({
           requires_driver: requiresDriver,          // 是否需要駕駛
           status: 'confirmed',
           created_by: user.id,
-          created_at: new Date().toISOString(),     // 記錄創建時間
+          created_at: (() => {
+            // 使用本地時間格式（TEXT，不含時區）
+            const now = new Date()
+            const year = now.getFullYear()
+            const month = String(now.getMonth() + 1).padStart(2, '0')
+            const day = String(now.getDate()).padStart(2, '0')
+            const hour = String(now.getHours()).padStart(2, '0')
+            const minute = String(now.getMinutes()).padStart(2, '0')
+            const second = String(now.getSeconds()).padStart(2, '0')
+            return `${year}-${month}-${day}T${hour}:${minute}:${second}`
+          })(),
         }
 
         const { data: insertedBooking, error: insertError } = await supabase
@@ -495,11 +505,23 @@ export function NewBookingDialog({
 
         // 插入會員關聯（V5 新增：支援多會員）
         if (selectedMemberIds.length > 0 && insertedBooking) {
-          const bookingMembersToInsert = selectedMemberIds.map(memberId => ({
-            booking_id: insertedBooking.id,
-            member_id: memberId,
-            created_at: new Date().toISOString()
-          }))
+          const bookingMembersToInsert = selectedMemberIds.map(memberId => {
+            // 使用本地時間格式（TEXT，不含時區）
+            const now = new Date()
+            const year = now.getFullYear()
+            const month = String(now.getMonth() + 1).padStart(2, '0')
+            const day = String(now.getDate()).padStart(2, '0')
+            const hour = String(now.getHours()).padStart(2, '0')
+            const minute = String(now.getMinutes()).padStart(2, '0')
+            const second = String(now.getSeconds()).padStart(2, '0')
+            const createdAt = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+            
+            return {
+              booking_id: insertedBooking.id,
+              member_id: memberId,
+              created_at: createdAt
+            }
+          })
 
           const { error: memberInsertError } = await supabase
             .from('booking_members')
