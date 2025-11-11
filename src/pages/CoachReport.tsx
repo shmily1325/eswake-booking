@@ -40,6 +40,7 @@ interface Booking {
 
 interface Participant {
   id?: number
+  coach_id?: string | null
   member_id: string | null
   participant_name: string
   duration_min: number
@@ -303,59 +304,80 @@ export function CoachReport({ user }: CoachReportProps) {
   // 載入預約的會員資訊（排除已被其他教練回報的會員）
   const loadBookingMembers = async (bookingId: number, defaultDuration: number) => {
     try {
+      const booking = bookings.find(b => b.id === bookingId)
+      
       // 1. 載入預約的所有會員
       const { data: bookingMembersData } = await supabase
         .from('booking_members')
         .select('member_id, members(id, name)')
         .eq('booking_id', bookingId)
 
-      if (!bookingMembersData || bookingMembersData.length === 0) {
-        // 沒有會員資料，使用預約人姓名
-        const booking = bookings.find(b => b.id === bookingId)
-        setParticipants([{
-          member_id: null,
-          participant_name: booking?.contact_name || '',
-          duration_min: defaultDuration,
-          payment_method: 'cash'
-        }])
-        return
-      }
-
-      // 2. 載入已被其他教練回報的會員
+      // 2. 載入已被其他教練回報的參與者（會員和非會員）
       const { data: reportedParticipants } = await supabase
         .from('booking_participants')
-        .select('member_id, coach_id')
+        .select('member_id, participant_name, coach_id')
         .eq('booking_id', bookingId)
         .not('coach_id', 'is', null)
 
-      // 3. 找出已被其他教練回報的會員 ID
-      const reportedByOthers = new Set<string>()
+      // 3. 找出已被其他教練回報的會員 ID 和姓名
+      const reportedMemberIds = new Set<string>()
+      const reportedNames = new Set<string>()
       if (reportedParticipants) {
         reportedParticipants.forEach(rp => {
           // 排除當前教練自己的回報
-          if (rp.coach_id !== selectedCoachId && rp.member_id) {
-            reportedByOthers.add(rp.member_id)
+          if (rp.coach_id !== selectedCoachId) {
+            if (rp.member_id) {
+              reportedMemberIds.add(rp.member_id)
+            }
+            if (rp.participant_name) {
+              reportedNames.add(rp.participant_name.trim())
+            }
           }
         })
       }
 
       // 4. 過濾掉已被其他教練回報的會員
-      const availableMembers = bookingMembersData.filter(
-        (bm: any) => !reportedByOthers.has(bm.member_id)
+      const availableMembers = (bookingMembersData || []).filter(
+        (bm: any) => !reportedMemberIds.has(bm.member_id)
       )
 
-      if (availableMembers.length > 0) {
-        // 有可用的會員，為每個會員建立一筆參與者記錄
-        const memberParticipants = availableMembers.map((bm: any) => ({
+      // 5. 建立參與者列表
+      const participants: any[] = []
+      
+      // 5.1 加入可用的會員
+      availableMembers.forEach((bm: any) => {
+        participants.push({
           member_id: bm.member_id,
           participant_name: bm.members?.name || '未知',
           duration_min: defaultDuration,
           payment_method: 'cash'
-        }))
-        setParticipants(memberParticipants)
+        })
+      })
+
+      // 5.2 檢查預約人是否是非會員且未被回報
+      if (booking?.contact_name) {
+        const contactName = booking.contact_name.trim()
+        const isContactMember = (bookingMembersData || []).some(
+          (bm: any) => bm.members?.name === contactName
+        )
+        const isContactReported = reportedNames.has(contactName)
+        
+        // 如果預約人不是會員，且未被其他教練回報，則加入列表
+        if (!isContactMember && !isContactReported) {
+          participants.push({
+            member_id: null,
+            participant_name: contactName,
+            duration_min: defaultDuration,
+            payment_method: 'cash'
+          })
+        }
+      }
+
+      // 6. 設定參與者列表
+      if (participants.length > 0) {
+        setParticipants(participants)
       } else {
-        // 所有會員都已被其他教練回報，但當前教練仍需確認「沒有其他客人」
-        // 提供一個空白的參與者欄位，讓教練可以新增非會員或確認無客人
+        // 所有人都已被其他教練回報，提供空白欄位讓教練確認或新增
         setParticipants([{
           member_id: null,
           participant_name: '',
@@ -563,18 +585,64 @@ export function CoachReport({ user }: CoachReportProps) {
           
           <div style={{ flex: 1 }}>
             <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block' }}>
-              教練篩選
+              選擇教練（請選擇您自己）
             </label>
-            <select
-              value={selectedCoachId}
-              onChange={(e) => setSelectedCoachId(e.target.value)}
-              style={getInputStyle(isMobile)}
-            >
-              <option value="all">全部教練</option>
+            <div style={{ 
+              display: 'flex', 
+              gap: '8px', 
+              flexWrap: 'wrap',
+              maxHeight: isMobile ? '200px' : '150px',
+              overflowY: 'auto',
+              padding: '8px',
+              background: '#f9f9f9',
+              borderRadius: '8px',
+              border: '1px solid #ddd'
+            }}>
               {coaches.map(coach => (
-                <option key={coach.id} value={coach.id}>{coach.name}</option>
+                <button
+                  key={coach.id}
+                  onClick={() => setSelectedCoachId(coach.id)}
+                  style={{
+                    padding: '10px 16px',
+                    border: selectedCoachId === coach.id ? '2px solid #2196f3' : '1px solid #ddd',
+                    borderRadius: '8px',
+                    background: selectedCoachId === coach.id ? '#e3f2fd' : 'white',
+                    color: selectedCoachId === coach.id ? '#1976d2' : '#333',
+                    fontWeight: selectedCoachId === coach.id ? '600' : '400',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto',
+                    minWidth: isMobile ? '0' : '80px'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedCoachId !== coach.id) {
+                      e.currentTarget.style.background = '#f5f5f5'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedCoachId !== coach.id) {
+                      e.currentTarget.style.background = 'white'
+                    }
+                  }}
+                >
+                  {coach.name}
+                </button>
               ))}
-            </select>
+            </div>
+            {selectedCoachId === 'all' && (
+              <div style={{
+                marginTop: '8px',
+                padding: '8px 12px',
+                background: '#fff3e0',
+                border: '1px solid #ffb74d',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: '#e65100'
+              }}>
+                ⚠️ 請先選擇您的教練身份才能進行回報
+              </div>
+            )}
           </div>
         </div>
 
@@ -598,16 +666,29 @@ export function CoachReport({ user }: CoachReportProps) {
                 ? getReportType(booking, selectedCoachId)
                 : null
               
+              // 當選擇「全部教練」時，計算已回報的教練數量
+              let reportedCoachesCount = 0
+              let totalCoachesCount = booking.coaches.length
+              if (selectedCoachId === 'all' && booking.participants) {
+                const reportedCoachIds = new Set(booking.participants.map(p => p.coach_id))
+                reportedCoachesCount = reportedCoachIds.size
+              }
+              
+              const hasDriverReport = !!booking.coach_report
+              
+              const canReport = selectedCoachId !== 'all'
+              
               return (
                 <div
                   key={booking.id}
                   style={{
                     ...getCardStyle(isMobile),
                     borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`,
-                    cursor: 'pointer',
+                    cursor: canReport ? 'pointer' : 'not-allowed',
+                    opacity: canReport ? 1 : 0.6,
                     transition: 'all 0.2s'
                   }}
-                  onClick={() => startReport(booking)}
+                  onClick={() => canReport && startReport(booking)}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     <div>
@@ -620,7 +701,8 @@ export function CoachReport({ user }: CoachReportProps) {
                     </div>
                     
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {type === 'coach' || type === 'both' ? (
+                      {/* 選擇特定教練時，顯示該教練的回報狀態 */}
+                      {selectedCoachId !== 'all' && (type === 'coach' || type === 'both') ? (
                         <span style={{
                           padding: '4px 8px',
                           borderRadius: '4px',
@@ -633,16 +715,32 @@ export function CoachReport({ user }: CoachReportProps) {
                         </span>
                       ) : null}
                       
-                      {type === 'driver' || type === 'both' ? (
+                      {/* 選擇「全部教練」時，顯示已回報教練數量 */}
+                      {selectedCoachId === 'all' && totalCoachesCount > 0 ? (
                         <span style={{
                           padding: '4px 8px',
                           borderRadius: '4px',
                           fontSize: '12px',
-                          background: status.hasDriverReport ? '#e8f5e9' : '#fff3e0',
-                          color: status.hasDriverReport ? '#2e7d32' : '#f57c00',
+                          background: reportedCoachesCount === totalCoachesCount ? '#e8f5e9' : reportedCoachesCount > 0 ? '#fff9c4' : '#fff3e0',
+                          color: reportedCoachesCount === totalCoachesCount ? '#2e7d32' : reportedCoachesCount > 0 ? '#f57f17' : '#f57c00',
                           fontWeight: '600'
                         }}>
-                          駕駛 {status.hasDriverReport ? '✓' : '未回報'}
+                          教練 {reportedCoachesCount}/{totalCoachesCount}
+                        </span>
+                      ) : null}
+                      
+                      {/* 駕駛回報狀態（全部教練或特定教練） */}
+                      {(selectedCoachId !== 'all' && (type === 'driver' || type === 'both')) || 
+                       (selectedCoachId === 'all' && booking.boats?.name !== '彈簧床') ? (
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          background: hasDriverReport ? '#e8f5e9' : '#fff3e0',
+                          color: hasDriverReport ? '#2e7d32' : '#f57c00',
+                          fontWeight: '600'
+                        }}>
+                          駕駛 {hasDriverReport ? '✓' : '未回報'}
                         </span>
                       ) : null}
                     </div>

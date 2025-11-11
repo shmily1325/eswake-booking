@@ -447,7 +447,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
           {/* 底部按鈕 */}
           <div style={{
-            padding: isMobile ? '24px 20px calc(40px + env(safe-area-inset-bottom))' : '20px',
+            padding: isMobile ? '24px 20px calc(40px + env(safe-area-inset-bottom))' : '20px 20px 30px',
             borderTop: '1px solid #e0e0e0',
             display: 'flex',
             gap: isMobile ? '12px' : '12px',
@@ -464,14 +464,14 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               onClick={onClose}
               disabled={loading}
               style={{
-                padding: isMobile ? '16px 24px' : '10px 20px',
+                padding: isMobile ? '16px 24px' : '12px 20px',
                 border: '1px solid #ddd',
                 borderRadius: '8px',
                 background: 'white',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontSize: isMobile ? '17px' : '14px',
                 minHeight: isMobile ? '52px' : '44px',
-                flex: isMobile ? '1' : '0',
+                flex: '1',
                 fontWeight: isMobile ? '600' : 'normal',
                 touchAction: 'manipulation',
               }}
@@ -482,7 +482,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               type="submit"
               disabled={loading}
               style={{
-                padding: isMobile ? '16px 24px' : '10px 20px',
+                padding: isMobile ? '16px 24px' : '12px 20px',
                 border: 'none',
                 borderRadius: '8px',
                 background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
@@ -491,7 +491,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 fontSize: isMobile ? '17px' : '14px',
                 fontWeight: 'bold',
                 minHeight: isMobile ? '52px' : '44px',
-                flex: isMobile ? '1' : '0',
+                flex: '1',
                 touchAction: 'manipulation',
               }}
             >

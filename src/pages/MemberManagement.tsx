@@ -444,14 +444,14 @@ export function MemberManagement({ user }: MemberManagementProps) {
           onClick={() => setAddDialogOpen(true)}
           style={{
             padding: isMobile ? '12px 24px' : '14px 28px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
             fontSize: isMobile ? '16px' : '16px',
             fontWeight: 'bold',
             cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+            boxShadow: '0 4px 12px rgba(90, 90, 90, 0.3)'
           }}
         >
           + 新增會員
