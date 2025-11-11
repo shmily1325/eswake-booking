@@ -807,7 +807,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 cursor: (saving || loading) ? 'not-allowed' : 'pointer'
               }}
             >
-              {saving ? '儲存中...' : '💾 儲存所有排班'}
+              {saving ? '儲存中...' : '💾'}
             </button>
 
             <button
@@ -1518,20 +1518,20 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                       </div>
                             {/* 客人名稱 */}
                             <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '6px', color: '#1a1a1a' }}>
-                              {booking.contact_name}
-                            </div>
+                                      {booking.contact_name}
+                                    </div>
 
                             {/* 船隻名稱（無符號） */}
                             {!isEditing && booking.boats?.name && (
                               <div style={{ fontSize: '13px', color: '#666', fontWeight: '600', marginBottom: '4px' }}>
                                 {booking.boats.name}
-                              </div>
+                                    </div>
                             )}
 
                             {/* 教練 */}
                             {!isEditing && assignment.coachIds.length > 0 && (
                               <div style={{ fontSize: '12px', color: '#2196F3', fontWeight: '500', marginBottom: '2px' }}>
-                                🎓 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
+                                {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
                               </div>
                             )}
 
@@ -1752,7 +1752,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                         </div>
                                       </div>
                                     )}
-                            
+                                    
                             {/* 排班註解 */}
                             {!isEditing && assignment.notes && (
                               <div style={{ 
@@ -2191,7 +2191,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                     {/* 教練 */}
                                     {assignment.coachIds.length > 0 && (
                                       <div style={{ marginBottom: '2px' }}>
-                                        🎓 教練：{assignment.coachIds.map(cId => coaches.find(c => c.id === cId)?.name).filter(Boolean).join(', ')}
+                                        教練：{assignment.coachIds.map(cId => coaches.find(c => c.id === cId)?.name).filter(Boolean).join(', ')}
                                       </div>
                                     )}
                                     {/* 駕駛 */}
@@ -2213,7 +2213,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                     {/* 教練選擇 */}
                                     <div style={{ marginBottom: '6px' }}>
                                       <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px', color: '#666' }}>
-                                        🎓 教練：
+                                        教練：
                                       </div>
                                       {assignment.coachIds.length > 0 && (
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
@@ -2528,7 +2528,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     <span>{formatTimeRange(booking.start_at, booking.duration_min)}</span>
                     <span style={{ color: '#ccc', fontWeight: '400', fontSize: '14px' }}>|</span>
                     <span>{booking.contact_name}</span>
-                  </div>
+                    </div>
 
                   {/* 第二行：接船時間 */}
                   {!isFacility(booking.boats?.name) && (
@@ -2542,16 +2542,16 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
                   {/* 標籤行：船隻、時長、需要駕駛 */}
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
-                    <span style={{
+                      <span style={{
                       padding: '6px 12px',
-                      background: booking.boats?.color || '#ccc',
-                      color: 'white',
-                      borderRadius: '6px',
-                      fontWeight: '600',
+                        background: booking.boats?.color || '#ccc',
+                        color: 'white',
+                        borderRadius: '6px',
+                        fontWeight: '600',
                       fontSize: '14px'
-                    }}>
-                      {booking.boats?.name || '?'}
-                    </span>
+                      }}>
+                        {booking.boats?.name || '?'}
+                      </span>
                     <span style={{ 
                       padding: '6px 12px',
                       background: '#f5f5f5',
@@ -2560,26 +2560,26 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       fontSize: '14px',
                       fontWeight: '500'
                     }}>
-                      {booking.duration_min} 分鐘
-                    </span>
+                      {booking.duration_min} 分
+                      </span>
                     {!isFacility(booking.boats?.name) && (
-                      <span style={{
-                        padding: '6px 12px',
+                        <span style={{
+                          padding: '6px 12px',
                         background: '#fff3e0',
                         color: '#e65100',
-                        borderRadius: '6px',
-                        fontWeight: '600',
+                          borderRadius: '6px',
+                          fontWeight: '600',
                         fontSize: '13px'
-                      }}>
-                        🚤 需要駕駛
-                      </span>
-                    )}
+                        }}>
+                          🚤 需要駕駛
+                        </span>
+                      )}
                   </div>
 
-                  {/* 指定教練 */}
+                  {/* 教練 */}
                   <div style={{ marginBottom: designSystem.spacing.md }}>
                     <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
-                      🎓 指定教練 *
+                      🎓 教練 *
                     </label>
                     
                     {/* 已選擇的教練標籤 */}
@@ -2778,7 +2778,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                   >
-                    ✏️ 完整編輯預約
+                    ✏️
                   </button>
                 </div>
               )

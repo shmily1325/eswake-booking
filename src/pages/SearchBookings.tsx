@@ -570,7 +570,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                       <div>
                         <span style={{ color: '#666' }}>⏱️ 時長：</span>
                         <span style={{ fontWeight: '500', color: '#000' }}>
-                          {booking.duration_min} 分鐘
+                          {booking.duration_min} 分
                         </span>
                       </div>
                       {booking.activity_types && booking.activity_types.length > 0 && (

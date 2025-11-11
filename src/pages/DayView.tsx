@@ -476,6 +476,7 @@ export function DayView({ user }: DayViewProps) {
               style={{
                 ...getButtonStyle('secondary', 'medium', true),
                 padding: '8px 12px',
+                minWidth: '70px',
               }}
             >
               今天
@@ -542,6 +543,7 @@ export function DayView({ user }: DayViewProps) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 whiteSpace: 'nowrap',
+                minWidth: '70px',
               }}
             >
               排班
@@ -919,7 +921,7 @@ export function DayView({ user }: DayViewProps) {
                                   lineHeight: '1.5',
                                 }}>
                                   {booking.coaches && booking.coaches.length > 0 && (
-                                    <span>🎓 {booking.coaches.map(c => c.name).join('/')}</span>
+                                    <span>{booking.coaches.map(c => c.name).join('/')}</span>
                                   )}
                                   
                                   {/* 駕駛 - 只有當駕駛與教練不同時才顯示 */}
@@ -1225,7 +1227,7 @@ export function DayView({ user }: DayViewProps) {
                             gap: '2px',
                           }}>
                             {booking.coaches && booking.coaches.length > 0 && (
-                              <div>🎓 {booking.coaches.map(c => c.name).join('/')}</div>
+                              <div>{booking.coaches.map(c => c.name).join('/')}</div>
                             )}
                             
                             {/* 駕駛顯示（只有當駕駛與教練不同時才顯示） */}
