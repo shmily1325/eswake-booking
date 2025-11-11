@@ -738,6 +738,37 @@ export function CoachReport({ user }: CoachReportProps) {
                       <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block' }}>
                         客人姓名 *
                       </label>
+                      
+                      {/* 會員/非會員標記 */}
+                      <div style={{ marginBottom: '8px' }}>
+                        {participant.member_id ? (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}>
+                            👤 會員
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            background: '#f5f5f5',
+                            color: '#666',
+                            border: '1px dashed #ccc',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}>
+                            非會員
+                          </span>
+                        )}
+                      </div>
+                      
                       <input
                         type="text"
                         value={participant.participant_name}
