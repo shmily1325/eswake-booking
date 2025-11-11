@@ -628,7 +628,28 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                           color: '#000',
                           marginBottom: '4px',
                         }}>
-                          {booking.booking_members?.map(bm => bm.members?.name).filter(Boolean).join(', ') || booking.contact_name || '無聯絡人'}
+                          {(() => {
+                            // 優先顯示匹配搜尋條件的名稱
+                            const searchLower = searchName.toLowerCase().trim()
+                            
+                            // 檢查 contact_name 是否匹配
+                            if (booking.contact_name && booking.contact_name.toLowerCase().includes(searchLower)) {
+                              return booking.contact_name
+                            }
+                            
+                            // 檢查會員名稱是否匹配
+                            const matchedMembers = booking.booking_members
+                              ?.filter(bm => bm.members?.name.toLowerCase().includes(searchLower))
+                              .map(bm => bm.members?.name)
+                              .filter(Boolean) || []
+                            
+                            if (matchedMembers.length > 0) {
+                              return matchedMembers.join(', ')
+                            }
+                            
+                            // 如果都不匹配，顯示所有聯絡人（不應該發生）
+                            return booking.booking_members?.map(bm => bm.members?.name).filter(Boolean).join(', ') || booking.contact_name || '無聯絡人'
+                          })()}
                         </div>
                         <div style={{
                           fontSize: '14px',
