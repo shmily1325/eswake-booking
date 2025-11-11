@@ -291,7 +291,8 @@ export function BackupPage({ user }: BackupPageProps) {
           id,
           start_at,
           duration_min,
-          contact_name
+          contact_name,
+          boats:boat_id(name)
         `)
         .order('start_at', { ascending: true })
 
@@ -324,10 +325,25 @@ export function BackupPage({ user }: BackupPageProps) {
           .in('booking_id', bookingIds)
       ])
 
-      // 建立預約ID到日期的映射
-      const bookingDateMap: { [key: number]: string } = {}
+      // 建立預約ID到詳細資訊的映射
+      const bookingInfoMap: {
+        [key: number]: {
+          date: string
+          startTime: string
+          contactName: string
+          boatName: string
+        }
+      } = {}
       bookings.forEach(b => {
-        bookingDateMap[b.id] = b.start_at.substring(0, 10).replace(/-/g, '/')
+        const bookingDate = b.start_at.substring(0, 10).replace(/-/g, '/')
+        const startTime = b.start_at.substring(11, 16)
+        const boatName = (b as any).boats?.name || '未指定'
+        bookingInfoMap[b.id] = {
+          date: bookingDate,
+          startTime,
+          contactName: b.contact_name,
+          boatName
+        }
       })
 
       // 按教練整理詳細記錄
@@ -336,6 +352,9 @@ export function BackupPage({ user }: BackupPageProps) {
           name: string
           records: Array<{
             date: string
+            startTime: string
+            contactName: string
+            boatName: string
             participantName: string
             duration: number
             isDesignated: boolean
@@ -364,7 +383,10 @@ export function BackupPage({ user }: BackupPageProps) {
         const participants = participantsResult.data?.filter(p => p.booking_id === item.booking_id) || []
         participants.forEach(p => {
           coachRecords[coachName].records.push({
-            date: bookingDateMap[item.booking_id],
+            date: bookingInfoMap[item.booking_id]?.date || '',
+            startTime: bookingInfoMap[item.booking_id]?.startTime || '',
+            contactName: bookingInfoMap[item.booking_id]?.contactName || '',
+            boatName: bookingInfoMap[item.booking_id]?.boatName || '未指定',
             participantName: p.participant_name,
             duration: p.duration_min,
             isDesignated: p.is_designated
@@ -381,14 +403,14 @@ export function BackupPage({ user }: BackupPageProps) {
 
       // 生成CSV（每一行都重複教練資訊，方便Excel篩選）
       let csv = '\uFEFF'
-      csv += '教練姓名,日期,學員姓名,單次時長(分鐘),是否指定課,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘)\n'
+      csv += '教練姓名,日期,開始時間,預約人,船隻,學員姓名,單次時長(分鐘),是否指定課,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘)\n'
 
       Object.values(coachRecords)
         .sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
         .forEach(coach => {
           coach.records.forEach(record => {
             // 每一行都顯示完整資訊，方便篩選
-            csv += `"${coach.name}","${record.date}","${record.participantName}",${record.duration},"${record.isDesignated ? '是' : '否'}",${coach.totalMinutes},${coach.designatedMinutes},${coach.normalMinutes}\n`
+            csv += `"${coach.name}","${record.date}","${record.startTime}","${record.contactName}","${record.boatName}","${record.participantName}",${record.duration},"${record.isDesignated ? '是' : '否'}",${coach.totalMinutes},${coach.designatedMinutes},${coach.normalMinutes}\n`
           })
         })
 

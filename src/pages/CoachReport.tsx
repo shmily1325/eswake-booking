@@ -40,6 +40,7 @@ interface Booking {
 
 interface Participant {
   id?: number
+  coach_id?: string | null
   member_id: string | null
   participant_name: string
   duration_min: number
@@ -584,14 +585,14 @@ export function CoachReport({ user }: CoachReportProps) {
           
           <div style={{ flex: 1 }}>
             <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block' }}>
-              教練篩選
+              選擇教練（請選擇您自己）
             </label>
             <select
               value={selectedCoachId}
               onChange={(e) => setSelectedCoachId(e.target.value)}
               style={getInputStyle(isMobile)}
             >
-              <option value="all">全部教練</option>
+              <option value="all">請選擇教練...</option>
               {coaches.map(coach => (
                 <option key={coach.id} value={coach.id}>{coach.name}</option>
               ))}
@@ -619,6 +620,16 @@ export function CoachReport({ user }: CoachReportProps) {
                 ? getReportType(booking, selectedCoachId)
                 : null
               
+              // 當選擇「全部教練」時，計算已回報的教練數量
+              let reportedCoachesCount = 0
+              let totalCoachesCount = booking.coaches.length
+              if (selectedCoachId === 'all' && booking.participants) {
+                const reportedCoachIds = new Set(booking.participants.map(p => p.coach_id))
+                reportedCoachesCount = reportedCoachIds.size
+              }
+              
+              const hasDriverReport = !!booking.coach_report
+              
               return (
                 <div
                   key={booking.id}
@@ -641,7 +652,8 @@ export function CoachReport({ user }: CoachReportProps) {
                     </div>
                     
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {type === 'coach' || type === 'both' ? (
+                      {/* 選擇特定教練時，顯示該教練的回報狀態 */}
+                      {selectedCoachId !== 'all' && (type === 'coach' || type === 'both') ? (
                         <span style={{
                           padding: '4px 8px',
                           borderRadius: '4px',
@@ -654,16 +666,32 @@ export function CoachReport({ user }: CoachReportProps) {
                         </span>
                       ) : null}
                       
-                      {type === 'driver' || type === 'both' ? (
+                      {/* 選擇「全部教練」時，顯示已回報教練數量 */}
+                      {selectedCoachId === 'all' && totalCoachesCount > 0 ? (
                         <span style={{
                           padding: '4px 8px',
                           borderRadius: '4px',
                           fontSize: '12px',
-                          background: status.hasDriverReport ? '#e8f5e9' : '#fff3e0',
-                          color: status.hasDriverReport ? '#2e7d32' : '#f57c00',
+                          background: reportedCoachesCount === totalCoachesCount ? '#e8f5e9' : reportedCoachesCount > 0 ? '#fff9c4' : '#fff3e0',
+                          color: reportedCoachesCount === totalCoachesCount ? '#2e7d32' : reportedCoachesCount > 0 ? '#f57f17' : '#f57c00',
                           fontWeight: '600'
                         }}>
-                          駕駛 {status.hasDriverReport ? '✓' : '未回報'}
+                          教練 {reportedCoachesCount}/{totalCoachesCount}
+                        </span>
+                      ) : null}
+                      
+                      {/* 駕駛回報狀態（全部教練或特定教練） */}
+                      {(selectedCoachId !== 'all' && (type === 'driver' || type === 'both')) || 
+                       (selectedCoachId === 'all' && booking.boats?.name !== '彈簧床') ? (
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          background: hasDriverReport ? '#e8f5e9' : '#fff3e0',
+                          color: hasDriverReport ? '#2e7d32' : '#f57c00',
+                          fontWeight: '600'
+                        }}>
+                          駕駛 {hasDriverReport ? '✓' : '未回報'}
                         </span>
                       ) : null}
                     </div>

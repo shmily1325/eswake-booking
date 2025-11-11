@@ -53,11 +53,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
   // Tab 切換
   const [activeTab, setActiveTab] = useState<'report-status' | 'work-stats' | 'data-analysis'>('report-status')
 
-  // 篩選條件
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
+  // 篩選條件（回報狀況不需要日期選擇器，自動顯示未來預約）
   const [timeRange, setTimeRange] = useState<'last-month' | 'this-month' | 'next-month' | 'custom'>('this-month')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -79,7 +75,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     } else if (activeTab === 'work-stats' || activeTab === 'data-analysis') {
       loadWorkStats()
     }
-  }, [activeTab, selectedDate, timeRange, startDate, endDate, selectedCoachId])
+  }, [activeTab, timeRange, startDate, endDate, selectedCoachId])
 
   const isFacility = (boatName?: string | null) => {
     return boatName === '彈簧床'
@@ -360,9 +356,13 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     }
 
     // 生成 CSV 內容
+    const today = new Date()
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    
     let csv = '\uFEFF' // UTF-8 BOM for Excel
     csv += `教練工作狀況報表\n`
-    csv += `日期：${selectedDate}\n`
+    csv += `匯出日期：${dateStr}\n`
+    csv += `時間範圍：${timeRange === 'last-month' ? '上月' : timeRange === 'this-month' ? '本月' : timeRange === 'next-month' ? '下月' : `${startDate} ~ ${endDate}`}\n`
     csv += `\n`
 
     // 教練統計
@@ -396,7 +396,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    link.setAttribute('download', `教練工作狀況_${selectedDate}.csv`)
+    link.setAttribute('download', `教練工作狀況_${dateStr}.csv`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
