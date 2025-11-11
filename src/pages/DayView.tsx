@@ -146,7 +146,7 @@ export function DayView({ user }: DayViewProps) {
       promises.push(
         supabase
           .from('bookings')
-          .select('*, boats:boat_id(id, name, color)')
+          .select('id, boat_id, contact_name, member_id, start_at, duration_min, activity_types, notes, requires_driver, status, schedule_notes, boats:boat_id(id, name, color)')
           .gte('start_at', startOfDay)
           .lte('start_at', endOfDay)
           .order('start_at', { ascending: true })

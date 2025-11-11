@@ -1311,18 +1311,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     textAlign: 'center',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
+                    justifyContent: 'center'
                   }}>
-                    <span style={{
-                      display: 'inline-block',
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: '50%',
-                      background: boat!.color,
-                      boxShadow: `0 0 6px ${boat!.color}, 0 0 12px ${boat!.color}80`
-                    }}></span>
-                        {boat!.name}
+                    {boat!.name}
                   </div>
                 ))}
               </div>
@@ -1543,11 +1534,18 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 </>
                               )})
                                       </div>
-                            <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px', color: '#1a1a1a' }}>
-                                      {booking.contact_name}
-                              {booking.requires_driver && <span style={{ marginLeft: '6px', color: '#1976d2', fontWeight: '600', fontSize: '13px' }}>🚤</span>}
-                                    </div>
-                            
+                            {/* 客人名稱 */}
+                            <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '6px', color: '#1a1a1a' }}>
+                              {booking.contact_name}
+                            </div>
+
+                            {/* 船隻名稱 */}
+                            {!isEditing && booking.boats?.name && (
+                              <div style={{ fontSize: '13px', color: '#666', fontWeight: '600', marginBottom: '3px' }}>
+                                {booking.boats.name}
+                              </div>
+                            )}
+
                             {/* 預約註解 */}
                             {!isEditing && booking.notes && (
                               <div style={{ 
@@ -1560,7 +1558,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 borderLeft: '3px solid #9ca3af'
                               }}>
                                 💬 {booking.notes}
-                                    </div>
+                              </div>
                             )}
                                     
                                     {/* 快速編輯區域 */}
@@ -1761,12 +1759,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                     
                                     {/* 未編輯時顯示教練和駕駛 */}
                                     {!isEditing && assignment.coachIds.length > 0 && (
-                              <div style={{ fontSize: '13px', color: '#2196F3', fontWeight: '700', marginBottom: '4px' }}>
+                              <div style={{ fontSize: '12px', color: '#2196F3', fontWeight: '500', marginBottom: '2px' }}>
                                 🎓 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
                                       </div>
                                     )}
-                            {!isEditing && !isFacility(booking.boats?.name) && assignment.driverIds && assignment.driverIds.length > 0 && (
-                              <div style={{ fontSize: '13px', color: '#10b981', fontWeight: '700', marginBottom: '4px' }}>
+                            {!isEditing && booking.requires_driver && assignment.driverIds && assignment.driverIds.length > 0 && (
+                              <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '500', marginBottom: '2px' }}>
                                         🚤 {assignment.driverIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
                                       </div>
                                     )}
