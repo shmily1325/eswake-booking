@@ -95,13 +95,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   }
 
   const loadCoaches = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('coaches')
       .select('id, name')
       .eq('status', 'active')
       .order('name')
     
+    if (error) {
+      console.error('載入教練失敗:', error)
+      return
+    }
+    
     if (data) {
+      console.log('載入的教練:', data)
       setCoaches(data)
     }
   }
@@ -729,6 +735,24 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               }}>
                 <button
                   type="button"
+                  onClick={() => setViewMode('list')}
+                  style={{
+                    padding: '8px 16px',
+                    background: viewMode === 'list' ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: viewMode === 'list' ? '600' : '400',
+                    fontSize: '14px',
+                    color: viewMode === 'list' ? '#1976d2' : '#666',
+                    transition: 'all 0.2s',
+                    boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  📋 列表
+                </button>
+                <button
+                  type="button"
                   onClick={() => setViewMode('boat-timeline')}
                   style={{
                     padding: '8px 16px',
@@ -743,7 +767,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                   }}
                 >
-                  🚤
+                  🚤 船隻
                 </button>
                 <button
                   type="button"
@@ -761,25 +785,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     boxShadow: viewMode === 'coach-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                   }}
                 >
-                  🎓
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('list')}
-                  style={{
-                    padding: '8px 16px',
-                    background: viewMode === 'list' ? 'white' : 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: viewMode === 'list' ? '600' : '400',
-                    fontSize: '14px',
-                    color: viewMode === 'list' ? '#1976d2' : '#666',
-                    transition: 'all 0.2s',
-                    boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                >
-                  📋
+                  🎓 教練
                 </button>
               </div>
             )}
@@ -926,18 +932,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         {booking.requires_driver ? (
                           <span style={{
                             display: 'inline-block',
-                            padding: '4px 10px',
-                            background: '#e3f2fd',
+                            fontSize: '20px',
                             color: '#1976d2',
-                            borderRadius: '4px',
-                            fontWeight: '600',
-                            fontSize: '12px',
-                            border: '2px solid #1976d2'
+                            fontWeight: 'bold'
                           }}>
-                            🚤
+                            ✓
                           </span>
                         ) : (
-                          <span style={{ color: '#999', fontSize: '12px' }}>-</span>
+                          <span style={{ color: '#ccc', fontSize: '20px' }}>✗</span>
                         )}
                       </td>
                       <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
@@ -1309,32 +1311,29 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   position: 'relative'
                 }}>
                 {/* 時間刻度列 */}
-                <div style={{
-                  gridColumn: '1',
-                  gridRow: `1 / ${TOTAL_SLOTS + 1}`,
-                  borderRight: '2px solid #e0e0e0',
-                  position: 'relative',
-                  background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)'
-                }}>
-                  {timeLabels.map((timeLabel) => (
-                    <div
-                      key={timeLabel.hour}
-                      style={{
-                        position: 'absolute',
-                        top: `${timeLabel.slotIndex * SLOT_HEIGHT - 12}px`,
-                        width: '100%',
-                        padding: '6px 8px',
-                        fontWeight: '700',
-                        textAlign: 'center',
-                        color: '#2c3e50',
-                        fontSize: '13px',
-                        lineHeight: '1'
-                      }}
-                    >
-                      {timeLabel.label}
-                    </div>
-                  ))}
-                </div>
+                {timeLabels.map((timeLabel) => (
+                  <div
+                    key={timeLabel.hour}
+                    style={{
+                      gridColumn: '1',
+                      gridRow: `${timeLabel.slotIndex + 1} / span 4`,
+                      padding: '6px 8px',
+                      fontWeight: '700',
+                      textAlign: 'center',
+                      color: '#2c3e50',
+                      fontSize: '13px',
+                      lineHeight: '1',
+                      borderRight: '2px solid #e0e0e0',
+                      background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'center',
+                      paddingTop: '4px'
+                    }}
+                  >
+                    {timeLabel.label}
+                  </div>
+                ))}
 
                 {/* 背景網格線（每小時一條深色線） */}
                 {timeLabels.map((timeLabel) => (
@@ -1997,32 +1996,28 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   minHeight: `${TOTAL_SLOTS * SLOT_HEIGHT}px`
                 }}>
                   {/* 時間標籤列 */}
-                  <div style={{
-                    gridColumn: '1',
-                    gridRow: `1 / ${TOTAL_SLOTS + 1}`,
-                    position: 'relative',
-                    borderRight: '2px solid #e0e0e0',
-                    background: '#fafafa'
-                  }}>
-                    {timeLabels.map((timeLabel) => (
-                      <div
-                        key={timeLabel.hour}
-                        style={{
-                          position: 'absolute',
-                          top: `${timeLabel.slotIndex * SLOT_HEIGHT - 12}px`,
-                          left: 0,
-                          right: 0,
-                          padding: '4px 8px',
-                          fontSize: '13px',
-                          fontWeight: '600',
-                          textAlign: 'center',
-                          color: '#2c3e50'
-                        }}
-                      >
-                        {timeLabel.label}
-                      </div>
-                    ))}
-                  </div>
+                  {timeLabels.map((timeLabel) => (
+                    <div
+                      key={timeLabel.hour}
+                      style={{
+                        gridColumn: '1',
+                        gridRow: `${timeLabel.slotIndex + 1} / span 4`,
+                        padding: '4px 8px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        textAlign: 'center',
+                        color: '#2c3e50',
+                        borderRight: '2px solid #e0e0e0',
+                        background: '#fafafa',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'center',
+                        paddingTop: '4px'
+                      }}
+                    >
+                      {timeLabel.label}
+                    </div>
+                  ))}
 
                   {/* 背景網格線 */}
                   {Array.from({ length: TOTAL_SLOTS }).map((_, index) => 
