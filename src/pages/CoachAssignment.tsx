@@ -2099,13 +2099,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             borderColor = '#38bdf8'
                           }
 
-                          // 時間顯示
-                          const startTime = new Date(booking.start_at)
-                          const endTime = new Date(startTime.getTime() + booking.duration_min * 60000)
-                          const pickupTime = !isFacility(booking.boats?.name)
-                            ? new Date(endTime.getTime() + 15 * 60000)
-                            : null
-
                           return (
                             <div
                               key={`${coach.id}-${booking.id}`}
