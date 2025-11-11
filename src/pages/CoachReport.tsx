@@ -934,6 +934,7 @@ export function CoachReport({ user }: CoachReportProps) {
                           setMemberSearchTerm(e.target.value)
                           handleSearchChange(e.target.value)
                         }}
+                        onClick={(e) => e.stopPropagation()}
                         placeholder="輸入客人姓名或搜尋會員"
                         style={getInputStyle(isMobile)}
                       />
@@ -979,6 +980,7 @@ export function CoachReport({ user }: CoachReportProps) {
                         type="number"
                         value={participant.duration_min}
                         onChange={(e) => updateParticipant(index, 'duration_min', Number(e.target.value))}
+                        onClick={(e) => e.stopPropagation()}
                         min="0"
                         style={getInputStyle(isMobile)}
                       />
