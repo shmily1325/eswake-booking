@@ -1095,7 +1095,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   border: '1px solid #fde68a',
                   gridColumn: isMobile ? 'span 2' : 'auto',
                 }}>
-                  <div style={{ fontSize: '11px', color: '#92400e', marginBottom: '4px' }}>船隻</div>
+                  <div style={{ fontSize: '11px', color: '#92400e', marginBottom: '4px' }}>船</div>
                   <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#78350f', lineHeight: '1.6' }}>
                     {topBoats.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')}
                   </div>
@@ -1474,7 +1474,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           const START_HOUR = 4
           const END_HOUR = 20
           const SLOT_MINUTES = 15 // 每格 15 分鐘
-          const SLOT_HEIGHT = 70 // 每格高度（px）- 增加到70px讓30分鐘卡片有140px
+          const SLOT_HEIGHT = 50 // 每格高度（px）- 壓縮高度以減少整體欄高
           const TOTAL_SLOTS = ((END_HOUR - START_HOUR) * 60) / SLOT_MINUTES // 總格數 = 64
           
           // 計算預約卡片在 Grid 中的位置（包含整理船時間）
@@ -2088,7 +2088,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           const START_HOUR = 4
           const END_HOUR = 20
           const SLOT_MINUTES = 15
-          const SLOT_HEIGHT = 70
+          const SLOT_HEIGHT = 50 // 壓縮高度以減少整體欄高
           const TOTAL_SLOTS = ((END_HOUR - START_HOUR) * 60) / SLOT_MINUTES // 64 slots
 
           // 計算預約在 Grid 中的位置
