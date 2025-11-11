@@ -2779,12 +2779,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         {!loading && bookings.length > 0 && isMobile && viewMode === 'list' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {bookings.map((booking) => {
-              const assignment = assignments[booking.id] || { coachIds: [], driverId: '', notes: '' }
+              const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
               const hasNoCoach = assignment.coachIds.length === 0
+              const isEditing = editingBookingId === booking.id
+              
               return (
                 <div
                   key={booking.id}
-                  onClick={() => setFullEditBookingId(booking.id)}
+                  onClick={() => setEditingBookingId(isEditing ? null : booking.id)}
                   style={{
                     background: 'white',
                     padding: '16px',
@@ -2793,7 +2795,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     border: hasNoCoach ? '2px solid #ff9800' : '1px solid #e8e8e8',
                     borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`,
                     cursor: 'pointer',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    position: 'relative'
                   }}
                   onTouchStart={(e) => {
                     e.currentTarget.style.transform = 'scale(0.98)'
@@ -2802,6 +2805,28 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     e.currentTarget.style.transform = 'scale(1)'
                   }}
                 >
+                  {/* 右上角編輯按鈕 */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setFullEditBookingId(booking.id)
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '12px',
+                      right: '12px',
+                      background: '#f0f0f0',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 10px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      zIndex: 10
+                    }}
+                  >
+                    ✏️
+                  </button>
+
                   {/* 標題行：時間 | 客人名稱 */}
                   <div style={{ 
                     fontSize: '16px', 
@@ -2865,14 +2890,30 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       )}
                   </div>
 
-                  {/* 教練 */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '6px', display: 'block', color: '#666' }}>
-                      教練 *
-                    </label>
-                    
-                    {/* 已選擇的教練標籤 */}
-                    {assignment.coachIds.length > 0 && (
+                  {/* 教練顯示（未展開時） */}
+                  {!isEditing && assignment.coachIds.length > 0 && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '600', marginBottom: '4px', display: 'block', color: '#999' }}>
+                        教練
+                      </label>
+                      <div style={{ fontSize: '14px', color: '#333', fontWeight: '500' }}>
+                        {assignment.coachIds.map(coachId => {
+                          const coach = coaches.find(c => c.id === coachId)
+                          return coach?.name
+                        }).filter(Boolean).join('、') || '未指定'}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 教練編輯（展開時） */}
+                  {isEditing && (
+                    <div style={{ marginBottom: '12px' }} onClick={(e) => e.stopPropagation()}>
+                      <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '6px', display: 'block', color: '#666' }}>
+                        教練 *
+                      </label>
+                      
+                      {/* 已選擇的教練標籤 */}
+                      {assignment.coachIds.length > 0 && (
                       <div style={{ 
                         display: 'flex', 
                         flexWrap: 'wrap', 
@@ -2945,16 +2986,33 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           </option>
                         ))}
                     </select>
-                  </div>
+                    </div>
+                  )}
 
-                  {/* 駕駛 */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '6px', display: 'block', color: '#666' }}>
-                      駕駛
-                    </label>
-                    
-                    {/* 已選擇的駕駛標籤 */}
-                    {assignment.driverIds && assignment.driverIds.length > 0 && (
+                  {/* 駕駛顯示（未展開時） */}
+                  {!isEditing && assignment.driverIds && assignment.driverIds.length > 0 && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '600', marginBottom: '4px', display: 'block', color: '#999' }}>
+                        駕駛
+                      </label>
+                      <div style={{ fontSize: '14px', color: '#333', fontWeight: '500' }}>
+                        {assignment.driverIds.map((driverId: string) => {
+                          const driver = coaches.find(c => c.id === driverId)
+                          return driver?.name
+                        }).filter(Boolean).join('、') || '未指定'}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 駕駛編輯（展開時） */}
+                  {isEditing && (
+                    <div style={{ marginBottom: '12px' }} onClick={(e) => e.stopPropagation()}>
+                      <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '6px', display: 'block', color: '#666' }}>
+                        駕駛
+                      </label>
+                      
+                      {/* 已選擇的駕駛標籤 */}
+                      {assignment.driverIds && assignment.driverIds.length > 0 && (
                       <div style={{ 
                         display: 'flex', 
                         flexWrap: 'wrap', 
@@ -3027,28 +3085,79 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           </option>
                         ))}
                     </select>
-                  </div>
+                    </div>
+                  )}
 
-                  {/* 排班註解 */}
-                  <div>
-                    <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '6px', display: 'block', color: '#666' }}>
-                      排班註解
-                    </label>
-                    <input
-                      type="text"
-                      value={assignment.notes}
-                      onChange={(e) => updateAssignment(booking.id, 'notes', e.target.value)}
-                      placeholder="排班備註..."
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        color: '#666'
-                      }}
-                    />
-                  </div>
+                  {/* 排班註解顯示（未展開時） */}
+                  {!isEditing && assignment.notes && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '600', marginBottom: '4px', display: 'block', color: '#999' }}>
+                        排班註解
+                      </label>
+                      <div style={{ fontSize: '14px', color: '#333', fontWeight: '500' }}>
+                        {assignment.notes}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 排班註解編輯（展開時） */}
+                  {isEditing && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '6px', display: 'block', color: '#666' }}>
+                        排班註解
+                      </label>
+                      <input
+                        type="text"
+                        value={assignment.notes}
+                        onChange={(e) => updateAssignment(booking.id, 'notes', e.target.value)}
+                        placeholder="排班備註..."
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          color: '#666'
+                        }}
+                      />
+                      
+                      {/* 衝突警告 */}
+                      {assignment.conflicts && assignment.conflicts.length > 0 && (
+                        <div style={{
+                          marginTop: '8px',
+                          padding: '8px',
+                          background: '#ffebee',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          color: '#d32f2f'
+                        }}>
+                          ⚠️ {assignment.conflicts.join('、')}
+                        </div>
+                      )}
+                      
+                      {/* 確定按鈕 */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingBookingId(null)
+                        }}
+                        style={{
+                          marginTop: '12px',
+                          width: '100%',
+                          padding: '12px',
+                          background: '#2196F3',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✓ 確定
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             })}
