@@ -20,10 +20,25 @@ export function AuditLog({ user }: AuditLogProps) {
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'add' | 'edit' | 'delete'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [displayedLogs, setDisplayedLogs] = useState<AuditLogEntry[]>([])
 
   useEffect(() => {
     fetchLogs()
   }, [filter])
+
+  useEffect(() => {
+    // 客户端搜索过滤
+    if (searchQuery.trim() === '') {
+      setDisplayedLogs(logs)
+    } else {
+      const filtered = logs.filter(log => 
+        log.details.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        log.user_email.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      setDisplayedLogs(filtered)
+    }
+  }, [searchQuery, logs])
 
   const fetchLogs = async () => {
     setLoading(true)
@@ -139,6 +154,33 @@ export function AuditLog({ user }: AuditLogProps) {
     }}>
       <PageHeader title="📝 編輯記錄" user={user} />
 
+      {/* Search Bar */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: '15px',
+        marginBottom: '15px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      }}>
+        <input
+          type="text"
+          placeholder="🔍 搜尋會員名稱、操作者或預約內容..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            fontSize: '14px',
+            border: '1px solid #dee2e6',
+            borderRadius: '6px',
+            outline: 'none',
+            transition: 'border-color 0.2s',
+          }}
+          onFocus={(e) => e.currentTarget.style.borderColor = '#007bff'}
+          onBlur={(e) => e.currentTarget.style.borderColor = '#dee2e6'}
+        />
+      </div>
+
       {/* Filters */}
       <div style={{
         backgroundColor: 'white',
@@ -211,6 +253,22 @@ export function AuditLog({ user }: AuditLogProps) {
         </div>
       </div>
 
+      {/* Results Count */}
+      {!loading && logs.length > 0 && (
+        <div style={{
+          marginBottom: '12px',
+          fontSize: '14px',
+          color: '#666',
+          padding: '0 4px',
+        }}>
+          {searchQuery ? (
+            <>找到 <strong>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）</>
+          ) : (
+            <>共 <strong>{logs.length}</strong> 筆記錄</>
+          )}
+        </div>
+      )}
+
       {/* Logs */}
       {loading ? (
         <div style={{
@@ -223,7 +281,7 @@ export function AuditLog({ user }: AuditLogProps) {
         }}>
           載入中...
         </div>
-      ) : logs.length === 0 ? (
+      ) : displayedLogs.length === 0 ? (
         <div style={{
           padding: '40px',
           textAlign: 'center',
@@ -232,11 +290,11 @@ export function AuditLog({ user }: AuditLogProps) {
           color: '#999',
           fontSize: '16px',
         }}>
-          沒有記錄
+          {searchQuery ? '沒有符合的記錄' : '沒有記錄'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {logs.map((log) => (
+          {displayedLogs.map((log) => (
             <div
               key={log.id}
               style={{
