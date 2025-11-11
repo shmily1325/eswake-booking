@@ -850,6 +850,25 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           )}
         </div>
 
+        {/* 操作提示 */}
+        {!loading && bookings.length > 0 && viewMode !== 'list' && (
+          <div style={{
+            padding: '14px 20px',
+            background: 'white',
+            borderRadius: '12px',
+            marginBottom: designSystem.spacing.md,
+            fontSize: '14px',
+            color: '#666',
+            fontWeight: '500',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '18px' }}>💡</span>
+            <span>點擊卡片快速排班，點「✏️」完整編輯。</span>
+          </div>
+        )}
 
         {/* 載入中 */}
         {loading && (
@@ -1993,7 +2012,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               <div style={{
                 position: 'relative',
                 overflow: 'auto',
-                maxHeight: isMobile ? '60vh' : '70vh'
+                maxHeight: isMobile ? '60vh' : '70vh',
+                overflowX: 'auto' // 確保水平滾動
               }}>
                 {/* 固定的表頭 */}
                 <div style={{
@@ -2003,6 +2023,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   background: 'linear-gradient(180deg, #2c3e50 0%, #34495e 100%)',
                   display: 'grid',
                   gridTemplateColumns: `100px repeat(${coachColumns.length}, 200px)`,
+                  minWidth: `${100 + coachColumns.length * 200}px`, // 設置最小寬度以觸發滾動
                   borderBottom: '2px solid #1a252f'
                 }}>
                   <div style={{
@@ -2038,7 +2059,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   gridTemplateColumns: `100px repeat(${coachColumns.length}, 200px)`,
                   gridTemplateRows: `repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT}px)`,
                   position: 'relative',
-                  minHeight: `${TOTAL_SLOTS * SLOT_HEIGHT}px`
+                  minHeight: `${TOTAL_SLOTS * SLOT_HEIGHT}px`,
+                  minWidth: `${100 + coachColumns.length * 200}px` // 設置最小寬度以觸發滾動
                 }}>
                   {/* 時間標籤列 */}
                   <div style={{
