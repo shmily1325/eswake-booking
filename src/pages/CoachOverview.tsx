@@ -460,7 +460,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       <PageHeader 
         user={user} 
-        title="教練工作狀況"
+        title="預約狀況"
         showBaoLink={true}
       />
       

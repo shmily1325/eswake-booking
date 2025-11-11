@@ -13,9 +13,11 @@ export function BaoHub({ user }: BaoHubProps) {
 
   const baoFeatures: Array<{
     title: string
+    subtitle?: string
     icon: string
     link: string
     comingSoon?: boolean
+    disabled?: boolean
   }> = [
     {
       title: '排班管理',
@@ -24,11 +26,13 @@ export function BaoHub({ user }: BaoHubProps) {
     },
     {
       title: '教練回報',
+      subtitle: '要不要回報?',
       icon: '📝',
       link: '/coach-report'
     },
     {
-      title: '教練工作狀況',
+      title: '預約狀況',
+      subtitle: '要什麼數據?',
       icon: '📊',
       link: '/coach-overview'
     },
@@ -56,13 +60,16 @@ export function BaoHub({ user }: BaoHubProps) {
     },
     {
       title: '匯出資料',
+      subtitle: '等資料串好才能匯',
       icon: '💾',
       link: '/backup'
     },
     {
       title: 'LINE 提醒設置',
+      subtitle: 'Disabled 中',
       icon: '📱',
-      link: '/line-settings'
+      link: '/line-settings',
+      disabled: true
     },
   ]
 
@@ -197,6 +204,51 @@ export function BaoHub({ user }: BaoHubProps) {
                   {feature.title}
                 </h2>
               </div>
+            ) : feature.disabled ? (
+              <div
+                key={feature.title}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.5)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: '16px',
+                  padding: isMobile ? '30px 15px' : '35px 20px',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                  textAlign: 'center',
+                  opacity: 0.5,
+                  cursor: 'not-allowed',
+                  border: '1px solid rgba(224, 224, 224, 0.5)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: isMobile ? '8px' : '12px'
+                }}
+              >
+                <div style={{ 
+                  fontSize: isMobile ? '36px' : '42px',
+                  marginBottom: '5px'
+                }}>
+                  {feature.icon}
+                </div>
+                <h2 style={{
+                  margin: 0,
+                  fontSize: isMobile ? '15px' : '17px',
+                  fontWeight: '600',
+                  color: '#000',
+                  letterSpacing: '0.5px'
+                }}>
+                  {feature.title}
+                </h2>
+                {feature.subtitle && (
+                  <p style={{
+                    margin: 0,
+                    fontSize: isMobile ? '11px' : '12px',
+                    color: '#999',
+                    fontStyle: 'italic'
+                  }}>
+                    {feature.subtitle}
+                  </p>
+                )}
+              </div>
             ) : (
               <Link
                 key={feature.title}
@@ -243,6 +295,16 @@ export function BaoHub({ user }: BaoHubProps) {
                 }}>
                   {feature.title}
                 </h2>
+                {feature.subtitle && (
+                  <p style={{
+                    margin: 0,
+                    fontSize: isMobile ? '11px' : '12px',
+                    color: '#999',
+                    fontStyle: 'italic'
+                  }}>
+                    {feature.subtitle}
+                  </p>
+                )}
               </Link>
             )
           ))}
