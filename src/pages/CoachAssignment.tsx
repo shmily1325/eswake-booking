@@ -107,12 +107,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       const startOfDay = `${selectedDate}T00:00:00`
       const endOfDay = `${selectedDate}T23:59:59`
 
-      // 查詢預約（與 DayView 使用相同方式）
+      // 優化：只查詢需要的字段，減少數據傳輸
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
-        .select('*, boats:boat_id(id, name, color)')
+        .select('id, start_at, duration_min, contact_name, boat_id, schedule_notes, requires_driver, status, member_id, activity_types, notes, boats:boat_id(id, name, color)')
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
+        .eq('status', 'confirmed')
         .order('start_at', { ascending: true })
 
       if (bookingsError) throw bookingsError
@@ -126,7 +127,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
       const bookingIds = bookingsData.map((b: any) => b.id)
 
-      // 並行查詢教練和駕駛資訊（提升效能）
+      // 優化：並行查詢教練和駕駛資訊，減少往返次數
       const [coachesResult, driversResult] = await Promise.all([
         supabase
           .from('booking_coaches')
@@ -735,7 +736,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                 }}
               >
-                🚤 船隻
+                🚤
               </button>
               <button
                 type="button"
@@ -754,7 +755,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   boxShadow: viewMode === 'coach-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                 }}
               >
-                🎓 教練
+                🎓
               </button>
               <button
                 type="button"
@@ -773,7 +774,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                 }}
               >
-                📋 列表
+                📋
               </button>
             </div>
 
@@ -830,37 +831,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           )}
         </div>
 
-        {/* 操作說明 */}
-        {!loading && bookings.length > 0 && (
-          <div style={{
-            padding: designSystem.spacing.md,
-            background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-            borderRadius: designSystem.borderRadius.md,
-            marginBottom: designSystem.spacing.md,
-            border: '2px solid #90caf9',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{ 
-              fontSize: isMobile ? '13px' : '14px',
-              color: '#1565c0',
-              fontWeight: '600',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '16px',
-              alignItems: 'center'
-            }}>
-              <span>💡 操作說明：</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ padding: '2px 6px', background: 'white', borderRadius: '4px', fontSize: '12px' }}>🎓</span>
-                排班 = 快速排教練/駕駛
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ padding: '2px 6px', background: 'white', borderRadius: '4px', fontSize: '12px' }}>✏️</span>
-                編輯 = 修改預約詳情
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* 載入中 */}
         {loading && (
@@ -903,7 +873,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     <div>駕駛</div>
                     <div style={{ fontSize: '11px', fontWeight: 'normal', opacity: 0.8 }}>（選填）</div>
                   </th>
-                  <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', minWidth: '200px' }}>排班註解</th>
+                  <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '200px' }}>排班註解</th>
+                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', width: '60px' }}>編輯</th>
                 </tr>
               </thead>
               <tbody>
@@ -1107,7 +1078,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             ))}
                         </select>
                       </td>
-                      <td style={{ padding: '8px 12px' }}>
+                      <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
                         <input
                           type="text"
                           value={assignment.notes}
@@ -1126,11 +1097,42 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
                         />
                       </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <button
+                          onClick={() => setFullEditBookingId(booking.id)}
+                          style={{
+                            background: '#2196F3',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            lineHeight: '1',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#1976d2'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#2196F3'}
+                          title="完整編輯"
+                        >
+                          ✏️
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
+            <div style={{
+              padding: designSystem.spacing.md,
+              background: '#f8f9fa',
+              borderTop: '1px solid #e0e0e0',
+              fontSize: '13px',
+              color: '#666'
+            }}>
+              💡 列表可直接快速排班，點「✏️」完整編輯預約詳情。
+            </div>
           </div>
         )}
 
@@ -1769,7 +1771,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 fontSize: isMobile ? '12px' : '13px',
                 color: '#666'
               }}>
-                💡 <strong>提示：</strong>{isMobile && '可左右滑動查看。'}點擊預約卡片直接排班，點「✏️ 編輯」修改預約詳情。卡片高度依預約時長比例顯示。
+                💡 {isMobile && '可左右滑動。'}點擊卡片快速排班，點「✏️」完整編輯{!isMobile && '。'}。
               </div>
             </div>
           )
@@ -2403,7 +2405,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 fontSize: isMobile ? '12px' : '13px',
                 color: '#666'
               }}>
-                💡 <strong>提示：</strong>{isMobile && '可左右滑動查看。'}點擊預約卡片直接排班，點「✏️ 編輯」修改預約詳情。多教練預約會在各教練列重複顯示。
+                💡 {isMobile && '可左右滑動。'}點擊卡片快速排班，點「✏️」完整編輯{!isMobile && '。多教練預約會重複顯示'}。
               </div>
             </div>
           )
@@ -2631,7 +2633,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   </div>
 
                   {/* 排班註解 */}
-                  <div>
+                  <div style={{ marginBottom: designSystem.spacing.md }}>
                     <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
                       排班註解
                     </label>
@@ -2649,6 +2651,29 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       }}
                     />
                   </div>
+
+                  {/* 完整編輯按鈕 */}
+                  <button
+                    onClick={() => setFullEditBookingId(booking.id)}
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      background: '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    ✏️ 完整編輯預約
+                  </button>
                 </div>
               )
             })}

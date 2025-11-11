@@ -945,37 +945,63 @@ export function NewBookingDialog({
                 border: '2px solid #3b82f6',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'space-between',
                 gap: '8px',
               }}>
-                <span style={{ color: '#1e40af', fontSize: '15px', fontWeight: '600', flexShrink: 0 }}>
-                  已選：
-                </span>
                 <div style={{
                   display: 'flex',
-                  flexWrap: 'wrap',
+                  alignItems: 'center',
                   gap: '8px',
                   flex: 1,
+                  minWidth: 0,
                 }}>
-                  {selectedCoaches.map(coachId => {
-                    const coach = coaches.find(c => c.id === coachId)
-                    return coach ? (
-                      <span
-                        key={coachId}
-                        style={{
-                          padding: '6px 12px',
-                          background: 'white',
-                          borderRadius: '6px',
-                          border: '1px solid #3b82f6',
-                          color: '#1e40af',
-                          fontSize: '15px',
-                          fontWeight: '600',
-                        }}
-                      >
-                        {coach.name}
-                      </span>
-                    ) : null
-                  })}
+                  <span style={{ color: '#1e40af', fontSize: '15px', fontWeight: '600', flexShrink: 0 }}>
+                    已選：
+                  </span>
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    flex: 1,
+                  }}>
+                    {selectedCoaches.map(coachId => {
+                      const coach = coaches.find(c => c.id === coachId)
+                      return coach ? (
+                        <span
+                          key={coachId}
+                          style={{
+                            padding: '6px 12px',
+                            background: 'white',
+                            borderRadius: '6px',
+                            border: '1px solid #3b82f6',
+                            color: '#1e40af',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                          }}
+                        >
+                          {coach.name}
+                        </span>
+                      ) : null
+                    })}
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCoaches([])}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'white',
+                    border: '1px solid #3b82f6',
+                    borderRadius: '6px',
+                    color: '#1e40af',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    flexShrink: 0,
+                  }}
+                >
+                  清除
+                </button>
               </div>
             )}
             

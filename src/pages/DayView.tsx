@@ -661,7 +661,7 @@ export function DayView({ user }: DayViewProps) {
                   <div style={{
                     minWidth: isMobile ? '80px' : '120px',
                     maxWidth: isMobile ? '80px' : '120px',
-                    background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+                    background: '#5a5a5a',
                     color: 'white',
                     display: 'flex',
                     flexDirection: 'column',

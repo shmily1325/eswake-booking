@@ -31,11 +31,11 @@ export function HomePage({ user }: HomePageProps) {
       icon: '⏰',
       link: '/tomorrow'
     },
-    {
-      title: '教練回報',
-      icon: '✅',
-      link: '/coach-check'
-    },
+    // {
+    //   title: '教練回報',
+    //   icon: '✅',
+    //   link: '/coach-check'
+    // },
     {
       title: '編輯記錄',
       icon: '📝',

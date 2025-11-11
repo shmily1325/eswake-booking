@@ -42,6 +42,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
   const [hasSearched, setHasSearched] = useState(false)
   
   const [filterType, setFilterType] = useState<'all' | 'today' | 'range'>('all')
+  const [timeFilter, setTimeFilter] = useState<'future' | 'past'>('future') // 新增：未來/過去切換
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [copySuccess, setCopySuccess] = useState(false)
@@ -133,8 +134,12 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       
       // 根據篩選類型添加條件
       if (filterType === 'all') {
-        // 顯示所有未來的預約
-        query = query.gte('start_at', nowStr)
+        // 根據時間篩選（未來/過去）
+        if (timeFilter === 'future') {
+          query = query.gte('start_at', nowStr)
+        } else {
+          query = query.lt('start_at', nowStr)
+        }
       } else if (filterType === 'today') {
         // 今日新增的預約（不限時間）
         const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -149,8 +154,8 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
         query = query.gte('start_at', nowStr)
       }
       
-      // 執行預約查詢
-      const bookingsResult = await query.order('start_at', { ascending: true })
+      // 執行預約查詢（根據時間篩選決定排序）
+      const bookingsResult = await query.order('start_at', { ascending: timeFilter === 'future' })
 
       if (bookingsResult.error) {
         console.error('Error fetching bookings:', bookingsResult.error)
@@ -360,7 +365,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
             }}>
               查詢模式
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
               <button
                 type="button"
                 onClick={() => setFilterType('all')}
@@ -419,6 +424,48 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                 指定日期
               </button>
             </div>
+            
+            {/* 時間範圍切換（僅在全部預約模式顯示） */}
+            {filterType === 'all' && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setTimeFilter('future')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    border: timeFilter === 'future' ? '2px solid #007bff' : '1px solid #e9ecef',
+                    backgroundColor: timeFilter === 'future' ? '#e7f3ff' : 'white',
+                    color: timeFilter === 'future' ? '#007bff' : '#495057',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  📅 未來預約
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimeFilter('past')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    border: timeFilter === 'past' ? '2px solid #6c757d' : '1px solid #e9ecef',
+                    backgroundColor: timeFilter === 'past' ? '#e9ecef' : 'white',
+                    color: timeFilter === 'past' ? '#495057' : '#6c757d',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  📜 過去預約
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 日期區間選擇 */}

@@ -896,38 +896,21 @@ export function EditBookingDialog({
                     onClick={() => setSelectedBoatId(boat.id)}
                     style={{
                       padding: '14px 8px',
-                      border: isSelected ? `3px solid ${boat.color}` : '2px solid #e0e0e0',
-                      borderRadius: '10px',
-                      background: isSelected ? boat.color : 'white',
-                      color: isSelected ? 'white' : '#333',
+                      border: isSelected ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      background: isSelected ? '#dbeafe' : 'white',
+                      color: '#333',
                       fontSize: '15px',
-                      fontWeight: isSelected ? '700' : '500',
+                      fontWeight: isSelected ? '600' : '500',
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: isSelected ? `0 4px 12px ${boat.color}40` : '0 2px 4px rgba(0,0,0,0.05)',
-                      position: 'relative',
-                      overflow: 'hidden',
                     }}
                     onTouchStart={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.transform = 'scale(0.95)'
-                      }
+                      e.currentTarget.style.background = isSelected ? '#dbeafe' : '#fafafa'
                     }}
                     onTouchEnd={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)'
+                      e.currentTarget.style.background = isSelected ? '#dbeafe' : 'white'
                     }}
                   >
-                    {/* 左側色條（未選中時） */}
-                    {!isSelected && (
-                      <div style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: '4px',
-                        background: boat.color,
-                      }} />
-                    )}
                     {boat.name}
                   </button>
                 )
@@ -951,58 +934,68 @@ export function EditBookingDialog({
             {selectedCoaches.length > 0 && (
               <div style={{
                 marginBottom: '12px',
-                padding: '12px',
-                background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-                borderRadius: '10px',
+                padding: '12px 14px',
+                background: '#dbeafe',
+                borderRadius: '8px',
+                border: '2px solid #3b82f6',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                flexWrap: 'wrap',
                 gap: '8px',
               }}>
                 <div style={{
                   display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '6px',
+                  alignItems: 'center',
+                  gap: '8px',
                   flex: 1,
+                  minWidth: 0,
                 }}>
-                  <span style={{ color: 'white', fontSize: '14px', fontWeight: '500', marginRight: '4px' }}>
+                  <span style={{ color: '#1e40af', fontSize: '15px', fontWeight: '600', flexShrink: 0 }}>
                     已選：
                   </span>
-                  {selectedCoaches.map(coachId => {
-                    const coach = coaches.find(c => c.id === coachId)
-                    return coach ? (
-                      <span
-                        key={coachId}
-                        style={{
-                          padding: '4px 8px',
-                          background: 'rgba(255,255,255,0.25)',
-                          borderRadius: '6px',
-                          color: 'white',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                        }}
-                      >
-                        {coach.name}
-                      </span>
-                    ) : null
-                  })}
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    flex: 1,
+                  }}>
+                    {selectedCoaches.map(coachId => {
+                      const coach = coaches.find(c => c.id === coachId)
+                      return coach ? (
+                        <span
+                          key={coachId}
+                          style={{
+                            padding: '6px 12px',
+                            background: 'white',
+                            borderRadius: '6px',
+                            border: '1px solid #3b82f6',
+                            color: '#1e40af',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                          }}
+                        >
+                          {coach.name}
+                        </span>
+                      ) : null
+                    })}
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedCoaches([])}
                   style={{
                     padding: '6px 12px',
-                    background: 'rgba(255,255,255,0.2)',
-                    border: '1px solid rgba(255,255,255,0.4)',
+                    background: 'white',
+                    border: '1px solid #3b82f6',
                     borderRadius: '6px',
-                    color: 'white',
+                    color: '#1e40af',
                     fontSize: '13px',
                     cursor: 'pointer',
-                    fontWeight: '500',
+                    fontWeight: '600',
+                    flexShrink: 0,
                   }}
                 >
-                  ✕ 清除
+                  清除
                 </button>
               </div>
             )}
