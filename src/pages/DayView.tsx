@@ -674,38 +674,34 @@ export function DayView({ user }: DayViewProps) {
         // 統計數據
         const totalBookings = bookings.length
         
-        // 教練使用統計
-        const coachStats = new Map<string, number>()
+        // 教練使用統計（筆數 + 總時長）
+        const coachStats = new Map<string, { count: number, totalMinutes: number }>()
         bookings.forEach(booking => {
           booking.coaches?.forEach(coach => {
-            coachStats.set(coach.name, (coachStats.get(coach.name) || 0) + 1)
+            const current = coachStats.get(coach.name) || { count: 0, totalMinutes: 0 }
+            coachStats.set(coach.name, {
+              count: current.count + 1,
+              totalMinutes: current.totalMinutes + booking.duration_min
+            })
           })
         })
         const topCoaches = Array.from(coachStats.entries())
-          .sort((a, b) => b[1] - a[1])
+          .sort((a, b) => b[1].count - a[1].count)
           .slice(0, 5)
         
-        // 船隻使用統計
-        const boatStats = new Map<string, number>()
+        // 船隻使用統計（筆數 + 總時長）
+        const boatStats = new Map<string, { count: number, totalMinutes: number }>()
         bookings.forEach(booking => {
           if (booking.boats?.name) {
-            boatStats.set(booking.boats.name, (boatStats.get(booking.boats.name) || 0) + 1)
+            const current = boatStats.get(booking.boats.name) || { count: 0, totalMinutes: 0 }
+            boatStats.set(booking.boats.name, {
+              count: current.count + 1,
+              totalMinutes: current.totalMinutes + booking.duration_min
+            })
           }
         })
         const topBoats = Array.from(boatStats.entries())
-          .sort((a, b) => b[1] - a[1])
-        
-        // 找出最忙時段（預約數最多的連續2小時）
-        const hourStats = new Map<number, number>()
-        bookings.forEach(booking => {
-          const startHour = new Date(booking.start_at).getHours()
-          const endHour = new Date(new Date(booking.start_at).getTime() + booking.duration_min * 60000).getHours()
-          for (let h = startHour; h <= endHour; h++) {
-            hourStats.set(h, (hourStats.get(h) || 0) + 1)
-          }
-        })
-        const busiestHour = Array.from(hourStats.entries())
-          .sort((a, b) => b[1] - a[1])[0]
+          .sort((a, b) => b[1].count - a[1].count)
         
         return (
           <div style={{
@@ -752,10 +748,10 @@ export function DayView({ user }: DayViewProps) {
                 borderRadius: '8px',
                 border: '1px solid #bbf7d0',
               }}>
-                <div style={{ fontSize: '12px', color: '#15803d', marginBottom: '4px' }}>🎓 教練使用</div>
+                <div style={{ fontSize: '12px', color: '#15803d', marginBottom: '4px' }}>教練</div>
                 <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#166534', lineHeight: '1.6' }}>
                   {topCoaches.length > 0 
-                    ? topCoaches.map(([name, count]) => `${name}(${count})`).join('、')
+                    ? topCoaches.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')
                     : '無'}
                 </div>
               </div>
@@ -767,26 +763,11 @@ export function DayView({ user }: DayViewProps) {
                 borderRadius: '8px',
                 border: '1px solid #fde68a',
               }}>
-                <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '4px' }}>🚤 船隻使用</div>
+                <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '4px' }}>船隻</div>
                 <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#78350f', lineHeight: '1.6' }}>
-                  {topBoats.map(([name, count]) => `${name}(${count})`).join('、')}
+                  {topBoats.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')}
                 </div>
               </div>
-              
-              {/* 最忙時段 */}
-              {busiestHour && (
-                <div style={{
-                  padding: '12px',
-                  backgroundColor: '#fef2f2',
-                  borderRadius: '8px',
-                  border: '1px solid #fecaca',
-                }}>
-                  <div style={{ fontSize: '12px', color: '#991b1b', marginBottom: '4px' }}>⏰ 最忙時段</div>
-                  <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#7f1d1d' }}>
-                    {String(busiestHour[0]).padStart(2, '0')}:00 ({busiestHour[1]}筆)
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )
