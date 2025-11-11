@@ -56,7 +56,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
-  const [viewMode, setViewMode] = useState<'list' | 'boat-timeline' | 'coach-timeline'>('boat-timeline') // 視圖模式
+  const [viewMode, setViewMode] = useState<'list' | 'boat-timeline' | 'coach-timeline'>('list') // 視圖模式（默認列表）
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([]) // 教練篩選（空陣列 = 全選）
   const [editingBookingId, setEditingBookingId] = useState<number | null>(null) // 正在快速編輯的預約
   const [fullEditBookingId, setFullEditBookingId] = useState<number | null>(null) // 正在完整編輯的預約
@@ -77,6 +77,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   useEffect(() => {
     loadBookings()
   }, [selectedDate])
+
+  // 手機版強制使用列表視圖
+  useEffect(() => {
+    if (isMobile && viewMode !== 'list') {
+      setViewMode('list')
+    }
+  }, [isMobile, viewMode])
 
   function getTomorrowDate() {
     const tomorrow = new Date()
@@ -710,73 +717,72 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               />
             </div>
 
-            {/* 視圖切換按鈕 */}
-            <div style={{ 
-              display: 'flex', 
-              gap: '4px', 
-              background: '#f0f0f0', 
-              borderRadius: '8px', 
-              padding: '4px',
-              flex: isMobile ? '1 1 100%' : '0 0 auto'
-            }}>
-              <button
-                type="button"
-                onClick={() => setViewMode('boat-timeline')}
-                style={{
-                  flex: isMobile ? 1 : 'none',
-                  padding: isMobile ? '12px 16px' : '8px 16px',
-                  background: viewMode === 'boat-timeline' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: viewMode === 'boat-timeline' ? '600' : '400',
-                  fontSize: isMobile ? '15px' : '14px',
-                  color: viewMode === 'boat-timeline' ? '#1976d2' : '#666',
-                  transition: 'all 0.2s',
-                  boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                🚤
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('coach-timeline')}
-                style={{
-                  flex: isMobile ? 1 : 'none',
-                  padding: isMobile ? '12px 16px' : '8px 16px',
-                  background: viewMode === 'coach-timeline' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: viewMode === 'coach-timeline' ? '600' : '400',
-                  fontSize: isMobile ? '15px' : '14px',
-                  color: viewMode === 'coach-timeline' ? '#1976d2' : '#666',
-                  transition: 'all 0.2s',
-                  boxShadow: viewMode === 'coach-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                🎓
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                style={{
-                  flex: isMobile ? 1 : 'none',
-                  padding: isMobile ? '12px 16px' : '8px 16px',
-                  background: viewMode === 'list' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: viewMode === 'list' ? '600' : '400',
-                  fontSize: isMobile ? '15px' : '14px',
-                  color: viewMode === 'list' ? '#1976d2' : '#666',
-                  transition: 'all 0.2s',
-                  boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                📋
-              </button>
-            </div>
+            {/* 視圖切換按鈕（手機版只顯示列表） */}
+            {!isMobile && (
+              <div style={{ 
+                display: 'flex', 
+                gap: '4px', 
+                background: '#f0f0f0', 
+                borderRadius: '8px', 
+                padding: '4px',
+                flex: '0 0 auto'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('boat-timeline')}
+                  style={{
+                    padding: '8px 16px',
+                    background: viewMode === 'boat-timeline' ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: viewMode === 'boat-timeline' ? '600' : '400',
+                    fontSize: '14px',
+                    color: viewMode === 'boat-timeline' ? '#1976d2' : '#666',
+                    transition: 'all 0.2s',
+                    boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  🚤
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('coach-timeline')}
+                  style={{
+                    padding: '8px 16px',
+                    background: viewMode === 'coach-timeline' ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: viewMode === 'coach-timeline' ? '600' : '400',
+                    fontSize: '14px',
+                    color: viewMode === 'coach-timeline' ? '#1976d2' : '#666',
+                    transition: 'all 0.2s',
+                    boxShadow: viewMode === 'coach-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  🎓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  style={{
+                    padding: '8px 16px',
+                    background: viewMode === 'list' ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: viewMode === 'list' ? '600' : '400',
+                    fontSize: '14px',
+                    color: viewMode === 'list' ? '#1976d2' : '#666',
+                    transition: 'all 0.2s',
+                    boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  📋
+                </button>
+              </div>
+            )}
 
             <button
               onClick={handleSaveAll}
@@ -865,6 +871,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '120px' }}>客人</th>
                   <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>船隻</th>
                   <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>時長</th>
+                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: '600', borderRight: '1px solid #34495e', whiteSpace: 'nowrap' }}>
+                    <div>需要</div>
+                    <div>駕駛</div>
+                  </th>
                   <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #34495e', minWidth: '180px' }}>
                     <div>教練 *</div>
                     <div style={{ fontSize: '11px', fontWeight: 'normal', opacity: 0.8 }}>（點選多個）</div>
@@ -911,6 +921,24 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       </td>
                       <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
                         {booking.duration_min}分
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0' }}>
+                        {booking.requires_driver ? (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 10px',
+                            background: '#e3f2fd',
+                            color: '#1976d2',
+                            borderRadius: '4px',
+                            fontWeight: '600',
+                            fontSize: '12px',
+                            border: '2px solid #1976d2'
+                          }}>
+                            🚤
+                          </span>
+                        ) : (
+                          <span style={{ color: '#999', fontSize: '12px' }}>-</span>
+                        )}
                       </td>
                       <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
                         {/* 已選擇的教練標籤 */}

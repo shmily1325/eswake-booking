@@ -106,7 +106,7 @@ export const designSystem: DesignSystem = {
 
 // 按鈕樣式生成器
 export const getButtonStyle = (
-  variant: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'ghost' | 'outline',
+  variant: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info' | 'ghost' | 'outline',
   size: 'small' | 'medium' | 'large' = 'medium',
   isMobile: boolean = false
 ) => {
@@ -159,6 +159,10 @@ export const getButtonStyle = (
     },
     danger: {
       background: designSystem.colors.danger,
+      color: 'white',
+    },
+    info: {
+      background: designSystem.colors.info,
       color: 'white',
     },
     ghost: {

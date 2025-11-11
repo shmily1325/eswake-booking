@@ -487,7 +487,7 @@ export function DayView({ user }: DayViewProps) {
         <Link
           to={`/coach-assignment?date=${dateParam}`}
           style={{
-            ...getButtonStyle('success', 'medium', isMobile),
+            ...getButtonStyle('info', 'medium', isMobile),
             padding: isMobile ? '6px 12px' : '8px 14px',
             textDecoration: 'none',
             display: 'inline-flex',

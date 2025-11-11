@@ -41,28 +41,30 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
     coachNames
   } = params
 
-  let details = `新增預約：${studentName} / ${boatName} / ${startTime} / ${durationMin}分鐘`
+  // 格式化時間：2025-11-09T23:15:00 → 11/09 23:15
+  const datetime = startTime.substring(0, 16) // 取到分钟
+  const [dateStr, timeStr] = datetime.split('T')
+  const [, month, day] = dateStr.split('-')
+  const formattedTime = `${month}/${day} ${timeStr}`
+
+  let details = `新增預約：${studentName} / ${boatName} / ${formattedTime} / ${durationMin}分鐘`
   
   if (coachNames.length > 0) {
     details += ` / 教練：${coachNames.join('、')}`
   }
 
-  try {
+  // 非阻塞寫入：在後台默默記錄，不等待完成
+  void (async () => {
     const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
       action: 'create',
       table_name: 'bookings',
       details
     })
-    
     if (error) {
       console.error('審計日誌寫入錯誤:', error)
-    } else {
-      console.log('審計日誌寫入成功:', details)
     }
-  } catch (error) {
-    console.error('審計日誌記錄失敗:', error)
-  }
+  })()
 }
 
 /**
@@ -73,16 +75,18 @@ export async function logBookingUpdate(params: UpdateBookingLogParams) {
 
   const details = `修改預約：${studentName}，變更：${changes.join('、')}`
 
-  try {
-    await supabase.from('audit_log').insert({
+  // 非阻塞寫入
+  void (async () => {
+    const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
       action: 'update',
       table_name: 'bookings',
       details
     })
-  } catch (error) {
-    console.error('審計日誌記錄失敗:', error)
-  }
+    if (error) {
+      console.error('審計日誌寫入錯誤:', error)
+    }
+  })()
 }
 
 /**
@@ -93,20 +97,24 @@ export async function logBookingDeletion(params: DeleteBookingLogParams) {
 
   // 格式化時間顯示
   const datetime = startTime.substring(0, 16)
-  const [date, time] = datetime.split('T')
+  const [dateStr, timeStr] = datetime.split('T')
+  const [, month, day] = dateStr.split('-')
+  const formattedTime = `${month}/${day} ${timeStr}`
   
-  const details = `刪除預約：${studentName} / ${boatName} / ${date} ${time} / ${durationMin}分鐘`
+  const details = `刪除預約：${studentName} / ${boatName} / ${formattedTime} / ${durationMin}分鐘`
 
-  try {
-    await supabase.from('audit_log').insert({
+  // 非阻塞寫入
+  void (async () => {
+    const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
       action: 'delete',
       table_name: 'bookings',
       details
     })
-  } catch (error) {
-    console.error('審計日誌記錄失敗:', error)
-  }
+    if (error) {
+      console.error('審計日誌寫入錯誤:', error)
+    }
+  })()
 }
 
 /**

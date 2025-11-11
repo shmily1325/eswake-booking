@@ -98,27 +98,36 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       const now = new Date()
       const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
       
-      // 步驟 1: 從 booking_contacts 查詢匹配的預約 ID
-      let contactQuery = supabase
+      // 步驟 1: 從多個來源查詢匹配的預約 ID
+      // 1.1 從 booking_contacts 查詢會員名稱
+      const contactQuery = supabase
         .from('booking_contacts')
         .select('booking_id, members!inner(name)')
         .ilike('members.name', `%${searchName.trim()}%`)
       
-      // 也查詢 guest_name
+      // 1.2 從 booking_contacts 查詢非會員名稱
       const guestQuery = supabase
         .from('booking_contacts')
         .select('booking_id')
         .ilike('guest_name', `%${searchName.trim()}%`)
       
-      const [contactResult, guestResult] = await Promise.all([
+      // 1.3 從 bookings 表查詢 contact_name（備選方案）
+      const bookingQuery = supabase
+        .from('bookings')
+        .select('id')
+        .ilike('contact_name', `%${searchName.trim()}%`)
+      
+      const [contactResult, guestResult, bookingResult] = await Promise.all([
         contactQuery,
-        guestQuery
+        guestQuery,
+        bookingQuery
       ])
       
       // 合併找到的預約 ID
       const bookingIds = new Set<number>()
       contactResult.data?.forEach(item => bookingIds.add(item.booking_id))
       guestResult.data?.forEach(item => bookingIds.add(item.booking_id))
+      bookingResult.data?.forEach(item => bookingIds.add(item.id))
       
       if (bookingIds.size === 0) {
         setBookings([])
