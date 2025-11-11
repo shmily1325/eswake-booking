@@ -10,7 +10,9 @@ export const ENABLE_PERMISSION_CHECK = false
 // 管理員 email 列表
 export const ADMIN_EMAILS = [
   'minlin1325@gmail.com',
-  'eswake.official@gmail.com'
+  'callumbao1122@gmail.com',
+  // 'pjpan0511@gmail.com',
+  'eswakeschool@gmail.com',
 ]
 
 /**

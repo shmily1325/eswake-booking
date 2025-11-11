@@ -4,7 +4,7 @@ import { UserMenu } from '../components/UserMenu'
 import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
-import { isAdmin } from '../utils/auth'
+import { isAdmin, ENABLE_PERMISSION_CHECK } from '../utils/auth'
 
 interface HomePageProps {
   user: User
@@ -114,7 +114,7 @@ export function HomePage({ user }: HomePageProps) {
           marginBottom: '30px'
         }}>
           {menuItems
-            .filter(item => !item.isAdmin || userIsAdmin)
+            .filter(item => !item.isAdmin || !ENABLE_PERMISSION_CHECK || userIsAdmin)
             .map((item, index) => (
             <Link
               key={index}
