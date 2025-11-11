@@ -763,7 +763,7 @@ export function DayView({ user }: DayViewProps) {
                 borderRadius: '8px',
                 border: '1px solid #fde68a',
               }}>
-                <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '4px' }}>船隻</div>
+                <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '4px' }}>船</div>
                 <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#78350f', lineHeight: '1.6' }}>
                   {topBoats.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')}
                 </div>
