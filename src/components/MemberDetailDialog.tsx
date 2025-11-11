@@ -432,6 +432,10 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         💳 記帳
                       </button> */}
                     </div>
+
+                    {isMobile && (
+                      <div style={{ height: '16px' }} />
+                    )}
                   </>
                 ) : (
                   // 交易記錄標籤
