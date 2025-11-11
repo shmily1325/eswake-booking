@@ -1209,15 +1209,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 })}
               </tbody>
             </table>
-            <div style={{
-              padding: designSystem.spacing.md,
-              background: '#f8f9fa',
-              borderTop: '1px solid #e0e0e0',
-              fontSize: '13px',
-              color: '#666'
-            }}>
-              💡 列表可直接快速排班，點「✏️」完整編輯。
-            </div>
           </div>
         )}
 
@@ -1831,16 +1822,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               })}
                               </div>
               </div>
-              
-              <div style={{
-                padding: designSystem.spacing.md,
-                background: '#f8f9fa',
-                borderTop: '1px solid #e0e0e0',
-                fontSize: isMobile ? '12px' : '13px',
-                color: '#666'
-              }}>
-                💡 {isMobile && '可左右滑動。'}點擊卡片快速排班，點「✏️」完整編輯{!isMobile && '。'}。
-              </div>
             </div>
           )
         })()}
@@ -2302,7 +2283,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                     
                                     {/* 衝突警告 */}
                                     {hasConflict && (
-                                      <div style={{
+              <div style={{
                                         padding: '4px',
                                         background: '#ffebee',
                                         border: '1px solid #f44336',
@@ -2486,16 +2467,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     )
                   })}
                 </div>
-              </div>
-              
-              <div style={{
-                padding: designSystem.spacing.md,
-                background: '#f8f9fa',
-                borderTop: '1px solid #e0e0e0',
-                fontSize: isMobile ? '12px' : '13px',
-                color: '#666'
-              }}>
-                💡 {isMobile && '可左右滑動。'}點擊卡片快速排班，點「✏️」完整編輯{!isMobile && '。多教練預約會重複顯示'}。
               </div>
             </div>
           )
