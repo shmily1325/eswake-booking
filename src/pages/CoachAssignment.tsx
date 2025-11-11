@@ -942,7 +942,31 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
                         {booking.duration_min}分
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0' }}>
+                      <td 
+                        style={{ 
+                          padding: '10px 12px', 
+                          textAlign: 'center', 
+                          borderRight: '1px solid #e0e0e0',
+                          cursor: 'pointer'
+                        }}
+                        onClick={async () => {
+                          const newValue = !booking.requires_driver
+                          const { error } = await supabase
+                            .from('bookings')
+                            .update({ requires_driver: newValue })
+                            .eq('id', booking.id)
+                          
+                          if (error) {
+                            console.error('更新失敗:', error)
+                            setError('更新失敗')
+                          } else {
+                            // 更新本地狀態
+                            setBookings(bookings.map(b => 
+                              b.id === booking.id ? { ...b, requires_driver: newValue } : b
+                            ))
+                          }
+                        }}
+                      >
                         {booking.requires_driver ? (
                           <span style={{
                             display: 'inline-block',
@@ -2531,19 +2555,37 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       <span style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary }}>
                         {booking.duration_min} 分鐘
                       </span>
-                      {booking.requires_driver && (
-                        <span style={{
+                      <span 
+                        style={{
                           padding: '6px 12px',
-                          background: '#e3f2fd',
-                          color: '#1976d2',
+                          background: booking.requires_driver ? '#e3f2fd' : '#f5f5f5',
+                          color: booking.requires_driver ? '#1976d2' : '#999',
                           borderRadius: '6px',
                           fontWeight: '600',
                           fontSize: '12px',
-                          border: '2px solid #1976d2',
-                        }}>
-                          🚤 需要駕駛
-                        </span>
-                      )}
+                          border: booking.requires_driver ? '2px solid #1976d2' : '2px solid #ddd',
+                          cursor: 'pointer'
+                        }}
+                        onClick={async () => {
+                          const newValue = !booking.requires_driver
+                          const { error } = await supabase
+                            .from('bookings')
+                            .update({ requires_driver: newValue })
+                            .eq('id', booking.id)
+                          
+                          if (error) {
+                            console.error('更新失敗:', error)
+                            setError('更新失敗')
+                          } else {
+                            // 更新本地狀態
+                            setBookings(bookings.map(b => 
+                              b.id === booking.id ? { ...b, requires_driver: newValue } : b
+                            ))
+                          }
+                        }}
+                      >
+                        {booking.requires_driver ? '🚤 需要駕駛' : '不需駕駛'}
+                      </span>
                     </div>
                   </div>
 

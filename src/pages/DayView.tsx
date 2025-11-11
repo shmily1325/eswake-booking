@@ -263,9 +263,9 @@ export function DayView({ user }: DayViewProps) {
       setSelectedBooking(booking)
       setEditDialogOpen(true)
     } else {
-      const localDateTimeStr = `${dateParam}T${timeSlot}:00`
-      setSelectedBoatId(boatId)
-      setSelectedTime(localDateTimeStr)
+      // 不預設船隻和時間，讓用戶自己填
+      setSelectedBoatId(0)
+      setSelectedTime('')
       setDialogOpen(true)
     }
   }
@@ -480,7 +480,7 @@ export function DayView({ user }: DayViewProps) {
         </button>
         <button
           onClick={goToToday}
-          style={getButtonStyle('info', 'medium', isMobile)}
+          style={getButtonStyle('secondary', 'medium', isMobile)}
         >
           今天
         </button>
@@ -488,7 +488,7 @@ export function DayView({ user }: DayViewProps) {
         <Link
           to={`/coach-assignment?date=${dateParam}`}
           style={{
-            ...getButtonStyle('info', 'medium', isMobile),
+            ...getButtonStyle('secondary', 'medium', isMobile),
             textDecoration: 'none',
           }}
         >
@@ -615,28 +615,8 @@ export function DayView({ user }: DayViewProps) {
           }}>
             <button
               onClick={() => {
-                if (boats.length > 0) {
-                  setSelectedBoatId(boats[0].id)
-                }
-                
-                let defaultTime: Date
-                const today = getLocalDateString()
-                
-                if (dateParam === today) {
-                  const now = new Date()
-                  const minutes = now.getMinutes()
-                  const roundedMinutes = Math.ceil(minutes / 15) * 15
-                  defaultTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), roundedMinutes, 0)
-                  if (roundedMinutes >= 60) {
-                    defaultTime.setHours(defaultTime.getHours() + 1)
-                    defaultTime.setMinutes(0)
-                  }
-                } else {
-                  const [year, month, day] = dateParam.split('-').map(Number)
-                  defaultTime = new Date(year, month - 1, day, 5, 0, 0)
-                }
-                
-                setSelectedTime(getLocalDateTimeString(defaultTime))
+                setSelectedBoatId(0)
+                setSelectedTime('')
                 setDialogOpen(true)
               }}
               style={{
