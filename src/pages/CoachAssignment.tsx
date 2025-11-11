@@ -178,6 +178,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         }
       })
 
+      console.log('載入的預約資料:', bookingsWithCoaches)
       setBookings(bookingsWithCoaches)
       
       // 初始化 assignments 為當前的配置
@@ -191,6 +192,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           requiresDriver: booking.requires_driver
         }
       })
+      console.log('初始化的 assignments:', initialAssignments)
       setAssignments(initialAssignments)
 
     } catch (err: any) {
@@ -655,8 +657,16 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
   // 格式化時間範圍（顯示開始和結束時間）
   const formatTimeRange = (startAt: string, durationMin: number) => {
+    if (!startAt) {
+      console.error('formatTimeRange: startAt is empty')
+      return 'NaN:NaN - NaN:NaN'
+    }
     const startTime = formatTime(startAt)
     const startDate = new Date(startAt)
+    if (isNaN(startDate.getTime())) {
+      console.error('formatTimeRange: invalid date', startAt)
+      return 'NaN:NaN - NaN:NaN'
+    }
     const endDate = new Date(startDate.getTime() + durationMin * 60000)
     const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
     return `${startTime} - ${endTime}`
