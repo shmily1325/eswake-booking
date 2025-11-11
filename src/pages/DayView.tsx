@@ -1126,25 +1126,25 @@ export function DayView({ user }: DayViewProps) {
                           rowSpan={slots}
                           onClick={() => handleCellClick(boat.id, timeSlot, booking)}
                           style={{
-                            padding: isMobile ? '6px 4px' : '12px',
+                            padding: isMobile ? '8px 6px' : '12px',
                             borderBottom: '1px solid #e9ecef',
                             borderRight: '1px solid #e9ecef',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: 'white',
+                            background: 'white',
+                            borderLeft: `4px solid ${boat.color || '#ccc'}`,
                             cursor: 'pointer',
                             verticalAlign: 'top',
                             position: 'relative',
                             borderRadius: isMobile ? '6px' : '8px',
-                            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                             transition: 'all 0.2s',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.02)'
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
+                            e.currentTarget.style.transform = 'translateY(-2px)'
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)'
-                            e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)'
+                            e.currentTarget.style.transform = 'translateY(0)'
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'
                           }}
                         >
                           {/* 預約人 + 活動類型 + 排班備註（第一行） */}
@@ -1160,18 +1160,17 @@ export function DayView({ user }: DayViewProps) {
                             gap: '4px',
                             flexWrap: 'wrap',
                           }}>
-                            <span style={{ textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>{booking.contact_name}</span>
+                            <span style={{ color: '#1a1a1a' }}>{booking.contact_name}</span>
                             {booking.activity_types && booking.activity_types.map(type => (
                               <span
                                 key={type}
                                 style={{
                                   padding: '2px 6px',
-                                  backgroundColor: 'rgba(255,255,255,0.25)',
-                                  color: 'white',
+                                  backgroundColor: '#e3f2fd',
+                                  color: '#1565c0',
                                   borderRadius: '6px',
                                   fontSize: isMobile ? '10px' : '11px',
                                   fontWeight: '600',
-                                  border: '1px solid rgba(255,255,255,0.3)',
                                 }}
                               >
                                 {type}
@@ -1181,12 +1180,12 @@ export function DayView({ user }: DayViewProps) {
                               <span
                                 style={{
                                   padding: '2px 6px',
-                                  backgroundColor: 'rgba(255,255,255,0.25)',
-                                  color: 'white',
+                                  backgroundColor: '#e3f2fd',
+                                  color: '#1976d2',
                                   borderRadius: '6px',
                                   fontSize: isMobile ? '10px' : '11px',
                                   fontWeight: '600',
-                                  border: '1px solid rgba(255,255,255,0.3)',
+                                  border: '1px solid #1976d2',
                                 }}
                               >
                                 🚤
@@ -1209,7 +1208,7 @@ export function DayView({ user }: DayViewProps) {
                           {/* 時長 */}
                           <div style={{
                             fontSize: isMobile ? '10px' : '12px',
-                            opacity: 0.85,
+                            color: '#666',
                             marginBottom: '4px',
                             textAlign: 'center',
                           }}>
@@ -1219,7 +1218,7 @@ export function DayView({ user }: DayViewProps) {
                           {/* 教練和駕駛 */}
                           <div style={{
                             fontSize: isMobile ? '10px' : '12px',
-                            opacity: 0.9,
+                            color: '#555',
                             textAlign: 'center',
                             lineHeight: '1.4',
                             display: 'flex',

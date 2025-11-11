@@ -2514,11 +2514,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     e.currentTarget.style.transform = 'scale(1)'
                   }}
                 >
-                  {/* 標題行：時間 - 時間 | 客人名稱 */}
+                  {/* 標題行：時間 | 客人名稱 */}
                   <div style={{ 
-                    fontSize: '17px', 
+                    fontSize: '16px', 
                     fontWeight: '700', 
-                    marginBottom: '8px',
+                    marginBottom: '6px',
                     color: '#1a1a1a',
                     display: 'flex',
                     alignItems: 'baseline',
@@ -2526,60 +2526,61 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     flexWrap: 'wrap'
                   }}>
                     <span>{formatTimeRange(booking.start_at, booking.duration_min)}</span>
-                    <span style={{ color: '#ccc', fontWeight: '400', fontSize: '14px' }}>|</span>
+                    <span style={{ color: '#ddd', fontWeight: '400', fontSize: '16px' }}>|</span>
                     <span>{booking.contact_name}</span>
-                    </div>
+                  </div>
 
                   {/* 第二行：接船時間 */}
                   {!isFacility(booking.boats?.name) && (
-                    <div style={{ fontSize: '13px', color: '#999', marginBottom: '12px' }}>
-                      (接船至 {(() => {
+                    <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
+                      接船至 {(() => {
                         const endTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
                         return `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
-                      })()})
+                      })()}
                     </div>
                   )}
 
                   {/* 標籤行：船隻、時長、需要駕駛 */}
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
-                      <span style={{
-                      padding: '6px 12px',
-                        background: booking.boats?.color || '#ccc',
-                        color: 'white',
-                        borderRadius: '6px',
-                        fontWeight: '600',
-                      fontSize: '14px'
-                      }}>
-                        {booking.boats?.name || '?'}
-                      </span>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '14px' }}>
+                    <span style={{
+                      padding: '4px 10px',
+                      background: booking.boats?.color || '#ccc',
+                      color: 'white',
+                      borderRadius: '4px',
+                      fontWeight: '600',
+                      fontSize: '13px'
+                    }}>
+                      {booking.boats?.name || '?'}
+                    </span>
                     <span style={{ 
-                      padding: '6px 12px',
+                      padding: '4px 10px',
                       background: '#f5f5f5',
                       color: '#666',
-                      borderRadius: '6px',
-                      fontSize: '14px',
+                      borderRadius: '4px',
+                      fontSize: '13px',
                       fontWeight: '500'
                     }}>
-                      {booking.duration_min} 分
-                      </span>
+                      {booking.duration_min}分
+                    </span>
                     {!isFacility(booking.boats?.name) && (
-                        <span style={{
-                          padding: '6px 12px',
-                        background: '#fff3e0',
-                        color: '#e65100',
-                          borderRadius: '6px',
-                          fontWeight: '600',
-                        fontSize: '13px'
-                        }}>
-                          🚤 需要駕駛
-                        </span>
-                      )}
+                      <span style={{
+                        padding: '4px 10px',
+                        background: '#e3f2fd',
+                        color: '#1976d2',
+                        borderRadius: '4px',
+                        fontWeight: '600',
+                        fontSize: '13px',
+                        border: '1px solid #1976d2'
+                      }}>
+                        🚤
+                      </span>
+                    )}
                   </div>
 
                   {/* 教練 */}
-                  <div style={{ marginBottom: designSystem.spacing.md }}>
-                    <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
-                      🎓 教練 *
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '6px', display: 'block', color: '#666' }}>
+                      教練 *
                     </label>
                     
                     {/* 已選擇的教練標籤 */}
@@ -2587,21 +2588,21 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       <div style={{ 
                         display: 'flex', 
                         flexWrap: 'wrap', 
-                        gap: '8px',
-                        marginBottom: '10px'
+                        gap: '6px',
+                        marginBottom: '8px'
                       }}>
                         {assignment.coachIds.map(coachId => {
                           const coach = coaches.find(c => c.id === coachId)
                           return coach ? (
                             <span key={coachId} style={{
-                              padding: '8px 14px',
+                              padding: '6px 12px',
                               background: '#2196F3',
                               color: 'white',
-                              borderRadius: '16px',
-                              fontSize: '15px',
+                              borderRadius: '6px',
+                              fontSize: '14px',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '8px',
+                              gap: '6px',
                               fontWeight: '600'
                             }}>
                               {coach.name}
@@ -2612,8 +2613,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                   border: 'none',
                                   color: 'white',
                                   cursor: 'pointer',
-                                  padding: '0 4px',
-                                  fontSize: '22px',
+                                  padding: '0 2px',
+                                  fontSize: '18px',
                                   lineHeight: '1'
                                 }}
                               >×</button>
@@ -2634,18 +2635,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       }}
                       style={{
                         width: '100%',
-                        padding: '12px',
-                        fontSize: '15px',
-                        border: hasNoCoach ? '2px solid #d32f2f' : '2px solid #ddd',
-                        borderRadius: '8px',
+                        padding: '10px',
+                        fontSize: '14px',
+                        border: hasNoCoach ? '2px solid #d32f2f' : '1px solid #ddd',
+                        borderRadius: '6px',
                         background: 'white',
                         cursor: 'pointer',
+                        color: '#666',
                         WebkitAppearance: 'none',
                         appearance: 'none'
                       }}
                     >
                       <option value="">
-                        {assignment.coachIds.length === 0 ? '⚠️ 請選擇教練...' : '➕ 新增教練...'}
+                        {assignment.coachIds.length === 0 ? '⚠️ 請選擇教練' : '➕ 新增教練'}
                       </option>
                       {coaches
                         .filter(coach => !assignment.coachIds.includes(coach.id))
@@ -2657,10 +2659,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     </select>
                   </div>
 
-                  {/* 指定駕駛 */}
-                  <div style={{ marginBottom: designSystem.spacing.md }}>
-                    <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
-                      🚤 駕駛
+                  {/* 駕駛 */}
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '6px', display: 'block', color: '#666' }}>
+                      駕駛
                     </label>
                     
                     {/* 已選擇的駕駛標籤 */}
@@ -2668,21 +2670,21 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       <div style={{ 
                         display: 'flex', 
                         flexWrap: 'wrap', 
-                        gap: '8px',
-                        marginBottom: '10px'
+                        gap: '6px',
+                        marginBottom: '8px'
                       }}>
                         {assignment.driverIds.map((driverId: string) => {
                           const driver = coaches.find(c => c.id === driverId)
                           return driver ? (
                             <span key={driverId} style={{
-                              padding: '8px 14px',
+                              padding: '6px 12px',
                               background: '#4caf50',
                               color: 'white',
-                              borderRadius: '16px',
-                              fontSize: '15px',
+                              borderRadius: '6px',
+                              fontSize: '14px',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '8px',
+                              gap: '6px',
                               fontWeight: '600'
                             }}>
                               {driver.name}
@@ -2693,8 +2695,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                   border: 'none',
                                   color: 'white',
                                   cursor: 'pointer',
-                                  padding: '0 4px',
-                                  fontSize: '22px',
+                                  padding: '0 2px',
+                                  fontSize: '18px',
                                   lineHeight: '1'
                                 }}
                               >×</button>
@@ -2715,18 +2717,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       }}
                       style={{
                         width: '100%',
-                        padding: '12px',
-                        fontSize: '15px',
-                        border: '2px solid #ddd',
-                        borderRadius: '8px',
+                        padding: '10px',
+                        fontSize: '14px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
                         background: 'white',
                         cursor: 'pointer',
+                        color: '#666',
                         WebkitAppearance: 'none',
                         appearance: 'none'
                       }}
                     >
                       <option value="">
-                        {assignment.driverIds?.length === 0 ? '未指定駕駛' : '➕ 新增駕駛...'}
+                        {assignment.driverIds?.length === 0 ? '未指定駕駛' : '➕ 新增駕駛'}
                       </option>
                       {coaches
                         .filter(coach => !assignment.driverIds?.includes(coach.id))
@@ -2739,8 +2742,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   </div>
 
                   {/* 排班註解 */}
-                  <div style={{ marginBottom: designSystem.spacing.md }}>
-                    <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '6px', display: 'block', color: '#666' }}>
                       排班註解
                     </label>
                     <input
@@ -2750,36 +2753,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       placeholder="排班備註..."
                       style={{
                         width: '100%',
-                        padding: '12px',
-                        border: '2px solid #ddd',
-                        borderRadius: '8px',
-                        fontSize: '15px'
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        color: '#666'
                       }}
                     />
                   </div>
-
-                  {/* 完整編輯按鈕 */}
-                  <button
-                    onClick={() => setFullEditBookingId(booking.id)}
-                    style={{
-                      width: '100%',
-                      padding: '14px',
-                      background: '#2196F3',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    ✏️
-                  </button>
                 </div>
               )
             })}
