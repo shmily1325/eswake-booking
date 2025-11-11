@@ -587,16 +587,62 @@ export function CoachReport({ user }: CoachReportProps) {
             <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block' }}>
               選擇教練（請選擇您自己）
             </label>
-            <select
-              value={selectedCoachId}
-              onChange={(e) => setSelectedCoachId(e.target.value)}
-              style={getInputStyle(isMobile)}
-            >
-              <option value="all">請選擇教練...</option>
+            <div style={{ 
+              display: 'flex', 
+              gap: '8px', 
+              flexWrap: 'wrap',
+              maxHeight: isMobile ? '200px' : '150px',
+              overflowY: 'auto',
+              padding: '8px',
+              background: '#f9f9f9',
+              borderRadius: '8px',
+              border: '1px solid #ddd'
+            }}>
               {coaches.map(coach => (
-                <option key={coach.id} value={coach.id}>{coach.name}</option>
+                <button
+                  key={coach.id}
+                  onClick={() => setSelectedCoachId(coach.id)}
+                  style={{
+                    padding: '10px 16px',
+                    border: selectedCoachId === coach.id ? '2px solid #2196f3' : '1px solid #ddd',
+                    borderRadius: '8px',
+                    background: selectedCoachId === coach.id ? '#e3f2fd' : 'white',
+                    color: selectedCoachId === coach.id ? '#1976d2' : '#333',
+                    fontWeight: selectedCoachId === coach.id ? '600' : '400',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto',
+                    minWidth: isMobile ? '0' : '80px'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedCoachId !== coach.id) {
+                      e.currentTarget.style.background = '#f5f5f5'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedCoachId !== coach.id) {
+                      e.currentTarget.style.background = 'white'
+                    }
+                  }}
+                >
+                  {coach.name}
+                </button>
               ))}
-            </select>
+            </div>
+            {selectedCoachId === 'all' && (
+              <div style={{
+                marginTop: '8px',
+                padding: '8px 12px',
+                background: '#fff3e0',
+                border: '1px solid #ffb74d',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: '#e65100'
+              }}>
+                ⚠️ 請先選擇您的教練身份才能進行回報
+              </div>
+            )}
           </div>
         </div>
 
@@ -630,16 +676,19 @@ export function CoachReport({ user }: CoachReportProps) {
               
               const hasDriverReport = !!booking.coach_report
               
+              const canReport = selectedCoachId !== 'all'
+              
               return (
                 <div
                   key={booking.id}
                   style={{
                     ...getCardStyle(isMobile),
                     borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`,
-                    cursor: 'pointer',
+                    cursor: canReport ? 'pointer' : 'not-allowed',
+                    opacity: canReport ? 1 : 0.6,
                     transition: 'all 0.2s'
                   }}
-                  onClick={() => startReport(booking)}
+                  onClick={() => canReport && startReport(booking)}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     <div>
