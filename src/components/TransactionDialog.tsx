@@ -309,6 +309,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
               <span style={{ color: '#999', fontSize: '13px', marginLeft: '5px' }}>分鐘 (G21船券)</span>
             </div>
           </div>
+
+          {isMobile && (
+            <div style={{ height: '80px' }} />
+          )}
         </div>
 
         {/* 表單 */}

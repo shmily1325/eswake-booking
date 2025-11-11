@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
+import { useResponsive } from '../hooks/useResponsive'
 
 interface Coach {
   id: string
@@ -52,6 +53,7 @@ export function EditBookingDialog({
   booking,
   user,
 }: EditBookingDialogProps) {
+  const { isMobile } = useResponsive()
   const [boats, setBoats] = useState<Boat[]>([])
   const [selectedBoatId, setSelectedBoatId] = useState<number>(0)
   const [coaches, setCoaches] = useState<Coach[]>([])
@@ -1452,6 +1454,9 @@ export function EditBookingDialog({
             </button>
           </div>
         </form>
+        {isMobile && (
+          <div style={{ height: '80px' }} />
+        )}
       </div>
     </div>
   )

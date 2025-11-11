@@ -7,6 +7,7 @@ import {
   EARLY_BOOKING_HOUR_LIMIT,
   MEMBER_SEARCH_DEBOUNCE_MS 
 } from '../constants/booking'
+import { useResponsive } from '../hooks/useResponsive'
 
 interface Coach {
   id: string
@@ -44,6 +45,7 @@ export function NewBookingDialog({
   user,
 }: NewBookingDialogProps) {
   
+  const { isMobile } = useResponsive()
   const [boats, setBoats] = useState<Boat[]>([])
   const [selectedBoatId, setSelectedBoatId] = useState(defaultBoatId)
   const [coaches, setCoaches] = useState<Coach[]>([])
@@ -1553,6 +1555,9 @@ export function NewBookingDialog({
             </button>
           </div>
         </form>
+        {isMobile && (
+          <div style={{ height: '80px' }} />
+        )}
       </div>
     </div>
   )

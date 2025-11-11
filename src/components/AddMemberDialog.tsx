@@ -433,6 +433,10 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 onBlur={handleBlur}
               />
             </div>
+
+            {isMobile && (
+              <div style={{ height: '80px' }} />
+            )}
           </div>
 
           {/* 底部按鈕 */}

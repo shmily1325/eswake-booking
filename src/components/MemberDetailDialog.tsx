@@ -434,7 +434,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                     </div>
 
                     {isMobile && (
-                      <div style={{ height: '160px' }} />
+                      <div style={{ height: '80px' }} />
                     )}
                   </>
                 ) : (
@@ -450,6 +450,9 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                           <TransactionCard key={transaction.id} transaction={transaction} />
                         ))}
                       </div>
+                    )}
+                    {isMobile && (
+                      <div style={{ height: '80px' }} />
                     )}
                   </div>
                 )}

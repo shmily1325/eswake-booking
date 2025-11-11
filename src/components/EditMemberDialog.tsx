@@ -270,6 +270,10 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                 onBlur={handleBlur}
               />
             </div>
+
+            {isMobile && (
+              <div style={{ height: '80px' }} />
+            )}
           </div>
 
           {/* 底部按鈕 */}
