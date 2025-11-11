@@ -69,6 +69,13 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     setLoading(true)
 
     try {
+      const trimmedPhone = formData.phone.trim()
+      if (trimmedPhone && !/^09\d{8}$/.test(trimmedPhone)) {
+        alert('電話需為 09 開頭的 10 位數字')
+        setLoading(false)
+        return
+      }
+
       const { error } = await supabase
         .from('members')
         .update({

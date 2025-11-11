@@ -66,6 +66,12 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
       return
     }
 
+    const trimmedPhone = formData.phone.trim()
+    if (trimmedPhone && !/^09\d{8}$/.test(trimmedPhone)) {
+      alert('電話需為 09 開頭的 10 位數字')
+      return
+    }
+
     setLoading(true)
     try {
       // 1. 新增會員
