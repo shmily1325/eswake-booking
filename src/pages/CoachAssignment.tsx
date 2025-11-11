@@ -2016,9 +2016,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               {/* 滾動容器（包含表頭和內容） */}
               <div style={{
                 position: 'relative',
-                overflow: 'auto',
+                overflowX: 'auto',
+                overflowY: 'auto',
                 maxHeight: isMobile ? '60vh' : '70vh',
-                overflowX: 'auto' // 確保水平滾動
+                width: '100%'
               }}>
                 {/* 固定的表頭 */}
                 <div style={{
