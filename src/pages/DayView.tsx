@@ -480,7 +480,10 @@ export function DayView({ user }: DayViewProps) {
         </button>
         <button
           onClick={goToToday}
-          style={getButtonStyle('secondary', 'medium', isMobile)}
+          style={{
+            ...getButtonStyle('secondary', 'medium', isMobile),
+            minWidth: isMobile ? 'auto' : '90px'
+          }}
         >
           今天
         </button>
@@ -490,6 +493,7 @@ export function DayView({ user }: DayViewProps) {
           style={{
             ...getButtonStyle('secondary', 'medium', isMobile),
             textDecoration: 'none',
+            minWidth: isMobile ? 'auto' : '110px'
           }}
         >
           📅 排班管理
