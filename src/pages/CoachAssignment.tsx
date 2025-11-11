@@ -1674,18 +1674,22 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   ))}
                 </div>
 
-                {/* 背景網格線（每小時一條深色線） */}
-                {timeLabels.map((timeLabel) => (
-                  <div
-                    key={`grid-${timeLabel.hour}`}
-                    style={{
-                      gridColumn: `2 / ${boats.length + 2}`,
-                      gridRow: `${timeLabel.slotIndex + 1}`,
-                      borderTop: timeLabel.hour === START_HOUR ? 'none' : '2px solid #e8e8e8',
-                      pointerEvents: 'none'
-                    }}
-                  />
-                ))}
+                {/* 背景網格線 */}
+                {Array.from({ length: TOTAL_SLOTS }).map((_, index) => 
+                  boats.map((boat, boatIndex) => (
+                    <div
+                      key={`grid-${boat!.id}-${index}`}
+                      style={{
+                        gridColumn: `${boatIndex + 2}`,
+                        gridRow: `${index + 1}`,
+                        borderTop: index % 4 === 0 ? '2px solid #e8e8e8' : '1px solid #f5f5f5',
+                        borderRight: boatIndex < boats.length - 1 ? '1px solid #f0f0f0' : 'none',
+                        background: 'transparent',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                  ))
+                )}
 
                 {/* 船隻欄位 - 預約卡片 */}
                 {boats.map((boat, boatIndex) => {
@@ -1801,15 +1805,20 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                       {formatTimeRange(booking.start_at, booking.duration_min)}
                                     </div>
                             <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>
-                              ({booking.duration_min}分
-                              {!isFacility(booking.boats?.name) && (
-                                <>
-                                  ，接船至 {(() => {
-                                          const endTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
-                                          return `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
-                                  })()}
-                                </>
-                              )})
+                              ({(() => {
+                                const isFacilityBooking = isFacility(booking.boats?.name)
+                                
+                                // 彈簧床不需要整理船時間，只顯示預約時長
+                                if (isFacilityBooking) {
+                                  return `${booking.duration_min}分`
+                                }
+                                
+                                // 其他船隻都需要 15 分鐘整理船時間
+                                const totalDuration = booking.duration_min + 15
+                                const endTime = new Date(new Date(booking.start_at).getTime() + totalDuration * 60000)
+                                const pickupTime = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
+                                return `${totalDuration}分，接船至 ${pickupTime}`
+                              })()})
                                       </div>
                             {/* 客人名稱 */}
                             <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '6px', color: '#1a1a1a' }}>
@@ -2450,15 +2459,20 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                   {formatTimeRange(booking.start_at, booking.duration_min)}
                                 </div>
                                 <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>
-                                  ({booking.duration_min}分
-                                  {!isFacility(booking.boats?.name) && (
-                                    <>
-                                      ，接船至 {(() => {
-                                        const endTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
-                                        return `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
-                                      })()}
-                                    </>
-                                  )})
+                                  ({(() => {
+                                    const isFacilityBooking = isFacility(booking.boats?.name)
+                                    
+                                    // 彈簧床不需要整理船時間，只顯示預約時長
+                                    if (isFacilityBooking) {
+                                      return `${booking.duration_min}分`
+                                    }
+                                    
+                                    // 其他船隻都需要 15 分鐘整理船時間
+                                    const totalDuration = booking.duration_min + 15
+                                    const endTime = new Date(new Date(booking.start_at).getTime() + totalDuration * 60000)
+                                    const pickupTime = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
+                                    return `${totalDuration}分，接船至 ${pickupTime}`
+                                  })()})
                                 </div>
 
                                 {/* 客人名稱 */}
