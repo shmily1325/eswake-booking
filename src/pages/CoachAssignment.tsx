@@ -56,7 +56,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
-  const [viewMode, setViewMode] = useState<'list' | 'boat-timeline'>('boat-timeline') // 視圖模式
+  const [viewMode, setViewMode] = useState<'list' | 'boat-timeline' | 'coach-timeline'>('boat-timeline') // 視圖模式
+  const [selectedCoaches, setSelectedCoaches] = useState<string[]>([]) // 教練篩選（空陣列 = 全選）
   const [editingBookingId, setEditingBookingId] = useState<number | null>(null) // 正在快速編輯的預約
   const [fullEditBookingId, setFullEditBookingId] = useState<number | null>(null) // 正在完整編輯的預約
   
@@ -186,7 +187,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     }
   }
 
-  const updateAssignment = (bookingId: number, field: 'coachIds' | 'driverIds' | 'notes', value: any) => {
+  const updateAssignment = (bookingId: number, field: 'coachIds' | 'driverIds' | 'notes' | 'requiresDriver', value: any) => {
     // 清除錯誤訊息（當用戶修改配置時）
     if (error) {
       setError('')
@@ -738,6 +739,25 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               </button>
               <button
                 type="button"
+                onClick={() => setViewMode('coach-timeline')}
+                style={{
+                  flex: isMobile ? 1 : 'none',
+                  padding: isMobile ? '12px 16px' : '8px 16px',
+                  background: viewMode === 'coach-timeline' ? 'white' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: viewMode === 'coach-timeline' ? '600' : '400',
+                  fontSize: isMobile ? '15px' : '14px',
+                  color: viewMode === 'coach-timeline' ? '#1976d2' : '#666',
+                  transition: 'all 0.2s',
+                  boxShadow: viewMode === 'coach-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                }}
+              >
+                🎓 教練
+              </button>
+              <button
+                type="button"
                 onClick={() => setViewMode('list')}
                 style={{
                   flex: isMobile ? 1 : 'none',
@@ -1218,7 +1238,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  ⏰ 時間
+                  時間
                 </div>
                 {boats.map(boat => (
                   <div key={boat!.id} style={{
@@ -1266,7 +1286,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   position: 'relative',
                   background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)'
                 }}>
-                  {timeLabels.map((timeLabel, index) => (
+                  {timeLabels.map((timeLabel) => (
                     <div
                       key={timeLabel.hour}
                       style={{
@@ -1278,9 +1298,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         textAlign: 'center',
                         color: '#2c3e50',
                         fontSize: '13px',
-                        lineHeight: '1',
-                        background: index % 2 === 0 ? 'rgba(0, 0, 0, 0.03)' : 'transparent',
-                        borderRadius: '4px'
+                        lineHeight: '1'
                       }}
                     >
                       {timeLabel.label}
@@ -1289,14 +1307,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 </div>
 
                 {/* 背景網格線（每小時一條深色線） */}
-                {timeLabels.map((timeLabel, index) => (
+                {timeLabels.map((timeLabel) => (
                   <div
                     key={`grid-${timeLabel.hour}`}
                     style={{
                       gridColumn: `2 / ${boats.length + 2}`,
                       gridRow: `${timeLabel.slotIndex + 1}`,
                       borderTop: timeLabel.hour === START_HOUR ? 'none' : '2px solid #e8e8e8',
-                      background: index % 2 === 0 ? 'rgba(0, 0, 0, 0.015)' : 'transparent',
                       pointerEvents: 'none'
                     }}
                   />
@@ -1376,8 +1393,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             style={{
                               gridColumn: `${boatIndex + 2}`,
                               gridRow: `${gridPos.gridRowStart} / ${gridPos.gridRowEnd}`,
-                              padding: '10px',
-                              margin: '6px',
+                              padding: '8px',
+                              margin: '8px 12px',
                               background: currentStatus.bg,
                               border: `2px solid ${currentStatus.border}`,
                               borderLeft: `5px solid ${currentStatus.border}`,
@@ -1753,6 +1770,640 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 color: '#666'
               }}>
                 💡 <strong>提示：</strong>{isMobile && '可左右滑動查看。'}點擊預約卡片直接排班，點「✏️ 編輯」修改預約詳情。卡片高度依預約時長比例顯示。
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* 教練時間軸視圖 - CSS Grid 按比例顯示 */}
+        {!loading && bookings.length > 0 && viewMode === 'coach-timeline' && (() => {
+          // 時間軸配置：與船隻時間軸相同
+          const START_HOUR = 4
+          const END_HOUR = 20
+          const SLOT_MINUTES = 15
+          const SLOT_HEIGHT = 70
+          const TOTAL_SLOTS = ((END_HOUR - START_HOUR) * 60) / SLOT_MINUTES // 64 slots
+
+          // 計算預約在 Grid 中的位置
+          const calculateGridPosition = (startAt: string, durationMin: number, boatName?: string) => {
+            const startTime = new Date(startAt)
+            const startHour = startTime.getHours()
+            const startMinute = startTime.getMinutes()
+            const minutesFromStart = (startHour - START_HOUR) * 60 + startMinute
+            const gridRowStart = Math.floor(minutesFromStart / SLOT_MINUTES) + 1
+            const cleanupTime = isFacility(boatName) ? 0 : 15
+            const totalDuration = durationMin + cleanupTime
+            const gridRowEnd = gridRowStart + Math.ceil(totalDuration / SLOT_MINUTES)
+            return { gridRowStart, gridRowEnd, span: gridRowEnd - gridRowStart }
+          }
+
+          // 獲取所有教練列表（加上「未指定」）
+          const allCoaches = [...coaches]
+          const unassignedCoach: Coach = { id: 'unassigned', name: '未指定' }
+
+          // 篩選教練（如果有選擇的話）
+          const displayedCoaches = selectedCoaches.length > 0
+            ? allCoaches.filter(c => selectedCoaches.includes(c.name))
+            : allCoaches
+          
+          // 總是顯示「未指定」列
+          const coachColumns = [...displayedCoaches, unassignedCoach]
+
+          // 按教練分組預約（一個預約可能出現在多個教練列）
+          const bookingsByCoach: Record<string, typeof bookings> = {}
+          
+          // 初始化所有教練的預約列表
+          coachColumns.forEach(coach => {
+            bookingsByCoach[coach.id] = []
+          })
+
+          // 分配預約到教練列
+          bookings.forEach((booking: any) => {
+            const assignment = assignments[booking.id]
+            const assignedCoaches = assignment?.coachIds || []
+            
+            if (assignedCoaches.length === 0) {
+              // 未指定教練
+              bookingsByCoach['unassigned'].push(booking)
+            } else {
+              // 有指定教練，在每個教練列都顯示
+              assignedCoaches.forEach((coachId: string) => {
+                // 檢查這個教練是否在顯示列表中
+                const coachExists = coachColumns.some(c => c.id === coachId)
+                if (coachExists && bookingsByCoach[coachId]) {
+                  bookingsByCoach[coachId].push(booking)
+                }
+              })
+            }
+          })
+
+          // 生成時間標籤
+          const timeLabels = []
+          for (let h = START_HOUR; h < END_HOUR; h++) {
+            if (h === 4) continue // 不顯示 4:00
+            const slotIndex = (h - START_HOUR) * (60 / SLOT_MINUTES)
+            timeLabels.push({
+              hour: h,
+              label: `${h.toString().padStart(2, '0')}:00`,
+              slotIndex
+            })
+          }
+
+          return (
+            <div style={{ 
+              background: 'white', 
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }}>
+              {/* 教練篩選器 */}
+              <div style={{
+                padding: designSystem.spacing.md,
+                borderBottom: '2px solid #e0e0e0',
+                background: '#fafafa'
+              }}>
+                <div style={{ 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  marginBottom: '8px',
+                  color: '#2c3e50'
+                }}>
+                  篩選教練：
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <button
+                    onClick={() => setSelectedCoaches([])}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      border: selectedCoaches.length === 0 ? '2px solid #1976d2' : '1px solid #ddd',
+                      background: selectedCoaches.length === 0 ? '#e3f2fd' : 'white',
+                      color: selectedCoaches.length === 0 ? '#1976d2' : '#666',
+                      fontWeight: selectedCoaches.length === 0 ? '600' : '400',
+                      cursor: 'pointer',
+                      fontSize: '13px'
+                    }}
+                  >
+                    全部
+                  </button>
+                  {allCoaches.map(coach => {
+                    const isSelected = selectedCoaches.includes(coach.name)
+                    return (
+                      <button
+                        key={coach.id}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedCoaches(selectedCoaches.filter(c => c !== coach.name))
+                          } else {
+                            setSelectedCoaches([...selectedCoaches, coach.name])
+                          }
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          border: isSelected ? '2px solid #1976d2' : '1px solid #ddd',
+                          background: isSelected ? '#e3f2fd' : 'white',
+                          color: isSelected ? '#1976d2' : '#666',
+                          fontWeight: isSelected ? '600' : '400',
+                          cursor: 'pointer',
+                          fontSize: '13px'
+                        }}
+                      >
+                        {coach.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* 固定的表頭 */}
+              <div style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 100,
+                background: 'linear-gradient(180deg, #2c3e50 0%, #34495e 100%)',
+                display: 'grid',
+                gridTemplateColumns: `100px repeat(${coachColumns.length}, 1fr)`,
+                borderBottom: '2px solid #1a252f'
+              }}>
+                <div style={{
+                  padding: '16px 12px',
+                  color: 'white',
+                  fontWeight: '600',
+                  fontSize: '15px',
+                  textAlign: 'center',
+                  borderRight: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                  時間軸
+                </div>
+                {coachColumns.map(coach => (
+                  <div
+                    key={coach.id}
+                    style={{
+                      padding: '16px 12px',
+                      color: 'white',
+                      fontWeight: '600',
+                      fontSize: '15px',
+                      textAlign: 'center',
+                      borderRight: coach.id === 'unassigned' ? 'none' : '1px solid rgba(255,255,255,0.1)'
+                    }}
+                  >
+                    {coach.id === 'unassigned' ? '未指定' : coach.name}
+                  </div>
+                ))}
+              </div>
+
+              {/* 滾動內容區 */}
+              <div style={{
+                position: 'relative',
+                overflow: 'auto',
+                maxHeight: isMobile ? '60vh' : '70vh'
+              }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `100px repeat(${coachColumns.length}, 1fr)`,
+                  gridTemplateRows: `repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT}px)`,
+                  position: 'relative',
+                  minHeight: `${TOTAL_SLOTS * SLOT_HEIGHT}px`
+                }}>
+                  {/* 時間標籤列 */}
+                  <div style={{
+                    gridColumn: '1',
+                    gridRow: `1 / ${TOTAL_SLOTS + 1}`,
+                    position: 'relative',
+                    borderRight: '2px solid #e0e0e0',
+                    background: '#fafafa'
+                  }}>
+                    {timeLabels.map((timeLabel) => (
+                      <div
+                        key={timeLabel.hour}
+                        style={{
+                          position: 'absolute',
+                          top: `${timeLabel.slotIndex * SLOT_HEIGHT - 12}px`,
+                          left: 0,
+                          right: 0,
+                          padding: '4px 8px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          textAlign: 'center',
+                          color: '#2c3e50'
+                        }}
+                      >
+                        {timeLabel.label}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 背景網格線 */}
+                  {Array.from({ length: TOTAL_SLOTS }).map((_, index) => 
+                    coachColumns.map((coach, coachIndex) => (
+                      <div
+                        key={`grid-${coach.id}-${index}`}
+                        style={{
+                          gridColumn: `${coachIndex + 2}`,
+                          gridRow: `${index + 1}`,
+                          borderTop: index % 4 === 0 ? '2px solid #e8e8e8' : '1px solid #f5f5f5',
+                          borderRight: coachIndex < coachColumns.length - 1 ? '1px solid #f0f0f0' : 'none',
+                          background: 'transparent'
+                        }}
+                      />
+                    ))
+                  )}
+
+                  {/* 教練欄位 - 預約卡片 */}
+                  {coachColumns.map((coach, coachIndex) => {
+                    const coachBookings = bookingsByCoach[coach.id] || []
+                    
+                    return (
+                      <React.Fragment key={coach.id}>
+                        {/* 教練欄位的背景和邊框 */}
+                        <div style={{
+                          gridColumn: `${coachIndex + 2}`,
+                          gridRow: `1 / ${TOTAL_SLOTS + 1}`,
+                          position: 'relative',
+                          pointerEvents: 'none'
+                        }} />
+
+                        {/* 預約卡片 */}
+                        {coachBookings.map((booking: any) => {
+                          const position = calculateGridPosition(
+                            booking.start_at,
+                            booking.duration_minutes,
+                            booking.boats?.name
+                          )
+                          
+                          const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
+                          const isEditing = editingBookingId === booking.id
+                          
+                          // 卡片狀態
+                          const isComplete = assignment.coachIds && assignment.coachIds.length > 0
+                          const hasConflict = assignment.conflicts && assignment.conflicts.length > 0
+                          
+                          let cardBg = 'linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%)'
+                          let borderColor = '#ffc107'
+                          
+                          if (hasConflict) {
+                            cardBg = 'linear-gradient(135deg, #ffe5e5 0%, #ffcccc 100%)'
+                            borderColor = '#ef5350'
+                          } else if (isComplete) {
+                            cardBg = 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)'
+                            borderColor = '#38bdf8'
+                          }
+
+                          // 時間顯示
+                          const startTime = new Date(booking.start_at)
+                          const endTime = new Date(startTime.getTime() + booking.duration_minutes * 60000)
+                          const pickupTime = !isFacility(booking.boats?.name)
+                            ? new Date(endTime.getTime() + 15 * 60000)
+                            : null
+
+                          return (
+                            <div
+                              key={`${coach.id}-${booking.id}`}
+                              style={{
+                                gridColumn: `${coachIndex + 2}`,
+                                gridRow: `${position.gridRowStart} / ${position.gridRowEnd}`,
+                                margin: '8px 12px',
+                                padding: '10px',
+                                background: cardBg,
+                                border: `2px solid ${borderColor}`,
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                lineHeight: '1.5',
+                                position: 'relative',
+                                zIndex: isEditing ? 50 : 1,
+                                boxShadow: isEditing 
+                                  ? '0 8px 24px rgba(0,0,0,0.15)' 
+                                  : '0 2px 4px rgba(0,0,0,0.08)',
+                                transition: 'all 0.2s',
+                                overflow: isEditing ? 'auto' : 'hidden',
+                                maxHeight: isEditing ? '400px' : 'none',
+                                transform: isEditing ? 'scale(1.02)' : 'scale(1)'
+                              }}
+                              onClick={(e) => {
+                                if (!(e.target as HTMLElement).closest('button, select, input')) {
+                                  setEditingBookingId(isEditing ? null : booking.id)
+                                }
+                              }}
+                            >
+                              {/* 卡片內容：顯示船隻信息 */}
+                              <div style={{ 
+                                paddingRight: '65px',
+                                minHeight: '100%'
+                              }}>
+                                {/* 船隻名稱 */}
+                                <div style={{ 
+                                  fontSize: '14px', 
+                                  fontWeight: '700', 
+                                  marginBottom: '6px',
+                                  color: '#1a1a1a'
+                                }}>
+                                  {booking.boats?.name || '未指定船隻'}
+                                </div>
+
+                                {/* 時間 */}
+                                <div style={{ 
+                                  fontSize: '14px', 
+                                  fontWeight: '600', 
+                                  color: '#2c3e50',
+                                  marginBottom: '4px'
+                                }}>
+                                  <div>{startTime.getHours().toString().padStart(2, '0')}:{startTime.getMinutes().toString().padStart(2, '0')} - {endTime.getHours().toString().padStart(2, '0')}:{endTime.getMinutes().toString().padStart(2, '0')}</div>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    ({booking.duration_minutes}分{pickupTime && `，接船至 ${pickupTime.getHours().toString().padStart(2, '0')}:${pickupTime.getMinutes().toString().padStart(2, '0')}`})
+                                  </div>
+                                </div>
+
+                                {/* 客人名稱 */}
+                                <div style={{ 
+                                  fontSize: '15px', 
+                                  color: '#333',
+                                  fontWeight: '500',
+                                  marginBottom: '4px'
+                                }}>
+                                  {booking.booking_contacts?.map((bc: any) => bc.members?.name || bc.guest_name).filter(Boolean).join(', ') || '無聯絡人'}
+                                </div>
+
+                                {/* 快速編輯區域 */}
+                                {isEditing && (
+                                  <div onClick={(e) => e.stopPropagation()} style={{
+                                    marginTop: '8px',
+                                    paddingTop: '8px',
+                                    borderTop: '1px solid #ddd'
+                                  }}>
+                                    {/* 教練選擇 */}
+                                    <div style={{ marginBottom: '6px' }}>
+                                      <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px', color: '#666' }}>
+                                        🎓 教練：
+                                      </div>
+                                      {assignment.coachIds.length > 0 && (
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
+                                          {assignment.coachIds.map(coachId => {
+                                            const coach = coaches.find(c => c.id === coachId)
+                                            return coach ? (
+                                              <span key={coachId} style={{
+                                                padding: '2px 6px',
+                                                background: '#2196F3',
+                                                color: 'white',
+                                                borderRadius: '10px',
+                                                fontSize: '11px',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                              }}>
+                                                {coach.name}
+                                                <button
+                                                  onClick={() => toggleCoach(booking.id, coachId)}
+                                                  style={{
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    color: 'white',
+                                                    cursor: 'pointer',
+                                                    padding: '0',
+                                                    fontSize: '14px',
+                                                    lineHeight: '1'
+                                                  }}
+                                                >×</button>
+                                              </span>
+                                            ) : null
+                                          })}
+                                        </div>
+                                      )}
+                                      <select
+                                        value=""
+                                        onChange={(e) => {
+                                          if (e.target.value) {
+                                            toggleCoach(booking.id, e.target.value)
+                                          }
+                                        }}
+                                        style={{
+                                          width: '100%',
+                                          padding: '4px',
+                                          fontSize: '11px',
+                                          border: !isComplete ? '1px solid #f44336' : '1px solid #ddd',
+                                          borderRadius: '4px',
+                                          background: 'white'
+                                        }}
+                                      >
+                                        <option value="">{!isComplete ? '⚠️ 請選擇' : '➕ 新增'}</option>
+                                        {coaches.filter(c => !assignment.coachIds.includes(c.id)).map(coach => (
+                                          <option key={coach.id} value={coach.id}>{coach.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    
+                                    {/* 衝突警告 */}
+                                    {hasConflict && (
+                                      <div style={{
+                                        padding: '4px',
+                                        background: '#ffebee',
+                                        border: '1px solid #f44336',
+                                        borderRadius: '4px',
+                                        fontSize: '10px',
+                                        color: '#d32f2f',
+                                        marginTop: '4px'
+                                      }}>
+                                        ⚠️ {assignment.conflicts[0]}
+                                      </div>
+                                    )}
+                                    
+                                    {/* 駕駛選擇 - 設施不需要 */}
+                                    {!isFacility(booking.boats?.name) && (
+                                    <>
+                                      <div style={{ marginTop: '8px' }}>
+                                        <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px', color: '#666' }}>
+                                          駕駛：
+                                        </div>
+                                        {assignment.driverIds && assignment.driverIds.length > 0 && (
+                                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
+                                            {assignment.driverIds.map((driverId: string) => {
+                                              const driver = coaches.find(c => c.id === driverId)
+                                              return driver ? (
+                                                <span key={driverId} style={{
+                                                  padding: '2px 6px',
+                                                  background: '#4caf50',
+                                                  color: 'white',
+                                                  borderRadius: '10px',
+                                                  fontSize: '11px',
+                                                  display: 'inline-flex',
+                                                  alignItems: 'center',
+                                                  gap: '4px'
+                                                }}>
+                                                  {driver.name}
+                                                  <button
+                                                    onClick={() => toggleDriver(booking.id, driverId)}
+                                                    style={{
+                                                      background: 'transparent',
+                                                      border: 'none',
+                                                      color: 'white',
+                                                      cursor: 'pointer',
+                                                      padding: '0',
+                                                      fontSize: '14px',
+                                                      lineHeight: '1'
+                                                    }}
+                                                  >×</button>
+                                                </span>
+                                              ) : null
+                                            })}
+                                          </div>
+                                        )}
+                                        <select
+                                          value=""
+                                          onChange={(e) => {
+                                            if (e.target.value) {
+                                              toggleDriver(booking.id, e.target.value)
+                                            }
+                                          }}
+                                          style={{
+                                            width: '100%',
+                                            padding: '4px',
+                                            fontSize: '11px',
+                                            border: '1px solid #ddd',
+                                            borderRadius: '4px',
+                                            background: 'white'
+                                          }}
+                                        >
+                                          <option value="">➕ 新增</option>
+                                          {coaches.filter(c => !assignment.driverIds.includes(c.id)).map((coach: Coach) => (
+                                            <option key={coach.id} value={coach.id}>{coach.name}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+
+                                      <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={assignment.requiresDriver}
+                                            onChange={(e) => updateAssignment(booking.id, 'requiresDriver', e.target.checked)}
+                                          />
+                                          需要駕駛
+                                        </label>
+                                      </div>
+                                    </>
+                                    )}
+                                    
+                                    {/* 排班註解 */}
+                                    <div style={{ marginTop: '8px' }}>
+                                      <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px', color: '#666' }}>
+                                        排班註解：
+                                      </div>
+                                      <textarea
+                                        value={assignment.notes}
+                                        onChange={(e) => updateAssignment(booking.id, 'notes', e.target.value)}
+                                        style={{
+                                          width: '100%',
+                                          padding: '4px',
+                                          fontSize: '11px',
+                                          border: '1px solid #ddd',
+                                          borderRadius: '4px',
+                                          minHeight: '40px',
+                                          resize: 'vertical'
+                                        }}
+                                        placeholder="輸入排班備註..."
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* 預約註解 */}
+                                {!isEditing && booking.notes && (
+                                  <div style={{
+                                    marginTop: '8px',
+                                    padding: '8px',
+                                    background: 'rgba(0,0,0,0.03)',
+                                    borderLeft: '3px solid #bbb',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    color: '#555'
+                                  }}>
+                                    💬 {booking.notes}
+                                  </div>
+                                )}
+
+                                {/* 排班註解 */}
+                                {!isEditing && assignment.notes && (
+                                  <div style={{
+                                    marginTop: '8px',
+                                    padding: '8px',
+                                    background: 'rgba(0,0,0,0.05)',
+                                    borderLeft: '3px solid #666',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    color: '#333',
+                                    fontWeight: '500'
+                                  }}>
+                                    📝 {assignment.notes}
+                                  </div>
+                                )}
+
+                              </div>
+
+                              {/* 右上角按鈕 */}
+                              <div style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                display: 'flex',
+                                gap: '6px'
+                              }}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setEditingBookingId(isEditing ? null : booking.id)
+                                  }}
+                                  style={{
+                                    padding: '6px 10px',
+                                    background: 'white',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    lineHeight: '1',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                  }}
+                                  title="快速排班"
+                                >
+                                  <span style={{ padding: '2px 6px', background: 'white', borderRadius: '4px', fontSize: '12px' }}>🎓</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setFullEditBookingId(booking.id)
+                                  }}
+                                  style={{
+                                    padding: '6px 10px',
+                                    background: 'white',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    lineHeight: '1',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                  }}
+                                  title="完整編輯"
+                                >
+                                  ✏️
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </React.Fragment>
+                    )
+                  })}
+                </div>
+              </div>
+              
+              <div style={{
+                padding: designSystem.spacing.md,
+                background: '#f8f9fa',
+                borderTop: '1px solid #e0e0e0',
+                fontSize: isMobile ? '12px' : '13px',
+                color: '#666'
+              }}>
+                💡 <strong>提示：</strong>{isMobile && '可左右滑動查看。'}點擊預約卡片直接排班，點「✏️ 編輯」修改預約詳情。多教練預約會在各教練列重複顯示。
               </div>
             </div>
           )
