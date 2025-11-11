@@ -68,12 +68,10 @@ export function CoachOverview({ user }: CoachOverviewProps) {
   const { isMobile } = useResponsive()
 
   // Tab 切換
-  const [activeTab, setActiveTab] = useState<'report-status' | 'work-stats' | 'data-analysis'>('report-status')
+  const [activeTab, setActiveTab] = useState<'report-status' | 'coach-preview'>('report-status')
 
   // 篩選條件（回報狀況不需要日期選擇器，自動顯示未來預約）
-  const [timeRange, setTimeRange] = useState<'last-month' | 'this-month' | 'next-month' | 'custom'>('this-month')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [timeRange, setTimeRange] = useState<'this-month' | 'next-month'>('this-month')
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoachId, setSelectedCoachId] = useState<string>('all')
 
@@ -91,10 +89,10 @@ export function CoachOverview({ user }: CoachOverviewProps) {
   useEffect(() => {
     if (activeTab === 'report-status') {
       loadReportStatus()
-    } else if (activeTab === 'work-stats' || activeTab === 'data-analysis') {
+    } else if (activeTab === 'coach-preview') {
       loadWorkStats()
     }
-  }, [activeTab, timeRange, startDate, endDate, selectedCoachId])
+  }, [activeTab, timeRange, selectedCoachId])
 
   const isFacility = (boatName?: string | null) => {
     return boatName === '彈簧床'
@@ -497,25 +495,16 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           )}
 
           {/* 工作統計和數據分析用月份選擇 */}
-          {(activeTab === 'work-stats' || activeTab === 'data-analysis') && (
+          {activeTab === 'coach-preview' && (
             <div>
               <label style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', display: 'block', color: '#666' }}>
                 時間範圍
               </label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
-                  onClick={() => setTimeRange('last-month')}
-                  style={{
-                    ...getButtonStyle(timeRange === 'last-month' ? 'primary' : 'secondary'),
-                    flex: isMobile ? '1 1 auto' : '0 0 auto'
-                  }}
-                >
-                  上月
-                </button>
-                <button
                   onClick={() => setTimeRange('this-month')}
                   style={{
-                    ...getButtonStyle(timeRange === 'this-month' ? 'primary' : 'secondary'),
+                    ...getButtonStyle(timeRange === 'this-month' ? 'info' : 'secondary'),
                     flex: isMobile ? '1 1 auto' : '0 0 auto'
                   }}
                 >
@@ -524,61 +513,13 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                 <button
                   onClick={() => setTimeRange('next-month')}
                   style={{
-                    ...getButtonStyle(timeRange === 'next-month' ? 'primary' : 'secondary'),
+                    ...getButtonStyle(timeRange === 'next-month' ? 'info' : 'secondary'),
                     flex: isMobile ? '1 1 auto' : '0 0 auto'
                   }}
                 >
                   下月
                 </button>
-                <button
-                  onClick={() => setTimeRange('custom')}
-                  style={{
-                    ...getButtonStyle(timeRange === 'custom' ? 'primary' : 'secondary'),
-                    flex: isMobile ? '1 1 auto' : '0 0 auto'
-                  }}
-                >
-                  自訂
-                </button>
               </div>
-
-              {timeRange === 'custom' && (
-                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexDirection: isMobile ? 'column' : 'row' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '4px', display: 'block', color: '#666' }}>
-                      開始日期
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: '13px', fontWeight: '600', marginBottom: '4px', display: 'block', color: '#666' }}>
-                      結束日期
-                    </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           )}
           
@@ -652,52 +593,56 @@ export function CoachOverview({ user }: CoachOverviewProps) {
               marginBottom: '24px'
             }}>
               <div style={{
-                background: 'rgba(255,255,255,0.15)',
+                background: '#f8f9fa',
                 padding: isMobile ? '12px' : '16px',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
               }}>
-                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>總預約數</div>
-                <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '700' }}>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>總預約數</div>
+                <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '700', color: '#333' }}>
                   {futureBookingsSummary.totalBookings}
                 </div>
-                <div style={{ fontSize: '12px', opacity: 0.8 }}>筆</div>
+                <div style={{ fontSize: '12px', color: '#999' }}>筆</div>
               </div>
               <div style={{
-                background: 'rgba(255,255,255,0.15)',
+                background: '#f8f9fa',
                 padding: isMobile ? '12px' : '16px',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
               }}>
-                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>總時數</div>
-                <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '700' }}>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>總時數</div>
+                <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '700', color: '#333' }}>
                   {(futureBookingsSummary.totalMinutes / 60).toFixed(1)}
                 </div>
-                <div style={{ fontSize: '12px', opacity: 0.8 }}>小時</div>
+                <div style={{ fontSize: '12px', color: '#999' }}>小時</div>
               </div>
               <div style={{
-                background: 'rgba(255,255,255,0.15)',
+                background: '#f8f9fa',
                 padding: isMobile ? '12px' : '16px',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
               }}>
-                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>最忙日期</div>
-                <div style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: '700', marginTop: '4px' }}>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>最忙日期</div>
+                <div style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: '700', marginTop: '4px', color: '#333' }}>
                   {futureBookingsSummary.busiestDate ? 
                     new Date(futureBookingsSummary.busiestDate).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' }) 
                     : '-'}
                 </div>
-                <div style={{ fontSize: '12px', opacity: 0.8 }}>
+                <div style={{ fontSize: '12px', color: '#999' }}>
                   {futureBookingsSummary.busiestDateCount} 筆預約
                 </div>
               </div>
               <div style={{
-                background: 'rgba(255,255,255,0.15)',
+                background: '#f8f9fa',
                 padding: isMobile ? '12px' : '16px',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
               }}>
-                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>平均每日</div>
-                <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '700' }}>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>平均每日</div>
+                <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '700', color: '#333' }}>
                   {(futureBookingsSummary.totalBookings / 7).toFixed(1)}
                 </div>
-                <div style={{ fontSize: '12px', opacity: 0.8 }}>筆</div>
+                <div style={{ fontSize: '12px', color: '#999' }}>筆</div>
               </div>
             </div>
 
@@ -708,7 +653,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                   margin: '0 0 12px 0', 
                   fontSize: isMobile ? '15px' : '16px', 
                   fontWeight: '600',
-                  opacity: 0.95
+                  color: '#333'
                 }}>
                   👨‍🏫 教練工作量預測
                 </h4>
@@ -724,29 +669,26 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                           justifyContent: 'space-between', 
                           marginBottom: '4px', 
                           fontSize: isMobile ? '13px' : '14px',
-                          opacity: 0.95
+                          color: '#333'
                         }}>
                           <span style={{ fontWeight: '600' }}>
                             {index + 1}. {coach.coachName}
                           </span>
-                          <span>
+                          <span style={{ color: '#666' }}>
                             {coach.bookingCount} 筆 · {(coach.totalMinutes / 60).toFixed(1)} 小時
                           </span>
                         </div>
                         <div style={{
                           width: '100%',
                           height: '8px',
-                          background: 'rgba(255,255,255,0.2)',
+                          background: '#e9ecef',
                           borderRadius: '4px',
                           overflow: 'hidden'
                         }}>
                           <div style={{
                             width: `${percentage}%`,
                             height: '100%',
-                            background: index === 0 ? '#ffd700' : 
-                                       index === 1 ? '#c0c0c0' : 
-                                       index === 2 ? '#cd7f32' : 
-                                       'rgba(255,255,255,0.8)',
+                            background: '#495057',
                             transition: 'width 0.3s'
                           }} />
                         </div>
@@ -776,24 +718,14 @@ export function CoachOverview({ user }: CoachOverviewProps) {
             📋 回報狀況
           </button>
           <button
-            onClick={() => setActiveTab('work-stats')}
+            onClick={() => setActiveTab('coach-preview')}
             style={{
-              ...getButtonStyle(activeTab === 'work-stats' ? 'primary' : 'secondary'),
+              ...getButtonStyle(activeTab === 'coach-preview' ? 'primary' : 'secondary'),
               flex: isMobile ? '1 1 auto' : '0 0 auto'
             }}
           >
-            📊 工作統計
+            👨‍🏫 教練預覽
           </button>
-          {/* TODO: 數據分析頁面待優化 */}
-          {/* <button
-            onClick={() => setActiveTab('data-analysis')}
-            style={{
-              ...getButtonStyle(activeTab === 'data-analysis' ? 'primary' : 'secondary'),
-              flex: isMobile ? '1 1 auto' : '0 0 auto'
-            }}
-          >
-            📈 數據分析
-          </button> */}
         </div>
 
         {/* 載入中 */}
@@ -903,8 +835,8 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           </div>
         )}
 
-        {/* Tab 2: 工作統計 */}
-        {!loading && activeTab === 'work-stats' && (
+        {/* Tab 2: 教練預覽 */}
+        {!loading && activeTab === 'coach-preview' && (
           <div>
             {workStats.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
@@ -917,28 +849,28 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                     key={stats.coachId}
                     style={{
                       ...getCardStyle(isMobile),
-                      borderLeft: '4px solid #2196F3'
+                      border: '1px solid #e0e0e0'
                     }}
                   >
-                    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>
+                    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: '#333', borderBottom: '2px solid #f5f5f5', paddingBottom: '12px' }}>
                       {stats.coachName}
                     </h3>
 
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
                       {/* 教練工作 */}
-                      <div style={{ padding: '16px', background: '#e3f2fd', borderRadius: '8px' }}>
-                        <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: '#1976d2' }}>
+                      <div style={{ padding: '16px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                        <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: '#495057' }}>
                           🎓 教練工作
                         </h4>
                         <div style={{ fontSize: '14px', color: '#333', lineHeight: '1.8' }}>
-                          <div>預約數：{stats.coachBookings} 筆</div>
-                          <div>教學時數：{stats.coachMinutes} 分鐘</div>
-                          <div>學員數：{stats.coachStudents} 人</div>
+                          <div>預約數：<strong>{stats.coachBookings}</strong> 筆</div>
+                          <div>教學時數：<strong>{stats.coachMinutes}</strong> 分</div>
+                          <div>學員數：<strong>{stats.coachStudents}</strong> 人</div>
                           {Object.keys(stats.paymentMethods).length > 0 && (
                             <div style={{ marginTop: '8px' }}>
-                              <div style={{ fontWeight: '600', marginBottom: '4px' }}>收費方式：</div>
+                              <div style={{ fontWeight: '600', marginBottom: '4px', color: '#666' }}>收費方式：</div>
                               {Object.entries(stats.paymentMethods).map(([method, count]) => (
-                                <div key={method} style={{ marginLeft: '8px', fontSize: '13px' }}>
+                                <div key={method} style={{ marginLeft: '8px', fontSize: '13px', color: '#666' }}>
                                   • {method === 'cash' ? '現金' : 
                                      method === 'transfer' ? '匯款' : 
                                      method === 'balance' ? '扣儲值' : 
@@ -953,14 +885,14 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                       </div>
 
                       {/* 駕駛工作 */}
-                      <div style={{ padding: '16px', background: '#e8f5e9', borderRadius: '8px' }}>
-                        <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: '#2e7d32' }}>
+                      <div style={{ padding: '16px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                        <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: '#495057' }}>
                           🚤 駕駛工作
                         </h4>
                         <div style={{ fontSize: '14px', color: '#333', lineHeight: '1.8' }}>
-                          <div>預約數：{stats.driverBookings} 筆</div>
-                          <div>駕駛時數：{stats.driverMinutes} 分鐘</div>
-                          <div>平均剩餘油量：{stats.avgFuelRemaining.toFixed(1)}%</div>
+                          <div>預約數：<strong>{stats.driverBookings}</strong> 筆</div>
+                          <div>駕駛時數：<strong>{stats.driverMinutes}</strong> 分</div>
+                          <div>平均剩餘油量：<strong>{stats.avgFuelRemaining.toFixed(1)}%</strong></div>
                         </div>
                       </div>
                     </div>
