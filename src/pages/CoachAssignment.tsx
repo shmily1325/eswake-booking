@@ -983,9 +983,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             .sort((a, b) => b[1].count - a[1].count)
             .slice(0, 5)
           
-          // 駕駛使用統計（筆數 + 總時長）
+          // 駕駛使用統計（筆數 + 總時長）- 排除彈簧床
           const driverStats = new Map<string, { count: number, totalMinutes: number }>()
           bookings.forEach(booking => {
+            // 彈簧床不需要駕駛，不計入駕駛統計
+            if (booking.boats?.name === '彈簧床') return
+            
             const assignment = assignments[booking.id]
             if (assignment?.driverIds) {
               assignment.driverIds.forEach(driverId => {
@@ -1024,8 +1027,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             return !assignment || assignment.coachIds.length === 0
           }).length
           
-          // 需要駕駛但未指定駕駛
+          // 需要駕駛但未指定駕駛 - 排除彈簧床
           const needDriverCount = bookings.filter(booking => {
+            // 彈簧床不需要駕駛
+            if (booking.boats?.name === '彈簧床') return false
+            
             const assignment = assignments[booking.id]
             return assignment?.requiresDriver && (!assignment.driverIds || assignment.driverIds.length === 0)
           }).length

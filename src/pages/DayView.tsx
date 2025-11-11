@@ -689,9 +689,12 @@ export function DayView({ user }: DayViewProps) {
           .sort((a, b) => b[1].count - a[1].count)
           .slice(0, 5)
         
-        // 駕駛使用統計（筆數 + 總時長）
+        // 駕駛使用統計（筆數 + 總時長）- 排除彈簧床
         const driverStats = new Map<string, { count: number, totalMinutes: number }>()
         bookings.forEach(booking => {
+          // 彈簧床不需要駕駛，不計入駕駛統計
+          if (booking.boats?.name === '彈簧床') return
+          
           booking.drivers?.forEach(driver => {
             const current = driverStats.get(driver.name) || { count: 0, totalMinutes: 0 }
             driverStats.set(driver.name, {
