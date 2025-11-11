@@ -181,7 +181,7 @@ export function BackupPage({ user }: BackupPageProps) {
   const exportMemberHoursToCSV = async () => {
     setLoading(true)
     try {
-      // 查詢指定日期範圍內的參與者記錄
+      // 查詢指定日期範圍內的參與者記錄（使用 booking_participants 表）
       let participantsQuery = supabase
         .from('booking_participants')
         .select(`
@@ -197,6 +197,9 @@ export function BackupPage({ user }: BackupPageProps) {
       }
 
       const { data: participants, error } = await participantsQuery
+
+      console.log('會員時數查詢結果:', participants)
+      console.log('查詢錯誤:', error)
 
       if (error) throw error
 
@@ -224,6 +227,7 @@ export function BackupPage({ user }: BackupPageProps) {
         const memberName = p.participant_name
         const booking = p.bookings
         const bookingDate = booking.start_at.substring(0, 10).replace(/-/g, '/')
+        const isDesignated = p.payment_method === 'designated_paid' || p.payment_method === 'designated_free'
 
         if (!memberStats[memberName]) {
           memberStats[memberName] = {
@@ -236,7 +240,7 @@ export function BackupPage({ user }: BackupPageProps) {
         }
 
         memberStats[memberName].totalMinutes += p.duration_min
-        if (p.is_designated) {
+        if (isDesignated) {
           memberStats[memberName].designatedMinutes += p.duration_min
         } else {
           memberStats[memberName].normalMinutes += p.duration_min
@@ -245,7 +249,7 @@ export function BackupPage({ user }: BackupPageProps) {
         memberStats[memberName].records.push({
           date: bookingDate,
           duration: p.duration_min,
-          isDesignated: p.is_designated
+          isDesignated: isDesignated
         })
       })
 

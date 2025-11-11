@@ -477,7 +477,7 @@ export function DayView({ user }: DayViewProps) {
         <button
           onClick={goToToday}
           style={{
-            ...getButtonStyle('primary', 'medium', isMobile),
+            ...getButtonStyle('info', 'medium', isMobile),
             padding: isMobile ? '6px 12px' : '8px 14px',
           }}
         >

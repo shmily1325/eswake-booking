@@ -735,12 +735,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
             {/* 視圖切換按鈕（手機版只顯示列表） */}
             {!isMobile && (
-              <div style={{ 
-                display: 'flex', 
-                gap: '4px', 
-                background: '#f0f0f0', 
-                borderRadius: '8px', 
-                padding: '4px',
+            <div style={{ 
+              display: 'flex', 
+              gap: '4px', 
+              background: '#f0f0f0', 
+              borderRadius: '8px', 
+              padding: '4px',
                 flex: '0 0 auto'
               }}>
                 <button
@@ -761,43 +761,43 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 >
                   📋 列表
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('boat-timeline')}
-                  style={{
+              <button
+                type="button"
+                onClick={() => setViewMode('boat-timeline')}
+                style={{
                     padding: '8px 16px',
-                    background: viewMode === 'boat-timeline' ? 'white' : 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: viewMode === 'boat-timeline' ? '600' : '400',
+                  background: viewMode === 'boat-timeline' ? 'white' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: viewMode === 'boat-timeline' ? '600' : '400',
                     fontSize: '14px',
-                    color: viewMode === 'boat-timeline' ? '#1976d2' : '#666',
-                    transition: 'all 0.2s',
-                    boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                >
-                  🚤 船隻
-                </button>
-                <button
-                  type="button"
+                  color: viewMode === 'boat-timeline' ? '#1976d2' : '#666',
+                  transition: 'all 0.2s',
+                  boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                }}
+              >
+                🚤 船隻
+              </button>
+              <button
+                type="button"
                   onClick={() => setViewMode('coach-timeline')}
-                  style={{
+                style={{
                     padding: '8px 16px',
                     background: viewMode === 'coach-timeline' ? 'white' : 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
                     fontWeight: viewMode === 'coach-timeline' ? '600' : '400',
                     fontSize: '14px',
                     color: viewMode === 'coach-timeline' ? '#1976d2' : '#666',
-                    transition: 'all 0.2s',
+                  transition: 'all 0.2s',
                     boxShadow: viewMode === 'coach-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                >
+                }}
+              >
                   🎓 教練
-                </button>
-              </div>
+              </button>
+            </div>
             )}
 
             <button
@@ -1861,21 +1861,25 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             bookingsByCoach[coach.id] = []
           })
 
-          // 分配預約到教練列
+          // 分配預約到教練列（包含教練和駕駛）
           bookings.forEach((booking: any) => {
             const assignment = assignments[booking.id]
             const assignedCoaches = assignment?.coachIds || []
+            const assignedDrivers = assignment?.driverIds || []
             
-            if (assignedCoaches.length === 0) {
-              // 未指定教練
+            // 合併教練和駕駛（去重）
+            const allPersonnel = [...new Set([...assignedCoaches, ...assignedDrivers])]
+            
+            if (allPersonnel.length === 0) {
+              // 未指定教練或駕駛
               bookingsByCoach['unassigned'].push(booking)
             } else {
-              // 有指定教練，在每個教練列都顯示
-              assignedCoaches.forEach((coachId: string) => {
-                // 檢查這個教練是否在顯示列表中
-                const coachExists = coachColumns.some(c => c.id === coachId)
-                if (coachExists && bookingsByCoach[coachId]) {
-                  bookingsByCoach[coachId].push(booking)
+              // 有指定教練或駕駛，在每個相關人員的列都顯示
+              allPersonnel.forEach((personId: string) => {
+                // 檢查這個人員是否在顯示列表中
+                const personExists = coachColumns.some(c => c.id === personId)
+                if (personExists && bookingsByCoach[personId]) {
+                  bookingsByCoach[personId].push(booking)
                 }
               })
             }

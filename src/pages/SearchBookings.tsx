@@ -10,14 +10,14 @@ interface Booking {
   id: number
   start_at: string
   duration_min: number
+  contact_name: string
   notes: string | null
   activity_types: string[] | null
   status: string
   boats: { name: string; color: string } | null
   coaches: { id: string; name: string }[]
-  booking_contacts?: Array<{
-    member_id: string | null
-    guest_name: string | null
+  booking_members?: Array<{
+    member_id: string
     members: { id: string; name: string } | null
   }>
 }
@@ -99,38 +99,29 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
       
       // 步驟 1: 從多個來源查詢匹配的預約 ID
-      // 1.1 從 booking_contacts 查詢會員名稱
-      const contactQuery = supabase
-        .from('booking_contacts')
+      // 1.1 從 booking_members 查詢會員名稱
+      const memberQuery = supabase
+        .from('booking_members')
         .select('booking_id, members!inner(name)')
         .ilike('members.name', `%${searchName.trim()}%`)
       
-      // 1.2 從 booking_contacts 查詢非會員名稱
-      const guestQuery = supabase
-        .from('booking_contacts')
-        .select('booking_id')
-        .ilike('guest_name', `%${searchName.trim()}%`)
-      
-      // 1.3 從 bookings 表查詢 contact_name（備選方案）
+      // 1.2 從 bookings 表查詢 contact_name（備選方案）
       const bookingQuery = supabase
         .from('bookings')
         .select('id')
         .ilike('contact_name', `%${searchName.trim()}%`)
       
-      const [contactResult, guestResult, bookingResult] = await Promise.all([
-        contactQuery,
-        guestQuery,
+      const [memberResult, bookingResult] = await Promise.all([
+        memberQuery,
         bookingQuery
       ])
       
-      console.log('搜尋結果 - 會員聯絡人:', contactResult.data)
-      console.log('搜尋結果 - 非會員:', guestResult.data)
+      console.log('搜尋結果 - 會員:', memberResult.data)
       console.log('搜尋結果 - contact_name:', bookingResult.data)
       
       // 合併找到的預約 ID
       const bookingIds = new Set<number>()
-      contactResult.data?.forEach(item => bookingIds.add(item.booking_id))
-      guestResult.data?.forEach(item => bookingIds.add(item.booking_id))
+      memberResult.data?.forEach(item => bookingIds.add(item.booking_id))
       bookingResult.data?.forEach(item => bookingIds.add(item.id))
       
       console.log('找到的預約 IDs:', Array.from(bookingIds))
@@ -145,7 +136,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       // 步驟 2: 查詢這些預約的詳細資訊
       let query = supabase
         .from('bookings')
-        .select('*, boats:boat_id (name, color), booking_contacts(member_id, guest_name, members(id, name))')
+        .select('*, boats:boat_id (name, color), booking_members(member_id, members(id, name))')
         .in('id', Array.from(bookingIds))
       
       // 根據篩選類型添加條件
@@ -248,8 +239,8 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
     
     // 取得第一個預約的聯絡人名稱
     const firstBooking = bookings[0]
-    const contactNames = firstBooking.booking_contacts
-      ?.map(bc => bc.members?.name || bc.guest_name)
+    const contactNames = firstBooking.booking_members
+      ?.map(bm => bm.members?.name)
       .filter(Boolean)
       .join(', ') || searchName
     
@@ -637,7 +628,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                           color: '#000',
                           marginBottom: '4px',
                         }}>
-                          {booking.booking_contacts?.map(bc => bc.members?.name || bc.guest_name).filter(Boolean).join(', ') || '無聯絡人'}
+                          {booking.booking_members?.map(bm => bm.members?.name).filter(Boolean).join(', ') || booking.contact_name || '無聯絡人'}
                         </div>
                         <div style={{
                           fontSize: '14px',
