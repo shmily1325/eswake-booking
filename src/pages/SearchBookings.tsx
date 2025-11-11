@@ -41,11 +41,8 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   
-  // 簡化的篩選邏輯
-  const [timeRange, setTimeRange] = useState<'future' | 'past' | 'range'>('future') // 時間範圍
+  // 簡化的篩選邏輯：固定為未來預約
   const [onlyToday, setOnlyToday] = useState(false) // 是否只顯示今日新增
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
   const [copySuccess, setCopySuccess] = useState(false)
   
   const [members, setMembers] = useState<Member[]>([])
@@ -94,6 +91,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
     setLoading(true)
     setHasSearched(true)
     setCopySuccess(false)
+    // 不要在這裡清空 bookings，避免顯示「沒有找到」的閃爍
 
     try {
       const now = new Date()
@@ -140,14 +138,8 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
         .select('*, boats:boat_id (name, color), booking_members(member_id, members(id, name))')
         .in('id', Array.from(bookingIds))
       
-      // 根據時間範圍篩選
-      if (timeRange === 'future') {
-        query = query.gte('start_at', nowStr)
-      } else if (timeRange === 'past') {
-        query = query.lt('start_at', nowStr)
-      } else if (timeRange === 'range' && startDate && endDate) {
-        query = query.gte('start_at', `${startDate}T00:00:00`).lte('start_at', `${endDate}T23:59:59`)
-      }
+      // 固定為未來預約
+      query = query.gte('start_at', nowStr)
       
       // 如果勾選「只顯示今日新增」
       if (onlyToday) {
@@ -163,8 +155,8 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
           .lt('created_at', `${tomorrowDate}T00:00:00`)
       }
       
-      // 執行預約查詢（根據時間範圍決定排序）
-      const bookingsResult = await query.order('start_at', { ascending: timeRange === 'future' })
+      // 執行預約查詢（未來預約按時間升序排列）
+      const bookingsResult = await query.order('start_at', { ascending: true })
 
       console.log('預約詳細查詢結果:', bookingsResult.data)
       console.log('查詢錯誤:', bookingsResult.error)
@@ -367,7 +359,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
             )}
           </div>
 
-          {/* 篩選選項 */}
+          {/* 篩選選項：固定為未來預約 */}
           <div style={{ marginBottom: '20px' }}>
             <div style={{ 
               marginBottom: '12px', 
@@ -375,66 +367,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
               color: '#868e96',
               fontWeight: '500'
             }}>
-              時間範圍
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-              <button
-                type="button"
-                onClick={() => setTimeRange('future')}
-                style={{
-                  flex: 1,
-                  minWidth: '100px',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: timeRange === 'future' ? '2px solid #007bff' : '1px solid #e9ecef',
-                  backgroundColor: timeRange === 'future' ? '#e7f3ff' : 'white',
-                  color: timeRange === 'future' ? '#007bff' : '#495057',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                📅 未來預約
-              </button>
-              <button
-                type="button"
-                onClick={() => setTimeRange('past')}
-                style={{
-                  flex: 1,
-                  minWidth: '100px',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: timeRange === 'past' ? '2px solid #6c757d' : '1px solid #e9ecef',
-                  backgroundColor: timeRange === 'past' ? '#e9ecef' : 'white',
-                  color: timeRange === 'past' ? '#495057' : '#6c757d',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                📜 過去預約
-              </button>
-              <button
-                type="button"
-                onClick={() => setTimeRange('range')}
-                style={{
-                  flex: 1,
-                  minWidth: '100px',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: timeRange === 'range' ? '2px solid #ffc107' : '1px solid #e9ecef',
-                  backgroundColor: timeRange === 'range' ? '#fff8e1' : 'white',
-                  color: timeRange === 'range' ? '#f59f00' : '#495057',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                📆 指定日期
-              </button>
+              📅 搜尋未來預約
             </div>
 
             {/* 今日新增 checkbox */}
@@ -448,7 +381,6 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
               cursor: 'pointer',
               border: onlyToday ? '2px solid #28a745' : '1px solid #e9ecef',
               transition: 'all 0.2s',
-              marginBottom: '12px',
             }}>
               <input
                 type="checkbox"
@@ -465,50 +397,10 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                 fontWeight: '500',
                 color: onlyToday ? '#28a745' : '#495057',
               }}>
-                🆕 只顯示今日新增
+                只顯示今日新增
               </span>
             </label>
           </div>
-
-          {/* 日期區間選擇 */}
-          {timeRange === 'range' && (
-            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff8e1', borderRadius: '8px', border: '1px solid #ffe082' }}>
-              <div style={{ marginBottom: '14px' }}>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  placeholder="開始日期"
-                  style={{
-                    width: '100%',
-                    padding: '14px 16px',
-                    fontSize: '16px',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box',
-                    backgroundColor: 'white'
-                  }}
-                />
-              </div>
-              <div>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  placeholder="結束日期"
-                  style={{
-                    width: '100%',
-                    padding: '14px 16px',
-                    fontSize: '16px',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box',
-                    backgroundColor: 'white'
-                  }}
-                />
-              </div>
-            </div>
-          )}
 
           {/* 搜尋按鈕 */}
           <button
