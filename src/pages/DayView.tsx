@@ -1298,35 +1298,36 @@ export function DayView({ user }: DayViewProps) {
                             e.currentTarget.style.boxShadow = '0 3px 10px rgba(0,0,0,0.1)'
                           }}
                         >
-                          {/* 時間範圍 */}
+                          {/* 時間範圍 + 時長說明 */}
                           <div style={{
                             fontSize: isMobile ? '11px' : '13px',
                             fontWeight: '600',
                             color: '#2c3e50',
-                            marginBottom: '4px',
+                            marginBottom: '6px',
                             textAlign: 'center',
+                            lineHeight: '1.5',
                           }}>
                             {(() => {
                               const start = new Date(booking.start_at)
-                              const end = new Date(start.getTime() + booking.duration_min * 60000)
+                              const isFacility = booking.boats?.name === '彈簧床'
+                              // 彈簧床不需要接船時間
+                              const totalDuration = isFacility ? booking.duration_min : booking.duration_min + 15
+                              const end = new Date(start.getTime() + totalDuration * 60000)
                               const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
                               const endTime = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
-                              return `${startTime} - ${endTime}`
+                              
+                              // 時間範圍
+                              let display = `${startTime} - ${endTime}`
+                              
+                              // 時長說明
+                              if (isFacility) {
+                                display += ` (${booking.duration_min}分)`
+                              } else {
+                                display += ` (${booking.duration_min}分，接船至 ${endTime})`
+                              }
+                              
+                              return display
                             })()}
-                          </div>
-                          
-                          {/* 時長和接船時間 */}
-                          <div style={{
-                            fontSize: isMobile ? '10px' : '11px',
-                            color: '#888',
-                            marginBottom: '6px',
-                            textAlign: 'center',
-                          }}>
-                            ({booking.duration_min}分
-                            {booking.requires_driver && booking.boats?.name !== '彈簧床' && (() => {
-                              const pickupTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
-                              return `，接船至 ${String(pickupTime.getHours()).padStart(2, '0')}:${String(pickupTime.getMinutes()).padStart(2, '0')}`
-                            })()})
                           </div>
 
                           {/* 預約人 + 活動類型 + 排班備註 */}

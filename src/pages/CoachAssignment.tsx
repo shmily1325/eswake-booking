@@ -315,7 +315,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
         if (!assignment || assignment.coachIds.length === 0) {
-          const timeStr = formatTimeRange(booking.start_at, booking.duration_min)
+          const timeStr = formatTimeRange(booking.start_at, booking.duration_min, booking.boats?.name)
           missingCoaches.push(`${timeStr} (${booking.contact_name})`)
         }
       }
@@ -341,7 +341,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           const onlyDriverIds = assignment.driverIds.filter(id => !assignment.coachIds.includes(id))
           const totalPeople = coachCount + onlyDriverIds.length
           
-          const timeStr = formatTimeRange(booking.start_at, booking.duration_min)
+          const timeStr = formatTimeRange(booking.start_at, booking.duration_min, booking.boats?.name)
           
           // 如果沒有指定駕駛
           if (driverCount === 0) {
@@ -760,7 +760,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   }
 
   // 格式化時間範圍（顯示開始和結束時間）
-  const formatTimeRange = (startAt: string, durationMin: number) => {
+  const formatTimeRange = (startAt: string, durationMin: number, boatName?: string) => {
     if (!startAt) {
       console.error('formatTimeRange: startAt is empty')
       return 'NaN:NaN - NaN:NaN'
@@ -771,7 +771,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       console.error('formatTimeRange: invalid date', startAt)
       return 'NaN:NaN - NaN:NaN'
     }
-    const endDate = new Date(startDate.getTime() + durationMin * 60000)
+    
+    // 彈簧床不需要接船時間
+    const isFacility = boatName === '彈簧床'
+    const totalDuration = isFacility ? durationMin : durationMin + 15
+    
+    const endDate = new Date(startDate.getTime() + totalDuration * 60000)
     const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
     return `${startTime} - ${endTime}`
   }
@@ -1241,7 +1246,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     >
                       {/* 時間 */}
                       <td style={{ padding: '10px 12px', fontWeight: '600', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
-                        {formatTimeRange(booking.start_at, booking.duration_min)}
+                        {formatTimeRange(booking.start_at, booking.duration_min, booking.boats?.name)}
                       </td>
                       {/* 時長 */}
                       <td style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
@@ -1821,7 +1826,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                     
                                     {/* 預約資訊 */}
                             <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '2px', color: '#2c3e50', paddingRight: '60px' }}>
-                                      {formatTimeRange(booking.start_at, booking.duration_min)}
+                                      {formatTimeRange(booking.start_at, booking.duration_min, booking.boats?.name)}
                                     </div>
                             <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>
                               ({(() => {
@@ -2007,6 +2012,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                             value=""
                                             onChange={(e) => {
                                               if (e.target.value) {
+                                                // 彈簧床不需要駕駛
+                                                if (booking.boats?.name === '彈簧床') {
+                                                  alert('⚠️ 彈簧床不需要駕駛')
+                                                  e.target.value = '' // 重置選擇
+                                                  return
+                                                }
                                                 toggleDriver(booking.id, e.target.value)
                                               }
                                             }}
@@ -2042,6 +2053,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                                 checked={assignment.requiresDriver}
                                                 onChange={(e) => {
                                                   e.stopPropagation()
+                                                  // 彈簧床不需要駕駛
+                                                  if (e.target.checked && booking.boats?.name === '彈簧床') {
+                                                    alert('⚠️ 彈簧床不需要駕駛')
+                                                    return
+                                                  }
                                                   updateAssignment(booking.id, 'requiresDriver' as any, e.target.checked)
                                                 }}
                                                 style={{ cursor: 'pointer' }}
@@ -2475,7 +2491,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               }}>
                                 {/* 時間 */}
                                 <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '2px', color: '#2c3e50' }}>
-                                  {formatTimeRange(booking.start_at, booking.duration_min)}
+                                  {formatTimeRange(booking.start_at, booking.duration_min, booking.boats?.name)}
                                 </div>
                                 <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>
                                   ({(() => {
