@@ -1280,44 +1280,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
               overflow: 'hidden'
             }}>
-              {/* 標題列 - 固定於頂部（不滾動） */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: `80px repeat(${boats.length}, minmax(200px, 1fr))`,
-                background: 'linear-gradient(180deg, #2c3e50 0%, #34495e 100%)',
-                color: 'white',
-                borderBottom: '3px solid #1a252f',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                overflow: 'hidden' // 防止內容溢出
-              }}>
-                <div style={{
-                  padding: '16px 12px',
-                  fontWeight: '700',
-                  fontSize: '14px',
-                  borderRight: '1px solid rgba(255,255,255,0.15)',
-                  textAlign: 'center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  時間
-                </div>
-                    {boats.map(boat => (
-                  <div key={boat!.id} style={{
-                    padding: '16px 12px',
-                    fontWeight: '700',
-                    fontSize: '15px',
-                    borderRight: '1px solid rgba(255,255,255,0.15)',
-                    textAlign: 'center',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    {boat!.name}
-                  </div>
-                ))}
-              </div>
-
               {/* 可滾動容器 */}
               <div style={{
                 overflow: 'auto',
@@ -1327,10 +1289,53 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: `80px repeat(${boats.length}, minmax(200px, 1fr))`,
-                  gridTemplateRows: `repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT}px)`,
-                  minWidth: '1000px',
+                  gridTemplateRows: `auto repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT}px)`,
+                  minWidth: `${80 + boats.length * 200}px`,
                   position: 'relative'
                 }}>
+                {/* 標題列 - 使用 sticky 固定 */}
+                <div style={{
+                  gridColumn: '1',
+                  gridRow: '1',
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 100,
+                  background: 'linear-gradient(180deg, #2c3e50 0%, #34495e 100%)',
+                  color: 'white',
+                  padding: '16px 12px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  borderRight: '1px solid rgba(255,255,255,0.15)',
+                  borderBottom: '3px solid #1a252f',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  時間
+                </div>
+                {boats.map((boat, idx) => (
+                  <div key={boat!.id} style={{
+                    gridColumn: `${idx + 2}`,
+                    gridRow: '1',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 100,
+                    background: 'linear-gradient(180deg, #2c3e50 0%, #34495e 100%)',
+                    color: 'white',
+                    padding: '16px 12px',
+                    fontWeight: '700',
+                    fontSize: '15px',
+                    borderRight: '1px solid rgba(255,255,255,0.15)',
+                    borderBottom: '3px solid #1a252f',
+                    textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {boat!.name}
+                  </div>
+                ))}
                 {/* 時間刻度列 */}
                 <div style={{
                   gridColumn: '1',
@@ -1445,6 +1450,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 return (
                                   <div
                                     key={booking.id}
+                                    onClick={() => setEditingBookingId(isEditing ? null : booking.id)}
                                     style={{
                               gridColumn: `${boatIndex + 2}`,
                               gridRow: `${gridPos.gridRowStart} / ${gridPos.gridRowEnd}`,
@@ -1463,41 +1469,17 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               pointerEvents: 'auto',
                               maxHeight: isEditing ? '400px' : 'none',
                                       position: 'relative',
-                              transform: isEditing ? 'scale(1.02)' : 'scale(1)'
+                              transform: isEditing ? 'scale(1.02)' : 'scale(1)',
+                              cursor: 'pointer'
                                     }}
                                   >
-                            {/* 右上角按鈕組 */}
-                                    <div style={{ position: 'absolute', top: '6px', right: '6px', display: 'flex', gap: '4px', zIndex: 10 }}>
-                              {/* 排班按鈕 */}
+                            {/* 右上角編輯按鈕 */}
+                                    <div style={{ position: 'absolute', top: '6px', right: '6px', zIndex: 10 }}>
                                       <button
-                                onClick={() => setEditingBookingId(isEditing ? null : booking.id)}
-                                        style={{
-                                  background: isEditing ? '#2196F3' : '#f0f0f0',
-                                  color: isEditing ? 'white' : '#666',
-                                          border: 'none',
-                                          borderRadius: '4px',
-                                  padding: '4px 8px',
-                                  fontSize: '14px',
-                                          cursor: 'pointer',
-                                          transition: 'all 0.2s',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                  fontWeight: '600'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setFullEditBookingId(booking.id)
                                 }}
-                                onMouseEnter={(e) => {
-                                  if (!isEditing) e.currentTarget.style.background = '#e0e0e0'
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (!isEditing) e.currentTarget.style.background = '#f0f0f0'
-                                }}
-                                title={isEditing ? "收起排班" : "排班"}
-                              >
-                                🎓
-                                      </button>
-                                      
-                              {/* 編輯按鈕 */}
-                                      <button
-                                onClick={() => setFullEditBookingId(booking.id)}
                                         style={{
                                   background: '#f0f0f0',
                                   color: '#666',
