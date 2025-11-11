@@ -951,8 +951,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           )}
         </div>
 
-        {/* 今日總覽卡片 */}
-        {!loading && bookings.length > 0 && (() => {
+        {/* 今日總覽卡片 - 僅電腦版顯示 */}
+        {!isMobile && !loading && bookings.length > 0 && (() => {
           // 統計數據
           const totalBookings = bookings.length
           
