@@ -1321,29 +1321,34 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   position: 'relative'
                 }}>
                 {/* 時間刻度列 */}
-                {timeLabels.map((timeLabel) => (
-                  <div
-                    key={timeLabel.hour}
-                    style={{
-                      gridColumn: '1',
-                      gridRow: `${timeLabel.slotIndex + 1} / span 4`,
-                      padding: '6px 8px',
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      color: '#2c3e50',
-                      fontSize: '13px',
-                      lineHeight: '1',
-                      borderRight: '2px solid #e0e0e0',
-                      background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      justifyContent: 'center',
-                      paddingTop: '4px'
-                    }}
-                  >
-                    {timeLabel.label}
-                  </div>
-                ))}
+                <div style={{
+                  gridColumn: '1',
+                  gridRow: `1 / ${TOTAL_SLOTS + 1}`,
+                  borderRight: '2px solid #e0e0e0',
+                  background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)',
+                  position: 'relative'
+                }}>
+                  {timeLabels.map((timeLabel) => (
+                    <div
+                      key={timeLabel.hour}
+                      style={{
+                        position: 'absolute',
+                        top: `${timeLabel.slotIndex * SLOT_HEIGHT}px`,
+                        left: 0,
+                        right: 0,
+                        padding: '6px 8px',
+                        fontWeight: '700',
+                        textAlign: 'center',
+                        color: '#2c3e50',
+                        fontSize: '13px',
+                        lineHeight: '1',
+                        transform: 'translateY(-50%)'
+                      }}
+                    >
+                      {timeLabel.label}
+                    </div>
+                  ))}
+                </div>
 
                 {/* 背景網格線（每小時一條深色線） */}
                 {timeLabels.map((timeLabel) => (
@@ -2006,28 +2011,33 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   minHeight: `${TOTAL_SLOTS * SLOT_HEIGHT}px`
                 }}>
                   {/* 時間標籤列 */}
-                  {timeLabels.map((timeLabel) => (
-                    <div
-                      key={timeLabel.hour}
-                      style={{
-                        gridColumn: '1',
-                        gridRow: `${timeLabel.slotIndex + 1} / span 4`,
-                        padding: '4px 8px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        textAlign: 'center',
-                        color: '#2c3e50',
-                        borderRight: '2px solid #e0e0e0',
-                        background: '#fafafa',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        justifyContent: 'center',
-                        paddingTop: '4px'
-                      }}
-                    >
-                      {timeLabel.label}
-                    </div>
-                  ))}
+                  <div style={{
+                    gridColumn: '1',
+                    gridRow: `1 / ${TOTAL_SLOTS + 1}`,
+                    borderRight: '2px solid #e0e0e0',
+                    background: '#fafafa',
+                    position: 'relative'
+                  }}>
+                    {timeLabels.map((timeLabel) => (
+                      <div
+                        key={timeLabel.hour}
+                        style={{
+                          position: 'absolute',
+                          top: `${timeLabel.slotIndex * SLOT_HEIGHT}px`,
+                          left: 0,
+                          right: 0,
+                          padding: '4px 8px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          textAlign: 'center',
+                          color: '#2c3e50',
+                          transform: 'translateY(-50%)'
+                        }}
+                      >
+                        {timeLabel.label}
+                      </div>
+                    ))}
+                  </div>
 
                   {/* 背景網格線 */}
                   {Array.from({ length: TOTAL_SLOTS }).map((_, index) => 
