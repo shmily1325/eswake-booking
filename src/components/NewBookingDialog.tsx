@@ -915,50 +915,33 @@ export function NewBookingDialog({
               gap: '10px',
             }}>
               {boats.map(boat => {
-                const isSelected = selectedBoatId === boat.id
-                return (
-                  <button
-                    key={boat.id}
-                    type="button"
-                    onClick={() => setSelectedBoatId(boat.id)}
-                    style={{
-                      padding: '14px 8px',
-                      border: isSelected ? `3px solid ${boat.color}` : '2px solid #e0e0e0',
-                      borderRadius: '10px',
-                      background: isSelected ? boat.color : 'white',
-                      color: isSelected ? 'white' : '#333',
-                      fontSize: '15px',
-                      fontWeight: isSelected ? '700' : '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: isSelected ? `0 4px 12px ${boat.color}40` : '0 2px 4px rgba(0,0,0,0.05)',
-                      position: 'relative',
-                      overflow: 'hidden',
-                    }}
-                    onTouchStart={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.transform = 'scale(0.95)'
-                      }
-                    }}
-                    onTouchEnd={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)'
-                    }}
-                  >
-                    {/* 左側色條（未選中時） */}
-                    {!isSelected && (
-                      <div style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: '4px',
-                        background: boat.color,
-                      }} />
-                    )}
-                    {boat.name}
-                  </button>
-                )
-              })}
+                  const isSelected = selectedBoatId === boat.id
+                  return (
+                    <button
+                      key={boat.id}
+                      type="button"
+                      onClick={() => setSelectedBoatId(boat.id)}
+                      style={{
+                        padding: '14px 8px',
+                        border: isSelected ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+                        borderRadius: '8px',
+                        background: isSelected ? '#dbeafe' : 'white',
+                        color: '#333',
+                        fontSize: '15px',
+                        fontWeight: isSelected ? '600' : '500',
+                        cursor: 'pointer',
+                      }}
+                      onTouchStart={(e) => {
+                        e.currentTarget.style.background = isSelected ? '#dbeafe' : '#fafafa'
+                      }}
+                      onTouchEnd={(e) => {
+                        e.currentTarget.style.background = isSelected ? '#dbeafe' : 'white'
+                      }}
+                    >
+                      {boat.name}
+                    </button>
+                  )
+                })}
             </div>
           </div>
 
@@ -978,22 +961,23 @@ export function NewBookingDialog({
             {selectedCoaches.length > 0 && (
               <div style={{
                 marginBottom: '12px',
-                padding: '12px',
-                background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-                borderRadius: '10px',
+                padding: '10px 12px',
+                background: '#f5f5f5',
+                borderRadius: '8px',
+                border: '1px solid #e0e0e0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                flexWrap: 'wrap',
                 gap: '8px',
               }}>
                 <div style={{
                   display: 'flex',
                   flexWrap: 'wrap',
+                  alignItems: 'center',
                   gap: '6px',
                   flex: 1,
                 }}>
-                  <span style={{ color: 'white', fontSize: '14px', fontWeight: '500', marginRight: '4px' }}>
+                  <span style={{ color: '#666', fontSize: '14px', fontWeight: '500' }}>
                     已選：
                   </span>
                   {selectedCoaches.map(coachId => {
@@ -1002,10 +986,11 @@ export function NewBookingDialog({
                       <span
                         key={coachId}
                         style={{
-                          padding: '4px 8px',
-                          background: 'rgba(255,255,255,0.25)',
-                          borderRadius: '6px',
-                          color: 'white',
+                          padding: '4px 10px',
+                          background: 'white',
+                          borderRadius: '4px',
+                          border: '1px solid #d0d0d0',
+                          color: '#333',
                           fontSize: '14px',
                           fontWeight: '500',
                         }}
@@ -1019,17 +1004,17 @@ export function NewBookingDialog({
                   type="button"
                   onClick={() => setSelectedCoaches([])}
                   style={{
-                    padding: '6px 12px',
-                    background: 'rgba(255,255,255,0.2)',
-                    border: '1px solid rgba(255,255,255,0.4)',
-                    borderRadius: '6px',
-                    color: 'white',
+                    padding: '4px 10px',
+                    background: 'white',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    color: '#666',
                     fontSize: '13px',
                     cursor: 'pointer',
                     fontWeight: '500',
                   }}
                 >
-                  ✕ 清除
+                  清除
                 </button>
               </div>
             )}
@@ -1050,24 +1035,20 @@ export function NewBookingDialog({
                   onClick={() => setSelectedCoaches([])}
                   style={{
                     padding: '14px 10px',
-                    border: selectedCoaches.length === 0 ? '3px solid #1976d2' : '2px solid #e0e0e0',
-                    borderRadius: '10px',
-                    background: selectedCoaches.length === 0 ? '#1976d2' : 'white',
-                    color: selectedCoaches.length === 0 ? 'white' : '#666',
+                    border: selectedCoaches.length === 0 ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    background: selectedCoaches.length === 0 ? '#dbeafe' : 'white',
+                    color: '#333',
                     fontSize: '15px',
-                    fontWeight: selectedCoaches.length === 0 ? '700' : '500',
+                    fontWeight: selectedCoaches.length === 0 ? '600' : '500',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    boxShadow: selectedCoaches.length === 0 ? '0 4px 12px rgba(25,118,210,0.3)' : '0 2px 4px rgba(0,0,0,0.05)',
                     gridColumn: '1 / -1',
                   }}
                   onTouchStart={(e) => {
-                    if (selectedCoaches.length > 0) {
-                      e.currentTarget.style.transform = 'scale(0.95)'
-                    }
+                    e.currentTarget.style.background = selectedCoaches.length === 0 ? '#dbeafe' : '#fafafa'
                   }}
                   onTouchEnd={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)'
+                    e.currentTarget.style.background = selectedCoaches.length === 0 ? '#dbeafe' : 'white'
                   }}
                 >
                   不指定教練
@@ -1083,30 +1064,21 @@ export function NewBookingDialog({
                       onClick={() => toggleCoach(coach.id)}
                       style={{
                         padding: '14px 10px',
-                        border: isSelected ? '3px solid #1976d2' : '2px solid #e0e0e0',
-                        borderRadius: '10px',
-                        background: isSelected ? '#e3f2fd' : 'white',
-                        color: isSelected ? '#1976d2' : '#333',
+                        border: isSelected ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+                        borderRadius: '8px',
+                        background: isSelected ? '#dbeafe' : 'white',
+                        color: '#333',
                         fontSize: '15px',
-                        fontWeight: isSelected ? '700' : '500',
+                        fontWeight: isSelected ? '600' : '500',
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        boxShadow: isSelected ? '0 4px 12px rgba(25,118,210,0.15)' : '0 2px 4px rgba(0,0,0,0.05)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
                       }}
                       onTouchStart={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.transform = 'scale(0.95)'
-                        }
+                        e.currentTarget.style.background = isSelected ? '#dbeafe' : '#fafafa'
                       }}
                       onTouchEnd={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)'
+                        e.currentTarget.style.background = isSelected ? '#dbeafe' : 'white'
                       }}
                     >
-                      {isSelected && <span style={{ fontSize: '16px' }}>✓</span>}
                       {coach.name}
                     </button>
                   )
@@ -1115,37 +1087,67 @@ export function NewBookingDialog({
             )}
           </div>
 
-          {/* 需要駕駛勾選框 */}
+          {/* 需要駕駛 - 大按鈕 */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              padding: '12px',
-              backgroundColor: requiresDriver ? '#e3f2fd' : '#f8f9fa',
-              borderRadius: '8px',
-              border: requiresDriver ? '2px solid #1976d2' : '1px solid #e0e0e0',
-              transition: 'all 0.2s',
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '10px', 
+              color: '#000',
+              fontSize: '15px',
+              fontWeight: '600',
             }}>
-              <input
-                type="checkbox"
-                checked={requiresDriver}
-                onChange={(e) => setRequiresDriver(e.target.checked)}
-                style={{ 
-                  marginRight: '10px', 
-                  width: '18px', 
-                  height: '18px',
+              需要駕駛
+            </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '10px',
+            }}>
+              <button
+                type="button"
+                onClick={() => setRequiresDriver(false)}
+                style={{
+                  padding: '14px 10px',
+                  border: !requiresDriver ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  background: !requiresDriver ? '#dbeafe' : 'white',
+                  color: '#333',
+                  fontSize: '15px',
+                  fontWeight: !requiresDriver ? '600' : '500',
                   cursor: 'pointer',
                 }}
-              />
-              <span style={{
-                fontSize: '15px',
-                fontWeight: '500',
-                color: requiresDriver ? '#1976d2' : '#333',
-              }}>
-                🚤 需要駕駛（勾選後在排班時必須指定駕駛）
-              </span>
-            </label>
+                onTouchStart={(e) => {
+                  e.currentTarget.style.background = !requiresDriver ? '#dbeafe' : '#fafafa'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.background = !requiresDriver ? '#dbeafe' : 'white'
+                }}
+              >
+                不需要
+              </button>
+              <button
+                type="button"
+                onClick={() => setRequiresDriver(true)}
+                style={{
+                  padding: '14px 10px',
+                  border: requiresDriver ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  background: requiresDriver ? '#dbeafe' : 'white',
+                  color: '#333',
+                  fontSize: '15px',
+                  fontWeight: requiresDriver ? '600' : '500',
+                  cursor: 'pointer',
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.background = requiresDriver ? '#dbeafe' : '#fafafa'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.background = requiresDriver ? '#dbeafe' : 'white'
+                }}
+              >
+                需要駕駛
+              </button>
+            </div>
           </div>
 
           <div style={{ marginBottom: '18px' }}>
@@ -1323,59 +1325,66 @@ export function NewBookingDialog({
             </div>
           </div>
 
+          {/* 活動類型選擇 - 大按鈕 */}
           <div style={{ marginBottom: '18px' }}>
             <label style={{ 
               display: 'block', 
-              marginBottom: '8px', 
+              marginBottom: '10px', 
               color: '#000',
               fontSize: '15px',
-              fontWeight: '500',
+              fontWeight: '600',
             }}>
               活動類型（可複選）
             </label>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '10px 16px',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                backgroundColor: activityTypesSet.has('WB') ? '#e3f2fd' : 'white',
-                transition: 'all 0.2s',
-                flex: '1',
-                minWidth: '120px',
-                justifyContent: 'center',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={activityTypesSet.has('WB')}
-                  onChange={() => toggleActivityType('WB')}
-                  style={{ marginRight: '8px', width: '16px', height: '16px' }}
-                />
-                <span style={{ fontSize: '15px' }}>WB</span>
-              </label>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '10px 16px',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                backgroundColor: activityTypesSet.has('WS') ? '#e3f2fd' : 'white',
-                transition: 'all 0.2s',
-                flex: '1',
-                minWidth: '120px',
-                justifyContent: 'center',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={activityTypesSet.has('WS')}
-                  onChange={() => toggleActivityType('WS')}
-                  style={{ marginRight: '8px', width: '16px', height: '16px' }}
-                />
-                <span style={{ fontSize: '15px' }}>WS</span>
-              </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '10px',
+            }}>
+              <button
+                type="button"
+                onClick={() => toggleActivityType('WB')}
+                style={{
+                  padding: '14px 10px',
+                  border: activityTypesSet.has('WB') ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  background: activityTypesSet.has('WB') ? '#dbeafe' : 'white',
+                  color: '#333',
+                  fontSize: '15px',
+                  fontWeight: activityTypesSet.has('WB') ? '600' : '500',
+                  cursor: 'pointer',
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.background = activityTypesSet.has('WB') ? '#dbeafe' : '#fafafa'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.background = activityTypesSet.has('WB') ? '#dbeafe' : 'white'
+                }}
+              >
+                WB
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleActivityType('WS')}
+                style={{
+                  padding: '14px 10px',
+                  border: activityTypesSet.has('WS') ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  background: activityTypesSet.has('WS') ? '#dbeafe' : 'white',
+                  color: '#333',
+                  fontSize: '15px',
+                  fontWeight: activityTypesSet.has('WS') ? '600' : '500',
+                  cursor: 'pointer',
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.background = activityTypesSet.has('WS') ? '#dbeafe' : '#fafafa'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.background = activityTypesSet.has('WS') ? '#dbeafe' : 'white'
+                }}
+              >
+                WS
+              </button>
             </div>
           </div>
 

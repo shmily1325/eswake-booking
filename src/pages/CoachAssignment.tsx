@@ -1386,7 +1386,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         const currentStatus = hasConflict || hasDriverIssue ? statusColors.error 
                                             : hasNoCoach ? statusColors.warning 
                                             : statusColors.success
-                        
+                                
                                 return (
                                   <div
                                     key={booking.id}
@@ -1719,8 +1719,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 borderLeft: '3px solid #5a6c7d'
                               }}>
                                 📝 {assignment.notes}
-                              </div>
-                            )}
+                                      </div>
+                                    )}
                                     
                                     {/* 狀態標記 */}
                                     {!isEditing && hasNoCoach && (
