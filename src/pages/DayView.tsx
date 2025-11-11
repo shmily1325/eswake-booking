@@ -491,15 +491,24 @@ export function DayView({ user }: DayViewProps) {
           📅 排班管理
         </Link>
 
-        <button
-          onClick={() => setViewMode(viewMode === 'timeline' ? 'list' : 'timeline')}
-          style={{
-            ...getButtonStyle('secondary', 'medium', isMobile),
-            marginLeft: 'auto',
-          }}
-        >
-          {viewMode === 'timeline' ? '📋 列表' : '📅 時間軸'}
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+          <button
+            onClick={() => setViewMode('list')}
+            style={{
+              ...getButtonStyle(viewMode === 'list' ? 'primary' : 'outline', 'medium', isMobile),
+            }}
+          >
+            📋 列表
+          </button>
+          <button
+            onClick={() => setViewMode('timeline')}
+            style={{
+              ...getButtonStyle(viewMode === 'timeline' ? 'primary' : 'outline', 'medium', isMobile),
+            }}
+          >
+            📅 時間軸
+          </button>
+        </div>
       </div>
 
 
