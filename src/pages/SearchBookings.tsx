@@ -123,13 +123,20 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
         bookingQuery
       ])
       
+      console.log('搜尋結果 - 會員聯絡人:', contactResult.data)
+      console.log('搜尋結果 - 非會員:', guestResult.data)
+      console.log('搜尋結果 - contact_name:', bookingResult.data)
+      
       // 合併找到的預約 ID
       const bookingIds = new Set<number>()
       contactResult.data?.forEach(item => bookingIds.add(item.booking_id))
       guestResult.data?.forEach(item => bookingIds.add(item.booking_id))
       bookingResult.data?.forEach(item => bookingIds.add(item.id))
       
+      console.log('找到的預約 IDs:', Array.from(bookingIds))
+      
       if (bookingIds.size === 0) {
+        console.log('沒有找到任何預約 ID')
         setBookings([])
         setLoading(false)
         return
@@ -165,6 +172,9 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       
       // 執行預約查詢（根據時間篩選決定排序）
       const bookingsResult = await query.order('start_at', { ascending: timeFilter === 'future' })
+
+      console.log('預約詳細查詢結果:', bookingsResult.data)
+      console.log('查詢錯誤:', bookingsResult.error)
 
       if (bookingsResult.error) {
         console.error('Error fetching bookings:', bookingsResult.error)
