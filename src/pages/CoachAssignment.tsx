@@ -1088,11 +1088,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           const START_HOUR = 5
           const END_HOUR = 20
           const SLOT_MINUTES = 15 // 每格 15 分鐘
-          const SLOT_HEIGHT = 60 // 每格高度（px）
+          const SLOT_HEIGHT = 70 // 每格高度（px）- 增加到70px讓30分鐘卡片有140px
           const TOTAL_SLOTS = ((END_HOUR - START_HOUR) * 60) / SLOT_MINUTES // 總格數 = 60
           
-          // 計算預約卡片在 Grid 中的位置
-          const calculateGridPosition = (startAt: string, durationMin: number) => {
+          // 計算預約卡片在 Grid 中的位置（包含整理船時間）
+          const calculateGridPosition = (startAt: string, durationMin: number, boatName?: string) => {
             const startTime = new Date(startAt)
             const startHour = startTime.getHours()
             const startMinute = startTime.getMinutes()
@@ -1103,8 +1103,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             // 計算起始格子（從 1 開始）
             const gridRowStart = Math.floor(minutesFromStart / SLOT_MINUTES) + 1
             
-            // 計算結束格子（向上取整以包含整個預約時段）
-            const gridRowEnd = gridRowStart + Math.ceil(durationMin / SLOT_MINUTES)
+            // 如果不是 facility（如彈簧床），加上 15 分鐘整理船時間
+            const cleanupTime = isFacility(boatName) ? 0 : 15
+            const totalDuration = durationMin + cleanupTime
+            
+            // 計算結束格子（向上取整以包含整個預約時段+整理船時間）
+            const gridRowEnd = gridRowStart + Math.ceil(totalDuration / SLOT_MINUTES)
             
             return { gridRowStart, gridRowEnd, span: gridRowEnd - gridRowStart }
           }
@@ -1164,28 +1168,46 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: `80px repeat(${boats.length}, minmax(200px, 1fr))`,
-                background: '#2c3e50',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 position: 'sticky',
                 top: 0,
                 zIndex: 100,
-                borderBottom: '2px solid #34495e'
+                borderBottom: '3px solid #5a67d8',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}>
                 <div style={{
-                  padding: '14px 12px',
-                  fontWeight: '600',
-                  borderRight: '1px solid #34495e',
-                  textAlign: 'center'
+                  padding: '16px 12px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  borderRight: '1px solid rgba(255,255,255,0.2)',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}>
-                  時間
+                  ⏰ 時間
                 </div>
                 {boats.map(boat => (
                   <div key={boat!.id} style={{
-                    padding: '14px 12px',
-                    fontWeight: '600',
-                    borderRight: '1px solid #34495e',
-                    textAlign: 'center'
+                    padding: '16px 12px',
+                    fontWeight: '700',
+                    fontSize: '15px',
+                    borderRight: '1px solid rgba(255,255,255,0.2)',
+                    textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
                   }}>
+                    <span style={{
+                      display: 'inline-block',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: boat!.color,
+                      boxShadow: `0 0 8px ${boat!.color}`
+                    }}></span>
                     {boat!.name}
                   </div>
                 ))}
@@ -1203,22 +1225,25 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 <div style={{
                   gridColumn: '1',
                   gridRow: `1 / ${TOTAL_SLOTS + 1}`,
-                  borderRight: '1px solid #e0e0e0',
-                  position: 'relative'
+                  borderRight: '2px solid #e0e0e0',
+                  position: 'relative',
+                  background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)'
                 }}>
-                  {timeLabels.map((timeLabel) => (
+                  {timeLabels.map((timeLabel, index) => (
                     <div
                       key={timeLabel.hour}
                       style={{
                         position: 'absolute',
-                        top: `${timeLabel.slotIndex * SLOT_HEIGHT}px`,
+                        top: `${timeLabel.slotIndex * SLOT_HEIGHT - 12}px`,
                         width: '100%',
-                        padding: '8px 12px',
-                        fontWeight: '600',
+                        padding: '6px 8px',
+                        fontWeight: '700',
                         textAlign: 'center',
-                        color: '#2c3e50',
+                        color: '#667eea',
                         fontSize: '13px',
-                        borderBottom: '1px solid #e0e0e0'
+                        lineHeight: '1',
+                        background: index % 2 === 0 ? 'rgba(102, 126, 234, 0.05)' : 'transparent',
+                        borderRadius: '4px'
                       }}
                     >
                       {timeLabel.label}
@@ -1227,13 +1252,14 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 </div>
 
                 {/* 背景網格線（每小時一條深色線） */}
-                {timeLabels.map((timeLabel) => (
+                {timeLabels.map((timeLabel, index) => (
                   <div
                     key={`grid-${timeLabel.hour}`}
                     style={{
                       gridColumn: `2 / ${boats.length + 2}`,
                       gridRow: `${timeLabel.slotIndex + 1}`,
-                      borderTop: timeLabel.hour === START_HOUR ? 'none' : '1px solid #e0e0e0',
+                      borderTop: timeLabel.hour === START_HOUR ? 'none' : '2px solid #e8eaf6',
+                      background: index % 2 === 0 ? 'rgba(102, 126, 234, 0.02)' : 'transparent',
                       pointerEvents: 'none'
                     }}
                   />
@@ -1249,14 +1275,15 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       <div style={{
                         gridColumn: `${boatIndex + 2}`,
                         gridRow: `1 / ${TOTAL_SLOTS + 1}`,
-                        borderRight: '1px solid #e0e0e0',
+                        borderRight: '2px solid #f0f0f0',
                         position: 'relative',
-                        pointerEvents: 'none'
+                        pointerEvents: 'none',
+                        background: `linear-gradient(to bottom, ${boat!.color}05 0%, transparent 100%)`
                       }} />
                       
                       {/* 渲染此船的所有預約卡片 */}
                       {boatBookings.map((booking) => {
-                        const gridPos = calculateGridPosition(booking.start_at, booking.duration_min)
+                        const gridPos = calculateGridPosition(booking.start_at, booking.duration_min, booking.boats?.name)
                         const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
                         const hasConflict = assignment.conflicts && assignment.conflicts.length > 0
                         const hasNoCoach = assignment.coachIds.length === 0
@@ -1283,6 +1310,29 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           }
                         }
                         
+                        // 狀態配色
+                        const statusColors = {
+                          error: {
+                            bg: 'linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%)',
+                            border: '#f87171',
+                            shadow: 'rgba(248, 113, 113, 0.2)'
+                          },
+                          warning: {
+                            bg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                            border: '#fbbf24',
+                            shadow: 'rgba(251, 191, 36, 0.2)'
+                          },
+                          success: {
+                            bg: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                            border: '#4ade80',
+                            shadow: 'rgba(74, 222, 128, 0.2)'
+                          }
+                        }
+                        
+                        const currentStatus = hasConflict || hasDriverIssue ? statusColors.error 
+                                            : hasNoCoach ? statusColors.warning 
+                                            : statusColors.success
+                        
                         return (
                           <div
                             key={booking.id}
@@ -1290,17 +1340,23 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             style={{
                               gridColumn: `${boatIndex + 2}`,
                               gridRow: `${gridPos.gridRowStart} / ${gridPos.gridRowEnd}`,
-                              padding: '8px',
-                              margin: '4px',
-                              background: hasConflict || hasDriverIssue ? '#ffebee' : hasNoCoach ? '#fff3cd' : '#e8f5e9',
-                              border: `2px solid ${hasConflict || hasDriverIssue ? '#f44336' : hasNoCoach ? '#ffc107' : '#4caf50'}`,
-                              borderRadius: '6px',
-                              transition: 'all 0.2s',
+                              padding: '10px',
+                              margin: '6px',
+                              background: currentStatus.bg,
+                              border: `2px solid ${currentStatus.border}`,
+                              borderLeft: `5px solid ${currentStatus.border}`,
+                              borderRadius: '10px',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                               cursor: 'pointer',
-                              overflow: isEditing ? 'visible' : 'hidden',
+                              overflow: isEditing ? 'auto' : 'hidden',
                               zIndex: isEditing ? 50 : 1,
-                              boxShadow: isEditing ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
-                              pointerEvents: 'auto'
+                              boxShadow: isEditing 
+                                ? `0 10px 25px ${currentStatus.shadow}, 0 0 0 3px ${currentStatus.border}40` 
+                                : `0 2px 6px ${currentStatus.shadow}`,
+                              pointerEvents: 'auto',
+                              maxHeight: isEditing ? '400px' : 'none',
+                              position: 'relative',
+                              transform: isEditing ? 'scale(1.02)' : 'scale(1)'
                             }}
                           >
                             {/* 右上角編輯按鈕 */}
@@ -1333,24 +1389,39 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             </div>
                             
                             {/* 預約資訊 */}
-                            <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '2px', color: '#2c3e50', paddingRight: '65px' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#2c3e50', paddingRight: '65px' }}>
                               {formatTimeRange(booking.start_at, booking.duration_min)}
                             </div>
                             {!isFacility(booking.boats?.name) && (
-                              <div style={{ fontSize: '10px', color: '#999', marginBottom: '4px' }}>
+                              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>
                                 (接船至 {(() => {
                                   const endTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
                                   return `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
                                 })()})
                               </div>
                             )}
-                            <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '4px', color: '#000' }}>
+                            <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px', color: '#1a1a1a' }}>
                               {booking.contact_name}
                             </div>
-                            <div style={{ fontSize: '11px', color: '#666', marginBottom: '6px' }}>
-                              {booking.duration_min}分
-                              {booking.requires_driver && <span style={{ marginLeft: '4px', color: '#1976d2' }}>🚤</span>}
+                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>
+                              ⏱️ {booking.duration_min}分
+                              {booking.requires_driver && <span style={{ marginLeft: '6px', color: '#1976d2', fontWeight: '600' }}>🚤 需駕駛</span>}
                             </div>
+                            
+                            {/* 預約註解 */}
+                            {!isEditing && booking.notes && (
+                              <div style={{ 
+                                fontSize: '12px', 
+                                color: '#555',
+                                marginBottom: '6px',
+                                padding: '4px 6px',
+                                background: 'rgba(0,0,0,0.05)',
+                                borderRadius: '4px',
+                                borderLeft: '3px solid #9ca3af'
+                              }}>
+                                💬 {booking.notes}
+                              </div>
+                            )}
                             
                             {/* 快速編輯區域 */}
                             {isEditing && (
@@ -1550,29 +1621,44 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             
                             {/* 未編輯時顯示教練和駕駛 */}
                             {!isEditing && assignment.coachIds.length > 0 && (
-                              <div style={{ fontSize: '11px', color: '#2196F3', fontWeight: '600' }}>
+                              <div style={{ fontSize: '13px', color: '#2196F3', fontWeight: '700', marginBottom: '4px' }}>
                                 👨‍🏫 {assignment.coachIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
                               </div>
                             )}
                             {!isEditing && !isFacility(booking.boats?.name) && assignment.driverIds && assignment.driverIds.length > 0 && (
-                              <div style={{ fontSize: '11px', color: '#4caf50', fontWeight: '600', marginTop: '2px' }}>
+                              <div style={{ fontSize: '13px', color: '#10b981', fontWeight: '700', marginBottom: '4px' }}>
                                 🚤 {assignment.driverIds.map(id => coaches.find(c => c.id === id)?.name).join(', ')}
+                              </div>
+                            )}
+                            
+                            {/* 排班註解 */}
+                            {!isEditing && assignment.notes && (
+                              <div style={{ 
+                                fontSize: '12px', 
+                                color: '#555',
+                                marginTop: '6px',
+                                padding: '4px 6px',
+                                background: 'rgba(102, 126, 234, 0.1)',
+                                borderRadius: '4px',
+                                borderLeft: '3px solid #667eea'
+                              }}>
+                                📝 {assignment.notes}
                               </div>
                             )}
                             
                             {/* 狀態標記 */}
                             {!isEditing && hasNoCoach && (
-                              <div style={{ fontSize: '11px', color: '#f57c00', fontWeight: '600', marginTop: '4px' }}>
+                              <div style={{ fontSize: '12px', color: '#f59e0b', fontWeight: '700', marginTop: '6px', padding: '2px 4px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '4px' }}>
                                 ⚠️ 未指定教練
                               </div>
                             )}
                             {!isEditing && hasConflict && (
-                              <div style={{ fontSize: '11px', color: '#d32f2f', fontWeight: '600', marginTop: '4px' }}>
+                              <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: '700', marginTop: '6px', padding: '2px 4px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '4px' }}>
                                 ⚠️ 教練衝突
                               </div>
                             )}
                             {!isEditing && hasDriverIssue && (
-                              <div style={{ fontSize: '11px', color: '#d32f2f', fontWeight: '600', marginTop: '4px' }}>
+                              <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: '700', marginTop: '6px', padding: '2px 4px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '4px' }}>
                                 ⚠️ {driverIssueMessage}
                               </div>
                             )}
