@@ -332,6 +332,7 @@ export function BackupPage({ user }: BackupPageProps) {
           startTime: string
           contactName: string
           boatName: string
+          duration: number
         }
       } = {}
       bookings.forEach(b => {
@@ -342,7 +343,8 @@ export function BackupPage({ user }: BackupPageProps) {
           date: bookingDate,
           startTime,
           contactName: b.contact_name,
-          boatName
+          boatName,
+          duration: b.duration_min
         }
       })
 
@@ -358,6 +360,7 @@ export function BackupPage({ user }: BackupPageProps) {
             participantName: string
             duration: number
             isDesignated: boolean
+            hasReport: boolean
           }>
           totalMinutes: number
           designatedMinutes: number
@@ -381,36 +384,53 @@ export function BackupPage({ user }: BackupPageProps) {
 
         // 找到該預約的所有參與者
         const participants = participantsResult.data?.filter(p => p.booking_id === item.booking_id) || []
-        participants.forEach(p => {
+        if (participants.length === 0) {
+          const info = bookingInfoMap[item.booking_id]
           coachRecords[coachName].records.push({
-            date: bookingInfoMap[item.booking_id]?.date || '',
-            startTime: bookingInfoMap[item.booking_id]?.startTime || '',
-            contactName: bookingInfoMap[item.booking_id]?.contactName || '',
-            boatName: bookingInfoMap[item.booking_id]?.boatName || '未指定',
-            participantName: p.participant_name,
-            duration: p.duration_min,
-            isDesignated: p.is_designated
+            date: info?.date || '',
+            startTime: info?.startTime || '',
+            contactName: info?.contactName || '',
+            boatName: info?.boatName || '未指定',
+            participantName: '未回報',
+            duration: info?.duration ?? 0,
+            isDesignated: false,
+            hasReport: false
           })
-          
-          coachRecords[coachName].totalMinutes += p.duration_min
-          if (p.is_designated) {
-            coachRecords[coachName].designatedMinutes += p.duration_min
-          } else {
-            coachRecords[coachName].normalMinutes += p.duration_min
-          }
-        })
+        } else {
+          participants.forEach(p => {
+            coachRecords[coachName].records.push({
+              date: bookingInfoMap[item.booking_id]?.date || '',
+              startTime: bookingInfoMap[item.booking_id]?.startTime || '',
+              contactName: bookingInfoMap[item.booking_id]?.contactName || '',
+              boatName: bookingInfoMap[item.booking_id]?.boatName || '未指定',
+              participantName: p.participant_name,
+              duration: p.duration_min,
+              isDesignated: p.is_designated,
+              hasReport: true
+            })
+            
+            coachRecords[coachName].totalMinutes += p.duration_min
+            if (p.is_designated) {
+              coachRecords[coachName].designatedMinutes += p.duration_min
+            } else {
+              coachRecords[coachName].normalMinutes += p.duration_min
+            }
+          })
+        }
       })
 
       // 生成CSV（每一行都重複教練資訊，方便Excel篩選）
       let csv = '\uFEFF'
-      csv += '教練姓名,日期,開始時間,預約人,船隻,學員姓名,單次時長(分鐘),是否指定課,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘)\n'
+      csv += '教練姓名,日期,開始時間,預約人,船隻,學員姓名/狀態,單次時長(分鐘),是否指定課,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘)\n'
 
       Object.values(coachRecords)
         .sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
         .forEach(coach => {
           coach.records.forEach(record => {
             // 每一行都顯示完整資訊，方便篩選
-            csv += `"${coach.name}","${record.date}","${record.startTime}","${record.contactName}","${record.boatName}","${record.participantName}",${record.duration},"${record.isDesignated ? '是' : '否'}",${coach.totalMinutes},${coach.designatedMinutes},${coach.normalMinutes}\n`
+            const duration = record.hasReport ? record.duration : ''
+            const isDesignatedLabel = record.hasReport ? (record.isDesignated ? '是' : '否') : ''
+            csv += `"${coach.name}","${record.date}","${record.startTime}","${record.contactName}","${record.boatName}","${record.participantName}",${duration},"${isDesignatedLabel}",${coach.totalMinutes},${coach.designatedMinutes},${coach.normalMinutes}\n`
           })
         })
 
