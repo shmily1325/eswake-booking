@@ -2136,44 +2136,53 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 }
                               }}
                             >
-                              {/* 卡片內容：顯示船隻信息 */}
+                              {/* 卡片內容 */}
                               <div style={{ 
                                 paddingRight: '65px',
                                 minHeight: '100%'
                               }}>
-                                {/* 船隻名稱 */}
-                                <div style={{ 
-                                  fontSize: '14px', 
-                                  fontWeight: '700', 
-                                  marginBottom: '6px',
-                                  color: '#1a1a1a'
-                                }}>
-                                  {booking.boats?.name || '未指定船隻'}
-                                </div>
-
                                 {/* 時間 */}
-                                <div style={{ 
-                                  fontSize: '14px', 
-                                  fontWeight: '600', 
-                                  color: '#2c3e50',
-                                  marginBottom: '4px'
-                                }}>
-                                  <div>{startTime.getHours().toString().padStart(2, '0')}:{startTime.getMinutes().toString().padStart(2, '0')} - {endTime.getHours().toString().padStart(2, '0')}:{endTime.getMinutes().toString().padStart(2, '0')}</div>
-                                  <div style={{ fontSize: '12px', color: '#666' }}>
-                                    ({booking.duration_min}分{pickupTime && `，接船至 ${pickupTime.getHours().toString().padStart(2, '0')}:${pickupTime.getMinutes().toString().padStart(2, '0')}`})
-                                  </div>
+                                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '2px', color: '#2c3e50' }}>
+                                  {formatTimeRange(booking.start_at, booking.duration_min)}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>
+                                  ({booking.duration_min}分
+                                  {!isFacility(booking.boats?.name) && (
+                                    <>
+                                      ，接船至 {(() => {
+                                        const endTime = new Date(new Date(booking.start_at).getTime() + (booking.duration_min + 15) * 60000)
+                                        return `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
+                                      })()}
+                                    </>
+                                  )})
                                 </div>
 
                                 {/* 客人名稱 */}
-                                <div style={{ 
-                                  fontSize: '15px', 
-                                  color: '#333',
-                                  fontWeight: '500',
-                                  marginBottom: '4px'
-                                }}>
+                                <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px', color: '#1a1a1a' }}>
                                   {booking.contact_name}
                                   {booking.requires_driver && <span style={{ marginLeft: '6px', color: '#1976d2', fontWeight: '600', fontSize: '13px' }}>🚤</span>}
                                 </div>
+
+                                {/* 船隻 */}
+                                {!isEditing && (
+                                  <div style={{ fontSize: '12px', color: '#555', marginBottom: '4px' }}>
+                                    <div style={{ marginBottom: '2px' }}>
+                                      🚤 船隻：{booking.boats?.name || '未指定'}
+                                    </div>
+                                    {/* 教練 */}
+                                    {assignment.coachIds.length > 0 && (
+                                      <div style={{ marginBottom: '2px' }}>
+                                        🎓 教練：{assignment.coachIds.map(cId => coaches.find(c => c.id === cId)?.name).filter(Boolean).join(', ')}
+                                      </div>
+                                    )}
+                                    {/* 駕駛 */}
+                                    {assignment.driverIds.length > 0 && (
+                                      <div>
+                                        🚗 駕駛：{assignment.driverIds.map(dId => coaches.find(c => c.id === dId)?.name).filter(Boolean).join(', ')}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
 
                                 {/* 快速編輯區域 */}
                                 {isEditing && (
