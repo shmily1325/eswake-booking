@@ -44,13 +44,18 @@ export function AuditLog({ user }: AuditLogProps) {
     setLoading(true)
     
     try {
-      // 只查詢預約相關的記錄
+      // 只查詢預約相關的記錄（最近 7 天）
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      const sevenDaysAgoStr = sevenDaysAgo.toISOString()
+      
       let query = supabase
         .from('audit_log')
         .select('*')
         .eq('table_name', 'bookings')
+        .gte('created_at', sevenDaysAgoStr)
         .order('created_at', { ascending: false })
-        .limit(100)
+        .limit(200)
 
       // 根據篩選條件過濾 action
       if (filter !== 'all') {
@@ -78,30 +83,19 @@ export function AuditLog({ user }: AuditLogProps) {
     }
   }
 
-  const formatDateTime = (isoString: string) => {
-    if (!isoString) return ''
+  const formatDateTime = (dateString: string) => {
+    if (!dateString) return ''
     
     try {
-      // 使用 Date 對象自動處理時區轉換
-      const date = new Date(isoString)
+      // 直接從 TEXT 格式解析：2025-11-09T23:15:00
+      const datetime = dateString.substring(0, 16) // 取到分鐘
+      const [dateStr, timeStr] = datetime.split('T')
+      const [, month, day] = dateStr.split('-')
       
-      // 檢查是否為有效日期
-      if (isNaN(date.getTime())) return ''
-      
-      // 獲取本地時間的各個部分
-      const month = date.getMonth() + 1
-      const day = date.getDate()
-      const hours = String(date.getHours()).padStart(2, '0')
-      const minutes = String(date.getMinutes()).padStart(2, '0')
-      
-      // 計算星期幾
-      const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-      const weekday = weekdays[date.getDay()]
-      
-      return `${month}/${day} (週${weekday}) ${hours}:${minutes}`
+      return `${month}/${day} ${timeStr}`
     } catch (error) {
       console.error('Error formatting date:', error)
-      return ''
+      return dateString
     }
   }
 

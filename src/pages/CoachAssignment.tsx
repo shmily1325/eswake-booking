@@ -8,6 +8,7 @@ import { EditBookingDialog } from '../components/EditBookingDialog'
 import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getButtonStyle, getInputStyle, getLabelStyle, getTextStyle } from '../styles/designSystem'
 import { useRequireAdmin } from '../utils/auth'
+import { isFacility } from '../utils/facility'
 
 interface Coach {
   id: string
@@ -33,14 +34,6 @@ interface Booking {
 
 interface CoachAssignmentProps {
   user: User
-}
-
-// 定義設施（不是真正的船，不需要駕駛和接船）
-const FACILITIES = ['彈簧床']
-
-// 判斷是否為設施
-const isFacility = (boatName: string | undefined) => {
-  return boatName ? FACILITIES.includes(boatName) : false
 }
 
 export function CoachAssignment({ user }: CoachAssignmentProps) {

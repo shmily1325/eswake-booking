@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
+import { isFacility } from '../utils/facility'
 import { 
   EARLY_BOOKING_HOUR_LIMIT,
   MEMBER_SEARCH_DEBOUNCE_MS 
@@ -294,17 +295,21 @@ export function NewBookingDialog({
         let hasConflict = false
         let conflictReason = ''
         
+        // 檢查是否為設施（不需要接船時間）
+        const selectedBoat = boats.find(b => b.id === selectedBoatId)
+        const isSelectedBoatFacility = isFacility(selectedBoat?.name)
+        
         // 計算新預約的時間（分鐘數，用於所有衝突檢查）
         const [newHour, newMinute] = timeStr.split(':').map(Number)
         const newStartMinutes = newHour * 60 + newMinute
         const newEndMinutes = newStartMinutes + durationMin
-        const newCleanupEndMinutes = newEndMinutes + 15
+        const newCleanupEndMinutes = isSelectedBoatFacility ? newEndMinutes : newEndMinutes + 15 // 設施不需要接船時間
       
         // 檢查船衝突（需要至少15分鐘間隔）
         // TEXT 格式查詢，直接字符串比較
         const { data: existingBookings, error: checkError } = await supabase
           .from('bookings')
-          .select('id, start_at, duration_min, contact_name')
+          .select('id, start_at, duration_min, contact_name, boats:boat_id(name)')
           .eq('boat_id', selectedBoatId)
           .gte('start_at', `${dateStr}T00:00:00`)
           .lte('start_at', `${dateStr}T23:59:59`)
@@ -323,18 +328,22 @@ export function NewBookingDialog({
             
             const existingStartMinutes = existingHour * 60 + existingMinute
             const existingEndMinutes = existingStartMinutes + existing.duration_min
-            const existingCleanupEndMinutes = existingEndMinutes + 15
             
-            // 檢查新預約是否在現有預約的接船時間內開始
-            if (newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
+            // 檢查現有預約是否也是設施
+            const existingBoatName = (existing as any).boats?.name
+            const isExistingFacility = isFacility(existingBoatName)
+            const existingCleanupEndMinutes = isExistingFacility ? existingEndMinutes : existingEndMinutes + 15
+            
+            // 檢查新預約是否在現有預約的接船時間內開始（設施不需要接船時間）
+            if (!isExistingFacility && newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
               hasConflict = true
               const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
               conflictReason = `與 ${existing.contact_name} 的預約衝突：${existing.contact_name} 在 ${existingEndTime} 結束，需要15分鐘接船時間。您的預約 ${timeStr} 太接近了。`
               break
             }
             
-            // 檢查新預約結束時間是否會影響現有預約
-            if (existingStartMinutes >= newEndMinutes && existingStartMinutes < newCleanupEndMinutes) {
+            // 檢查新預約結束時間是否會影響現有預約（設施不需要接船時間）
+            if (!isSelectedBoatFacility && existingStartMinutes >= newEndMinutes && existingStartMinutes < newCleanupEndMinutes) {
               hasConflict = true
               const newEndTime = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
               conflictReason = `與 ${existing.contact_name} 的預約衝突：您的預約 ${newEndTime} 結束，${existing.contact_name} ${existingTime} 開始，需要15分鐘接船時間。`

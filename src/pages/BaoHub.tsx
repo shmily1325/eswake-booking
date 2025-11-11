@@ -23,6 +23,11 @@ export function BaoHub({ user }: BaoHubProps) {
       link: '/coach-assignment'
     },
     {
+      title: '教練工作狀況',
+      icon: '📊',
+      link: '/coach-overview'
+    },
+    {
       title: '會員管理',
       icon: '👥',
       link: '/members'
