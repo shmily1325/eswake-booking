@@ -1262,12 +1262,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               {/* 標題列 - 固定於頂部（不滾動） */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: `80px repeat(${boats.length}, minmax(200px, 1fr))`,
+                gridTemplateColumns: `80px repeat(${boats.length}, 200px)`,
                 background: 'linear-gradient(180deg, #2c3e50 0%, #34495e 100%)',
                 color: 'white',
                 borderBottom: '3px solid #1a252f',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                minWidth: '1000px',
                 overflow: 'hidden' // 防止內容溢出
               }}>
                 <div style={{
@@ -1315,7 +1314,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 {/* Grid 容器 */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: `80px repeat(${boats.length}, minmax(200px, 1fr))`,
+                  gridTemplateColumns: `80px repeat(${boats.length}, 200px)`,
                   gridTemplateRows: `repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT}px)`,
                   minWidth: '1000px',
                   position: 'relative'
@@ -1911,12 +1910,35 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 background: '#fafafa'
               }}>
                 <div style={{ 
-                  fontSize: '14px', 
-                  fontWeight: '600', 
-                  marginBottom: '8px',
-                  color: '#2c3e50'
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '8px'
                 }}>
-                  篩選教練：
+                  <div style={{ 
+                    fontSize: '14px', 
+                    fontWeight: '600', 
+                    color: '#2c3e50'
+                  }}>
+                    篩選教練：
+                  </div>
+                  {selectedCoaches.length > 0 && (
+                    <button
+                      onClick={() => setSelectedCoaches([])}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '4px',
+                        border: '1px solid #d32f2f',
+                        background: 'white',
+                        color: '#d32f2f',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        fontWeight: '500'
+                      }}
+                    >
+                      ✕ 清除選取
+                    </button>
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   <button
@@ -1964,52 +1986,53 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 </div>
               </div>
 
-              {/* 固定的表頭 */}
-              <div style={{
-                position: 'sticky',
-                top: 0,
-                zIndex: 100,
-                background: 'linear-gradient(180deg, #2c3e50 0%, #34495e 100%)',
-                display: 'grid',
-                gridTemplateColumns: `100px repeat(${coachColumns.length}, 1fr)`,
-                borderBottom: '2px solid #1a252f'
-              }}>
-                <div style={{
-                  padding: '16px 12px',
-                  color: 'white',
-                  fontWeight: '600',
-                  fontSize: '15px',
-                  textAlign: 'center',
-                  borderRight: '1px solid rgba(255,255,255,0.1)'
-                }}>
-                  時間軸
-                </div>
-                {coachColumns.map(coach => (
-                  <div
-                    key={coach.id}
-                    style={{
-                      padding: '16px 12px',
-                      color: 'white',
-                      fontWeight: '600',
-                      fontSize: '15px',
-                      textAlign: 'center',
-                      borderRight: coach.id === 'unassigned' ? 'none' : '1px solid rgba(255,255,255,0.1)'
-                    }}
-                  >
-                    {coach.id === 'unassigned' ? '未指定' : coach.name}
-                  </div>
-                ))}
-              </div>
-
-              {/* 滾動內容區 */}
+              {/* 滾動容器（包含表頭和內容） */}
               <div style={{
                 position: 'relative',
                 overflow: 'auto',
                 maxHeight: isMobile ? '60vh' : '70vh'
               }}>
+                {/* 固定的表頭 */}
+                <div style={{
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 100,
+                  background: 'linear-gradient(180deg, #2c3e50 0%, #34495e 100%)',
+                  display: 'grid',
+                  gridTemplateColumns: `100px repeat(${coachColumns.length}, 200px)`,
+                  borderBottom: '2px solid #1a252f'
+                }}>
+                  <div style={{
+                    padding: '16px 12px',
+                    color: 'white',
+                    fontWeight: '600',
+                    fontSize: '15px',
+                    textAlign: 'center',
+                    borderRight: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    時間軸
+                  </div>
+                  {coachColumns.map(coach => (
+                    <div
+                      key={coach.id}
+                      style={{
+                        padding: '16px 12px',
+                        color: 'white',
+                        fontWeight: '600',
+                        fontSize: '15px',
+                        textAlign: 'center',
+                        borderRight: coach.id === 'unassigned' ? 'none' : '1px solid rgba(255,255,255,0.1)'
+                      }}
+                    >
+                      {coach.id === 'unassigned' ? '未指定' : coach.name}
+                    </div>
+                  ))}
+                </div>
+
+                {/* 內容區 */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: `100px repeat(${coachColumns.length}, 1fr)`,
+                  gridTemplateColumns: `100px repeat(${coachColumns.length}, 200px)`,
                   gridTemplateRows: `repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT}px)`,
                   position: 'relative',
                   minHeight: `${TOTAL_SLOTS * SLOT_HEIGHT}px`

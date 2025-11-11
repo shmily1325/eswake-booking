@@ -476,10 +476,7 @@ export function DayView({ user }: DayViewProps) {
         </button>
         <button
           onClick={goToToday}
-          style={{
-            ...getButtonStyle('info', 'medium', isMobile),
-            padding: isMobile ? '6px 12px' : '8px 14px',
-          }}
+          style={getButtonStyle('info', 'medium', isMobile)}
         >
           今天
         </button>
@@ -488,11 +485,7 @@ export function DayView({ user }: DayViewProps) {
           to={`/coach-assignment?date=${dateParam}`}
           style={{
             ...getButtonStyle('info', 'medium', isMobile),
-            padding: isMobile ? '6px 12px' : '8px 14px',
             textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
           }}
         >
           📅 排班管理
