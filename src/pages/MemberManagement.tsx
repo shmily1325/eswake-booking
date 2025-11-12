@@ -420,7 +420,11 @@ export function MemberManagement({ user }: MemberManagementProps) {
                       fontSize: '13px', 
                       color: '#999',
                       marginTop: '8px',
-                      fontStyle: 'italic'
+                      fontStyle: 'italic',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: isMobile ? '250px' : '400px'
                     }}>
                       備註：{member.notes}
                     </div>

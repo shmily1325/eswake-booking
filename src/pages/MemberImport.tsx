@@ -456,7 +456,14 @@ Ingrid,,,,member,,,0,0,0,
                         <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.balance || '0'}</td>
                         <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.boat_voucher_g23_minutes || '0'}</td>
                         <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.boat_voucher_g21_minutes || '0'}</td>
-                        <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.notes || '-'}</td>
+                        <td style={{ 
+                          padding: designSystem.spacing.sm, 
+                          color: designSystem.colors.text.secondary,
+                          maxWidth: '200px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>{member.notes || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -509,7 +516,13 @@ Ingrid,,,,member,,,0,0,0,
                         {(member.balance && member.balance !== '0') && <div>餘額: ${member.balance}</div>}
                         {(member.boat_voucher_g23_minutes && member.boat_voucher_g23_minutes !== '0') && <div>G23船券: {member.boat_voucher_g23_minutes}分鐘</div>}
                         {(member.boat_voucher_g21_minutes && member.boat_voucher_g21_minutes !== '0') && <div>G21船券: {member.boat_voucher_g21_minutes}分鐘</div>}
-                        {member.notes && <div style={{ color: designSystem.colors.text.secondary }}>備註: {member.notes}</div>}
+                        {member.notes && <div style={{ 
+                          color: designSystem.colors.text.secondary,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '100%'
+                        }}>備註: {member.notes}</div>}
                     </div>
                   </div>
                 ))}
