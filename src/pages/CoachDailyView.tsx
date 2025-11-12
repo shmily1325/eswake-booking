@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
@@ -34,23 +35,42 @@ interface Booking {
   notes?: string | null
 }
 
+const generateTimeSlots = () => {
+  const slots: string[] = []
+  slots.push('04:30')
+  
+  let hour = 4
+  let minute = 45
+  
+  while (hour < 22 || (hour === 22 && minute === 0)) {
+    const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+    slots.push(timeSlot)
+    
+    minute += 15
+    if (minute >= 60) {
+      minute = 0
+      hour += 1
+    }
+  }
+  
+  return slots
+}
+
+const TIME_SLOTS = generateTimeSlots()
+
 export function CoachDailyView({ user }: CoachDailyViewProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const dateParam = searchParams.get('date') || getLocalDateString()
   const { isMobile } = useResponsive()
+  
+  const [boats, setBoats] = useState<Boat[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [loading, setLoading] = useState(true)
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
-
-  // 固定的船只列表
-  const allBoats: Boat[] = [
-    { id: 1, name: 'G23', color: '#9E9E9E' },
-    { id: 2, name: 'XT25', color: '#FFC107' },
-    { id: 3, name: 'X26', color: '#2196F3' },
-    { id: 4, name: '彈簧床', color: '#4CAF50' }
-  ]
 
   useEffect(() => {
+    loadBoats()
     loadCoaches()
     loadBookings()
 
@@ -63,10 +83,8 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
           schema: 'public', 
           table: 'bookings'
         },
-        (payload) => {
-          console.log('预约变更:', payload)
+        () => {
           loadBookings()
-          setLastUpdate(new Date())
         }
       )
       .subscribe()
@@ -74,7 +92,19 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [dateParam])
+
+  const loadBoats = async () => {
+    const { data } = await supabase
+      .from('boats')
+      .select('id, name, color')
+      .eq('is_active', true)
+      .order('id')
+    
+    if (data) {
+      setBoats(data)
+    }
+  }
 
   const loadCoaches = async () => {
     const { data } = await supabase
@@ -91,9 +121,8 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      const today = getLocalDateString()
-      const startOfDay = `${today}T00:00:00`
-      const endOfDay = `${today}T23:59:59`
+      const startOfDay = `${dateParam}T00:00:00`
+      const endOfDay = `${dateParam}T23:59:59`
 
       const { data, error } = await supabase
         .from('bookings')
@@ -125,47 +154,87 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
 
       setBookings(formattedData)
     } catch (error) {
-      console.error('载入预约失败:', error)
+      console.error('加载预约失败:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  // 筛选预约：如果选择了教练，只显示该教练的预约
-  const filteredBookings = selectedCoachId
-    ? bookings.filter(b => b.coaches?.some(c => c.id === selectedCoachId))
-    : bookings
+  // 筛选预约
+  const filteredBookings = useMemo(() => {
+    if (!selectedCoachId) return bookings
+    return bookings.filter(booking => 
+      booking.coaches?.some(coach => coach.id === selectedCoachId)
+    )
+  }, [bookings, selectedCoachId])
 
-  // 时间轴配置
-  const START_HOUR = 5
-  const END_HOUR = 20
-  const SLOT_MINUTES = 15
-  const SLOT_HEIGHT = isMobile ? 40 : 50
-  const TOTAL_SLOTS = ((END_HOUR - START_HOUR) * 60) / SLOT_MINUTES
-
-  // 计算预约在时间轴的位置
-  const calculatePosition = (startAt: string, durationMin: number) => {
-    const startTime = new Date(startAt)
-    const startHour = startTime.getHours()
-    const startMinute = startTime.getMinutes()
-    
-    const minutesFromStart = (startHour - START_HOUR) * 60 + startMinute
-    const gridRowStart = Math.floor(minutesFromStart / SLOT_MINUTES) + 1
-    const gridRowEnd = gridRowStart + Math.ceil(durationMin / SLOT_MINUTES)
-    
-    return { gridRowStart, gridRowEnd }
+  // 改变日期
+  const handleDateChange = (days: number) => {
+    const currentDate = new Date(dateParam)
+    currentDate.setDate(currentDate.getDate() + days)
+    const newDate = getLocalDateString(currentDate)
+    setSearchParams({ date: newDate })
   }
 
-  // 生成时间标签
-  const timeLabels = []
-  for (let hour = START_HOUR; hour <= END_HOUR; hour++) {
-    timeLabels.push(`${hour.toString().padStart(2, '0')}:00`)
+  // 跳转到今天
+  const goToToday = () => {
+    const today = getLocalDateString()
+    setSearchParams({ date: today })
+  }
+
+  // 格式化日期显示
+  const formatDisplayDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const days = ['日', '一', '二', '三', '四', '五', '六']
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    const weekday = days[date.getDay()]
+    return `${month}月${day}日 (${weekday})`
+  }
+
+  // 获取某个时间点的预约
+  const getBookingForCell = (boatId: number, timeSlot: string): Booking | null => {
+    const booking = filteredBookings.find(b => {
+      if (b.boat_id !== boatId) return false
+      const bookingStart = new Date(b.start_at)
+      const bookingStartTime = `${bookingStart.getHours().toString().padStart(2, '0')}:${bookingStart.getMinutes().toString().padStart(2, '0')}`
+      return bookingStartTime === timeSlot
+    })
+    return booking || null
+  }
+
+  // 判断是否是预约的开始时间格
+  const isBookingStart = (boatId: number, timeSlot: string): boolean => {
+    const booking = getBookingForCell(boatId, timeSlot)
+    return booking !== null
+  }
+
+  // 判断是否在预约时间内（非开始格）
+  const isInBookingRange = (boatId: number, timeSlot: string): boolean => {
+    const [hour, minute] = timeSlot.split(':').map(Number)
+    const slotTime = new Date(dateParam)
+    slotTime.setHours(hour, minute, 0, 0)
+
+    return filteredBookings.some(booking => {
+      if (booking.boat_id !== boatId) return false
+      const start = new Date(booking.start_at)
+      const end = new Date(start.getTime() + booking.duration_min * 60000)
+      return slotTime > start && slotTime < end
+    })
   }
 
   if (loading) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        载入中...
+      <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+        <PageHeader user={user} title="今日預約" />
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '50vh' 
+        }}>
+          <div style={{ fontSize: '18px', color: '#666' }}>載入中...</div>
+        </div>
       </div>
     )
   }
@@ -175,337 +244,350 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
       <PageHeader user={user} title="今日預約" />
 
       <div style={{
-        maxWidth: '1200px',
+        maxWidth: '1400px',
         margin: '0 auto',
         padding: isMobile ? '16px' : '20px'
       }}>
-        {/* 标题和教练筛选 */}
+        {/* 日期和教练筛选 */}
         <div style={{
+          background: 'white',
+          padding: isMobile ? '16px' : '20px',
+          borderRadius: '12px',
           marginBottom: '20px',
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          gap: '16px',
-          alignItems: isMobile ? 'stretch' : 'center',
-          justifyContent: 'space-between'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
-          <div>
-            <h1 style={{ 
-              margin: '0 0 8px 0', 
-              fontSize: isMobile ? '24px' : '28px',
-              fontWeight: 'bold',
-              color: '#333'
-            }}            >
-              📅 今日預約
-            </h1>
-            <div style={{ 
-              fontSize: '14px', 
-              color: '#666',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
+          {/* 日期切换 */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '16px',
+            gap: '10px'
+          }}>
+            <button
+              onClick={() => handleDateChange(-1)}
+              style={{
+                padding: '8px 16px',
+                background: 'white',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                color: '#666',
+                fontWeight: '600'
+              }}
+            >
+              ← 前一天
+            </button>
+
+            <div style={{
+              flex: 1,
+              textAlign: 'center'
             }}>
-              <span>{getLocalDateString()}</span>
-              <span style={{ 
-                fontSize: '12px', 
-                color: '#999',
-                background: '#e8f5e9',
-                padding: '2px 8px',
-                borderRadius: '12px'
+              <div style={{
+                fontSize: isMobile ? '18px' : '20px',
+                fontWeight: 'bold',
+                color: '#333',
+                marginBottom: '4px'
               }}>
-                即时更新
-              </span>
+                {formatDisplayDate(dateParam)}
+              </div>
+              {dateParam !== getLocalDateString() && (
+                <button
+                  onClick={goToToday}
+                  style={{
+                    padding: '4px 12px',
+                    background: '#2196f3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '600'
+                  }}
+                >
+                  回到今天
+                </button>
+              )}
             </div>
+
+            <button
+              onClick={() => handleDateChange(1)}
+              style={{
+                padding: '8px 16px',
+                background: 'white',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                color: '#666',
+                fontWeight: '600'
+              }}
+            >
+              後一天 →
+            </button>
           </div>
 
           {/* 教练筛选 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '14px', fontWeight: '600', color: '#666' }}>
-              筛选教练
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            paddingTop: '16px',
+            borderTop: '1px solid #e0e0e0'
+          }}>
+            <label style={{ 
+              fontSize: '14px', 
+              color: '#666',
+              fontWeight: '600'
+            }}>
+              篩選教練：
             </label>
             <select
               value={selectedCoachId}
               onChange={(e) => setSelectedCoachId(e.target.value)}
               style={{
-                padding: '10px 14px',
+                flex: 1,
+                padding: '8px 12px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
                 fontSize: '14px',
                 background: 'white',
-                cursor: 'pointer',
-                minWidth: isMobile ? '100%' : '200px'
+                cursor: 'pointer'
               }}
             >
-              <option value="">所有教练</option>
+              <option value="">所有教練</option>
               {coaches.map(coach => (
-                <option key={coach.id} value={coach.id}>{coach.name}</option>
+                <option key={coach.id} value={coach.id}>
+                  {coach.name}
+                </option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* 说明 */}
-        <div style={{
-          background: '#e3f2fd',
-          padding: '12px 16px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          fontSize: '14px',
-          color: '#1565c0',
-          border: '1px solid #bbdefb'
-        }}>
-          💡 此页面为只读视图，自动即时更新。选择教练可查看专属排班。
-        </div>
-
-        {/* 时间轴视图 */}
-        <div style={{
+        {/* 时间轴表格 */}
+        <div style={{ 
+          overflowX: 'auto',
           background: 'white',
           borderRadius: '12px',
-          padding: isMobile ? '12px' : '16px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          overflowX: 'auto'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${allBoats.length}, 1fr)`,
-            gap: '4px',
-            minWidth: isMobile ? '500px' : 'auto'
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            minWidth: isMobile ? '800px' : 'auto'
           }}>
-            {/* 表头 */}
-            {allBoats.map(boat => (
-              <div
-                key={boat.id}
-                style={{
-                  padding: '12px 8px',
-                  fontWeight: 'bold',
-                  fontSize: isMobile ? '13px' : '14px',
-                  color: boat.color,
-                  textAlign: 'center',
-                  background: `${boat.color}15`,
-                  borderRadius: '8px',
-                  border: `2px solid ${boat.color}`
-                }}
-              >
-                {boat.name}
-              </div>
-            ))}
-
-            {/* 时间轴内容 */}
-            <div style={{
-              gridColumn: '1 / -1',
-              display: 'grid',
-              gridTemplateColumns: `repeat(${allBoats.length}, 1fr)`,
-              gap: '2px',
-              position: 'relative'
-            }}>
-              {/* 船只列 */}
-              {allBoats.map(boat => {
-                const boatBookings = filteredBookings.filter(b => b.boat_id === boat.id)
-                
-                return (
-                  <div
+            <thead>
+              <tr>
+                <th style={{
+                  position: 'sticky',
+                  top: 0,
+                  left: 0,
+                  zIndex: 12,
+                  padding: isMobile ? '8px 4px' : '12px',
+                  borderBottom: '2px solid #dee2e6',
+                  backgroundColor: '#5a5a5a',
+                  color: 'white',
+                  fontSize: isMobile ? '11px' : '14px',
+                  fontWeight: '600',
+                  width: isMobile ? '60px' : '80px',
+                }}>
+                  時間
+                </th>
+                {boats.map(boat => (
+                  <th
                     key={boat.id}
                     style={{
-                      display: 'grid',
-                      gridTemplateRows: `repeat(${TOTAL_SLOTS}, ${SLOT_HEIGHT}px)`,
-                      gap: '0',
-                      position: 'relative',
-                      background: '#fafafa'
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 11,
+                      padding: isMobile ? '8px 4px' : '12px',
+                      textAlign: 'center',
+                      borderBottom: '2px solid #dee2e6',
+                      backgroundColor: '#5a5a5a',
+                      color: 'white',
+                      fontSize: isMobile ? '11px' : '14px',
+                      fontWeight: '600',
+                      width: isMobile ? '80px' : '120px',
                     }}
                   >
-                    {/* 背景格子 */}
-                    {Array.from({ length: TOTAL_SLOTS }).map((_, index) => {
-                      const hour = START_HOUR + Math.floor((index * SLOT_MINUTES) / 60)
-                      const minute = (index * SLOT_MINUTES) % 60
-                      const showLine = minute === 0
-                      
-                      return (
-                        <div
-                          key={index}
-                          style={{
-                            borderTop: showLine ? '2px solid #e0e0e0' : '1px solid #f0f0f0',
-                            background: showLine ? '#f9f9f9' : 'transparent',
-                            position: 'relative',
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            paddingLeft: '4px',
-                            paddingTop: '2px'
-                          }}
-                        >
-                          {showLine && (
-                            <span style={{
-                              fontSize: '10px',
-                              color: '#999',
-                              fontWeight: '600',
-                              zIndex: 0
-                            }}>
-                              {hour.toString().padStart(2, '0')}:00
-                            </span>
-                          )}
+                    <div style={{ fontSize: isMobile ? '11px' : '13px' }}>
+                      {boat.name}
+                    </div>
+                    <div style={{
+                      fontSize: isMobile ? '9px' : '11px',
+                      fontWeight: '400',
+                      marginTop: '2px',
+                      opacity: 0.8,
+                    }}>
+                      {filteredBookings.filter(b => b.boat_id === boat.id).length}筆
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {TIME_SLOTS.map((timeSlot) => {
+                const showPracticeLine = timeSlot === '08:00'
+                const [hour] = timeSlot.split(':').map(Number)
+                const isBefore8AM = hour < 8
+                
+                return (
+                  <tr key={timeSlot}>
+                    <td style={{
+                      position: 'sticky',
+                      left: 0,
+                      zIndex: 10,
+                      backgroundColor: 'white',
+                      padding: isMobile ? '4px 2px' : '6px 8px',
+                      borderBottom: showPracticeLine ? '3px solid #ffc107' : '1px solid #e9ecef',
+                      fontSize: isMobile ? '10px' : '13px',
+                      fontWeight: '500',
+                      textAlign: 'center',
+                      color: showPracticeLine ? '#856404' : (isBefore8AM ? '#856404' : '#666'),
+                      lineHeight: isMobile ? '1.2' : '1.5',
+                    }}>
+                      {isBefore8AM && '⚠️'}{timeSlot}
+                      {showPracticeLine && (
+                        <div style={{
+                          fontSize: isMobile ? '8px' : '10px',
+                          color: '#856404',
+                          marginTop: '2px',
+                          fontWeight: '600',
+                        }}>
+                          需指定
                         </div>
-                      )
-                    })}
-
-                    {/* 预约卡片 */}
-                    {boatBookings.map(booking => {
-                      const { gridRowStart, gridRowEnd } = calculatePosition(booking.start_at, booking.duration_min)
-                      const coachNames = booking.coaches?.map(c => c.name).join(', ') || '未分配'
-                      const isFacility = booking.boats?.name === '彈簧床'
-                      const start = new Date(booking.start_at)
-                      const actualEndTime = new Date(start.getTime() + booking.duration_min * 60000)
-                      const pickupEndTime = new Date(start.getTime() + (booking.duration_min + 15) * 60000)
-                      const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
-                      const endTime = isFacility 
-                        ? `${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
-                        : `${String(pickupEndTime.getHours()).padStart(2, '0')}:${String(pickupEndTime.getMinutes()).padStart(2, '0')}`
+                      )}
+                    </td>
+                    {boats.map(boat => {
+                      const booking = getBookingForCell(boat.id, timeSlot)
+                      const isStart = isBookingStart(boat.id, timeSlot)
+                      const isInRange = isInBookingRange(boat.id, timeSlot)
                       
-                      return (
-                        <div
-                          key={booking.id}
-                          style={{
-                            position: 'absolute',
-                            gridRow: `${gridRowStart} / ${gridRowEnd}`,
-                            width: '100%',
-                            background: `linear-gradient(135deg, ${boat.color}20 0%, ${boat.color}40 100%)`,
-                            border: `2px solid ${boat.color}`,
-                            borderRadius: '8px',
-                            padding: isMobile ? '6px 8px' : '8px 10px',
-                            fontSize: isMobile ? '11px' : '12px',
-                            overflow: 'hidden',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                            top: `${(gridRowStart - 1) * SLOT_HEIGHT}px`,
-                            zIndex: 1
-                          }}
-                        >
-                          {/* 时间范围 */}
-                          <div style={{ 
-                            fontWeight: '600', 
-                            marginBottom: '2px', 
-                            color: '#2c3e50',
-                            fontSize: isMobile ? '11px' : '12px',
-                            textAlign: 'center',
-                            lineHeight: '1.3'
-                          }}>
-                            {startTime} - {endTime}
-                          </div>
-                          
-                          {/* 时长说明 - 仅电脑版显示 */}
-                          {!isMobile && (
+                      if (booking && isStart) {
+                        const slots = Math.ceil(booking.duration_min / 15)
+                        const coachNames = booking.coaches?.map(c => c.name).join(', ') || '未分配'
+                        const isFacility = booking.boats?.name === '彈簧床'
+                        const start = new Date(booking.start_at)
+                        const actualEndTime = new Date(start.getTime() + booking.duration_min * 60000)
+                        const pickupEndTime = new Date(start.getTime() + (booking.duration_min + 15) * 60000)
+                        const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
+                        const endTime = isFacility 
+                          ? `${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
+                          : `${String(pickupEndTime.getHours()).padStart(2, '0')}:${String(pickupEndTime.getMinutes()).padStart(2, '0')}`
+                        
+                        return (
+                          <td
+                            key={boat.id}
+                            rowSpan={slots}
+                            style={{
+                              padding: isMobile ? '10px 8px' : '14px 12px',
+                              borderBottom: '1px solid #e9ecef',
+                              borderRight: '1px solid #e9ecef',
+                              background: `linear-gradient(135deg, ${boat.color}08 0%, ${boat.color}15 100%)`,
+                              border: `2px solid ${boat.color || '#ccc'}`,
+                              verticalAlign: 'top',
+                              borderRadius: isMobile ? '8px' : '10px',
+                              boxShadow: '0 3px 10px rgba(0,0,0,0.1)',
+                            }}
+                          >
+                            {/* 时间范围 */}
                             <div style={{
-                              fontSize: '11px',
-                              color: '#666',
-                              marginBottom: '4px',
-                              textAlign: 'center'
-                            }}>
-                              {isFacility 
-                                ? `(${booking.duration_min}分)` 
-                                : `(${booking.duration_min}分，接船至 ${String(pickupEndTime.getHours()).padStart(2, '0')}:${String(pickupEndTime.getMinutes()).padStart(2, '0')})`
-                              }
-                            </div>
-                          )}
-                          
-                          {/* 联系人姓名 */}
-                          <div style={{ 
-                            fontSize: isMobile ? '12px' : '14px',
-                            color: '#1a1a1a',
-                            fontWeight: '700',
-                            marginBottom: '4px',
-                            textAlign: 'center',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {booking.contact_name}
-                          </div>
-                          
-                          {/* 注解 */}
-                          {booking.notes && (
-                            <div style={{ 
-                              fontSize: isMobile ? '10px' : '11px',
-                              color: '#666',
+                              fontSize: isMobile ? '12px' : '14px',
+                              fontWeight: '600',
+                              color: '#2c3e50',
                               marginBottom: '4px',
                               textAlign: 'center',
-                              fontStyle: 'italic',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
+                              lineHeight: '1.3',
                             }}>
-                              {booking.notes}
+                              {startTime} - {endTime}
                             </div>
-                          )}
-                          
-                          {/* 排班注解 */}
-                          {booking.schedule_notes && (
-                            <div style={{ 
-                              fontSize: isMobile ? '10px' : '11px',
-                              color: '#e65100',
-                              marginBottom: '4px',
+
+                            {/* 时长说明 */}
+                            {!isMobile && (
+                              <div style={{
+                                fontSize: '12px',
+                                color: '#666',
+                                marginBottom: '8px',
+                                textAlign: 'center',
+                              }}>
+                                {isFacility 
+                                  ? `(${booking.duration_min}分)` 
+                                  : `(${booking.duration_min}分，接船至 ${String(pickupEndTime.getHours()).padStart(2, '0')}:${String(pickupEndTime.getMinutes()).padStart(2, '0')})`
+                                }
+                              </div>
+                            )}
+
+                            {/* 联系人姓名 */}
+                            <div style={{
+                              fontSize: isMobile ? '14px' : '16px',
+                              fontWeight: '700',
+                              marginBottom: '6px',
                               textAlign: 'center',
-                              fontWeight: '500',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
+                              color: '#1a1a1a',
                             }}>
-                              📝 {booking.schedule_notes}
+                              {booking.contact_name}
                             </div>
-                          )}
-                          
-                          {/* 教练姓名 */}
-                          <div style={{ 
-                            fontSize: isMobile ? '10px' : '11px',
-                            color: boat.color,
-                            fontWeight: '600',
-                            textAlign: 'center',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            🎓 {coachNames}
-                          </div>
-                        </div>
-                      )
+
+                            {/* 注解 */}
+                            {booking.notes && (
+                              <div style={{
+                                fontSize: isMobile ? '11px' : '12px',
+                                color: '#666',
+                                marginBottom: '4px',
+                                textAlign: 'center',
+                                fontStyle: 'italic',
+                              }}>
+                                {booking.notes}
+                              </div>
+                            )}
+
+                            {/* 排班注解 */}
+                            {booking.schedule_notes && (
+                              <div style={{
+                                fontSize: isMobile ? '11px' : '12px',
+                                color: '#e65100',
+                                marginBottom: '4px',
+                                textAlign: 'center',
+                                fontWeight: '500',
+                              }}>
+                                📝 {booking.schedule_notes}
+                              </div>
+                            )}
+
+                            {/* 教练姓名 */}
+                            <div style={{
+                              fontSize: isMobile ? '11px' : '12px',
+                              color: boat.color,
+                              fontWeight: '600',
+                              textAlign: 'center',
+                            }}>
+                              🎓 {coachNames}
+                            </div>
+                          </td>
+                        )
+                      } else if (isInRange) {
+                        return null
+                      } else {
+                        return (
+                          <td
+                            key={boat.id}
+                            style={{
+                              padding: isMobile ? '8px 4px' : '10px 8px',
+                              borderBottom: showPracticeLine ? '3px solid #ffc107' : '1px solid #e9ecef',
+                              borderRight: '1px solid #e9ecef',
+                              backgroundColor: 'white',
+                            }}
+                          />
+                        )
+                      }
                     })}
-                  </div>
+                  </tr>
                 )
               })}
-            </div>
-          </div>
-        </div>
-
-        {/* 预约统计 */}
-        <div style={{
-          marginTop: '20px',
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-          gap: '12px'
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '16px',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>今日总预约</div>
-            <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#2196F3' }}>
-              {filteredBookings.length}
-            </div>
-          </div>
-          <div style={{
-            background: 'white',
-            padding: '16px',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>最后更新</div>
-            <div style={{ fontSize: '16px', fontWeight: '600', color: '#4caf50' }}>
-              {lastUpdate.toLocaleTimeString('zh-TW', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                second: '2-digit'
-              })}
-            </div>
-          </div>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -513,4 +595,3 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
     </div>
   )
 }
-
