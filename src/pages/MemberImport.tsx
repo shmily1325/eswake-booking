@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
+import Papa from 'papaparse'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
@@ -46,51 +47,57 @@ export function MemberImport({ user }: MemberImportProps) {
     setError('')
     setSuccess('')
 
-    // 預覽 CSV 內容
+    // 預覽 CSV 內容（使用 papaparse 正確處理特殊字符）
     try {
       const text = await selectedFile.text()
-      const lines = text.split('\n').filter(line => line.trim())
       
-      if (lines.length === 0) {
-        setError('CSV 文件為空')
-        return
-      }
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header: string) => {
+          // 將中文欄位名轉換為英文
+          const headerMap: Record<string, string> = {
+            '姓名': 'name',
+            '暱稱': 'nickname',
+            '電話': 'phone',
+            '生日': 'birthday',
+            '會員類型': 'member_type',
+            '會員到期日': 'membership_expires_at',
+            '餘額': 'balance',
+            'G23船券': 'boat_voucher_g23_minutes',
+            'G21船券': 'boat_voucher_g21_minutes',
+            'G21/黑豹船券': 'boat_voucher_g21_minutes',
+            '備註': 'notes'
+          }
+          return headerMap[header] || header
+        },
+        complete: (results) => {
+          const members: ParsedMember[] = results.data
+            .filter((row: any) => row.name && row.name.trim())
+            .map((row: any) => ({
+              name: row.name,
+              nickname: row.nickname || undefined,
+              phone: row.phone || undefined,
+              birthday: row.birthday || undefined,
+              member_type: row.member_type || undefined,
+              membership_expires_at: row.membership_expires_at || undefined,
+              balance: row.balance || undefined,
+              boat_voucher_g23_minutes: row.boat_voucher_g23_minutes || undefined,
+              boat_voucher_g21_minutes: row.boat_voucher_g21_minutes || undefined,
+              notes: row.notes || undefined
+            }))
 
-      // 解析 CSV（支援逗號或 Tab 分隔）
-      const members: ParsedMember[] = []
-      const hasHeader = lines[0].includes('name') || lines[0].includes('姓名')
-      const startIndex = hasHeader ? 1 : 0
+          if (members.length === 0) {
+            setError('未找到有效的會員資料')
+            return
+          }
 
-      for (let i = startIndex; i < lines.length; i++) {
-        const line = lines[i].trim()
-        if (!line) continue
-
-        // 支援逗號或 Tab 分隔
-        const separator = line.includes('\t') ? '\t' : ','
-        const parts = line.split(separator).map(p => p.trim())
-
-        if (parts.length === 0 || !parts[0]) continue
-
-        members.push({
-          name: parts[0],
-          nickname: parts[1] || undefined,
-          phone: parts[2] || undefined,
-          birthday: parts[3] || undefined,
-          member_type: parts[4] || undefined,
-          membership_expires_at: parts[5] || undefined,
-          balance: parts[6] || undefined,
-          boat_voucher_g23_minutes: parts[7] || undefined,
-          boat_voucher_g21_minutes: parts[8] || undefined,
-          notes: parts[9] || undefined
-        })
-      }
-
-      if (members.length === 0) {
-        setError('未找到有效的會員資料')
-        return
-      }
-
-      setPreview(members)
+          setPreview(members)
+        },
+        error: (error: Error) => {
+          setError('解析 CSV 失敗: ' + error.message)
+        }
+      })
     } catch (err: any) {
       setError('讀取文件失敗: ' + err.message)
     }

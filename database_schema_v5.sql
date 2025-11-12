@@ -118,13 +118,13 @@ CREATE TABLE coaches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
   notes TEXT,
-  status TEXT DEFAULT 'active',                     -- active, inactive
+  status TEXT DEFAULT 'active',                     -- active, inactive, archived
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 COMMENT ON TABLE coaches IS '教練表（教練同時也是駕駛）';
-COMMENT ON COLUMN coaches.status IS 'active=上架（可預約，在預約表顯示）, inactive=下架（不可預約，不在預約表顯示）';
+COMMENT ON COLUMN coaches.status IS 'active=啟用中（預約/排班/回報/統計都顯示）, inactive=已停用（回報/統計顯示但預約/排班不顯示）, archived=已歸檔（完全隱藏，但資料保留）';
 
 CREATE INDEX idx_coaches_status ON coaches(status);
 

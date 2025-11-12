@@ -99,10 +99,11 @@ export function CoachOverview({ user }: CoachOverviewProps) {
   }
 
   const loadCoaches = async () => {
+    // 統計系統顯示所有教練（包含已停用但排除已歸檔），以便查看歷史統計
     const { data, error } = await supabase
       .from('coaches')
-      .select('id, name')
-      .eq('status', 'active')
+      .select('id, name, status')
+      .neq('status', 'archived')
       .order('name')
     
     if (error) {

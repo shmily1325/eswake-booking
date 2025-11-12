@@ -83,3 +83,49 @@
                            const borderColor = boatColor[m
                            const borderLeftColor = hasConflict ? '#ef5350' : !isComplete ? '#ffc107' : boatColor[m
  [m
+warning: in the working copy of 'src/pages/MemberManagement.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/pages/MemberManagement.tsx b/src/pages/MemberManagement.tsx[m
+[1mindex 536f47e..9b3c347 100644[m
+[1m--- a/src/pages/MemberManagement.tsx[m
+[1m+++ b/src/pages/MemberManagement.tsx[m
+[36m@@ -103,16 +103,32 @@[m [mexport function MemberManagement({ user }: MemberManagementProps) {[m
+     setDeleteError('')[m
+     [m
+     try {[m
+[31m-      // 檢查該會員是否有預約記錄[m
+[31m-      const { data: bookings, error: bookingsError } = await supabase[m
+[31m-        .from('bookings')[m
+[31m-        .select('id')[m
+[31m-        .eq('member_id', memberToDelete.id)[m
+[31m-        .limit(1)[m
+[32m+[m[32m      // 檢查該會員是否有預約相關記錄（檢查 bookings、booking_members、booking_participants）[m
+[32m+[m[32m      const [bookingsResult, bookingMembersResult, participantsResult] = await Promise.all([[m
+[32m+[m[32m        supabase[m
+[32m+[m[32m          .from('bookings')[m
+[32m+[m[32m          .select('id')[m
+[32m+[m[32m          .eq('member_id', memberToDelete.id)[m
+[32m+[m[32m          .limit(1),[m
+[32m+[m[32m        supabase[m
+[32m+[m[32m          .from('booking_members')[m
+[32m+[m[32m          .select('id')[m
+[32m+[m[32m          .eq('member_id', memberToDelete.id)[m
+[32m+[m[32m          .limit(1),[m
+[32m+[m[32m        supabase[m
+[32m+[m[32m          .from('booking_participants')[m
+[32m+[m[32m          .select('id')[m
+[32m+[m[32m          .eq('member_id', memberToDelete.id)[m
+[32m+[m[32m          .limit(1)[m
+[32m+[m[32m      ])[m
+       [m
+[31m-      if (bookingsError) throw bookingsError[m
+[32m+[m[32m      if (bookingsResult.error) throw bookingsResult.error[m
+[32m+[m[32m      if (bookingMembersResult.error) throw bookingMembersResult.error[m
+[32m+[m[32m      if (participantsResult.error) throw participantsResult.error[m
+       [m
+[31m-      if (bookings && bookings.length > 0) {[m
+[32m+[m[32m      if ((bookingsResult.data && bookingsResult.data.length > 0) ||[m[41m [m
+[32m+[m[32m          (bookingMembersResult.data && bookingMembersResult.data.length > 0) ||[m
+[32m+[m[32m          (participantsResult.data && participantsResult.data.length > 0)) {[m
+         setDeleteError('❌ 無法刪除：此會員有預約記錄。請先刪除相關預約，或使用「標記為無效」功能來隱藏會員。')[m
+         setDeleting(false)[m
+         return[m

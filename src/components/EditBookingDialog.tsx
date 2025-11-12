@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { useResponsive } from '../hooks/useResponsive'
+import { isFacility } from '../utils/facility'
 
 interface Coach {
   id: string
@@ -79,6 +80,20 @@ export function EditBookingDialog({
   // 使用 useMemo 優化性能
   const selectedCoachesSet = useMemo(() => new Set(selectedCoaches), [selectedCoaches])
   const activityTypesSet = useMemo(() => new Set(activityTypes), [activityTypes])
+  
+  // 計算選中的船隻和是否為設施
+  const selectedBoat = useMemo(() => boats.find(b => b.id === selectedBoatId), [boats, selectedBoatId])
+  const isSelectedBoatFacility = useMemo(() => isFacility(selectedBoat?.name), [selectedBoat])
+  
+  // 判斷是否可以勾選「需要駕駛」：必須有教練且不是彈簧床
+  const canRequireDriver = selectedCoaches.length > 0 && !isSelectedBoatFacility
+  
+  // 自動取消「需要駕駛」當條件不符時
+  useEffect(() => {
+    if (!canRequireDriver && requiresDriver) {
+      setRequiresDriver(false)
+    }
+  }, [canRequireDriver, requiresDriver])
 
   useEffect(() => {
     if (isOpen) {
@@ -168,10 +183,11 @@ export function EditBookingDialog({
     // 取得預約日期
     const bookingDate = startDate || (booking?.start_at ? booking.start_at.split('T')[0] : '')
     
-    // 取得所有教練
+    // 取得所有啟用的教練
     const { data: allCoaches, error} = await supabase
       .from('coaches')
       .select('id, name')
+      .eq('status', 'active')
       .order('name')
     
     if (error) {
@@ -1100,31 +1116,40 @@ export function EditBookingDialog({
             <label style={{
               display: 'flex',
               alignItems: 'center',
-              cursor: 'pointer',
+              cursor: canRequireDriver ? 'pointer' : 'not-allowed',
               padding: '12px',
-              backgroundColor: requiresDriver ? '#e3f2fd' : '#f8f9fa',
+              backgroundColor: requiresDriver ? '#dbeafe' : (canRequireDriver ? '#f8f9fa' : '#f5f5f5'),
               borderRadius: '8px',
-              border: requiresDriver ? '2px solid #1976d2' : '1px solid #e0e0e0',
+              border: requiresDriver ? '2px solid #3b82f6' : '1px solid #e0e0e0',
               transition: 'all 0.2s',
+              opacity: canRequireDriver ? 1 : 0.6,
             }}>
               <input
                 type="checkbox"
                 checked={requiresDriver}
                 onChange={(e) => setRequiresDriver(e.target.checked)}
+                disabled={!canRequireDriver}
                 style={{ 
                   marginRight: '10px', 
                   width: '18px', 
                   height: '18px',
-                  cursor: 'pointer',
+                  cursor: canRequireDriver ? 'pointer' : 'not-allowed',
                 }}
               />
-              <span style={{
-                fontSize: '15px',
-                fontWeight: '500',
-                color: requiresDriver ? '#1976d2' : '#333',
-              }}>
-                🚤 需要駕駛（勾選後在排班時必須指定駕駛）
-              </span>
+              <div style={{ flex: 1 }}>
+                <span style={{
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  color: requiresDriver ? '#3b82f6' : (canRequireDriver ? '#333' : '#999'),
+                }}>
+                  🚤 需要駕駛（勾選後在排班時必須指定駕駛）
+                </span>
+                {!canRequireDriver && (
+                  <div style={{ fontSize: '12px', color: '#f59e0b', marginTop: '4px' }}>
+                    {isSelectedBoatFacility ? '⚠️ 彈簧床不需要駕駛' : '⚠️ 未指定教練不能選駕駛'}
+                  </div>
+                )}
+              </div>
             </label>
           </div>
 
