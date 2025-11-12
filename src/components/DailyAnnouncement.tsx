@@ -113,14 +113,16 @@ export function DailyAnnouncement() {
         .select('name, nickname, membership_expires_at')
         .eq('status', 'active')
         .not('membership_expires_at', 'is', null)
+        .gte('membership_expires_at', today)
         .lte('membership_expires_at', sevenDaysLaterStr)
         .order('membership_expires_at', { ascending: true })
         .limit(10),
       
-      // 獲取即將到期或已到期的置板（7天內）
+      // 獲取即將到期的置板（7天內）
       supabase
         .from('board_storage')
         .select('slot_number, members(name), expires_at')
+        .gte('expires_at', today)
         .lte('expires_at', sevenDaysLaterStr)
         .order('expires_at', { ascending: true })
         .limit(10)
