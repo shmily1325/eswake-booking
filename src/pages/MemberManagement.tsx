@@ -59,7 +59,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
       const [membersResult, boardResult] = await Promise.all([
         supabase
           .from('members')
-          .select('id, name, nickname, phone, notes, member_type, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes, created_at')
+          .select('id, name, nickname, phone, birthday, notes, member_type, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes, membership_expires_at, created_at')
           .eq('status', 'active')
           .order('created_at', { ascending: false})
           .limit(200),  // 限制最多 200 筆，避免一次載入太多
