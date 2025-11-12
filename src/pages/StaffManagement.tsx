@@ -263,9 +263,9 @@ export function StaffManagement({ user }: StaffManagementProps) {
             onClick={() => setAddDialogOpen(true)}
             style={{
               padding: isMobile ? '12px 20px' : '12px 24px',
-              background: '#f5f5f5',
+              background: 'white',
               color: '#666',
-              border: 'none',
+              border: '2px solid #e0e0e0',
               borderRadius: '8px',
               fontSize: isMobile ? '14px' : '15px',
               fontWeight: '600',
@@ -277,10 +277,12 @@ export function StaffManagement({ user }: StaffManagementProps) {
               gap: '8px'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#e0e0e0'
+              e.currentTarget.style.background = '#f5f5f5'
+              e.currentTarget.style.borderColor = '#ccc'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#f5f5f5'
+              e.currentTarget.style.background = 'white'
+              e.currentTarget.style.borderColor = '#e0e0e0'
             }}
           >
             <span>➕</span>
@@ -420,13 +422,9 @@ export function StaffManagement({ user }: StaffManagementProps) {
             <span style={{
               fontSize: '14px',
               fontWeight: '600',
-              color: '#666',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
+              color: '#666'
             }}>
-              <span>📦</span>
-              <span>顯示已隱藏的教練</span>
+              顯示已隱藏的教練
             </span>
           </label>
         </div>
@@ -434,7 +432,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
         {/* 教練列表 */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', 
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
           gap: '15px' 
         }}>
           {coaches.filter(coach => showArchived || coach.status !== 'archived').map(coach => {
@@ -483,108 +481,119 @@ export function StaffManagement({ user }: StaffManagementProps) {
                   gap: '12px'
                 }}>
                   <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    gap: '8px',
                     flex: 1
                   }}>
                     <h3 style={{ 
                       margin: 0, 
                       fontSize: isMobile ? '20px' : '22px',
                       fontWeight: 'bold',
-                      color: '#333'
+                      color: '#333',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px'
                     }}>
                       {coach.name}
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        background: statusBg,
+                        color: statusColor
+                      }}>
+                        {statusText}
+                      </span>
                     </h3>
-                    <span style={{
-                      padding: '6px 14px',
-                      borderRadius: '20px',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      background: statusBg,
-                      color: statusColor,
-                      alignSelf: 'flex-start'
-                    }}>
-                      {statusText}
-                    </span>
                   </div>
                   
-                  {/* 操作按鈕 - 手機版改為垂直排列 */}
+                  {/* 操作按鈕 */}
                   <div style={{ 
                     display: 'flex', 
-                    flexDirection: isMobile ? 'column' : 'row',
                     gap: '8px',
-                    alignItems: isMobile ? 'flex-end' : 'center'
+                    alignItems: 'center'
                   }}>
                     {isArchived ? (
                       // 已隱藏：只顯示恢復按鈕
                       <button
                         onClick={() => handleRestoreCoach(coach)}
                         style={{
-                          padding: isMobile ? '8px 14px' : '8px 16px',
+                          padding: '8px 16px',
                           background: '#4caf50',
                           color: 'white',
                           border: 'none',
                           borderRadius: '8px',
-                          fontSize: isMobile ? '13px' : '14px',
+                          fontSize: '14px',
                           fontWeight: '600',
                           cursor: 'pointer',
                           whiteSpace: 'nowrap',
                           transition: 'all 0.2s',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                          minWidth: '80px'
                         }}
                       >
                         恢復顯示
                       </button>
                     ) : (
-                      // 未隱藏：顯示切換框 + 隱藏按鈕
+                      // 未隱藏：顯示啟用/停用按鈕 + 隱藏按鈕
                       <>
-                        {/* 啟用/停用切換框 */}
-                        <label style={{
+                        {/* 啟用/停用按鈕組 */}
+                        <div style={{
                           display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer',
-                          padding: isMobile ? '8px 12px' : '8px 14px',
                           background: '#f5f5f5',
                           borderRadius: '8px',
-                          transition: 'all 0.2s',
-                          userSelect: 'none'
+                          padding: '4px',
+                          gap: '4px'
                         }}>
-                          <input
-                            type="checkbox"
-                            checked={isActive}
-                            onChange={() => handleToggleStatus(coach)}
+                          <button
+                            onClick={() => !isActive && handleToggleStatus(coach)}
                             style={{
-                              width: '40px',
-                              height: '20px',
-                              cursor: 'pointer',
-                              accentColor: '#4caf50'
+                              padding: '6px 14px',
+                              background: isActive ? 'white' : 'transparent',
+                              color: isActive ? '#4caf50' : '#999',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: isActive ? 'default' : 'pointer',
+                              whiteSpace: 'nowrap',
+                              transition: 'all 0.2s',
+                              boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                             }}
-                          />
-                          <span style={{
-                            fontSize: isMobile ? '13px' : '14px',
-                            fontWeight: '600',
-                            color: isActive ? '#4caf50' : '#999',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {isActive ? '啟用中' : '已停用'}
-                          </span>
-                        </label>
+                          >
+                            啟用
+                          </button>
+                          <button
+                            onClick={() => isActive && handleToggleStatus(coach)}
+                            style={{
+                              padding: '6px 14px',
+                              background: !isActive ? 'white' : 'transparent',
+                              color: !isActive ? '#ff9800' : '#999',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: !isActive ? 'default' : 'pointer',
+                              whiteSpace: 'nowrap',
+                              transition: 'all 0.2s',
+                              boxShadow: !isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                            }}
+                          >
+                            停用
+                          </button>
+                        </div>
                         <button
                           onClick={() => handleArchiveCoach(coach)}
                           style={{
-                            padding: isMobile ? '8px 14px' : '8px 16px',
+                            padding: '8px 16px',
                             background: '#f5f5f5',
                             color: '#999',
                             border: 'none',
                             borderRadius: '8px',
-                            fontSize: isMobile ? '13px' : '14px',
+                            fontSize: '14px',
                             fontWeight: '600',
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
                             transition: 'all 0.2s',
-                            minWidth: isMobile ? '70px' : 'auto'
+                            minWidth: '80px'
                           }}
                         >
                           隱藏
@@ -607,13 +616,9 @@ export function StaffManagement({ user }: StaffManagementProps) {
                       fontSize: '14px', 
                       fontWeight: '600', 
                       marginBottom: '10px', 
-                      color: '#f57c00',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
+                      color: '#f57c00'
                     }}>
-                      <span>📅</span>
-                      <span>不在期間</span>
+                      不在期間
                     </div>
                     {coachTimeOffs.map(timeOff => (
                       <div
@@ -671,7 +676,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
                   </div>
                 )}
 
-                {/* 設定不在期間按鈕 - 只對未歸檔教練顯示 */}
+                {/* 設定休假按鈕 - 只對未歸檔教練顯示 */}
                 {!isArchived && (
                   <button
                     onClick={() => openTimeOffDialog(coach)}
@@ -686,10 +691,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
                       fontWeight: '600',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                     }}
                     onMouseEnter={(e) => {
@@ -699,8 +700,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
                       e.currentTarget.style.background = '#e3f2fd'
                     }}
                   >
-                    <span>📅</span>
-                    <span>設定不在期間</span>
+                    設定休假
                   </button>
                 )}
               </div>
@@ -820,7 +820,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
             width: '100%'
           }}>
             <h2 style={{ marginTop: 0, fontSize: '20px' }}>
-              設定 {selectedCoach.name} 的不在期間
+              設定 {selectedCoach.name} 的休假
             </h2>
             
             <div style={{ marginBottom: '16px' }}>
