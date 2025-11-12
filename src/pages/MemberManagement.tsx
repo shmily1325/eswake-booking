@@ -441,28 +441,28 @@ export function MemberManagement({ user }: MemberManagementProps) {
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>儲值</div>
                     <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold', color: '#f44336' }}>
-                      ${member.balance.toLocaleString()}
+                      ${(member.balance || 0).toLocaleString()}
                     </div>
                   </div>
                   
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>指定課</div>
                     <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold', color: '#ff9800' }}>
-                      {member.designated_lesson_minutes} 分
+                      {member.designated_lesson_minutes || 0} 分
                     </div>
                   </div>
                   
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>G23券</div>
                     <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold', color: '#4caf50' }}>
-                      {member.boat_voucher_g23_minutes} 分
+                      {member.boat_voucher_g23_minutes || 0} 分
                     </div>
                   </div>
                   
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>G21券</div>
                     <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold', color: '#13c2c2' }}>
-                      {member.boat_voucher_g21_minutes} 分
+                      {member.boat_voucher_g21_minutes || 0} 分
                     </div>
                   </div>
                 </div>
