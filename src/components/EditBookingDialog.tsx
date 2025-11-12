@@ -246,19 +246,19 @@ export function EditBookingDialog({
 
     // 檢查預約人是否為空
     if (selectedMemberIds.length === 0 && manualNames.length === 0 && !manualStudentName.trim()) {
-      setError('⚠️ 請至少選擇一位會員或輸入預約人姓名')
+      setError('請至少選擇一位會員或輸入預約人姓名')
       return
     }
 
     if (!selectedBoatId || selectedBoatId === 0) {
-      setError('⚠️ 請選擇船隻')
+      setError('請選擇船隻')
       return
     }
 
     // 防呆檢查：08:00之前的預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
     if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
-      setError(`⚠️ ${EARLY_BOOKING_HOUR_LIMIT}:00之前的預約必須指定教練\n`)
+      setError(`${EARLY_BOOKING_HOUR_LIMIT}:00之前的預約必須指定教練\n`)
       return
     }
 

@@ -238,24 +238,24 @@ export function NewBookingDialog({
 
     // 驗證必填欄位
     if (selectedMemberIds.length === 0 && manualNames.length === 0) {
-      setError('⚠️ 請選擇會員或新增非會員姓名')
+      setError('請選擇會員或新增非會員姓名')
       return
     }
 
     if (!selectedBoatId || selectedBoatId === 0) {
-      setError('⚠️ 請選擇船隻')
+      setError('請選擇船隻')
       return
     }
 
     if (!startDate || !startTime) {
-      setError('⚠️ 請選擇開始日期和時間')
+      setError('請選擇開始日期和時間')
       return
     }
 
     // 防呆檢查：08:00之前的預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
     if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
-      setError(`⚠️ ${EARLY_BOOKING_HOUR_LIMIT}:00之前的預約必須指定教練\n`)
+      setError(`${EARLY_BOOKING_HOUR_LIMIT}:00之前的預約必須指定教練\n`)
       return
     }
 
@@ -1470,7 +1470,7 @@ export function NewBookingDialog({
                     onChange={(e) => {
                       // 驗證結束日期不能早於開始日期
                       if (e.target.value && e.target.value < startDate) {
-                        setError('⚠️ 結束日期不能早於開始日期')
+                        setError('結束日期不能早於開始日期')
                         return
                       }
                       setRepeatEndDate(e.target.value)
