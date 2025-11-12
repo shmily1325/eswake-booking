@@ -523,7 +523,8 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
 
         {/* 時間軸表格 */}
         <div style={{ 
-          overflowX: 'auto',
+          overflowX: 'hidden',
+          overflowY: 'auto',
           background: 'white',
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
@@ -532,7 +533,7 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
             width: '100%',
             borderCollapse: 'separate',
             borderSpacing: 0,
-            minWidth: (isMobile && selectedCoachId) ? 'auto' : (isMobile ? '800px' : 'auto')
+            tableLayout: isMobile ? 'fixed' : 'auto'
           }}>
             <thead>
               <tr>
@@ -541,13 +542,13 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
                   top: 0,
                   left: 0,
                   zIndex: 12,
-                  padding: isMobile ? '8px 4px' : '12px',
+                  padding: isMobile ? '4px 1px' : '12px',
                   borderBottom: '2px solid #dee2e6',
                   backgroundColor: '#5a5a5a',
                   color: 'white',
-                  fontSize: isMobile ? '11px' : '14px',
+                  fontSize: isMobile ? '9px' : '14px',
                   fontWeight: '600',
-                  width: isMobile ? '60px' : '80px',
+                  width: isMobile ? '11%' : '80px',
                 }}>
                   時間
                 </th>
@@ -588,21 +589,21 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
                         position: 'sticky',
                         top: 0,
                         zIndex: 11,
-                        padding: isMobile ? '8px 4px' : '12px',
+                        padding: isMobile ? '6px 2px' : '12px',
                         textAlign: 'center',
                         borderBottom: '2px solid #dee2e6',
                         backgroundColor: '#5a5a5a',
                         color: 'white',
-                        fontSize: isMobile ? '11px' : '14px',
+                        fontSize: isMobile ? '10px' : '14px',
                         fontWeight: '600',
-                        width: isMobile ? '80px' : '120px',
+                        width: 'auto',
                       }}
                     >
-                      <div style={{ fontSize: isMobile ? '11px' : '13px' }}>
+                      <div style={{ fontSize: isMobile ? '10px' : '13px' }}>
                         {boat.name}
                       </div>
                       <div style={{
-                        fontSize: isMobile ? '9px' : '11px',
+                        fontSize: isMobile ? '8px' : '11px',
                         fontWeight: '400',
                         marginTop: '2px',
                         opacity: 0.8,
@@ -626,15 +627,26 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
                       left: 0,
                       zIndex: 10,
                       backgroundColor: 'white',
-                      padding: isMobile ? '4px 2px' : '6px 8px',
+                      padding: isMobile ? '4px 1px' : '6px 8px',
                       borderBottom: '1px solid #e9ecef',
-                      fontSize: isMobile ? '10px' : '13px',
+                      fontSize: isMobile ? '9px' : '13px',
                       fontWeight: '500',
                       textAlign: 'center',
                       color: isBefore8AM ? '#856404' : '#666',
                       lineHeight: isMobile ? '1.2' : '1.5',
                     }}>
-                      {isBefore8AM && '⚠️'}{timeSlot}
+                      {isBefore8AM && '⚠️'}
+                      {isMobile ? (
+                        // 手機版：簡化時間顯示
+                        (() => {
+                          const [h, m] = timeSlot.split(':')
+                          const hour = parseInt(h)
+                          const minute = parseInt(m)
+                          return minute === 0 ? hour : `${hour}:${m}`
+                        })()
+                      ) : (
+                        timeSlot
+                      )}
                     </td>
                     {(isMobile && selectedCoachId) ? (
                       // 手機模式 + 選擇教練：合併所有船隻到一欄

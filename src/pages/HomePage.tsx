@@ -47,7 +47,7 @@ export function HomePage({ user }: HomePageProps) {
     // },
     {
       title: '編輯記錄',
-      icon: '📝',
+      icon: '📋',
       link: '/audit-log'
     },
     {
