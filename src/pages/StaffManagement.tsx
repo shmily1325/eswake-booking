@@ -309,19 +309,22 @@ export function StaffManagement({ user }: StaffManagementProps) {
                   <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選
                 </div>
                 <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                  <strong>不在期間</strong>：特定日期選不到（如出國比賽）
+                  <strong>休假</strong>：特定日期選不到該教練（例如：出國或者雪季）
                 </div>
                 <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                  <strong>隱藏</strong>：不再顯示該教練（可隨時恢復）
+                  <strong>隱藏</strong>：不再顯示該教練但仍保存於資料庫，可隨時恢復（例如：外師或其他俱樂部教練）
                 </div>
               </div>
             ) : (
               <div>
                 <div style={{ marginBottom: '6px' }}>
-                  <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選擇　｜　<strong>不在期間</strong>：特定日期選不到（如出國比賽）
+                  <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選擇
+                </div>
+                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
+                  <strong>休假</strong>：特定日期選不到該教練（例如：出國或者雪季）
                 </div>
                 <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                  <strong>隱藏</strong>：不再顯示該教練（可隨時恢復）
+                  <strong>隱藏</strong>：不再顯示該教練但仍保存於資料庫，可隨時恢復（例如：外師或其他俱樂部教練）
                 </div>
               </div>
             )}
