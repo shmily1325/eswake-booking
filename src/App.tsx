@@ -21,6 +21,7 @@ import { StaffManagement } from './pages/StaffManagement'
 import { QuickTransaction } from './pages/QuickTransaction'
 import { AnnouncementManagement } from './pages/AnnouncementManagement'
 import { LineSettings } from './pages/LineSettings'
+import { CoachDailyView } from './pages/CoachDailyView'
 import { LoginPage } from './components/LoginPage'
 
 function App() {
@@ -83,6 +84,7 @@ function App() {
         <Route path="/staff" element={<StaffManagement user={user} />} />
         <Route path="/announcements" element={<AnnouncementManagement user={user} />} />
         <Route path="/line-settings" element={<LineSettings user={user} />} />
+        <Route path="/coach-daily" element={<CoachDailyView user={user} />} />
       </Routes>
     </BrowserRouter>
   )

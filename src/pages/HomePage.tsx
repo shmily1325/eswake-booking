@@ -20,8 +20,13 @@ export function HomePage({ user }: HomePageProps) {
   
   const menuItems = [
     {
-      title: '預約表',
+      title: '今日預約',
       icon: '📅',
+      link: '/coach-daily'
+    },
+    {
+      title: '預約表',
+      icon: '📝',
       link: `/day?date=${getLocalDateString()}`
     },
     {

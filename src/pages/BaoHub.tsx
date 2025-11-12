@@ -43,7 +43,7 @@ export function BaoHub({ user }: BaoHubProps) {
     },
     {
       title: '教練管理',
-      icon: '👨‍🏫',
+      icon: '🎓',
       link: '/staff'
     },
     // 暫時隱藏快速記帳功能
