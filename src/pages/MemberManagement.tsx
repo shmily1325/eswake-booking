@@ -103,16 +103,32 @@ export function MemberManagement({ user }: MemberManagementProps) {
     setDeleteError('')
     
     try {
-      // 檢查該會員是否有預約記錄
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('bookings')
-        .select('id')
-        .eq('member_id', memberToDelete.id)
-        .limit(1)
+      // 檢查該會員是否有預約相關記錄（檢查 bookings、booking_members、booking_participants）
+      const [bookingsResult, bookingMembersResult, participantsResult] = await Promise.all([
+        supabase
+          .from('bookings')
+          .select('id')
+          .eq('member_id', memberToDelete.id)
+          .limit(1),
+        supabase
+          .from('booking_members')
+          .select('id')
+          .eq('member_id', memberToDelete.id)
+          .limit(1),
+        supabase
+          .from('booking_participants')
+          .select('id')
+          .eq('member_id', memberToDelete.id)
+          .limit(1)
+      ])
       
-      if (bookingsError) throw bookingsError
+      if (bookingsResult.error) throw bookingsResult.error
+      if (bookingMembersResult.error) throw bookingMembersResult.error
+      if (participantsResult.error) throw participantsResult.error
       
-      if (bookings && bookings.length > 0) {
+      if ((bookingsResult.data && bookingsResult.data.length > 0) || 
+          (bookingMembersResult.data && bookingMembersResult.data.length > 0) ||
+          (participantsResult.data && participantsResult.data.length > 0)) {
         setDeleteError('❌ 無法刪除：此會員有預約記錄。請先刪除相關預約，或使用「標記為無效」功能來隱藏會員。')
         setDeleting(false)
         return
