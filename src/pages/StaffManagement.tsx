@@ -95,7 +95,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
       if (error) throw error
 
-      alert('✅ 新增成功')
       setNewCoachName('')
       setAddDialogOpen(false)
       loadData()
@@ -109,9 +108,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
   const handleToggleStatus = async (coach: Coach) => {
     const newStatus = coach.status === 'active' ? 'inactive' : 'active'
-    const action = newStatus === 'active' ? '啟用' : '停用'
-
-    if (!confirm(`確定要${action} ${coach.name} 嗎？`)) return
 
     try {
       const { error } = await supabase
@@ -121,7 +117,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
       if (error) throw error
 
-      alert(`✅ ${coach.name} 已${action}`)
       loadData()
     } catch (error: any) {
       console.error('更新失敗:', error)
@@ -130,8 +125,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
   }
 
   const handleArchiveCoach = async (coach: Coach) => {
-    if (!confirm(`確定要歸檔 ${coach.name} 嗎？\n\n歸檔後將完全隱藏，但可以隨時恢復。`)) return
-
     try {
       const { error } = await supabase
         .from('coaches')
@@ -140,17 +133,14 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
       if (error) throw error
 
-      alert(`✅ ${coach.name} 已歸檔`)
       loadData()
     } catch (error: any) {
-      console.error('歸檔失敗:', error)
-      alert('歸檔失敗: ' + error.message)
+      console.error('隱藏失敗:', error)
+      alert('隱藏失敗: ' + error.message)
     }
   }
 
   const handleRestoreCoach = async (coach: Coach) => {
-    if (!confirm(`確定要恢復 ${coach.name} 嗎？`)) return
-
     try {
       const { error } = await supabase
         .from('coaches')
@@ -159,7 +149,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
       if (error) throw error
 
-      alert(`✅ ${coach.name} 已恢復`)
       loadData()
     } catch (error: any) {
       console.error('恢復失敗:', error)
@@ -193,7 +182,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
       if (error) throw error
 
-      alert('✅ 設定成功')
       setTimeOffDialogOpen(false)
       setSelectedCoach(null)
       setTimeOffStartDate('')
@@ -219,7 +207,6 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
       if (error) throw error
 
-      alert('✅ 已刪除')
       loadData()
     } catch (error: any) {
       console.error('刪除失敗:', error)
@@ -276,27 +263,24 @@ export function StaffManagement({ user }: StaffManagementProps) {
             onClick={() => setAddDialogOpen(true)}
             style={{
               padding: isMobile ? '12px 20px' : '12px 24px',
-              background: '#5a5a5a',
-              color: 'white',
+              background: '#f5f5f5',
+              color: '#666',
               border: 'none',
               borderRadius: '8px',
               fontSize: isMobile ? '14px' : '15px',
               fontWeight: '600',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)'
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
+              e.currentTarget.style.background = '#e0e0e0'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
+              e.currentTarget.style.background = '#f5f5f5'
             }}
           >
             <span>➕</span>
@@ -318,24 +302,35 @@ export function StaffManagement({ user }: StaffManagementProps) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
             <span style={{ flexShrink: 0 }}>💡</span>
             {isMobile ? (
-              <span>點擊卡片上的按鈕管理教練狀態，點「📅」設定不在期間。</span>
+              <div>
+                <div style={{ marginBottom: '4px' }}>
+                  <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選
+                </div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                  <strong>不在期間</strong>：特定日期選不到（如出國比賽）
+                </div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                  <strong>隱藏</strong>：不再顯示該教練（可隨時恢復）
+                </div>
+              </div>
             ) : (
               <div>
                 <div style={{ marginBottom: '6px' }}>
-                  <strong>停用</strong> = 立即無法選擇該教練　｜　<strong>不在期間</strong> = 特定日期選不到（如出國比賽）
+                  <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選擇　｜　<strong>不在期間</strong>：特定日期選不到（如出國比賽）
                 </div>
                 <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                  <strong>隱藏</strong> = 歸檔教練，不再顯示但可隨時恢復
+                  <strong>隱藏</strong>：不再顯示該教練（可隨時恢復）
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* 統計資訊 */}
+        {/* 統計資訊 - 手機版隱藏 */}
+        {!isMobile && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(4, 1fr)',
           gap: '12px',
           marginBottom: '20px'
         }}>
@@ -385,12 +380,13 @@ export function StaffManagement({ user }: StaffManagementProps) {
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>已歸檔</div>
+            <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>已隱藏</div>
             <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: '#999' }}>
               {coaches.filter(c => c.status === 'archived').length}
             </div>
           </div>
         </div>
+        )}
 
         {/* 顯示切換 */}
         <div style={{
@@ -399,32 +395,46 @@ export function StaffManagement({ user }: StaffManagementProps) {
           gap: '10px',
           alignItems: 'center'
         }}>
-          <button
-            onClick={() => setShowArchived(!showArchived)}
-            style={{
-              padding: '10px 16px',
-              background: showArchived ? '#5a5a5a' : 'white',
-              color: showArchived ? 'white' : '#5a5a5a',
-              border: '2px solid #5a5a5a',
-              borderRadius: '8px',
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            padding: '10px 16px',
+            background: '#f5f5f5',
+            borderRadius: '8px',
+            transition: 'all 0.2s',
+            userSelect: 'none'
+          }}>
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={() => setShowArchived(!showArchived)}
+              style={{
+                width: '40px',
+                height: '20px',
+                cursor: 'pointer',
+                accentColor: '#5a5a5a'
+              }}
+            />
+            <span style={{
               fontSize: '14px',
               fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
+              color: '#666',
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
-            }}
-          >
-            <span>📦</span>
-            <span>{showArchived ? '隱藏已歸檔' : '顯示已歸檔'}</span>
-          </button>
+            }}>
+              <span>📦</span>
+              <span>顯示已隱藏的教練</span>
+            </span>
+          </label>
         </div>
 
         {/* 教練列表 */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', 
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', 
           gap: '15px' 
         }}>
           {coaches.filter(coach => showArchived || coach.status !== 'archived').map(coach => {
@@ -507,7 +517,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
                     alignItems: isMobile ? 'flex-end' : 'center'
                   }}>
                     {isArchived ? (
-                      // 已歸檔：只顯示恢復按鈕
+                      // 已隱藏：只顯示恢復按鈕
                       <button
                         onClick={() => handleRestoreCoach(coach)}
                         style={{
@@ -524,36 +534,49 @@ export function StaffManagement({ user }: StaffManagementProps) {
                           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                         }}
                       >
-                        恢復啟用
+                        恢復顯示
                       </button>
                     ) : (
-                      // 未歸檔：顯示啟用/停用 + 歸檔按鈕
+                      // 未隱藏：顯示切換框 + 隱藏按鈕
                       <>
-                        <button
-                          onClick={() => handleToggleStatus(coach)}
-                          style={{
-                            padding: isMobile ? '8px 14px' : '8px 16px',
-                            background: isActive ? '#ff9800' : '#4caf50',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '8px',
+                        {/* 啟用/停用切換框 */}
+                        <label style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          padding: isMobile ? '8px 12px' : '8px 14px',
+                          background: '#f5f5f5',
+                          borderRadius: '8px',
+                          transition: 'all 0.2s',
+                          userSelect: 'none'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={isActive}
+                            onChange={() => handleToggleStatus(coach)}
+                            style={{
+                              width: '40px',
+                              height: '20px',
+                              cursor: 'pointer',
+                              accentColor: '#4caf50'
+                            }}
+                          />
+                          <span style={{
                             fontSize: isMobile ? '13px' : '14px',
                             fontWeight: '600',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            transition: 'all 0.2s',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                            minWidth: isMobile ? '70px' : 'auto'
-                          }}
-                        >
-                          {isActive ? '停用' : '啟用'}
-                        </button>
+                            color: isActive ? '#4caf50' : '#999',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {isActive ? '啟用中' : '已停用'}
+                          </span>
+                        </label>
                         <button
                           onClick={() => handleArchiveCoach(coach)}
                           style={{
                             padding: isMobile ? '8px 14px' : '8px 16px',
-                            background: '#e0e0e0',
-                            color: '#757575',
+                            background: '#f5f5f5',
+                            color: '#999',
                             border: 'none',
                             borderRadius: '8px',
                             fontSize: isMobile ? '13px' : '14px',
@@ -561,15 +584,10 @@ export function StaffManagement({ user }: StaffManagementProps) {
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
                             transition: 'all 0.2s',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
                             minWidth: isMobile ? '70px' : 'auto'
                           }}
                         >
-                          <span>🗄️</span>
-                          <span>隱藏</span>
+                          隱藏
                         </button>
                       </>
                     )}
