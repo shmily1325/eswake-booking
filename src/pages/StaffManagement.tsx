@@ -38,12 +38,12 @@ export function StaffManagement({ user }: StaffManagementProps) {
   const [newCoachName, setNewCoachName] = useState('')
   const [addLoading, setAddLoading] = useState(false)
   
-  // 設定休假
+  // 設定不在期間
   const [timeOffDialogOpen, setTimeOffDialogOpen] = useState(false)
   const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null)
   const [timeOffStartDate, setTimeOffStartDate] = useState('')
   const [timeOffEndDate, setTimeOffEndDate] = useState('')
-  const [timeOffReason, setTimeOffReason] = useState('休假')
+  const [timeOffReason, setTimeOffReason] = useState('')
   const [timeOffLoading, setTimeOffLoading] = useState(false)
 
   useEffect(() => {
@@ -198,7 +198,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
       setSelectedCoach(null)
       setTimeOffStartDate('')
       setTimeOffEndDate('')
-      setTimeOffReason('休假')
+      setTimeOffReason('')
       loadData()
     } catch (error: any) {
       console.error('設定失敗:', error)
@@ -233,7 +233,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
     const dateStr = today.toISOString().substring(0, 10)
     setTimeOffStartDate(dateStr)
     setTimeOffEndDate(dateStr)
-    setTimeOffReason('休假')
+    setTimeOffReason('')
     setTimeOffDialogOpen(true)
   }
 
@@ -269,7 +269,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
             color: '#333',
             fontWeight: 'bold'
           }}>
-            👨‍🏫 教練管理
+            🎓 教練管理
           </h1>
           
           <button
@@ -302,6 +302,34 @@ export function StaffManagement({ user }: StaffManagementProps) {
             <span>➕</span>
             <span>新增教練</span>
           </button>
+        </div>
+
+        {/* 說明提示 */}
+        <div style={{
+          background: '#fff9e6',
+          padding: isMobile ? '12px 16px' : '14px 20px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          fontSize: '14px',
+          color: '#856404',
+          border: '1px solid #ffeaa7',
+          lineHeight: '1.6'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+            <span style={{ flexShrink: 0 }}>💡</span>
+            {isMobile ? (
+              <span>點擊卡片上的按鈕管理教練狀態，點「📅」設定不在期間。</span>
+            ) : (
+              <div>
+                <div style={{ marginBottom: '6px' }}>
+                  <strong>停用</strong> = 立即無法選擇該教練　｜　<strong>不在期間</strong> = 特定日期選不到（如出國比賽）
+                </div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                  <strong>隱藏</strong> = 歸檔教練，不再顯示但可隨時恢復
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 統計資訊 */}
@@ -394,7 +422,11 @@ export function StaffManagement({ user }: StaffManagementProps) {
         </div>
 
         {/* 教練列表 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', 
+          gap: '15px' 
+        }}>
           {coaches.filter(coach => showArchived || coach.status !== 'archived').map(coach => {
             const coachTimeOffs = timeOffs.filter(t => t.coach_id === coach.id)
             const isActive = coach.status === 'active'
@@ -501,7 +533,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
                           onClick={() => handleToggleStatus(coach)}
                           style={{
                             padding: isMobile ? '8px 14px' : '8px 16px',
-                            background: isActive ? '#f44336' : '#4caf50',
+                            background: isActive ? '#ff9800' : '#4caf50',
                             color: 'white',
                             border: 'none',
                             borderRadius: '8px',
@@ -520,8 +552,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
                           onClick={() => handleArchiveCoach(coach)}
                           style={{
                             padding: isMobile ? '8px 14px' : '8px 16px',
-                            background: '#757575',
-                            color: 'white',
+                            background: '#e0e0e0',
+                            color: '#757575',
                             border: 'none',
                             borderRadius: '8px',
                             fontSize: isMobile ? '13px' : '14px',
@@ -529,7 +561,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
                             transition: 'all 0.2s',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '4px',
@@ -537,14 +569,14 @@ export function StaffManagement({ user }: StaffManagementProps) {
                           }}
                         >
                           <span>🗄️</span>
-                          <span>歸檔</span>
+                          <span>隱藏</span>
                         </button>
                       </>
                     )}
                   </div>
                 </div>
 
-                {/* 休假記錄 */}
+                {/* 不在期間記錄 */}
                 {!isArchived && coachTimeOffs.length > 0 && (
                   <div style={{
                     marginBottom: '14px',
@@ -563,7 +595,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
                       gap: '6px'
                     }}>
                       <span>📅</span>
-                      <span>休假記錄</span>
+                      <span>不在期間</span>
                     </div>
                     {coachTimeOffs.map(timeOff => (
                       <div
@@ -621,7 +653,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
                   </div>
                 )}
 
-                {/* 設定休假按鈕 - 只對未歸檔教練顯示 */}
+                {/* 設定不在期間按鈕 - 只對未歸檔教練顯示 */}
                 {!isArchived && (
                   <button
                     onClick={() => openTimeOffDialog(coach)}
@@ -650,7 +682,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
                     }}
                   >
                     <span>📅</span>
-                    <span>設定休假</span>
+                    <span>設定不在期間</span>
                   </button>
                 )}
               </div>
@@ -747,7 +779,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
         </div>
       )}
 
-      {/* 設定休假彈窗 */}
+      {/* 設定不在期間彈窗 */}
       {timeOffDialogOpen && selectedCoach && (
         <div style={{
           position: 'fixed',
@@ -770,7 +802,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
             width: '100%'
           }}>
             <h2 style={{ marginTop: 0, fontSize: '20px' }}>
-              設定 {selectedCoach.name} 的休假
+              設定 {selectedCoach.name} 的不在期間
             </h2>
             
             <div style={{ marginBottom: '16px' }}>
@@ -820,11 +852,13 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                原因
+                原因 / 事項
               </label>
-              <select
+              <input
+                type="text"
                 value={timeOffReason}
                 onChange={(e) => setTimeOffReason(e.target.value)}
+                placeholder="例如：去美國、休假..."
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -833,12 +867,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
                   fontSize: '15px',
                   boxSizing: 'border-box'
                 }}
-              >
-                <option value="休假">休假</option>
-                <option value="請假">請假</option>
-                <option value="出差">出差</option>
-                <option value="其他">其他</option>
-              </select>
+              />
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>

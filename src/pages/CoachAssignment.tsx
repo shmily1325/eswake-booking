@@ -70,9 +70,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
   useEffect(() => {
     loadCoaches()
-  }, [])
-
-  useEffect(() => {
     loadBookings()
   }, [selectedDate])
 
@@ -93,20 +90,36 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   }
 
   const loadCoaches = async () => {
-    const { data, error } = await supabase
-      .from('coaches')
-      .select('id, name')
-      .eq('status', 'active')
-      .order('name')
-    
-    if (error) {
+    try {
+      // 並行查詢：同時取得教練和當天休假資料
+      const [coachesResult, timeOffResult] = await Promise.all([
+        supabase
+          .from('coaches')
+          .select('id, name')
+          .eq('status', 'active')
+          .order('name'),
+        supabase
+          .from('coach_time_off')
+          .select('coach_id')
+          .lte('start_date', selectedDate)
+          .or(`end_date.gte.${selectedDate},end_date.is.null`)
+      ])
+      
+      if (coachesResult.error) {
+        console.error('載入教練失敗:', coachesResult.error)
+        return
+      }
+      
+      // 建立休假教練 ID 集合
+      const timeOffCoachIds = new Set((timeOffResult.data || []).map(t => t.coach_id))
+      
+      // 過濾掉當天休假的教練
+      const availableCoaches = (coachesResult.data || []).filter(c => !timeOffCoachIds.has(c.id))
+      
+      console.log('載入的教練:', availableCoaches)
+      setCoaches(availableCoaches)
+    } catch (error) {
       console.error('載入教練失敗:', error)
-      return
-    }
-    
-    if (data) {
-      console.log('載入的教練:', data)
-      setCoaches(data)
     }
   }
 

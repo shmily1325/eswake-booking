@@ -138,36 +138,42 @@ export function NewBookingDialog({
   const fetchCoaches = async () => {
     setLoadingCoaches(true)
     
-    // 取得預約日期
-    const bookingDate = defaultStartTime.split('T')[0]
-    
-    // 取得所有啟用的教練
-    const { data: allCoaches, error } = await supabase
-      .from('coaches')
-      .select('id, name')
-      .eq('status', 'active')
-      .order('name')
-    
-    if (error) {
-      console.error('Error fetching coaches:', error)
+    try {
+      // 取得預約日期
+      const bookingDate = defaultStartTime.split('T')[0]
+      
+      // 並行查詢：同時取得教練和休假資料
+      const [coachesResult, timeOffResult] = await Promise.all([
+        supabase
+          .from('coaches')
+          .select('id, name')
+          .eq('status', 'active')
+          .order('name'),
+        supabase
+          .from('coach_time_off')
+          .select('coach_id')
+          .lte('start_date', bookingDate)
+          .or(`end_date.gte.${bookingDate},end_date.is.null`)
+      ])
+      
+      if (coachesResult.error) {
+        console.error('Error fetching coaches:', coachesResult.error)
+        setLoadingCoaches(false)
+        return
+      }
+      
+      // 建立休假教練 ID 集合
+      const timeOffCoachIds = new Set((timeOffResult.data || []).map(t => t.coach_id))
+      
+      // 過濾掉休假的教練
+      const availableCoaches = (coachesResult.data || []).filter(c => !timeOffCoachIds.has(c.id))
+      
+      setCoaches(availableCoaches)
+    } catch (error) {
+      console.error('Error in fetchCoaches:', error)
+    } finally {
       setLoadingCoaches(false)
-      return
     }
-    
-    // 查詢當天休假的教練
-    const { data: timeOffData } = await supabase
-      .from('coach_time_off')
-      .select('coach_id')
-      .lte('start_date', bookingDate)
-      .or(`end_date.gte.${bookingDate},end_date.is.null`)
-    
-    const timeOffCoachIds = new Set((timeOffData || []).map(t => t.coach_id))
-    
-    // 過濾掉休假的教練
-    const availableCoaches = (allCoaches || []).filter(c => !timeOffCoachIds.has(c.id))
-    
-    setCoaches(availableCoaches)
-    setLoadingCoaches(false)
   }
 
   const fetchMembers = async () => {
