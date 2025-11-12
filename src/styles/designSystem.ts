@@ -224,3 +224,76 @@ export const getTextStyle = (
   margin: 0,
 })
 
+// 預約卡片樣式生成器
+export const getBookingCardStyle = (
+  boatColor: string,
+  isMobile: boolean = false,
+  isClickable: boolean = false
+): React.CSSProperties => ({
+  padding: isMobile ? '10px 8px' : '14px 12px',
+  background: `linear-gradient(135deg, ${boatColor}08 0%, ${boatColor}15 100%)`,
+  border: `2px solid ${boatColor}`,
+  verticalAlign: 'top',
+  position: 'relative',
+  borderRadius: isMobile ? '8px' : '10px',
+  boxShadow: '0 3px 10px rgba(0,0,0,0.1)',
+  cursor: isClickable ? 'pointer' : 'default',
+  transition: isClickable ? 'all 0.2s' : 'none',
+})
+
+// 預約卡片內容樣式
+export const bookingCardContentStyles = {
+  // 時間範圍
+  timeRange: (isMobile: boolean): React.CSSProperties => ({
+    fontSize: isMobile ? '12px' : '14px',
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: '4px',
+    textAlign: 'center',
+    lineHeight: '1.3',
+  }),
+  
+  // 時長說明
+  duration: (isMobile: boolean): React.CSSProperties => ({
+    fontSize: isMobile ? '11px' : '12px',
+    color: '#666',
+    marginBottom: '8px',
+    textAlign: 'center',
+  }),
+  
+  // 聯絡人姓名
+  contactName: (isMobile: boolean): React.CSSProperties => ({
+    fontSize: isMobile ? '14px' : '16px',
+    fontWeight: '700',
+    marginBottom: '6px',
+    textAlign: 'center',
+    color: '#1a1a1a',
+  }),
+  
+  // 註解
+  notes: (isMobile: boolean): React.CSSProperties => ({
+    fontSize: isMobile ? '11px' : '12px',
+    color: '#666',
+    marginBottom: '4px',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  }),
+  
+  // 排班註解
+  scheduleNotes: (isMobile: boolean): React.CSSProperties => ({
+    fontSize: isMobile ? '11px' : '12px',
+    color: '#e65100',
+    marginBottom: '4px',
+    textAlign: 'center',
+    fontWeight: '500',
+  }),
+  
+  // 教練姓名
+  coachName: (boatColor: string, isMobile: boolean): React.CSSProperties => ({
+    fontSize: isMobile ? '11px' : '12px',
+    color: boatColor,
+    fontWeight: '600',
+    textAlign: 'center',
+  }),
+}
+
