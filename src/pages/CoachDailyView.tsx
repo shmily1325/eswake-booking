@@ -32,6 +32,7 @@ interface Booking {
   status: string
   boats?: Boat
   coaches?: Coach[]
+  drivers?: Coach[]
   schedule_notes?: string | null
   notes?: string | null
 }
@@ -137,7 +138,8 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
           schedule_notes,
           notes,
           boats:boat_id(id, name, color),
-          coaches:booking_coaches(coach_id, coaches:coaches(id, name))
+          coaches:booking_coaches(coach_id, coaches:coaches(id, name)),
+          drivers:booking_drivers(driver_id, coaches:coaches(id, name))
         `)
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
@@ -150,7 +152,8 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
       const formattedData = (data || []).map((booking: any) => ({
         ...booking,
         boats: booking.boats,
-        coaches: booking.coaches?.map((bc: any) => bc.coaches).filter(Boolean) || []
+        coaches: booking.coaches?.map((bc: any) => bc.coaches).filter(Boolean) || [],
+        drivers: booking.drivers?.map((bd: any) => bd.coaches).filter(Boolean) || []
       }))
 
       setBookings(formattedData)
@@ -164,9 +167,13 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
   // 篩選預約
   const filteredBookings = useMemo(() => {
     if (!selectedCoachId) return bookings
-    return bookings.filter(booking => 
-      booking.coaches?.some(coach => coach.id === selectedCoachId)
-    )
+    return bookings.filter(booking => {
+      // 檢查是否為教練
+      const isCoach = booking.coaches?.some(coach => coach.id === selectedCoachId)
+      // 檢查是否為駕駛
+      const isDriver = booking.drivers?.some(driver => driver.id === selectedCoachId)
+      return isCoach || isDriver
+    })
   }, [bookings, selectedCoachId])
 
   // 改變日期

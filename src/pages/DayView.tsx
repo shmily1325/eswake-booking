@@ -340,7 +340,7 @@ export function DayView({ user }: DayViewProps) {
       
       const bookingStartMinutes = timeToMinutes(bookingTime)
       const bookingEndMinutes = bookingStartMinutes + booking.duration_min
-      const cleanupEndMinutes = bookingEndMinutes + 30
+      const cleanupEndMinutes = bookingEndMinutes + 15
       
       if (cellMinutes >= bookingEndMinutes && cellMinutes < cleanupEndMinutes) {
         return true

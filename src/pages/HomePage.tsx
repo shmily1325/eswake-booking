@@ -21,6 +21,7 @@ export function HomePage({ user }: HomePageProps) {
   const menuItems = [
     {
       title: '今日預約',
+      subtitle: '唯讀模式',
       icon: '📅',
       link: '/coach-daily'
     },
@@ -167,6 +168,17 @@ export function HomePage({ user }: HomePageProps) {
               }}>
                 {item.title}
               </h2>
+              
+              {item.subtitle && (
+                <p style={{
+                  margin: 0,
+                  fontSize: isMobile ? '12px' : '13px',
+                  color: '#999',
+                  fontStyle: 'italic'
+                }}>
+                  {item.subtitle}
+                </p>
+              )}
             </Link>
           ))}
         </div>
