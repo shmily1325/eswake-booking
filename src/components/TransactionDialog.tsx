@@ -206,14 +206,18 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         newBalance += numAmount
       }
 
-      // 購買：增加分鐘數（船券/指定課）
-      if (transactionType === 'purchase' && numMinutes) {
-        if (category === 'designated_lesson') {
-          newDesignatedMinutes += Math.abs(numMinutes)
-        } else if (category === 'boat_voucher_g23') {
-          newBoatVoucherG23Minutes += Math.abs(numMinutes)
-        } else if (category === 'boat_voucher_g21') {
-          newBoatVoucherG21Minutes += Math.abs(numMinutes)
+      // 購買：增加分鐘數（船券/指定課/贈送時數）
+      if (transactionType === 'purchase') {
+        if (numMinutes) {
+          if (category === 'designated_lesson') {
+            newDesignatedMinutes += Math.abs(numMinutes)
+          } else if (category === 'boat_voucher_g23') {
+            newBoatVoucherG23Minutes += Math.abs(numMinutes)
+          } else if (category === 'boat_voucher_g21') {
+            newBoatVoucherG21Minutes += Math.abs(numMinutes)
+          }
+          // 購買不會改變 free_hours，因為 free_hours 是贈送的總時數（固定值）
+          // 只有調整類型才能改變 free_hours
         }
         // 如果有輸入金額，則扣除餘額
         if (numAmount) {
@@ -257,6 +261,9 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           newBoatVoucherG23Minutes += Math.abs(numMinutes)
         } else if (category === 'boat_voucher_g21' && numMinutes) {
           newBoatVoucherG21Minutes += Math.abs(numMinutes)
+        } else if (category === 'free_hours' && numMinutes) {
+          // 退款贈送時數：減少已使用數
+          newFreeHoursUsed -= Math.abs(numMinutes)
         }
       }
 
@@ -352,9 +359,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
       resetForm()
       onSuccess()
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       console.error('記帳失敗:', error)
-      alert('記帳失敗')
+      const errorMessage = error?.message || error?.toString() || '未知錯誤'
+      alert(`記帳失敗：${errorMessage}`)
     } finally {
       setLoading(false)
     }
