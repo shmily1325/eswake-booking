@@ -226,43 +226,22 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         ? checkConflictRealtime(bookingId, newCoachIds, newDriverIds) 
         : currentAssignment.conflicts
       
-      console.log('=== updateAssignment ===')
-      console.log('預約ID:', bookingId)
-      console.log('更新欄位:', field)
-      console.log('新值:', value)
-      console.log('新衝突:', newConflicts)
-      
-      const newAssignment = {
-        ...currentAssignment,
-        [field]: value,
-        conflicts: newConflicts
-      }
-      
-      console.log('更新後的 assignment:', newAssignment)
-      
       return {
         ...prev,
-        [bookingId]: newAssignment
+        [bookingId]: {
+          ...currentAssignment,
+          [field]: value,
+          conflicts: newConflicts
+        }
       }
     })
   }
 
   // 即時檢查教練/駕駛衝突
   const checkConflictRealtime = (bookingId: number, newCoachIds: string[], newDriverIds: string[]): string[] => {
-    console.log('=== 檢查衝突 ===')
-    console.log('預約ID:', bookingId)
-    console.log('新教練IDs:', newCoachIds)
-    console.log('新駕駛IDs:', newDriverIds)
-    console.log('所有預約:', bookings.length)
-    console.log('所有assignments:', Object.keys(assignments).length)
-    
     const conflicts: string[] = []
     const currentBooking = bookings.find(b => b.id === bookingId)
-    if (!currentBooking) {
-      console.log('找不到預約:', bookingId)
-      return conflicts
-    }
-    console.log('當前預約:', currentBooking.contact_name, formatTime(currentBooking.start_at))
+    if (!currentBooking) return conflicts
 
     const currentStart = new Date(currentBooking.start_at)
     // 加上整理船時間（彈簧床除外）
@@ -275,39 +254,26 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
     // 2. 檢查教練的時間衝突（包括作為教練或駕駛）
     for (const coachId of newCoachIds) {
-      const coachName = coaches.find(c => c.id === coachId)?.name || '未知'
-      console.log(`檢查教練 ${coachName} (${coachId}) 的衝突...`)
-      
       for (const otherBooking of bookings) {
         if (otherBooking.id === bookingId) continue
 
         const otherAssignment = assignments[otherBooking.id]
-        if (!otherAssignment) {
-          console.log(`  預約 ${otherBooking.id} 沒有 assignment，跳過`)
-          continue
-        }
+        if (!otherAssignment) continue
 
         // 檢查這個人是否在其他預約中（作為教練或駕駛）
         const isCoachInOther = otherAssignment.coachIds.includes(coachId)
         const isDriverInOther = otherAssignment.driverIds.includes(coachId)
         
         if (isCoachInOther || isDriverInOther) {
-          console.log(`  ${coachName} 在預約 ${otherBooking.contact_name} (${formatTime(otherBooking.start_at)})`)
-          
           const otherStart = new Date(otherBooking.start_at)
           // 加上整理船時間（彈簧床除外）
           const otherCleanupTime = isFacility(otherBooking.boats?.name) ? 0 : 15
           const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
 
-          console.log(`  當前: ${formatTime(currentBooking.start_at)} - ${formatTime(currentEnd.toISOString())}`)
-          console.log(`  其他: ${formatTime(otherBooking.start_at)} - ${formatTime(otherEnd.toISOString())}`)
-          console.log(`  時間重疊? ${currentStart < otherEnd && currentEnd > otherStart}`)
-
           if (currentStart < otherEnd && currentEnd > otherStart) {
             const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
             const roleText = isDriverInOther ? '駕駛' : '教練'
             conflicts.push(`與 ${otherBooking.contact_name} (${otherTime} ${roleText}) 衝突`)
-            console.log(`  ⚠️ 發現衝突!`)
           }
         }
       }
@@ -340,8 +306,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       }
     }
 
-    console.log('檢查完成，發現', conflicts.length, '個衝突:', conflicts)
-    console.log('==================')
     return conflicts
   }
 
@@ -3052,11 +3016,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           {isEditing && (() => {
                             // 動態獲取最新的 assignment，避免閉包問題
                             const currentAssignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
-                            console.log('=== 渲染編輯區塊 ===')
-                            console.log('預約ID:', booking.id)
-                            console.log('assignment:', currentAssignment)
-                            console.log('conflicts 長度:', currentAssignment.conflicts.length)
-                            console.log('conflicts 內容:', currentAssignment.conflicts)
                             return (
                             <div style={{ 
                               marginTop: '12px',
@@ -3120,20 +3079,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 />
                               </div>
                               
-                              {/* 衝突提示 - 強制顯示測試 */}
-                              <div style={{ 
-                                marginTop: '8px',
-                                padding: '8px',
-                                background: currentAssignment.conflicts.length > 0 ? '#ffebee' : '#e8f5e9',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                color: currentAssignment.conflicts.length > 0 ? '#c62828' : '#2e7d32'
-                              }}>
-                                {currentAssignment.conflicts.length > 0 
-                                  ? `⚠️ ${currentAssignment.conflicts.join(', ')}`
-                                  : `✅ 無衝突（測試：conflicts 長度 = ${currentAssignment.conflicts.length}）`
-                                }
-                              </div>
+                              {/* 衝突提示 */}
+                              {currentAssignment.conflicts.length > 0 && (
+                                <div style={{ 
+                                  marginTop: '8px',
+                                  padding: '8px',
+                                  background: '#ffebee',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  color: '#c62828'
+                                }}>
+                                  ⚠️ {currentAssignment.conflicts.join(', ')}
+                                </div>
+                              )}
                             </div>
                             )
                           })()}
