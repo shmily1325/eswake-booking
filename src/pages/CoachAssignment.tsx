@@ -188,7 +188,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         }
       })
 
-      console.log('載入的預約資料:', bookingsWithCoaches)
       setBookings(bookingsWithCoaches)
       
       // 初始化 assignments 為當前的配置
@@ -202,7 +201,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           requiresDriver: booking.requires_driver
         }
       })
-      console.log('初始化的 assignments:', initialAssignments)
       setAssignments(initialAssignments)
 
     } catch (err: any) {
@@ -1169,30 +1167,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             </div>
           )
         })()}
-
-        {/* 操作提示 */}
-        {!loading && bookings.length > 0 && (
-          <div style={{
-            padding: '14px 20px',
-            background: 'white',
-            borderRadius: '12px',
-            marginBottom: designSystem.spacing.md,
-            fontSize: '14px',
-            color: '#666',
-            fontWeight: '500',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span style={{ fontSize: '18px' }}>💡</span>
-            <span>
-              {viewMode === 'list' 
-                ? '列表可直接快速排班，點「✏️」完整編輯。'
-                : '點擊卡片快速排班，點「✏️」完整編輯。'}
-            </span>
-          </div>
-        )}
 
         {/* 載入中 */}
         {loading && (
@@ -2869,7 +2843,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             fontSize: isMobile ? '13px' : '14px',
                             position: 'relative'
                           }}>
-                            {/* 移除按鈕 - 低調顯示，hover 時變明顯 */}
+                            {/* 移除按鈕 */}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -2881,26 +2855,28 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 }
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.opacity = '1'
+                                e.currentTarget.style.background = '#ffebee'
                                 e.currentTarget.style.color = '#d32f2f'
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.opacity = '0.3'
+                                e.currentTarget.style.background = '#f5f5f5'
                                 e.currentTarget.style.color = '#999'
                               }}
                               style={{
                                 position: 'absolute',
-                                top: '6px',
-                                right: '6px',
-                                background: 'none',
+                                top: '8px',
+                                right: '8px',
+                                background: '#f5f5f5',
                                 border: 'none',
+                                borderRadius: '4px',
                                 cursor: 'pointer',
-                                fontSize: '18px',
+                                fontSize: '16px',
                                 color: '#999',
-                                padding: 0,
-                                opacity: 0.3,
+                                padding: '2px 6px',
                                 transition: 'all 0.2s ease',
-                                lineHeight: 1
+                                lineHeight: 1,
+                                zIndex: 10,
+                                fontWeight: 'bold'
                               }}
                               title="移除指定"
                             >
@@ -2908,38 +2884,40 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             </button>
                             
                             {/* 預約資訊 */}
-                            <div style={{ fontWeight: '600', color: '#2c3e50', paddingRight: '24px' }}>
-                              {formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}
-                              {isPreAssigned && <span style={{ 
-                                marginLeft: '6px',
-                                background: '#4CAF50',
-                                color: 'white',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '11px'
-                              }}>指</span>}
-                              {isDriver && !isCoach && <span style={{ 
-                                marginLeft: '6px',
-                                fontSize: '14px'
-                              }}>⛵</span>}
-                            </div>
-                            <div style={{ color: '#666', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
-                              {booking.contact_name}
-                              {booking.requires_driver && (
-                                <span style={{ marginLeft: '8px', color: '#f57c00', fontSize: '12px' }}>
-                                  • 需要駕駛
-                                </span>
+                            <div style={{ paddingRight: '24px' }}>
+                              <div style={{ fontWeight: '600', color: '#2c3e50', fontSize: isMobile ? '13px' : '14px' }}>
+                                {formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}
+                                {isPreAssigned && <span style={{ 
+                                  marginLeft: '6px',
+                                  background: '#4CAF50',
+                                  color: 'white',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '11px'
+                                }}>指</span>}
+                                {isDriver && !isCoach && <span style={{ 
+                                  marginLeft: '6px',
+                                  fontSize: '14px'
+                                }}>⛵</span>}
+                              </div>
+                              <div style={{ color: '#666', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
+                                {booking.contact_name}
+                                {booking.requires_driver && (
+                                  <span style={{ marginLeft: '8px', fontSize: '14px' }}>
+                                    ⛵
+                                  </span>
+                                )}
+                              </div>
+                              {assignment.notes && (
+                                <div style={{ 
+                                  marginTop: '6px',
+                                  color: '#856404',
+                                  fontSize: '12px'
+                                }}>
+                                  📝 {assignment.notes}
+                                </div>
                               )}
                             </div>
-                            {assignment.notes && (
-                              <div style={{ 
-                                marginTop: '6px',
-                                color: '#856404',
-                                fontSize: '12px'
-                              }}>
-                                📝 {assignment.notes}
-                              </div>
-                            )}
                           </div>
                         )
                       })}
