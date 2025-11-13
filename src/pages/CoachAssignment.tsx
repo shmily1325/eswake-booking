@@ -273,7 +273,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
 
           if (currentStart < otherEnd && currentEnd > otherStart) {
-            const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
+            const otherEndTime = `${String(otherEnd.getHours()).padStart(2, '0')}:${String(otherEnd.getMinutes()).padStart(2, '0')}`
+            const otherTime = `${formatTime(otherBooking.start_at)}-${otherEndTime}`
             const roleText = isDriverInOther ? '駕駛' : '教練'
             conflicts.push(`與 ${getDisplayContactName(otherBooking)} (${otherTime} ${roleText}) 衝突`)
           }
@@ -300,7 +301,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
 
           if (currentStart < otherEnd && currentEnd > otherStart) {
-            const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
+            const otherEndTime = `${String(otherEnd.getHours()).padStart(2, '0')}:${String(otherEnd.getMinutes()).padStart(2, '0')}`
+            const otherTime = `${formatTime(otherBooking.start_at)}-${otherEndTime}`
             const roleText = isDriverInOther ? '駕駛' : '教練'
             conflicts.push(`與 ${getDisplayContactName(otherBooking)} (${otherTime} ${roleText}) 衝突`)
           }
@@ -2734,7 +2736,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           bookings.forEach(booking => {
             const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
             
-            // 如果有指定教練，加到對應教練的組
+            // 如果有衝突，只顯示在「需要駕駛」區域
+            if (assignment.conflicts.length > 0) {
+              needsDriverBookings.push(booking)
+              return
+            }
+            
+            // 如果沒有指定教練，加到需要駕駛區塊
+            if (assignment.coachIds.length === 0) {
+              needsDriverBookings.push(booking)
+              return
+            }
+            
+            // 如果有指定教練且沒有衝突，加到對應教練的組
             if (assignment.coachIds.length > 0) {
               assignment.coachIds.forEach(coachId => {
                 if (coachGroups[coachId]) {
@@ -2751,11 +2765,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   coachGroups[driverId].push(booking)
                 }
               })
-            }
-            
-            // 如果沒有指定教練，加到需要駕駛區塊
-            if (assignment.coachIds.length === 0) {
-              needsDriverBookings.push(booking)
             }
           })
           
@@ -2879,7 +2888,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               title="移除指定"
                             >
                               ×
-                            </button>
+                                </button>
                             
                             {/* 預約資訊 */}
                             <div style={{ paddingRight: '24px' }}>
@@ -2934,10 +2943,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         )
                       })
                       )}
-                    </div>
-                  </div>
-                )
-              })}
+                              </div>
+                            </div>
+                          )
+                        })}
               </div>
               
               {/* 底部區塊：需要駕駛（並排網格）*/}
@@ -3051,9 +3060,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                       >
                                         {c.name}
                                 </button>
-                                    )
-                                  })}
-                              </div>
+                    )
+                  })}
+                </div>
                               </div>
                               
                               {/* 排班註解 */}
