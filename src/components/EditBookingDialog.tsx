@@ -116,7 +116,7 @@ export function EditBookingDialog({
         const loadBookingMembers = async () => {
           const { data: bookingMembersData } = await supabase
             .from('booking_members')
-            .select('member_id, members:member_id(name)')
+            .select('member_id, members:member_id(name, nickname)')
             .eq('booking_id', booking.id)
           
           if (bookingMembersData && bookingMembersData.length > 0) {
@@ -124,14 +124,15 @@ export function EditBookingDialog({
             setSelectedMemberIds(memberIds)
             
             // 從 contact_name 中提取非會員名字
-            const memberNames = bookingMembersData
-              .map((bm: any) => bm.members?.name)
+            // 使用暱稱優先，如果沒有暱稱則使用真實姓名
+            const memberDisplayNames = bookingMembersData
+              .map((bm: any) => bm.members?.nickname || bm.members?.name)
               .filter(Boolean)
             
             // contact_name 可能是 "會員1, 會員2, 非會員1, 非會員2"
-            // 需要移除會員名字，剩下的就是手動輸入的非會員
+            // 需要移除會員的顯示名字（暱稱或姓名），剩下的就是手動輸入的非會員
             const allNames = booking.contact_name.split(',').map(n => n.trim())
-            const extractedManualNames = allNames.filter(name => !memberNames.includes(name))
+            const extractedManualNames = allNames.filter(name => !memberDisplayNames.includes(name))
             setManualNames(extractedManualNames)
             
             // 不自動設置搜尋框

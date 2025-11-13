@@ -59,7 +59,7 @@ export function AuditLog({ user }: AuditLogProps) {
       let query = supabase
         .from('audit_log')
         .select('*')
-        .eq('table_name', 'bookings')
+        .in('table_name', ['bookings', 'coach_assignment'])
         .gte('created_at', sevenDaysAgoStr)
         .order('created_at', { ascending: false })
         .limit(200)
