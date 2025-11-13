@@ -6,6 +6,7 @@ import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { useRequireAdmin } from '../utils/auth'
 import { getButtonStyle, getCardStyle } from '../styles/designSystem'
+import { getDisplayContactName } from '../utils/bookingFormat'
 
 interface Coach {
   id: string
@@ -129,7 +130,8 @@ export function CoachOverview({ user }: CoachOverviewProps) {
           start_at,
           contact_name,
           boat_id,
-          boats (name)
+          boats (name),
+          booking_members(member_id, members:member_id(id, name, nickname))
         `)
         .gte('start_at', startOfToday)
         .eq('status', 'confirmed')
@@ -225,7 +227,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
             missingReports.push({
               bookingId,
               startAt: booking.start_at,
-              contactName: booking.contact_name,
+              contactName: getDisplayContactName(booking),
               boatName: (booking.boats as any)?.name || '未知',
               needsCoachReport: missingCoachReport,
               needsDriverReport: missingDriverReport

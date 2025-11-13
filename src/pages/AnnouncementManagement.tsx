@@ -26,17 +26,30 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
   const [newDisplayDate, setNewDisplayDate] = useState(getLocalDateString())
   const [editContent, setEditContent] = useState('')
   const [editDisplayDate, setEditDisplayDate] = useState('')
+  
+  // 月份篩選（格式：YYYY-MM）
+  const today = new Date()
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth)
 
   useEffect(() => {
     loadAnnouncements()
-  }, [])
+  }, [selectedMonth])
 
   const loadAnnouncements = async () => {
     setLoading(true)
     try {
+      // 計算選定月份的開始和結束日期
+      const [year, month] = selectedMonth.split('-').map(Number)
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+      const lastDay = new Date(year, month, 0).getDate()
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+      
       const { data } = await supabase
         .from('daily_announcements')
         .select('*')
+        .gte('display_date', startDate)
+        .lte('display_date', endDate)
         .order('display_date', { ascending: true })
         .order('created_at', { ascending: false })
 
@@ -199,18 +212,15 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
             style={{
               width: '100%',
               padding: '12px',
-              background: '#5a5a5a',
-              color: 'white',
-              border: 'none',
+              background: 'white',
+              color: '#666',
+              border: '2px solid #e0e0e0',
               borderRadius: '8px',
               fontSize: '15px',
               fontWeight: '600',
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
               transition: 'all 0.2s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'}
           >
             新增
           </button>
@@ -224,13 +234,35 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           minHeight: '200px'
         }}>
-          <h2 style={{
-            margin: '0 0 15px 0',
-            fontSize: isMobile ? '16px' : '18px',
-            fontWeight: '600'
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '15px',
+            gap: '12px',
+            flexWrap: isMobile ? 'wrap' : 'nowrap'
           }}>
-            📋 所有交辦事項 ({announcements.length})
-          </h2>
+            <h2 style={{
+              margin: 0,
+              fontSize: isMobile ? '16px' : '18px',
+              fontWeight: '600'
+            }}>
+              📋 所有交辦事項 ({announcements.length})
+            </h2>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                minWidth: isMobile ? '100%' : '150px'
+              }}
+            />
+          </div>
 
           {loading && (
             <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
@@ -291,9 +323,9 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
                       style={{
                         flex: 1,
                         padding: '8px',
-                        background: '#28a745',
-                        color: 'white',
-                        border: 'none',
+                        background: 'white',
+                        color: '#666',
+                        border: '2px solid #e0e0e0',
                         borderRadius: '6px',
                         fontSize: '13px',
                         fontWeight: 'bold',
@@ -307,9 +339,9 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
                       style={{
                         flex: 1,
                         padding: '8px',
-                        background: '#6c757d',
-                        color: 'white',
-                        border: 'none',
+                        background: 'white',
+                        color: '#666',
+                        border: '2px solid #e0e0e0',
                         borderRadius: '6px',
                         fontSize: '13px',
                         fontWeight: 'bold',
@@ -350,9 +382,9 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
                       onClick={() => startEdit(announcement)}
                       style={{
                         padding: '6px 12px',
-                        background: '#667eea',
-                        color: 'white',
-                        border: 'none',
+                        background: 'white',
+                        color: '#666',
+                        border: '2px solid #e0e0e0',
                         borderRadius: '6px',
                         fontSize: '12px',
                         fontWeight: 'bold',
@@ -365,9 +397,9 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
                       onClick={() => handleDelete(announcement.id)}
                       style={{
                         padding: '6px 12px',
-                        background: '#dc3545',
-                        color: 'white',
-                        border: 'none',
+                        background: 'white',
+                        color: '#666',
+                        border: '2px solid #e0e0e0',
                         borderRadius: '6px',
                         fontSize: '12px',
                         fontWeight: 'bold',

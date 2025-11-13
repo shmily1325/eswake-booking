@@ -6,6 +6,9 @@ import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { useMemberSearch } from '../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
+import { getDisplayContactName } from '../utils/bookingFormat'
+import { isFacility } from '../utils/facility'
+import { getLocalDateString } from '../utils/date'
 
 interface Coach {
   id: string
@@ -65,10 +68,7 @@ export function CoachReport({ user }: CoachReportProps) {
   const { isMobile } = useResponsive()
   
   // 日期和教練篩選
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString())
   const [selectedCoachId, setSelectedCoachId] = useState<string>('all')
   const [coaches, setCoaches] = useState<Coach[]>([])
   
@@ -139,6 +139,7 @@ export function CoachReport({ user }: CoachReportProps) {
           notes,
           boat_id,
           requires_driver,
+          booking_members(member_id, members:member_id(id, name, nickname)),
           boats (name, color)
         `)
         .gte('start_at', startOfDay)
@@ -155,29 +156,30 @@ export function CoachReport({ user }: CoachReportProps) {
       
       const bookingIds = bookingsData.map(b => b.id)
       
-      // 批次載入所有教練
-      const { data: allCoachesData } = await supabase
-        .from('booking_coaches')
-        .select('booking_id, coach_id, coaches(id, name)')
-        .in('booking_id', bookingIds)
-      
-      // 批次載入所有駕駛
-      const { data: allDriversData } = await supabase
-        .from('booking_drivers')
-        .select('booking_id, driver_id, coaches(id, name)')
-        .in('booking_id', bookingIds)
-      
-      // 批次載入所有駕駛回報
-      const { data: allCoachReports } = await supabase
-        .from('coach_reports')
-        .select('*')
-        .in('booking_id', bookingIds)
-      
-      // 批次載入所有教練回報（參與者）
-      const { data: allParticipants } = await supabase
-        .from('booking_participants')
-        .select('*')
-        .in('booking_id', bookingIds)
+      // 並行載入所有相關資料（大幅提升速度）
+      const [
+        { data: allCoachesData },
+        { data: allDriversData },
+        { data: allCoachReports },
+        { data: allParticipants }
+      ] = await Promise.all([
+        supabase
+          .from('booking_coaches')
+          .select('booking_id, coach_id, coaches(id, name)')
+          .in('booking_id', bookingIds),
+        supabase
+          .from('booking_drivers')
+          .select('booking_id, driver_id, coaches(id, name)')
+          .in('booking_id', bookingIds),
+        supabase
+          .from('coach_reports')
+          .select('*')
+          .in('booking_id', bookingIds),
+        supabase
+          .from('booking_participants')
+          .select('*')
+          .in('booking_id', bookingIds)
+      ])
       
       // 組裝資料
       const bookingsWithDetails: Booking[] = bookingsData.map(booking => {
@@ -226,6 +228,9 @@ export function CoachReport({ user }: CoachReportProps) {
 
   // 判斷需要回報的類型
   const getReportType = (booking: Booking, coachId: string): 'coach' | 'driver' | 'both' | null => {
+    const boatName = booking.boats?.name
+    const isFacilityBooking = isFacility(boatName)
+    
     const isCoach = booking.coaches.some(c => c.id === coachId)
     const isExplicitDriver = booking.drivers.some(d => d.id === coachId)
     const hasNoDriver = booking.drivers.length === 0
@@ -233,7 +238,8 @@ export function CoachReport({ user }: CoachReportProps) {
     
     // 判斷這個人需要回報什麼
     const needsCoachReport = isCoach
-    const needsDriverReport = isExplicitDriver || isImplicitDriver
+    // 彈簧床等設施不需要駕駛回報
+    const needsDriverReport = isFacilityBooking ? false : (isExplicitDriver || isImplicitDriver)
     
     if (needsCoachReport && needsDriverReport) {
       return 'both'
@@ -260,15 +266,19 @@ export function CoachReport({ user }: CoachReportProps) {
 
   // 開始回報
   const startReport = (booking: Booking) => {
-    // 每一筆預約都需要駕駛回報（油量 + 駕駛時數）
-    // 如果有教練，也需要教練回報
+    const boatName = booking.boats?.name
+    const isFacilityBooking = isFacility(boatName)
+    
     let type: 'coach' | 'driver' | 'both' | null = null
     
     if (selectedCoachId === 'all') {
       // 判斷這個預約需要什麼類型的回報
       const hasCoaches = booking.coaches.length > 0
       
-      if (hasCoaches) {
+      if (isFacilityBooking) {
+        // 彈簧床等設施只需要教練回報，不需要駕駛回報
+        type = hasCoaches ? 'coach' : null
+      } else if (hasCoaches) {
         // 有教練 = 需要教練回報 + 駕駛回報
         type = 'both'
       } else {
@@ -347,9 +357,10 @@ export function CoachReport({ user }: CoachReportProps) {
       
       // 5.1 加入可用的會員
       availableMembers.forEach((bm: any) => {
+        const member = bm.members
         participants.push({
           member_id: bm.member_id,
-          participant_name: bm.members?.name || '未知',
+          participant_name: (member?.nickname || member?.name) || '未知',
           duration_min: defaultDuration,
           payment_method: 'cash'
         })
@@ -357,20 +368,28 @@ export function CoachReport({ user }: CoachReportProps) {
 
       // 5.2 檢查預約人是否是非會員且未被回報
       if (booking?.contact_name) {
-        const contactName = booking.contact_name.trim()
-        const isContactMember = (bookingMembersData || []).some(
-          (bm: any) => bm.members?.name === contactName
-        )
-        const isContactReported = reportedNames.has(contactName)
+        // 分析 contact_name 中的所有名字
+        const contactNames = booking.contact_name.split(',').map(n => n.trim()).filter(Boolean)
         
-        // 如果預約人不是會員，且未被其他教練回報，則加入列表
-        if (!isContactMember && !isContactReported) {
-          participants.push({
-            member_id: null,
-            participant_name: contactName,
-            duration_min: defaultDuration,
-            payment_method: 'cash'
-          })
+        for (const contactName of contactNames) {
+          // 檢查是否匹配任何會員的暱稱或姓名
+          const isContactMember = (bookingMembersData || []).some(
+            (bm: any) => {
+              const member = bm.members
+              return member && (member.nickname === contactName || member.name === contactName)
+            }
+          )
+          const isContactReported = reportedNames.has(contactName)
+          
+          // 如果不是會員，且未被其他教練回報，則加入列表
+          if (!isContactMember && !isContactReported) {
+            participants.push({
+              member_id: null,
+              participant_name: contactName,
+              duration_min: defaultDuration,
+              payment_method: 'cash'
+            })
+          }
         }
       }
 
@@ -392,7 +411,7 @@ export function CoachReport({ user }: CoachReportProps) {
       const booking = bookings.find(b => b.id === bookingId)
       setParticipants([{
         member_id: null,
-        participant_name: booking?.contact_name || '',
+        participant_name: booking ? getDisplayContactName(booking) : '',
         duration_min: defaultDuration,
         payment_method: 'cash'
       }])
@@ -694,7 +713,7 @@ export function CoachReport({ user }: CoachReportProps) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     <div>
                       <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '600', marginBottom: '4px' }}>
-                        {booking.start_at.substring(11, 16)} | {booking.contact_name}
+                        {booking.start_at.substring(11, 16)} | {getDisplayContactName(booking)}
                       </div>
                       <div style={{ fontSize: '14px', color: '#666' }}>
                         {booking.boats?.name} • {booking.duration_min}分
@@ -730,9 +749,11 @@ export function CoachReport({ user }: CoachReportProps) {
                         </span>
                       ) : null}
                       
-                      {/* 駕駛回報狀態（全部教練或特定教練） */}
-                      {(selectedCoachId !== 'all' && (type === 'driver' || type === 'both')) || 
-                       (selectedCoachId === 'all' && booking.boats?.name !== '彈簧床') ? (
+                      {/* 駕駛回報狀態（全部教練或特定教練，但彈簧床等設施不需要） */}
+                      {!isFacility(booking.boats?.name) && (
+                        (selectedCoachId !== 'all' && (type === 'driver' || type === 'both')) || 
+                        (selectedCoachId === 'all')
+                      ) ? (
                         <span style={{
                           padding: '4px 8px',
                           borderRadius: '4px',
@@ -795,7 +816,7 @@ export function CoachReport({ user }: CoachReportProps) {
             
             <div style={{ marginBottom: '24px', padding: '16px', background: '#f5f5f5', borderRadius: '8px' }}>
               <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                {reportingBooking.start_at.substring(11, 16)} | {reportingBooking.contact_name}
+                {reportingBooking.start_at.substring(11, 16)} | {getDisplayContactName(reportingBooking)}
               </div>
               <div style={{ fontSize: '14px', color: '#666' }}>
                 {reportingBooking.boats?.name} • {reportingBooking.duration_min}分
@@ -965,8 +986,11 @@ export function CoachReport({ user }: CoachReportProps) {
                               onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
                               onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                             >
-                              {member.name}
-                              {member.phone && <span style={{ color: '#999', marginLeft: '8px' }}>({member.phone})</span>}
+                              <div>
+                                <span style={{ fontWeight: '500' }}>{member.nickname || member.name}</span>
+                                {member.nickname && <span style={{ color: '#999', marginLeft: '6px' }}>({member.name})</span>}
+                              </div>
+                              {member.phone && <div style={{ color: '#999', fontSize: '12px', marginTop: '2px' }}>{member.phone}</div>}
                             </div>
                           ))}
                         </div>
