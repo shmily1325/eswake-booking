@@ -3112,19 +3112,20 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 />
                               </div>
                               
-                              {/* 衝突提示 */}
-                              {currentAssignment.conflicts.length > 0 && (
-                                <div style={{ 
-                                  marginTop: '8px',
-                                  padding: '8px',
-                                  background: '#ffebee',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  color: '#c62828'
-                                }}>
-                                  ⚠️ {currentAssignment.conflicts.join(', ')}
-                                </div>
-                              )}
+                              {/* 衝突提示 - 強制顯示測試 */}
+                              <div style={{ 
+                                marginTop: '8px',
+                                padding: '8px',
+                                background: currentAssignment.conflicts.length > 0 ? '#ffebee' : '#e8f5e9',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                color: currentAssignment.conflicts.length > 0 ? '#c62828' : '#2e7d32'
+                              }}>
+                                {currentAssignment.conflicts.length > 0 
+                                  ? `⚠️ ${currentAssignment.conflicts.join(', ')}`
+                                  : `✅ 無衝突（測試：conflicts 長度 = ${currentAssignment.conflicts.length}）`
+                                }
+                              </div>
                             </div>
                             )
                           })()}
