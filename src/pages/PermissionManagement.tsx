@@ -229,6 +229,9 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
 
   // 過濾掉隱藏的管理員
   const visibleAdmins = adminUsers.filter(admin => !HIDDEN_ADMINS.includes(admin.email))
+  
+  // 過濾掉隱藏的白名單用戶
+  const visibleAllowedUsers = allowedUsers.filter(user => !HIDDEN_ADMINS.includes(user.email))
 
   if (loading) {
     return (
@@ -423,7 +426,7 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
 
           {/* 白名單列表 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.sm }}>
-            {allowedUsers.map((allowedUser) => {
+            {visibleAllowedUsers.map((allowedUser) => {
               const isSuperAdmin = SUPER_ADMINS.includes(allowedUser.email)
               const isAdmin = adminUsers.some(admin => admin.email === allowedUser.email)
               
