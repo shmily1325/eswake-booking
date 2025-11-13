@@ -2825,7 +2825,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                         }}>
                           今日無排班
                         </div>
-                      ) : coachBookings.map(booking => {
+                      ) : (
+                        coachBookings.map(booking => {
                         const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
                         const isPreAssigned = booking.currentCoaches.includes(coach.id) || booking.currentDrivers.includes(coach.id)
                         const isCoach = assignment.coachIds.includes(coach.id)
@@ -2931,7 +2932,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             </div>
                           </div>
                         )
-                      }))}
+                      })
+                      )}
                     </div>
                   </div>
                 )
