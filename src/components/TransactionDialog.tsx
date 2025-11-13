@@ -29,8 +29,10 @@ interface TransactionDialogProps {
 export function TransactionDialog({ open, member, onClose, onSuccess }: TransactionDialogProps) {
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(false)
-  const [transactionType, setTransactionType] = useState<'charge' | 'purchase' | 'consume' | 'refund' | 'adjust'>('charge')
+  const [transactionType, setTransactionType] = useState<'charge' | 'purchase' | 'payment' | 'refund' | 'adjust'>('charge')
   const [category, setCategory] = useState<'balance' | 'designated_lesson' | 'boat_voucher_g23' | 'boat_voucher_g21' | 'membership' | 'board_storage'>('balance')
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'deduct_balance' | 'g23_voucher' | 'g21_voucher' | 'designated_paid' | 'designated_free'>('cash')
+  const [adjustType, setAdjustType] = useState<'increase' | 'decrease'>('increase')
   const [amount, setAmount] = useState('')
   const [minutes, setMinutes] = useState('')
   const [description, setDescription] = useState('')
@@ -56,6 +58,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
   const resetForm = () => {
     setTransactionType('charge')
     setCategory('balance')
+    setPaymentMethod('cash')
+    setAdjustType('increase')
     setAmount('')
     setMinutes('')
     setDescription('')
@@ -96,8 +100,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         }
       }
 
-      // 消耗：扣除餘額或分鐘數
-      if (transactionType === 'consume') {
+      // 付款：扣除餘額或分鐘數
+      if (transactionType === 'payment') {
         if (category === 'balance' && numAmount) {
           newBalance -= Math.abs(numAmount)
         } else if (category === 'designated_lesson' && numMinutes) {
@@ -122,16 +126,19 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         }
       }
 
-      // 調整：直接設定為輸入的值（可以是正負）
+      // 調整：根據 adjustType 增加或減少
       if (transactionType === 'adjust') {
+        const adjustAmount = adjustType === 'increase' ? Math.abs(numAmount || 0) : -Math.abs(numAmount || 0)
+        const adjustMinutes = adjustType === 'increase' ? Math.abs(numMinutes || 0) : -Math.abs(numMinutes || 0)
+        
         if (category === 'balance' && numAmount !== null) {
-          newBalance = member.balance + numAmount
+          newBalance = member.balance + adjustAmount
         } else if (category === 'designated_lesson' && numMinutes !== null) {
-          newDesignatedMinutes = member.designated_lesson_minutes + numMinutes
+          newDesignatedMinutes = member.designated_lesson_minutes + adjustMinutes
         } else if (category === 'boat_voucher_g23' && numMinutes !== null) {
-          newBoatVoucherG23Minutes = member.boat_voucher_g23_minutes + numMinutes
+          newBoatVoucherG23Minutes = member.boat_voucher_g23_minutes + adjustMinutes
         } else if (category === 'boat_voucher_g21' && numMinutes !== null) {
-          newBoatVoucherG21Minutes = member.boat_voucher_g21_minutes + numMinutes
+          newBoatVoucherG21Minutes = member.boat_voucher_g21_minutes + adjustMinutes
         }
       }
 
@@ -155,7 +162,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
 
       if (updateError) throw updateError
 
-      // 準備交易記錄數據，包含船券類型
+      // 準備交易記錄數據，包含船券類型、付款方式、調整類型
       const transactionData: any = {
         member_id: member.id,
         transaction_type: transactionType,
@@ -168,6 +175,16 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         boat_voucher_g21_minutes_after: newBoatVoucherG21Minutes,
         description: description || getDefaultDescription(),
         notes: notes || null,
+      }
+
+      // 如果是付款，記錄付款方式
+      if (transactionType === 'payment') {
+        transactionData.payment_method = paymentMethod
+      }
+
+      // 如果是調整，記錄調整類型
+      if (transactionType === 'adjust') {
+        transactionData.adjust_type = adjustType
       }
 
       // 如果是船券相關，記錄船券類型
@@ -198,7 +215,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     const typeLabels = {
       charge: '儲值',
       purchase: '購買',
-      consume: '消耗',
+      payment: '付款',
       refund: '退款',
       adjust: '調整',
     }
@@ -210,7 +227,29 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
       membership: '會籍',
       board_storage: '置板',
     }
-    return `${typeLabels[transactionType]} - ${categoryLabels[category]}`
+    
+    let desc = `${typeLabels[transactionType]} - ${categoryLabels[category]}`
+    
+    // 如果是付款，加上付款方式
+    if (transactionType === 'payment') {
+      const paymentLabels: Record<string, string> = {
+        cash: '現金',
+        transfer: '匯款',
+        deduct_balance: '扣儲值',
+        g23_voucher: 'G23船券',
+        g21_voucher: 'G21船券',
+        designated_paid: '指定課程（收費）',
+        designated_free: '指定課程（免費）',
+      }
+      desc += ` (${paymentLabels[paymentMethod]})`
+    }
+    
+    // 如果是調整，加上調整類型
+    if (transactionType === 'adjust') {
+      desc += ` (${adjustType === 'increase' ? '增加' : '減少'})`
+    }
+    
+    return desc
   }
 
   if (!open) return null
@@ -333,11 +372,56 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
               >
                 <option value="charge">儲值 💰</option>
                 <option value="purchase">購買 🛒</option>
-                <option value="consume">消耗 💸</option>
+                <option value="payment">付款 💸</option>
                 <option value="refund">退款 ↩️</option>
                 <option value="adjust">調整 🔧</option>
               </select>
             </div>
+
+            {/* 付款方式（僅在選擇「付款」時顯示） */}
+            {transactionType === 'payment' && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  付款方式 <span style={{ color: 'red' }}>*</span>
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  style={inputStyle}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                  required
+                >
+                  <option value="cash">現金</option>
+                  <option value="transfer">匯款</option>
+                  <option value="deduct_balance">扣儲值</option>
+                  <option value="g23_voucher">G23船券</option>
+                  <option value="g21_voucher">G21船券</option>
+                  <option value="designated_paid">指定課程（收費）</option>
+                  <option value="designated_free">指定課程（免費）</option>
+                </select>
+              </div>
+            )}
+
+            {/* 調整類型（僅在選擇「調整」時顯示） */}
+            {transactionType === 'adjust' && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  調整類型 <span style={{ color: 'red' }}>*</span>
+                </label>
+                <select
+                  value={adjustType}
+                  onChange={(e) => setAdjustType(e.target.value as any)}
+                  style={inputStyle}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                  required
+                >
+                  <option value="increase">增加餘額 ⬆️</option>
+                  <option value="decrease">減少餘額 ⬇️</option>
+                </select>
+              </div>
+            )}
 
             {/* 類別 */}
             <div style={{ marginBottom: '16px' }}>
@@ -484,16 +568,17 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
             {/* 說明 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                說明
+                說明 {transactionType === 'adjust' && <span style={{ color: 'red' }}>*</span>}
               </label>
               <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder={`預設：${getDefaultDescription()}`}
+                placeholder={transactionType === 'adjust' ? '請說明調整原因（例如：誤記修正、優惠補貼）' : `預設：${getDefaultDescription()}`}
                 style={inputStyle}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
+                required={transactionType === 'adjust'}
               />
             </div>
 
@@ -529,7 +614,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
               <ul style={{ margin: 0, paddingLeft: '20px' }}>
                 <li><strong>儲值</strong>：增加餘額</li>
                 <li><strong>購買</strong>：增加指定課/船券分鐘數（金額選填，若從儲值扣款才填）</li>
-                <li><strong>消耗</strong>：扣除餘額或分鐘數</li>
+                <li><strong>付款</strong>：預約結帳（可選付款方式）</li>
                 <li><strong>退款</strong>：退回餘額或分鐘數</li>
                 <li><strong>調整</strong>：手動調整任何數值（輸入正負數）</li>
               </ul>

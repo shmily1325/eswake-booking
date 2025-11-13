@@ -339,6 +339,9 @@ CREATE TABLE transactions (
   description TEXT NOT NULL,
   notes TEXT,
   
+  payment_method TEXT,
+  adjust_type TEXT,
+  
   related_booking_id INTEGER REFERENCES bookings(id),
   
   operator_id UUID REFERENCES auth.users(id),
@@ -346,6 +349,8 @@ CREATE TABLE transactions (
 );
 
 COMMENT ON TABLE transactions IS '財務交易記錄表';
+COMMENT ON COLUMN transactions.payment_method IS '付款方式：cash=現金, transfer=匯款, deduct_balance=扣儲值, g23_voucher=G23船券, g21_voucher=G21船券, designated_paid=指定課程（收費）, designated_free=指定課程（免費）';
+COMMENT ON COLUMN transactions.adjust_type IS '調整類型：increase=增加餘額, decrease=減少餘額';
 CREATE INDEX idx_transactions_member ON transactions(member_id);
 CREATE INDEX idx_transactions_type ON transactions(transaction_type);
 CREATE INDEX idx_transactions_created ON transactions(created_at);

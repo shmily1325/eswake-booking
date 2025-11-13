@@ -9,11 +9,14 @@ import { useResponsive } from '../hooks/useResponsive'
 interface Member {
   id: string
   name: string
+  nickname: string | null
   phone: string | null
   balance: number
   designated_lesson_minutes: number
   boat_voucher_g23_minutes: number
   boat_voucher_g21_minutes: number
+  free_hours: number
+  free_hours_used: number
   member_type: string
   status: string
 }
@@ -37,7 +40,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('*')
+        .select('id, name, nickname, phone, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes, free_hours, free_hours_used, member_type, status')
         .eq('member_type', 'member')
         .eq('status', 'active')
         .order('name')
@@ -87,6 +90,44 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
       background: '#f5f5f5'
     }}>
       <PageHeader title="💳 會員記帳" user={user} showBaoLink={true} />
+
+      {/* 使用說明 */}
+      <div style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        borderRadius: '12px',
+        padding: isMobile ? '16px' : '20px',
+        marginBottom: '16px',
+        color: 'white',
+      }}>
+        <div style={{
+          fontSize: isMobile ? '14px' : '15px',
+          fontWeight: '600',
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          💡 使用說明
+        </div>
+        <div style={{
+          fontSize: isMobile ? '12px' : '13px',
+          lineHeight: '1.6',
+          opacity: 0.95,
+        }}>
+          <div style={{ marginBottom: '4px' }}>
+            <strong>儲值 💰</strong>：客人充值到帳戶
+          </div>
+          <div style={{ marginBottom: '4px' }}>
+            <strong>付款 💸</strong>：預約結帳（現金/匯款/扣儲值/船券/指定課程）
+          </div>
+          <div style={{ marginBottom: '4px' }}>
+            <strong>調整 🔧</strong>：修正錯誤、優惠補貼等（需填寫原因）
+          </div>
+          <div>
+            <strong>退款 ↩️</strong>：退還款項給客人
+          </div>
+        </div>
+      </div>
 
       {/* 搜尋欄 */}
       <div style={{
@@ -217,7 +258,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                         fontWeight: 'bold',
                         color: '#333',
                       }}>
-                        {member.name}
+                        {member.nickname ? `${member.nickname} (${member.name})` : member.name}
                       </span>
                       {member.phone && (
                         <span style={{
@@ -232,7 +273,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                     {/* 財務資訊 */}
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+                      gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)',
                       gap: '12px',
                       marginTop: '10px',
                     }}>
@@ -301,6 +342,23 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                           color: member.boat_voucher_g21_minutes > 0 ? '#13c2c2' : '#999',
                         }}>
                           {member.boat_voucher_g21_minutes}分
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#999',
+                          marginBottom: '4px',
+                        }}>
+                          贈送時數
+                        </div>
+                        <div style={{
+                          fontSize: isMobile ? '16px' : '18px',
+                          fontWeight: 'bold',
+                          color: (member.free_hours - member.free_hours_used) > 0 ? '#eb2f96' : '#999',
+                        }}>
+                          {(member.free_hours - member.free_hours_used).toFixed(0)}分
                         </div>
                       </div>
                     </div>
