@@ -48,10 +48,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [memberToDelete, setMemberToDelete] = useState<Member | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState('')
+  const [showInactive, setShowInactive] = useState(false)
   
   // TODO: Will use user for creating/updating members and permission control
   // Current user email will be logged for debugging
@@ -59,7 +56,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
 
   useEffect(() => {
     loadMembers()
-  }, [])
+  }, [showInactive])
 
   const loadMembers = async () => {
     setLoading(true)
@@ -75,9 +72,9 @@ export function MemberManagement({ user }: MemberManagementProps) {
             membership_type, membership_partner_id,
             board_slot_number, board_expiry_date,
             free_hours, free_hours_used, free_hours_notes,
-            created_at
+            status, created_at
           `)
-          .eq('status', 'active')
+          .eq('status', showInactive ? 'inactive' : 'active')
           .order('created_at', { ascending: false})
           .limit(200),  // 限制最多 200 筆，避免一次載入太多
         
@@ -133,60 +130,33 @@ export function MemberManagement({ user }: MemberManagementProps) {
     }
   }
 
-  const handleDeleteMember = async () => {
-    if (!memberToDelete) return
-    
-    setDeleting(true)
-    setDeleteError('')
-    
+  const handleArchiveMember = async (memberId: string) => {
     try {
-      // 檢查該會員是否有預約相關記錄（檢查 bookings、booking_members、booking_participants）
-      const [bookingsResult, bookingMembersResult, participantsResult] = await Promise.all([
-        supabase
-          .from('bookings')
-          .select('id')
-          .eq('member_id', memberToDelete.id)
-          .limit(1),
-        supabase
-          .from('booking_members')
-          .select('id')
-          .eq('member_id', memberToDelete.id)
-          .limit(1),
-        supabase
-          .from('booking_participants')
-          .select('id')
-          .eq('member_id', memberToDelete.id)
-          .limit(1)
-      ])
-      
-      if (bookingsResult.error) throw bookingsResult.error
-      if (bookingMembersResult.error) throw bookingMembersResult.error
-      if (participantsResult.error) throw participantsResult.error
-      
-      if ((bookingsResult.data && bookingsResult.data.length > 0) || 
-          (bookingMembersResult.data && bookingMembersResult.data.length > 0) ||
-          (participantsResult.data && participantsResult.data.length > 0)) {
-        setDeleteError('❌ 無法刪除：此會員有預約記錄。請先刪除相關預約，或使用「標記為無效」功能來隱藏會員。')
-        setDeleting(false)
-        return
-      }
-      
-      // 沒有預約記錄，可以安全刪除
-      const { error: deleteError } = await supabase
+      const { error } = await supabase
         .from('members')
-        .delete()
-        .eq('id', memberToDelete.id)
+        .update({ status: 'inactive' })
+        .eq('id', memberId)
       
-      if (deleteError) throw deleteError
-      
-      // 刪除成功，重新載入會員列表
+      if (error) throw error
       await loadMembers()
-      setDeleteDialogOpen(false)
-      setMemberToDelete(null)
     } catch (err: any) {
-      setDeleteError('刪除失敗: ' + err.message)
-    } finally {
-      setDeleting(false)
+      console.error('隱藏會員失敗:', err)
+      alert('隱藏會員失敗')
+    }
+  }
+
+  const handleRestoreMember = async (memberId: string) => {
+    try {
+      const { error} = await supabase
+        .from('members')
+        .update({ status: 'active' })
+        .eq('id', memberId)
+      
+      if (error) throw error
+      await loadMembers()
+    } catch (err: any) {
+      console.error('恢復會員失敗:', err)
+      alert('恢復會員失敗')
     }
   }
 
@@ -317,6 +287,40 @@ export function MemberManagement({ user }: MemberManagementProps) {
         />
       </div>
 
+      {/* 顯示已隱藏的切換開關 */}
+      <div style={{ 
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px'
+      }}>
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          cursor: 'pointer',
+          userSelect: 'none',
+          gap: '8px'
+        }}>
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+            style={{
+              width: '18px',
+              height: '18px',
+              cursor: 'pointer'
+            }}
+          />
+          <span style={{ 
+            fontSize: '14px', 
+            color: '#666',
+            fontWeight: '500'
+          }}>
+            顯示已隱藏的會員
+          </span>
+        </label>
+      </div>
+
       {/* 統計資訊 */}
       <div style={{ 
         display: 'grid',
@@ -409,20 +413,22 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
               }}
             >
-              {/* 刪除按鈕 */}
+              {/* 隱藏/恢復按鈕 */}
               <button
                 onClick={(e) => {
                   e.stopPropagation() // 防止觸發卡片的 onClick
-                  setMemberToDelete(member)
-                  setDeleteDialogOpen(true)
-                  setDeleteError('')
+                  if (member.status === 'inactive') {
+                    handleRestoreMember(member.id)
+                  } else {
+                    handleArchiveMember(member.id)
+                  }
                 }}
                 style={{
                   position: 'absolute',
                   top: '12px',
                   right: '12px',
-                  background: '#ff4444',
-                  color: 'white',
+                  background: member.status === 'inactive' ? '#4caf50' : '#f5f5f5',
+                  color: member.status === 'inactive' ? 'white' : '#999',
                   border: 'none',
                   borderRadius: '6px',
                   padding: '6px 12px',
@@ -432,14 +438,8 @@ export function MemberManagement({ user }: MemberManagementProps) {
                   transition: 'all 0.2s',
                   zIndex: 10
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#cc0000'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#ff4444'
-                }}
               >
-                🗑️ 刪除
+                {member.status === 'inactive' ? '恢復' : '隱藏'}
               </button>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
@@ -676,126 +676,6 @@ export function MemberManagement({ user }: MemberManagementProps) {
         onUpdate={loadMembers}
       />
 
-      {/* 刪除確認對話框 */}
-      {deleteDialogOpen && memberToDelete && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            maxWidth: '450px',
-            width: '100%',
-            padding: '24px'
-          }}>
-            <h2 style={{ 
-              margin: '0 0 16px 0', 
-              fontSize: '20px', 
-              fontWeight: 'bold',
-              color: '#ff4444'
-            }}>
-              ⚠️ 確認刪除會員
-            </h2>
-            
-            <div style={{ 
-              background: '#f5f5f5',
-              padding: '16px',
-              borderRadius: '8px',
-              marginBottom: '16px'
-            }}>
-              <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
-                {memberToDelete.name}
-              </div>
-              {memberToDelete.phone && (
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                  📱 {memberToDelete.phone}
-                </div>
-              )}
-              {memberToDelete.notes && (
-                <div style={{ fontSize: '13px', color: '#999', marginTop: '8px', fontStyle: 'italic' }}>
-                  {memberToDelete.notes}
-                </div>
-              )}
-            </div>
-
-            <p style={{ 
-              fontSize: '14px', 
-              color: '#666', 
-              marginBottom: '20px',
-              lineHeight: '1.6'
-            }}>
-              此操作會<strong>永久刪除</strong>此會員資料。<br/>
-              如果此會員有預約記錄，將無法刪除。<br/>
-              此操作<strong>無法復原</strong>，請確認是否繼續？
-            </p>
-
-            {deleteError && (
-              <div style={{
-                background: '#ffebee',
-                color: '#c62828',
-                padding: '12px',
-                borderRadius: '8px',
-                marginBottom: '16px',
-                fontSize: '14px',
-                lineHeight: '1.5'
-              }}>
-                {deleteError}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                onClick={() => {
-                  setDeleteDialogOpen(false)
-                  setMemberToDelete(null)
-                  setDeleteError('')
-                }}
-                disabled={deleting}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: deleting ? '#e0e0e0' : 'white',
-                  color: deleting ? '#999' : '#666',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  fontWeight: '500',
-                  cursor: deleting ? 'not-allowed' : 'pointer'
-                }}
-              >
-                取消
-              </button>
-              <button
-                onClick={handleDeleteMember}
-                disabled={deleting}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: deleting ? '#ffcccb' : '#ff4444',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  fontWeight: 'bold',
-                  cursor: deleting ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {deleting ? '刪除中...' : '確認刪除'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

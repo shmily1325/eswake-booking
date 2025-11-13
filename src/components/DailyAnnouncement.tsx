@@ -16,7 +16,7 @@ interface Birthday {
 interface ExpiringMembership {
   name: string
   nickname: string | null
-  membership_expires_at: string
+  membership_end_date: string
 }
 
 interface ExpiringBoard {
@@ -71,11 +71,16 @@ export function DailyAnnouncement() {
     const today = getLocalDateString()
     const todayMD = today.substring(5) // MM-DD
     
-    // 計算7天後的日期（純字符串計算，避免時區問題）
+    // 計算7天後的日期
     const [year, month, day] = today.split('-').map(Number)
-    const date = new Date(year, month - 1, day) // 使用本地日期
-    date.setDate(date.getDate() + 7)
-    const sevenDaysLaterStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    const sevenDaysLater = new Date(year, month - 1, day)
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7)
+    const sevenDaysLaterStr = `${sevenDaysLater.getFullYear()}-${String(sevenDaysLater.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysLater.getDate()).padStart(2, '0')}`
+    
+    // 計算30天前的日期（顯示已過期會員）
+    const thirtyDaysAgo = new Date(year, month - 1, day)
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const thirtyDaysAgoStr = `${thirtyDaysAgo.getFullYear()}-${String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(thirtyDaysAgo.getDate()).padStart(2, '0')}`
 
     // 並行執行所有查詢（重要：從串行改為並行，大幅提升速度）
     const [
@@ -107,15 +112,15 @@ export function DailyAnnouncement() {
         .like('birthday', `%${todayMD}%`)
         .limit(5),
       
-      // 獲取即將到期的會籍（7天內）
+      // 獲取即將到期或已過期的會籍（過去30天內過期 + 未來7天內到期）
       supabase
         .from('members')
-        .select('name, nickname, membership_expires_at')
+        .select('name, nickname, membership_end_date')
         .eq('status', 'active')
-        .not('membership_expires_at', 'is', null)
-        .gte('membership_expires_at', today)
-        .lte('membership_expires_at', sevenDaysLaterStr)
-        .order('membership_expires_at', { ascending: true })
+        .not('membership_end_date', 'is', null)
+        .gte('membership_end_date', thirtyDaysAgoStr)
+        .lte('membership_end_date', sevenDaysLaterStr)
+        .order('membership_end_date', { ascending: true })
         .limit(10),
       
       // 獲取即將到期的置板（7天內）
@@ -230,7 +235,7 @@ export function DailyAnnouncement() {
                   color: '#666',
                   marginBottom: '2px'
                 }}>
-                  {m.name} ({formatDate(m.membership_expires_at)})
+                  {m.name} ({formatDate(m.membership_end_date)})
                 </div>
               ))}
             </div>
