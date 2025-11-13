@@ -499,40 +499,6 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
         )}
       </div>
 
-      {/* 說明卡片 */}
-      <div style={{
-        background: '#f8f9fa',
-        padding: isMobile ? '16px' : '20px',
-        borderRadius: '12px',
-        marginTop: '20px',
-        border: '1px solid #e0e0e0',
-      }}>
-        <div style={{
-          fontSize: '16px',
-          fontWeight: 'bold',
-          marginBottom: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          color: '#333',
-        }}>
-          <span>💡</span>
-          <span>使用說明</span>
-        </div>
-        <ul style={{
-          margin: 0,
-          paddingLeft: '20px',
-          fontSize: '14px',
-          lineHeight: '1.8',
-          color: '#666',
-        }}>
-          <li>點擊任何會員即可快速進行記帳操作</li>
-          <li>支援儲值、購買船券/指定課、付款、退款、調整等操作</li>
-          <li>所有交易都會自動記錄到財務系統</li>
-          <li>可以搜尋會員暱稱/姓名/電話快速定位</li>
-        </ul>
-      </div>
-
       <Footer />
 
       {/* 交易對話框 */}

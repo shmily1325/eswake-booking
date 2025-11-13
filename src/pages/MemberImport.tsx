@@ -914,6 +914,7 @@ export function MemberImport({ user }: MemberImportProps) {
               • <strong style={{ color: '#d32f2f' }}>刪除所有每日公告</strong><br/>
               • <strong style={{ color: '#4caf50' }}>保留船資料</strong><br/>
               • <strong style={{ color: '#4caf50' }}>保留教練資料</strong><br/>
+              • <strong style={{ color: '#4caf50' }}>保留權限設定</strong><br/>
               <br/>
               <span style={{ color: '#b71c1c', fontWeight: 'bold', fontSize: '15px' }}>⚠️ 此操作<strong>無法復原</strong>！<br/>確定要繼續嗎？</span>
             </p>
