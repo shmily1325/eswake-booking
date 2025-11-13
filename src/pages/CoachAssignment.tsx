@@ -3002,11 +3002,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           {assignment.coachIds.length > 0 && !isEditing && (
                             <div style={{ 
                               marginTop: '6px',
-                              color: '#2e7d32',
+                              color: '#555',
                               fontSize: '12px',
-                                    fontWeight: '500'
+                              fontWeight: '500'
                             }}>
-                              教練：{coaches.filter(c => assignment.coachIds.includes(c.id)).map(c => c.name).join(', ')}
+                              🎓 {coaches.filter(c => assignment.coachIds.includes(c.id)).map(c => c.name).join(', ')}
                             </div>
                           )}
                           
@@ -3027,22 +3027,29 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {coaches.map(c => {
                                     const isSelected = currentAssignment.driverIds.includes(c.id)
+                                    const isCoach = currentAssignment.coachIds.includes(c.id)
                                     return (
                                       <button
                                         key={c.id}
                                         onClick={(e) => {
                                           e.stopPropagation()
+                                          if (isCoach) {
+                                            alert('⚠️ 教練不能同時是駕駛，請選擇其他人')
+                                            return
+                                          }
                                           toggleDriver(booking.id, c.id)
                                         }}
                                         style={{
                                           padding: '6px 12px',
                                           borderRadius: '6px',
                                           border: isSelected ? 'none' : '1px solid #ddd',
-                                          background: isSelected ? '#ff9800' : 'white',
-                                          color: isSelected ? 'white' : '#666',
+                                          background: isSelected ? '#ff9800' : isCoach ? '#f5f5f5' : 'white',
+                                          color: isSelected ? 'white' : isCoach ? '#ccc' : '#666',
                                           fontSize: '12px',
-                                          cursor: 'pointer'
+                                          cursor: isCoach ? 'not-allowed' : 'pointer',
+                                          opacity: isCoach ? 0.5 : 1
                                         }}
+                                        disabled={isCoach}
                                       >
                                         {c.name}
                                 </button>
