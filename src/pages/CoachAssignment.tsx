@@ -1041,15 +1041,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             return !assignment || assignment.coachIds.length === 0
           }).length
           
-          // 需要駕駛但未指定駕駛 - 排除彈簧床
-          const needDriverCount = bookings.filter(booking => {
-            // 彈簧床不需要駕駛
-            if (booking.boats?.name === '彈簧床') return false
-            
-            const assignment = assignments[booking.id]
-            return assignment?.requiresDriver && (!assignment.driverIds || assignment.driverIds.length === 0)
-          }).length
-          
           return (
             <div style={{
               backgroundColor: 'white',
@@ -1099,21 +1090,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     <div style={{ fontSize: '11px', color: '#991b1b', marginBottom: '4px' }}>⚠️ 未排班</div>
                     <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#7f1d1d' }}>
                       {unassignedCount} 筆
-                    </div>
-                  </div>
-                )}
-                
-                {/* 缺駕駛 */}
-                {needDriverCount > 0 && (
-                  <div style={{
-                    padding: isMobile ? '10px' : '12px',
-                    backgroundColor: '#fff7ed',
-                    borderRadius: '8px',
-                    border: '1px solid #fed7aa',
-                  }}>
-                    <div style={{ fontSize: '11px', color: '#c2410c', marginBottom: '4px' }}>🚤 缺駕駛</div>
-                    <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#9a3412' }}>
-                      {needDriverCount} 筆
                     </div>
                   </div>
                 )}
@@ -3022,6 +2998,18 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             </div>
                           )}
                           
+                          {/* 顯示已指定的教練 */}
+                          {assignment.coachIds.length > 0 && !isEditing && (
+                            <div style={{ 
+                              marginTop: '6px',
+                              color: '#2e7d32',
+                              fontSize: '12px',
+                                    fontWeight: '500'
+                            }}>
+                              教練：{coaches.filter(c => assignment.coachIds.includes(c.id)).map(c => c.name).join(', ')}
+                            </div>
+                          )}
+                          
                           {/* 展開編輯：指定駕駛 */}
                           {isEditing && (() => {
                             // 動態獲取最新的 assignment，避免閉包問題
@@ -3060,7 +3048,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 </button>
                     )
                   })}
-                </div>
+                              </div>
                               </div>
                               
                               {/* 排班註解 */}
@@ -3103,12 +3091,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 </div>
                               )}
                             </div>
-                            )
+                          )
                           })()}
                             </div>
-                          )
-                        })}
-                  </div>
+                    )
+                  })}
+                </div>
               </div>
               )}
               </div>
