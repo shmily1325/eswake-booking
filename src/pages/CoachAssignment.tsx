@@ -2723,7 +2723,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         {!loading && bookings.length > 0 && viewMode === 'coach-grouping' && (() => {
           // 準備數據：將預約按教練和駕駛分組
           const coachGroups: Record<string, typeof bookings> = {}
-          const unassignedBookings: typeof bookings = []
           const needsDriverBookings: typeof bookings = []
           
           // 初始化所有教練的陣列
@@ -2754,13 +2753,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               })
             }
             
-            // 如果完全沒有指定教練，加到未指定
+            // 如果沒有指定教練，加到需要駕駛區塊
             if (assignment.coachIds.length === 0) {
-              unassignedBookings.push(booking)
-            }
-            
-            // 如果需要駕駛但沒有指定駕駛，加到需要駕駛區塊
-            if (booking.requires_driver && assignment.driverIds.length === 0) {
               needsDriverBookings.push(booking)
             }
           })
@@ -2772,11 +2766,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             )
           })
           
-          // 對未指定的預約也按時間排序
-          unassignedBookings.sort((a, b) => 
-            new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
-          )
-          
           // 對需要駕駛的預約也按時間排序
           needsDriverBookings.sort((a, b) => 
             new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
@@ -2784,7 +2773,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* 渲染每個有預約的教練 - 網格布局 */}
+              {/* 渲染所有上班的教練 - 網格布局 */}
                               <div style={{
                 display: 'grid', 
                 gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(380px, 1fr))',
@@ -2792,7 +2781,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               }}>
               {coaches.map(coach => {
                 const coachBookings = coachGroups[coach.id] || []
-                if (coachBookings.length === 0) return null // 沒有班次的教練不顯示
+                // 顯示所有上班的教練（不管有沒有預約）
                 
                 return (
                   <div key={coach.id} style={{
@@ -2815,7 +2804,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
                       flexShrink: 0
                     }}>
-                      {coach.name} ({coachBookings.length})
+                      🎓 {coach.name} {coachBookings.length > 0 && `(${coachBookings.length})`}
                     </div>
                     
                     {/* 該教練的所有預約 */}
@@ -2824,9 +2813,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       flexDirection: 'column', 
                       gap: '6px',
                       overflowY: 'auto',
-                      padding: isMobile ? '0 16px 16px' : '0 20px 20px'
+                      padding: isMobile ? '0 16px 16px' : '0 20px 20px',
+                      minHeight: '100px'
                     }}>
-                      {coachBookings.map(booking => {
+                      {coachBookings.length === 0 ? (
+                        <div style={{
+                          textAlign: 'center',
+                          color: '#999',
+                          padding: '20px',
+                          fontSize: '14px'
+                        }}>
+                          今日無排班
+                        </div>
+                      ) : coachBookings.map(booking => {
                         const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
                         const isPreAssigned = booking.currentCoaches.includes(coach.id) || booking.currentDrivers.includes(coach.id)
                         const isCoach = assignment.coachIds.includes(coach.id)
@@ -2932,22 +2931,22 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             </div>
                           </div>
                         )
-                      })}
+                      }))}
                     </div>
                   </div>
                 )
               })}
               </div>
               
-              {/* 底部區塊：未指定 | 需要駕駛（並排網格）*/}
+              {/* 底部區塊：需要駕駛（並排網格）*/}
               <div style={{ 
                 display: 'grid', 
                 gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(380px, 1fr))',
                 gap: '16px'
               }}>
               
-              {/* 未指定區塊 */}
-              {unassignedBookings.length > 0 && (
+              {/* 需要駕駛區塊（未指定教練的預約）*/}
+              {needsDriverBookings.length > 0 && (
                 <div style={{
                   background: 'white',
                   borderRadius: '12px',
@@ -2967,7 +2966,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
                     flexShrink: 0
                   }}>
-                    未指定 ({unassignedBookings.length})
+                    🚤 需要駕駛 ({needsDriverBookings.length})
                   </div>
                   
                   <div style={{ 
@@ -2977,7 +2976,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     overflowY: 'auto',
                     padding: isMobile ? '0 16px 16px' : '0 20px 20px'
                   }}>
-                    {unassignedBookings.map(booking => {
+                    {needsDriverBookings.map(booking => {
                       const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
                       const isEditing = editingBookingId === booking.id
                       
@@ -3014,7 +3013,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             </div>
                           )}
                           
-                          {/* 展開編輯：指定教練 */}
+                          {/* 展開編輯：指定駕駛 */}
                           {isEditing && (() => {
                             // 動態獲取最新的 assignment，避免閉包問題
                             const currentAssignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
@@ -3026,17 +3025,17 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             }}>
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
-                                  指定教練：
+                                  指定駕駛：
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {coaches.map(c => {
-                                    const isSelected = currentAssignment.coachIds.includes(c.id)
+                                    const isSelected = currentAssignment.driverIds.includes(c.id)
                                     return (
                                       <button
                                         key={c.id}
                                         onClick={(e) => {
                                           e.stopPropagation()
-                                          toggleCoach(booking.id, c.id)
+                                          toggleDriver(booking.id, c.id)
                                         }}
                                         style={{
                                           padding: '6px 12px',

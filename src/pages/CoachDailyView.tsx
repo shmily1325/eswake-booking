@@ -296,45 +296,108 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
       ? `${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
       : `${String(pickupEndTime.getHours()).padStart(2, '0')}:${String(pickupEndTime.getMinutes()).padStart(2, '0')}`
 
+    // 判斷當前教練在這個預約中的角色
+    const isCoach = booking.coaches?.some(c => c.id === selectedCoachId)
+    const isDriver = booking.drivers?.some(d => d.id === selectedCoachId)
+    
+    // 決定角色標籤
+    // 邏輯：
+    // - 如果是教練 → 顯示 🎓 教練（可能默認也是駕駛，也可能只是教練）
+    // - 如果只是駕駛 → 顯示 🚤 駕駛（另外指定的駕駛）
+    let roleLabel = ''
+    if (isCoach) {
+      roleLabel = '🎓 教練'
+    } else if (isDriver) {
+      roleLabel = '🚤 駕駛'
+    }
+
     return (
       <div
         key={booking.id}
         style={{
           ...getBookingCardStyle(boat.color, true, false),
-          marginBottom: index < total - 1 ? '8px' : '0',
+          marginBottom: index < total - 1 ? '16px' : '0',
+          padding: '14px 16px',
         }}
       >
-        {/* 船隻名稱 */}
+        {/* 第一行：船隻 + 角色 + 時間 */}
         <div style={{
-          fontSize: '13px',
-          fontWeight: '700',
-          color: boat.color,
-          marginBottom: '4px',
-          textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '10px',
+          flexWrap: 'wrap',
+          gap: '6px'
         }}>
-          🚤 {boat.name}
+          <div style={{
+            fontSize: '15px',
+            fontWeight: '700',
+            color: boat.color,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            🚤 {boat.name}
+            {roleLabel && (
+              <span style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#555',
+                marginLeft: '4px'
+              }}>
+                · {roleLabel}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* 時間範圍 */}
-        <div style={bookingCardContentStyles.timeRange(true)}>
+        {/* 第二行：時間範圍 */}
+        <div style={{
+          fontSize: '14px',
+          fontWeight: '600',
+          color: '#333',
+          marginBottom: '8px',
+          textAlign: 'left',
+        }}>
           {startTime} - {endTime}
         </div>
 
-        {/* 聯絡人姓名 */}
-        <div style={bookingCardContentStyles.contactName(true)}>
+        {/* 第三行：聯絡人姓名 */}
+        <div style={{
+          fontSize: '15px',
+          fontWeight: '600',
+          color: '#1976d2',
+          marginBottom: '6px',
+          textAlign: 'left',
+        }}>
           {getDisplayContactName(booking)}
         </div>
 
         {/* 註解 */}
         {booking.notes && (
-          <div style={bookingCardContentStyles.notes(true)}>
+          <div style={{
+            fontSize: '13px',
+            color: '#666',
+            fontStyle: 'italic',
+            marginTop: '8px',
+            marginBottom: '4px',
+            textAlign: 'left',
+            lineHeight: '1.4'
+          }}>
             {booking.notes}
           </div>
         )}
 
         {/* 排班註解 */}
         {booking.schedule_notes && (
-          <div style={bookingCardContentStyles.scheduleNotes(true)}>
+          <div style={{
+            fontSize: '13px',
+            color: '#e65100',
+            fontWeight: '500',
+            marginTop: '8px',
+            textAlign: 'left',
+            lineHeight: '1.4'
+          }}>
             📝 {booking.schedule_notes}
           </div>
         )}
@@ -347,10 +410,8 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
     const slots = Math.ceil(booking.duration_min / 15)
     const coachNames = booking.coaches?.map(c => c.name).join(', ') || '未分配'
     
-    // 只顯示不同於教練的駕駛
-    const coachIds = new Set(booking.coaches?.map(c => c.id) || [])
-    const uniqueDrivers = booking.drivers?.filter(d => !coachIds.has(d.id)) || []
-    const driverNames = uniqueDrivers.map(d => d.name).join(', ')
+    // 如果有另外指定駕駛就顯示
+    const driverNames = booking.drivers?.map(d => d.name).join(', ') || ''
     
     const isFacility = booking.boats?.name === '彈簧床'
     const start = new Date(booking.start_at)
@@ -402,7 +463,7 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
             ...bookingCardContentStyles.coachName(boat.color, isMobile),
             marginTop: '2px'
           }}>
-            🚗 {driverNames}
+            🚤 {driverNames}
           </div>
         )}
       </td>

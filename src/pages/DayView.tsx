@@ -1391,26 +1391,17 @@ export function DayView({ user }: DayViewProps) {
                             </div>
                           )}
                           
-                          {/* 第七行：駕駛（只有當駕駛與教練不同時才顯示） */}
-                          {(() => {
-                            if (!booking.drivers || booking.drivers.length === 0) return null
-                            
-                            const coachIds = booking.coaches?.map(c => c.id).sort().join(',') || ''
-                            const driverIds = booking.drivers.map(d => d.id).sort().join(',')
-                            
-                            if (coachIds === driverIds) return null
-                            
-                            return (
-                              <div style={{
-                                fontSize: isMobile ? '12px' : '13px',
-                                color: '#555',
-                                textAlign: 'center',
-                                fontWeight: '500',
-                              }}>
-                                🚤 {booking.drivers.map(d => d.name).join('/')}
-                              </div>
-                            )
-                          })()}
+                          {/* 第七行：駕駛（如果有另外指定駕駛就顯示） */}
+                          {booking.drivers && booking.drivers.length > 0 && (
+                            <div style={{
+                              fontSize: isMobile ? '12px' : '13px',
+                              color: '#555',
+                              textAlign: 'center',
+                              fontWeight: '500',
+                            }}>
+                              🚤 {booking.drivers.map(d => d.name).join('/')}
+                            </div>
+                          )}
                         </td>
                       )
                     } else if (booking) {
