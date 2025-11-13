@@ -2771,7 +2771,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             coachGroups[coach.id] = []
           })
           
-          // 分類預約
+          // 分類預約 - 使用編輯中的值（即時反應）
           bookings.forEach(booking => {
             const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
             
@@ -2784,7 +2784,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               })
             }
             
-            // 如果有指定駕駛（且駕駛不是教練），也加到對應駕駛的組，並標記為駕駛任務
+            // 如果有指定駕駛（且駕駛不是教練），也加到對應駕駛的組
             if (assignment.driverIds.length > 0) {
               assignment.driverIds.forEach(driverId => {
                 // 只有當駕駛不在教練列表中時才加
@@ -2953,6 +2953,20 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                   fontSize: '12px'
                                 }}>
                                   📝 {assignment.notes}
+                                </div>
+                              )}
+                              {/* 衝突警告 */}
+                              {assignment.conflicts.length > 0 && (
+                                <div style={{ 
+                                  marginTop: '6px',
+                                  padding: '6px 8px',
+                                  background: '#ffebee',
+                                  borderRadius: '4px',
+                                  fontSize: '11px',
+                                  color: '#c62828',
+                                  lineHeight: '1.4'
+                                }}>
+                                  ⚠️ {assignment.conflicts.join(' / ')}
                                 </div>
                               )}
                             </div>
