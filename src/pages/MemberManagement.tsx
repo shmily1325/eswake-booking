@@ -429,9 +429,9 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 <div style={{ flex: 1, minWidth: 0, maxWidth: isMobile ? '100%' : '500px', paddingRight: '80px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
                     <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-                      {member.name}
+                      {member.nickname && member.nickname.trim() ? member.nickname : member.name}
                     </h3>
-                    {member.nickname && (
+                    {member.nickname && member.nickname.trim() && (
                       <span style={{ 
                         fontSize: '14px', 
                         color: '#666',
@@ -439,7 +439,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
                         padding: '2px 8px',
                         borderRadius: '4px'
                       }}>
-                        {member.nickname}
+                        ({member.name})
                       </span>
                     )}
                     {member.membership_type === 'dual' && (

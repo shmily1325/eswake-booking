@@ -246,7 +246,7 @@ export function MemberImport({ user }: MemberImportProps) {
   }
 
   const downloadTemplate = () => {
-    const template = '姓名,暱稱,會員,會員開始日期,會員截止日,置板位號碼,置板截止日期,生日,電話,贈送時數,備註\n林敏,Ming,會員,2024-01-01,2055-12-31,,,1990-01-01,0986937619,0,\n楊翊,小楊,會員,2024-01-01,2025-12-31,25,2025-12-31,1992-08-20,,0,不知道姓什麼\nIngrid,Ingrid Lai,雙人會員,2024-06-01,2026-06-01,,,1988-12-10,,30,\n'
+    const template = '姓名,暱稱,會員,會員開始日期,會員截止日,置板位號碼,置板截止日期,生日,電話,贈送時數,備註\n林敏,Ming,會員,2024-01-01,2055-12-31,,,1990-01-01,0986937619,0,\n賴奕茵,Ingrid Lai,雙人會員,2024-06-01,2026-06-01,,,1988-12-10,,0,\n'
     const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -447,8 +447,7 @@ export function MemberImport({ user }: MemberImportProps) {
             }}>
 姓名,暱稱,會員,會員開始日期,會員截止日,置板位號碼,置板截止日期,生日,電話,贈送時數,備註{'\n'}
 林敏,Ming,會員,2024-01-01,2055-12-31,,,1990-01-01,0986937619,0,{'\n'}
-楊翊,小楊,會員,2024-01-01,2025-12-31,25,2025-12-31,1992-08-20,,0,不知道姓什麼{'\n'}
-Ingrid,Ingrid Lai,雙人會員,2024-06-01,2026-06-01,,,1988-12-10,,30,
+賴奕茵,Ingrid Lai,雙人會員,2024-06-01,2026-06-01,,,1988-12-10,,0,
             </code>
                   <p style={{ margin: 0 }}>
                     • <strong>姓名</strong>為必填，其他選填<br/>
@@ -767,8 +766,7 @@ Ingrid,Ingrid Lai,雙人會員,2024-06-01,2026-06-01,,,1988-12-10,,30,
                 </div>
                 <div style={{ ...getTextStyle('bodySmall', isMobile), color: '#666', lineHeight: '1.6' }}>
                   刪除沒有預約記錄的會員<br/>
-                  保留有預約記錄的會員<br/>
-                  <span style={{ color: '#999', fontSize: '12px' }}>（適合測試後清理測試資料）</span>
+                  保留有預約記錄的會員
                 </div>
               </div>
               <button
