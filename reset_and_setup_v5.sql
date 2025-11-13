@@ -22,6 +22,7 @@ DROP TABLE IF EXISTS daily_tasks CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS booking_participants CASCADE;
 DROP TABLE IF EXISTS coach_reports CASCADE;
+DROP TABLE IF EXISTS booking_drivers CASCADE;
 DROP TABLE IF EXISTS booking_coaches CASCADE;
 DROP TABLE IF EXISTS booking_members CASCADE;
 DROP TABLE IF EXISTS bookings CASCADE;
@@ -241,6 +242,21 @@ COMMENT ON TABLE booking_coaches IS '預約教練關聯表';
 CREATE INDEX idx_booking_coaches_booking ON booking_coaches(booking_id);
 CREATE INDEX idx_booking_coaches_coach ON booking_coaches(coach_id);
 
+-- 9.5. 預約駕駛關聯表 (Booking Drivers) ⭐ 新增
+CREATE TABLE booking_drivers (
+  id SERIAL PRIMARY KEY,
+  booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  driver_id UUID NOT NULL REFERENCES coaches(id),
+  created_at TEXT,
+  
+  UNIQUE(booking_id, driver_id)
+);
+
+COMMENT ON TABLE booking_drivers IS '預約駕駛關聯表：儲存另外排定的駕駛（駕駛=教練表中的人）';
+COMMENT ON COLUMN booking_drivers.driver_id IS '駕駛 ID（必須是 coaches 表中的人）';
+CREATE INDEX idx_booking_drivers_booking ON booking_drivers(booking_id);
+CREATE INDEX idx_booking_drivers_driver ON booking_drivers(driver_id);
+
 -- 10. 教練回報表 (Coach Reports) ⭐ V5 新增
 CREATE TABLE coach_reports (
   id SERIAL PRIMARY KEY,
@@ -404,6 +420,7 @@ ALTER TABLE coach_time_off ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE booking_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE booking_coaches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE booking_drivers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE coach_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE booking_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
@@ -422,6 +439,7 @@ CREATE POLICY "Allow authenticated users full access to coach_time_off" ON coach
 CREATE POLICY "Allow authenticated users full access to bookings" ON bookings FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users full access to booking_members" ON booking_members FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users full access to booking_coaches" ON booking_coaches FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated users full access to booking_drivers" ON booking_drivers FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users full access to coach_reports" ON coach_reports FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users full access to booking_participants" ON booking_participants FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users full access to transactions" ON transactions FOR ALL USING (auth.role() = 'authenticated');
@@ -518,6 +536,10 @@ CREATE TRIGGER bookings_audit_trigger
 
 CREATE TRIGGER booking_coaches_audit_trigger
   AFTER INSERT OR UPDATE OR DELETE ON booking_coaches
+  FOR EACH ROW EXECUTE FUNCTION log_booking_changes();
+
+CREATE TRIGGER booking_drivers_audit_trigger
+  AFTER INSERT OR UPDATE OR DELETE ON booking_drivers
   FOR EACH ROW EXECUTE FUNCTION log_booking_changes();
 
 CREATE TRIGGER coach_reports_audit_trigger
