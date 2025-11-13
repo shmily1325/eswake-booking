@@ -70,6 +70,8 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
     loadBoats()
@@ -91,8 +93,14 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
       )
       .subscribe()
 
+    // 每分鐘更新當前時間
+    const timeInterval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // 每 60 秒
+
     return () => {
       supabase.removeChannel(channel)
+      clearInterval(timeInterval)
     }
   }, [dateParam])
 
@@ -157,6 +165,7 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
       }))
 
       setBookings(formattedData)
+      setLastUpdate(new Date())
     } catch (error) {
       console.error('載入預約失敗:', error)
     } finally {
@@ -331,6 +340,12 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
   const renderBookingCard = (booking: Booking, boat: Boat) => {
     const slots = Math.ceil(booking.duration_min / 15)
     const coachNames = booking.coaches?.map(c => c.name).join(', ') || '未分配'
+    
+    // 只顯示不同於教練的駕駛
+    const coachIds = new Set(booking.coaches?.map(c => c.id) || [])
+    const uniqueDrivers = booking.drivers?.filter(d => !coachIds.has(d.id)) || []
+    const driverNames = uniqueDrivers.map(d => d.name).join(', ')
+    
     const isFacility = booking.boats?.name === '彈簧床'
     const start = new Date(booking.start_at)
     const actualEndTime = new Date(start.getTime() + booking.duration_min * 60000)
@@ -374,6 +389,16 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
         <div style={bookingCardContentStyles.coachName(boat.color, isMobile)}>
           🎓 {coachNames}
         </div>
+
+        {/* 駕駛姓名 */}
+        {driverNames && (
+          <div style={{
+            ...bookingCardContentStyles.coachName(boat.color, isMobile),
+            marginTop: '2px'
+          }}>
+            🚗 {driverNames}
+          </div>
+        )}
       </td>
     )
   }
@@ -519,21 +544,30 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
               ))}
             </select>
           </div>
+
+          {/* 最後更新時間 */}
+          <div style={{
+            paddingTop: '12px',
+            fontSize: '12px',
+            color: '#999',
+            textAlign: 'right'
+          }}>
+            最後更新：{lastUpdate.getHours().toString().padStart(2, '0')}:{lastUpdate.getMinutes().toString().padStart(2, '0')}
+          </div>
         </div>
 
         {/* 時間軸表格 */}
         <div style={{ 
-          overflowX: 'hidden',
-          overflowY: 'auto',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
           background: 'white',
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
           <table style={{
-            width: '100%',
+            width: isMobile ? 'auto' : '100%',
             borderCollapse: 'separate',
-            borderSpacing: 0,
-            tableLayout: isMobile ? 'fixed' : 'auto'
+            borderSpacing: 0
           }}>
             <thead>
               <tr>
@@ -542,13 +576,13 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
                   top: 0,
                   left: 0,
                   zIndex: 12,
-                  padding: isMobile ? '4px 1px' : '12px',
+                  padding: isMobile ? '8px 4px' : '12px',
                   borderBottom: '2px solid #dee2e6',
                   backgroundColor: '#5a5a5a',
                   color: 'white',
-                  fontSize: isMobile ? '9px' : '14px',
+                  fontSize: isMobile ? '11px' : '14px',
                   fontWeight: '600',
-                  width: isMobile ? '11%' : '80px',
+                  width: isMobile ? '60px' : '80px',
                 }}>
                   時間
                 </th>
@@ -589,21 +623,21 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
                         position: 'sticky',
                         top: 0,
                         zIndex: 11,
-                        padding: isMobile ? '6px 2px' : '12px',
+                        padding: isMobile ? '8px 4px' : '12px',
                         textAlign: 'center',
                         borderBottom: '2px solid #dee2e6',
                         backgroundColor: '#5a5a5a',
                         color: 'white',
-                        fontSize: isMobile ? '10px' : '14px',
+                        fontSize: isMobile ? '11px' : '14px',
                         fontWeight: '600',
-                        width: 'auto',
+                        width: isMobile ? '80px' : '120px',
                       }}
                     >
-                      <div style={{ fontSize: isMobile ? '10px' : '13px' }}>
+                      <div style={{ fontSize: isMobile ? '11px' : '13px' }}>
                         {boat.name}
                       </div>
                       <div style={{
-                        fontSize: isMobile ? '8px' : '11px',
+                        fontSize: isMobile ? '9px' : '11px',
                         fontWeight: '400',
                         marginTop: '2px',
                         opacity: 0.8,
@@ -615,11 +649,48 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
                 )}
               </tr>
             </thead>
-            <tbody>
-              {filteredTimeSlots.map((timeSlot) => {
-                const [hour] = timeSlot.split(':').map(Number)
-                const isBefore8AM = hour < 8
+            <tbody style={{ position: 'relative' }}>
+              {/* 當前時間線 - 只在電腦版顯示 */}
+              {!isMobile && dateParam === getLocalDateString() && (() => {
+                const now = currentTime
+                const hours = now.getHours()
+                const minutes = now.getMinutes()
+                const currentMinutes = hours * 60 + minutes
+                const startMinutes = 4 * 60 + 30 // 04:30
+                const slotIndex = Math.floor((currentMinutes - startMinutes) / 15)
                 
+                if (slotIndex >= 0 && slotIndex < filteredTimeSlots.length) {
+                  const offsetPercentage = ((currentMinutes - startMinutes) / 15 - slotIndex) * 100
+                  const topPosition = `calc(${slotIndex * 100}% + ${offsetPercentage}%)`
+                  
+                  return (
+                    <div style={{
+                      position: 'absolute',
+                      top: topPosition,
+                      left: 0,
+                      right: 0,
+                      height: '2px',
+                      background: '#ff4444',
+                      zIndex: 5,
+                      pointerEvents: 'none',
+                      boxShadow: '0 0 4px rgba(255, 68, 68, 0.5)'
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        left: '0',
+                        top: '-4px',
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: '#ff4444',
+                      }} />
+                    </div>
+                  )
+                }
+                return null
+              })()}
+              
+              {filteredTimeSlots.map((timeSlot) => {
                 return (
                   <tr key={timeSlot}>
                     <td style={{
@@ -627,26 +698,15 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
                       left: 0,
                       zIndex: 10,
                       backgroundColor: 'white',
-                      padding: isMobile ? '4px 1px' : '6px 8px',
+                      padding: isMobile ? '4px 2px' : '6px 8px',
                       borderBottom: '1px solid #e9ecef',
-                      fontSize: isMobile ? '9px' : '13px',
+                      fontSize: isMobile ? '10px' : '13px',
                       fontWeight: '500',
                       textAlign: 'center',
-                      color: isBefore8AM ? '#856404' : '#666',
+                      color: '#666',
                       lineHeight: isMobile ? '1.2' : '1.5',
                     }}>
-                      {isBefore8AM && '⚠️'}
-                      {isMobile ? (
-                        // 手機版：簡化時間顯示
-                        (() => {
-                          const [h, m] = timeSlot.split(':')
-                          const hour = parseInt(h)
-                          const minute = parseInt(m)
-                          return minute === 0 ? hour : `${hour}:${m}`
-                        })()
-                      ) : (
-                        timeSlot
-                      )}
+                      {timeSlot}
                     </td>
                     {(isMobile && selectedCoachId) ? (
                       // 手機模式 + 選擇教練：合併所有船隻到一欄
