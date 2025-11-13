@@ -2742,8 +2742,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               return
             }
             
-            // 如果沒有指定教練，加到需要駕駛區塊
-            if (assignment.coachIds.length === 0) {
+            // 如果沒有指定教練也沒有指定駕駛，加到需要駕駛區塊
+            if (assignment.coachIds.length === 0 && assignment.driverIds.length === 0) {
               needsDriverBookings.push(booking)
               return
             }
@@ -2757,10 +2757,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               })
             }
             
-            // 如果有指定駕駛（且駕駛不是教練），也加到對應駕駛的組
+            // 如果有指定駕駛，加到對應駕駛（教練）的組
             if (assignment.driverIds.length > 0) {
               assignment.driverIds.forEach(driverId => {
-                // 只有當駕駛不在教練列表中時才加
+                // 駕駛也是教練，所以加到教練組
+                // 但如果這個人已經作為教練被加入了，就不重複加
                 if (!assignment.coachIds.includes(driverId) && coachGroups[driverId]) {
                   coachGroups[driverId].push(booking)
                 }
@@ -3052,7 +3053,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                           padding: '6px 12px',
                                           borderRadius: '6px',
                                           border: isSelected ? 'none' : '1px solid #ddd',
-                                          background: isSelected ? '#2196F3' : 'white',
+                                          background: isSelected ? '#ff9800' : 'white',
                                           color: isSelected ? 'white' : '#666',
                                           fontSize: '12px',
                                           cursor: 'pointer'
