@@ -789,7 +789,7 @@ export function EditBookingDialog({
                 setShowMemberDropdown(true)
               }}
               onFocus={() => setShowMemberDropdown(true)}
-              placeholder="搜尋會員姓名/暱稱..."
+              placeholder="搜尋會員暱稱/姓名/電話..."
               style={{
                 width: '100%',
                 padding: '12px',

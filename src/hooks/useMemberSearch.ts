@@ -50,7 +50,7 @@ export function useMemberSearch() {
 
   // 處理會員選擇
   const selectMember = (member: Member) => {
-    setSearchTerm(member.name)
+    setSearchTerm(member.nickname || member.name)
     setSelectedMemberId(member.id)
     setManualName('')
     setShowDropdown(false)
