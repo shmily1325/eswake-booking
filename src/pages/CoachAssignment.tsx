@@ -2869,42 +2869,43 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             fontSize: isMobile ? '13px' : '14px',
                             position: 'relative'
                           }}>
-                            {/* 移除按鈕 - 教練：只有排班指定的可移除；駕駛：都可移除 */}
-                            {(isDriver && !isCoach) || (isCoach && !isPreAssigned) ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  // 移除該教練的指定
-                                  if (isCoach) {
-                                    toggleCoach(booking.id, coach.id)
-                                  }
-                                  // 如果是駕駛任務，移除駕駛指定
-                                  if (isDriver && !isCoach) {
-                                    toggleDriver(booking.id, coach.id)
-                                  }
-                                }}
-                                style={{
-                                  position: 'absolute',
-                                  top: '6px',
-                                  right: '6px',
-                                  background: '#fff',
-                                  border: '1px solid #ddd',
-                                  borderRadius: '4px',
-                                  width: '20px',
-                                  height: '20px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  color: '#999',
-                                  padding: 0
-                                }}
-                                title="移除指定"
-                              >
-                                ×
-                              </button>
-                            ) : null}
+                            {/* 移除按鈕 - 低調顯示，hover 時變明顯 */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (isCoach) {
+                                  toggleCoach(booking.id, coach.id)
+                                }
+                                if (isDriver && !isCoach) {
+                                  toggleDriver(booking.id, coach.id)
+                                }
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.opacity = '1'
+                                e.currentTarget.style.color = '#d32f2f'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.opacity = '0.3'
+                                e.currentTarget.style.color = '#999'
+                              }}
+                              style={{
+                                position: 'absolute',
+                                top: '6px',
+                                right: '6px',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '18px',
+                                color: '#999',
+                                padding: 0,
+                                opacity: 0.3,
+                                transition: 'all 0.2s ease',
+                                lineHeight: 1
+                              }}
+                              title="移除指定"
+                            >
+                              ×
+                            </button>
                             
                             {/* 預約資訊 */}
                             <div style={{ fontWeight: '600', color: '#2c3e50', paddingRight: '24px' }}>
