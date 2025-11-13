@@ -1,5 +1,16 @@
 // 預約訊息格式化工具
 
+interface Member {
+  id: string
+  name: string
+  nickname?: string | null
+}
+
+interface BookingMember {
+  member_id: string
+  members?: Member | null
+}
+
 interface BookingFormatData {
   start_at: string
   duration_min: number
@@ -7,6 +18,11 @@ interface BookingFormatData {
   boats?: { name: string } | null
   coaches?: { name: string }[]
   activity_types?: string[] | null
+}
+
+interface BookingWithMembers extends BookingFormatData {
+  booking_members?: BookingMember[]
+  manual_names?: string
 }
 
 /**
@@ -56,5 +72,39 @@ export function formatBookingsForLine(bookings: BookingFormatData[], title: stri
   })
   
   return message.trim()
+}
+
+/**
+ * 根據會員資料獲取顯示名稱
+ * 優先顯示暱稱，如果沒有暱稱則顯示姓名
+ * 如果有多個會員，用逗號分隔（但如果暱稱相同只顯示一個）
+ * 如果有手動輸入的非會員名稱，也會一併顯示
+ */
+export function getDisplayContactName(booking: BookingWithMembers): string {
+  const displayNames: string[] = []
+  
+  // 處理會員名稱（優先顯示暱稱）
+  if (booking.booking_members && booking.booking_members.length > 0) {
+    const memberNames = booking.booking_members
+      .map(bm => bm.members?.nickname || bm.members?.name)
+      .filter(Boolean) as string[]
+    
+    // 如果有重複的暱稱，只顯示一個
+    const uniqueNames = Array.from(new Set(memberNames))
+    displayNames.push(...uniqueNames)
+  }
+  
+  // 處理手動輸入的非會員名稱
+  if (booking.manual_names) {
+    const manualNamesArray = booking.manual_names.split(',').map(n => n.trim()).filter(Boolean)
+    displayNames.push(...manualNamesArray)
+  }
+  
+  // 如果都沒有，回退使用 contact_name
+  if (displayNames.length === 0 && booking.contact_name) {
+    return booking.contact_name
+  }
+  
+  return displayNames.join(', ') || '未命名'
 }
 

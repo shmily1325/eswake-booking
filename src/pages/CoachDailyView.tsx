@@ -7,6 +7,7 @@ import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
 import { getBookingCardStyle, bookingCardContentStyles } from '../styles/designSystem'
+import { getDisplayContactName } from '../utils/bookingFormat'
 
 interface CoachDailyViewProps {
   user: User
@@ -35,6 +36,8 @@ interface Booking {
   drivers?: Coach[]
   schedule_notes?: string | null
   notes?: string | null
+  manual_names?: string
+  booking_members?: { member_id: string; members?: { id: string; name: string; nickname?: string | null } | null }[]
 }
 
 const generateTimeSlots = () => {
@@ -148,9 +151,11 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
           status,
           schedule_notes,
           notes,
+          manual_names,
           boats:boat_id(id, name, color),
           coaches:booking_coaches(coach_id, coaches:coaches(id, name)),
-          drivers:booking_drivers(driver_id, coaches:coaches(id, name))
+          drivers:booking_drivers(driver_id, coaches:coaches(id, name)),
+          booking_members(member_id, members:member_id(id, name, nickname))
         `)
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
@@ -319,7 +324,7 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
 
         {/* 聯絡人姓名 */}
         <div style={bookingCardContentStyles.contactName(true)}>
-          {booking.contact_name}
+          {getDisplayContactName(booking)}
         </div>
 
         {/* 註解 */}
@@ -371,7 +376,7 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
 
         {/* 聯絡人姓名 */}
         <div style={bookingCardContentStyles.contactName(isMobile)}>
-          {booking.contact_name}
+          {getDisplayContactName(booking)}
         </div>
 
         {/* 註解 */}

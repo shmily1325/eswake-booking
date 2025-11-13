@@ -9,6 +9,7 @@ import { designSystem, getButtonStyle, getInputStyle, getLabelStyle, getTextStyl
 import { useRequireAdmin, isAdmin } from '../utils/auth'
 import { isFacility } from '../utils/facility'
 import { logCoachAssignment } from '../utils/auditLog'
+import { getDisplayContactName } from '../utils/bookingFormat'
 
 interface Coach {
   id: string
@@ -30,6 +31,8 @@ interface Booking {
   member_id?: string | null
   activity_types?: string[] | null
   notes?: string | null
+  manual_names?: string
+  booking_members?: { member_id: string; members?: { id: string; name: string; nickname?: string | null } | null }[]
 }
 
 interface CoachAssignmentProps {
@@ -132,7 +135,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       // 優化：只查詢需要的字段，減少數據傳輸
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
-        .select('id, start_at, duration_min, contact_name, boat_id, schedule_notes, requires_driver, status, member_id, activity_types, notes, boats:boat_id(id, name, color)')
+        .select('id, start_at, duration_min, contact_name, boat_id, schedule_notes, requires_driver, status, member_id, activity_types, notes, manual_names, boats:boat_id(id, name, color), booking_members(member_id, members:member_id(id, name, nickname))')
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
         .eq('status', 'confirmed')
@@ -227,12 +230,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         : currentAssignment.conflicts
       
       return {
-        ...prev,
-        [bookingId]: {
+      ...prev,
+      [bookingId]: {
           ...currentAssignment,
-          [field]: value,
+        [field]: value,
           conflicts: newConflicts
-        }
+      }
       }
     })
   }
@@ -321,7 +324,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         const assignment = assignments[booking.id]
         if (!assignment || assignment.coachIds.length === 0) {
           const timeStr = formatTimeRange(booking.start_at, booking.duration_min, booking.boats?.name)
-          missingCoaches.push(`${timeStr} (${booking.contact_name})`)
+          missingCoaches.push(`${timeStr} (${getDisplayContactName(booking)})`)
         }
       }
       
@@ -350,19 +353,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           
           // 如果沒有指定駕駛
           if (driverCount === 0) {
-            driverIssues.push(`${timeStr} (${booking.contact_name}) - 需要指定駕駛`)
+            driverIssues.push(`${timeStr} (${getDisplayContactName(booking)}) - 需要指定駕駛`)
             continue
           }
           
           // 如果只有1個教練，駕駛不能是教練本人
           if (coachCount === 1 && onlyDriverIds.length === 0) {
-            driverIssues.push(`${timeStr} (${booking.contact_name}) - 只有1個教練時，駕駛必須是另一個人`)
+            driverIssues.push(`${timeStr} (${getDisplayContactName(booking)}) - 只有1個教練時，駕駛必須是另一個人`)
             continue
           }
           
           // 如果總人力只有1人（教練兼駕駛），不符合需求
           if (totalPeople === 1) {
-            driverIssues.push(`${timeStr} (${booking.contact_name}) - 需要額外的駕駛或第2位教練`)
+            driverIssues.push(`${timeStr} (${getDisplayContactName(booking)}) - 需要額外的駕駛或第2位教練`)
           }
         }
       }
@@ -413,7 +416,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               
               // 建立唯一的衝突標識（雙向去重）
               const times = [
-                `${startTime}-${endTime}|${booking.contact_name}`,
+                `${startTime}-${endTime}|${getDisplayContactName(booking)}`,
                 `${existing.start}-${existing.end}|${existing.name}`
               ].sort()
               const conflictKey = `${personName}|${times[0]}|${times[1]}`
@@ -421,7 +424,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               if (!conflictSet.has(conflictKey)) {
                 conflictSet.add(conflictKey)
                 conflicts.push(
-                  `${personName} 在 ${startTime}-${endTime} (${booking.contact_name}) 與 ${existing.start}-${existing.end} (${existing.name}) 時間重疊`
+                  `${personName} 在 ${startTime}-${endTime} (${getDisplayContactName(booking)}) 與 ${existing.start}-${existing.end} (${existing.name}) 時間重疊`
                 )
               }
             }
@@ -430,7 +433,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           personSchedule[personId].push({
             start: startTime,
             end: endTime,
-            name: booking.contact_name,
+            name: getDisplayContactName(booking),
             bookingId: booking.id,
             boatId: booking.boat_id
           })
@@ -574,7 +577,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 
                 // 建立唯一的衝突標識（雙向去重）
                 const times = [
-                  `${thisStart}-${thisEnd}|${booking.contact_name}`,
+                  `${thisStart}-${thisEnd}|${getDisplayContactName(booking)}`,
                   `${dbBooking.start}-${dbBooking.end}|${dbBooking.name}`
                 ].sort()
                 const conflictKey = `${personName}|${times[0]}|${times[1]}`
@@ -582,7 +585,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 if (!conflictSet.has(conflictKey)) {
                   conflictSet.add(conflictKey)
                   conflicts.push(
-                    `${personName} 在 ${thisStart}-${thisEnd} (${booking.contact_name}) 與 ${dbBooking.start}-${dbBooking.end} (${dbBooking.name}) [${roleText}] 時間重疊`
+                    `${personName} 在 ${thisStart}-${thisEnd} (${getDisplayContactName(booking)}) 與 ${dbBooking.start}-${dbBooking.end} (${dbBooking.name}) [${roleText}] 時間重疊`
                   )
                 }
               }
@@ -738,7 +741,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         for (const { booking, changes } of changedBookingsInfo) {
           logCoachAssignment({
             userEmail: user.email,
-            studentName: booking.contact_name,
+            studentName: getDisplayContactName(booking),
             boatName: booking.boats?.name || '未知船隻',
             startTime: booking.start_at,
             changes
@@ -1250,7 +1253,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       </td>
                       {/* 客人 */}
                       <td style={{ padding: '10px 12px', borderRight: '1px solid #e0e0e0' }}>
-                        {booking.contact_name}
+                        {getDisplayContactName(booking)}
                       </td>
                       {/* 教練 */}
                       <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
@@ -1799,7 +1802,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                       </div>
                             {/* 客人名稱 */}
                             <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '6px', color: '#1a1a1a' }}>
-                                      {booking.contact_name}
+                                      {getDisplayContactName(booking)}
                                     </div>
 
                             {/* 船隻名稱（無符號） */}
@@ -2465,7 +2468,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
                                 {/* 客人名稱 */}
                                 <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px', color: '#1a1a1a' }}>
-                                  {booking.contact_name}
+                                  {getDisplayContactName(booking)}
                                   {booking.requires_driver && <span style={{ marginLeft: '6px', color: '#1976d2', fontWeight: '600', fontSize: '13px' }}>🚤</span>}
                                 </div>
 
@@ -2897,7 +2900,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 }}>🚤</span>}
                               </div>
                               <div style={{ color: '#666', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
-                                {booking.contact_name}
+                                {getDisplayContactName(booking)}
                                 {booking.requires_driver && (
                                   <span style={{ marginLeft: '8px', fontSize: '14px' }}>
                                     🚤
@@ -2995,7 +2998,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             {formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}
                           </div>
                           <div style={{ color: '#666', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
-                            {booking.contact_name}
+                            {getDisplayContactName(booking)}
                             {booking.requires_driver && !isEditing && (
                               <span style={{ marginLeft: '8px', color: '#f57c00', fontSize: '12px' }}>
                                 • 需要駕駛
@@ -3095,9 +3098,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             </div>
                             )
                           })()}
-                        </div>
-                      )
-                    })}
+                            </div>
+                          )
+                        })}
                   </div>
               </div>
               )}
@@ -3153,7 +3156,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             {formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}
                           </div>
                           <div style={{ color: '#666', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
-                            {booking.contact_name}
+                            {getDisplayContactName(booking)}
                           </div>
                           {assignment.notes && !isEditing && (
                             <div style={{ 
@@ -3353,7 +3356,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     marginBottom: '6px',
                     color: '#1a1a1a',
                   }}>
-                    {booking.contact_name}
+                    {getDisplayContactName(booking)}
                   </div>
 
                   {/* 第四行：船名 */}

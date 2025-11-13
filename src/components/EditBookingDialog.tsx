@@ -413,7 +413,7 @@ export function EditBookingDialog({
 
       // 決定最終的學生名字（會員 + 手動輸入）
       const memberNames = selectedMemberIds.length > 0
-        ? members.filter(m => selectedMemberIds.includes(m.id)).map(m => m.name)
+        ? members.filter(m => selectedMemberIds.includes(m.id)).map(m => m.nickname || m.name)
         : []
       
       const allNames = [...memberNames, ...manualNames]
@@ -698,7 +698,7 @@ export function EditBookingDialog({
                         fontWeight: '500',
                       }}
                     >
-                      {member.name}
+                      {member.nickname || member.name}
                       <button
                         type="button"
                         onClick={() => {
