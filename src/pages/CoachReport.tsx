@@ -355,9 +355,11 @@ export function CoachReport({ user }: CoachReportProps) {
       // 5. 建立參與者列表
       const participants: any[] = []
       
-      // 5.1 加入可用的會員
+      // 5.1 加入可用的會員並記錄已添加的會員 ID
+      const addedMemberIds = new Set<string>()
       availableMembers.forEach((bm: any) => {
         const member = bm.members
+        addedMemberIds.add(bm.member_id)
         participants.push({
           member_id: bm.member_id,
           participant_name: (member?.nickname || member?.name) || '未知',
@@ -372,17 +374,23 @@ export function CoachReport({ user }: CoachReportProps) {
         const contactNames = booking.contact_name.split(',').map(n => n.trim()).filter(Boolean)
         
         for (const contactName of contactNames) {
-          // 檢查是否匹配任何會員的暱稱或姓名
-          const isContactMember = (bookingMembersData || []).some(
+          // 檢查是否匹配任何會員的暱稱或姓名（包括已添加的會員）
+          const matchedMember = (bookingMembersData || []).find(
             (bm: any) => {
               const member = bm.members
               return member && (member.nickname === contactName || member.name === contactName)
             }
           )
+          
+          // 如果這個名字對應的會員已經在參與者列表中，跳過
+          if (matchedMember && addedMemberIds.has(matchedMember.member_id)) {
+            continue
+          }
+          
           const isContactReported = reportedNames.has(contactName)
           
           // 如果不是會員，且未被其他教練回報，則加入列表
-          if (!isContactMember && !isContactReported) {
+          if (!matchedMember && !isContactReported) {
             participants.push({
               member_id: null,
               participant_name: contactName,
@@ -673,7 +681,7 @@ export function CoachReport({ user }: CoachReportProps) {
           </div>
         ) : bookings.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-            😔 沒有找到預約記錄
+            沒有找到預約記錄
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

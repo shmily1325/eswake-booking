@@ -112,16 +112,14 @@ export function DailyAnnouncement() {
         .like('birthday', `%${todayMD}%`)
         .limit(5),
       
-      // 獲取即將到期或已過期的會籍（過去30天內過期 + 未來7天內到期）
+      // 獲取即將到期或已過期的會籍（顯示所有已過期和未來30天內到期的）
       supabase
         .from('members')
-        .select('name, nickname, membership_end_date')
-        .eq('status', 'active')
+        .select('name, nickname, membership_end_date, status')
         .not('membership_end_date', 'is', null)
-        .gte('membership_end_date', thirtyDaysAgoStr)
         .lte('membership_end_date', sevenDaysLaterStr)
         .order('membership_end_date', { ascending: true })
-        .limit(10),
+        .limit(20),
       
       // 獲取即將到期的置板（7天內）
       supabase

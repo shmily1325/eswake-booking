@@ -426,7 +426,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                 {/* 左側：基本資訊 */}
-                <div style={{ flex: 1, minWidth: 0, maxWidth: isMobile ? '100%' : '500px' }}>
+                <div style={{ flex: 1, minWidth: 0, maxWidth: isMobile ? '100%' : '500px', paddingRight: '80px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
                     <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
                       {member.name}
