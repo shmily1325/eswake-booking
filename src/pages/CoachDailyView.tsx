@@ -74,9 +74,12 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
   const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
-    loadBoats()
-    loadCoaches()
-    loadBookings()
+    // 並行載入所有資料以加快速度
+    Promise.all([
+      loadBoats(),
+      loadCoaches(),
+      loadBookings()
+    ])
 
     // 設置即時訂閱
     const channel = supabase
