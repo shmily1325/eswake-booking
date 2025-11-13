@@ -19,6 +19,7 @@ import { BoardManagement } from './pages/BoardManagement'
 import { BaoHub } from './pages/BaoHub'
 import { StaffManagement } from './pages/StaffManagement'
 import { QuickTransaction } from './pages/QuickTransaction'
+import { MemberTransaction } from './pages/MemberTransaction'
 import { AnnouncementManagement } from './pages/AnnouncementManagement'
 import { LineSettings } from './pages/LineSettings'
 import { CoachDailyView } from './pages/CoachDailyView'
@@ -78,6 +79,7 @@ function App() {
               <Route path="/tomorrow" element={<TomorrowReminder user={user} />} />
         <Route path="/backup" element={<BackupPage user={user} />} />
         <Route path="/quick-transaction" element={<QuickTransaction user={user} />} />
+        <Route path="/member-transaction" element={<MemberTransaction user={user} />} />
         <Route path="/bao" element={<BaoHub user={user} />} />
         <Route path="/members" element={<MemberManagement user={user} />} />
         <Route path="/boards" element={<BoardManagement user={user} />} />

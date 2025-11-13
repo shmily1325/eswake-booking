@@ -3042,11 +3042,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           
                           {/* 展開編輯：指定教練 */}
                           {isEditing && (() => {
+                            // 動態獲取最新的 assignment，避免閉包問題
+                            const currentAssignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
                             console.log('=== 渲染編輯區塊 ===')
                             console.log('預約ID:', booking.id)
-                            console.log('assignment:', assignment)
-                            console.log('conflicts 長度:', assignment.conflicts.length)
-                            console.log('conflicts 內容:', assignment.conflicts)
+                            console.log('assignment:', currentAssignment)
+                            console.log('conflicts 長度:', currentAssignment.conflicts.length)
+                            console.log('conflicts 內容:', currentAssignment.conflicts)
                             return (
                             <div style={{ 
                               marginTop: '12px',
@@ -3059,7 +3061,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {coaches.map(c => {
-                                    const isSelected = assignment.coachIds.includes(c.id)
+                                    const isSelected = currentAssignment.coachIds.includes(c.id)
                                     return (
                                       <button
                                         key={c.id}
@@ -3090,7 +3092,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                   排班註解：
                                 </div>
                                 <textarea
-                                  value={assignment.notes}
+                                  value={currentAssignment.notes}
                                   onChange={(e) => {
                                     e.stopPropagation()
                                     updateAssignment(booking.id, 'notes', e.target.value)
@@ -3111,7 +3113,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               </div>
                               
                               {/* 衝突提示 */}
-                              {assignment.conflicts.length > 0 && (
+                              {currentAssignment.conflicts.length > 0 && (
                                 <div style={{ 
                                   marginTop: '8px',
                                   padding: '8px',
@@ -3120,7 +3122,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                   fontSize: '12px',
                                   color: '#c62828'
                                 }}>
-                                  ⚠️ {assignment.conflicts.join(', ')}
+                                  ⚠️ {currentAssignment.conflicts.join(', ')}
                                 </div>
                               )}
                             </div>
@@ -3197,7 +3199,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           )}
                           
                           {/* 展開編輯：指定駕駛 */}
-                          {isEditing && (
+                          {isEditing && (() => {
+                            // 動態獲取最新的 assignment，避免閉包問題
+                            const currentAssignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
+                            return (
                             <div style={{ 
                               marginTop: '12px',
                               paddingTop: '12px',
@@ -3209,7 +3214,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {coaches.map(c => {
-                                    const isSelected = assignment.driverIds.includes(c.id)
+                                    const isSelected = currentAssignment.driverIds.includes(c.id)
                                     return (
                                       <button
                                         key={c.id}
@@ -3240,7 +3245,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                   排班註解：
                                 </div>
                                 <textarea
-                                  value={assignment.notes}
+                                  value={currentAssignment.notes}
                                   onChange={(e) => {
                                     e.stopPropagation()
                                     updateAssignment(booking.id, 'notes', e.target.value)
@@ -3261,7 +3266,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               </div>
                               
                               {/* 衝突提示 */}
-                              {assignment.conflicts.length > 0 && (
+                              {currentAssignment.conflicts.length > 0 && (
                                 <div style={{ 
                                   marginTop: '8px',
                                   padding: '8px',
@@ -3270,11 +3275,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                   fontSize: '12px',
                                   color: '#c62828'
                                 }}>
-                                  ⚠️ {assignment.conflicts.join(', ')}
+                                  ⚠️ {currentAssignment.conflicts.join(', ')}
                                 </div>
                               )}
                             </div>
-                          )}
+                            )
+                          })()}
                         </div>
                       )
                     })}

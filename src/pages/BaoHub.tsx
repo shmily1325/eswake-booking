@@ -36,22 +36,23 @@ export function BaoHub({ user }: BaoHubProps) {
       icon: '📊',
       link: '/coach-overview'
     },
+
+    {
+      title: '教練管理',
+      icon: '🎓',
+      link: '/staff'
+    },
     {
       title: '會員管理',
       icon: '👥',
       link: '/members'
     },
     {
-      title: '教練管理',
-      icon: '🎓',
-      link: '/staff'
+      title: '會員記帳',
+      subtitle: '儲值/船券入帳',
+      icon: '💳',
+      link: '/member-transaction'
     },
-    // 暫時隱藏快速記帳功能
-    // {
-    //   title: '快速記帳',
-    //   icon: '💳',
-    //   link: '/quick-transaction'
-    // },
     {
       title: '公告管理',
       icon: '📢',
