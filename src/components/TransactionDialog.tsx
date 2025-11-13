@@ -343,13 +343,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         transactionData.adjust_type = adjustType
       }
 
-      // 如果是船券相關，記錄船券類型
-      if (category === 'boat_voucher_g23') {
-        transactionData.boat_type = 'g23'
-      } else if (category === 'boat_voucher_g21') {
-        transactionData.boat_type = 'g21'
-      }
-
       // 記錄交易
       const { error: transactionError } = await supabase
         .from('transactions')

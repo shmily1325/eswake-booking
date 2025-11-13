@@ -387,7 +387,7 @@ export function MemberImport({ user }: MemberImportProps) {
 • 教練休假：${allTimeOff?.length || 0} 筆
 • 每日公告：${allAnnouncements?.length || 0} 筆
 
-✅ 船和教練資料已保留`)
+✅ 已保留：船、教練、權限設定`)
       setDeleteAllDialogOpen(false)
     } catch (err: any) {
       setError('清空失敗: ' + err.message)
@@ -795,7 +795,7 @@ export function MemberImport({ user }: MemberImportProps) {
                 </div>
                 <div style={{ ...getTextStyle('bodySmall', isMobile), color: '#666', lineHeight: '1.6' }}>
                   刪除所有會員、預約、置板、教練休假、公告<br/>
-                  保留船和教練資料<br/>
+                  保留船、教練、權限設定<br/>
                   <span style={{ color: '#d32f2f', fontSize: '12px', fontWeight: '600' }}>⚠️ 無法復原！</span>
                 </div>
               </div>
