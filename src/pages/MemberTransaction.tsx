@@ -17,7 +17,7 @@ interface Member {
   boat_voucher_g21_minutes: number
   free_hours: number
   free_hours_used: number
-  member_type: string
+  membership_type: string
   status: string
 }
 
@@ -33,6 +33,10 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [showTransactionDialog, setShowTransactionDialog] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showExportDialog, setShowExportDialog] = useState(false)
+  const [exportStartDate, setExportStartDate] = useState('')
+  const [exportEndDate, setExportEndDate] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   // 載入會員列表
   const loadMembers = async () => {
@@ -40,8 +44,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, name, nickname, phone, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes, free_hours, free_hours_used, member_type, status')
-        .eq('member_type', 'member')
+        .select('id, name, nickname, phone, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes, free_hours, free_hours_used, membership_type, status')
         .eq('status', 'active')
         .order('name')
 
@@ -68,6 +71,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
       const lowerSearch = searchTerm.toLowerCase()
       const filtered = members.filter(m =>
         m.name.toLowerCase().includes(lowerSearch) ||
+        m.nickname?.toLowerCase().includes(lowerSearch) ||
         m.phone?.includes(searchTerm)
       )
       setFilteredMembers(filtered)
@@ -83,6 +87,97 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
     loadMembers()
   }
 
+  // 匯出總帳
+  const handleExportAll = async () => {
+    if (!exportStartDate || !exportEndDate) {
+      alert('請選擇開始和結束日期')
+      return
+    }
+
+    if (exportStartDate > exportEndDate) {
+      alert('開始日期不能晚於結束日期')
+      return
+    }
+
+    setExporting(true)
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          member_id(name, nickname)
+        `)
+        .gte('created_at', exportStartDate)
+        .lte('created_at', exportEndDate + 'T23:59:59')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      if (!data || data.length === 0) {
+        alert('所選時間範圍內沒有交易記錄')
+        return
+      }
+
+      const getTypeLabel = (type: string) => {
+        const labels: Record<string, string> = {
+          charge: '儲值',
+          purchase: '購買',
+          payment: '付款',
+          refund: '退款',
+          adjust: '調整',
+        }
+        return labels[type] || type
+      }
+
+      const getCategoryLabel = (category: string) => {
+        const labels: Record<string, string> = {
+          balance: '餘額',
+          designated_lesson: '指定課',
+          boat_voucher_g23: 'G23船券',
+          boat_voucher_g21: 'G21船券',
+          free_hours: '贈送時數',
+          membership: '會籍',
+          board_storage: '置板',
+        }
+        return labels[category] || category
+      }
+
+      const csv = [
+        ['會員', '日期', '交易類型', '類別', '付款方式', '金額', '分鐘數', '說明', '備註', '餘額', '指定課', 'G23船券', 'G21船券'].join(','),
+        ...data.map((t: any) => [
+          `"${(t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'}"`,
+          t.created_at.split('T')[0],
+          getTypeLabel(t.transaction_type),
+          getCategoryLabel(t.category),
+          t.payment_method || '',
+          t.amount || '',
+          t.minutes || '',
+          `"${t.description || ''}"`,
+          `"${t.notes || ''}"`,
+          t.balance_after || '',
+          t.designated_lesson_minutes_after || '',
+          t.boat_voucher_g23_minutes_after || '',
+          t.boat_voucher_g21_minutes_after || ''
+        ].join(','))
+      ].join('\n')
+
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `總帳_${exportStartDate}_至_${exportEndDate}.csv`
+      link.click()
+
+      setShowExportDialog(false)
+      setExportStartDate('')
+      setExportEndDate('')
+    } catch (error) {
+      console.error('匯出失敗:', error)
+      alert('匯出失敗')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div style={{
       padding: isMobile ? '12px' : '20px',
@@ -93,16 +188,17 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
 
       {/* 使用說明 */}
       <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: '#f8f9fa',
         borderRadius: '12px',
         padding: isMobile ? '16px' : '20px',
         marginBottom: '16px',
-        color: 'white',
+        border: '1px solid #e0e0e0',
       }}>
         <div style={{
           fontSize: isMobile ? '14px' : '15px',
           fontWeight: '600',
           marginBottom: '8px',
+          color: '#333',
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
@@ -112,19 +208,19 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
         <div style={{
           fontSize: isMobile ? '12px' : '13px',
           lineHeight: '1.6',
-          opacity: 0.95,
+          color: '#666',
         }}>
           <div style={{ marginBottom: '4px' }}>
-            <strong>儲值 💰</strong>：客人充值到帳戶
+            <strong style={{ color: '#333' }}>儲值 💰</strong>：客人充值到帳戶
           </div>
           <div style={{ marginBottom: '4px' }}>
-            <strong>付款 💸</strong>：預約結帳（現金/匯款/扣儲值/船券/指定課程）
+            <strong style={{ color: '#333' }}>付款 💸</strong>：預約結帳（現金/匯款/扣儲值/船券/指定課程）
           </div>
           <div style={{ marginBottom: '4px' }}>
-            <strong>調整 🔧</strong>：修正錯誤、優惠補貼等（需填寫原因）
+            <strong style={{ color: '#333' }}>調整 🔧</strong>：修正錯誤、優惠補貼等（需填寫原因）
           </div>
           <div>
-            <strong>退款 ↩️</strong>：退還款項給客人
+            <strong style={{ color: '#333' }}>退款 ↩️</strong>：退還款項給客人
           </div>
         </div>
       </div>
@@ -148,7 +244,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           </div>
           <input
             type="text"
-            placeholder="輸入會員姓名或電話搜尋..."
+            placeholder="輸入會員暱稱/姓名/電話搜尋..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
@@ -170,21 +266,40 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          gap: '8px',
         }}>
           <span>找到 {filteredMembers.length} 位會員</span>
-          <button
-            onClick={() => setSearchTerm('')}
-            style={{
-              padding: '4px 12px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              background: 'white',
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-          >
-            清除搜尋
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => setShowExportDialog(true)}
+              style={{
+                padding: '6px 14px',
+                background: 'white',
+                color: '#666',
+                border: '2px solid #e0e0e0',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              📥 匯出總帳
+            </button>
+            <button
+              onClick={() => setSearchTerm('')}
+              style={{
+                padding: '4px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                background: 'white',
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              清除搜尋
+            </button>
+          </div>
         </div>
       </div>
 
@@ -367,11 +482,12 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                   {/* 右側：操作按鈕 */}
                   <div style={{
                     padding: '8px 16px',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
+                    background: 'white',
+                    color: '#666',
+                    border: '2px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '13px',
-                    fontWeight: 'bold',
+                    fontWeight: '600',
                     whiteSpace: 'nowrap',
                   }}>
                     記帳 →
@@ -385,11 +501,11 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
 
       {/* 說明卡片 */}
       <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: '#f8f9fa',
         padding: isMobile ? '16px' : '20px',
         borderRadius: '12px',
         marginTop: '20px',
-        color: 'white',
+        border: '1px solid #e0e0e0',
       }}>
         <div style={{
           fontSize: '16px',
@@ -398,6 +514,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
+          color: '#333',
         }}>
           <span>💡</span>
           <span>使用說明</span>
@@ -407,11 +524,12 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           paddingLeft: '20px',
           fontSize: '14px',
           lineHeight: '1.8',
+          color: '#666',
         }}>
           <li>點擊任何會員即可快速進行記帳操作</li>
-          <li>支援儲值、購買船券/指定課、消耗、退款等操作</li>
+          <li>支援儲值、購買船券/指定課、付款、退款、調整等操作</li>
           <li>所有交易都會自動記錄到財務系統</li>
-          <li>可以搜尋會員姓名或電話快速定位</li>
+          <li>可以搜尋會員暱稱/姓名/電話快速定位</li>
         </ul>
       </div>
 
@@ -428,6 +546,145 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           }}
           onSuccess={handleTransactionSuccess}
         />
+      )}
+
+      {/* 匯出總帳對話框 */}
+      {showExportDialog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1001,
+          padding: '20px',
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          }}>
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                📥 匯出總帳
+              </h2>
+              <button
+                onClick={() => setShowExportDialog(false)}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ padding: '20px' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  開始日期 <span style={{ color: 'red' }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  value={exportStartDate}
+                  onChange={(e) => setExportStartDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  結束日期 <span style={{ color: 'red' }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  value={exportEndDate}
+                  onChange={(e) => setExportEndDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+
+              <div style={{
+                padding: '12px',
+                background: '#f8f9fa',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: '#666',
+                marginBottom: '16px',
+              }}>
+                💡 將匯出所選時間範圍內所有會員的交易記錄
+              </div>
+            </div>
+
+            <div style={{
+              padding: '20px',
+              borderTop: '1px solid #e0e0e0',
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={() => setShowExportDialog(false)}
+                disabled={exporting}
+                style={{
+                  padding: '10px 20px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '6px',
+                  background: 'white',
+                  color: '#666',
+                  cursor: exporting ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleExportAll}
+                disabled={exporting || !exportStartDate || !exportEndDate}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: (exporting || !exportStartDate || !exportEndDate) ? '#ccc' : '#52c41a',
+                  color: 'white',
+                  cursor: (exporting || !exportStartDate || !exportEndDate) ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                }}
+              >
+                {exporting ? '匯出中...' : '確認匯出'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

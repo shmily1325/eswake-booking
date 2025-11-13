@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 
@@ -13,10 +13,13 @@ const BOAT_VOUCHER_PLANS = {
 interface Member {
   id: string
   name: string
+  nickname: string | null
   balance: number
   designated_lesson_minutes: number
   boat_voucher_g23_minutes: number
   boat_voucher_g21_minutes: number
+  free_hours: number
+  free_hours_used: number
 }
 
 interface TransactionDialogProps {
@@ -26,17 +29,43 @@ interface TransactionDialogProps {
   onSuccess: () => void
 }
 
+interface Transaction {
+  id: number
+  created_at: string
+  transaction_type: string
+  category: string
+  amount: number | null
+  minutes: number | null
+  description: string
+  notes: string | null
+  payment_method: string | null
+  adjust_type: string | null
+  balance_after: number
+  designated_lesson_minutes_after: number
+  boat_voucher_g23_minutes_after: number
+  boat_voucher_g21_minutes_after: number
+}
+
 export function TransactionDialog({ open, member, onClose, onSuccess }: TransactionDialogProps) {
   const { isMobile } = useResponsive()
+  const [activeTab, setActiveTab] = useState<'transaction' | 'history'>('transaction')
   const [loading, setLoading] = useState(false)
   const [transactionType, setTransactionType] = useState<'charge' | 'purchase' | 'payment' | 'refund' | 'adjust'>('charge')
-  const [category, setCategory] = useState<'balance' | 'designated_lesson' | 'boat_voucher_g23' | 'boat_voucher_g21' | 'membership' | 'board_storage'>('balance')
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'deduct_balance' | 'g23_voucher' | 'g21_voucher' | 'designated_paid' | 'designated_free'>('cash')
+  const [category, setCategory] = useState<'balance' | 'designated_lesson' | 'boat_voucher_g23' | 'boat_voucher_g21' | 'free_hours' | 'membership' | 'board_storage'>('balance')
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'deduct_balance' | 'g23_voucher' | 'g21_voucher' | 'designated_paid' | 'designated_free' | 'free_hours'>('cash')
   const [adjustType, setAdjustType] = useState<'increase' | 'decrease'>('increase')
   const [amount, setAmount] = useState('')
   const [minutes, setMinutes] = useState('')
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
+  
+  // 交易記錄相關狀態
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   const inputStyle = {
     width: '100%',
@@ -65,6 +94,97 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     setDescription('')
     setNotes('')
   }
+
+  // 加載交易記錄
+  const loadTransactions = async () => {
+    if (!selectedMonth) return
+    
+    setLoadingHistory(true)
+    try {
+      const [year, month] = selectedMonth.split('-')
+      const startDate = `${year}-${month}-01`
+      const endDate = `${year}-${month}-${new Date(parseInt(year), parseInt(month), 0).getDate()}`
+      
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('member_id', member.id)
+        .gte('created_at', startDate)
+        .lte('created_at', endDate + 'T23:59:59')
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      setTransactions(data || [])
+    } catch (error) {
+      console.error('載入交易記錄失敗:', error)
+      alert('載入交易記錄失敗')
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  // 匯出交易記錄
+  const exportTransactions = () => {
+    if (transactions.length === 0) {
+      alert('沒有交易記錄可匯出')
+      return
+    }
+
+    const csv = [
+      ['日期', '交易類型', '類別', '付款方式', '金額', '分鐘數', '說明', '備註', '餘額', '指定課', 'G23船券', 'G21船券'].join(','),
+      ...transactions.map(t => [
+        t.created_at.split('T')[0],
+        getTypeLabel(t.transaction_type),
+        getCategoryLabel(t.category),
+        t.payment_method || '',
+        t.amount || '',
+        t.minutes || '',
+        `"${t.description || ''}"`,
+        `"${t.notes || ''}"`,
+        t.balance_after,
+        t.designated_lesson_minutes_after,
+        t.boat_voucher_g23_minutes_after,
+        t.boat_voucher_g21_minutes_after
+      ].join(','))
+    ].join('\n')
+
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${member.name}_交易記錄_${selectedMonth}.csv`
+    link.click()
+  }
+
+  const getTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      charge: '儲值',
+      purchase: '購買',
+      payment: '付款',
+      refund: '退款',
+      adjust: '調整',
+    }
+    return labels[type] || type
+  }
+
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      balance: '餘額',
+      designated_lesson: '指定課',
+      boat_voucher_g23: 'G23船券',
+      boat_voucher_g21: 'G21船券',
+      free_hours: '贈送時數',
+      membership: '會籍',
+      board_storage: '置板',
+    }
+    return labels[category] || category
+  }
+
+  // 當月份改變時重新載入
+  useEffect(() => {
+    if (open && activeTab === 'history') {
+      loadTransactions()
+    }
+  }, [selectedMonth, open, activeTab, member.id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -256,7 +376,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
 
   // 根據交易類型和類別決定顯示哪些輸入框
   const showAmount = category === 'balance'
-  const showMinutes = (category === 'designated_lesson' || category === 'boat_voucher_g23' || category === 'boat_voucher_g21')
+  const showMinutes = (category === 'designated_lesson' || category === 'boat_voucher_g23' || category === 'boat_voucher_g21' || category === 'free_hours')
   
   // 購買船券/指定課時，金額是選填（如果要從儲值扣款才填）
   const amountOptional = transactionType === 'purchase' && showMinutes
@@ -298,7 +418,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           zIndex: 1,
         }}>
           <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-            💳 記帳 - {member.name}
+            💳 {member.nickname || member.name}
           </h2>
           <button
             onClick={onClose}
@@ -312,6 +432,51 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
             }}
           >
             ×
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{
+          display: 'flex',
+          borderBottom: '1px solid #e0e0e0',
+          background: 'white',
+          position: 'sticky',
+          top: '61px',
+          zIndex: 1,
+        }}>
+          <button
+            onClick={() => setActiveTab('transaction')}
+            style={{
+              flex: 1,
+              padding: '12px',
+              border: 'none',
+              background: activeTab === 'transaction' ? 'white' : '#f8f9fa',
+              borderBottom: activeTab === 'transaction' ? '2px solid #667eea' : '2px solid transparent',
+              color: activeTab === 'transaction' ? '#667eea' : '#999',
+              fontSize: '14px',
+              fontWeight: activeTab === 'transaction' ? 'bold' : 'normal',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            💰 記帳
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            style={{
+              flex: 1,
+              padding: '12px',
+              border: 'none',
+              background: activeTab === 'history' ? 'white' : '#f8f9fa',
+              borderBottom: activeTab === 'history' ? '2px solid #667eea' : '2px solid transparent',
+              color: activeTab === 'history' ? '#667eea' : '#999',
+              fontSize: '14px',
+              fontWeight: activeTab === 'history' ? 'bold' : 'normal',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            📊 查帳
           </button>
         </div>
 
@@ -354,7 +519,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           )}
         </div>
 
-        {/* 表單 */}
+        {/* 記帳表單 */}
+        {activeTab === 'transaction' && (
         <form onSubmit={handleSubmit}>
           <div style={{ padding: isMobile ? '16px' : '20px' }}>
             {/* 交易類型 */}
@@ -399,6 +565,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                   <option value="g21_voucher">G21船券</option>
                   <option value="designated_paid">指定課程（收費）</option>
                   <option value="designated_free">指定課程（免費）</option>
+                  <option value="free_hours">贈送時數</option>
                 </select>
               </div>
             )}
@@ -440,6 +607,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                 <option value="designated_lesson">指定課</option>
                 <option value="boat_voucher_g23">🚤 G23 船券</option>
                 <option value="boat_voucher_g21">⛵ G21/黑豹 船券</option>
+                <option value="free_hours">⏱️ 贈送時數</option>
                 <option value="membership">會籍</option>
                 <option value="board_storage">置板</option>
               </select>
@@ -665,6 +833,142 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
             </button>
           </div>
         </form>
+        )}
+
+        {/* 查帳記錄 */}
+        {activeTab === 'history' && (
+          <div style={{ padding: isMobile ? '16px' : '20px' }}>
+            {/* 月份選擇和匯出 */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              marginBottom: '16px',
+              alignItems: 'center',
+            }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  選擇月份
+                </label>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? '12px' : '10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: isMobile ? '16px' : '14px',
+                  }}
+                />
+              </div>
+              <button
+                onClick={exportTransactions}
+                disabled={transactions.length === 0}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  background: transactions.length === 0 ? '#ccc' : 'white',
+                  color: transactions.length === 0 ? '#999' : '#666',
+                  border: transactions.length === 0 ? 'none' : '2px solid #e0e0e0',
+                  cursor: transactions.length === 0 ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap',
+                  marginTop: '28px',
+                }}
+              >
+                📥 匯出
+              </button>
+            </div>
+
+            {/* 交易記錄列表 */}
+            {loadingHistory ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
+                載入中...
+              </div>
+            ) : transactions.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
+                本月沒有交易記錄
+              </div>
+            ) : (
+              <div style={{
+                maxHeight: isMobile ? 'calc(100vh - 350px)' : '500px',
+                overflowY: 'auto',
+              }}>
+                {transactions.map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    style={{
+                      padding: '16px',
+                      background: '#f8f9fa',
+                      borderRadius: '8px',
+                      marginBottom: '12px',
+                      border: '1px solid #e0e0e0',
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '8px',
+                    }}>
+                      <div>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: 'bold',
+                          color: '#333',
+                          marginBottom: '4px',
+                        }}>
+                          {transaction.description}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#999' }}>
+                          {transaction.created_at.split('T')[0]} {transaction.created_at.split('T')[1].substring(0, 5)}
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        color: transaction.amount && transaction.amount > 0 ? '#52c41a' : 
+                               transaction.amount && transaction.amount < 0 ? '#f5222d' : '#666',
+                      }}>
+                        {transaction.amount ? `$${transaction.amount > 0 ? '+' : ''}${transaction.amount}` : ''}
+                        {transaction.minutes ? `${transaction.minutes > 0 ? '+' : ''}${transaction.minutes}分` : ''}
+                      </div>
+                    </div>
+
+                    {transaction.notes && (
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#666',
+                        marginTop: '8px',
+                        padding: '8px',
+                        background: 'white',
+                        borderRadius: '4px',
+                      }}>
+                        💬 {transaction.notes}
+                      </div>
+                    )}
+
+                    <div style={{
+                      fontSize: '11px',
+                      color: '#999',
+                      marginTop: '8px',
+                      display: 'flex',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                    }}>
+                      <span>餘額: ${transaction.balance_after}</span>
+                      <span>指定課: {transaction.designated_lesson_minutes_after}分</span>
+                      <span>G23: {transaction.boat_voucher_g23_minutes_after}分</span>
+                      <span>G21: {transaction.boat_voucher_g21_minutes_after}分</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

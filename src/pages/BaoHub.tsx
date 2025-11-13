@@ -54,6 +54,11 @@ export function BaoHub({ user }: BaoHubProps) {
       link: '/staff'
     },
     {
+      title: '權限管理',
+      icon: '🔐',
+      link: '/permissions'
+    },
+    {
       title: '匯出',
       icon: '💾',
       link: '/backup'
