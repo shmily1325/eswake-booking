@@ -14,11 +14,17 @@ interface Member {
   designated_lesson_minutes: number
   boat_voucher_g23_minutes: number
   boat_voucher_g21_minutes: number
-  membership_expires_at: string | null
-  member_type: string  // 'guest' or 'member'
+  membership_end_date: string | null
+  membership_start_date: string | null
+  membership_type: string
+  membership_partner_id: string | null
+  free_hours: number
+  free_hours_used: number
+  member_type: string
   notes: string | null
   status: string
   created_at: string
+  partner?: { id: string, name: string, nickname: string | null } | null
 }
 
 interface BoardStorage {
@@ -104,7 +110,21 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       ])
 
       if (memberResult.error) throw memberResult.error
-      setMember(memberResult.data)
+      
+      const memberData = memberResult.data
+      
+      // 如果有配對會員，載入配對會員資料
+      let partnerData = null
+      if (memberData.membership_partner_id) {
+        const { data: partner } = await supabase
+          .from('members')
+          .select('id, name, nickname')
+          .eq('id', memberData.membership_partner_id)
+          .single()
+        partnerData = partner
+      }
+      
+      setMember({ ...memberData, partner: partnerData })
 
       if (boardResult.error) throw boardResult.error
       setBoardStorage(boardResult.data || [])
@@ -305,7 +325,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         <InfoRow label="暱稱" value={member.nickname || '-'} />
                         <InfoRow label="生日" value={member.birthday || '-'} />
                         <InfoRow label="電話" value={member.phone || '-'} />
-                        <InfoRow label="類型" value={getMemberTypeLabel(member.member_type)} />
+                        <InfoRow label="會籍類型" value={getMembershipTypeLabel(member.membership_type)} />
                         {member.notes && <InfoRow label="備註" value={member.notes} />}
                       </div>
                     </div>
@@ -374,19 +394,34 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                       </div>
                     </div>
 
-                    {/* 服務資訊 */}
-                    {member.member_type === 'member' && (
-                      <div style={{ marginBottom: '30px' }}>
-                        <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>🎫 會員服務</h3>
-                        <div style={{ display: 'grid', gap: '12px' }}>
+                    {/* 會員服務 */}
+                    <div style={{ marginBottom: '30px' }}>
+                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>🎫 會員服務</h3>
+                      <div style={{ display: 'grid', gap: '12px' }}>
+                        {member.membership_start_date && (
+                          <InfoRow label="會籍開始" value={member.membership_start_date} />
+                        )}
+                        {member.membership_end_date && (
                           <InfoRow 
                             label="會籍到期" 
-                            value={member.membership_expires_at || '無設定'}
-                            highlight={member.membership_expires_at ? isExpiringSoon(member.membership_expires_at) : false}
+                            value={member.membership_end_date}
+                            highlight={isExpiringSoon(member.membership_end_date)}
                           />
-                        </div>
+                        )}
+                        {member.membership_type === 'dual' && member.partner && (
+                          <InfoRow 
+                            label="🔗 配對會員" 
+                            value={member.partner.nickname || member.partner.name} 
+                          />
+                        )}
+                        {(member.free_hours || 0) > 0 && (
+                          <InfoRow 
+                            label="⏱️ 贈送時數" 
+                            value={`剩餘 ${member.free_hours - (member.free_hours_used || 0)} 分 / 總計 ${member.free_hours} 分`} 
+                          />
+                        )}
                       </div>
-                    )}
+                    </div>
 
                     {/* 操作按鈕 */}
                     <div style={{
@@ -749,11 +784,12 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
 }
 
 // 輔助函數
-function getMemberTypeLabel(type: string): string {
+function getMembershipTypeLabel(type: string): string {
   switch (type) {
-    case 'guest': return '客人'
-    case 'member': return '會員'
-    default: return type
+    case 'general': return '會員'
+    case 'dual': return '雙人會員'
+    case 'board': return '置板'
+    default: return type || '會員'
   }
 }
 

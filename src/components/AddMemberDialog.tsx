@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 
@@ -16,10 +16,31 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     nickname: '',
     birthday: '',
     phone: '',
-    member_type: 'guest',  // 預設為客人
+    membership_type: 'general',  // 預設為會員
+    membership_start_date: '',
+    membership_end_date: '',
+    membership_partner_id: '',
+    board_slot_number: '',
+    board_expiry_date: '',
+    free_hours: 0,
     notes: '',
-    membership_expires_at: '',
   })
+  
+  const [allMembers, setAllMembers] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
+  
+  // 載入會員列表（用於配對選擇）
+  const loadMembers = async () => {
+    const { data } = await supabase
+      .from('members')
+      .select('id, name, nickname')
+      .eq('status', 'active')
+      .order('name')
+    if (data) setAllMembers(data)
+  }
+  
+  useEffect(() => {
+    if (open) loadMembers()
+  }, [open])
   
   const [boards, setBoards] = useState<Array<{
     slot_number: string
@@ -82,13 +103,20 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           nickname: formData.nickname.trim() || null,
           birthday: formData.birthday || null,
           phone: formData.phone.trim() || null,
-          member_type: formData.member_type,
+          member_type: 'member',
+          membership_type: formData.membership_type,
+          membership_start_date: formData.membership_start_date || null,
+          membership_end_date: formData.membership_end_date || null,
+          membership_partner_id: formData.membership_partner_id || null,
+          board_slot_number: formData.board_slot_number.trim() || null,
+          board_expiry_date: formData.board_expiry_date || null,
+          free_hours: formData.free_hours || 0,
+          free_hours_used: 0,
           notes: formData.notes.trim() || null,
           balance: 0,
           designated_lesson_minutes: 0,
           boat_voucher_g23_minutes: 0,
           boat_voucher_g21_minutes: 0,
-          membership_expires_at: formData.member_type === 'member' ? (formData.membership_expires_at || null) : null,
           status: 'active',
           created_at: new Date().toISOString()
         }])
@@ -132,6 +160,15 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           }
         }
       }
+
+      // 3. 如果選擇了配對會員，更新配對關係（雙向）
+      if (formData.membership_partner_id) {
+        await supabase
+          .from('members')
+          .update({ membership_partner_id: newMember.id })
+          .eq('id', formData.membership_partner_id)
+      }
+
       onSuccess()
       onClose()
       
@@ -141,9 +178,14 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
         nickname: '',
         birthday: '',
         phone: '',
-        member_type: 'guest',
+        membership_type: 'general',
+        membership_start_date: '',
+        membership_end_date: '',
+        membership_partner_id: '',
+        board_slot_number: '',
+        board_expiry_date: '',
+        free_hours: 0,
         notes: '',
-        membership_expires_at: '',
       })
       setBoards([])
     } catch (error) {
@@ -283,40 +325,120 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               />
             </div>
 
-            {/* 類型 */}
+            {/* 會籍類型 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                類型 <span style={{ color: 'red' }}>*</span>
+                會籍類型 <span style={{ color: 'red' }}>*</span>
               </label>
               <select
-                value={formData.member_type}
-                onChange={(e) => setFormData({ ...formData, member_type: e.target.value })}
+                value={formData.membership_type}
+                onChange={(e) => setFormData({ ...formData, membership_type: e.target.value })}
                 style={inputStyle}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 required
               >
-                <option value="guest">客人</option>
-                <option value="member">會員</option>
+                <option value="general">會員</option>
+                <option value="dual">雙人會員</option>
+                <option value="board">置板</option>
               </select>
             </div>
 
-            {/* 會員到期 - 只在選擇「會員」時顯示 */}
-            {formData.member_type === 'member' && (
-              <div style={{ marginBottom: '16px' }}>
+            {/* 會員日期 */}
+            <div style={{ 
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              gap: '12px',
+              marginBottom: '16px'
+            }}>
+              {/* 會員開始日期 */}
+              <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                  會員到期 <span style={{ fontSize: '13px' }}>（選填）</span>
+                  會員開始日期 <span style={{ fontSize: '13px' }}>（選填）</span>
                 </label>
                 <input
                   type="date"
-                  value={formData.membership_expires_at}
-                  onChange={(e) => setFormData({ ...formData, membership_expires_at: e.target.value })}
+                  value={formData.membership_start_date}
+                  onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
                   style={inputStyle}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                 />
               </div>
+
+              {/* 會員截止日期 */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                  會員截止日期 <span style={{ fontSize: '13px' }}>（選填）</span>
+                </label>
+                <input
+                  type="date"
+                  value={formData.membership_end_date}
+                  onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
+                  style={inputStyle}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+              </div>
+            </div>
+
+            {/* 配對會員 - 只在選擇「雙人會籍」時顯示 */}
+            {formData.membership_type === 'dual' && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#2196F3' }}>
+                  🔗 配對會員 <span style={{ fontSize: '13px' }}>（選填）</span>
+                </label>
+                <select
+                  value={formData.membership_partner_id}
+                  onChange={(e) => setFormData({ ...formData, membership_partner_id: e.target.value })}
+                  style={inputStyle}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                >
+                  <option value="">請選擇配對會員</option>
+                  {allMembers.map(member => (
+                    <option key={member.id} value={member.id}>
+                      {member.nickname || member.name}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                  選擇後將自動建立雙向配對關係
+                </div>
+              </div>
             )}
+
+            {/* 置板會員提示 */}
+            {formData.membership_type === 'board' && (
+              <div style={{ 
+                marginBottom: '16px',
+                padding: '12px',
+                background: '#e8f5e9',
+                borderRadius: '8px',
+                border: '1px solid #4caf50',
+                fontSize: '13px',
+                color: '#2e7d32'
+              }}>
+                💡 置板會員可以在下方「置板服務」區塊新增多個置板位
+              </div>
+            )}
+
+            {/* 贈送時數 */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#ff9800' }}>
+                ⏱️ 贈送時數（分鐘） <span style={{ fontSize: '13px' }}>（選填）</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.free_hours}
+                onChange={(e) => setFormData({ ...formData, free_hours: parseInt(e.target.value) || 0 })}
+                placeholder="0"
+                style={inputStyle}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+              />
+            </div>
 
             {/* 置板服務 */}
             <div style={{ 

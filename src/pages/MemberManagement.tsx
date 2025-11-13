@@ -18,12 +18,21 @@ interface Member {
   designated_lesson_minutes: number
   boat_voucher_g23_minutes: number
   boat_voucher_g21_minutes: number
-  membership_expires_at: string | null
+  membership_end_date: string | null
+  membership_start_date: string | null
+  membership_type: string  // 'general', 'dual', 'board'
+  membership_partner_id: string | null
   member_type: string  // 'guest' or 'member'
+  board_slot_number: string | null
+  board_expiry_date: string | null
+  free_hours: number
+  free_hours_used: number
+  free_hours_notes: string | null
   notes: string | null
   status: string
   created_at: string
   board_count?: number  // 置板數量（從 board_storage 計算）
+  partner?: Member | null  // 配對會員資料
 }
 
 interface MemberManagementProps {
@@ -59,7 +68,15 @@ export function MemberManagement({ user }: MemberManagementProps) {
       const [membersResult, boardResult] = await Promise.all([
         supabase
           .from('members')
-          .select('id, name, nickname, phone, birthday, notes, member_type, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes, membership_expires_at, created_at')
+          .select(`
+            id, name, nickname, phone, birthday, notes, member_type, 
+            balance, designated_lesson_minutes, boat_voucher_g23_minutes, 
+            boat_voucher_g21_minutes, membership_end_date, membership_start_date,
+            membership_type, membership_partner_id,
+            board_slot_number, board_expiry_date,
+            free_hours, free_hours_used, free_hours_notes,
+            created_at
+          `)
           .eq('status', 'active')
           .order('created_at', { ascending: false})
           .limit(200),  // 限制最多 200 筆，避免一次載入太多
@@ -81,10 +98,30 @@ export function MemberManagement({ user }: MemberManagementProps) {
         boardCounts[board.member_id] = (boardCounts[board.member_id] || 0) + 1
       })
 
+      // 載入配對會員資料
+      const partnerIds = membersData
+        .map((m: any) => m.membership_partner_id)
+        .filter(Boolean)
+      
+      let partnersData: any[] = []
+      if (partnerIds.length > 0) {
+        const { data } = await supabase
+          .from('members')
+          .select('id, name, nickname')
+          .in('id', partnerIds)
+        partnersData = data || []
+      }
+
+      const partnersMap: Record<string, any> = {}
+      partnersData.forEach(p => {
+        partnersMap[p.id] = p
+      })
+
       // 合併資料
       const membersWithBoards = membersData.map((member: any) => ({
         ...member,
-        board_count: boardCounts[member.id] || 0
+        board_count: boardCounts[member.id] || 0,
+        partner: member.membership_partner_id ? partnersMap[member.membership_partner_id] : null
       }))
 
       setMembers(membersWithBoards)
@@ -408,7 +445,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                 {/* 左側：基本資訊 */}
                 <div style={{ flex: 1, minWidth: 0, maxWidth: isMobile ? '100%' : '500px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
                     <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
                       {member.name}
                     </h3>
@@ -423,11 +460,72 @@ export function MemberManagement({ user }: MemberManagementProps) {
                         {member.nickname}
                       </span>
                     )}
+                    {member.membership_type === 'dual' && (
+                      <span style={{ 
+                        fontSize: '13px', 
+                        color: '#fff',
+                        background: '#2196F3',
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        fontWeight: '600'
+                      }}>
+                        雙人會籍
+                      </span>
+                    )}
+                    {member.membership_type === 'board' && (
+                      <span style={{ 
+                        fontSize: '13px', 
+                        color: '#fff',
+                        background: '#4caf50',
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        fontWeight: '600'
+                      }}>
+                        置板
+                      </span>
+                    )}
                   </div>
+                  
+                  {member.partner && (
+                    <div style={{ 
+                      fontSize: '13px', 
+                      color: '#2196F3',
+                      marginBottom: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      🔗 與 <strong>{member.partner.nickname || member.partner.name}</strong> 共享會籍
+                    </div>
+                  )}
+
+                  {member.board_slot_number && (
+                    <div style={{ fontSize: '13px', color: '#4caf50', marginBottom: '4px' }}>
+                      🏄 置板位：{member.board_slot_number}
+                      {member.board_expiry_date && ` (至 ${member.board_expiry_date})`}
+                    </div>
+                  )}
                   
                   {member.phone && (
                     <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
                       📱 {member.phone}
+                    </div>
+                  )}
+
+                  {member.membership_end_date && (
+                    <div style={{ 
+                      fontSize: '13px', 
+                      color: new Date(member.membership_end_date) < new Date() ? '#f44336' : '#666',
+                      marginBottom: '4px'
+                    }}>
+                      📅 會籍至 {member.membership_end_date}
+                      {new Date(member.membership_end_date) < new Date() && ' (已過期)'}
+                    </div>
+                  )}
+
+                  {(member.free_hours || 0) > 0 && (
+                    <div style={{ fontSize: '13px', color: '#ff9800', marginBottom: '4px' }}>
+                      ⏱️ 贈送時數：{member.free_hours}分 (已用 {member.free_hours_used || 0}分)
                     </div>
                   )}
 
@@ -506,9 +604,9 @@ export function MemberManagement({ user }: MemberManagementProps) {
                   }}>
                     {member.member_type === 'member' ? '👤 會員' : '👋 客人'}
                   </span>
-                  {member.member_type === 'member' && member.membership_expires_at && (
+                  {member.member_type === 'member' && member.membership_end_date && (
                     <span style={{ color: '#666' }}>
-                      到期：{member.membership_expires_at}
+                      到期：{member.membership_end_date}
                     </span>
                   )}
                 </div>

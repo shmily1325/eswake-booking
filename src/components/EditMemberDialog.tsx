@@ -8,9 +8,14 @@ interface Member {
   nickname: string | null
   birthday: string | null
   phone: string | null
-  member_type: string  // 'guest' or 'member'
+  member_type: string
+  membership_type: string
+  membership_start_date: string | null
+  membership_end_date: string | null
+  membership_partner_id: string | null
+  free_hours: number
   notes: string | null
-  membership_expires_at: string | null
+  partner?: { id: string, name: string, nickname: string | null } | null
 }
 
 interface EditMemberDialogProps {
@@ -23,27 +28,47 @@ interface EditMemberDialogProps {
 export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMemberDialogProps) {
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(false)
+  const [allMembers, setAllMembers] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
   const [formData, setFormData] = useState({
     name: member.name,
     nickname: member.nickname || '',
     birthday: member.birthday || '',
     phone: member.phone || '',
-    member_type: member.member_type,
+    membership_type: member.membership_type || 'general',
+    membership_start_date: member.membership_start_date || '',
+    membership_end_date: member.membership_end_date || '',
+    membership_partner_id: member.membership_partner_id || '',
+    free_hours: member.free_hours || 0,
     notes: member.notes || '',
-    membership_expires_at: member.membership_expires_at || '',
   })
+
+  // 載入會員列表（用於配對選擇）
+  const loadMembers = async () => {
+    const { data } = await supabase
+      .from('members')
+      .select('id, name, nickname')
+      .eq('status', 'active')
+      .neq('id', member.id)  // 排除自己
+      .order('name')
+    if (data) setAllMembers(data)
+  }
 
   useEffect(() => {
     if (!open) return
 
+    loadMembers()
+    
     setFormData({
       name: member.name,
       nickname: member.nickname || '',
       birthday: member.birthday || '',
       phone: member.phone || '',
-      member_type: member.member_type,
+      membership_type: member.membership_type || 'general',
+      membership_start_date: member.membership_start_date || '',
+      membership_end_date: member.membership_end_date || '',
+      membership_partner_id: member.membership_partner_id || '',
+      free_hours: member.free_hours || 0,
       notes: member.notes || '',
-      membership_expires_at: member.membership_expires_at || '',
     })
   }, [member, open])
 
@@ -76,6 +101,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         return
       }
 
+      // 1. 更新會員資料
       const { error } = await supabase
         .from('members')
         .update({
@@ -83,13 +109,40 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
           nickname: formData.nickname || null,
           birthday: formData.birthday || null,
           phone: formData.phone || null,
-          member_type: formData.member_type,
+          member_type: 'member',
+          membership_type: formData.membership_type,
+          membership_start_date: formData.membership_start_date || null,
+          membership_end_date: formData.membership_end_date || null,
+          membership_partner_id: formData.membership_partner_id || null,
+          free_hours: formData.free_hours || 0,
           notes: formData.notes || null,
-          membership_expires_at: formData.member_type === 'member' ? (formData.membership_expires_at || null) : null,
         })
         .eq('id', member.id)
 
       if (error) throw error
+
+      // 2. 處理配對變更
+      const oldPartnerId = member.membership_partner_id
+      const newPartnerId = formData.membership_partner_id || null
+
+      if (oldPartnerId !== newPartnerId) {
+        // 如果有舊配對，解除舊配對
+        if (oldPartnerId) {
+          await supabase
+            .from('members')
+            .update({ membership_partner_id: null })
+            .eq('id', oldPartnerId)
+        }
+
+        // 如果有新配對，建立新配對（雙向）
+        if (newPartnerId) {
+          await supabase
+            .from('members')
+            .update({ membership_partner_id: member.id })
+            .eq('id', newPartnerId)
+        }
+      }
+
       onSuccess()
       onClose()
     } catch (error) {
@@ -225,39 +278,107 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               />
             </div>
 
-            {/* 類型 */}
+            {/* 會籍類型 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                類型
+                會籍類型 <span style={{ color: 'red' }}>*</span>
               </label>
               <select
-                value={formData.member_type}
-                onChange={(e) => setFormData({ ...formData, member_type: e.target.value })}
+                value={formData.membership_type}
+                onChange={(e) => setFormData({ ...formData, membership_type: e.target.value })}
                 style={inputStyle}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
+                required
               >
-                <option value="guest">客人</option>
-                <option value="member">會員</option>
+                <option value="general">會員</option>
+                <option value="dual">雙人會員</option>
+                <option value="board">置板</option>
               </select>
             </div>
 
-            {/* 會籍到期 - 只在會員類型時顯示 */}
-            {formData.member_type === 'member' && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  會籍到期
+            {/* 會員日期 */}
+            <div style={{ 
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              gap: '12px',
+              marginBottom: '16px'
+            }}>
+              {/* 會員開始日期 */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                  會員開始日期
                 </label>
                 <input
                   type="date"
-                  value={formData.membership_expires_at}
-                  onChange={(e) => setFormData({ ...formData, membership_expires_at: e.target.value })}
+                  value={formData.membership_start_date}
+                  onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
                   style={inputStyle}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                 />
               </div>
+
+              {/* 會員截止日期 */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                  會員截止日期
+                </label>
+                <input
+                  type="date"
+                  value={formData.membership_end_date}
+                  onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
+                  style={inputStyle}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+              </div>
+            </div>
+
+            {/* 配對會員 - 只在選擇「雙人會籍」時顯示 */}
+            {formData.membership_type === 'dual' && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#2196F3' }}>
+                  🔗 配對會員
+                </label>
+                <select
+                  value={formData.membership_partner_id}
+                  onChange={(e) => setFormData({ ...formData, membership_partner_id: e.target.value })}
+                  style={inputStyle}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                >
+                  <option value="">請選擇配對會員</option>
+                  {allMembers.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.nickname || m.name}
+                    </option>
+                  ))}
+                </select>
+                {member.partner && (
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                    目前配對：{member.partner.nickname || member.partner.name}
+                  </div>
+                )}
+              </div>
             )}
+
+            {/* 贈送時數 */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#ff9800' }}>
+                ⏱️ 贈送時數（分鐘）
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.free_hours}
+                onChange={(e) => setFormData({ ...formData, free_hours: parseInt(e.target.value) || 0 })}
+                placeholder="0"
+                style={inputStyle}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+              />
+            </div>
 
             {/* 備註 */}
             <div style={{ marginBottom: '16px' }}>

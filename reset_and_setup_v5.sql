@@ -56,15 +56,29 @@ CREATE TABLE members (
   birthday TEXT,
   notes TEXT,
   
-  -- 會員類型
+  -- 會員類型與配對
   member_type TEXT NOT NULL DEFAULT 'guest',
+  membership_type TEXT DEFAULT 'general',
+  membership_partner_id UUID REFERENCES members(id),
+  
+  -- 會員期限
+  membership_start_date TEXT,
+  membership_end_date TEXT,
+  
+  -- 置板相關
+  board_slot_number TEXT,
+  board_expiry_date TEXT,
+  
+  -- 贈送時數
+  free_hours DECIMAL(10, 2) DEFAULT 0,
+  free_hours_used DECIMAL(10, 2) DEFAULT 0,
+  free_hours_notes TEXT,
   
   -- 會員財務資訊
   balance DECIMAL(10, 2) DEFAULT 0,
   designated_lesson_minutes INTEGER DEFAULT 0,
   boat_voucher_g23_minutes INTEGER DEFAULT 0,
   boat_voucher_g21_minutes INTEGER DEFAULT 0,
-  membership_expires_at TEXT,
   
   -- 狀態
   status TEXT DEFAULT 'active',
@@ -74,9 +88,18 @@ CREATE TABLE members (
 );
 
 COMMENT ON TABLE members IS '會員表：統一管理客人和會員';
+COMMENT ON COLUMN members.membership_type IS '會員類型：general=一般會員, dual=雙人會員, board=置板';
+COMMENT ON COLUMN members.membership_partner_id IS '雙人會員配對的另一位會員 ID';
+COMMENT ON COLUMN members.free_hours IS '贈送時數（分鐘）';
+COMMENT ON COLUMN members.free_hours_used IS '已使用贈送時數（分鐘）';
+COMMENT ON COLUMN members.board_slot_number IS '置板位號碼（僅限置板會員）';
+
 CREATE INDEX idx_members_type ON members(member_type);
+CREATE INDEX idx_members_membership_type ON members(membership_type);
 CREATE INDEX idx_members_phone ON members(phone);
 CREATE INDEX idx_members_status ON members(status);
+CREATE INDEX idx_members_membership_end_date ON members(membership_end_date);
+CREATE INDEX idx_members_partner ON members(membership_partner_id);
 
 -- 2. 置板服務表 (Board Storage)
 CREATE TABLE board_storage (
