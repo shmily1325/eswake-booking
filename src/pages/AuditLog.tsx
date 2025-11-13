@@ -132,7 +132,12 @@ export function AuditLog({ user }: AuditLogProps) {
     }
   }
 
-  const getOperationText = (action: string) => {
+  const getOperationText = (action: string, tableName: string) => {
+    // 根據 table_name 區分操作類型
+    if (tableName === 'coach_assignment') {
+      return '排班'
+    }
+    
     switch (action) {
       case 'create':
         return '新增預約'
@@ -326,7 +331,7 @@ export function AuditLog({ user }: AuditLogProps) {
                     fontWeight: '600',
                     color: getOperationColor(log.action),
                   }}>
-                    {getOperationText(log.action)}
+                    {getOperationText(log.action, log.table_name)}
                   </span>
                 </div>
                 <div style={{
