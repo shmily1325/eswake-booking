@@ -397,13 +397,12 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
               padding: '12px',
               fontSize: '16px',
               fontWeight: '600',
-              background: !loading ? '#5a5a5a' : '#ccc',
-              color: 'white',
-              border: 'none',
+              background: !loading ? 'white' : '#f5f5f5',
+              color: !loading ? '#666' : '#999',
+              border: !loading ? '2px solid #e0e0e0' : '2px solid #ddd',
               borderRadius: '8px',
               cursor: !loading ? 'pointer' : 'not-allowed',
               touchAction: 'manipulation',
-              boxShadow: !loading ? '0 2px 8px rgba(0, 0, 0, 0.15)' : 'none',
               transition: 'transform 0.1s'
             }}
             onTouchStart={(e) => !loading && (e.currentTarget.style.transform = 'scale(0.98)')}

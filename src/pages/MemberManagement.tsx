@@ -204,27 +204,18 @@ export function MemberManagement({ user }: MemberManagementProps) {
           style={{
             flex: isMobile ? '1 1 100%' : '0 0 auto',
             padding: isMobile ? '12px 16px' : '10px 20px',
-            background: '#5a5a5a',
-            color: 'white',
-            border: 'none',
+            background: 'white',
+            color: '#666',
+            border: '2px solid #e0e0e0',
             borderRadius: '8px',
             fontSize: isMobile ? '14px' : '15px',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
           }}
         >
           <span>📥</span>
@@ -236,27 +227,18 @@ export function MemberManagement({ user }: MemberManagementProps) {
           style={{
             flex: isMobile ? '1 1 100%' : '0 0 auto',
             padding: isMobile ? '12px 16px' : '10px 20px',
-            background: '#5a5a5a',
-            color: 'white',
-            border: 'none',
+            background: 'white',
+            color: '#666',
+            border: '2px solid #e0e0e0',
             borderRadius: '8px',
             fontSize: isMobile ? '14px' : '15px',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
           }}
         >
           <span>🏄</span>

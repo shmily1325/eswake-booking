@@ -234,7 +234,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
-      <PageHeader user={user} title="教練管理" />
+      <PageHeader user={user} title="人員管理" />
 
       <div style={{
         maxWidth: '1000px',
@@ -256,7 +256,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
             color: '#333',
             fontWeight: 'bold'
           }}>
-            🎓 教練管理
+            🎓 人員管理
           </h1>
           
           <button

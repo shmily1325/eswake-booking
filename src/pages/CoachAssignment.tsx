@@ -820,11 +820,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
-      <PageHeader user={user} title="排班管理" showBaoLink={isAdmin(user)} />
+      <PageHeader user={user} title="排班" showBaoLink={isAdmin(user)} />
       
       <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl, maxWidth: '100%', margin: '0 auto', width: '100%' }}>
         <h1 style={{ ...getTextStyle('h1', isMobile), marginBottom: isMobile ? designSystem.spacing.md : designSystem.spacing.lg }}>
-          📅 排班管理
+          📅 排班
         </h1>
 
         {/* 日期選擇和保存 */}

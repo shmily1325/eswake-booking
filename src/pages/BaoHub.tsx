@@ -13,34 +13,25 @@ export function BaoHub({ user }: BaoHubProps) {
 
   const baoFeatures: Array<{
     title: string
-    subtitle?: string
     icon: string
     link: string
     comingSoon?: boolean
     disabled?: boolean
   }> = [
     {
-      title: '排班管理',
+      title: '排班',
       icon: '📅',
       link: '/coach-assignment'
     },
     {
-      title: '教練回報',
-      subtitle: '要不要回報?',
-      icon: '📝',
-      link: '/coach-report'
+      title: '公告',
+      icon: '📢',
+      link: '/announcements'
     },
     {
       title: '預約狀況',
-      subtitle: '要什麼數據?',
       icon: '📊',
       link: '/coach-overview'
-    },
-
-    {
-      title: '教練管理',
-      icon: '🎓',
-      link: '/staff'
     },
     {
       title: '會員管理',
@@ -48,25 +39,27 @@ export function BaoHub({ user }: BaoHubProps) {
       link: '/members'
     },
     {
-      title: '會員記帳',
-      subtitle: '儲值/船券入帳',
+      title: '會員儲值',
       icon: '💳',
       link: '/member-transaction'
     },
     {
-      title: '公告管理',
-      icon: '📢',
-      link: '/announcements'
+      title: '教練回報',
+      icon: '📝',
+      link: '/coach-report'
     },
     {
-      title: '匯出資料',
-      subtitle: '等資料串好才能匯',
+      title: '人員管理',
+      icon: '🎓',
+      link: '/staff'
+    },
+    {
+      title: '匯出',
       icon: '💾',
       link: '/backup'
     },
     {
       title: 'LINE 提醒設置',
-      subtitle: 'Disabled 中',
       icon: '📱',
       link: '/line-settings',
       disabled: true
@@ -238,16 +231,6 @@ export function BaoHub({ user }: BaoHubProps) {
                 }}>
                   {feature.title}
                 </h2>
-                {feature.subtitle && (
-                  <p style={{
-                    margin: 0,
-                    fontSize: isMobile ? '11px' : '12px',
-                    color: '#999',
-                    fontStyle: 'italic'
-                  }}>
-                    {feature.subtitle}
-                  </p>
-                )}
               </div>
             ) : (
               <Link
@@ -295,16 +278,6 @@ export function BaoHub({ user }: BaoHubProps) {
                 }}>
                   {feature.title}
                 </h2>
-                {feature.subtitle && (
-                  <p style={{
-                    margin: 0,
-                    fontSize: isMobile ? '11px' : '12px',
-                    color: '#999',
-                    fontStyle: 'italic'
-                  }}>
-                    {feature.subtitle}
-                  </p>
-                )}
               </Link>
             )
           ))}

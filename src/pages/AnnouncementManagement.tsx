@@ -133,7 +133,7 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
       padding: isMobile ? '12px' : '20px'
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <PageHeader title="📢 公告管理" user={user} showBaoLink={true} />
+        <PageHeader title="📢 公告" user={user} showBaoLink={true} />
 
         {/* 新增表單 */}
         <div style={{
