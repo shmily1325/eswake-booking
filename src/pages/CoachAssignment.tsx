@@ -237,9 +237,20 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
   // 即時檢查教練/駕駛衝突
   const checkConflictRealtime = (bookingId: number, newCoachIds: string[], newDriverIds: string[]): string[] => {
+    console.log('=== 檢查衝突 ===')
+    console.log('預約ID:', bookingId)
+    console.log('新教練IDs:', newCoachIds)
+    console.log('新駕駛IDs:', newDriverIds)
+    console.log('所有預約:', bookings.length)
+    console.log('所有assignments:', Object.keys(assignments).length)
+    
     const conflicts: string[] = []
     const currentBooking = bookings.find(b => b.id === bookingId)
-    if (!currentBooking) return conflicts
+    if (!currentBooking) {
+      console.log('找不到預約:', bookingId)
+      return conflicts
+    }
+    console.log('當前預約:', currentBooking.contact_name, formatTime(currentBooking.start_at))
 
     const currentStart = new Date(currentBooking.start_at)
     // 加上整理船時間（彈簧床除外）
@@ -256,27 +267,40 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
 
     // 2. 檢查教練的時間衝突（包括作為教練或駕駛）
     for (const coachId of newCoachIds) {
+      const coachName = coaches.find(c => c.id === coachId)?.name || '未知'
+      console.log(`檢查教練 ${coachName} (${coachId}) 的衝突...`)
+      
       for (const otherBooking of bookings) {
         if (otherBooking.id === bookingId) continue
 
         const otherAssignment = assignments[otherBooking.id]
-        if (!otherAssignment) continue
+        if (!otherAssignment) {
+          console.log(`  預約 ${otherBooking.id} 沒有 assignment，跳過`)
+          continue
+        }
 
         // 檢查這個人是否在其他預約中（作為教練或駕駛）
         const isCoachInOther = otherAssignment.coachIds.includes(coachId)
         const isDriverInOther = otherAssignment.driverIds.includes(coachId)
         
         if (isCoachInOther || isDriverInOther) {
+          console.log(`  ${coachName} 在預約 ${otherBooking.contact_name} (${formatTime(otherBooking.start_at)})`)
+          
           const otherStart = new Date(otherBooking.start_at)
           // 加上整理船時間（彈簧床除外）
           const otherCleanupTime = isFacility(otherBooking.boats?.name) ? 0 : 15
           const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
+
+          console.log(`  當前: ${formatTime(currentBooking.start_at)} - ${formatTime(currentEnd.toISOString())}`)
+          console.log(`  其他: ${formatTime(otherBooking.start_at)} - ${formatTime(otherEnd.toISOString())}`)
+          console.log(`  時間重疊? ${currentStart < otherEnd && currentEnd > otherStart}`)
 
           if (currentStart < otherEnd && currentEnd > otherStart) {
             const personName = coaches.find(c => c.id === coachId)?.name || '未知'
             const roleText = isDriverInOther ? '[駕駛]' : '[教練]'
             const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
             conflicts.push(`${personName} 與 ${otherTime} (${otherBooking.contact_name}) ${roleText} 時間衝突`)
+            console.log(`  ⚠️ 發現衝突!`)
           }
         }
       }
@@ -310,6 +334,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       }
     }
 
+    console.log('檢查完成，發現', conflicts.length, '個衝突:', conflicts)
+    console.log('==================')
     return conflicts
   }
 
@@ -863,22 +889,40 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               }}>
                 <button
                   type="button"
-                onClick={() => setViewMode('boat-timeline')}
+                onClick={() => setViewMode('coach-grouping')}
                   style={{
                     padding: '8px 16px',
-                  background: viewMode === 'boat-timeline' ? 'white' : 'transparent',
+                  background: viewMode === 'coach-grouping' ? 'white' : 'transparent',
                     border: 'none',
                     borderRadius: '6px',
                     cursor: 'pointer',
+                  fontWeight: viewMode === 'coach-grouping' ? '600' : '400',
+                    fontSize: '14px',
+                  color: viewMode === 'coach-grouping' ? '#5a5a5a' : '#666',
+                    transition: 'all 0.2s',
+                  boxShadow: viewMode === 'coach-grouping' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                👥 列表
+                </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('boat-timeline')}
+                style={{
+                    padding: '8px 16px',
+                  background: viewMode === 'boat-timeline' ? 'white' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
                   fontWeight: viewMode === 'boat-timeline' ? '600' : '400',
                     fontSize: '14px',
                   color: viewMode === 'boat-timeline' ? '#5a5a5a' : '#666',
-                    transition: 'all 0.2s',
+                  transition: 'all 0.2s',
                   boxShadow: viewMode === 'boat-timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                >
+                }}
+              >
                 🚤 船隻
-                </button>
+              </button>
               <button
                 type="button"
                   onClick={() => setViewMode('coach-timeline')}
@@ -896,24 +940,6 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 }}
               >
                   🎓 教練軸
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('coach-grouping')}
-                style={{
-                    padding: '8px 16px',
-                  background: viewMode === 'coach-grouping' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: viewMode === 'coach-grouping' ? '600' : '400',
-                    fontSize: '14px',
-                  color: viewMode === 'coach-grouping' ? '#5a5a5a' : '#666',
-                  transition: 'all 0.2s',
-                  boxShadow: viewMode === 'coach-grouping' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                👥 列表
               </button>
             </div>
             )}
@@ -2787,7 +2813,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* 渲染每個有預約的教練 - 網格布局 */}
-              <div style={{ 
+                              <div style={{
                 display: 'grid', 
                 gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(380px, 1fr))',
                 gap: '16px'
@@ -2844,9 +2870,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             position: 'relative'
                           }}>
                             {/* 移除按鈕 */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
                                 if (isCoach) {
                                   toggleCoach(booking.id, coach.id)
                                 }
@@ -2861,15 +2887,15 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = '#f5f5f5'
                                 e.currentTarget.style.color = '#999'
-                              }}
-                              style={{
+                                  }}
+                                  style={{
                                 position: 'absolute',
                                 top: '8px',
                                 right: '8px',
                                 background: '#f5f5f5',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
                                 fontSize: '16px',
                                 color: '#999',
                                 padding: '2px 6px',
@@ -2898,13 +2924,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 {isDriver && !isCoach && <span style={{ 
                                   marginLeft: '6px',
                                   fontSize: '14px'
-                                }}>⛵</span>}
+                                }}>🚤</span>}
                               </div>
                               <div style={{ color: '#666', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
                                 {booking.contact_name}
                                 {booking.requires_driver && (
                                   <span style={{ marginLeft: '8px', fontSize: '14px' }}>
-                                    ⛵
+                                    🚤
                                   </span>
                                 )}
                               </div>
@@ -2941,7 +2967,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   borderRadius: '12px',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                   border: '2px solid #ff9800',
-                  display: 'flex',
+                                    display: 'flex',
                   flexDirection: 'column',
                   maxHeight: isMobile ? 'none' : '650px',
                   overflow: 'hidden'
@@ -3034,10 +3060,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                         }}
                                       >
                                         {c.name}
-                                      </button>
+                                </button>
                                     )
                                   })}
-                                </div>
+                              </div>
                               </div>
                               
                               {/* 排班註解 */}
@@ -3081,9 +3107,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               )}
                             </div>
                           )}
-                        </div>
-                    )
-                  })}
+                            </div>
+                          )
+                        })}
                 </div>
               </div>
               )}
@@ -3109,7 +3135,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
                     flexShrink: 0
                   }}>
-                    ⛵ 需要駕駛 ({needsDriverBookings.length})
+                    🚤 需要駕駛 ({needsDriverBookings.length})
                   </div>
                   
                   <div style={{ 
@@ -3184,9 +3210,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                       >
                                         {c.name}
                                       </button>
-                                    )
-                                  })}
-                                </div>
+                    )
+                  })}
+                </div>
                               </div>
                               
                               {/* 排班註解 */}
