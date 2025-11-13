@@ -1,16 +1,5 @@
 // 預約訊息格式化工具
 
-interface Member {
-  id: string
-  name: string
-  nickname?: string | null
-}
-
-interface BookingMember {
-  member_id: string
-  members?: Member | null
-}
-
 interface BookingFormatData {
   start_at: string
   duration_min: number
@@ -18,10 +7,6 @@ interface BookingFormatData {
   boats?: { name: string } | null
   coaches?: { name: string }[]
   activity_types?: string[] | null
-}
-
-interface BookingWithMembers extends BookingFormatData {
-  booking_members?: BookingMember[]
 }
 
 /**
@@ -83,7 +68,7 @@ export function getDisplayContactName(booking: any): string {
   // 如果有關聯的會員，優先顯示暱稱
   if (booking.booking_members && booking.booking_members.length > 0) {
     const memberDisplayNames = booking.booking_members
-      .map(bm => bm.members?.nickname || bm.members?.name)
+      .map((bm: any) => bm.members?.nickname || bm.members?.name)
       .filter(Boolean) as string[]
     
     // 如果有重複的暱稱，只顯示一個
@@ -91,7 +76,7 @@ export function getDisplayContactName(booking: any): string {
     
     // 如果只有會員，且數量吻合 contact_name 中的名字數量，直接返回
     // 否則，可能還包含非會員名字，直接用 contact_name
-    const contactNameParts = booking.contact_name?.split(',').map(n => n.trim()).filter(Boolean) || []
+    const contactNameParts = booking.contact_name?.split(',').map((n: any) => n.trim()).filter(Boolean) || []
     
     // 如果會員數量等於 contact_name 中的名字數量，說明都是會員
     if (uniqueNames.length === contactNameParts.length) {
