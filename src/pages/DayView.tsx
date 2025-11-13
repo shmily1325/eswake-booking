@@ -40,7 +40,6 @@ interface Booking {
   driver?: Coach | null
   schedule_notes?: string | null
   members?: { id: string; name: string }[]  // 關聯的會員列表
-  manual_names?: string  // 手動輸入的非會員名稱
   booking_members?: { member_id: string; members?: { id: string; name: string; nickname?: string | null } | null }[]
 }
 
@@ -144,7 +143,7 @@ export function DayView({ user }: DayViewProps) {
       promises.push(
         supabase
           .from('bookings')
-          .select('id, boat_id, contact_name, member_id, start_at, duration_min, activity_types, notes, requires_driver, status, schedule_notes, manual_names, boats:boat_id(id, name, color), booking_members(member_id, members:member_id(id, name, nickname))')
+          .select('id, boat_id, contact_name, member_id, start_at, duration_min, activity_types, notes, requires_driver, status, schedule_notes, boats:boat_id(id, name, color), booking_members(member_id, members:member_id(id, name, nickname))')
           .gte('start_at', startOfDay)
           .lte('start_at', endOfDay)
           .eq('status', 'confirmed') // 只查詢已確認的預約

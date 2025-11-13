@@ -36,7 +36,6 @@ interface Booking {
   drivers?: Coach[]
   schedule_notes?: string | null
   notes?: string | null
-  manual_names?: string
   booking_members?: { member_id: string; members?: { id: string; name: string; nickname?: string | null } | null }[]
 }
 
@@ -151,7 +150,6 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
           status,
           schedule_notes,
           notes,
-          manual_names,
           boats:boat_id(id, name, color),
           coaches:booking_coaches(coach_id, coaches:coaches(id, name)),
           drivers:booking_drivers(driver_id, coaches:coaches(id, name)),

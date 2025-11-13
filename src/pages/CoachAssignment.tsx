@@ -31,7 +31,6 @@ interface Booking {
   member_id?: string | null
   activity_types?: string[] | null
   notes?: string | null
-  manual_names?: string
   booking_members?: { member_id: string; members?: { id: string; name: string; nickname?: string | null } | null }[]
 }
 
@@ -135,7 +134,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       // 優化：只查詢需要的字段，減少數據傳輸
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
-        .select('id, start_at, duration_min, contact_name, boat_id, schedule_notes, requires_driver, status, member_id, activity_types, notes, manual_names, boats:boat_id(id, name, color), booking_members(member_id, members:member_id(id, name, nickname))')
+        .select('id, start_at, duration_min, contact_name, boat_id, schedule_notes, requires_driver, status, member_id, activity_types, notes, boats:boat_id(id, name, color), booking_members(member_id, members:member_id(id, name, nickname))')
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
         .eq('status', 'confirmed')

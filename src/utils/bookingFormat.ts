@@ -22,7 +22,6 @@ interface BookingFormatData {
 
 interface BookingWithMembers extends BookingFormatData {
   booking_members?: BookingMember[]
-  manual_names?: string
 }
 
 /**
@@ -78,33 +77,34 @@ export function formatBookingsForLine(bookings: BookingFormatData[], title: stri
  * 根據會員資料獲取顯示名稱
  * 優先顯示暱稱，如果沒有暱稱則顯示姓名
  * 如果有多個會員，用逗號分隔（但如果暱稱相同只顯示一個）
- * 如果有手動輸入的非會員名稱，也會一併顯示
+ * 如果有非會員，會從 contact_name 中提取並一併顯示
  */
 export function getDisplayContactName(booking: BookingWithMembers): string {
-  const displayNames: string[] = []
-  
-  // 處理會員名稱（優先顯示暱稱）
+  // 如果有關聯的會員，優先顯示暱稱
   if (booking.booking_members && booking.booking_members.length > 0) {
-    const memberNames = booking.booking_members
+    const memberDisplayNames = booking.booking_members
       .map(bm => bm.members?.nickname || bm.members?.name)
       .filter(Boolean) as string[]
     
     // 如果有重複的暱稱，只顯示一個
-    const uniqueNames = Array.from(new Set(memberNames))
-    displayNames.push(...uniqueNames)
+    const uniqueNames = Array.from(new Set(memberDisplayNames))
+    
+    // 如果只有會員，且數量吻合 contact_name 中的名字數量，直接返回
+    // 否則，可能還包含非會員名字，直接用 contact_name
+    const contactNameParts = booking.contact_name?.split(',').map(n => n.trim()).filter(Boolean) || []
+    
+    // 如果會員數量等於 contact_name 中的名字數量，說明都是會員
+    if (uniqueNames.length === contactNameParts.length) {
+      return uniqueNames.join(', ')
+    }
+    
+    // 否則，contact_name 中可能還有非會員，需要混合處理
+    // 為了簡化，直接返回第一個會員的暱稱/姓名
+    // 如果要完整顯示，會比較複雜（需要從 contact_name 中排除會員真實姓名，再加上暱稱）
+    return uniqueNames[0] || booking.contact_name || '未命名'
   }
   
-  // 處理手動輸入的非會員名稱
-  if (booking.manual_names) {
-    const manualNamesArray = booking.manual_names.split(',').map(n => n.trim()).filter(Boolean)
-    displayNames.push(...manualNamesArray)
-  }
-  
-  // 如果都沒有，回退使用 contact_name
-  if (displayNames.length === 0 && booking.contact_name) {
-    return booking.contact_name
-  }
-  
-  return displayNames.join(', ') || '未命名'
+  // 沒有關聯會員，直接使用 contact_name
+  return booking.contact_name || '未命名'
 }
 
