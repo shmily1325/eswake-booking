@@ -320,7 +320,7 @@ export function CoachReport({ user }: CoachReportProps) {
       // 1. 載入預約的所有會員
       const { data: bookingMembersData } = await supabase
         .from('booking_members')
-        .select('member_id, members(id, name)')
+        .select('member_id, members(id, name, nickname)')
         .eq('booking_id', bookingId)
 
       // 2. 載入已被其他教練回報的參與者（會員和非會員）

@@ -2953,7 +2953,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                     padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
                     flexShrink: 0
                   }}>
-                    🚤 需要駕駛 ({needsDriverBookings.length})
+                    ⚠️ 未排班 ({needsDriverBookings.length})
                   </div>
                   
                   <div style={{ 
