@@ -269,13 +269,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     const cleanupTime = isFacility(currentBooking.boats?.name) ? 0 : 15
     const currentEnd = new Date(currentStart.getTime() + (currentBooking.duration_min + cleanupTime) * 60000)
 
-    // 1. 檢查教練與駕駛是否為同一人
-    for (const coachId of newCoachIds) {
-      if (newDriverIds.includes(coachId)) {
-        const personName = coaches.find(c => c.id === coachId)?.name || '未知'
-        conflicts.push(`${personName} 同時擔任教練和駕駛`)
-      }
-    }
+    // 1. 檢查教練與駕駛是否為同一人（同一艘船可以）
+    // 注意：這個檢查只對不同船才有意義，同一艘船的教練和駕駛可以是同一人
+    // 目前邏輯已在後續檢查中處理（檢查 boatId）
 
     // 2. 檢查教練的時間衝突（包括作為教練或駕駛）
     for (const coachId of newCoachIds) {
@@ -308,10 +304,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           console.log(`  時間重疊? ${currentStart < otherEnd && currentEnd > otherStart}`)
 
           if (currentStart < otherEnd && currentEnd > otherStart) {
-            const personName = coaches.find(c => c.id === coachId)?.name || '未知'
-            const roleText = isDriverInOther ? '[駕駛]' : '[教練]'
             const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
-            conflicts.push(`${personName} 與 ${otherTime} (${otherBooking.contact_name}) ${roleText} 時間衝突`)
+            const roleText = isDriverInOther ? '駕駛' : '教練'
+            conflicts.push(`與 ${otherBooking.contact_name} (${otherTime} ${roleText}) 衝突`)
             console.log(`  ⚠️ 發現衝突!`)
           }
         }
@@ -337,10 +332,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
 
           if (currentStart < otherEnd && currentEnd > otherStart) {
-            const personName = coaches.find(c => c.id === driverId)?.name || '未知'
-            const roleText = isDriverInOther ? '[駕駛]' : '[教練]'
             const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
-            conflicts.push(`${personName} 與 ${otherTime} (${otherBooking.contact_name}) ${roleText} 時間衝突`)
+            const roleText = isDriverInOther ? '駕駛' : '教練'
+            conflicts.push(`與 ${otherBooking.contact_name} (${otherTime} ${roleText}) 衝突`)
           }
         }
       }

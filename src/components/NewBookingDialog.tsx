@@ -795,7 +795,7 @@ export function NewBookingDialog({
                   setShowMemberDropdown(true)
                 }
               }}
-              placeholder="搜尋會員姓名/暱稱...（可多選）"
+              placeholder="搜尋會員暱稱/姓名/電話...（可多選）"
               style={{
                 width: '100%',
                 padding: '12px',
@@ -848,8 +848,8 @@ export function NewBookingDialog({
                       onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? '#e8f5e9' : 'white'}
                     >
                       <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                        {isSelected && '✓ '}{member.name}
-                        {member.nickname && <span style={{ color: '#666', fontWeight: 'normal' }}> ({member.nickname})</span>}
+                        {isSelected && '✓ '}{member.nickname || member.name}
+                        {member.nickname && <span style={{ color: '#666', fontWeight: 'normal', marginLeft: '6px' }}>({member.name})</span>}
                       </div>
                       {member.phone && (
                         <div style={{ fontSize: '13px', color: '#999' }}>

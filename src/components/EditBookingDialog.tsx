@@ -842,8 +842,8 @@ export function EditBookingDialog({
                     >
                       <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
                         {isSelected && '✓ '}
-                        {member.name}
-                        {member.nickname && <span style={{ color: '#666', fontWeight: 'normal' }}> ({member.nickname})</span>}
+                        {member.nickname || member.name}
+                        {member.nickname && <span style={{ color: '#666', fontWeight: 'normal', marginLeft: '6px' }}>({member.name})</span>}
                       </div>
                       {member.phone && (
                         <div style={{ fontSize: '13px', color: '#999' }}>
