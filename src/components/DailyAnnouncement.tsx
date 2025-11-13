@@ -76,11 +76,6 @@ export function DailyAnnouncement() {
     const sevenDaysLater = new Date(year, month - 1, day)
     sevenDaysLater.setDate(sevenDaysLater.getDate() + 7)
     const sevenDaysLaterStr = `${sevenDaysLater.getFullYear()}-${String(sevenDaysLater.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysLater.getDate()).padStart(2, '0')}`
-    
-    // 計算30天前的日期（顯示已過期會員）
-    const thirtyDaysAgo = new Date(year, month - 1, day)
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    const thirtyDaysAgoStr = `${thirtyDaysAgo.getFullYear()}-${String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(thirtyDaysAgo.getDate()).padStart(2, '0')}`
 
     // 並行執行所有查詢（重要：從串行改為並行，大幅提升速度）
     const [
