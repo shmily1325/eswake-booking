@@ -493,6 +493,14 @@ export function EditBookingDialog({
         }
       }
 
+      // 如果取消勾選「需要駕駛」，清空 booking_drivers
+      if (!requiresDriver) {
+        await supabase
+          .from('booking_drivers')
+          .delete()
+          .eq('booking_id', booking.id)
+      }
+
       // 計算變更內容
       const changes: string[] = []
       
