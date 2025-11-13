@@ -275,7 +275,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           if (currentStart < otherEnd && currentEnd > otherStart) {
             const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
             const roleText = isDriverInOther ? '駕駛' : '教練'
-            conflicts.push(`與 ${otherBooking.contact_name} (${otherTime} ${roleText}) 衝突`)
+            conflicts.push(`與 ${getDisplayContactName(otherBooking)} (${otherTime} ${roleText}) 衝突`)
           }
         }
       }
@@ -302,7 +302,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           if (currentStart < otherEnd && currentEnd > otherStart) {
             const otherTime = `${formatTime(otherBooking.start_at)}-${formatTime(new Date(otherEnd).toISOString())}`
             const roleText = isDriverInOther ? '駕駛' : '教練'
-            conflicts.push(`與 ${otherBooking.contact_name} (${otherTime} ${roleText}) 衝突`)
+            conflicts.push(`與 ${getDisplayContactName(otherBooking)} (${otherTime} ${roleText}) 衝突`)
           }
         }
       }

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
+import { getDisplayContactName } from '../utils/bookingFormat'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { useResponsive } from '../hooks/useResponsive'
 import { isFacility } from '../utils/facility'
@@ -294,7 +295,7 @@ export function EditBookingDialog({
       // TEXT 格式查詢，直接字符串比較
       const { data: existingBookings, error: checkError} = await supabase
         .from('bookings')
-        .select('id, start_at, duration_min, contact_name')
+        .select('id, start_at, duration_min, contact_name, booking_members(member_id, members:member_id(id, name, nickname))')
         .eq('boat_id', selectedBoatId)
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${startDate}T23:59:59`)
@@ -329,7 +330,8 @@ export function EditBookingDialog({
         // 檢查新預約是否在現有預約的接船時間內開始
         if (newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
           const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
-          setError(`與 ${existing.contact_name} 的預約衝突：${existing.contact_name} 在 ${existingEndTime} 結束，需要15分鐘接船時間。您的預約 ${startTime} 太接近了。`)
+          const displayName = getDisplayContactName(existing)
+          setError(`與 ${displayName} 的預約衝突：${displayName} 在 ${existingEndTime} 結束，需要15分鐘接船時間。您的預約 ${startTime} 太接近了。`)
           setLoading(false)
           return
         }
@@ -337,7 +339,8 @@ export function EditBookingDialog({
         // 檢查新預約結束時間是否會影響現有預約
         if (existingStartMinutes >= newEndMinutes && existingStartMinutes < newCleanupEndMinutes) {
           const newEndTime = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
-          setError(`與 ${existing.contact_name} 的預約衝突：您的預約 ${newEndTime} 結束，${existing.contact_name} ${existingTimeStr} 開始，需要15分鐘接船時間。`)
+          const displayName = getDisplayContactName(existing)
+          setError(`與 ${displayName} 的預約衝突：您的預約 ${newEndTime} 結束，${displayName} ${existingTimeStr} 開始，需要15分鐘接船時間。`)
           setLoading(false)
           return
         }
@@ -346,7 +349,8 @@ export function EditBookingDialog({
         if (!(newEndMinutes <= existingStartMinutes || newStartMinutes >= existingEndMinutes)) {
           const newEnd = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
           const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
-          setError(`與 ${existing.contact_name} 的預約時間重疊：您的時間 ${startTime}-${newEnd}，${existing.contact_name} 的時間 ${existingTimeStr}-${existingEndTime}`)
+          const displayName = getDisplayContactName(existing)
+          setError(`與 ${displayName} 的預約時間重疊：您的時間 ${startTime}-${newEnd}，${displayName} 的時間 ${existingTimeStr}-${existingEndTime}`)
           setLoading(false)
           return
         }
@@ -375,7 +379,7 @@ export function EditBookingDialog({
           const bookingIds = coachBookingIds.map(item => item.booking_id)
           const { data: coachBookings, error: bookingError } = await supabase
             .from('bookings')
-            .select('id, start_at, duration_min, contact_name')
+            .select('id, start_at, duration_min, contact_name, booking_members(member_id, members:member_id(id, name, nickname))')
             .in('id', bookingIds)
             .gte('start_at', `${startDate}T00:00:00`)
             .lte('start_at', `${startDate}T23:59:59`)
@@ -403,7 +407,7 @@ export function EditBookingDialog({
             // 檢查時間重疊
             if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
               const coach = coaches.find(c => c.id === coachId)
-              setError(`教練 ${coach?.name || '未知'} 在此時段已有其他預約（${coachBooking.contact_name}）`)
+              setError(`教練 ${coach?.name || '未知'} 在此時段已有其他預約（${getDisplayContactName(coachBooking)}）`)
               setLoading(false)
               return
             }

@@ -79,7 +79,7 @@ export function formatBookingsForLine(bookings: BookingFormatData[], title: stri
  * 如果有多個會員，用逗號分隔（但如果暱稱相同只顯示一個）
  * 如果有非會員，會從 contact_name 中提取並一併顯示
  */
-export function getDisplayContactName(booking: BookingWithMembers): string {
+export function getDisplayContactName(booking: any): string {
   // 如果有關聯的會員，優先顯示暱稱
   if (booking.booking_members && booking.booking_members.length > 0) {
     const memberDisplayNames = booking.booking_members
