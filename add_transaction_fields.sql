@@ -4,7 +4,7 @@
 
 -- 新增付款方式欄位
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_method TEXT;
-COMMENT ON COLUMN transactions.payment_method IS '付款方式：cash=現金, transfer=匯款, deduct_balance=扣儲值, g23_voucher=G23船券, g21_voucher=G21船券, designated_paid=指定課程（收費）, designated_free=指定課程（免費）';
+COMMENT ON COLUMN transactions.payment_method IS '付款方式：cash=現金, transfer=匯款, deduct_balance=扣儲值, g23_voucher=G23船券, g21_voucher=G21船券, designated_paid=指定課程（收費）, designated_free=指定課程（免費）, free_hours=贈送時數';
 
 -- 新增調整類型欄位
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS adjust_type TEXT;
