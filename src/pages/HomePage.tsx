@@ -21,7 +21,6 @@ export function HomePage({ user }: HomePageProps) {
   const menuItems = [
     {
       title: '今日預約',
-      subtitle: '唯讀模式',
       icon: '📅',
       link: '/coach-daily'
     },
