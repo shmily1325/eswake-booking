@@ -222,15 +222,27 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       const newCoachIds = field === 'coachIds' ? value : currentAssignment.coachIds
       const newDriverIds = field === 'driverIds' ? value : currentAssignment.driverIds
       
-      return {
-      ...prev,
-      [bookingId]: {
-          ...currentAssignment,
+      const newConflicts = (field === 'coachIds' || field === 'driverIds') 
+        ? checkConflictRealtime(bookingId, newCoachIds, newDriverIds) 
+        : currentAssignment.conflicts
+      
+      console.log('=== updateAssignment ===')
+      console.log('預約ID:', bookingId)
+      console.log('更新欄位:', field)
+      console.log('新值:', value)
+      console.log('新衝突:', newConflicts)
+      
+      const newAssignment = {
+        ...currentAssignment,
         [field]: value,
-          conflicts: (field === 'coachIds' || field === 'driverIds') 
-            ? checkConflictRealtime(bookingId, newCoachIds, newDriverIds) 
-            : currentAssignment.conflicts
+        conflicts: newConflicts
       }
+      
+      console.log('更新後的 assignment:', newAssignment)
+      
+      return {
+        ...prev,
+        [bookingId]: newAssignment
       }
     })
   }
