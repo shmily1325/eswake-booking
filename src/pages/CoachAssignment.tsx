@@ -3041,7 +3041,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           )}
                           
                           {/* 展開編輯：指定教練 */}
-                          {isEditing && (
+                          {isEditing && (() => {
+                            console.log('=== 渲染編輯區塊 ===')
+                            console.log('預約ID:', booking.id)
+                            console.log('assignment:', assignment)
+                            console.log('conflicts 長度:', assignment.conflicts.length)
+                            console.log('conflicts 內容:', assignment.conflicts)
+                            return (
                             <div style={{ 
                               marginTop: '12px',
                               paddingTop: '12px',
@@ -3118,11 +3124,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 </div>
                               )}
                             </div>
-                          )}
-                            </div>
-                          )
-                        })}
-                </div>
+                            )
+                          })()}
+                        </div>
+                      )
+                    })}
+                  </div>
               </div>
               )}
               
