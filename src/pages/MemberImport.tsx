@@ -33,6 +33,7 @@ export function MemberImport({ user }: MemberImportProps) {
   const [success, setSuccess] = useState('')
   const [preview, setPreview] = useState<ParsedMember[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -245,7 +246,7 @@ export function MemberImport({ user }: MemberImportProps) {
   }
 
   const downloadTemplate = () => {
-    const template = '姓名,暱稱,會員,會員開始日期,會員截止日,置板位號碼,置板截止日期,生日,電話,贈送時數,備註\n林敏,Ming,會員,2024-01-01,2055-12-31,,,1990-01-01,0986937619,120,會籍forever滑水滑到飽\n潘姵如,PJ,雙人會員,2024-01-01,2025-12-31,,,1985-05-15,0919318658,60,雙人會員範例\n小楊,楊翊/林楊翊,置板,2024-01-01,2025-12-31,25,2025-12-31,1992-08-20,,0,不知道姓什麼\nIngrid,Ingrid Chen,會員,2024-06-01,2026-06-01,,,1988-12-10,,30,\n'
+    const template = '姓名,暱稱,會員,會員開始日期,會員截止日,置板位號碼,置板截止日期,生日,電話,贈送時數,備註\n林敏,Ming,會員,2024-01-01,2055-12-31,,,1990-01-01,0986937619,0,\n楊翊,小楊,會員,2024-01-01,2025-12-31,25,2025-12-31,1992-08-20,,0,不知道姓什麼\nIngrid,Ingrid Lai,雙人會員,2024-06-01,2026-06-01,,,1988-12-10,,30,\n'
     const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -253,7 +254,8 @@ export function MemberImport({ user }: MemberImportProps) {
     link.click()
   }
 
-  const handleDeleteAllMembers = async () => {
+  // 方案1：只刪除沒有預約記錄的會員（保留有預約的會員）
+  const handleDeleteMembersWithoutBookings = async () => {
     setDeleting(true)
     setError('')
     setSuccess('')
@@ -274,56 +276,119 @@ export function MemberImport({ user }: MemberImportProps) {
       }
 
       // 檢查這些會員是否有預約記錄
-      const { data: bookingsData, error: bookingsError } = await supabase
+      const { data: membersWithBookings, error: memberBookingsError } = await supabase
         .from('bookings')
         .select('member_id')
         .in('member_id', allMembers.map(m => m.id))
-        .limit(1)
+
+      if (memberBookingsError) throw memberBookingsError
+
+      const memberIdsWithBookings = new Set(membersWithBookings?.map(b => b.member_id) || [])
+      const memberIdsWithoutBookings = allMembers
+        .filter(m => !memberIdsWithBookings.has(m.id))
+        .map(m => m.id)
+
+      if (memberIdsWithoutBookings.length === 0) {
+        setError('❌ 所有會員都有預約記錄，無會員可刪除')
+        setDeleting(false)
+        return
+      }
+
+      // 只刪除沒有預約記錄的會員
+      const { error: deleteError } = await supabase
+        .from('members')
+        .delete()
+        .in('id', memberIdsWithoutBookings)
+
+      if (deleteError) throw deleteError
+
+      setSuccess(`✅ 已刪除 ${memberIdsWithoutBookings.length} 位沒有預約記錄的會員。仍保留 ${memberIdsWithBookings.size} 位有預約記錄的會員。`)
+      setDeleteDialogOpen(false)
+    } catch (err: any) {
+      setError('刪除失敗: ' + err.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  // 方案2：完全清空所有會員和預約記錄（但保留船和教練）
+  const handleDeleteAllMembersAndBookings = async () => {
+    setDeleting(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      // 計算統計數據
+      const { data: allMembers } = await supabase
+        .from('members')
+        .select('id')
+        .eq('status', 'active')
+      
+      const { data: allBookings } = await supabase
+        .from('bookings')
+        .select('id')
+      
+      const { data: allBoards } = await supabase
+        .from('board_storage')
+        .select('id')
+      
+      const { data: allTimeOff } = await supabase
+        .from('coach_time_off')
+        .select('id')
+      
+      const { data: allAnnouncements } = await supabase
+        .from('daily_announcements')
+        .select('id')
+
+      // 1. 刪除每日公告（沒有外鍵依賴）
+      const { error: announcementError } = await supabase
+        .from('daily_announcements')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+
+      if (announcementError) throw announcementError
+
+      // 2. 刪除教練休假記錄（沒有外鍵依賴會員）
+      const { error: timeOffError } = await supabase
+        .from('coach_time_off')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+
+      if (timeOffError) throw timeOffError
+
+      // 3. 刪除所有置板記錄（因為有 member_id 外鍵）
+      const { error: boardError } = await supabase
+        .from('board_storage')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+
+      if (boardError) throw boardError
+
+      // 4. 刪除所有預約記錄
+      const { error: bookingsError } = await supabase
+        .from('bookings')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
 
       if (bookingsError) throw bookingsError
 
-      if (bookingsData && bookingsData.length > 0) {
-        // 有預約記錄的會員無法刪除，只能刪除沒有預約記錄的
-        const { data: membersWithBookings, error: memberBookingsError } = await supabase
-          .from('bookings')
-          .select('member_id')
-          .in('member_id', allMembers.map(m => m.id))
+      // 5. 最後刪除所有會員
+      const { error: membersError } = await supabase
+        .from('members')
+        .delete()
+        .eq('status', 'active')
 
-        if (memberBookingsError) throw memberBookingsError
+      if (membersError) throw membersError
 
-        const memberIdsWithBookings = new Set(membersWithBookings?.map(b => b.member_id) || [])
-        const memberIdsWithoutBookings = allMembers
-          .filter(m => !memberIdsWithBookings.has(m.id))
-          .map(m => m.id)
+      setSuccess(`✅ 已完全清空：
+• 會員：${allMembers?.length || 0} 位
+• 預約記錄：${allBookings?.length || 0} 筆
+• 置板記錄：${allBoards?.length || 0} 筆
+• 教練休假：${allTimeOff?.length || 0} 筆
+• 每日公告：${allAnnouncements?.length || 0} 筆
 
-        if (memberIdsWithoutBookings.length === 0) {
-          setError('❌ 無法清空：所有會員都有預約記錄。請先在「預約管理」中刪除相關預約，或使用「標記為無效」功能來隱藏會員。')
-          setDeleting(false)
-          return
-        }
-
-        // 只刪除沒有預約記錄的會員
-        const { error: deleteError } = await supabase
-          .from('members')
-          .delete()
-          .in('id', memberIdsWithoutBookings)
-
-        if (deleteError) throw deleteError
-
-        setSuccess(`✅ 已刪除 ${memberIdsWithoutBookings.length} 位沒有預約記錄的會員。仍有 ${memberIdsWithBookings.size} 位會員因有預約記錄而無法刪除。`)
-        setDeleteDialogOpen(false)
-      } else {
-        // 沒有預約記錄，可以安全刪除所有會員
-        const { error: deleteError } = await supabase
-          .from('members')
-          .delete()
-          .eq('status', 'active')
-
-        if (deleteError) throw deleteError
-
-        setSuccess(`✅ 已清空所有會員（共 ${allMembers.length} 位）！`)
-        setDeleteDialogOpen(false)
-      }
+✅ 船和教練資料已保留`)
+      setDeleteAllDialogOpen(false)
     } catch (err: any) {
       setError('清空失敗: ' + err.message)
     } finally {
@@ -381,25 +446,17 @@ export function MemberImport({ user }: MemberImportProps) {
               whiteSpace: 'pre'
             }}>
 姓名,暱稱,會員,會員開始日期,會員截止日,置板位號碼,置板截止日期,生日,電話,贈送時數,備註{'\n'}
-林敏,Ming,會員,2024-01-01,2055-12-31,,,1990-01-01,0986937619,120,會籍forever滑水滑到飽{'\n'}
-潘姵如,PJ,雙人會員,2024-01-01,2025-12-31,,,1985-05-15,0919318658,60,雙人會員範例{'\n'}
-小楊,楊翊/林楊翊,置板,2024-01-01,2025-12-31,25,2025-12-31,1992-08-20,,0,不知道姓什麼{'\n'}
-Ingrid,Ingrid Chen,會員,2024-06-01,2026-06-01,,,1988-12-10,,30,
+林敏,Ming,會員,2024-01-01,2055-12-31,,,1990-01-01,0986937619,0,{'\n'}
+楊翊,小楊,會員,2024-01-01,2025-12-31,25,2025-12-31,1992-08-20,,0,不知道姓什麼{'\n'}
+Ingrid,Ingrid Lai,雙人會員,2024-06-01,2026-06-01,,,1988-12-10,,30,
             </code>
                   <p style={{ margin: 0 }}>
-                    • <strong>姓名</strong>為必填，其他欄位選填<br/>
-                    • <strong>暱稱</strong>: 可輸入多個，用 / 或 + 分隔（例：阿明/辣個男人）<br/>
-                    • <strong>會員</strong>: 會員、雙人會員、置板（預設為會員）<br/>
-                    • <strong>會員開始日期</strong>: 格式為 <code style={{ background: '#fff3cd', padding: '2px 6px', borderRadius: '3px' }}>YYYY-MM-DD</code>（例：2024-01-01）<br/>
-                    • <strong>會員截止日</strong>: 格式為 <code style={{ background: '#fff3cd', padding: '2px 6px', borderRadius: '3px' }}>YYYY-MM-DD</code>（例：2025-12-31）<br/>
-                    • <strong>置板位號碼</strong>: 1-145 之間的數字（置板會員專用）<br/>
-                    • <strong>置板截止日期</strong>: 格式為 <code style={{ background: '#fff3cd', padding: '2px 6px', borderRadius: '3px' }}>YYYY-MM-DD</code><br/>
-                    • <strong>生日</strong>: 格式為 <code style={{ background: '#fff3cd', padding: '2px 6px', borderRadius: '3px' }}>YYYY-MM-DD</code>（例：1990-01-01）<br/>
-                    • <strong>電話</strong>: 10位數字，09開頭（例：0912345678）<br/>
-                    • <strong>贈送時數</strong>: 分鐘數（數字），預設為 0<br/>
-                    • ⚠️ <strong>重要</strong>：所有日期必須使用 <code style={{ background: '#ffebee', padding: '2px 6px', borderRadius: '3px', fontWeight: 'bold' }}>YYYY-MM-DD</code> 格式（年-月-日）<br/>
-                    • 第一行可以是標題行（包含「姓名」會自動跳過）<br/>
-                    • 空欄位可以留空或使用逗號佔位
+                    • <strong>姓名</strong>為必填，其他選填<br/>
+                    • <strong>會員類型</strong>：會員、雙人會員、置板<br/>
+                    • <strong>日期格式</strong>：<code style={{ background: '#ffebee', padding: '2px 6px', borderRadius: '3px' }}>YYYY-MM-DD</code>（例：2024-01-01）<br/>
+                    • <strong>置板位號碼</strong>：1-145 之間的數字<br/>
+                    • <strong>電話</strong>：09 開頭 10 位數字<br/>
+                    • <strong>贈送時數</strong>：分鐘數（預設 0）
                   </p>
           </div>
           <button
@@ -691,30 +748,77 @@ Ingrid,Ingrid Chen,會員,2024-06-01,2026-06-01,,,1988-12-10,,30,
           borderLeft: `4px solid ${designSystem.colors.danger}`,
           marginTop: isMobile ? designSystem.spacing.xl : '40px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: designSystem.spacing.md }}>
-            <div>
-              <h3 style={{ ...getTextStyle('h3', isMobile), margin: 0, marginBottom: designSystem.spacing.xs, color: designSystem.colors.danger }}>
-                ⚠️ 危險操作
-              </h3>
-              <div style={{ ...getTextStyle('bodySmall', isMobile), color: '#c62828' }}>
-                永久刪除所有會員資料（無法復原）
+          <h3 style={{ ...getTextStyle('h3', isMobile), margin: 0, marginBottom: designSystem.spacing.md, color: designSystem.colors.danger }}>
+            ⚠️ 危險操作
+          </h3>
+          
+          {/* 方案1：只刪除沒有預約的會員 */}
+          <div style={{ 
+            marginBottom: designSystem.spacing.md,
+            padding: designSystem.spacing.md,
+            background: 'white',
+            borderRadius: designSystem.borderRadius.md,
+            border: '1px solid #ffcdd2'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: designSystem.spacing.md }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <div style={{ ...getTextStyle('bodyLarge', isMobile), fontWeight: '600', marginBottom: designSystem.spacing.xs, color: '#d32f2f' }}>
+                  🗑️ 刪除無預約會員
+                </div>
+                <div style={{ ...getTextStyle('bodySmall', isMobile), color: '#666', lineHeight: '1.6' }}>
+                  刪除沒有預約記錄的會員<br/>
+                  保留有預約記錄的會員<br/>
+                  <span style={{ color: '#999', fontSize: '12px' }}>（適合測試後清理測試資料）</span>
+                </div>
               </div>
+              <button
+                onClick={() => setDeleteDialogOpen(true)}
+                style={{
+                  ...getButtonStyle('danger', 'medium', isMobile),
+                  minWidth: isMobile ? '100%' : '140px'
+                }}
+              >
+                刪除無預約會員
+              </button>
             </div>
-            <button
-              onClick={() => setDeleteDialogOpen(true)}
-              style={{
-                ...getButtonStyle('danger', 'medium', isMobile)
-              }}
-            >
-              🗑️ 清空所有會員
-            </button>
+          </div>
+
+          {/* 方案2：完全清空 */}
+          <div style={{ 
+            padding: designSystem.spacing.md,
+            background: 'white',
+            borderRadius: designSystem.borderRadius.md,
+            border: '2px solid #d32f2f'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: designSystem.spacing.md }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <div style={{ ...getTextStyle('bodyLarge', isMobile), fontWeight: '600', marginBottom: designSystem.spacing.xs, color: '#b71c1c' }}>
+                  💥 完全清空
+                </div>
+                <div style={{ ...getTextStyle('bodySmall', isMobile), color: '#666', lineHeight: '1.6' }}>
+                  刪除所有會員、預約、置板、教練休假、公告<br/>
+                  保留船和教練資料<br/>
+                  <span style={{ color: '#d32f2f', fontSize: '12px', fontWeight: '600' }}>⚠️ 無法復原！</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeleteAllDialogOpen(true)}
+                style={{
+                  ...getButtonStyle('danger', 'medium', isMobile),
+                  background: '#b71c1c',
+                  minWidth: isMobile ? '100%' : '140px'
+                }}
+              >
+                完全清空
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       <Footer />
 
-      {/* 清空確認對話框 */}
+      {/* 對話框1：刪除無預約會員 */}
       {deleteDialogOpen && (
         <div style={{
           position: 'fixed',
@@ -732,16 +836,20 @@ Ingrid,Ingrid Chen,會員,2024-06-01,2026-06-01,,,1988-12-10,,30,
           <div style={{
             background: 'white',
             borderRadius: designSystem.borderRadius.lg,
-            maxWidth: '400px',
+            maxWidth: '450px',
             width: '100%',
             padding: designSystem.spacing.xl
           }}>
             <h2 style={{ ...getTextStyle('h2', isMobile), margin: 0, marginBottom: designSystem.spacing.md, color: designSystem.colors.danger }}>
-              ⚠️ 確認清空所有會員
+              🗑️ 確認刪除無預約會員
             </h2>
-            <p style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: designSystem.spacing.xl }}>
-              此操作會<strong>永久刪除</strong>所有會員資料。<br/>
-              此操作<strong>無法復原</strong>，請確認是否繼續？
+            <p style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: designSystem.spacing.xl, lineHeight: '1.6' }}>
+              此操作會：<br/>
+              • <strong>刪除</strong>沒有預約記錄的會員<br/>
+              • <strong>保留</strong>有預約記錄的會員<br/>
+              • <strong>保留</strong>所有預約記錄<br/>
+              <br/>
+              <span style={{ color: designSystem.colors.danger }}>此操作<strong>無法復原</strong>，請確認是否繼續？</span>
             </p>
             <div style={{ display: 'flex', gap: designSystem.spacing.md }}>
               <button
@@ -757,7 +865,7 @@ Ingrid,Ingrid Chen,會員,2024-06-01,2026-06-01,,,1988-12-10,,30,
                 取消
               </button>
               <button
-                onClick={handleDeleteAllMembers}
+                onClick={handleDeleteMembersWithoutBookings}
                 disabled={deleting}
                 style={{
                   ...getButtonStyle('danger', 'medium', isMobile),
@@ -766,7 +874,76 @@ Ingrid,Ingrid Chen,會員,2024-06-01,2026-06-01,,,1988-12-10,,30,
                   cursor: deleting ? 'not-allowed' : 'pointer'
                 }}
               >
-                {deleting ? '清空中...' : '確認清空'}
+                {deleting ? '刪除中...' : '確認刪除'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 對話框2：完全清空 */}
+      {deleteAllDialogOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: designSystem.spacing.xl
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: designSystem.borderRadius.lg,
+            maxWidth: '450px',
+            width: '100%',
+            padding: designSystem.spacing.xl,
+            border: '3px solid #d32f2f'
+          }}>
+            <h2 style={{ ...getTextStyle('h2', isMobile), margin: 0, marginBottom: designSystem.spacing.md, color: '#b71c1c' }}>
+              💥 確認完全清空
+            </h2>
+            <p style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: designSystem.spacing.xl, lineHeight: '1.6' }}>
+              此操作會：<br/>
+              • <strong style={{ color: '#d32f2f' }}>刪除所有會員</strong>（無論是否有預約）<br/>
+              • <strong style={{ color: '#d32f2f' }}>刪除所有預約記錄</strong><br/>
+              • <strong style={{ color: '#d32f2f' }}>刪除所有置板記錄</strong><br/>
+              • <strong style={{ color: '#d32f2f' }}>刪除所有教練休假</strong><br/>
+              • <strong style={{ color: '#d32f2f' }}>刪除所有每日公告</strong><br/>
+              • <strong style={{ color: '#4caf50' }}>保留船資料</strong><br/>
+              • <strong style={{ color: '#4caf50' }}>保留教練資料</strong><br/>
+              <br/>
+              <span style={{ color: '#b71c1c', fontWeight: 'bold', fontSize: '15px' }}>⚠️ 此操作<strong>無法復原</strong>！<br/>確定要繼續嗎？</span>
+            </p>
+            <div style={{ display: 'flex', gap: designSystem.spacing.md }}>
+              <button
+                onClick={() => setDeleteAllDialogOpen(false)}
+                disabled={deleting}
+                style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
+                  flex: 1,
+                  opacity: deleting ? 0.5 : 1,
+                  cursor: deleting ? 'not-allowed' : 'pointer'
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDeleteAllMembersAndBookings}
+                disabled={deleting}
+                style={{
+                  ...getButtonStyle('danger', 'medium', isMobile),
+                  background: '#b71c1c',
+                  flex: 1,
+                  opacity: deleting ? 0.5 : 1,
+                  cursor: deleting ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {deleting ? '清空中...' : '確認完全清空'}
               </button>
             </div>
           </div>

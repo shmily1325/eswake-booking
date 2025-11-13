@@ -117,7 +117,7 @@ export function DailyAnnouncement() {
       supabase
         .from('members')
         .select('name, nickname, membership_end_date, status')
-        .eq('status', 'active')
+        // .eq('status', 'active') // 暫時移除 status 過濾來測試
         .not('membership_end_date', 'is', null)
         .order('membership_end_date', { ascending: true }),
       
@@ -156,12 +156,29 @@ export function DailyAnnouncement() {
       console.log('會籍查詢原始結果:', membershipResult.data)
       console.log('查詢日期範圍:', ninetyDaysAgoStr, '到', thirtyDaysLaterStr)
       
+      // 檢查第一筆資料格式
+      if (membershipResult.data.length > 0) {
+        const sample = membershipResult.data[0]
+        console.log('第一筆會員資料:', {
+          name: sample.name,
+          membership_end_date: sample.membership_end_date,
+          status: sample.status,
+          type: typeof sample.membership_end_date
+        })
+      }
+      
       // 在客戶端過濾日期範圍（因為資料庫TEXT類型的日期比較不準確）
       const filtered = membershipResult.data.filter((m: any) => {
         if (!m.membership_end_date) return false
         const endDate = m.membership_end_date
-        // 比較字符串格式的日期 (YYYY-MM-DD)
-        return endDate >= ninetyDaysAgoStr && endDate <= thirtyDaysLaterStr
+        const inRange = endDate >= ninetyDaysAgoStr && endDate <= thirtyDaysLaterStr
+        
+        // 調試：只打印前3筆
+        if (membershipResult.data.indexOf(m) < 3) {
+          console.log(`過濾測試 [${m.name}]: 到期=${endDate}, 範圍=${ninetyDaysAgoStr}~${thirtyDaysLaterStr}, 通過=${inRange}`)
+        }
+        
+        return inRange
       }).slice(0, 20) // 限制最多20筆
       
       console.log('過濾後結果:', filtered)
