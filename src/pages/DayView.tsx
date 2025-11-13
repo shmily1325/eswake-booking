@@ -1309,13 +1309,9 @@ export function DayView({ user }: DayViewProps) {
                           }}>
                             {(() => {
                               const start = new Date(booking.start_at)
-                              const isFacility = booking.boats?.name === '彈簧床'
                               const actualEndTime = new Date(start.getTime() + booking.duration_min * 60000)
-                              const pickupEndTime = new Date(start.getTime() + (booking.duration_min + 15) * 60000)
                               const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
-                              const endTime = isFacility 
-                                ? `${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
-                                : `${String(pickupEndTime.getHours()).padStart(2, '0')}:${String(pickupEndTime.getMinutes()).padStart(2, '0')}`
+                              const endTime = `${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
                               
                               return `${startTime} - ${endTime}`
                             })()}

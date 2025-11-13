@@ -851,7 +851,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               />
             </div>
 
-            {/* 視圖切換按鈕（手機版不顯示，固定使用分組視圖） */}
+            {/* 視圖切換按鈕（已移除，只保留列表視圖） */}
+            {/* 
             {!isMobile && (
             <div style={{ 
               display: 'flex', 
@@ -917,6 +918,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               </button>
             </div>
             )}
+            */}
 
             <button
               onClick={handleSaveAll}
@@ -1490,8 +1492,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           </div>
         )}
 
-        {/* 船隻時間軸視圖 - CSS Grid 按比例顯示 */}
-        {!loading && bookings.length > 0 && viewMode === 'boat-timeline' && (() => {
+        {/* 船隻時間軸視圖 - 已移除（只保留列表視圖） */}
+        {false && !loading && bookings.length > 0 && viewMode === 'boat-timeline' && (() => {
           // 時間軸配置：4:00 - 20:00（從4:00開始計算但只顯示5:00+），15分鐘為單位
           const START_HOUR = 4
           const END_HOUR = 20
@@ -2083,8 +2085,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           )
         })()}
 
-        {/* 教練時間軸視圖 - CSS Grid 按比例顯示 */}
-        {!loading && bookings.length > 0 && viewMode === 'coach-timeline' && (() => {
+        {/* 教練時間軸視圖 - 已移除（只保留列表視圖） */}
+        {false && !loading && bookings.length > 0 && viewMode === 'coach-timeline' && (() => {
           // 時間軸配置：與船隻時間軸相同
           const START_HOUR = 4
           const END_HOUR = 20
@@ -2697,7 +2699,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           )
         })()}
 
-        {/* 教練分組視圖 - 按教練分組顯示預約 */}
+        {/* 教練分組視圖（列表視圖）- 按教練分組顯示預約 */}
         {!loading && bookings.length > 0 && viewMode === 'coach-grouping' && (() => {
           // 準備數據：將預約按教練和駕駛分組
           const coachGroups: Record<string, typeof bookings> = {}
@@ -3004,7 +3006,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               marginTop: '6px',
                               color: '#555',
                               fontSize: '12px',
-                              fontWeight: '500'
+                                    fontWeight: '500'
                             }}>
                               🎓 {coaches.filter(c => assignment.coachIds.includes(c.id)).map(c => c.name).join(', ')}
                             </div>

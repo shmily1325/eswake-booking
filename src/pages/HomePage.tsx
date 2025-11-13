@@ -28,8 +28,7 @@ export function HomePage({ user }: HomePageProps) {
     {
       title: '今日預約',
       icon: '📅',
-      link: '/coach-daily',
-      subtitle: '唯讀模式'
+      link: '/coach-daily'
     },
     {
       title: '預約表',
