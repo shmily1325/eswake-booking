@@ -170,12 +170,19 @@ export function DailyAnnouncement() {
       // 在客戶端過濾日期範圍（因為資料庫TEXT類型的日期比較不準確）
       const filtered = membershipResult.data.filter((m: any) => {
         if (!m.membership_end_date) return false
-        const endDate = m.membership_end_date
-        const inRange = endDate >= ninetyDaysAgoStr && endDate <= thirtyDaysLaterStr
+        
+        // 轉換日期格式：MM/DD/YYYY -> YYYY-MM-DD
+        let normalizedDate = m.membership_end_date
+        if (m.membership_end_date.includes('/')) {
+          const [month, day, year] = m.membership_end_date.split('/')
+          normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+        }
+        
+        const inRange = normalizedDate >= ninetyDaysAgoStr && normalizedDate <= thirtyDaysLaterStr
         
         // 調試：只打印前3筆
         if (membershipResult.data.indexOf(m) < 3) {
-          console.log(`過濾測試 [${m.name}]: 到期=${endDate}, 範圍=${ninetyDaysAgoStr}~${thirtyDaysLaterStr}, 通過=${inRange}`)
+          console.log(`過濾測試 [${m.name}]: 原始=${m.membership_end_date}, 轉換後=${normalizedDate}, 範圍=${ninetyDaysAgoStr}~${thirtyDaysLaterStr}, 通過=${inRange}`)
         }
         
         return inRange
