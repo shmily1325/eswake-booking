@@ -18,11 +18,18 @@ export function HomePage({ user }: HomePageProps) {
   const isV2Environment = supabaseUrl.includes('v2') || supabaseUrl.includes('staging')
   const userIsAdmin = isAdmin(user)
   
-  const menuItems = [
+  const menuItems: Array<{
+    title: string
+    icon: string
+    link: string
+    subtitle?: string
+    isAdmin?: boolean
+  }> = [
     {
       title: '今日預約',
       icon: '📅',
-      link: '/coach-daily'
+      link: '/coach-daily',
+      subtitle: '唯讀模式'
     },
     {
       title: '預約表',
