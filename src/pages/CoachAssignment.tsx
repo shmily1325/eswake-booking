@@ -2812,7 +2812,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* 渲染每個有預約的教練 */}
+              {/* 渲染每個有預約的教練 - 網格布局 */}
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(380px, 1fr))',
+                gap: '16px'
+              }}>
               {coaches.map(coach => {
                 const coachBookings = coachGroups[coach.id] || []
                 if (coachBookings.length === 0) return null // 沒有班次的教練不顯示
@@ -2821,24 +2826,34 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   <div key={coach.id} style={{
                     background: 'white',
                     borderRadius: '12px',
-                    padding: isMobile ? '16px' : '20px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    border: '1px solid #f0f0f0'
+                    border: '1px solid #f0f0f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    maxHeight: isMobile ? 'none' : '650px',
+                    overflow: 'hidden'
                   }}>
                     {/* 教練名稱標題 */}
                               <div style={{
                       fontSize: isMobile ? '16px' : '18px',
                       fontWeight: '600',
-                      marginBottom: '12px',
                       color: designSystem.colors.text.primary,
                       borderBottom: `2px solid ${designSystem.colors.primary}`,
-                      paddingBottom: '8px'
+                      paddingBottom: '8px',
+                      padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
+                      flexShrink: 0
                     }}>
                       {coach.name} ({coachBookings.length})
                     </div>
                     
                     {/* 該教練的所有預約 */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '6px',
+                      overflowY: 'auto',
+                      padding: isMobile ? '0 16px 16px' : '0 20px 20px'
+                    }}>
                       {coachBookings.map(booking => {
                         const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
                         const isPreAssigned = booking.currentCoaches.includes(coach.id) || booking.currentDrivers.includes(coach.id)
@@ -2851,10 +2866,48 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             background: '#f8f9fa',
                             borderRadius: '6px',
                             borderLeft: `3px solid ${booking.boats?.color || '#ccc'}`,
-                            fontSize: isMobile ? '13px' : '14px'
+                            fontSize: isMobile ? '13px' : '14px',
+                            position: 'relative'
                           }}>
+                            {/* 移除按鈕 - 教練：只有排班指定的可移除；駕駛：都可移除 */}
+                            {(isDriver && !isCoach) || (isCoach && !isPreAssigned) ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  // 移除該教練的指定
+                                  if (isCoach) {
+                                    toggleCoach(booking.id, coach.id)
+                                  }
+                                  // 如果是駕駛任務，移除駕駛指定
+                                  if (isDriver && !isCoach) {
+                                    toggleDriver(booking.id, coach.id)
+                                  }
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  top: '6px',
+                                  right: '6px',
+                                  background: '#fff',
+                                  border: '1px solid #ddd',
+                                  borderRadius: '4px',
+                                  width: '20px',
+                                  height: '20px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  color: '#999',
+                                  padding: 0
+                                }}
+                                title="移除指定"
+                              >
+                                ×
+                              </button>
+                            ) : null}
+                            
                             {/* 預約資訊 */}
-                            <div style={{ fontWeight: '600', color: '#2c3e50' }}>
+                            <div style={{ fontWeight: '600', color: '#2c3e50', paddingRight: '24px' }}>
                               {formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}
                               {isPreAssigned && <span style={{ 
                                 marginLeft: '6px',
@@ -2893,28 +2946,46 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   </div>
                 )
               })}
+              </div>
+              
+              {/* 底部區塊：未指定 | 需要駕駛（並排網格）*/}
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(380px, 1fr))',
+                gap: '16px'
+              }}>
               
               {/* 未指定區塊 */}
               {unassignedBookings.length > 0 && (
                 <div style={{
                   background: 'white',
-                  borderRadius: designSystem.borderRadius.md,
-                  padding: isMobile ? '12px' : '16px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                  border: '2px solid #ff9800'
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  border: '2px solid #ff9800',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  maxHeight: isMobile ? 'none' : '650px',
+                  overflow: 'hidden'
                 }}>
                   <div style={{
                     fontSize: isMobile ? '16px' : '18px',
                     fontWeight: '600',
-                    marginBottom: '12px',
                     color: '#ff9800',
                     borderBottom: '2px solid #ff9800',
-                    paddingBottom: '8px'
+                    paddingBottom: '8px',
+                    padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
+                    flexShrink: 0
                   }}>
                     未指定 ({unassignedBookings.length})
                   </div>
                   
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '6px',
+                    overflowY: 'auto',
+                    padding: isMobile ? '0 16px 16px' : '0 20px 20px'
+                  }}>
                     {unassignedBookings.map(booking => {
                       const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
                       const isEditing = editingBookingId === booking.id
@@ -2959,7 +3030,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               paddingTop: '12px',
                               borderTop: '1px solid #e0e0e0'
                             }}>
-                              <div style={{ marginBottom: '8px' }}>
+                              <div style={{ marginBottom: '12px' }}>
                                 <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
                                   指定教練：
                                 </div>
@@ -2990,6 +3061,32 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 </div>
                               </div>
                               
+                              {/* 排班註解 */}
+                              <div style={{ marginBottom: '12px' }}>
+                                <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
+                                  排班註解：
+                                </div>
+                                <textarea
+                                  value={assignment.notes}
+                                  onChange={(e) => {
+                                    e.stopPropagation()
+                                    updateAssignment(booking.id, 'notes', e.target.value)
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  placeholder="輸入排班註解..."
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    resize: 'vertical',
+                                    minHeight: '60px',
+                                    fontFamily: 'inherit'
+                                  }}
+                                />
+                              </div>
+                              
                               {/* 衝突提示 */}
                               {assignment.conflicts.length > 0 && (
                                 <div style={{ 
@@ -3016,23 +3113,33 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               {needsDriverBookings.length > 0 && (
                 <div style={{
                   background: 'white',
-                  borderRadius: designSystem.borderRadius.md,
-                  padding: isMobile ? '12px' : '16px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                  border: '2px solid #2196F3'
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  border: '2px solid #2196F3',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  maxHeight: isMobile ? 'none' : '650px',
+                  overflow: 'hidden'
                 }}>
                   <div style={{
                     fontSize: isMobile ? '16px' : '18px',
                     fontWeight: '600',
-                    marginBottom: '12px',
                     color: '#2196F3',
                     borderBottom: '2px solid #2196F3',
-                    paddingBottom: '8px'
+                    paddingBottom: '8px',
+                    padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
+                    flexShrink: 0
                   }}>
                     ⛵ 需要駕駛 ({needsDriverBookings.length})
                   </div>
                   
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '6px',
+                    overflowY: 'auto',
+                    padding: isMobile ? '0 16px 16px' : '0 20px 20px'
+                  }}>
                     {needsDriverBookings.map(booking => {
                       const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
                       const isEditing = editingBookingId === booking.id
@@ -3072,7 +3179,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                               paddingTop: '12px',
                               borderTop: '1px solid #e0e0e0'
                             }}>
-                              <div style={{ marginBottom: '8px' }}>
+                              <div style={{ marginBottom: '12px' }}>
                                 <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
                                   指定駕駛：
                                 </div>
@@ -3103,6 +3210,32 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 </div>
                               </div>
                               
+                              {/* 排班註解 */}
+                              <div style={{ marginBottom: '12px' }}>
+                                <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
+                                  排班註解：
+                                </div>
+                                <textarea
+                                  value={assignment.notes}
+                                  onChange={(e) => {
+                                    e.stopPropagation()
+                                    updateAssignment(booking.id, 'notes', e.target.value)
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  placeholder="輸入排班註解..."
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    resize: 'vertical',
+                                    minHeight: '60px',
+                                    fontFamily: 'inherit'
+                                  }}
+                                />
+                              </div>
+                              
                               {/* 衝突提示 */}
                               {assignment.conflicts.length > 0 && (
                                 <div style={{ 
@@ -3124,6 +3257,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           )
         })()}
