@@ -225,7 +225,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       const newDriverIds = field === 'driverIds' ? value : currentAssignment.driverIds
       
       const newConflicts = (field === 'coachIds' || field === 'driverIds') 
-        ? checkConflictRealtime(bookingId, newCoachIds, newDriverIds) 
+        ? checkConflictRealtime(bookingId, newCoachIds, newDriverIds, prev) 
         : currentAssignment.conflicts
       
       return {
@@ -240,7 +240,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   }
 
   // 即時檢查教練/駕駛衝突
-  const checkConflictRealtime = (bookingId: number, newCoachIds: string[], newDriverIds: string[]): string[] => {
+  const checkConflictRealtime = (bookingId: number, newCoachIds: string[], newDriverIds: string[], currentAssignments: typeof assignments): string[] => {
     const conflicts: string[] = []
     const currentBooking = bookings.find(b => b.id === bookingId)
     if (!currentBooking) return conflicts
@@ -259,7 +259,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       for (const otherBooking of bookings) {
         if (otherBooking.id === bookingId) continue
 
-        const otherAssignment = assignments[otherBooking.id]
+        const otherAssignment = currentAssignments[otherBooking.id]
         if (!otherAssignment) continue
 
         // 檢查這個人是否在其他預約中（作為教練或駕駛）
@@ -287,7 +287,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       for (const otherBooking of bookings) {
         if (otherBooking.id === bookingId) continue
 
-        const otherAssignment = assignments[otherBooking.id]
+        const otherAssignment = currentAssignments[otherBooking.id]
         if (!otherAssignment) continue
 
         // 檢查這個人是否在其他預約中（作為教練或駕駛）
