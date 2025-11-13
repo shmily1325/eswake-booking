@@ -71,11 +71,18 @@ export function DailyAnnouncement() {
     const today = getLocalDateString()
     const todayMD = today.substring(5) // MM-DD
     
-    // 計算7天後的日期
-    const [year, month, day] = today.split('-').map(Number)
-    const sevenDaysLater = new Date(year, month - 1, day)
-    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7)
-    const sevenDaysLaterStr = `${sevenDaysLater.getFullYear()}-${String(sevenDaysLater.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysLater.getDate()).padStart(2, '0')}`
+    // 計算30天後的日期（顯示即將到期的）
+    const todayDate = new Date()
+    const thirtyDaysLater = new Date(todayDate)
+    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30)
+    const thirtyDaysLaterStr = `${thirtyDaysLater.getFullYear()}-${String(thirtyDaysLater.getMonth() + 1).padStart(2, '0')}-${String(thirtyDaysLater.getDate()).padStart(2, '0')}`
+    
+    // 計算90天前的日期（顯示最近過期的）
+    const ninetyDaysAgo = new Date(todayDate)
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+    const ninetyDaysAgoStr = `${ninetyDaysAgo.getFullYear()}-${String(ninetyDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(ninetyDaysAgo.getDate()).padStart(2, '0')}`
+    
+    console.log('查詢日期範圍:', ninetyDaysAgoStr, '到', thirtyDaysLaterStr)
 
     // 並行執行所有查詢（重要：從串行改為並行，大幅提升速度）
     const [
@@ -99,31 +106,28 @@ export function DailyAnnouncement() {
         .lte('start_date', today)
         .or(`end_date.gte.${today},end_date.is.null`),
       
-      // 獲取今日生日會員
+      // 獲取所有有生日的會員（在客戶端過濾今日生日）
       supabase
         .from('members')
-        .select('name, nickname')
+        .select('name, nickname, birthday')
         .eq('status', 'active')
-        .like('birthday', `%${todayMD}%`)
-        .limit(5),
+        .not('birthday', 'is', null),
       
-      // 獲取即將到期或已過期的會籍（顯示所有已過期和未來30天內到期的）
+      // 獲取所有有會籍截止日的會員（在客戶端過濾）
       supabase
         .from('members')
         .select('name, nickname, membership_end_date, status')
+        .eq('status', 'active')
         .not('membership_end_date', 'is', null)
-        .lte('membership_end_date', sevenDaysLaterStr)
-        .order('membership_end_date', { ascending: true })
-        .limit(20),
+        .order('membership_end_date', { ascending: true }),
       
-      // 獲取即將到期的置板（7天內）
+      // 獲取所有有到期日的置板（在客戶端過濾）
       supabase
         .from('board_storage')
-        .select('slot_number, members(name), expires_at')
-        .gte('expires_at', today)
-        .lte('expires_at', sevenDaysLaterStr)
+        .select('slot_number, members(name, nickname), expires_at')
+        .eq('status', 'active')
+        .not('expires_at', 'is', null)
         .order('expires_at', { ascending: true })
-        .limit(10)
     ])
 
     // 處理查詢結果
@@ -133,16 +137,64 @@ export function DailyAnnouncement() {
       setTimeOffCoaches(timeOffResult.data.map((item: any) => item.coaches?.name).filter(Boolean))
     }
     
-    if (birthdayResult.data) setBirthdays(birthdayResult.data)
+    if (birthdayResult.data) {
+      console.log('生日查詢原始結果:', birthdayResult.data)
+      
+      // 在客戶端過濾：只顯示今日生日（匹配 MM-DD）
+      const filtered = birthdayResult.data.filter((member: any) => {
+        if (!member.birthday) return false
+        // 提取月-日部分 (YYYY-MM-DD -> MM-DD)
+        const birthdayMD = member.birthday.substring(5) // 取 MM-DD 部分
+        return birthdayMD === todayMD
+      }).slice(0, 5) // 限制最多5筆
+      
+      console.log('今日生日篩選:', todayMD, '過濾後結果:', filtered)
+      setBirthdays(filtered)
+    }
     
-    if (membershipResult.data) setExpiringMemberships(membershipResult.data)
+    if (membershipResult.data) {
+      console.log('會籍查詢原始結果:', membershipResult.data)
+      console.log('查詢日期範圍:', ninetyDaysAgoStr, '到', thirtyDaysLaterStr)
+      
+      // 在客戶端過濾日期範圍（因為資料庫TEXT類型的日期比較不準確）
+      const filtered = membershipResult.data.filter((m: any) => {
+        if (!m.membership_end_date) return false
+        const endDate = m.membership_end_date
+        // 比較字符串格式的日期 (YYYY-MM-DD)
+        return endDate >= ninetyDaysAgoStr && endDate <= thirtyDaysLaterStr
+      }).slice(0, 20) // 限制最多20筆
+      
+      console.log('過濾後結果:', filtered)
+      // 檢查暱稱資料
+      filtered.forEach((m: any) => {
+        console.log(`會員: ${m.name}, 暱稱: "${m.nickname}", 使用: ${m.nickname || m.name}`)
+      })
+      setExpiringMemberships(filtered)
+    }
     
     if (boardResult.data) {
-      const boardList = boardResult.data.map((b: any) => ({
-        slot_number: b.slot_number,
-        member_name: b.members?.name || '未知',
-        expires_at: b.expires_at
-      }))
+      console.log('置板查詢原始結果:', boardResult.data)
+      
+      // 在客戶端過濾：只顯示今天到30天內到期的置板
+      const filtered = boardResult.data.filter((b: any) => {
+        if (!b.expires_at) return false
+        // 比較字符串格式的日期 (YYYY-MM-DD)
+        return b.expires_at >= today && b.expires_at <= thirtyDaysLaterStr
+      })
+      
+      const boardList = filtered.map((b: any) => {
+        const member = b.members
+        const displayName = member 
+          ? ((member.nickname && member.nickname.trim()) || member.name)
+          : '未知'
+        return {
+          slot_number: b.slot_number,
+          member_name: displayName,
+          expires_at: b.expires_at
+        }
+      }).slice(0, 10) // 限制最多10筆
+      
+      console.log('置板過濾後結果:', boardList)
       setExpiringBoards(boardList)
     }
   }
@@ -214,29 +266,37 @@ export function DailyAnnouncement() {
 
           {birthdays.length > 0 && (
             <div style={{ marginBottom: '6px' }}>
-              🎂 今日壽星：{birthdays.map(b => b.name).join('、')}
+              🎂 今日壽星：{birthdays.map(b => (b.nickname && b.nickname.trim()) || b.name).join('、')}
             </div>
           )}
 
           {expiringMemberships.length > 0 && (
             <div style={{ marginBottom: '6px' }}>
-              <div style={{ marginBottom: '3px' }}>⚠️ 會籍即將到期：</div>
-              {expiringMemberships.map((m, idx) => (
-                <div key={idx} style={{ 
-                  paddingLeft: '20px', 
-                  fontSize: isMobile ? '12px' : '13px',
-                  color: '#666',
-                  marginBottom: '2px'
-                }}>
-                  {m.name} ({formatDate(m.membership_end_date)})
-                </div>
-              ))}
+              <div style={{ marginBottom: '3px' }}>⚠️ 會籍到期提醒（過去90天～未來30天）：</div>
+              {expiringMemberships.map((m, idx) => {
+                const today = getLocalDateString()
+                const isExpired = m.membership_end_date < today
+                const color = isExpired ? '#d32f2f' : '#666'
+                
+                return (
+                  <div key={idx} style={{ 
+                    paddingLeft: '20px', 
+                    fontSize: isMobile ? '12px' : '13px',
+                    color: color,
+                    marginBottom: '2px',
+                    fontWeight: isExpired ? '600' : 'normal'
+                  }}>
+                    {(m.nickname && m.nickname.trim()) || m.name} ({formatDate(m.membership_end_date)})
+                    {isExpired && ' ⚠️已過期'}
+                  </div>
+                )
+              })}
             </div>
           )}
 
           {expiringBoards.length > 0 && (
             <div>
-              <div style={{ marginBottom: '3px' }}>🏄 置板即將到期：</div>
+              <div style={{ marginBottom: '3px' }}>🏄 置板到期提醒（30天內）：</div>
               {expiringBoards.map((b, idx) => (
                 <div key={idx} style={{ 
                   paddingLeft: '20px', 
