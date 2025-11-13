@@ -2742,10 +2742,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               return
             }
             
-            // 如果沒有指定教練也沒有指定駕駛，加到需要駕駛區塊
-            if (assignment.coachIds.length === 0 && assignment.driverIds.length === 0) {
+            // 如果需要駕駛但沒有指定駕駛，或沒有指定教練也沒有指定駕駛，加到需要駕駛區塊
+            if ((booking.requires_driver && assignment.driverIds.length === 0) || 
+                (assignment.coachIds.length === 0 && assignment.driverIds.length === 0)) {
               needsDriverBookings.push(booking)
-              return
             }
             
             // 如果有指定教練且沒有衝突，加到對應教練的組
@@ -2851,16 +2851,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             fontSize: isMobile ? '13px' : '14px',
                             position: 'relative'
                           }}>
-                            {/* 移除按鈕 */}
+                            {/* 移除按鈕 - 只有駕駛可以移除 */}
+                            {isDriver && !isCoach && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                if (isCoach) {
-                                  toggleCoach(booking.id, coach.id)
-                                }
-                                if (isDriver && !isCoach) {
-                                  toggleDriver(booking.id, coach.id)
-                                }
+                                    toggleDriver(booking.id, coach.id)
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.background = '#ffebee'
@@ -2886,10 +2882,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 zIndex: 10,
                                 fontWeight: 'bold'
                               }}
-                              title="移除指定"
+                              title="移除駕駛"
                             >
                               ×
                                 </button>
+                            )}
                             
                             {/* 預約資訊 */}
                             <div style={{ paddingRight: '24px' }}>
