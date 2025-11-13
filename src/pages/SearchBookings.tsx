@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { useResponsive } from '../hooks/useResponsive'
 import { Footer } from '../components/Footer'
-import { formatBookingsForLine } from '../utils/bookingFormat'
+import { formatBookingsForLine, getDisplayContactName } from '../utils/bookingFormat'
 
 interface Booking {
   id: number
@@ -18,7 +18,7 @@ interface Booking {
   coaches: { id: string; name: string }[]
   booking_members?: Array<{
     member_id: string
-    members: { id: string; name: string } | null
+    members: { id: string; name: string; nickname?: string | null } | null
   }>
 }
 
@@ -135,7 +135,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
       // 步驟 2: 查詢這些預約的詳細資訊
       let query = supabase
         .from('bookings')
-        .select('*, boats:boat_id (name, color), booking_members(member_id, members(id, name))')
+        .select('*, boats:boat_id (name, color), booking_members(member_id, members(id, name, nickname))')
         .in('id', Array.from(bookingIds))
       
       // 固定為未來預約
@@ -326,7 +326,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                   <div
                     key={member.id}
                     onClick={() => {
-                      setSearchName(member.name)
+                      setSearchName(member.nickname || member.name)
                       setSelectedMemberId(member.id)
                       setShowMemberDropdown(false)
                     }}
@@ -339,12 +339,13 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                   >
-                    <div style={{ fontWeight: '500', color: '#333' }}>{member.name}</div>
-                    {(member.nickname || member.phone) && (
+                    <div style={{ fontWeight: '500', color: '#333' }}>
+                      {member.nickname || member.name}
+                      {member.nickname && <span style={{ color: '#999', fontWeight: 'normal', marginLeft: '6px' }}>({member.name})</span>}
+                    </div>
+                    {member.phone && (
                       <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
-                        {member.nickname && `${member.nickname}`}
-                        {member.nickname && member.phone && ' · '}
-                        {member.phone}
+                        📱 {member.phone}
                       </div>
                     )}
                   </div>
@@ -497,28 +498,7 @@ export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps
                           color: '#000',
                           marginBottom: '4px',
                         }}>
-                          {(() => {
-                            // 優先顯示匹配搜尋條件的名稱
-                            const searchLower = searchName.toLowerCase().trim()
-                            
-                            // 檢查 contact_name 是否匹配
-                            if (booking.contact_name && booking.contact_name.toLowerCase().includes(searchLower)) {
-                              return booking.contact_name
-                            }
-                            
-                            // 檢查會員名稱是否匹配
-                            const matchedMembers = booking.booking_members
-                              ?.filter(bm => bm.members?.name.toLowerCase().includes(searchLower))
-                              .map(bm => bm.members?.name)
-                              .filter(Boolean) || []
-                            
-                            if (matchedMembers.length > 0) {
-                              return matchedMembers.join(', ')
-                            }
-                            
-                            // 如果都不匹配，顯示所有聯絡人（不應該發生）
-                            return booking.booking_members?.map(bm => bm.members?.name).filter(Boolean).join(', ') || booking.contact_name || '無聯絡人'
-                          })()}
+                          {getDisplayContactName(booking)}
                         </div>
                         <div style={{
                           fontSize: '14px',
