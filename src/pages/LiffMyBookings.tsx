@@ -18,7 +18,16 @@ interface Member {
   name: string
   nickname: string | null
   phone: string | null
+  balance?: number
+  designated_lesson_minutes?: number
+  boat_voucher_g23_minutes?: number
+  boat_voucher_g21_minutes?: number
+  free_hours?: number
+  free_hours_used?: number
+  free_hours_notes?: string | null
 }
+
+type TabType = 'bookings' | 'balance' | 'cancel'
 
 export function LiffMyBookings() {
   const [loading, setLoading] = useState(true)
@@ -29,6 +38,7 @@ export function LiffMyBookings() {
   const [showBindingForm, setShowBindingForm] = useState(false)
   const [phone, setPhone] = useState('')
   const [binding, setBinding] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabType>('bookings')
 
   useEffect(() => {
     initLiff()
@@ -71,7 +81,7 @@ export function LiffMyBookings() {
       // 查詢 line_bindings 表
       const { data: binding } = await supabase
         .from('line_bindings')
-        .select('member_id, members(id, name, nickname, phone)')
+        .select('member_id, members(id, name, nickname, phone, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes, free_hours, free_hours_used, free_hours_notes)')
         .eq('line_user_id', userId)
         .eq('status', 'active')
         .single()
@@ -88,6 +98,26 @@ export function LiffMyBookings() {
       console.error('查詢綁定失敗:', err)
       setShowBindingForm(true)
       setLoading(false)
+    }
+  }
+
+  const handleCancelBooking = async (bookingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', bookingId)
+
+      if (error) throw error
+
+      alert('✅ 預約已取消')
+      // 重新載入預約列表
+      if (member) {
+        await loadBookings(member.id)
+      }
+    } catch (err: any) {
+      console.error('取消預約失敗:', err)
+      alert('❌ 取消預約失敗：' + err.message)
     }
   }
 
@@ -505,9 +535,74 @@ export function LiffMyBookings() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div style={{
+        display: 'flex',
+        background: 'white',
+        borderBottom: '1px solid #e0e0e0',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10
+      }}>
+        <button
+          onClick={() => setActiveTab('bookings')}
+          style={{
+            flex: 1,
+            padding: '16px',
+            border: 'none',
+            background: 'transparent',
+            color: activeTab === 'bookings' ? '#5a5a5a' : '#999',
+            fontWeight: activeTab === 'bookings' ? '600' : '400',
+            fontSize: '15px',
+            cursor: 'pointer',
+            borderBottom: activeTab === 'bookings' ? '3px solid #5a5a5a' : '3px solid transparent',
+            transition: 'all 0.2s'
+          }}
+        >
+          📅 我的預約
+        </button>
+        <button
+          onClick={() => setActiveTab('balance')}
+          style={{
+            flex: 1,
+            padding: '16px',
+            border: 'none',
+            background: 'transparent',
+            color: activeTab === 'balance' ? '#5a5a5a' : '#999',
+            fontWeight: activeTab === 'balance' ? '600' : '400',
+            fontSize: '15px',
+            cursor: 'pointer',
+            borderBottom: activeTab === 'balance' ? '3px solid #5a5a5a' : '3px solid transparent',
+            transition: 'all 0.2s'
+          }}
+        >
+          💰 查儲值
+        </button>
+        <button
+          onClick={() => setActiveTab('cancel')}
+          style={{
+            flex: 1,
+            padding: '16px',
+            border: 'none',
+            background: 'transparent',
+            color: activeTab === 'cancel' ? '#5a5a5a' : '#999',
+            fontWeight: activeTab === 'cancel' ? '600' : '400',
+            fontSize: '15px',
+            cursor: 'pointer',
+            borderBottom: activeTab === 'cancel' ? '3px solid #5a5a5a' : '3px solid transparent',
+            transition: 'all 0.2s'
+          }}
+        >
+          ❌ 取消預約
+        </button>
+      </div>
+
       {/* Content */}
       <div style={{ padding: '16px' }}>
-        {bookings.length === 0 ? (
+        {/* Tab: 我的預約 */}
+        {activeTab === 'bookings' && (
+          <>
+            {bookings.length === 0 ? (
           <div style={{
             background: 'white',
             padding: '60px 20px',
@@ -652,6 +747,270 @@ export function LiffMyBookings() {
                 </div>
               )
             })}
+          </div>
+        )}
+          </>
+        )}
+
+        {/* Tab: 查儲值 */}
+        {activeTab === 'balance' && member && (
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+          }}>
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#333',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              💰 我的儲值
+            </h2>
+
+            {/* 餘額 */}
+            <div style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '12px',
+              padding: '24px',
+              marginBottom: '16px',
+              color: 'white'
+            }}>
+              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
+                帳戶餘額
+              </div>
+              <div style={{ fontSize: '36px', fontWeight: '700' }}>
+                ${member.balance || 0}
+              </div>
+            </div>
+
+            {/* 其他項目 */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              {/* 指定課時數 */}
+              <div style={{
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                padding: '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                    指定課時數
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
+                    {member.designated_lesson_minutes || 0} 分鐘
+                  </div>
+                </div>
+                <div style={{ fontSize: '32px' }}>🎓</div>
+              </div>
+
+              {/* 船券 G23 */}
+              <div style={{
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                padding: '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                    船券 G23
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
+                    {member.boat_voucher_g23_minutes || 0} 分鐘
+                  </div>
+                </div>
+                <div style={{ fontSize: '32px' }}>🚤</div>
+              </div>
+
+              {/* 船券 G21 */}
+              <div style={{
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                padding: '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                    船券 G21
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
+                    {member.boat_voucher_g21_minutes || 0} 分鐘
+                  </div>
+                </div>
+                <div style={{ fontSize: '32px' }}>🚤</div>
+              </div>
+
+              {/* 贈送時數 */}
+              <div style={{
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                padding: '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                    贈送時數
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
+                    {member.free_hours || 0} 分鐘
+                    {(member.free_hours_used || 0) > 0 && (
+                      <span style={{ fontSize: '14px', color: '#999', marginLeft: '8px' }}>
+                        (已使用 {member.free_hours_used} 分鐘)
+                      </span>
+                    )}
+                  </div>
+                  {member.free_hours_notes && (
+                    <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                      {member.free_hours_notes}
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: '32px' }}>🎁</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab: 取消預約 */}
+        {activeTab === 'cancel' && (
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+          }}>
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#333',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              ❌ 取消預約
+            </h2>
+            
+            <div style={{
+              background: '#fff3cd',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '20px',
+              border: '1px solid #ffc107'
+            }}>
+              <div style={{ fontSize: '14px', color: '#856404', lineHeight: '1.6' }}>
+                ⚠️ 注意事項：<br/>
+                • 只能取消 24 小時後的預約<br/>
+                • 取消後無法復原<br/>
+                • 如有疑問請聯絡我們
+              </div>
+            </div>
+
+            {bookings.length === 0 ? (
+              <div style={{
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
+                <div style={{ fontSize: '18px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+                  目前沒有可取消的預約
+                </div>
+                <div style={{ fontSize: '14px', color: '#999' }}>
+                  您目前沒有即將到來的預約
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                {bookings.map((booking) => {
+                  const startTime = new Date(booking.start_at)
+                  const now = new Date()
+                  const hoursDiff = (startTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+                  const canCancel = hoursDiff > 24
+                  const coachNames = booking.coaches.map(c => c.name).join('、') || '未指定'
+                  
+                  return (
+                    <div
+                      key={booking.id}
+                      style={{
+                        background: canCancel ? 'white' : '#f5f5f5',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        border: `2px solid ${canCancel ? booking.boats?.color || '#1976d2' : '#e0e0e0'}`,
+                        opacity: canCancel ? 1 : 0.6
+                      }}
+                    >
+                      <div style={{
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        color: '#333',
+                        marginBottom: '8px'
+                      }}>
+                        {formatDate(booking.start_at)}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
+                        🚤 {booking.boats?.name} · 🎓 {coachNames}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
+                        ⏱️ {booking.duration_min} 分鐘
+                      </div>
+                      {canCancel ? (
+                        <button
+                          onClick={() => {
+                            if (confirm(`確定要取消這個預約嗎？\n\n${formatDate(booking.start_at)}\n${booking.boats?.name}\n\n此操作無法復原！`)) {
+                              handleCancelBooking(booking.id)
+                            }
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            background: '#dc3545',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          取消此預約
+                        </button>
+                      ) : (
+                        <div style={{
+                          padding: '12px',
+                          background: '#f8f9fa',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          color: '#999',
+                          textAlign: 'center'
+                        }}>
+                          ⏰ 距離預約時間少於 24 小時，無法線上取消
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
