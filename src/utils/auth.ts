@@ -6,7 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
 // 🔧 權限檢查開關（開發時可以設為 false 暫時關閉）
-export const ENABLE_PERMISSION_CHECK = true
+export const ENABLE_PERMISSION_CHECK = false
 
 // 超級管理員（硬編碼，始終有權限）
 export const SUPER_ADMINS = [
