@@ -170,15 +170,22 @@ export function LiffMyBookings() {
 
     setBinding(true)
     try {
-      // 查詢會員
-      const { data: memberData, error: memberError } = await supabase
+      // 清理電話號碼：移除所有非數字字符
+      const cleanPhone = phone.replace(/\D/g, '')
+      
+      // 查詢會員：嘗試多種格式
+      const { data: allMembers } = await supabase
         .from('members')
         .select('id, name, nickname, phone')
-        .eq('phone', phone)
         .eq('status', 'active')
-        .single()
+      
+      // 尋找匹配的會員（比對清理後的電話號碼）
+      const memberData = allMembers?.find(m => {
+        const dbPhone = m.phone?.replace(/\D/g, '') || ''
+        return dbPhone === cleanPhone
+      })
 
-      if (memberError || !memberData) {
+      if (!memberData) {
         alert('❌ 找不到此電話號碼的會員資料')
         setBinding(false)
         return
