@@ -3072,22 +3072,28 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             }}>
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
-                                  指定教練：
+                                  指定駕駛：
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {coaches.map(c => {
-                                    const isSelected = currentAssignment.coachIds.includes(c.id)
+                                    const isSelected = currentAssignment.driverIds.includes(c.id)
+                                    // 检查是否是教练（包括原本的教练和新分配的教练）
+                                    const isCoach = currentAssignment.coachIds.includes(c.id) || booking.currentCoaches?.includes(c.id)
                                     const isAvailable = isCoachAvailable(c.id, booking.id)
-                                    const isUnavailable = !isAvailable && !isSelected
+                                    const isUnavailable = (!isAvailable || isCoach) && !isSelected
                                     return (
                                       <button
                                         key={c.id}
                                         onClick={(e) => {
                                           e.stopPropagation()
+                                          if (isCoach) {
+                                            alert('⚠️ 教練不能同時是駕駛，請選擇其他人')
+                                            return
+                                          }
                                           if (isUnavailable) {
                                             return
                                           }
-                                          toggleCoach(booking.id, c.id)
+                                          toggleDriver(booking.id, c.id)
                                         }}
                                         style={{
                                           padding: '6px 12px',
