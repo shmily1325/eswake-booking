@@ -313,6 +313,40 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     return conflicts
   }
 
+  // 檢查教練在特定預約時間是否可用（用於禁用按鈕）
+  const isCoachAvailable = (coachId: string, bookingId: number): boolean => {
+    const currentBooking = bookings.find(b => b.id === bookingId)
+    if (!currentBooking) return true
+
+    const currentStart = new Date(currentBooking.start_at)
+    const cleanupTime = isFacility(currentBooking.boats?.name) ? 0 : 15
+    const currentEnd = new Date(currentStart.getTime() + (currentBooking.duration_min + cleanupTime) * 60000)
+
+    // 檢查這個教練是否在其他預約中有時間衝突
+    for (const otherBooking of bookings) {
+      if (otherBooking.id === bookingId) continue
+
+      const otherAssignment = assignments[otherBooking.id]
+      if (!otherAssignment) continue
+
+      // 檢查這個教練是否在其他預約中（作為教練或駕駛）
+      const isInOther = otherAssignment.coachIds.includes(coachId) || otherAssignment.driverIds.includes(coachId)
+      
+      if (isInOther) {
+        const otherStart = new Date(otherBooking.start_at)
+        const otherCleanupTime = isFacility(otherBooking.boats?.name) ? 0 : 15
+        const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
+
+        // 如果時間有重疊，則不可用
+        if (currentStart < otherEnd && currentEnd > otherStart) {
+          return false
+        }
+      }
+    }
+
+    return true
+  }
+
   const handleSaveAll = async () => {
     setSaving(true)
     setError('')
@@ -1301,11 +1335,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           </option>
                           {coaches
                             .filter(coach => !assignment.coachIds.includes(coach.id))
-                            .map(coach => (
-                              <option key={coach.id} value={coach.id}>
-                                {coach.name}
-                              </option>
-                            ))}
+                            .map(coach => {
+                              const available = isCoachAvailable(coach.id, booking.id)
+                              return (
+                                <option 
+                                  key={coach.id} 
+                                  value={coach.id}
+                                  disabled={!available}
+                                  style={!available ? { color: '#999', background: '#f5f5f5' } : {}}
+                                >
+                                  {coach.name}{!available ? ' ⚠️ 時間衝突' : ''}
+                                </option>
+                              )
+                            })}
                         </select>
                         
                         {/* 即時衝突警告 */}
@@ -1436,11 +1478,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                           </option>
                           {coaches
                             .filter(coach => !assignment.driverIds?.includes(coach.id))
-                            .map(coach => (
-                              <option key={coach.id} value={coach.id}>
-                                {coach.name}
-                              </option>
-                            ))}
+                            .map(coach => {
+                              const available = isCoachAvailable(coach.id, booking.id)
+                              return (
+                                <option 
+                                  key={coach.id} 
+                                  value={coach.id}
+                                  disabled={!available}
+                                  style={!available ? { color: '#999', background: '#f5f5f5' } : {}}
+                                >
+                                  {coach.name}{!available ? ' ⚠️ 時間衝突' : ''}
+                                </option>
+                              )
+                            })}
                         </select>
                       </td>
                       <td style={{ padding: '8px 12px', borderRight: '1px solid #e0e0e0' }}>
