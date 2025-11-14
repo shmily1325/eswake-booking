@@ -9,6 +9,10 @@
     {
       "path": "/api/backup-to-drive",
       "schedule": "20 19 * * *"
+    },
+    {
+      "path": "/api/line-reminder",
+      "schedule": "0 19 * * *"
     }
   ]
 }

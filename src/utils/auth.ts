@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 // 超級管理員（硬編碼，始終有權限）
 export const SUPER_ADMINS = [
   'callumbao1122@gmail.com',
-  //'pjpan0511@gmail.com',
+  'pjpan0511@gmail.com',
   'minlin1325@gmail.com'
 ]
 

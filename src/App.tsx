@@ -25,11 +25,23 @@ import { LineSettings } from './pages/LineSettings'
 import { CoachDailyView } from './pages/CoachDailyView'
 import { PermissionManagement } from './pages/PermissionManagement'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
+import { LiffMyBookings } from './pages/LiffMyBookings'
 import { LoginPage } from './components/LoginPage'
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // LIFF 頁面不需要系統登入驗證
+  if (window.location.pathname === '/liff') {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/liff" element={<LiffMyBookings />} />
+        </Routes>
+      </BrowserRouter>
+    )
+  }
 
   useEffect(() => {
     // Check current session
