@@ -169,6 +169,12 @@ export function NewBookingDialog({
       // 過濾掉休假的教練
       const availableCoaches = (coachesResult.data || []).filter(c => !timeOffCoachIds.has(c.id))
       
+      // 調試輸出
+      console.log('📅 預約日期:', bookingDate)
+      console.log('👨‍🏫 所有教練:', coachesResult.data?.length)
+      console.log('🚫 休假教練:', timeOffResult.data)
+      console.log('✅ 可用教練:', availableCoaches.length, availableCoaches.map(c => c.name))
+      
       setCoaches(availableCoaches)
     } catch (error) {
       console.error('Error in fetchCoaches:', error)
