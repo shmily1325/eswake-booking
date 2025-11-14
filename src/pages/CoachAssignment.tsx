@@ -3077,16 +3077,17 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {coaches.map(c => {
                                     const isSelected = currentAssignment.driverIds.includes(c.id)
-                                    // 检查是否是教练（包括原本的教练和新分配的教练）
-                                    const isCoach = currentAssignment.coachIds.includes(c.id) || booking.currentCoaches?.includes(c.id)
+                                    // 檢查該人是否在當前排班中被選為這個預約的教練
+                                    const isCoachInThisBooking = currentAssignment.coachIds.includes(c.id)
+                                    // 檢查該人在其他預約是否有時間衝突（作為教練或駕駛）
                                     const isAvailable = isCoachAvailable(c.id, booking.id)
-                                    const isUnavailable = (!isAvailable || isCoach) && !isSelected
+                                    const isUnavailable = (!isAvailable || isCoachInThisBooking) && !isSelected
                                     return (
                                       <button
                                         key={c.id}
                                         onClick={(e) => {
                                           e.stopPropagation()
-                                          if (isCoach) {
+                                          if (isCoachInThisBooking) {
                                             alert('⚠️ 教練不能同時是駕駛，請選擇其他人')
                                             return
                                           }
