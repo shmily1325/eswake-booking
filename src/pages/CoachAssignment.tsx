@@ -815,11 +815,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       return 'NaN:NaN - NaN:NaN'
     }
     
-    // 彈簧床不需要接船時間
-    const isFacility = boatName === '彈簧床'
-    const totalDuration = isFacility ? durationMin : durationMin + 15
-    
-    const endDate = new Date(startDate.getTime() + totalDuration * 60000)
+    // 只顯示預約時間（不含整理船時間）
+    // 但衝突檢查邏輯仍會包含整理船時間
+    const endDate = new Date(startDate.getTime() + durationMin * 60000)
     const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
     return `${startTime} - ${endTime}`
   }
