@@ -287,14 +287,11 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
     const boat = boats.find(b => b.id === booking.boat_id)
     if (!boat) return null
 
-    const isFacility = boat.name === '彈簧床'
+    // 只顯示預約時間（不含整理船時間）
     const start = new Date(booking.start_at)
-    const actualEndTime = new Date(start.getTime() + booking.duration_min * 60000)
-    const pickupEndTime = new Date(start.getTime() + (booking.duration_min + 15) * 60000)
+    const endTime = new Date(start.getTime() + booking.duration_min * 60000)
     const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
-    const endTime = isFacility 
-      ? `${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
-      : `${String(pickupEndTime.getHours()).padStart(2, '0')}:${String(pickupEndTime.getMinutes()).padStart(2, '0')}`
+    const endTimeStr = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
 
     // 判斷當前教練在這個預約中的角色
     const isCoach = booking.coaches?.some(c => c.id === selectedCoachId)
@@ -359,7 +356,7 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
           marginBottom: '8px',
           textAlign: 'left',
         }}>
-          {startTime} - {endTime}
+          {startTime} - {endTimeStr}
         </div>
 
         {/* 第三行：聯絡人姓名 */}
@@ -413,14 +410,11 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
     // 如果有另外指定駕駛就顯示
     const driverNames = booking.drivers?.map(d => d.name).join(', ') || ''
     
-    const isFacility = booking.boats?.name === '彈簧床'
+    // 只顯示預約時間（不含整理船時間）
     const start = new Date(booking.start_at)
-    const actualEndTime = new Date(start.getTime() + booking.duration_min * 60000)
-    const pickupEndTime = new Date(start.getTime() + (booking.duration_min + 15) * 60000)
+    const endTime = new Date(start.getTime() + booking.duration_min * 60000)
     const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
-    const endTime = isFacility 
-      ? `${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
-      : `${String(pickupEndTime.getHours()).padStart(2, '0')}:${String(pickupEndTime.getMinutes()).padStart(2, '0')}`
+    const endTimeStr = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
 
     return (
       <td
@@ -430,7 +424,7 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
       >
         {/* 時間範圍 */}
         <div style={bookingCardContentStyles.timeRange(isMobile)}>
-          {startTime} - {endTime}
+          {startTime} - {endTimeStr}
         </div>
 
         {/* 聯絡人姓名 */}
