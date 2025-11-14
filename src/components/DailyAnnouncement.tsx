@@ -61,7 +61,10 @@ export function DailyAnnouncement() {
     if (announcementResult.data) setAnnouncements(announcementResult.data)
     
     if (timeOffResult.data) {
-      setTimeOffCoaches(timeOffResult.data.map((item: any) => item.coaches?.name).filter(Boolean))
+      // 使用 Set 去除重複的教練名字
+      const coachNames = timeOffResult.data.map((item: any) => item.coaches?.name).filter(Boolean)
+      const uniqueCoachNames = Array.from(new Set(coachNames))
+      setTimeOffCoaches(uniqueCoachNames)
     }
     
     if (birthdayResult.data) {
