@@ -26,7 +26,6 @@ import { CoachDailyView } from './pages/CoachDailyView'
 import { PermissionManagement } from './pages/PermissionManagement'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { LoginPage } from './components/LoginPage'
-import { useCheckAllowedUser, ENABLE_PERMISSION_CHECK } from './utils/auth'
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -47,10 +46,7 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // 檢查白名單
-  const { isAllowed, checking } = useCheckAllowedUser(user)
-
-  if (loading || checking) {
+  if (loading) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -67,11 +63,6 @@ function App() {
 
   if (!user) {
     return <LoginPage onLoginSuccess={setUser} />
-  }
-
-  // 如果啟用權限檢查且用戶不在白名單中
-  if (ENABLE_PERMISSION_CHECK && !isAllowed) {
-    return <UnauthorizedPage user={user} />
   }
 
   return (

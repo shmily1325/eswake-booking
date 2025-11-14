@@ -4,7 +4,7 @@ import { UserMenu } from '../components/UserMenu'
 import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
-import { isAdmin, ENABLE_PERMISSION_CHECK } from '../utils/auth'
+import { isAdmin } from '../utils/auth'
 
 interface HomePageProps {
   user: User

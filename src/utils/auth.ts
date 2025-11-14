@@ -1,17 +1,15 @@
 // 權限管理工具
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
-// 🔧 權限檢查開關（開發時可以設為 false 暫時關閉）
-export const ENABLE_PERMISSION_CHECK = false;
 
 // 超級管理員（硬編碼，始終有權限）
 export const SUPER_ADMINS = [
   'callumbao1122@gmail.com',
-  'pjpan0511@gmail.com',
+  //'pjpan0511@gmail.com',
   'minlin1325@gmail.com'
 ]
 
@@ -128,51 +126,11 @@ export async function isAdminAsync(user: User | null): Promise<boolean> {
 }
 
 /**
- * Hook: 檢查用戶是否在白名單中
+ * Hook: 檢查用戶是否在白名單中（已廢棄，始終返回 true）
  */
-export function useCheckAllowedUser(user: User | null) {
-  const [isAllowed, setIsAllowed] = useState<boolean | null>(null)
-  const [checking, setChecking] = useState(true)
-  
-  useEffect(() => {
-    async function check() {
-      if (!ENABLE_PERMISSION_CHECK) {
-        setIsAllowed(true)
-        setChecking(false)
-        return
-      }
-      
-      if (!user) {
-        setIsAllowed(false)
-        setChecking(false)
-        return
-      }
-      
-      try {
-        // 添加超時控制
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Query timeout')), 5000)
-        )
-        
-        const allowed = await Promise.race([
-          isAllowedUser(user),
-          timeoutPromise
-        ]) as boolean
-        
-        setIsAllowed(allowed)
-      } catch (error) {
-        console.error('權限檢查失敗，默認允許:', error)
-        // 查詢失敗時默認允許，避免白屏
-        setIsAllowed(true)
-      } finally {
-        setChecking(false)
-      }
-    }
-    
-    check()
-  }, [user])
-  
-  return { isAllowed, checking }
+export function useCheckAllowedUser(_user: User | null) {
+  // 白名單檢查已關閉，所有登入用戶都允許訪問
+  return { isAllowed: true, checking: false }
 }
 
 /**
