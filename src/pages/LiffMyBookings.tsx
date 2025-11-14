@@ -43,6 +43,10 @@ export function LiffMyBookings() {
         return
       }
 
+      // 強制清除快取：添加版本號
+      const version = '20241114-001'
+      console.log('🚀 LIFF 版本:', version)
+
       await liff.init({ liffId })
 
       if (!liff.isLoggedIn()) {
@@ -359,6 +363,14 @@ export function LiffMyBookings() {
               margin: 0
             }}>
               首次使用需要綁定您的電話號碼
+            </p>
+            <p style={{
+              fontSize: '11px',
+              color: '#999',
+              margin: '8px 0 0',
+              fontFamily: 'monospace'
+            }}>
+              v20241114-001
             </p>
           </div>
 
