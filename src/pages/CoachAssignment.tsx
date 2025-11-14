@@ -102,7 +102,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           .from('coach_time_off')
           .select('coach_id')
           .lte('start_date', selectedDate)
-          .or(`end_date.gte.${selectedDate},end_date.is.null`)
+          .gte('end_date', selectedDate)
       ])
       
       if (coachesResult.error) {

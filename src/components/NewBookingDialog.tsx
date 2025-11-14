@@ -154,7 +154,7 @@ export function NewBookingDialog({
           .from('coach_time_off')
           .select('coach_id')
           .lte('start_date', bookingDate)
-          .or(`end_date.gte.${bookingDate},end_date.is.null`)
+          .gte('end_date', bookingDate)
       ])
       
       if (coachesResult.error) {
