@@ -803,7 +803,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   }
 
   // 格式化時間範圍（顯示開始和結束時間）
-  const formatTimeRange = (startAt: string, durationMin: number, boatName?: string) => {
+  const formatTimeRange = (startAt: string, durationMin: number, _boatName?: string) => {
     if (!startAt) {
       console.error('formatTimeRange: startAt is empty')
       return 'NaN:NaN - NaN:NaN'
@@ -3072,34 +3072,34 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             }}>
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
-                                  指定駕駛：
+                                  指定教練：
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {coaches.map(c => {
-                                    const isSelected = currentAssignment.driverIds.includes(c.id)
-                                    const isCoach = currentAssignment.coachIds.includes(c.id)
+                                    const isSelected = currentAssignment.coachIds.includes(c.id)
+                                    const isAvailable = isCoachAvailable(c.id, booking.id)
+                                    const isUnavailable = !isAvailable && !isSelected
                                     return (
                                       <button
                                         key={c.id}
                                         onClick={(e) => {
                                           e.stopPropagation()
-                                          if (isCoach) {
-                                            alert('⚠️ 教練不能同時是駕駛，請選擇其他人')
+                                          if (isUnavailable) {
                                             return
                                           }
-                                          toggleDriver(booking.id, c.id)
+                                          toggleCoach(booking.id, c.id)
                                         }}
                                         style={{
                                           padding: '6px 12px',
                                           borderRadius: '6px',
                                           border: isSelected ? 'none' : '1px solid #ddd',
-                                          background: isSelected ? '#ff9800' : isCoach ? '#f5f5f5' : 'white',
-                                          color: isSelected ? 'white' : isCoach ? '#ccc' : '#666',
+                                          background: isSelected ? '#ff9800' : isUnavailable ? '#f5f5f5' : 'white',
+                                          color: isSelected ? 'white' : isUnavailable ? '#ccc' : '#666',
                                           fontSize: '12px',
-                                          cursor: isCoach ? 'not-allowed' : 'pointer',
-                                          opacity: isCoach ? 0.5 : 1
+                                          cursor: isUnavailable ? 'not-allowed' : 'pointer',
+                                          opacity: isUnavailable ? 0.5 : 1
                                         }}
-                                        disabled={isCoach}
+                                        disabled={isUnavailable}
                                       >
                                         {c.name}
                                 </button>
