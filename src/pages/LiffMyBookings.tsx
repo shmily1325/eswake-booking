@@ -199,7 +199,8 @@ export function LiffMyBookings() {
       console.log('✅ 找到的會員:', memberData)
 
       if (!memberData) {
-        alert('❌ 找不到此電話號碼的會員資料\n請確認：\n1. 電話號碼正確\n2. 會員狀態為 active')
+        const debugInfo = `❌ 找不到會員資料\n\n📊 查詢統計：\n- 總會員數：${allMembers.length}\n- 輸入電話：${cleanPhone}\n- Active 會員：${allMembers.filter(m => m.status === 'active').length}\n\n請確認電話號碼正確`
+        alert(debugInfo)
         setBinding(false)
         return
       }
