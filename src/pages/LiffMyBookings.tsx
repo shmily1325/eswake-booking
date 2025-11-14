@@ -172,21 +172,34 @@ export function LiffMyBookings() {
     try {
       // 清理電話號碼：移除所有非數字字符
       const cleanPhone = phone.replace(/\D/g, '')
+      console.log('🔍 輸入的電話號碼:', phone)
+      console.log('🔍 清理後的電話:', cleanPhone)
       
       // 查詢會員：嘗試多種格式
-      const { data: allMembers } = await supabase
+      const { data: allMembers, error: queryError } = await supabase
         .from('members')
-        .select('id, name, nickname, phone')
-        .eq('status', 'active')
+        .select('id, name, nickname, phone, status')
+      
+      console.log('📊 查詢結果:', allMembers)
+      console.log('❌ 查詢錯誤:', queryError)
+      
+      if (!allMembers || allMembers.length === 0) {
+        alert('❌ 無法查詢會員資料，請稍後再試')
+        setBinding(false)
+        return
+      }
       
       // 尋找匹配的會員（比對清理後的電話號碼）
-      const memberData = allMembers?.find(m => {
+      const memberData = allMembers.find(m => {
         const dbPhone = m.phone?.replace(/\D/g, '') || ''
-        return dbPhone === cleanPhone
+        console.log(`🔍 比對: ${m.name} - DB: ${m.phone} (${dbPhone}) vs 輸入: ${cleanPhone}`)
+        return dbPhone === cleanPhone && m.status === 'active'
       })
 
+      console.log('✅ 找到的會員:', memberData)
+
       if (!memberData) {
-        alert('❌ 找不到此電話號碼的會員資料')
+        alert('❌ 找不到此電話號碼的會員資料\n請確認：\n1. 電話號碼正確\n2. 會員狀態為 active')
         setBinding(false)
         return
       }
