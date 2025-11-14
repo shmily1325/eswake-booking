@@ -6,7 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
 // 🔧 權限檢查開關（開發時可以設為 false 暫時關閉）
-export const ENABLE_PERMISSION_CHECK = false
+export const ENABLE_PERMISSION_CHECK = false;
 
 // 超級管理員（硬編碼，始終有權限）
 export const SUPER_ADMINS = [
@@ -92,20 +92,13 @@ export function clearPermissionCache() {
 }
 
 /**
- * 檢查用戶是否為管理員（同步版本，使用緩存）
+ * 檢查用戶是否為管理員（僅檢查硬編碼列表，不查詢資料庫）
  */
 export function isAdmin(user: User | null): boolean {
   if (!user || !user.email) return false
   
-  // 超級管理員始終有權限
-  if (SUPER_ADMINS.includes(user.email)) return true
-  
-  // 使用緩存檢查
-  if (adminEmailsCache) {
-    return adminEmailsCache.includes(user.email)
-  }
-  
-  return false
+  // 只檢查硬編碼的管理員列表，不查詢資料庫
+  return SUPER_ADMINS.includes(user.email)
 }
 
 /**
@@ -183,31 +176,18 @@ export function useCheckAllowedUser(user: User | null) {
 }
 
 /**
- * Hook: 要求管理員權限，否則重定向
+ * Hook: 要求管理員權限，否則重定向（僅檢查硬編碼列表，不查詢資料庫）
  */
 export function useRequireAdmin(user: User | null) {
   const navigate = useNavigate()
-  const [userIsAdmin, setUserIsAdmin] = useState(false)
+  const userIsAdmin = isAdmin(user)
   
   useEffect(() => {
-    async function check() {
-      // 如果權限檢查被關閉，直接跳過
-      if (!ENABLE_PERMISSION_CHECK) {
-        setUserIsAdmin(true)
-        return
-      }
-      
-      const adminStatus = await isAdminAsync(user)
-      setUserIsAdmin(adminStatus)
-      
-      if (!adminStatus) {
-        alert('您沒有權限訪問此頁面')
-        navigate('/unauthorized')
-      }
+    if (!userIsAdmin) {
+      alert('您沒有權限訪問此頁面')
+      navigate('/')
     }
-    
-    check()
-  }, [user, navigate])
+  }, [userIsAdmin, navigate])
   
   return userIsAdmin
 }

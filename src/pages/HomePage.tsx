@@ -125,7 +125,7 @@ export function HomePage({ user }: HomePageProps) {
           marginBottom: '30px'
         }}>
           {menuItems
-            .filter(item => !item.isAdmin || !ENABLE_PERMISSION_CHECK || userIsAdmin)
+            .filter(item => !item.isAdmin || userIsAdmin)
             .map((item, index) => (
             <Link
               key={index}
