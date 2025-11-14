@@ -673,6 +673,9 @@ export function EditBookingDialog({
           maxWidth: '500px',
           color: '#000',
           margin: 'auto',
+          position: 'relative',
+          maxHeight: '90vh',
+          overflowY: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1452,21 +1455,34 @@ export function EditBookingDialog({
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '12px', 
+            marginTop: '20px',
+            position: 'relative',
+            zIndex: 10,
+          }}>
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleDelete()
+              }}
               disabled={loading}
               style={{
-                padding: '14px 20px',
+                padding: '14px 16px',
                 borderRadius: '8px',
                 border: 'none',
                 backgroundColor: loading ? '#ccc' : '#dc3545',
                 color: 'white',
-                fontSize: '16px',
-                fontWeight: '500',
+                fontSize: '15px',
+                fontWeight: '600',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
+                minWidth: '70px',
+                position: 'relative',
+                zIndex: 10,
               }}
             >
               刪除
@@ -1511,10 +1527,10 @@ export function EditBookingDialog({
             </button>
           </div>
         </form>
-        {isMobile && (
-          <div style={{ height: '80px' }} />
-        )}
       </div>
+      {isMobile && (
+        <div style={{ height: '20px' }} />
+      )}
     </div>
   )
 }
