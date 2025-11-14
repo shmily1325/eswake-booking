@@ -155,9 +155,25 @@ export function useCheckAllowedUser(user: User | null) {
         return
       }
       
-      const allowed = await isAllowedUser(user)
-      setIsAllowed(allowed)
-      setChecking(false)
+      try {
+        // 添加超時控制
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Query timeout')), 5000)
+        )
+        
+        const allowed = await Promise.race([
+          isAllowedUser(user),
+          timeoutPromise
+        ]) as boolean
+        
+        setIsAllowed(allowed)
+      } catch (error) {
+        console.error('權限檢查失敗，默認允許:', error)
+        // 查詢失敗時默認允許，避免白屏
+        setIsAllowed(true)
+      } finally {
+        setChecking(false)
+      }
     }
     
     check()
