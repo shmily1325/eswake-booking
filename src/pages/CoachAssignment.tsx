@@ -1071,9 +1071,27 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             .sort((a, b) => b[1].count - a[1].count)
           
           // 未排班統計
+          // 規則：需要駕駛但沒有駕駛 or 沒有駕駛且沒有教練
           const unassignedCount = bookings.filter(booking => {
             const assignment = assignments[booking.id]
-            return !assignment || assignment.coachIds.length === 0
+            const isFacilityBooking = isFacility(booking.boats?.name || '')
+            
+            if (!assignment) {
+              return true
+            }
+            
+            const hasCoach = assignment.coachIds.length > 0
+            const hasDriver = assignment.driverIds.length > 0
+            const needsDriver = !isFacilityBooking
+            
+            // 未排班條件：
+            // 1. 需要駕駛但沒有駕駛
+            // 2. 沒有駕駛且沒有教練
+            if (!hasDriver && (needsDriver || !hasCoach)) {
+              return true
+            }
+            
+            return false
           }).length
           
           return (
