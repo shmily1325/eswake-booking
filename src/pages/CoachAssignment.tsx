@@ -365,7 +365,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       }
       
       if (missingPersonnel.length > 0) {
-        setError('⚠️ 以下預約尚未指定教練或駕駛：\n\n' + missingPersonnel.map(m => `• ${m}`).join('\n'))
+        setError('⚠️ 以下預約尚未指定駕駛：\n\n' + missingPersonnel.map(m => `• ${m}`).join('\n'))
         setSaving(false)
         return
       }
