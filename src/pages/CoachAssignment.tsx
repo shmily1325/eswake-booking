@@ -353,18 +353,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     setSuccess('')
 
     try {
-      // 0. 先檢查是否所有預約都有指定教練
-      const missingCoaches: string[] = []
+      // 0. 先檢查是否所有預約都有指定教練或駕駛
+      const missingPersonnel: string[] = []
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
-        if (!assignment || assignment.coachIds.length === 0) {
+        // 只要有教練或駕駛就可以，不一定兩個都要有
+        if (!assignment || (assignment.coachIds.length === 0 && assignment.driverIds.length === 0)) {
           const timeStr = formatTimeRange(booking.start_at, booking.duration_min, booking.boats?.name)
-          missingCoaches.push(`${timeStr} (${getDisplayContactName(booking)})`)
+          missingPersonnel.push(`${timeStr} (${getDisplayContactName(booking)})`)
         }
       }
       
-      if (missingCoaches.length > 0) {
-        setError('⚠️ 以下預約尚未指定教練：\n\n' + missingCoaches.map(m => `• ${m}`).join('\n'))
+      if (missingPersonnel.length > 0) {
+        setError('⚠️ 以下預約尚未指定教練或駕駛：\n\n' + missingPersonnel.map(m => `• ${m}`).join('\n'))
         setSaving(false)
         return
       }
