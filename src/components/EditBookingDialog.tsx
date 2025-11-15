@@ -99,9 +99,21 @@ export function EditBookingDialog({
   useEffect(() => {
     if (isOpen) {
       fetchBoats()
-      fetchCoaches()
       fetchMembers()
+      
       if (booking) {
+        // 先解析並設置日期時間
+        if (booking.start_at) {
+          const datetime = booking.start_at.substring(0, 16) // 取前16個字符 "2025-10-30T17:00"
+          const [dateStr, timeStr] = datetime.split('T')
+          setStartDate(dateStr)
+          setStartTime(timeStr)
+          // 使用正確的日期獲取教練列表
+          fetchCoaches(dateStr)
+        } else {
+          fetchCoaches()
+        }
+        
         // 設置船只選擇
         setSelectedBoatId(booking.boat_id)
         
@@ -152,18 +164,18 @@ export function EditBookingDialog({
         setActivityTypes(booking.activity_types || [])
         setNotes(booking.notes || '')
         setRequiresDriver(booking.requires_driver || false)
-        
-        // Parse start_at into date and time（純字符串解析，避免時區問題）
-        // booking.start_at 格式: "2025-10-30T17:00:00"
-        if (booking.start_at) {
-          const datetime = booking.start_at.substring(0, 16) // 取前16個字符 "2025-10-30T17:00"
-          const [dateStr, timeStr] = datetime.split('T')
-          setStartDate(dateStr)
-          setStartTime(timeStr)
-        }
+      } else {
+        fetchCoaches()
       }
     }
   }, [isOpen, booking])
+
+  // 當用戶修改日期時，重新獲取教練列表
+  useEffect(() => {
+    if (isOpen && startDate) {
+      fetchCoaches(startDate)
+    }
+  }, [startDate])
 
   const fetchBoats = async () => {
     const { data, error } = await supabase
@@ -179,12 +191,14 @@ export function EditBookingDialog({
     setBoats(data || [])
   }
 
-  const fetchCoaches = async () => {
+  const fetchCoaches = async (bookingDate?: string) => {
     setLoadingCoaches(true)
     
     try {
       // 取得預約日期
-      const bookingDate = startDate || (booking?.start_at ? booking.start_at.split('T')[0] : '')
+      const finalDate = bookingDate || startDate || (booking?.start_at ? booking.start_at.split('T')[0] : '')
+      
+      console.log('📅 編輯預約 - 查詢日期:', finalDate)
       
       // 並行查詢：同時取得教練和休假資料
       const [coachesResult, timeOffResult] = await Promise.all([
@@ -196,8 +210,8 @@ export function EditBookingDialog({
         supabase
           .from('coach_time_off')
           .select('coach_id')
-          .lte('start_date', bookingDate)
-          .gte('end_date', bookingDate)
+          .lte('start_date', finalDate)
+          .gte('end_date', finalDate)
       ])
       
       if (coachesResult.error) {
@@ -208,6 +222,9 @@ export function EditBookingDialog({
       
       // 建立休假教練 ID 集合
       const timeOffCoachIds = new Set((timeOffResult.data || []).map(t => t.coach_id))
+      
+      console.log('👨‍🏫 編輯預約 - 所有教練:', coachesResult.data?.length)
+      console.log('🚫 編輯預約 - 休假教練:', timeOffResult.data)
       
       // 過濾掉休假的教練
       const availableCoaches = (coachesResult.data || []).filter(c => !timeOffCoachIds.has(c.id))

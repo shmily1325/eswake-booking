@@ -271,8 +271,12 @@ export function DayView({ user }: DayViewProps) {
       setEditDialogOpen(true)
     } else {
       // 不預設船隻和時間，讓用戶自己填
+      // 但帶入當前選擇的日期
       setSelectedBoatId(0)
-      setSelectedTime('')
+      const now = new Date()
+      const currentHour = String(now.getHours()).padStart(2, '0')
+      const currentMinute = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, '0')
+      setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
       setDialogOpen(true)
     }
   }
@@ -820,7 +824,10 @@ export function DayView({ user }: DayViewProps) {
             <button
               onClick={() => {
                 setSelectedBoatId(0)
-                setSelectedTime('')
+                const now = new Date()
+                const currentHour = String(now.getHours()).padStart(2, '0')
+                const currentMinute = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, '0')
+                setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
                 setDialogOpen(true)
               }}
               style={{
@@ -1455,7 +1462,10 @@ export function DayView({ user }: DayViewProps) {
         <button
           onClick={() => {
             setSelectedBoatId(0)
-            setSelectedTime('')
+            const now = new Date()
+            const currentHour = String(now.getHours()).padStart(2, '0')
+            const currentMinute = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, '0')
+            setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
             setDialogOpen(true)
           }}
           style={{
