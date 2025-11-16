@@ -19,12 +19,11 @@ interface Member {
   nickname: string | null
   phone: string | null
   balance?: number
+  vip_voucher_amount?: number
   designated_lesson_minutes?: number
   boat_voucher_g23_minutes?: number
-  boat_voucher_g21_minutes?: number
-  free_hours?: number
-  free_hours_used?: number
-  free_hours_notes?: string | null
+  boat_voucher_g21_panther_minutes?: number
+  gift_boat_hours?: number
 }
 
 type TabType = 'bookings' | 'balance' | 'cancel'
@@ -81,7 +80,7 @@ export function LiffMyBookings() {
       // 查詢 line_bindings 表
       const { data: binding } = await supabase
         .from('line_bindings')
-        .select('member_id, members(id, name, nickname, phone, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes, free_hours, free_hours_used, free_hours_notes)')
+        .select('member_id, members(id, name, nickname, phone, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours)')
         .eq('line_user_id', userId)
         .eq('status', 'active')
         .single()
@@ -772,116 +771,96 @@ export function LiffMyBookings() {
               💰 我的儲值
             </h2>
 
-            {/* 餘額 */}
+            {/* 儲值數據 */}
             <div style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              borderRadius: '12px',
-              padding: '24px',
-              marginBottom: '16px',
-              color: 'white'
-            }}>
-              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
-                儲值餘額
-              </div>
-              <div style={{ fontSize: '36px', fontWeight: '700' }}>
-                ${member.balance || 0}
-              </div>
-            </div>
-
-            {/* 其他項目 */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
               gap: '12px'
             }}>
-              {/* 指定課時數 */}
+              {/* 儲值餘額 */}
               <div style={{
                 background: '#f8f9fa',
                 borderRadius: '8px',
                 padding: '16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
+                border: '2px solid #52c41a'
               }}>
-                <div>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                    指定課時數
-                  </div>
-                  <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
-                    {member.designated_lesson_minutes || 0} 分鐘
-                  </div>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
+                  💰 儲值餘額
                 </div>
-                <div style={{ fontSize: '32px' }}>🎓</div>
+                <div style={{ fontSize: '22px', fontWeight: '700', color: '#52c41a' }}>
+                  ${member.balance || 0}
+                </div>
               </div>
 
-              {/* 船券 G23 */}
+              {/* VIP票券 */}
               <div style={{
                 background: '#f8f9fa',
                 borderRadius: '8px',
                 padding: '16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
+                border: '2px solid #9c27b0'
               }}>
-                <div>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                    船券 G23
-                  </div>
-                  <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
-                    {member.boat_voucher_g23_minutes || 0} 分鐘
-                  </div>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
+                  💎 VIP票券
                 </div>
-                <div style={{ fontSize: '32px' }}>🚤</div>
+                <div style={{ fontSize: '22px', fontWeight: '700', color: '#9c27b0' }}>
+                  ${member.vip_voucher_amount || 0}
+                </div>
               </div>
 
-              {/* 船券 G21 */}
+              {/* 指定課 */}
               <div style={{
                 background: '#f8f9fa',
                 borderRadius: '8px',
-                padding: '16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
+                padding: '16px'
               }}>
-                <div>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                    船券 G21
-                  </div>
-                  <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
-                    {member.boat_voucher_g21_minutes || 0} 分鐘
-                  </div>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
+                  📚 指定課
                 </div>
-                <div style={{ fontSize: '32px' }}>🚤</div>
+                <div style={{ fontSize: '20px', fontWeight: '600', color: '#faad14' }}>
+                  {member.designated_lesson_minutes || 0}分
+                </div>
               </div>
 
-              {/* 贈送時數 */}
+              {/* G23船券 */}
               <div style={{
                 background: '#f8f9fa',
                 borderRadius: '8px',
-                padding: '16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
+                padding: '16px'
               }}>
-                <div>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                    贈送時數
-                  </div>
-                  <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
-                    {member.free_hours || 0} 分鐘
-                    {(member.free_hours_used || 0) > 0 && (
-                      <span style={{ fontSize: '14px', color: '#999', marginLeft: '8px' }}>
-                        (已使用 {member.free_hours_used} 分鐘)
-                      </span>
-                    )}
-                  </div>
-                  {member.free_hours_notes && (
-                    <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                      {member.free_hours_notes}
-                    </div>
-                  )}
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
+                  🚤 G23船券
                 </div>
-                <div style={{ fontSize: '32px' }}>🎁</div>
+                <div style={{ fontSize: '20px', fontWeight: '600', color: '#1890ff' }}>
+                  {member.boat_voucher_g23_minutes || 0}分
+                </div>
+              </div>
+
+              {/* G21/黑豹 */}
+              <div style={{
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
+                  ⛵ G21/黑豹
+                </div>
+                <div style={{ fontSize: '20px', fontWeight: '600', color: '#13c2c2' }}>
+                  {member.boat_voucher_g21_panther_minutes || 0}分
+                </div>
+              </div>
+
+              {/* 贈送大船 */}
+              <div style={{
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
+                  🎁 贈送大船
+                </div>
+                <div style={{ fontSize: '20px', fontWeight: '600', color: '#eb2f96' }}>
+                  {member.gift_boat_hours || 0}分
+                </div>
               </div>
             </div>
           </div>
