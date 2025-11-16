@@ -15,11 +15,11 @@ interface Member {
   name: string
   nickname: string | null
   balance: number
+  vip_voucher_amount: number  // VIP 票券
   designated_lesson_minutes: number
   boat_voucher_g23_minutes: number
-  boat_voucher_g21_minutes: number
-  free_hours: number
-  free_hours_used: number
+  boat_voucher_g21_panther_minutes: number  // G21/黑豹船券
+  gift_boat_hours: number  // 贈送大船時數
 }
 
 interface TransactionDialogProps {
@@ -43,7 +43,7 @@ interface Transaction {
   balance_after: number
   designated_lesson_minutes_after: number
   boat_voucher_g23_minutes_after: number
-  boat_voucher_g21_minutes_after: number
+  boat_voucher_g21_panther_minutes_after: number
 }
 
 export function TransactionDialog({ open, member, onClose, onSuccess }: TransactionDialogProps) {
@@ -51,8 +51,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
   const [activeTab, setActiveTab] = useState<'transaction' | 'history'>('transaction')
   const [loading, setLoading] = useState(false)
   const [transactionType, setTransactionType] = useState<'charge' | 'purchase' | 'payment' | 'refund' | 'adjust'>('charge')
-  const [category, setCategory] = useState<'balance' | 'designated_lesson' | 'boat_voucher_g23' | 'boat_voucher_g21' | 'free_hours' | 'membership' | 'board_storage'>('balance')
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'deduct_balance' | 'g23_voucher' | 'g21_voucher' | 'designated_paid' | 'designated_free' | 'free_hours'>('cash')
+  const [category, setCategory] = useState<'balance' | 'designated_lesson' | 'boat_voucher_g23' | 'boat_voucher_g21_panther' | 'gift_boat_hours' | 'vip_voucher' | 'membership' | 'board_storage'>('balance')
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'deduct_balance' | 'g23_voucher' | 'g21_panther_voucher' | 'designated_paid' | 'designated_free' | 'gift_hours'>('cash')
   const [adjustType, setAdjustType] = useState<'increase' | 'decrease'>('increase')
   const [amount, setAmount] = useState('')
   const [minutes, setMinutes] = useState('')
@@ -144,7 +144,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         t.balance_after,
         t.designated_lesson_minutes_after,
         t.boat_voucher_g23_minutes_after,
-        t.boat_voucher_g21_minutes_after
+        t.boat_voucher_g21_panther_minutes_after
       ].join(','))
     ].join('\n')
 
@@ -171,8 +171,9 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
       balance: '餘額',
       designated_lesson: '指定課',
       boat_voucher_g23: 'G23船券',
-      boat_voucher_g21: 'G21船券',
-      free_hours: '贈送時數',
+      boat_voucher_g21_panther: 'G21/黑豹船券',
+      gift_boat_hours: '贈送大船時數',
+      vip_voucher: 'VIP票券',
       membership: '會籍',
       board_storage: '置板',
     }
@@ -198,8 +199,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
       let newBalance = member.balance
       let newDesignatedMinutes = member.designated_lesson_minutes
       let newBoatVoucherG23Minutes = member.boat_voucher_g23_minutes
-      let newBoatVoucherG21Minutes = member.boat_voucher_g21_minutes
-      let newFreeHoursUsed = member.free_hours_used
+      let newBoatVoucherG21PantherMinutes = member.boat_voucher_g21_panther_minutes
+      let newGiftBoatHours = member.gift_boat_hours
 
       // 儲值：增加餘額
       if (transactionType === 'charge' && category === 'balance' && numAmount) {
@@ -213,11 +214,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
             newDesignatedMinutes += Math.abs(numMinutes)
           } else if (category === 'boat_voucher_g23') {
             newBoatVoucherG23Minutes += Math.abs(numMinutes)
-          } else if (category === 'boat_voucher_g21') {
-            newBoatVoucherG21Minutes += Math.abs(numMinutes)
+          } else if (category === 'boat_voucher_g21_panther') {
+            newBoatVoucherG21PantherMinutes += Math.abs(numMinutes)
+          } else if (category === 'gift_boat_hours') {
+            newGiftBoatHours += Math.abs(numMinutes)
           }
-          // 購買不會改變 free_hours，因為 free_hours 是贈送的總時數（固定值）
-          // 只有調整類型才能改變 free_hours
         }
         // 如果有輸入金額，則扣除餘額
         if (numAmount) {
@@ -236,18 +237,18 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         } else if (paymentMethod === 'g23_voucher' && numMinutes) {
           // G23船券：扣除G23船券分鐘數
           newBoatVoucherG23Minutes -= Math.abs(numMinutes)
-        } else if (paymentMethod === 'g21_voucher' && numMinutes) {
-          // G21船券：扣除G21船券分鐘數
-          newBoatVoucherG21Minutes -= Math.abs(numMinutes)
+        } else if (paymentMethod === 'g21_panther_voucher' && numMinutes) {
+          // G21/黑豹船券：扣除船券分鐘數
+          newBoatVoucherG21PantherMinutes -= Math.abs(numMinutes)
         } else if (paymentMethod === 'designated_paid' && numMinutes) {
           // 指定課程（收費）：扣除指定課分鐘數
           newDesignatedMinutes -= Math.abs(numMinutes)
         } else if (paymentMethod === 'designated_free' && numMinutes) {
           // 指定課程（免費）：扣除指定課分鐘數
           newDesignatedMinutes -= Math.abs(numMinutes)
-        } else if (paymentMethod === 'free_hours' && numMinutes) {
-          // 贈送時數：增加已使用的贈送時數
-          newFreeHoursUsed += Math.abs(numMinutes)
+        } else if (paymentMethod === 'gift_hours' && numMinutes) {
+          // 贈送大船時數：扣除時數
+          newGiftBoatHours -= Math.abs(numMinutes)
         }
       }
 
@@ -259,11 +260,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           newDesignatedMinutes += Math.abs(numMinutes)
         } else if (category === 'boat_voucher_g23' && numMinutes) {
           newBoatVoucherG23Minutes += Math.abs(numMinutes)
-        } else if (category === 'boat_voucher_g21' && numMinutes) {
-          newBoatVoucherG21Minutes += Math.abs(numMinutes)
-        } else if (category === 'free_hours' && numMinutes) {
-          // 退款贈送時數：減少已使用數
-          newFreeHoursUsed -= Math.abs(numMinutes)
+        } else if (category === 'boat_voucher_g21_panther' && numMinutes) {
+          newBoatVoucherG21PantherMinutes += Math.abs(numMinutes)
+        } else if (category === 'gift_boat_hours' && numMinutes) {
+          // 退款贈送時數：增加時數
+          newGiftBoatHours += Math.abs(numMinutes)
         }
       }
 
@@ -278,24 +279,17 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           newDesignatedMinutes = member.designated_lesson_minutes + adjustMinutes
         } else if (category === 'boat_voucher_g23' && numMinutes !== null) {
           newBoatVoucherG23Minutes = member.boat_voucher_g23_minutes + adjustMinutes
-        } else if (category === 'boat_voucher_g21' && numMinutes !== null) {
-          newBoatVoucherG21Minutes = member.boat_voucher_g21_minutes + adjustMinutes
-        } else if (category === 'free_hours' && numMinutes !== null) {
-          // 調整贈送時數：調整已使用數（增加表示用更少，減少表示用更多）
-          newFreeHoursUsed = member.free_hours_used - adjustMinutes
+        } else if (category === 'boat_voucher_g21_panther' && numMinutes !== null) {
+          newBoatVoucherG21PantherMinutes = member.boat_voucher_g21_panther_minutes + adjustMinutes
+        } else if (category === 'gift_boat_hours' && numMinutes !== null) {
+          // 調整贈送大船時數
+          newGiftBoatHours = member.gift_boat_hours + adjustMinutes
         }
       }
 
       // 確保不會變成負數
-      if (newBalance < 0 || newDesignatedMinutes < 0 || newBoatVoucherG23Minutes < 0 || newBoatVoucherG21Minutes < 0 || newFreeHoursUsed < 0) {
+      if (newBalance < 0 || newDesignatedMinutes < 0 || newBoatVoucherG23Minutes < 0 || newBoatVoucherG21PantherMinutes < 0 || newGiftBoatHours < 0) {
         alert('餘額或分鐘數不足！')
-        setLoading(false)
-        return
-      }
-
-      // 確保贈送時數不會超支
-      if (newFreeHoursUsed > member.free_hours) {
-        alert('贈送時數不足！')
         setLoading(false)
         return
       }
@@ -307,8 +301,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           balance: newBalance,
           designated_lesson_minutes: newDesignatedMinutes,
           boat_voucher_g23_minutes: newBoatVoucherG23Minutes,
-          boat_voucher_g21_minutes: newBoatVoucherG21Minutes,
-          free_hours_used: newFreeHoursUsed,
+          boat_voucher_g21_panther_minutes: newBoatVoucherG21PantherMinutes,
+          gift_boat_hours: newGiftBoatHours,
         })
         .eq('id', member.id)
 
@@ -327,7 +321,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         balance_after: newBalance,
         designated_lesson_minutes_after: newDesignatedMinutes,
         boat_voucher_g23_minutes_after: newBoatVoucherG23Minutes,
-        boat_voucher_g21_minutes_after: newBoatVoucherG21Minutes,
+        boat_voucher_g21_panther_minutes_after: newBoatVoucherG21PantherMinutes,
         description: description || getDefaultDescription(),
         notes: notes || null,
         created_at: createdAt,
@@ -373,7 +367,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
       balance: '餘額',
       designated_lesson: '指定課',
       boat_voucher_g23: 'G23 船券',
-      boat_voucher_g21: 'G21/黑豹 船券',
+      boat_voucher_g21_panther: 'G21/黑豹 船券',
       membership: '會籍',
       board_storage: '置板',
     }
@@ -406,7 +400,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
 
   // 根據交易類型和類別決定顯示哪些輸入框
   const showAmount = category === 'balance'
-  const showMinutes = (category === 'designated_lesson' || category === 'boat_voucher_g23' || category === 'boat_voucher_g21' || category === 'free_hours')
+  const showMinutes = (category === 'designated_lesson' || category === 'boat_voucher_g23' || category === 'boat_voucher_g21_panther' || category === 'gift_boat_hours')
   
   // 購買船券/指定課時，金額是選填（如果要從儲值扣款才填）
   const amountOptional = transactionType === 'purchase' && showMinutes
@@ -538,7 +532,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
             </div>
             <div>
               <span style={{ fontWeight: 'bold', color: '#13c2c2', fontSize: '18px' }}>
-                {member.boat_voucher_g21_minutes}
+                {member.boat_voucher_g21_panther_minutes}
               </span>
               <span style={{ color: '#999', fontSize: '13px', marginLeft: '5px' }}>分鐘 (G21船券)</span>
             </div>
@@ -595,7 +589,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                   <option value="g21_voucher">G21船券</option>
                   <option value="designated_paid">指定課程（收費）</option>
                   <option value="designated_free">指定課程（免費）</option>
-                  <option value="free_hours">贈送時數</option>
+                  <option value="gift_boat_hours">贈送大船時數</option>
+                  <option value="vip_voucher">VIP票券</option>
                 </select>
               </div>
             )}
@@ -636,8 +631,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                 <option value="balance">餘額</option>
                 <option value="designated_lesson">指定課</option>
                 <option value="boat_voucher_g23">🚤 G23 船券</option>
-                <option value="boat_voucher_g21">⛵ G21/黑豹 船券</option>
-                <option value="free_hours">⏱️ 贈送時數</option>
+                <option value="boat_voucher_g21_panther">⛵ G21/黑豹 船券</option>
+                <option value="gift_hours">⏱️ 贈送大船時數</option>
                 <option value="membership">會籍</option>
                 <option value="board_storage">置板</option>
               </select>
@@ -682,7 +677,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                 />
                 
                 {/* 船券快捷按鈕 */}
-                {transactionType === 'purchase' && (category === 'boat_voucher_g23' || category === 'boat_voucher_g21') && (
+                {transactionType === 'purchase' && (category === 'boat_voucher_g23' || category === 'boat_voucher_g21_panther') && (
                   <div style={{ 
                     display: 'flex', 
                     gap: '8px', 
@@ -991,7 +986,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                       <span>餘額: ${transaction.balance_after}</span>
                       <span>指定課: {transaction.designated_lesson_minutes_after}分</span>
                       <span>G23: {transaction.boat_voucher_g23_minutes_after}分</span>
-                      <span>G21: {transaction.boat_voucher_g21_minutes_after}分</span>
+                      <span>G21/黑豹: {transaction.boat_voucher_g21_panther_minutes_after}分</span>
                     </div>
                   </div>
                 ))}

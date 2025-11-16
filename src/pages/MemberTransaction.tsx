@@ -12,11 +12,11 @@ interface Member {
   nickname: string | null
   phone: string | null
   balance: number
-  designated_lesson_minutes: number
-  boat_voucher_g23_minutes: number
-  boat_voucher_g21_minutes: number
-  free_hours: number
-  free_hours_used: number
+  vip_voucher_amount: number  // VIP 票券（金額）
+  designated_lesson_minutes: number  // 指定課時數
+  boat_voucher_g23_minutes: number  // G23船券（時數）
+  boat_voucher_g21_panther_minutes: number  // G21/黑豹共通船券（時數）
+  gift_boat_hours: number  // 贈送大船時數
   membership_type: string
   status: string
 }
@@ -37,6 +37,11 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
   const [exportStartDate, setExportStartDate] = useState('')
   const [exportEndDate, setExportEndDate] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [showFinanceImport, setShowFinanceImport] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
+  const [importSuccess, setImportSuccess] = useState('')
 
   // 載入會員列表
   const loadMembers = async () => {
@@ -44,7 +49,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, name, nickname, phone, balance, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_minutes, free_hours, free_hours_used, membership_type, status')
+        .select('id, name, nickname, phone, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours, membership_type, status')
         .eq('status', 'active')
         .order('name')
 
@@ -85,6 +90,181 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
 
   const handleTransactionSuccess = () => {
     loadMembers()
+  }
+
+  // 匯出會員財務信息
+  const handleExportFinance = async () => {
+    try {
+      const { data: allMembers, error } = await supabase
+        .from('members')
+        .select('id, name, nickname, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours, status')
+        .order('name')
+
+      if (error) throw error
+      if (!allMembers || allMembers.length === 0) {
+        alert('沒有會員財務資料可以導出')
+        return
+      }
+
+      const headers = [
+        '姓名', '儲值', 'VIP票券', '指定課時數', 'G23船券', 'G21/黑豹船券', '贈送大船時數'
+      ]
+
+      const rows = allMembers.map((member: any) => {
+        return [
+          member.name || '',
+          member.balance || 0,
+          member.vip_voucher_amount || 0,
+          member.designated_lesson_minutes || 0,
+          member.boat_voucher_g23_minutes || 0,
+          member.boat_voucher_g21_panther_minutes || 0,
+          member.gift_boat_hours || 0
+        ]
+      })
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => {
+          const cellStr = String(cell)
+          if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
+            return `"${cellStr.replace(/"/g, '""')}"`
+          }
+          return cellStr
+        }).join(','))
+      ].join('\n')
+
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      
+      const today = new Date()
+      const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+      link.setAttribute('download', `會員財務資料_${dateStr}.csv`)
+      
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      alert(`✅ 成功導出 ${allMembers.length} 位會員的財務資料`)
+    } catch (err: any) {
+      console.error('導出失敗:', err)
+      alert('導出失敗: ' + err.message)
+    }
+  }
+
+  // 匯入會員財務信息
+  const handleImportFinance = async () => {
+    if (!importFile) {
+      setImportError('請選擇 CSV 檔案')
+      return
+    }
+
+    setImporting(true)
+    setImportError('')
+    setImportSuccess('')
+
+    try {
+      const text = await importFile.text()
+      const Papa = await import('papaparse')
+      
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header: string) => {
+          const headerMap: Record<string, string> = {
+            '姓名': 'name',
+            '儲值': 'balance',
+            'VIP票券': 'vip_voucher_amount',
+            '指定課時數': 'designated_lesson_minutes',
+            'G23船券': 'boat_voucher_g23_minutes',
+            'G21/黑豹船券': 'boat_voucher_g21_panther_minutes',
+            '贈送大船時數': 'gift_boat_hours'
+          }
+          return headerMap[header] || header
+        },
+        complete: async (results) => {
+          const records = (results.data as any[])
+            .filter((row: any) => row.name && row.name.trim())
+
+          if (records.length === 0) {
+            setImportError('未找到有效的財務資料')
+            setImporting(false)
+            return
+          }
+
+          let updateCount = 0
+          let errorCount = 0
+
+          for (const record of records) {
+            try {
+              const recordData = record as any
+              const { data: existingMember } = await supabase
+                .from('members')
+                .select('id')
+                .eq('name', recordData.name.trim())
+                .single()
+
+              if (!existingMember) {
+                errorCount++
+                continue
+              }
+
+              const { error } = await supabase
+                .from('members')
+                .update({
+                  balance: recordData.balance ? parseFloat(recordData.balance) : 0,
+                  vip_voucher_amount: recordData.vip_voucher_amount ? parseFloat(recordData.vip_voucher_amount) : 0,
+                  designated_lesson_minutes: recordData.designated_lesson_minutes ? parseInt(recordData.designated_lesson_minutes) : 0,
+                  boat_voucher_g23_minutes: recordData.boat_voucher_g23_minutes ? parseInt(recordData.boat_voucher_g23_minutes) : 0,
+                  boat_voucher_g21_panther_minutes: recordData.boat_voucher_g21_panther_minutes ? parseInt(recordData.boat_voucher_g21_panther_minutes) : 0,
+                  gift_boat_hours: recordData.gift_boat_hours ? parseInt(recordData.gift_boat_hours) : 0
+                })
+                .eq('id', existingMember.id)
+
+              if (error) {
+                errorCount++
+              } else {
+                updateCount++
+              }
+            } catch (err) {
+              errorCount++
+            }
+          }
+
+          let resultMsg = ''
+          if (updateCount > 0) {
+            resultMsg = `✅ 成功更新 ${updateCount} 位會員的財務資料`
+          }
+          if (errorCount > 0) {
+            resultMsg += `${updateCount > 0 ? '\n' : ''}⚠️ ${errorCount} 筆失敗（會員不存在）`
+          }
+
+          if (updateCount > 0) {
+            setImportSuccess(resultMsg)
+            loadMembers()
+            setTimeout(() => {
+              setShowFinanceImport(false)
+              setImportFile(null)
+              setImportSuccess('')
+              setImportError('')
+            }, 3000)
+          } else {
+            setImportError(resultMsg || '❌ 沒有成功更新任何會員')
+          }
+
+          setImporting(false)
+        },
+        error: (error: Error) => {
+          setImportError('解析 CSV 失敗: ' + error.message)
+          setImporting(false)
+        }
+      })
+    } catch (err: any) {
+      setImportError('導入失敗: ' + err.message)
+      setImporting(false)
+    }
   }
 
   // 匯出總帳
@@ -269,7 +449,39 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           gap: '8px',
         }}>
           <span>找到 {filteredMembers.length} 位會員</span>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setShowFinanceImport(true)}
+              style={{
+                padding: '6px 14px',
+                background: '#52c41a',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              📥 導入財務
+            </button>
+            <button
+              onClick={handleExportFinance}
+              style={{
+                padding: '6px 14px',
+                background: '#1890ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              📤 導出財務
+            </button>
             <button
               onClick={() => setShowExportDialog(true)}
               style={{
@@ -284,7 +496,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                 whiteSpace: 'nowrap',
               }}
             >
-              📥 匯出總帳
+              📋 匯出總帳
             </button>
             <button
               onClick={() => setSearchTerm('')}
@@ -449,14 +661,14 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                           color: '#999',
                           marginBottom: '4px',
                         }}>
-                          G21船券
+                          G21/黑豹
                         </div>
                         <div style={{
                           fontSize: isMobile ? '16px' : '18px',
                           fontWeight: 'bold',
-                          color: member.boat_voucher_g21_minutes > 0 ? '#13c2c2' : '#999',
+                          color: member.boat_voucher_g21_panther_minutes > 0 ? '#13c2c2' : '#999',
                         }}>
-                          {member.boat_voucher_g21_minutes}分
+                          {member.boat_voucher_g21_panther_minutes}分
                         </div>
                       </div>
 
@@ -466,14 +678,31 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                           color: '#999',
                           marginBottom: '4px',
                         }}>
-                          贈送時數
+                          VIP票券
                         </div>
                         <div style={{
                           fontSize: isMobile ? '16px' : '18px',
                           fontWeight: 'bold',
-                          color: (member.free_hours - member.free_hours_used) > 0 ? '#eb2f96' : '#999',
+                          color: member.vip_voucher_amount > 0 ? '#9c27b0' : '#999',
                         }}>
-                          {(member.free_hours - member.free_hours_used).toFixed(0)}分
+                          ${member.vip_voucher_amount.toFixed(0)}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#999',
+                          marginBottom: '4px',
+                        }}>
+                          贈送大船
+                        </div>
+                        <div style={{
+                          fontSize: isMobile ? '16px' : '18px',
+                          fontWeight: 'bold',
+                          color: member.gift_boat_hours > 0 ? '#eb2f96' : '#999',
+                        }}>
+                          {member.gift_boat_hours}分
                         </div>
                       </div>
                     </div>
@@ -647,6 +876,178 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                 }}
               >
                 {exporting ? '匯出中...' : '確認匯出'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 財務導入對話框 */}
+      {showFinanceImport && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1001,
+          padding: '20px',
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          }}>
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                📥 導入會員財務資料
+              </h2>
+              <button
+                onClick={() => {
+                  setShowFinanceImport(false)
+                  setImportFile(null)
+                  setImportError('')
+                  setImportSuccess('')
+                }}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ padding: '20px' }}>
+              <div style={{
+                padding: '12px',
+                background: '#fff3cd',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: '#856404',
+                marginBottom: '16px',
+                lineHeight: '1.6',
+                border: '1px solid #ffc107'
+              }}>
+                <div style={{ marginBottom: '8px', fontWeight: 'bold', fontSize: '14px' }}>
+                  ⚠️ 重要說明
+                </div>
+                • <strong>CSV 格式</strong>：姓名,儲值,VIP票券,指定課時數,G23船券,G21/黑豹船券,贈送大船時數<br/>
+                • <strong style={{ color: '#d32f2f' }}>導入會直接覆蓋現有財務數據</strong><br/>
+                • 只更新已存在的會員（不會創建新會員）<br/>
+                • 會員不存在時會被跳過並顯示錯誤<br/>
+                • 建議先導出現有資料備份
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  選擇 CSV 檔案 <span style={{ color: 'red' }}>*</span>
+                </label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => {
+                    setImportFile(e.target.files?.[0] || null)
+                    setImportError('')
+                    setImportSuccess('')
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+
+              {importError && (
+                <div style={{
+                  padding: '12px',
+                  background: '#ffebee',
+                  color: '#d32f2f',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  marginBottom: '16px',
+                  whiteSpace: 'pre-line'
+                }}>
+                  {importError}
+                </div>
+              )}
+
+              {importSuccess && (
+                <div style={{
+                  padding: '12px',
+                  background: '#e8f5e9',
+                  color: '#2e7d32',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  marginBottom: '16px',
+                  whiteSpace: 'pre-line'
+                }}>
+                  {importSuccess}
+                </div>
+              )}
+            </div>
+
+            <div style={{
+              padding: '20px',
+              borderTop: '1px solid #e0e0e0',
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={() => {
+                  setShowFinanceImport(false)
+                  setImportFile(null)
+                  setImportError('')
+                  setImportSuccess('')
+                }}
+                disabled={importing}
+                style={{
+                  padding: '10px 20px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '6px',
+                  background: 'white',
+                  color: '#666',
+                  cursor: importing ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleImportFinance}
+                disabled={importing || !importFile}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: (importing || !importFile) ? '#ccc' : '#52c41a',
+                  color: 'white',
+                  cursor: (importing || !importFile) ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                }}
+              >
+                {importing ? '導入中...' : '確認導入'}
               </button>
             </div>
           </div>

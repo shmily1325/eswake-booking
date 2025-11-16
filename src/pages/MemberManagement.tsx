@@ -15,9 +15,11 @@ interface Member {
   birthday: string | null
   phone: string | null
   balance: number
-  designated_lesson_minutes: number
-  boat_voucher_g23_minutes: number
-  boat_voucher_g21_minutes: number
+  vip_voucher_amount: number  // VIP 票券（金額）
+  designated_lesson_minutes: number  // 指定課時數
+  boat_voucher_g23_minutes: number  // G23船券（時數）
+  boat_voucher_g21_panther_minutes: number  // G21/黑豹共通船券（時數）
+  gift_boat_hours: number  // 贈送大船時數
   membership_end_date: string | null
   membership_start_date: string | null
   membership_type: string  // 'general', 'dual', 'board'
@@ -25,9 +27,6 @@ interface Member {
   member_type: string  // 'guest' or 'member'
   board_slot_number: string | null
   board_expiry_date: string | null
-  free_hours: number
-  free_hours_used: number
-  free_hours_notes: string | null
   notes: string | null
   status: string
   created_at: string
@@ -169,11 +168,11 @@ export function MemberManagement({ user }: MemberManagementProps) {
           .from('members')
           .select(`
             id, name, nickname, phone, birthday, notes, member_type, 
-            balance, designated_lesson_minutes, boat_voucher_g23_minutes, 
-            boat_voucher_g21_minutes, membership_end_date, membership_start_date,
+            balance, vip_voucher_amount, designated_lesson_minutes, 
+            boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, 
+            gift_boat_hours, membership_end_date, membership_start_date,
             membership_type, membership_partner_id,
             board_slot_number, board_expiry_date,
-            free_hours, free_hours_used, free_hours_notes,
             status, created_at
           `)
           .eq('status', showInactive ? 'inactive' : 'active')
@@ -262,6 +261,123 @@ export function MemberManagement({ user }: MemberManagementProps) {
     }
   }
 
+  const handleExportMembers = async () => {
+    try {
+      // 載入所有會員（包含隱藏的）
+      const { data: allMembers, error } = await supabase
+        .from('members')
+        .select(`
+          id, name, nickname, phone, birthday, notes, member_type, 
+          balance, vip_voucher_amount, designated_lesson_minutes, 
+          boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, 
+          gift_boat_hours, membership_end_date, membership_start_date,
+          membership_type, membership_partner_id,
+          board_slot_number, board_expiry_date,
+          status, created_at
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      if (!allMembers || allMembers.length === 0) {
+        alert('沒有會員資料可以導出')
+        return
+      }
+
+      // 載入配對會員資料
+      const partnerIds = allMembers
+        .map((m: any) => m.membership_partner_id)
+        .filter(Boolean)
+      
+      let partnersData: any[] = []
+      if (partnerIds.length > 0) {
+        const { data } = await supabase
+          .from('members')
+          .select('id, name, nickname')
+          .in('id', partnerIds)
+        partnersData = data || []
+      }
+
+      const partnersMap: Record<string, any> = {}
+      partnersData.forEach(p => {
+        partnersMap[p.id] = p
+      })
+
+      // 準備 CSV 內容
+      const headers = [
+        '姓名', '暱稱', '會員類型', '會籍類型', '配對會員', 
+        '會員開始日期', '會員截止日', '電話', '生日',
+        '置板位號碼', '置板截止日', '備註', '狀態'
+      ]
+
+      const rows = allMembers.map((member: any) => {
+        // 會員類型
+        const memberTypeLabel = member.member_type === 'member' ? '會員' : '客人'
+        
+        // 會籍類型
+        let membershipTypeLabel = '一般會員'
+        if (member.membership_type === 'dual') {
+          membershipTypeLabel = '雙人會員'
+        } else if (member.membership_type === 'board') {
+          membershipTypeLabel = '置板'
+        }
+        
+        // 配對會員
+        const partnerName = member.membership_partner_id && partnersMap[member.membership_partner_id]
+          ? (partnersMap[member.membership_partner_id].nickname || partnersMap[member.membership_partner_id].name)
+          : ''
+
+        return [
+          member.name || '',
+          member.nickname || '',
+          memberTypeLabel,
+          membershipTypeLabel,
+          partnerName,
+          member.membership_start_date || '',
+          member.membership_end_date || '',
+          member.phone || '',
+          member.birthday || '',
+          member.board_slot_number || '',
+          member.board_expiry_date || '',
+          member.notes || '',
+          member.status === 'active' ? '啟用' : '隱藏'
+        ]
+      })
+
+      // 生成 CSV 內容
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => {
+          // 處理包含逗號、換行符或雙引號的內容
+          const cellStr = String(cell)
+          if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
+            return `"${cellStr.replace(/"/g, '""')}"`
+          }
+          return cellStr
+        }).join(','))
+      ].join('\n')
+
+      // 下載檔案
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      
+      const today = new Date()
+      const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+      link.setAttribute('download', `會員資料_${dateStr}.csv`)
+      
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      alert(`✅ 成功導出 ${allMembers.length} 位會員資料`)
+    } catch (err: any) {
+      console.error('導出失敗:', err)
+      alert('導出失敗: ' + err.message)
+    }
+  }
+
   // 使用 useMemo 快取過濾結果，避免不必要的重複計算
   const filteredMembers = useMemo(() => {
     let result = members
@@ -337,6 +453,29 @@ export function MemberManagement({ user }: MemberManagementProps) {
         >
           <span>📥</span>
           <span>批量導入</span>
+        </button>
+
+        <button
+          onClick={handleExportMembers}
+          style={{
+            flex: isMobile ? '1 1 100%' : '0 0 auto',
+            padding: isMobile ? '12px 16px' : '10px 20px',
+            background: 'white',
+            color: '#666',
+            border: '2px solid #e0e0e0',
+            borderRadius: '8px',
+            fontSize: isMobile ? '14px' : '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+        >
+          <span>📤</span>
+          <span>導出會員</span>
         </button>
 
         <button
@@ -823,9 +962,15 @@ export function MemberManagement({ user }: MemberManagementProps) {
                     </div>
                   )}
 
-                  {(member.free_hours || 0) > 0 && (
+                  {(member.gift_boat_hours || 0) > 0 && (
                     <div style={{ fontSize: '13px', color: '#ff9800', marginBottom: '4px' }}>
-                      ⏱️ 贈送時數：{member.free_hours}分 (已用 {member.free_hours_used || 0}分)
+                      ⏱️ 贈送大船時數：{member.gift_boat_hours}分
+                    </div>
+                  )}
+                  
+                  {(member.vip_voucher_amount || 0) > 0 && (
+                    <div style={{ fontSize: '13px', color: '#9c27b0', marginBottom: '4px' }}>
+                      💎 VIP票券：${member.vip_voucher_amount.toLocaleString()}
                     </div>
                   )}
 
@@ -875,9 +1020,9 @@ export function MemberManagement({ user }: MemberManagementProps) {
                   </div>
                   
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>G21券</div>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>G21/黑豹</div>
                     <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold', color: '#13c2c2' }}>
-                      {member.boat_voucher_g21_minutes || 0} 分
+                      {member.boat_voucher_g21_panther_minutes || 0} 分
                     </div>
                   </div>
                 </div>

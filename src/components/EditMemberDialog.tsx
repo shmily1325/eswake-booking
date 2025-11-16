@@ -13,7 +13,9 @@ interface Member {
   membership_start_date: string | null
   membership_end_date: string | null
   membership_partner_id: string | null
-  free_hours: number
+  board_slot_number: string | null
+  board_expiry_date: string | null
+  gift_boat_hours: number
   notes: string | null
   partner?: { id: string, name: string, nickname: string | null } | null
 }
@@ -38,7 +40,9 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     membership_start_date: member.membership_start_date || '',
     membership_end_date: member.membership_end_date || '',
     membership_partner_id: member.membership_partner_id || '',
-    free_hours: member.free_hours || 0,
+    board_slot_number: member.board_slot_number || '',
+    board_expiry_date: member.board_expiry_date || '',
+    gift_boat_hours: member.gift_boat_hours || 0,
     notes: member.notes || '',
   })
 
@@ -67,7 +71,9 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       membership_start_date: member.membership_start_date || '',
       membership_end_date: member.membership_end_date || '',
       membership_partner_id: member.membership_partner_id || '',
-      free_hours: member.free_hours || 0,
+      board_slot_number: member.board_slot_number || '',
+      board_expiry_date: member.board_expiry_date || '',
+      gift_boat_hours: member.gift_boat_hours || 0,
       notes: member.notes || '',
     })
   }, [member, open])
@@ -114,7 +120,9 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
           membership_start_date: formData.membership_start_date || null,
           membership_end_date: formData.membership_end_date || null,
           membership_partner_id: formData.membership_partner_id || null,
-          free_hours: formData.free_hours || 0,
+          board_slot_number: formData.board_slot_number || null,
+          board_expiry_date: formData.board_expiry_date || null,
+          gift_boat_hours: formData.gift_boat_hours || 0,
           notes: formData.notes || null,
         })
         .eq('id', member.id)
@@ -363,16 +371,73 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               </div>
             )}
 
-            {/* 贈送時數 */}
+            {/* 置板資訊 */}
+            <div style={{
+              background: '#e8f5e9',
+              padding: '16px',
+              borderRadius: '8px',
+              marginBottom: '16px'
+            }}>
+              <h3 style={{ 
+                margin: '0 0 12px 0', 
+                fontSize: '15px', 
+                fontWeight: '600',
+                color: '#2e7d32',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                🏄 置板資訊
+              </h3>
+              
+              <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: '12px'
+              }}>
+                {/* 置板位號碼 */}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                    置板位號碼
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.board_slot_number}
+                    onChange={(e) => setFormData({ ...formData, board_slot_number: e.target.value })}
+                    placeholder="例如：1"
+                    style={inputStyle}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                </div>
+
+                {/* 置板截止日期 */}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                    置板截止日期
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.board_expiry_date}
+                    onChange={(e) => setFormData({ ...formData, board_expiry_date: e.target.value })}
+                    style={inputStyle}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 贈送大船時數 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#ff9800' }}>
-                ⏱️ 贈送時數（分鐘）
+                ⏱️ 贈送大船時數（分鐘）
               </label>
               <input
                 type="number"
                 min="0"
-                value={formData.free_hours}
-                onChange={(e) => setFormData({ ...formData, free_hours: parseInt(e.target.value) || 0 })}
+                value={formData.gift_boat_hours}
+                onChange={(e) => setFormData({ ...formData, gift_boat_hours: parseInt(e.target.value) || 0 })}
                 placeholder="0"
                 style={inputStyle}
                 onFocus={handleFocus}
