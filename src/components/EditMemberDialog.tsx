@@ -71,7 +71,11 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      // 对话框关闭时重置状态
+      setBoardSlots([])
+      return
+    }
 
     loadMembers()
     loadBoardSlots()
