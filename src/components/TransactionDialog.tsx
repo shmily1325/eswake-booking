@@ -69,6 +69,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     const today = getLocalDateString() // YYYY-MM-DD
     return today.substring(0, 7) // YYYY-MM
   })
+  const [categoryFilter, setCategoryFilter] = useState<string>('all') // 類別篩選
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [editCategory, setEditCategory] = useState('')
@@ -938,6 +939,25 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
               </div>
             </div>
 
+            {/* 類別篩選 */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                篩選類別
+              </label>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                style={inputStyle}
+              >
+                <option value="all">全部類別</option>
+                {CATEGORIES.map(cat => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* 交易記錄列表 */}
             {loadingHistory ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
@@ -947,9 +967,23 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
               <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                 本月無交易記錄
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {transactions.map((tx) => {
+            ) : (() => {
+              // 篩選交易記錄
+              const filteredTransactions = categoryFilter === 'all' 
+                ? transactions 
+                : transactions.filter(tx => tx.category === categoryFilter)
+              
+              if (filteredTransactions.length === 0) {
+                return (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                    此類別無交易記錄
+                  </div>
+                )
+              }
+              
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {filteredTransactions.map((tx) => {
                   const categoryConfig = CATEGORIES.find(c => c.value === tx.category)
                   const isIncrease = tx.adjust_type === 'increase'
                   const isEditing = editingTransaction?.id === tx.id
@@ -1202,8 +1236,9 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                     </div>
                   )
                 })}
-              </div>
-            )}
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>
