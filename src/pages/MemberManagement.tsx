@@ -272,7 +272,6 @@ export function MemberManagement({ user }: MemberManagementProps) {
           boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, 
           gift_boat_hours, membership_end_date, membership_start_date,
           membership_type, membership_partner_id,
-          board_slot_number, board_expiry_date,
           status, created_at
         `)
         .order('created_at', { ascending: false })
@@ -305,8 +304,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
       // 準備 CSV 內容
       const headers = [
         '姓名', '暱稱', '會員類型', '會籍類型', '配對會員', 
-        '會員開始日期', '會員截止日', '電話', '生日',
-        '置板位號碼', '置板截止日', '備註', '狀態'
+        '會員開始日期', '會員截止日', '電話', '生日', '備註', '狀態'
       ]
 
       const rows = allMembers.map((member: any) => {
@@ -336,8 +334,6 @@ export function MemberManagement({ user }: MemberManagementProps) {
           member.membership_end_date || '',
           member.phone || '',
           member.birthday || '',
-          member.board_slot_number || '',
-          member.board_expiry_date || '',
           member.notes || '',
           member.status === 'active' ? '啟用' : '隱藏'
         ]
@@ -452,7 +448,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
           }}
         >
           <span>📥</span>
-          <span>Import</span>
+          <span>匯入</span>
         </button>
 
         <button
@@ -475,7 +471,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
           }}
         >
           <span>📤</span>
-          <span>Export</span>
+          <span>匯出</span>
         </button>
 
         <button

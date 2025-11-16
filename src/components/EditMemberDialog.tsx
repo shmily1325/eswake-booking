@@ -42,7 +42,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     membership_partner_id: member.membership_partner_id || '',
     board_slot_number: member.board_slot_number || '',
     board_expiry_date: member.board_expiry_date || '',
-    gift_boat_hours: member.gift_boat_hours || 0,
     notes: member.notes || '',
   })
 
@@ -73,7 +72,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       membership_partner_id: member.membership_partner_id || '',
       board_slot_number: member.board_slot_number || '',
       board_expiry_date: member.board_expiry_date || '',
-      gift_boat_hours: member.gift_boat_hours || 0,
       notes: member.notes || '',
     })
   }, [member, open])
@@ -122,7 +120,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
           membership_partner_id: formData.membership_partner_id || null,
           board_slot_number: formData.board_slot_number || null,
           board_expiry_date: formData.board_expiry_date || null,
-          gift_boat_hours: formData.gift_boat_hours || 0,
           notes: formData.notes || null,
         })
         .eq('id', member.id)
@@ -426,23 +423,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                   />
                 </div>
               </div>
-            </div>
-
-            {/* 贈送大船時數 */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#ff9800' }}>
-                ⏱️ 贈送大船時數（分鐘）
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={formData.gift_boat_hours}
-                onChange={(e) => setFormData({ ...formData, gift_boat_hours: parseInt(e.target.value) || 0 })}
-                placeholder="0"
-                style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
             </div>
 
             {/* 備註 */}

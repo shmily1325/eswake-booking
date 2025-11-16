@@ -21,8 +21,6 @@ interface ParsedMember {
   partner_name?: string  // 配對會員姓名
   membership_start_date?: string
   membership_end_date?: string
-  board_slot_number?: string
-  board_expiry_date?: string
   notes?: string
   status?: string
 }
@@ -70,9 +68,6 @@ export function MemberImport({ user }: MemberImportProps) {
             '會員開始日期': 'membership_start_date',
             '會員截止日': 'membership_end_date',
             '會員到期日': 'membership_end_date',
-            '置板位號碼': 'board_slot_number',
-            '置板截止日': 'board_expiry_date',
-            '置板截止日期': 'board_expiry_date',
             '生日': 'birthday',
             '電話': 'phone',
             '備註': 'notes',
@@ -93,8 +88,6 @@ export function MemberImport({ user }: MemberImportProps) {
               partner_name: row.partner_name || undefined,
               membership_start_date: row.membership_start_date || undefined,
               membership_end_date: row.membership_end_date || undefined,
-              board_slot_number: row.board_slot_number || undefined,
-              board_expiry_date: row.board_expiry_date || undefined,
               notes: row.notes || undefined,
               status: row.status || undefined
             }))
@@ -140,20 +133,74 @@ export function MemberImport({ user }: MemberImportProps) {
         existingNames = new Set(existingMembers?.map(m => m.name) || [])
       }
 
-      // 2. 過濾掉重複的會員（根據姓名）
+      // 2. 分類會員：新會員 vs 已存在會員（需要更新）
       const newMembers = preview.filter(member => {
         return !existingNames.has(member.name.trim())
       })
+      
+      const existingMembers = preview.filter(member => {
+        return existingNames.has(member.name.trim())
+      })
 
-      const skippedCount = preview.length - newMembers.length
+      // 3. 更新已存在的會員
+      let updateCount = 0
+      if (existingMembers.length > 0) {
+        for (const member of existingMembers) {
+          // 會員類型
+          let memberType = 'member'
+          if (member.member_type) {
+            const type = member.member_type.trim()
+            if (type === '客人' || type === 'guest') {
+              memberType = 'guest'
+            }
+          }
 
-      if (newMembers.length === 0) {
-        setError('所有會員都已存在（根據姓名判斷），沒有新會員需要導入')
-        setImporting(false)
-        return
+          // 會籍類型
+          let membershipType = 'general'
+          if (member.membership_type) {
+            const type = member.membership_type.trim()
+            if (type === '一般會員' || type === 'general') {
+              membershipType = 'general'
+            } else if (type === '雙人會員' || type === 'dual') {
+              membershipType = 'dual'
+            } else if (type === '置板' || type === 'board') {
+              membershipType = 'board'
+            }
+          }
+
+          // 狀態
+          let status = 'active'
+          if (member.status) {
+            const statusStr = member.status.trim()
+            if (statusStr === '隱藏' || statusStr === 'inactive') {
+              status = 'inactive'
+            }
+          }
+
+          const updateData = {
+            nickname: member.nickname || null,
+            phone: member.phone || null,
+            birthday: member.birthday || null,
+            member_type: memberType,
+            membership_type: membershipType,
+            membership_start_date: member.membership_start_date || null,
+            membership_end_date: member.membership_end_date || null,
+            notes: member.notes || null,
+            status: status,
+          }
+
+          const { error: updateError } = await supabase
+            .from('members')
+            .update(updateData)
+            .eq('name', member.name.trim())
+
+          if (!updateError) {
+            updateCount++
+          }
+        }
       }
 
-      // 3. 插入新會員（第一階段：不包含配對關係）
+      // 4. 插入新會員（第一階段：不包含配對關係）
       const membersToInsert = newMembers.map(member => {
         // 會員類型
         let memberType = 'member'
@@ -195,8 +242,6 @@ export function MemberImport({ user }: MemberImportProps) {
           membership_type: membershipType,
           membership_start_date: member.membership_start_date || null,
           membership_end_date: member.membership_end_date || null,
-          board_slot_number: member.board_slot_number || null,
-          board_expiry_date: member.board_expiry_date || null,
           balance: 0,
           vip_voucher_amount: 0,
           designated_lesson_minutes: 0,
@@ -216,40 +261,49 @@ export function MemberImport({ user }: MemberImportProps) {
 
       if (insertError) throw insertError
 
-      // 4. 建立配對關係（第二階段）
-      if (data && data.length > 0) {
-        // 建立姓名到會員ID的映射
+      // 5. 建立配對關係（第二階段：包含新增和已存在的會員）
+      const allMembersToProcess = [...newMembers, ...existingMembers]
+      const partnerNotFound: string[] = []
+      
+      if (allMembersToProcess.length > 0) {
+        // 建立姓名到會員ID的映射（新增的會員）
         const nameToIdMap: Record<string, string> = {}
-        data.forEach((member: any, index: number) => {
-          nameToIdMap[newMembers[index].name.trim()] = member.id
-        })
-
-        // 查詢所有可能的配對會員（包括已存在的會員）
-        const allPartnerNames = newMembers
-          .map(m => m.partner_name?.trim())
-          .filter(Boolean) as string[]
-
-        if (allPartnerNames.length > 0) {
-          const { data: existingPartners } = await supabase
-            .from('members')
-            .select('id, name, nickname')
-            .in('name', allPartnerNames)
-            .eq('status', 'active')
-
-          // 更新映射表
-          existingPartners?.forEach((partner: any) => {
-            if (!nameToIdMap[partner.name]) {
-              nameToIdMap[partner.name] = partner.id
-            }
+        if (data && data.length > 0) {
+          data.forEach((member: any, index: number) => {
+            nameToIdMap[newMembers[index].name.trim()] = member.id
           })
         }
 
-        // 準備配對更新
-        const partnerUpdates: Array<{ id: string, partner_id: string, end_date: string | null }> = []
+        // 查詢所有可能的配對會員名稱
+        const allPartnerNames = allMembersToProcess
+          .map(m => m.partner_name?.trim())
+          .filter(Boolean) as string[]
         
-        for (let i = 0; i < data.length; i++) {
-          const member = data[i]
-          const originalMember = newMembers[i]
+        // 查詢所有需要處理的會員（包括已存在的）
+        const allMemberNames = allMembersToProcess.map(m => m.name.trim())
+
+        // 查詢所有相關會員的 ID
+        const allNamesToQuery = [...new Set([...allMemberNames, ...allPartnerNames])]
+        
+        if (allNamesToQuery.length > 0) {
+          const { data: allMembers } = await supabase
+            .from('members')
+            .select('id, name')
+            .in('name', allNamesToQuery)
+            .eq('status', 'active')
+
+          // 建立完整的名稱到ID映射
+          allMembers?.forEach((member: any) => {
+            nameToIdMap[member.name] = member.id
+          })
+        }
+
+        // 準備配對更新（處理所有會員）
+        const partnerUpdates: Array<{ id: string, partner_id: string | null, end_date: string | null }> = []
+        
+        for (const originalMember of allMembersToProcess) {
+          const memberId = nameToIdMap[originalMember.name.trim()]
+          if (!memberId) continue
           
           if (originalMember.partner_name && originalMember.partner_name.trim()) {
             const partnerName = originalMember.partner_name.trim()
@@ -258,11 +312,27 @@ export function MemberImport({ user }: MemberImportProps) {
             if (partnerId) {
               // 雙人會員：到期日綁定一起
               partnerUpdates.push({
-                id: member.id,
+                id: memberId,
                 partner_id: partnerId,
                 end_date: originalMember.membership_end_date || null
               })
+            } else {
+              // 配對會員不存在，記錄警告
+              partnerNotFound.push(`${originalMember.name} → ${partnerName}`)
+              // 仍然更新會員，但不設置配對關係
+              partnerUpdates.push({
+                id: memberId,
+                partner_id: null,
+                end_date: originalMember.membership_end_date || null
+              })
             }
+          } else {
+            // 如果沒有配對會員，清除配對關係
+            partnerUpdates.push({
+              id: memberId,
+              partner_id: null,
+              end_date: originalMember.membership_end_date || null
+            })
           }
         }
 
@@ -288,44 +358,19 @@ export function MemberImport({ user }: MemberImportProps) {
         }
       }
 
-      // 5. 對於有置板位號碼的會員，同步到 board_storage 表
-      if (data && data.length > 0) {
-        const boardStorageRecords = []
-        
-        for (let i = 0; i < data.length; i++) {
-          const member = data[i]
-          const originalMember = newMembers[i]
-          
-          if (originalMember.board_slot_number) {
-            const slotNumber = parseInt(originalMember.board_slot_number)
-            if (!isNaN(slotNumber) && slotNumber >= 1 && slotNumber <= 145) {
-              boardStorageRecords.push({
-                member_id: member.id,
-                slot_number: slotNumber,
-                expires_at: originalMember.board_expiry_date || null,
-                notes: null,
-                status: 'active'
-              })
-            }
-          }
-        }
 
-        // 批量插入置板記錄
-        if (boardStorageRecords.length > 0) {
-          const { error: boardError } = await supabase
-            .from('board_storage')
-            .insert(boardStorageRecords)
-
-          if (boardError) {
-            console.error('置板記錄創建失敗:', boardError)
-            // 不中斷流程，只是記錄錯誤
-          }
-        }
+      let successMsg = `✅ 導入完成！`
+      if (newMembers.length > 0) {
+        successMsg += `\n📝 新增 ${newMembers.length} 位會員`
       }
-
-      let successMsg = `✅ 成功導入 ${data?.length || newMembers.length} 位會員！`
-      if (skippedCount > 0) {
-        successMsg += `\n⚠️ 跳過 ${skippedCount} 位重複會員（姓名已存在）`
+      if (updateCount > 0) {
+        successMsg += `\n🔄 更新 ${updateCount} 位會員`
+      }
+      if (partnerNotFound && partnerNotFound.length > 0) {
+        successMsg += `\n⚠️ ${partnerNotFound.length} 位配對會員不存在：\n  ${partnerNotFound.slice(0, 5).join('\n  ')}`
+        if (partnerNotFound.length > 5) {
+          successMsg += `\n  ...還有 ${partnerNotFound.length - 5} 位`
+        }
       }
 
       setSuccess(successMsg)
@@ -343,7 +388,7 @@ export function MemberImport({ user }: MemberImportProps) {
   }
 
   const downloadTemplate = () => {
-    const template = '姓名,暱稱,會員類型,會籍類型,配對會員,會員開始日期,會員截止日,電話,生日,置板位號碼,置板截止日,備註,狀態\n林敏,Ming,會員,一般會員,,2024-01-01,2055-12-31,0986937619,1990-01-01,,,這是範例,啟用\n賴奕茵,Ingrid Lai,會員,雙人會員,林敏,2024-06-01,2026-06-01,0912345678,1988-12-10,,,雙人配對範例,啟用\n'
+    const template = '姓名,暱稱,會員類型,會籍類型,配對會員,會員開始日期,會員截止日,電話,生日,備註,狀態\n林敏,Ming,會員,一般會員,,2024-01-01,2055-12-31,0986937619,1990-01-01,這是範例,啟用\n賴奕茵,Ingrid Lai,會員,雙人會員,林敏,2024-06-01,2026-06-01,0912345678,1988-12-10,雙人配對範例,啟用\n'
     const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -542,19 +587,35 @@ export function MemberImport({ user }: MemberImportProps) {
               border: '1px solid #dee2e6',
               whiteSpace: 'pre'
             }}>
-姓名,暱稱,會員類型,會籍類型,配對會員,會員開始日期,會員截止日,電話,生日,置板位號碼,置板截止日,備註,狀態{'\n'}
-林敏,Ming,會員,一般會員,,2024-01-01,2055-12-31,0986937619,1990-01-01,,,這是範例,啟用{'\n'}
+姓名,暱稱,會員類型,會籍類型,配對會員,會員開始日期,會員截止日,電話,生日,備註,狀態{'\n'}
+林敏,Ming,會員,一般會員,,2024-01-01,2055-12-31,0986937619,1990-01-01,這是範例,啟用{'\n'}
 賴奕茵,Ingrid,會員,雙人會員,林敏,2024-06-01,2026-06-01,0912345678,1988-12-10,,,雙人配對,啟用
             </code>
-                  <p style={{ margin: 0 }}>
+                  <div style={{
+                    background: '#fff3cd',
+                    padding: '12px',
+                    borderRadius: '6px',
+                    marginBottom: '12px',
+                    border: '1px solid #ffc107'
+                  }}>
+                    <div style={{ fontWeight: 'bold', color: '#856404', marginBottom: '4px' }}>
+                      💡 最佳使用方式
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#856404', lineHeight: '1.6' }}>
+                      1️⃣ 點擊「📤 匯出」導出現有會員資料<br/>
+                      2️⃣ 在 Excel 中修改需要更新的資料<br/>
+                      3️⃣ 上傳修改後的完整 CSV 檔案<br/>
+                      <strong style={{ color: '#d32f2f' }}>⚠️ 姓名相同會覆蓋所有字段（包括空值）</strong>
+                    </div>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '13px' }}>
                     • <strong>姓名</strong>為必填，其他選填<br/>
                     • <strong>會員類型</strong>：會員、客人<br/>
                     • <strong>會籍類型</strong>：一般會員、雙人會員、置板<br/>
                     • <strong>配對會員</strong>：填寫配對會員的姓名（雙人會員用）<br/>
                     • <strong>日期格式</strong>：<code style={{ background: '#ffebee', padding: '2px 6px', borderRadius: '3px' }}>YYYY-MM-DD</code>（例：2024-01-01）<br/>
-                    • <strong>置板位號碼</strong>：1-145 之間的數字<br/>
                     • <strong>狀態</strong>：啟用、隱藏<br/>
-                    • <strong>💰 財務資料</strong>：請到「會員記帳」頁面導入
+                    • <strong>💰 賬戶資料</strong>：請到「會員記帳」頁面導入（儲值、船券等）
                   </p>
           </div>
           <button
@@ -651,8 +712,6 @@ export function MemberImport({ user }: MemberImportProps) {
                       <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>會籍類型</th>
                       <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>會員開始</th>
                       <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>會員截止</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>置板位</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>置板到期</th>
                       <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>生日</th>
                       <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>電話</th>
                       <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>備註</th>
@@ -697,8 +756,6 @@ export function MemberImport({ user }: MemberImportProps) {
                           </td>
                           <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary, whiteSpace: 'nowrap' }}>{member.membership_start_date || '-'}</td>
                           <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary, whiteSpace: 'nowrap' }}>{member.membership_end_date || '-'}</td>
-                          <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary }}>{member.board_slot_number || '-'}</td>
-                          <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary, whiteSpace: 'nowrap' }}>{member.board_expiry_date || '-'}</td>
                           <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary, whiteSpace: 'nowrap' }}>{member.birthday || '-'}</td>
                           <td style={{ padding: designSystem.spacing.sm, color: designSystem.colors.text.secondary, whiteSpace: 'nowrap' }}>{member.phone || '-'}</td>
                           <td style={{ 
@@ -777,8 +834,6 @@ export function MemberImport({ user }: MemberImportProps) {
                         {member.nickname && <div>暱稱: {member.nickname}</div>}
                         {member.membership_start_date && <div>會員開始: {member.membership_start_date}</div>}
                         {member.membership_end_date && <div>會員截止: {member.membership_end_date}</div>}
-                        {member.board_slot_number && <div>置板位: {member.board_slot_number}</div>}
-                        {member.board_expiry_date && <div>置板到期: {member.board_expiry_date}</div>}
                         {member.birthday && <div>生日: {member.birthday}</div>}
                         {member.phone && <div>電話: {member.phone}</div>}
                         {member.notes && <div style={{ 

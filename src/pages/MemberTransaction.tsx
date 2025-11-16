@@ -393,7 +393,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           }}
         >
           <span>📥</span>
-          <span>Import</span>
+          <span>匯入</span>
         </button>
 
         <button
@@ -416,7 +416,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           }}
         >
           <span>📤</span>
-          <span>Export</span>
+          <span>匯出</span>
         </button>
 
         <button
@@ -926,7 +926,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
               alignItems: 'center',
             }}>
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
-                📥 導入會員財務資料
+                📥 導入會員賬戶資料
               </h2>
               <button
                 onClick={() => {
@@ -948,6 +948,27 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
             </div>
 
             <div style={{ padding: '20px' }}>
+              {/* 說明 */}
+              <div style={{
+                background: '#f8f9fa',
+                padding: '16px',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                fontSize: '14px',
+                lineHeight: '1.6',
+              }}>
+                <div style={{ fontWeight: '600', marginBottom: '8px', color: '#333' }}>
+                  💡 導入說明
+                </div>
+                <div style={{ color: '#666' }}>
+                  • CSV 格式：<code style={{ background: '#e9ecef', padding: '2px 6px', borderRadius: '4px' }}>姓名,暱稱,儲值,VIP票券,指定課時數,G23船券,G21/黑豹船券,贈送大船時數,狀態</code><br />
+                  • 只更新已存在的會員（不會創建新會員）<br />
+                  • 會根據會員姓名自動匹配<br />
+                  • 會員不存在時會被跳過並報告錯誤
+                </div>
+              </div>
+
+              {/* 警告 */}
               <div style={{
                 padding: '12px',
                 background: '#fff3cd',
@@ -958,14 +979,32 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                 lineHeight: '1.6',
                 border: '1px solid #ffc107'
               }}>
-                <div style={{ marginBottom: '8px', fontWeight: 'bold', fontSize: '14px' }}>
-                  ⚠️ 重要說明
+                <div style={{ marginBottom: '4px', fontWeight: 'bold', fontSize: '14px' }}>
+                  ⚠️ 重要提醒
                 </div>
-                • <strong>CSV 格式</strong>：姓名,儲值,VIP票券,指定課時數,G23船券,G21/黑豹船券,贈送大船時數<br/>
-                • <strong style={{ color: '#d32f2f' }}>導入會直接覆蓋現有財務數據</strong><br/>
-                • 只更新已存在的會員（不會創建新會員）<br/>
-                • 會員不存在時會被跳過並顯示錯誤<br/>
-                • 建議先導出現有資料備份
+                <strong style={{ color: '#d32f2f' }}>導入會直接覆蓋現有賬戶數據，建議先導出備份！</strong>
+              </div>
+
+              {/* CSV 範例 */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontWeight: '600', marginBottom: '8px', fontSize: '14px' }}>
+                  📄 CSV 範例：
+                </div>
+                <code style={{
+                  display: 'block',
+                  background: '#f8f9fa',
+                  padding: '12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  whiteSpace: 'pre',
+                  overflowX: 'auto',
+                  border: '1px solid #dee2e6',
+                  marginBottom: '8px',
+                }}>
+{`姓名,暱稱,儲值,VIP票券,指定課時數,G23船券,G21/黑豹船券,贈送大船時數,狀態
+林敏,Ming,5000,2000,120,180,240,60,啟用
+賴奕茵,Ingrid,3000,0,60,0,120,0,啟用`}
+                </code>
               </div>
 
               <div style={{ marginBottom: '16px' }}>
