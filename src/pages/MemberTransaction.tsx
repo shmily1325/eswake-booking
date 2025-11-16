@@ -287,9 +287,8 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           *,
           member_id(name, nickname)
         `)
-        .gte('transaction_date', exportStartDate)
-        .lte('transaction_date', exportEndDate)
-        .order('transaction_date', { ascending: false })
+        .gte('created_at', `${exportStartDate}T00:00:00`)
+        .lte('created_at', `${exportEndDate}T23:59:59`)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -351,9 +350,10 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
       setShowExportDialog(false)
       setExportStartDate('')
       setExportEndDate('')
-    } catch (error) {
+    } catch (error: any) {
       console.error('匯出失敗:', error)
-      alert('匯出失敗')
+      const errorMessage = error?.message || '未知錯誤'
+      alert(`匯出失敗: ${errorMessage}\n\n請檢查瀏覽器控制台 (F12) 查看詳細錯誤訊息`)
     } finally {
       setExporting(false)
     }
