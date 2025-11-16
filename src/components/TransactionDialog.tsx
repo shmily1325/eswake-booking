@@ -355,30 +355,83 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     }
 
     try {
-      // 準備 CSV 資料
-      const headers = ['項目', '說明', '金額/時數', '備註']
-      const rows = transactions.map(tx => {
-        const categoryConfig = CATEGORIES.find(c => c.value === tx.category)
+      // 按類別分組
+      const groupedByCategory: Record<string, Transaction[]> = {}
+      CATEGORIES.forEach(cat => {
+        groupedByCategory[cat.value] = transactions.filter(tx => tx.category === cat.value)
+      })
+
+      const csvLines: string[] = []
+      
+      // 處理每個類別
+      CATEGORIES.forEach(cat => {
+        const txList = groupedByCategory[cat.value]
+        
         // 移除 emoji
-        const categoryLabel = categoryConfig?.label?.replace(/[^\u0000-\u007F\u4E00-\u9FFF]/g, '').trim() || tx.category
+        const categoryLabel = cat.label.replace(/[^\u0000-\u007F\u4E00-\u9FFF]/g, '').trim()
         
-        // 用 +/- 表示增減
-        const sign = tx.adjust_type === 'increase' ? '+' : '-'
-        const value = tx.amount ? `${sign}$${tx.amount}` : `${sign}${tx.minutes}分`
+        // 計算統計
+        const isAmount = cat.type === 'amount'
+        const unit = isAmount ? '$' : '分'
         
-        return [
-          categoryLabel,
-          tx.description || '',
-          value,
-          tx.notes || ''
-        ]
+        let endValue = 0
+        let totalIncrease = 0
+        let totalDecrease = 0
+        
+        if (txList.length > 0) {
+          // 有交易：期末值取最後一筆交易的 after 值
+          const lastTx = txList[0] // transactions 已經按時間倒序排列
+          if (cat.value === 'balance') endValue = lastTx.balance_after
+          else if (cat.value === 'vip_voucher') endValue = lastTx.vip_voucher_amount_after
+          else if (cat.value === 'designated_lesson') endValue = lastTx.designated_lesson_minutes_after
+          else if (cat.value === 'boat_voucher_g23') endValue = lastTx.boat_voucher_g23_minutes_after
+          else if (cat.value === 'boat_voucher_g21_panther') endValue = lastTx.boat_voucher_g21_panther_minutes_after
+          else if (cat.value === 'gift_boat_hours') endValue = lastTx.gift_boat_hours_after
+          
+          // 計算本月增加和減少
+          txList.forEach(tx => {
+            const value = isAmount ? (tx.amount || 0) : (tx.minutes || 0)
+            if (tx.adjust_type === 'increase') {
+              totalIncrease += value
+            } else {
+              totalDecrease += value
+            }
+          })
+        } else {
+          // 沒有交易：期末值=當前會員餘額
+          if (cat.value === 'balance') endValue = member.balance
+          else if (cat.value === 'vip_voucher') endValue = member.vip_voucher_amount
+          else if (cat.value === 'designated_lesson') endValue = member.designated_lesson_minutes
+          else if (cat.value === 'boat_voucher_g23') endValue = member.boat_voucher_g23_minutes
+          else if (cat.value === 'boat_voucher_g21_panther') endValue = member.boat_voucher_g21_panther_minutes
+          else if (cat.value === 'gift_boat_hours') endValue = member.gift_boat_hours
+        }
+        
+        // 計算期初值
+        const startValue = endValue - totalIncrease + totalDecrease
+        
+        // 統計行
+        csvLines.push('') // 空行
+        csvLines.push(`"【${categoryLabel}】本月統計：期初 ${unit}${startValue.toLocaleString()} → 期末 ${unit}${endValue.toLocaleString()} (增加 +${unit}${totalIncrease.toLocaleString()}, 減少 -${unit}${totalDecrease.toLocaleString()})"`)
+        
+        // 只有有交易時才顯示明細
+        if (txList.length > 0) {
+          csvLines.push('"日期","說明","金額","備註"')
+          
+          // 明細行（按時間正序）
+          const sortedTxList = [...txList].reverse()
+          sortedTxList.forEach(tx => {
+            const date = tx.transaction_date || tx.created_at.substring(0, 10)
+            const sign = tx.adjust_type === 'increase' ? '+' : '-'
+            const value = isAmount ? `${sign}${unit}${tx.amount?.toLocaleString() || 0}` : `${sign}${tx.minutes || 0}分`
+            
+            csvLines.push(`"${date}","${tx.description || ''}","${value}","${tx.notes || ''}"`)
+          })
+        }
       })
 
       // 生成 CSV
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-      ].join('\n')
+      const csvContent = csvLines.join('\n')
 
       // 下載
       const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
