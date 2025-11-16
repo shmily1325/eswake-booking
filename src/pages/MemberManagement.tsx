@@ -411,11 +411,6 @@ export function MemberManagement({ user }: MemberManagementProps) {
 
   // 根據篩選後的會員計算到期提醒
   const filteredExpiringData = useMemo(() => {
-    const todayStr = getLocalDateString()
-    const thirtyDaysLater = new Date()
-    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30)
-    const thirtyDaysLaterStr = `${thirtyDaysLater.getFullYear()}-${String(thirtyDaysLater.getMonth() + 1).padStart(2, '0')}-${String(thirtyDaysLater.getDate()).padStart(2, '0')}`
-    
     // 篩選會籍到期
     const memberIds = new Set(filteredMembers.map(m => m.id))
     const filteredMembershipExpiring = expiringMemberships.filter((m: any) => {
