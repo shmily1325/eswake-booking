@@ -464,7 +464,7 @@ export function BoardManagement({ user }: BoardManagementProps) {
               whiteSpace: 'nowrap',
               lineHeight: '1.3'
             }}>
-              {slotInfo.member_name}
+              {slotInfo.member_nickname || slotInfo.member_name}
             </div>
             
             {slotInfo.expires_at && (
@@ -756,15 +756,15 @@ export function BoardManagement({ user }: BoardManagementProps) {
                   }}>
                     <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>會員</div>
                     <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                      {selectedSlot.member_name}
-                      {selectedSlot.member_nickname && (
+                      {selectedSlot.member_nickname || selectedSlot.member_name}
+                      {selectedSlot.member_nickname && selectedSlot.member_name && (
                         <span style={{ 
                           fontSize: '14px', 
                           color: '#666', 
                           marginLeft: '8px',
                           fontWeight: 'normal'
                         }}>
-                          ({selectedSlot.member_nickname})
+                          ({selectedSlot.member_name})
                         </span>
                       )}
                     </div>

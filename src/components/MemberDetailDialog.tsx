@@ -383,7 +383,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                                 {index > 0 && <div style={{ height: '1px', background: '#dee2e6', margin: '10px 0' }} />}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                   <div style={{ flex: 1 }}>
-                                    <span style={{ fontWeight: 'bold' }}>格位 {board.slot_number}</span>
+                                    <span style={{ fontWeight: 'bold' }}>#{board.slot_number}</span>
                                     {board.expires_at && <span style={{ color: '#666', marginLeft: '10px', fontSize: '13px' }}>({board.expires_at})</span>}
                                   </div>
                                   <button
