@@ -452,7 +452,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
           }}
         >
           <span>📥</span>
-          <span>批量導入</span>
+          <span>Import</span>
         </button>
 
         <button
@@ -475,7 +475,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
           }}
         >
           <span>📤</span>
-          <span>導出會員</span>
+          <span>Export</span>
         </button>
 
         <button

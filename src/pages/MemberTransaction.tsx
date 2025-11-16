@@ -366,6 +366,83 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
     }}>
       <PageHeader title="💳 會員記帳" user={user} showBaoLink={true} />
 
+      {/* 操作按鈕區 */}
+      <div style={{
+        display: 'flex',
+        gap: isMobile ? '10px' : '12px',
+        marginBottom: isMobile ? '16px' : '20px',
+        flexWrap: 'wrap',
+      }}>
+        <button
+          onClick={() => setShowFinanceImport(true)}
+          style={{
+            flex: isMobile ? '1 1 100%' : '0 0 auto',
+            padding: isMobile ? '12px 16px' : '10px 20px',
+            background: 'white',
+            color: '#666',
+            border: '2px solid #e0e0e0',
+            borderRadius: '8px',
+            fontSize: isMobile ? '14px' : '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+        >
+          <span>📥</span>
+          <span>Import</span>
+        </button>
+
+        <button
+          onClick={handleExportFinance}
+          style={{
+            flex: isMobile ? '1 1 100%' : '0 0 auto',
+            padding: isMobile ? '12px 16px' : '10px 20px',
+            background: 'white',
+            color: '#666',
+            border: '2px solid #e0e0e0',
+            borderRadius: '8px',
+            fontSize: isMobile ? '14px' : '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+        >
+          <span>📤</span>
+          <span>Export</span>
+        </button>
+
+        <button
+          onClick={() => setShowExportDialog(true)}
+          style={{
+            flex: isMobile ? '1 1 100%' : '0 0 auto',
+            padding: isMobile ? '12px 16px' : '10px 20px',
+            background: 'white',
+            color: '#666',
+            border: '2px solid #e0e0e0',
+            borderRadius: '8px',
+            fontSize: isMobile ? '14px' : '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+        >
+          <span>📋</span>
+          <span>匯出總帳</span>
+        </button>
+      </div>
+
       {/* 使用說明 */}
       <div style={{
         background: '#f8f9fa',
@@ -449,69 +526,6 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           gap: '8px',
         }}>
           <span>找到 {filteredMembers.length} 位會員</span>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setShowFinanceImport(true)}
-              style={{
-                padding: '6px 14px',
-                background: '#52c41a',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              📥 導入財務
-            </button>
-            <button
-              onClick={handleExportFinance}
-              style={{
-                padding: '6px 14px',
-                background: '#1890ff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              📤 導出財務
-            </button>
-            <button
-              onClick={() => setShowExportDialog(true)}
-              style={{
-                padding: '6px 14px',
-                background: 'white',
-                color: '#666',
-                border: '2px solid #e0e0e0',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              📋 匯出總帳
-            </button>
-            <button
-              onClick={() => setSearchTerm('')}
-              style={{
-                padding: '4px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                background: 'white',
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
-              清除搜尋
-            </button>
-          </div>
         </div>
       </div>
 
