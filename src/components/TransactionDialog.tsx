@@ -667,11 +667,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
             }}>
               <div style={{ fontWeight: '600', marginBottom: '6px' }}>💡 使用說明</div>
               <div style={{ color: '#424242' }}>
-                • 選擇要調整的項目（儲值、VIP票券、指定課等六項）<br/>
-                • 選擇增加或減少操作<br/>
-                • 輸入金額或時數<br/>
-                • 填寫說明（必填）與備註（選填）<br/>
-                • 切換至「交易」標籤查看歷史記錄，點擊任一筆記錄可編輯或刪除
+                <strong>💰 儲值：</strong>會員儲值餘額<br/>
+                <strong>💎 VIP票券：</strong>VIP專用票券餘額<br/>
+                <strong>📚 指定課：</strong>指定教練課程時數（分鐘）<br/>
+                <strong>🚤 G23船券：</strong>G23船隻使用時數（分鐘）<br/>
+                <strong>⛵ G21/黑豹：</strong>G21與黑豹船隻共通時數（分鐘）<br/>
+                <strong>🎁 贈送大船：</strong>贈送的大船使用時數（分鐘）
               </div>
             </div>
 
