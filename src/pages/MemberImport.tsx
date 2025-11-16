@@ -262,6 +262,7 @@ export function MemberImport({ user }: MemberImportProps) {
       if (insertError) throw insertError
 
       // 5. 建立配對關係（第二階段：包含新增和已存在的會員）
+      // 注意：只處理 CSV 中出現的會員，不在 CSV 中的會員配對關係不會被影響
       const allMembersToProcess = [...newMembers, ...existingMembers]
       const partnerNotFound: string[] = []
       
@@ -331,13 +332,18 @@ export function MemberImport({ user }: MemberImportProps) {
           })
         }
 
-        // 準備配對更新（處理所有會員）
+        // 準備配對更新（只處理 CSV 中出現的會員）
+        // 重要：只更新有明確提供配對會員名稱的記錄
+        // - 如果 CSV 中有填寫配對會員 → 更新配對關係
+        // - 如果 CSV 中沒有填寫配對會員 → 不更新（保留原有配對關係）
+        // - 如果會員不在 CSV 中 → 完全不處理（配對關係保持不變）
         const partnerUpdates: Array<{ id: string, partner_id: string | null, end_date: string | null }> = []
         
         for (const originalMember of allMembersToProcess) {
           const memberId = nameToIdMap[originalMember.name.trim()]
           if (!memberId) continue
           
+          // 只有當 CSV 中有明確填寫配對會員時才更新配對關係
           if (originalMember.partner_name && originalMember.partner_name.trim()) {
             const partnerName = originalMember.partner_name.trim()
             const partnerId = nameToIdMap[partnerName]
@@ -352,21 +358,15 @@ export function MemberImport({ user }: MemberImportProps) {
             } else {
               // 配對會員不存在，記錄警告
               partnerNotFound.push(`${originalMember.name}→ ${partnerName}`)
-              // 仍然更新會員，但不設置配對關係
+              // 如果配對會員不存在，清除配對關係（因為用戶明確指定了配對會員但找不到）
               partnerUpdates.push({
                 id: memberId,
                 partner_id: null,
                 end_date: originalMember.membership_end_date || null
               })
             }
-          } else {
-            // 如果沒有配對會員，清除配對關係
-            partnerUpdates.push({
-              id: memberId,
-              partner_id: null,
-              end_date: originalMember.membership_end_date || null
-            })
           }
+          // 如果 CSV 中沒有填寫配對會員，則不更新配對關係（保留原有配對）
         }
 
         // 批量更新配對關係
