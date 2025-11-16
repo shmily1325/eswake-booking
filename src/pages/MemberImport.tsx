@@ -270,7 +270,12 @@ export function MemberImport({ user }: MemberImportProps) {
         const nameToIdMap: Record<string, string> = {}
         if (data && data.length > 0) {
           data.forEach((member: any, index: number) => {
-            nameToIdMap[newMembers[index].name.trim()] = member.id
+            const memberName = newMembers[index].name.trim()
+            nameToIdMap[memberName] = member.id
+            // 如果新會員有暱稱，也加入映射
+            if (newMembers[index].nickname?.trim()) {
+              nameToIdMap[newMembers[index].nickname!.trim()] = member.id
+            }
           })
         }
 
@@ -282,19 +287,47 @@ export function MemberImport({ user }: MemberImportProps) {
         // 查詢所有需要處理的會員（包括已存在的）
         const allMemberNames = allMembersToProcess.map(m => m.name.trim())
 
-        // 查詢所有相關會員的 ID
+        // 查詢所有相關會員的 ID（同時檢查 name 和 nickname）
         const allNamesToQuery = [...new Set([...allMemberNames, ...allPartnerNames])]
         
         if (allNamesToQuery.length > 0) {
-          const { data: allMembers } = await supabase
+          // 查詢 name 匹配的會員
+          const { data: allMembersByName } = await supabase
             .from('members')
-            .select('id, name')
+            .select('id, name, nickname')
             .in('name', allNamesToQuery)
             .eq('status', 'active')
 
-          // 建立完整的名稱到ID映射
-          allMembers?.forEach((member: any) => {
-            nameToIdMap[member.name] = member.id
+          // 查詢 nickname 匹配的會員
+          const { data: allMembersByNickname } = await supabase
+            .from('members')
+            .select('id, name, nickname')
+            .in('nickname', allNamesToQuery)
+            .eq('status', 'active')
+            .not('nickname', 'is', null)
+
+          // 合併結果並建立映射
+          const allMembers = [
+            ...(allMembersByName || []),
+            ...(allMembersByNickname || [])
+          ]
+
+          // 去重（根據 id）
+          const uniqueMembers = new Map<string, any>()
+          allMembers.forEach((member: any) => {
+            if (!uniqueMembers.has(member.id)) {
+              uniqueMembers.set(member.id, member)
+            }
+          })
+
+          // 建立完整的名稱到ID映射（同時支援 name 和 nickname）
+          uniqueMembers.forEach((member: any) => {
+            if (member.name && !nameToIdMap[member.name]) {
+              nameToIdMap[member.name] = member.id
+            }
+            if (member.nickname && !nameToIdMap[member.nickname]) {
+              nameToIdMap[member.nickname] = member.id
+            }
           })
         }
 
@@ -318,7 +351,7 @@ export function MemberImport({ user }: MemberImportProps) {
               })
             } else {
               // 配對會員不存在，記錄警告
-              partnerNotFound.push(`${originalMember.name} → ${partnerName}`)
+              partnerNotFound.push(`${originalMember.name}→ ${partnerName}`)
               // 仍然更新會員，但不設置配對關係
               partnerUpdates.push({
                 id: memberId,
@@ -361,16 +394,16 @@ export function MemberImport({ user }: MemberImportProps) {
 
       let successMsg = `✅ 導入完成！`
       if (newMembers.length > 0) {
-        successMsg += `\n📝 新增 ${newMembers.length} 位會員`
+        successMsg += `\n📝 新增${newMembers.length}位會員`
       }
       if (updateCount > 0) {
-        successMsg += `\n🔄 更新 ${updateCount} 位會員`
+        successMsg += `\n🔄 更新${updateCount}位會員`
       }
       if (partnerNotFound && partnerNotFound.length > 0) {
-        successMsg += `\n⚠️ ${partnerNotFound.length} 位配對會員不存在：\n  ${partnerNotFound.slice(0, 5).join('\n  ')}`
-        if (partnerNotFound.length > 5) {
-          successMsg += `\n  ...還有 ${partnerNotFound.length - 5} 位`
-        }
+        successMsg += `\n⚠️ ${partnerNotFound.length}位配對會員不存在：`
+        partnerNotFound.forEach(partner => {
+          successMsg += `\n${partner}`
+        })
       }
 
       setSuccess(successMsg)
