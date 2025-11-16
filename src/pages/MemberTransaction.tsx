@@ -312,10 +312,13 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
 
       const getCategoryLabel = (category: string) => {
         const labels: Record<string, string> = {
-          balance: '餘額',
+          balance: '儲值',
+          vip_voucher: 'VIP票券',
           designated_lesson: '指定課',
           boat_voucher_g23: 'G23船券',
-          boat_voucher_g21: 'G21船券',
+          boat_voucher_g21: 'G21/黑豹船券',
+          boat_voucher_g21_panther: 'G21/黑豹船券',
+          gift_boat_hours: '贈送大船',
           free_hours: '贈送時數',
           membership: '會籍',
           board_storage: '置板',
@@ -324,13 +327,12 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
       }
 
       const csv = [
-        ['會員', '日期', '交易類型', '類別', '付款方式', '金額', '分鐘數', '說明', '備註', '餘額', '指定課', 'G23船券', 'G21船券'].join(','),
+        ['會員', '日期', '交易類型', '類別', '金額', '分鐘數', '說明', '備註', '餘額', '指定課', 'G23船券', 'G21船券'].join(','),
         ...data.map((t: any) => [
           `"${(t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'}"`,
           t.transaction_date || t.created_at?.split('T')[0] || '',
           getTypeLabel(t.transaction_type),
           getCategoryLabel(t.category),
-          t.payment_method || '',
           t.amount || '',
           t.minutes || '',
           `"${t.description || ''}"`,
