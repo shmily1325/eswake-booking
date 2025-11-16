@@ -45,19 +45,12 @@ interface Booking {
 
 const generateTimeSlots = () => {
   const slots: string[] = []
-  slots.push('04:30')
   
-  let hour = 4
-  let minute = 45
-  
-  while (hour < 22 || (hour === 22 && minute === 0)) {
-    const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-    slots.push(timeSlot)
-    
-    minute += 15
-    if (minute >= 60) {
-      minute = 0
-      hour += 1
+  // 從 00:00 開始，每 15 分鐘一個時間槽，直到 23:45
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+      slots.push(timeSlot)
     }
   }
   
