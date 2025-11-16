@@ -410,6 +410,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         // 計算期初值
         const startValue = endValue - totalIncrease + totalDecrease
         
+        // 跳過空的類別（期初期末都是0且沒有交易）
+        if (startValue === 0 && endValue === 0 && txList.length === 0) {
+          return
+        }
+        
         // 統計行（簡化格式）
         csvLines.push('') // 空行
         if (isAmount) {
@@ -430,10 +435,23 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
             const [year, month, day] = date.split('-')
             const formattedDate = `${month}/${day}/${year}`
             
-            const sign = tx.adjust_type === 'increase' ? '' : '-'
-            const value = isAmount 
-              ? `${sign}${unit}${tx.amount || 0}` 
-              : `${sign}${tx.minutes || 0}分`
+            // 用文字描述代替正負號（動詞在前）
+            let value: string
+            if (isAmount) {
+              // 金額：動詞 + 金額
+              if (tx.adjust_type === 'increase') {
+                value = `儲值 ${unit}${tx.amount || 0}`
+              } else {
+                value = `扣除 ${unit}${tx.amount || 0}`
+              }
+            } else {
+              // 時數：動詞 + 金額
+              if (tx.adjust_type === 'increase') {
+                value = `增加 ${tx.minutes || 0}分`
+              } else {
+                value = `使用 ${tx.minutes || 0}分`
+              }
+            }
             
             csvLines.push(`"${formattedDate}","${tx.description || ''}","${value}","${tx.notes || ''}"`)
           })
