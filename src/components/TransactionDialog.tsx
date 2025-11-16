@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
+import { getLocalDateString } from '../utils/date'
 
 interface Member {
   id: string
@@ -24,6 +25,7 @@ interface TransactionDialogProps {
 interface Transaction {
   id: number
   created_at: string
+  transaction_date: string
   category: string
   adjust_type: string
   amount: number | null
@@ -59,12 +61,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
   const [value, setValue] = useState('')
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
+  const [transactionDate, setTransactionDate] = useState(() => getLocalDateString())
   
   // 交易記錄相關
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const today = getLocalDateString() // YYYY-MM-DD
+    return today.substring(0, 7) // YYYY-MM
   })
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
@@ -73,6 +76,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
   const [editValue, setEditValue] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editNotes, setEditNotes] = useState('')
+  const [editTransactionDate, setEditTransactionDate] = useState('')
 
   const inputStyle = {
     width: '100%',
@@ -89,6 +93,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     setValue('')
     setDescription('')
     setNotes('')
+    setTransactionDate(getLocalDateString())
   }
 
   // 加載交易記錄
@@ -128,6 +133,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     setEditValue(tx.amount ? tx.amount.toString() : tx.minutes ? tx.minutes.toString() : '')
     setEditDescription(tx.description)
     setEditNotes(tx.notes || '')
+    setEditTransactionDate(tx.transaction_date || tx.created_at.substring(0, 10))
   }
 
   const handleSaveEdit = async () => {
@@ -141,6 +147,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
 
     if (!editDescription.trim()) {
       alert('請輸入說明')
+      return
+    }
+
+    if (!editTransactionDate) {
+      alert('請選擇交易日期')
       return
     }
 
@@ -246,6 +257,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           minutes: categoryConfig?.type === 'minutes' ? numValue : null,
           description: editDescription.trim(),
           notes: editNotes.trim() || null,
+          transaction_date: editTransactionDate,
           ...afterValues
         })
         .eq('id', editingTransaction.id)
@@ -344,27 +356,20 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
 
     try {
       // 準備 CSV 資料
-      const headers = ['日期時間', '項目', '操作', '金額/時數', '說明', '備註']
+      const headers = ['項目', '說明', '金額/時數', '備註']
       const rows = transactions.map(tx => {
         const categoryConfig = CATEGORIES.find(c => c.value === tx.category)
         // 移除 emoji
         const categoryLabel = categoryConfig?.label?.replace(/[^\u0000-\u007F\u4E00-\u9FFF]/g, '').trim() || tx.category
-        const date = new Date(tx.created_at).toLocaleString('zh-TW', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-        const operation = tx.adjust_type === 'increase' ? '增加' : '減少'
-        const value = tx.amount ? `$${tx.amount}` : `${tx.minutes}分`
+        
+        // 用 +/- 表示增減
+        const sign = tx.adjust_type === 'increase' ? '+' : '-'
+        const value = tx.amount ? `${sign}$${tx.amount}` : `${sign}${tx.minutes}分`
         
         return [
-          date,
           categoryLabel,
-          operation,
-          value,
           tx.description || '',
+          value,
           tx.notes || ''
         ]
       })
@@ -422,6 +427,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
       return
     }
 
+    if (!transactionDate) {
+      alert('請選擇交易日期')
+      return
+    }
+
     setLoading(true)
     try {
       // 計算新值
@@ -471,10 +481,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
 
       if (updateError) throw updateError
 
-      // 記錄交易
+      // 記錄交易（created_at 由資料庫自動生成）
       const categoryConfig = CATEGORIES.find(c => c.value === category)
-      const now = new Date()
-      const createdAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
       
       const transactionData: any = {
         member_id: member.id,
@@ -485,7 +493,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         minutes: categoryConfig?.type === 'minutes' ? numValue : null,
         description: description.trim(),
         notes: notes.trim() || null,
-        created_at: createdAt,
+        transaction_date: transactionDate,
         ...afterValues
       }
 
@@ -707,10 +715,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                     onClick={() => setAdjustType('increase')}
                     style={{
                       padding: '12px',
-                      border: adjustType === 'increase' ? '2px solid #4caf50' : '2px solid #e0e0e0',
+                      border: adjustType === 'increase' ? '2px solid #1976d2' : '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      background: adjustType === 'increase' ? '#e8f5e9' : 'white',
-                      color: adjustType === 'increase' ? '#4caf50' : '#666',
+                      background: adjustType === 'increase' ? '#e3f2fd' : 'white',
+                      color: adjustType === 'increase' ? '#1976d2' : '#666',
                       fontSize: '14px',
                       fontWeight: adjustType === 'increase' ? '600' : 'normal',
                       cursor: 'pointer',
@@ -724,10 +732,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                     onClick={() => setAdjustType('decrease')}
                     style={{
                       padding: '12px',
-                      border: adjustType === 'decrease' ? '2px solid #f44336' : '2px solid #e0e0e0',
+                      border: adjustType === 'decrease' ? '2px solid #757575' : '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      background: adjustType === 'decrease' ? '#ffebee' : 'white',
-                      color: adjustType === 'decrease' ? '#f44336' : '#666',
+                      background: adjustType === 'decrease' ? '#f5f5f5' : 'white',
+                      color: adjustType === 'decrease' ? '#757575' : '#666',
                       fontSize: '14px',
                       fontWeight: adjustType === 'decrease' ? '600' : 'normal',
                       cursor: 'pointer',
@@ -751,6 +759,20 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   placeholder={`請輸入${selectedCategory?.type === 'amount' ? '金額' : '分鐘數'}`}
+                  style={inputStyle}
+                  required
+                />
+              </div>
+
+              {/* 交易日期 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                  交易日期 *
+                </label>
+                <input
+                  type="date"
+                  value={transactionDate}
+                  onChange={(e) => setTransactionDate(e.target.value)}
                   style={inputStyle}
                   required
                 />
@@ -900,7 +922,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                         <div onClick={(e) => e.stopPropagation()}>
                           <div style={{ marginBottom: '12px' }}>
                             <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
-                              {new Date(tx.created_at).toLocaleString('zh-TW', {
+                              記帳時間：{new Date(tx.created_at).toLocaleString('zh-TW', {
                                 year: 'numeric',
                                 month: '2-digit',
                                 day: '2-digit',
@@ -938,10 +960,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                                   onClick={() => setEditAdjustType('increase')}
                                   style={{
                                     padding: '8px',
-                                    border: editAdjustType === 'increase' ? '2px solid #4caf50' : '2px solid #e0e0e0',
+                                    border: editAdjustType === 'increase' ? '2px solid #1976d2' : '2px solid #e0e0e0',
                                     borderRadius: '6px',
-                                    background: editAdjustType === 'increase' ? '#e8f5e9' : 'white',
-                                    color: editAdjustType === 'increase' ? '#4caf50' : '#666',
+                                    background: editAdjustType === 'increase' ? '#e3f2fd' : 'white',
+                                    color: editAdjustType === 'increase' ? '#1976d2' : '#666',
                                     fontSize: '13px',
                                     fontWeight: editAdjustType === 'increase' ? '600' : 'normal',
                                     cursor: 'pointer',
@@ -954,10 +976,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                                   onClick={() => setEditAdjustType('decrease')}
                                   style={{
                                     padding: '8px',
-                                    border: editAdjustType === 'decrease' ? '2px solid #f44336' : '2px solid #e0e0e0',
+                                    border: editAdjustType === 'decrease' ? '2px solid #757575' : '2px solid #e0e0e0',
                                     borderRadius: '6px',
-                                    background: editAdjustType === 'decrease' ? '#ffebee' : 'white',
-                                    color: editAdjustType === 'decrease' ? '#f44336' : '#666',
+                                    background: editAdjustType === 'decrease' ? '#f5f5f5' : 'white',
+                                    color: editAdjustType === 'decrease' ? '#757575' : '#666',
                                     fontSize: '13px',
                                     fontWeight: editAdjustType === 'decrease' ? '600' : 'normal',
                                     cursor: 'pointer',
@@ -978,6 +1000,19 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                                 min="0"
                                 value={editValue}
                                 onChange={(e) => setEditValue(e.target.value)}
+                                style={{ ...inputStyle, fontSize: '14px' }}
+                              />
+                            </div>
+
+                            {/* 交易日期 */}
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                                交易日期 *
+                              </label>
+                              <input
+                                type="date"
+                                value={editTransactionDate}
+                                onChange={(e) => setEditTransactionDate(e.target.value)}
                                 style={{ ...inputStyle, fontSize: '14px' }}
                               />
                             </div>
@@ -1021,7 +1056,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                               style={{
                                 flex: 1,
                                 padding: '10px',
-                                background: '#4caf50',
+                                background: '#1976d2',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '6px',
@@ -1036,7 +1071,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                               onClick={() => handleDeleteTransaction(tx)}
                               style={{
                                 padding: '10px 16px',
-                                background: '#f44336',
+                                background: '#757575',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '6px',
@@ -1051,8 +1086,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                               onClick={handleCancelEdit}
                               style={{
                                 padding: '10px 16px',
-                                background: '#999',
-                                color: 'white',
+                                background: '#e0e0e0',
+                                color: '#666',
                                 border: 'none',
                                 borderRadius: '6px',
                                 fontSize: '13px',
@@ -1081,19 +1116,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                                 {tx.description}
                               </div>
                               <div style={{ fontSize: '12px', color: '#999' }}>
-                                {new Date(tx.created_at).toLocaleString('zh-TW', {
-                                  year: 'numeric',
-                                  month: '2-digit',
-                                  day: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
+                                {tx.transaction_date || tx.created_at.substring(0, 10)}
                               </div>
                             </div>
                             <div style={{
                               fontSize: '18px',
                               fontWeight: 'bold',
-                              color: isIncrease ? '#4caf50' : '#f44336',
+                              color: isIncrease ? '#1976d2' : '#757575',
                               whiteSpace: 'nowrap',
                               marginLeft: '12px',
                             }}>
