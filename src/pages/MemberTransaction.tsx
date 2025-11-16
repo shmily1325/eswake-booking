@@ -364,7 +364,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      <PageHeader title="💳 會員記帳" user={user} showBaoLink={true} />
+      <PageHeader title="💰 會員儲值" user={user} showBaoLink={true} />
 
       {/* 操作按鈕區 */}
       <div style={{
