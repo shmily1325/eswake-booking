@@ -456,9 +456,9 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
 
         {/* 教練姓名 - 只在有教練時顯示 */}
         {coachNames && (
-          <div style={bookingCardContentStyles.coachName(boat.color, isMobile)}>
-            🎓 {coachNames}
-          </div>
+        <div style={bookingCardContentStyles.coachName(boat.color, isMobile)}>
+          🎓 {coachNames}
+        </div>
         )}
 
         {/* 駕駛姓名 - 只在有駕駛時顯示 */}
