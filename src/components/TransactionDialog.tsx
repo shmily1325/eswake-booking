@@ -124,7 +124,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
   const handleEditTransaction = (tx: Transaction) => {
     setEditingTransaction(tx)
     setEditCategory(tx.category)
-    setEditAdjustType(tx.adjust_type)
+    setEditAdjustType(tx.adjust_type as 'increase' | 'decrease')
     setEditValue(tx.amount ? tx.amount.toString() : tx.minutes ? tx.minutes.toString() : '')
     setEditDescription(tx.description)
     setEditNotes(tx.notes || '')
@@ -652,6 +652,26 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                   <div style={{ color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
                   <div style={{ fontWeight: 'bold', color: '#333' }}>{member.gift_boat_hours.toLocaleString()}分</div>
                 </div>
+              </div>
+            </div>
+
+            {/* 使用說明 */}
+            <div style={{
+              background: '#e3f2fd',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '13px',
+              lineHeight: '1.6',
+              color: '#1976d2',
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '6px' }}>💡 使用說明</div>
+              <div style={{ color: '#424242' }}>
+                • 選擇要調整的項目（儲值、VIP票券、指定課等六項）<br/>
+                • 選擇增加或減少操作<br/>
+                • 輸入金額或時數<br/>
+                • 填寫說明（必填）與備註（選填）<br/>
+                • 切換至「交易」標籤查看歷史記錄，點擊任一筆記錄可編輯或刪除
               </div>
             </div>
 
