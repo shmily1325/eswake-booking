@@ -31,6 +31,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(false)
   const [allMembers, setAllMembers] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
+  // const [boardSlots, setBoardSlots] = useState<Array<{id?: number, slot_number: string, expires_at: string}>>([])
   const [formData, setFormData] = useState({
     name: member.name,
     nickname: member.nickname || '',
@@ -56,10 +57,28 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     if (data) setAllMembers(data)
   }
 
+  // 載入會員的置板格位
+  // const loadBoardSlots = async () => {
+  //   const { data } = await supabase
+  //     .from('board_storage')
+  //     .select('id, slot_number, expires_at')
+  //     .eq('member_id', member.id)
+  //     .eq('status', 'active')
+  //     .order('slot_number')
+  //   if (data) {
+  //     setBoardSlots(data.map(slot => ({
+  //       id: slot.id,
+  //       slot_number: String(slot.slot_number),
+  //       expires_at: slot.expires_at || ''
+  //     })))
+  //   }
+  // }
+
   useEffect(() => {
     if (!open) return
 
     loadMembers()
+    // loadBoardSlots()
     
     setFormData({
       name: member.name,
@@ -92,6 +111,37 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     e.currentTarget.style.borderColor = '#e0e0e0'
   }
+
+  // 添加新置板格位
+  // const handleAddBoardSlot = () => {
+  //   setBoardSlots([...boardSlots, { slot_number: '', expires_at: '' }])
+  // }
+
+  // 删除置板格位
+  // const handleRemoveBoardSlot = async (index: number) => {
+  //   const slot = boardSlots[index]
+  //   if (slot.id) {
+  //     // 如果有 ID，从数据库删除
+  //     const { error } = await supabase
+  //       .from('board_storage')
+  //       .update({ status: 'inactive' })
+  //       .eq('id', slot.id)
+      
+  //     if (error) {
+  //       alert('删除失败：' + error.message)
+  //       return
+  //     }
+  //   }
+  //   // 从列表中移除
+  //   setBoardSlots(boardSlots.filter((_, i) => i !== index))
+  // }
+
+  // 更新置板格位
+  // const handleUpdateBoardSlot = (index: number, field: 'slot_number' | 'expires_at', value: string) => {
+  //   const newSlots = [...boardSlots]
+  //   newSlots[index][field] = value
+  //   setBoardSlots(newSlots)
+  // }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -451,12 +501,8 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
 
           {/* 底部按鈕 */}
           <div style={{
-            padding: isMobile ? '24px 20px calc(40px + env(safe-area-inset-bottom))' : '20px',
+            padding: isMobile ? '20px 20px calc(80px + env(safe-area-inset-bottom))' : '20px',
             borderTop: '1px solid #e0e0e0',
-            display: 'flex',
-            gap: isMobile ? '12px' : '12px',
-            justifyContent: 'flex-end',
-            flexDirection: isMobile ? 'column' : 'row',
             position: 'sticky',
             bottom: 0,
             background: 'white',
@@ -468,16 +514,33 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               onClick={onClose}
               disabled={loading}
               style={{
-                padding: isMobile ? '16px 24px' : '10px 20px',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
+                width: '100%',
+                padding: isMobile ? '16px' : '14px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '10px',
                 background: 'white',
+                color: '#666',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: isMobile ? '17px' : '14px',
-                minHeight: isMobile ? '52px' : '44px',
-                flex: isMobile ? '1' : '0',
-                fontWeight: isMobile ? '600' : 'normal',
+                fontSize: isMobile ? '16px' : '15px',
+                fontWeight: '600',
                 touchAction: 'manipulation',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                marginBottom: '12px',
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.background = '#f8f8f8'
+                  e.currentTarget.style.borderColor = '#ccc'
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.12)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'white'
+                e.currentTarget.style.borderColor = '#e0e0e0'
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.08)'
               }}
             >
               取消
@@ -486,20 +549,31 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               type="submit"
               disabled={loading}
               style={{
-                padding: isMobile ? '16px 24px' : '10px 20px',
+                width: '100%',
+                padding: isMobile ? '16px' : '14px',
                 border: 'none',
-                borderRadius: '8px',
-                background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+                borderRadius: '10px',
+                background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: isMobile ? '17px' : '14px',
-                fontWeight: 'bold',
-                minHeight: isMobile ? '52px' : '44px',
-                flex: isMobile ? '1' : '0',
+                fontSize: isMobile ? '16px' : '15px',
+                fontWeight: '600',
                 touchAction: 'manipulation',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'
               }}
             >
-              {loading ? '更新中...' : '確認更新'}
+              {loading ? '更新中...' : '✓ 確認更新'}
             </button>
           </div>
         </form>
