@@ -114,6 +114,64 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     }
   }
 
+  // 匯出交易記錄
+  const handleExportTransactions = () => {
+    if (transactions.length === 0) {
+      alert('本月無交易記錄可匯出')
+      return
+    }
+
+    try {
+      // 準備 CSV 資料
+      const headers = ['日期時間', '項目', '操作', '金額/時數', '說明', '備註']
+      const rows = transactions.map(tx => {
+        const categoryConfig = CATEGORIES.find(c => c.value === tx.category)
+        const date = new Date(tx.created_at).toLocaleString('zh-TW', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+        const operation = tx.adjust_type === 'increase' ? '增加' : '減少'
+        const value = tx.amount ? `$${tx.amount}` : `${tx.minutes}分`
+        
+        return [
+          date,
+          categoryConfig?.label || tx.category,
+          operation,
+          value,
+          tx.description || '',
+          tx.notes || ''
+        ]
+      })
+
+      // 生成 CSV
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n')
+
+      // 下載
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      
+      const [year, month] = selectedMonth.split('-')
+      const fileName = `${member.nickname || member.name}_交易記錄_${year}年${month}月.csv`
+      link.setAttribute('download', fileName)
+      
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error: any) {
+      console.error('匯出失敗:', error)
+      alert('匯出失敗，請稍後再試')
+    }
+  }
+
   useEffect(() => {
     if (open && activeTab === 'history') {
       loadTransactions()
@@ -222,7 +280,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
 
       if (transactionError) throw transactionError
 
-      alert('記帳成功！')
       resetForm()
       onSuccess()
       onClose()
@@ -333,7 +390,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
               transition: 'all 0.2s',
             }}
           >
-            📊 查帳
+            📊 交易
           </button>
         </div>
 
@@ -528,17 +585,43 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         {/* 查帳 Tab */}
         {activeTab === 'history' && (
           <div style={{ padding: '20px' }}>
-            {/* 月份選擇 */}
+            {/* 月份選擇和匯出按鈕 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
                 選擇月份
               </label>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                style={inputStyle}
-              />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <button
+                  onClick={() => handleExportTransactions()}
+                  disabled={transactions.length === 0}
+                  style={{
+                    padding: '10px 20px',
+                    background: transactions.length === 0 ? '#ccc' : '#4caf50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: transactions.length === 0 ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (transactions.length > 0) e.currentTarget.style.background = '#388e3c'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (transactions.length > 0) e.currentTarget.style.background = '#4caf50'
+                  }}
+                >
+                  📥 匯出
+                </button>
+              </div>
             </div>
 
             {/* 交易記錄列表 */}
