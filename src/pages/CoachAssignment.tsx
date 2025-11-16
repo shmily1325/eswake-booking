@@ -1011,8 +1011,8 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           )}
         </div>
 
-        {/* 今日總覽卡片 - 僅電腦版顯示 */}
-        {!isMobile && !loading && bookings.length > 0 && (() => {
+        {/* 今日總覽卡片 */}
+        {!loading && bookings.length > 0 && (() => {
           // 統計數據
           const totalBookings = bookings.length
           
@@ -3142,7 +3142,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                     const isCoachInThisBooking = currentAssignment.coachIds.includes(c.id)
                                     // 檢查該人在其他預約是否有時間衝突（作為教練或駕駛）
                                     const isAvailable = isCoachAvailable(c.id, booking.id)
-                                    const isUnavailable = (!isAvailable || isCoachInThisBooking) && !isSelected
+                                    // 檢查是否休假
+                                    const isOnTimeOff = c.isOnTimeOff
+                                    const isUnavailable = (!isAvailable || isCoachInThisBooking || isOnTimeOff) && !isSelected
                                     return (
                                       <button
                                         key={c.id}
@@ -3150,6 +3152,10 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                           e.stopPropagation()
                                           if (isCoachInThisBooking) {
                                             alert('⚠️ 教練不能同時是駕駛，請選擇其他人')
+                                            return
+                                          }
+                                          if (isOnTimeOff && !isSelected) {
+                                            alert('⚠️ 該教練今日休假')
                                             return
                                           }
                                           if (isUnavailable) {
@@ -3169,7 +3175,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                         }}
                                         disabled={isUnavailable}
                                       >
-                                        {c.name}
+                                        {c.name}{isOnTimeOff && !isSelected ? ' 🏖️' : ''}
                                 </button>
                     )
                   })}
