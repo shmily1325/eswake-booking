@@ -57,6 +57,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
   const [category, setCategory] = useState('balance')
   const [adjustType, setAdjustType] = useState<'increase' | 'decrease'>('increase')
   const [value, setValue] = useState('')
+  const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
   
   // 交易記錄相關
@@ -80,6 +81,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     setCategory('balance')
     setAdjustType('increase')
     setValue('')
+    setDescription('')
     setNotes('')
   }
 
@@ -131,6 +133,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     const numValue = parseFloat(value)
     if (!numValue || numValue <= 0) {
       alert('請輸入有效的數值')
+      return
+    }
+
+    if (!description.trim()) {
+      alert('請輸入說明')
       return
     }
 
@@ -196,8 +203,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
       const now = new Date()
       const createdAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
       
-      const description = `${adjustType === 'increase' ? '增加' : '減少'} ${categoryConfig?.label} ${numValue}${categoryConfig?.unit}`
-      
       const transactionData: any = {
         member_id: member.id,
         transaction_type: 'adjust',
@@ -205,8 +210,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         adjust_type: adjustType,
         amount: categoryConfig?.type === 'amount' ? numValue : null,
         minutes: categoryConfig?.type === 'minutes' ? numValue : null,
-        description: description,
-        notes: notes || null,
+        description: description.trim(),
+        notes: notes.trim() || null,
         created_at: createdAt,
         ...afterValues
       }
@@ -458,7 +463,22 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                 />
               </div>
 
-              {/* 備註 */}
+              {/* 說明（必填） */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                  說明 *
+                </label>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="例如：儲值、購買課程、退款等"
+                  style={inputStyle}
+                  required
+                />
+              </div>
+
+              {/* 備註（選填） */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
                   備註
@@ -552,9 +572,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                         alignItems: 'flex-start',
                         marginBottom: '8px',
                       }}>
-                        <div>
+                        <div style={{ flex: 1 }}>
                           <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
                             {categoryConfig?.label}
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+                            📝 {tx.description}
                           </div>
                           <div style={{ fontSize: '12px', color: '#999' }}>
                             {new Date(tx.created_at).toLocaleString('zh-TW', {
@@ -570,6 +593,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                           fontSize: '18px',
                           fontWeight: 'bold',
                           color: isIncrease ? '#4caf50' : '#f44336',
+                          whiteSpace: 'nowrap',
+                          marginLeft: '12px',
                         }}>
                           {isIncrease ? '+' : '-'}{tx.amount ? `$${tx.amount.toLocaleString()}` : `${tx.minutes}分`}
                         </div>

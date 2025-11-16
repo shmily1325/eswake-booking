@@ -565,33 +565,34 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                   background: 'white',
                   borderRadius: '12px',
                   marginBottom: '15px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  padding: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  border: '1px solid #e0e0e0',
-                  overflow: 'hidden',
+                  border: '2px solid transparent',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)'
+                  e.currentTarget.style.borderColor = '#667eea'
                   e.currentTarget.style.transform = 'translateY(-2px)'
-                  e.currentTarget.style.borderColor = '#1890ff'
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.2)'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'
+                  e.currentTarget.style.borderColor = 'transparent'
                   e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.borderColor = '#e0e0e0'
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
                 }}
               >
-                {/* 會員基本資訊 + 儲值數據 */}
+                {/* 會員基本資訊 */}
                 <div style={{
-                  padding: isMobile ? '14px 16px' : '16px 20px',
+                  background: '#f8f9fa',
+                  padding: isMobile ? '12px' : '14px 16px',
+                  borderRadius: '8px',
+                  marginBottom: '12px',
                 }}>
-                  {/* 頂部：會員資訊 */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    marginBottom: '16px',
                     gap: '12px',
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -659,14 +660,15 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                       💰 記帳
                     </button>
                   </div>
+                </div>
 
-                  {/* 儲值數據區 */}
-                  <div style={{ 
-                    background: '#fff',
-                    padding: isMobile ? '8px' : '10px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #e0e0e0'
-                  }}>
+                {/* 儲值數據區 */}
+                <div style={{ 
+                  background: '#fff',
+                  padding: isMobile ? '8px' : '10px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #e0e0e0'
+                }}>
                     <div style={{ 
                       display: 'grid',
                       gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
@@ -716,7 +718,6 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                       </div>
                     </div>
                   </div>
-                </div>
               </div>
             ))}
           </div>
