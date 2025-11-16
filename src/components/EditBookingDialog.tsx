@@ -309,7 +309,9 @@ export function EditBookingDialog({
       const [newHour, newMinute] = startTime.split(':').map(Number)
       const newStartMinutes = newHour * 60 + newMinute
       const newEndMinutes = newStartMinutes + durationMin
-      const newCleanupEndMinutes = newEndMinutes + 15
+      // 加上整理船時間（彈簧床除外）
+      const newCleanupTime = isSelectedBoatFacility ? 0 : 15
+      const newCleanupEndMinutes = newEndMinutes + newCleanupTime
       
       // 排除當前編輯的預約
       for (const existing of existingBookings || []) {
@@ -324,7 +326,9 @@ export function EditBookingDialog({
         
         const existingStartMinutes = existingHour * 60 + existingMinute
         const existingEndMinutes = existingStartMinutes + existing.duration_min
-        const existingCleanupEndMinutes = existingEndMinutes + 15
+        // 加上整理船時間（彈簧床除外）
+        const existingCleanupTime = isSelectedBoatFacility ? 0 : 15
+        const existingCleanupEndMinutes = existingEndMinutes + existingCleanupTime
         
         // 檢查新預約是否在現有預約的接船時間內開始
         if (newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
@@ -358,27 +362,39 @@ export function EditBookingDialog({
       // 檢查教練衝突（如果有選擇教練）
       if (selectedCoaches.length > 0) {
         for (const coachId of selectedCoaches) {
-          // 第一步：查詢該教練的所有預約關聯
-          const { data: coachBookingIds, error: coachCheckError } = await supabase
-            .from('booking_coaches')
-            .select('booking_id')
-            .eq('coach_id', coachId)
+          // 第一步：查詢該教練的所有預約關聯（作為教練或駕駛）
+          const [coachResult, driverResult] = await Promise.all([
+            supabase
+              .from('booking_coaches')
+              .select('booking_id')
+              .eq('coach_id', coachId),
+            supabase
+              .from('booking_drivers')
+              .select('booking_id')
+              .eq('driver_id', coachId)
+          ])
           
-          if (coachCheckError) {
+          if (coachResult.error || driverResult.error) {
             setError('檢查教練衝突時發生錯誤')
             setLoading(false)
             return
           }
           
-          if (!coachBookingIds || coachBookingIds.length === 0) {
+          // 合併教練和駕駛的預約 ID（去重）
+          const allBookingIds = new Set([
+            ...(coachResult.data || []).map(item => item.booking_id),
+            ...(driverResult.data || []).map(item => item.booking_id)
+          ])
+          
+          if (allBookingIds.size === 0) {
             continue // 該教練沒有任何預約，跳過
           }
           
-          // 第二步：查詢這些預約的詳細信息
-          const bookingIds = coachBookingIds.map(item => item.booking_id)
+          // 第二步：查詢這些預約的詳細信息（包含船隻資料）
+          const bookingIds = Array.from(allBookingIds)
           const { data: coachBookings, error: bookingError } = await supabase
             .from('bookings')
-            .select('id, start_at, duration_min, contact_name, booking_members(member_id, members:member_id(id, name, nickname))')
+            .select('id, start_at, duration_min, contact_name, boat_id, boats(id, name), booking_members(member_id, members:member_id(id, name, nickname))')
             .in('id', bookingIds)
             .gte('start_at', `${startDate}T00:00:00`)
             .lte('start_at', `${startDate}T23:59:59`)
@@ -401,10 +417,14 @@ export function EditBookingDialog({
             const [bookingHour, bookingMinute] = bookingTime.split(':').map(Number)
             
             const bookingStartMinutes = bookingHour * 60 + bookingMinute
-            const bookingEndMinutes = bookingStartMinutes + coachBooking.duration_min
+            // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
+            const coachBookingBoat = coachBooking.boats as any
+            const cleanupTime = isFacility(coachBookingBoat?.name) ? 0 : 15
+            const bookingEndMinutes = bookingStartMinutes + coachBooking.duration_min + cleanupTime
             
-            // 檢查時間重疊
-            if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
+            // 檢查時間重疊（新預約也要加上整理船時間）
+            const newEndWithCleanup = newEndMinutes + (isFacility(selectedBoat?.name) ? 0 : 15)
+            if (!(newEndWithCleanup <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
               const coach = coaches.find(c => c.id === coachId)
               setError(`教練 ${coach?.name || '未知'} 在此時段已有其他預約（${getDisplayContactName(coachBooking)}）`)
               setLoading(false)

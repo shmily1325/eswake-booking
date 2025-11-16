@@ -241,7 +241,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     if (!currentBooking) return conflicts
 
     const currentStart = new Date(currentBooking.start_at)
-    // 加上整理船時間（彈簧床除外）
+    // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
     const cleanupTime = isFacility(currentBooking.boats?.name) ? 0 : 15
     const currentEnd = new Date(currentStart.getTime() + (currentBooking.duration_min + cleanupTime) * 60000)
 
@@ -263,7 +263,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         
         if (isCoachInOther || isDriverInOther) {
           const otherStart = new Date(otherBooking.start_at)
-          // 加上整理船時間（彈簧床除外）
+          // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
           const otherCleanupTime = isFacility(otherBooking.boats?.name) ? 0 : 15
           const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
 
@@ -314,6 +314,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
     if (!currentBooking) return true
 
     const currentStart = new Date(currentBooking.start_at)
+    // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
     const cleanupTime = isFacility(currentBooking.boats?.name) ? 0 : 15
     const currentEnd = new Date(currentStart.getTime() + (currentBooking.duration_min + cleanupTime) * 60000)
 
@@ -329,6 +330,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       
       if (isInOther) {
         const otherStart = new Date(otherBooking.start_at)
+        // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
         const otherCleanupTime = isFacility(otherBooking.boats?.name) ? 0 : 15
         const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
 
@@ -483,15 +485,17 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       }
       
       if (allPersonIds.size > 0) {
-        // 一次性查詢所有涉及人員在當天的預約（教練 + 駕駛），包含 boat_id
+        // 一次性查詢所有涉及人員在當天的預約（教練 + 駕駛），包含 boat_id 和 boats 資料，只查詢 confirmed 的預約
         const [coachBookingsResult, driverBookingsResult] = await Promise.all([
           supabase
             .from('booking_coaches')
-            .select('coach_id, booking_id, bookings:booking_id(id, start_at, duration_min, contact_name, boat_id)')
+            .select('coach_id, booking_id, bookings:booking_id!inner(id, start_at, duration_min, contact_name, boat_id, status, boats(id, name))')
+            .eq('bookings.status', 'confirmed')
             .in('coach_id', Array.from(allPersonIds)),
           supabase
             .from('booking_drivers')
-            .select('driver_id, booking_id, bookings:booking_id(id, start_at, duration_min, contact_name, boat_id)')
+            .select('driver_id, booking_id, bookings:booking_id!inner(id, start_at, duration_min, contact_name, boat_id, status, boats(id, name))')
+            .eq('bookings.status', 'confirmed')
             .in('driver_id', Array.from(allPersonIds))
         ])
         
@@ -512,10 +516,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             
             const bookingMap = dbPersonBookings[personId]
             if (!bookingMap.has(other.id)) {
-              // 計算結束時間（使用字串避免時區問題）
+              // 計算結束時間（加上整理船時間，彈簧床除外）
               const [, timePart] = other.start_at.split('T')
               const [hours, minutes] = timePart.split(':').map(Number)
-              const totalMinutes = hours * 60 + minutes + other.duration_min
+              const otherBoat = (other as any).boats
+              const cleanupTime = isFacility(otherBoat?.name) ? 0 : 15
+              const totalMinutes = hours * 60 + minutes + other.duration_min + cleanupTime
               const endHours = Math.floor(totalMinutes / 60)
               const endMinutes = totalMinutes % 60
               const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`
@@ -548,9 +554,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             
             const bookingMap = dbPersonBookings[personId]
             if (!bookingMap.has(other.id)) {
+              // 計算結束時間（加上整理船時間，彈簧床除外）
               const [, timePart] = other.start_at.split('T')
               const [hours, minutes] = timePart.split(':').map(Number)
-              const totalMinutes = hours * 60 + minutes + other.duration_min
+              const otherBoat = (other as any).boats
+              const cleanupTime = isFacility(otherBoat?.name) ? 0 : 15
+              const totalMinutes = hours * 60 + minutes + other.duration_min + cleanupTime
               const endHours = Math.floor(totalMinutes / 60)
               const endMinutes = totalMinutes % 60
               const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`
@@ -577,11 +586,12 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
           const assignment = assignments[booking.id]
           if (!assignment) continue
           
-          // 計算當前預約的時間（使用字串比較）
+          // 計算當前預約的時間（加上整理船時間，彈簧床除外）
           const [, timePart] = booking.start_at.split('T')
           const thisStart = timePart.substring(0, 5)
           const [hours, minutes] = thisStart.split(':').map(Number)
-          const totalMinutes = hours * 60 + minutes + booking.duration_min
+          const cleanupTime = isFacility(booking.boats?.name) ? 0 : 15
+          const totalMinutes = hours * 60 + minutes + booking.duration_min + cleanupTime
           const endHours = Math.floor(totalMinutes / 60)
           const endMinutes = totalMinutes % 60
           const thisEnd = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`

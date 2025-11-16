@@ -146,10 +146,10 @@ export function CoachReport({ user }: CoachReportProps) {
   useEffect(() => {
     if (selectedDate) {
       if (activeTab === 'report') {
-        loadBookings()
+      loadBookings()
       } else {
         loadPendingReports()
-      }
+    }
     }
   }, [selectedDate, selectedCoachId, activeTab])
 
@@ -200,20 +200,27 @@ export function CoachReport({ user }: CoachReportProps) {
         return
       }
       
-      // 過濾掉設施（彈簧床等）
-      const nonFacilityBookings = bookingsData.filter(b => {
+      // 過濾掉設施（彈簧床等）並只保留已結束的預約
+      const now = new Date()
+      const validBookings = bookingsData.filter(b => {
         const boats = b.boats as any
         const boatName = Array.isArray(boats) ? boats[0]?.name : boats?.name
-        return !isFacility(boatName)
+        
+        // 過濾設施
+        if (isFacility(boatName)) return false
+        
+        // 只保留已結束的預約
+        const bookingEnd = new Date(new Date(b.start_at).getTime() + b.duration_min * 60000)
+        return bookingEnd <= now
       })
       
-      if (nonFacilityBookings.length === 0) {
+      if (validBookings.length === 0) {
         setBookings([])
         setLoading(false)
         return
       }
       
-      const bookingIds = nonFacilityBookings.map(b => b.id)
+      const bookingIds = validBookings.map(b => b.id)
       
       // 並行載入所有相關資料
       const [
@@ -242,7 +249,7 @@ export function CoachReport({ user }: CoachReportProps) {
       ])
       
       // 組裝資料
-      const bookingsWithDetails: Booking[] = nonFacilityBookings.map(booking => {
+      const bookingsWithDetails: Booking[] = validBookings.map(booking => {
         const coaches = allCoachesData
           ?.filter((bc: any) => bc.booking_id === booking.id)
           .map((bc: any) => bc.coaches)
@@ -615,11 +622,11 @@ export function CoachReport({ user }: CoachReportProps) {
         }
         
         // 刪除所有未軟刪除的舊記錄（準備插入新的）
-        await supabase
-          .from('booking_participants')
-          .delete()
-          .eq('booking_id', bookingId)
-          .eq('coach_id', selectedCoachId)
+      await supabase
+        .from('booking_participants')
+        .delete()
+        .eq('booking_id', bookingId)
+        .eq('coach_id', selectedCoachId)
           .eq('is_deleted', false)
       }
       
@@ -633,13 +640,13 @@ export function CoachReport({ user }: CoachReportProps) {
           }
           
           return {
-            booking_id: bookingId,
-            coach_id: selectedCoachId,
-            member_id: p.member_id,
-            participant_name: p.participant_name,
-            duration_min: p.duration_min,
-            payment_method: p.payment_method,
-            notes: p.notes || null,
+          booking_id: bookingId,
+          coach_id: selectedCoachId,
+          member_id: p.member_id,
+          participant_name: p.participant_name,
+          duration_min: p.duration_min,
+          payment_method: p.payment_method,
+          notes: p.notes || null,
             status,
             is_deleted: false,
             replaces_id: p.id || null, // 如果是修改，記錄原始ID
@@ -863,190 +870,190 @@ export function CoachReport({ user }: CoachReportProps) {
         {/* Tab 1: 教練回報 */}
         {activeTab === 'report' && (
           <>
-            {/* 篩選區 */}
-            <div style={{
-              ...getCardStyle(isMobile),
-              marginBottom: '24px',
-              display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              gap: '16px',
-              alignItems: isMobile ? 'stretch' : 'center'
-            }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block' }}>
-                  日期
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  style={getInputStyle(isMobile)}
-                />
-              </div>
-              
-              <div style={{ flex: 1 }}>
-                <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block' }}>
+        {/* 篩選區 */}
+        <div style={{
+          ...getCardStyle(isMobile),
+          marginBottom: '24px',
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: '16px',
+          alignItems: isMobile ? 'stretch' : 'center'
+        }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block' }}>
+              日期
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={getInputStyle(isMobile)}
+            />
+          </div>
+          
+          <div style={{ flex: 1 }}>
+            <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px', display: 'block' }}>
                   選擇教練
-                </label>
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '8px', 
-                  flexWrap: 'wrap',
-                  maxHeight: isMobile ? '200px' : '150px',
-                  overflowY: 'auto',
-                  padding: '8px',
-                  background: '#f9f9f9',
-                  borderRadius: '8px',
-                  border: '1px solid #ddd'
-                }}>
-                  {coaches.map(coach => (
-                    <button
-                      key={coach.id}
-                      onClick={() => setSelectedCoachId(coach.id)}
-                      style={{
-                        padding: '10px 16px',
-                        border: selectedCoachId === coach.id ? '2px solid #2196f3' : '1px solid #ddd',
-                        borderRadius: '8px',
-                        background: selectedCoachId === coach.id ? '#e3f2fd' : 'white',
-                        color: selectedCoachId === coach.id ? '#1976d2' : '#333',
-                        fontWeight: selectedCoachId === coach.id ? '600' : '400',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto',
-                        minWidth: isMobile ? '0' : '80px'
-                      }}
-                    >
-                      {coach.name}
-                    </button>
-                  ))}
-                </div>
-                {selectedCoachId === 'all' && (
-                  <div style={{
-                    marginTop: '8px',
-                    padding: '8px 12px',
-                    background: '#fff3e0',
-                    border: '1px solid #ffb74d',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    color: '#e65100'
-                  }}>
-                    ⚠️ 請選擇教練才能進行回報
-                  </div>
-                )}
-              </div>
+            </label>
+            <div style={{ 
+              display: 'flex', 
+              gap: '8px', 
+              flexWrap: 'wrap',
+              maxHeight: isMobile ? '200px' : '150px',
+              overflowY: 'auto',
+              padding: '8px',
+              background: '#f9f9f9',
+              borderRadius: '8px',
+              border: '1px solid #ddd'
+            }}>
+              {coaches.map(coach => (
+                <button
+                  key={coach.id}
+                  onClick={() => setSelectedCoachId(coach.id)}
+                  style={{
+                    padding: '10px 16px',
+                    border: selectedCoachId === coach.id ? '2px solid #2196f3' : '1px solid #ddd',
+                    borderRadius: '8px',
+                    background: selectedCoachId === coach.id ? '#e3f2fd' : 'white',
+                    color: selectedCoachId === coach.id ? '#1976d2' : '#333',
+                    fontWeight: selectedCoachId === coach.id ? '600' : '400',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto',
+                    minWidth: isMobile ? '0' : '80px'
+                  }}
+                >
+                  {coach.name}
+                </button>
+              ))}
             </div>
+            {selectedCoachId === 'all' && (
+              <div style={{
+                marginTop: '8px',
+                padding: '8px 12px',
+                background: '#fff3e0',
+                border: '1px solid #ffb74d',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: '#e65100'
+              }}>
+                    ⚠️ 請選擇教練才能進行回報
+              </div>
+            )}
+          </div>
+        </div>
 
-            {/* 預約列表 */}
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                載入中...
-              </div>
-            ) : bookings.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                沒有找到預約記錄
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {bookings.map(booking => {
-                  const status = selectedCoachId !== 'all' 
-                    ? getReportStatus(booking, selectedCoachId)
-                    : { hasCoachReport: false, hasDriverReport: false }
-                  
-                  const type = selectedCoachId !== 'all'
-                    ? getReportType(booking, selectedCoachId)
-                    : null
-                  
-                  let reportedCoachesCount = 0
-                  let totalCoachesCount = booking.coaches.length
-                  if (selectedCoachId === 'all' && booking.participants) {
-                    const reportedCoachIds = new Set(booking.participants.map(p => p.coach_id))
-                    reportedCoachesCount = reportedCoachIds.size
-                  }
-                  
-                  const hasDriverReport = !!booking.coach_report
-                  const canReport = selectedCoachId !== 'all'
-                  
-                  return (
-                    <div
-                      key={booking.id}
-                      style={{
-                        ...getCardStyle(isMobile),
-                        borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`,
-                        cursor: canReport ? 'pointer' : 'not-allowed',
-                        opacity: canReport ? 1 : 0.6,
-                        transition: 'all 0.2s'
-                      }}
-                      onClick={() => canReport && startReport(booking)}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                        <div>
-                          <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '600', marginBottom: '4px' }}>
-                            {booking.start_at.substring(11, 16)} | {getDisplayContactName(booking)}
-                          </div>
-                          <div style={{ fontSize: '14px', color: '#666' }}>
-                            {booking.boats?.name} • {booking.duration_min}分
-                          </div>
-                        </div>
-                        
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          {selectedCoachId !== 'all' && (type === 'coach' || type === 'both') ? (
-                            <span style={{
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              background: status.hasCoachReport ? '#e8f5e9' : '#fff3e0',
-                              color: status.hasCoachReport ? '#2e7d32' : '#f57c00',
-                              fontWeight: '600'
-                            }}>
-                              教練 {status.hasCoachReport ? '✓' : '未回報'}
-                            </span>
-                          ) : null}
-                          
-                          {selectedCoachId === 'all' && totalCoachesCount > 0 ? (
-                            <span style={{
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              background: reportedCoachesCount === totalCoachesCount ? '#e8f5e9' : reportedCoachesCount > 0 ? '#fff9c4' : '#fff3e0',
-                              color: reportedCoachesCount === totalCoachesCount ? '#2e7d32' : reportedCoachesCount > 0 ? '#f57f17' : '#f57c00',
-                              fontWeight: '600'
-                            }}>
-                              教練 {reportedCoachesCount}/{totalCoachesCount}
-                            </span>
-                          ) : null}
-                          
+        {/* 預約列表 */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            載入中...
+          </div>
+        ) : bookings.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            沒有找到預約記錄
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {bookings.map(booking => {
+              const status = selectedCoachId !== 'all' 
+                ? getReportStatus(booking, selectedCoachId)
+                : { hasCoachReport: false, hasDriverReport: false }
+              
+              const type = selectedCoachId !== 'all'
+                ? getReportType(booking, selectedCoachId)
+                : null
+              
+              let reportedCoachesCount = 0
+              let totalCoachesCount = booking.coaches.length
+              if (selectedCoachId === 'all' && booking.participants) {
+                const reportedCoachIds = new Set(booking.participants.map(p => p.coach_id))
+                reportedCoachesCount = reportedCoachIds.size
+              }
+              
+              const hasDriverReport = !!booking.coach_report
+              const canReport = selectedCoachId !== 'all'
+              
+              return (
+                <div
+                  key={booking.id}
+                  style={{
+                    ...getCardStyle(isMobile),
+                    borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`,
+                    cursor: canReport ? 'pointer' : 'not-allowed',
+                    opacity: canReport ? 1 : 0.6,
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => canReport && startReport(booking)}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <div>
+                      <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '600', marginBottom: '4px' }}>
+                        {booking.start_at.substring(11, 16)} | {getDisplayContactName(booking)}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#666' }}>
+                        {booking.boats?.name} • {booking.duration_min}分
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {selectedCoachId !== 'all' && (type === 'coach' || type === 'both') ? (
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          background: status.hasCoachReport ? '#e8f5e9' : '#fff3e0',
+                          color: status.hasCoachReport ? '#2e7d32' : '#f57c00',
+                          fontWeight: '600'
+                        }}>
+                          教練 {status.hasCoachReport ? '✓' : '未回報'}
+                        </span>
+                      ) : null}
+                      
+                      {selectedCoachId === 'all' && totalCoachesCount > 0 ? (
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          background: reportedCoachesCount === totalCoachesCount ? '#e8f5e9' : reportedCoachesCount > 0 ? '#fff9c4' : '#fff3e0',
+                          color: reportedCoachesCount === totalCoachesCount ? '#2e7d32' : reportedCoachesCount > 0 ? '#f57f17' : '#f57c00',
+                          fontWeight: '600'
+                        }}>
+                          教練 {reportedCoachesCount}/{totalCoachesCount}
+                        </span>
+                      ) : null}
+                      
                           {(selectedCoachId !== 'all' && (type === 'driver' || type === 'both')) || 
                            (selectedCoachId === 'all') ? (
-                            <span style={{
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              background: hasDriverReport ? '#e8f5e9' : '#fff3e0',
-                              color: hasDriverReport ? '#2e7d32' : '#f57c00',
-                              fontWeight: '600'
-                            }}>
-                              駕駛 {hasDriverReport ? '✓' : '未回報'}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                      
-                      {booking.coaches.length > 0 && (
-                        <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                          🎓 {booking.coaches.map(c => c.name).join('、')}
-                        </div>
-                      )}
-                      
-                      {booking.drivers.length > 0 && (
-                        <div style={{ fontSize: '13px', color: '#666' }}>
-                          🚤 {booking.drivers.map(d => d.name).join('、')}
-                        </div>
-                      )}
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          background: hasDriverReport ? '#e8f5e9' : '#fff3e0',
+                          color: hasDriverReport ? '#2e7d32' : '#f57c00',
+                          fontWeight: '600'
+                        }}>
+                          駕駛 {hasDriverReport ? '✓' : '未回報'}
+                        </span>
+                      ) : null}
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+                  
+                  {booking.coaches.length > 0 && (
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+                      🎓 {booking.coaches.map(c => c.name).join('、')}
+                    </div>
+                  )}
+                  
+                  {booking.drivers.length > 0 && (
+                    <div style={{ fontSize: '13px', color: '#666' }}>
+                      🚤 {booking.drivers.map(d => d.name).join('、')}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
             )}
           </>
         )}

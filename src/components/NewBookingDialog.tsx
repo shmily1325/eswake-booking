@@ -398,33 +398,41 @@ export function NewBookingDialog({
             const coachName = coaches.find(c => c.id === coachId)?.name || '未知'
             console.log(`🔍 檢查教練: ${coachName} (ID: ${coachId})`)
             
-            // 第一步：查詢該教練作為教練的所有預約關聯
-            const { data: coachBookingIds, error: coachCheckError } = await supabase
-              .from('booking_coaches')
-              .select('booking_id')
-              .eq('coach_id', coachId)
+            // 第一步：查詢該教練作為教練或駕駛的所有預約關聯
+            const [coachResult, driverResult] = await Promise.all([
+              supabase
+                .from('booking_coaches')
+                .select('booking_id')
+                .eq('coach_id', coachId),
+              supabase
+                .from('booking_drivers')
+                .select('booking_id')
+                .eq('driver_id', coachId)
+            ])
             
-            console.log(`📋 教練 ${coachName} 作為教練的預約數量: ${coachBookingIds?.length || 0}`)
+            console.log(`📋 教練 ${coachName} 作為教練的預約數量: ${coachResult.data?.length || 0}`)
+            console.log(`📋 教練 ${coachName} 作為駕駛的預約數量: ${driverResult.data?.length || 0}`)
             
-            if (coachCheckError) {
+            if (coachResult.error || driverResult.error) {
               hasConflict = true
               conflictReason = '檢查教練衝突時發生錯誤'
               break
             }
             
-            // 合併所有預約ID
-            const allBookingIds = [
-              ...(coachBookingIds?.map(item => item.booking_id) || [])
-            ]
+            // 合併所有預約ID（去重）
+            const allBookingIds = Array.from(new Set([
+              ...(coachResult.data?.map(item => item.booking_id) || []),
+              ...(driverResult.data?.map(item => item.booking_id) || [])
+            ]))
             
             if (allBookingIds.length === 0) {
               continue // 該教練沒有任何預約，跳過
             }
             
-            // 查詢所有預約的詳細信息
+            // 查詢所有預約的詳細信息（包含船隻資料）
             const { data: allBookings, error: bookingError } = await supabase
               .from('bookings')
-              .select('id, start_at, duration_min, contact_name, booking_members(member_id, members:member_id(id, name, nickname))')
+              .select('id, start_at, duration_min, contact_name, boat_id, boats(id, name), booking_members(member_id, members:member_id(id, name, nickname))')
               .in('id', allBookingIds)
             
             if (bookingError) {
@@ -448,12 +456,18 @@ export function NewBookingDialog({
               const [bookingHour, bookingMinute] = bookingTime.split(':').map(Number)
               
               const bookingStartMinutes = bookingHour * 60 + bookingMinute
-              const bookingEndMinutes = bookingStartMinutes + booking.duration_min
+              // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
+              const bookingBoat = booking.boats as any
+              const cleanupTime = isFacility(bookingBoat?.name) ? 0 : 15
+              const bookingEndMinutes = bookingStartMinutes + booking.duration_min + cleanupTime
               
-              console.log(`⏰ 檢查時段: 新預約 ${newStartMinutes}-${newEndMinutes} vs 現有預約 ${bookingStartMinutes}-${bookingEndMinutes} (${booking.contact_name})`)
+              // 新預約也要加上整理船時間
+              const newEndWithCleanup = newEndMinutes + (isFacility(selectedBoat?.name) ? 0 : 15)
+              
+              console.log(`⏰ 檢查時段: 新預約 ${newStartMinutes}-${newEndWithCleanup} vs 現有預約 ${bookingStartMinutes}-${bookingEndMinutes} (${booking.contact_name})`)
               
               // 檢查時間重疊
-              if (!(newEndMinutes <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
+              if (!(newEndWithCleanup <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
                 const coach = coaches.find(c => c.id === coachId)
                 hasConflict = true
                 conflictReason = `${coach?.name || '未知'} 在此時段已有其他預約（${getDisplayContactName(booking)}）`

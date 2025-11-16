@@ -477,7 +477,13 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                               }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                   <span style={{ fontWeight: 'bold' }}>
-                                    {transaction.transaction_type === 'charge' ? '💰 儲值' : 
+                                    {transaction.category === 'balance' ? '💰 儲值' :
+                                     transaction.category === 'vip_voucher' ? '💎 VIP票券' :
+                                     transaction.category === 'designated_lesson' ? '📚 指定課' :
+                                     transaction.category === 'boat_voucher_g23' ? '🚤 G23船券' :
+                                     transaction.category === 'boat_voucher_g21_panther' ? '⛵ G21/黑豹船券' :
+                                     transaction.category === 'gift_boat_hours' ? '🎁 贈送大船' :
+                                     transaction.transaction_type === 'charge' ? '💰 儲值' : 
                                      transaction.transaction_type === 'consume' ? '💳 消費' : 
                                      transaction.transaction_type === 'refund' ? '↩️ 退款' : '🔧 調整'}
                                   </span>
@@ -791,13 +797,17 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
 
   const getCategoryLabel = (category: string) => {
     switch (category) {
-      case 'balance': return '餘額'
+      case 'balance': return '儲值'
+      case 'vip_voucher': return 'VIP票券'
       case 'designated_lesson': return '指定課'
       case 'boat_voucher': return '船券'
-      case 'boat_voucher_g23': return 'G23 船券'
-      case 'boat_voucher_g21': return 'G21 船券'
+      case 'boat_voucher_g23': return 'G23船券'
+      case 'boat_voucher_g21': return 'G21船券'
+      case 'boat_voucher_g21_panther': return 'G21/黑豹船券'
+      case 'gift_boat_hours': return '贈送大船'
       case 'membership': return '會籍'
       case 'board_storage': return '置板'
+      case 'lesson': return '教練課程'
       default: return category
     }
   }
