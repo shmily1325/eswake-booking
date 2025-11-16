@@ -40,7 +40,7 @@ export function BaoHub({ user }: BaoHubProps) {
     },
     {
       title: '會員儲值',
-      icon: '💳',
+      icon: '💰',
       link: '/member-transaction'
     },
     {

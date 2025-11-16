@@ -634,7 +634,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                       }}
                       style={{
                         padding: '8px 16px',
-                        background: '#1890ff',
+                        background: '#424242',
                         color: 'white',
                         border: 'none',
                         borderRadius: '8px',
@@ -645,10 +645,10 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                         transition: 'all 0.2s'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#0c7cd5'
+                        e.currentTarget.style.background = '#212121'
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = '#1890ff'
+                        e.currentTarget.style.background = '#424242'
                       }}
                     >
                       💳 記帳
@@ -670,42 +670,42 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                     }}>
                       <div>
                         <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💰 儲值餘額</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#f44336' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                           ${(member.balance || 0).toLocaleString()}
                         </div>
                       </div>
 
                       <div>
                         <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💎 VIP票券</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#9c27b0' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                           ${(member.vip_voucher_amount || 0).toLocaleString()}
                         </div>
                       </div>
                       
                       <div>
                         <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>📚 指定課</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#ff9800' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                           {(member.designated_lesson_minutes || 0).toLocaleString()}分
                         </div>
                       </div>
                       
                       <div>
                         <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🚤 G23船券</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#4caf50' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                           {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
                         </div>
                       </div>
                       
                       <div>
                         <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>⛵ G21/黑豹</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#13c2c2' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                           {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
                         </div>
                       </div>
 
                       <div>
                         <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#eb2f96' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                           {(member.gift_boat_hours || 0).toLocaleString()}分
                         </div>
                       </div>
