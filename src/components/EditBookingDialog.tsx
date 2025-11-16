@@ -108,11 +108,10 @@ export function EditBookingDialog({
           const [dateStr, timeStr] = datetime.split('T')
           setStartDate(dateStr)
           setStartTime(timeStr)
-          // 使用正確的日期獲取教練列表
-          fetchCoaches(dateStr)
-        } else {
-          fetchCoaches()
         }
+        
+        // 獲取教練列表
+        fetchCoaches()
         
         // 設置船只選擇
         setSelectedBoatId(booking.boat_id)
@@ -170,12 +169,12 @@ export function EditBookingDialog({
     }
   }, [isOpen, booking])
 
-  // 當用戶修改日期時，重新獲取教練列表
-  useEffect(() => {
-    if (isOpen && startDate) {
-      fetchCoaches(startDate)
-    }
-  }, [startDate])
+  // 當用戶修改日期時，重新獲取教練列表（不再需要，因為教練列表不受日期影響）
+  // useEffect(() => {
+  //   if (isOpen && startDate) {
+  //     fetchCoaches()
+  //   }
+  // }, [startDate])
 
   const fetchBoats = async () => {
     const { data, error } = await supabase
@@ -191,51 +190,27 @@ export function EditBookingDialog({
     setBoats(data || [])
   }
 
-  const fetchCoaches = async (bookingDate?: string) => {
+  const fetchCoaches = async () => {
     setLoadingCoaches(true)
     
     try {
-      // 取得預約日期
-      const finalDate = bookingDate || startDate || (booking?.start_at ? booking.start_at.split('T')[0] : '')
+      // 只查詢啟用狀態的教練，不過濾休假狀態
+      const { data: coachesData, error: coachesError } = await supabase
+        .from('coaches')
+        .select('id, name')
+        .eq('status', 'active')
+        .order('name')
       
-      console.log('📅 編輯預約 - 查詢日期:', finalDate)
-      
-      // 並行查詢：同時取得教練和休假資料
-      const [coachesResult, timeOffResult] = await Promise.all([
-        supabase
-          .from('coaches')
-          .select('id, name')
-          .eq('status', 'active')
-          .order('name'),
-        supabase
-          .from('coach_time_off')
-          .select('coach_id')
-          .lte('start_date', finalDate)
-          .gte('end_date', finalDate)
-      ])
-      
-      if (coachesResult.error) {
-        console.error('Error fetching coaches:', coachesResult.error)
+      if (coachesError) {
+        console.error('Error fetching coaches:', coachesError)
         setLoadingCoaches(false)
         return
       }
       
-      // 建立休假教練 ID 集合
-      const timeOffCoachIds = new Set((timeOffResult.data || []).map(t => t.coach_id))
-      
-      console.log('👨‍🏫 編輯預約 - 所有教練:', coachesResult.data?.length)
-      console.log('🚫 編輯預約 - 休假教練:', timeOffResult.data)
-      
-      // 過濾掉休假的教練
-      const availableCoaches = (coachesResult.data || []).filter(c => !timeOffCoachIds.has(c.id))
-      
       // 調試輸出
-      console.log('📅 預約日期:', bookingDate)
-      console.log('👨‍🏫 所有教練:', coachesResult.data?.length)
-      console.log('🚫 休假教練:', timeOffResult.data)
-      console.log('✅ 可用教練:', availableCoaches.length, availableCoaches.map(c => c.name))
+      console.log('👨‍🏫 編輯預約 - 可用教練（不卡休假）:', coachesData?.length, coachesData?.map(c => c.name))
       
-      setCoaches(availableCoaches)
+      setCoaches(coachesData || [])
     } catch (error) {
       console.error('Error in fetchCoaches:', error)
     } finally {

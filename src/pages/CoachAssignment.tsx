@@ -14,6 +14,7 @@ import { getDisplayContactName } from '../utils/bookingFormat'
 interface Coach {
   id: string
   name: string
+  isOnTimeOff?: boolean  // 是否休假
 }
 
 interface Booking {
@@ -94,9 +95,9 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       // 並行查詢：同時取得教練和當天休假資料
       const [coachesResult, timeOffResult] = await Promise.all([
         supabase
-      .from('coaches')
-      .select('id, name')
-      .eq('status', 'active')
+          .from('coaches')
+          .select('id, name')
+          .eq('status', 'active')
           .order('name'),
         supabase
           .from('coach_time_off')
@@ -107,17 +108,21 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
       
       if (coachesResult.error) {
         console.error('載入教練失敗:', coachesResult.error)
-      return
-    }
-    
+        return
+      }
+      
       // 建立休假教練 ID 集合
       const timeOffCoachIds = new Set((timeOffResult.data || []).map(t => t.coach_id))
       
-      // 過濾掉當天休假的教練
-      const availableCoaches = (coachesResult.data || []).filter(c => !timeOffCoachIds.has(c.id))
+      // 標記休假狀態
+      const coachesWithTimeOff = (coachesResult.data || []).map(coach => ({
+        ...coach,
+        isOnTimeOff: timeOffCoachIds.has(coach.id)
+      }))
       
-      console.log('載入的教練:', availableCoaches)
-      setCoaches(availableCoaches)
+      console.log('載入的教練:', coachesWithTimeOff)
+      console.log('休假教練:', Array.from(timeOffCoachIds))
+      setCoaches(coachesWithTimeOff)
     } catch (error) {
       console.error('載入教練失敗:', error)
     }
@@ -1071,10 +1076,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             .sort((a, b) => b[1].count - a[1].count)
           
           // 未排班統計
-          // 規則：需要駕駛但沒有駕駛 or 沒有駕駛且沒有教練
+          // 規則：
+          // 1. 預約標記「需要駕駛」但沒有指定駕駛
+          // 2. 既沒有教練也沒有駕駛
           const unassignedCount = bookings.filter(booking => {
             const assignment = assignments[booking.id]
-            const isFacilityBooking = isFacility(booking.boats?.name || '')
             
             if (!assignment) {
               return true
@@ -1082,12 +1088,16 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
             
             const hasCoach = assignment.coachIds.length > 0
             const hasDriver = assignment.driverIds.length > 0
-            const needsDriver = !isFacilityBooking
+            const requiresDriver = booking.requires_driver === true
             
             // 未排班條件：
-            // 1. 需要駕駛但沒有駕駛
-            // 2. 沒有駕駛且沒有教練
-            if (!hasDriver && (needsDriver || !hasCoach)) {
+            // 1. 標記需要駕駛但沒有駕駛
+            if (requiresDriver && !hasDriver) {
+              return true
+            }
+            
+            // 2. 既沒有教練也沒有駕駛
+            if (!hasCoach && !hasDriver) {
               return true
             }
             
@@ -1354,14 +1364,17 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             .filter(coach => !assignment.coachIds.includes(coach.id))
                             .map(coach => {
                               const available = isCoachAvailable(coach.id, booking.id)
+                              const isOnTimeOff = coach.isOnTimeOff
+                              const disabled = !available || isOnTimeOff
                               return (
                                 <option 
                                   key={coach.id} 
                                   value={coach.id}
-                                  disabled={!available}
-                                  style={!available ? { color: '#999', background: '#f5f5f5' } : {}}
+                                  disabled={disabled}
+                                  style={disabled ? { color: '#999', background: '#f5f5f5' } : {}}
                                 >
-                                  {coach.name}{!available ? ' ⚠️ 時間衝突' : ''}
+                                  {coach.name}
+                                  {isOnTimeOff ? ' 🏖️ 休假中' : (!available ? ' ⚠️ 時間衝突' : '')}
                                 </option>
                               )
                             })}
@@ -1497,14 +1510,17 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                             .filter(coach => !assignment.driverIds?.includes(coach.id))
                             .map(coach => {
                               const available = isCoachAvailable(coach.id, booking.id)
+                              const isOnTimeOff = coach.isOnTimeOff
+                              const disabled = !available || isOnTimeOff
                               return (
                                 <option 
                                   key={coach.id} 
                                   value={coach.id}
-                                  disabled={!available}
-                                  style={!available ? { color: '#999', background: '#f5f5f5' } : {}}
+                                  disabled={disabled}
+                                  style={disabled ? { color: '#999', background: '#f5f5f5' } : {}}
                                 >
-                                  {coach.name}{!available ? ' ⚠️ 時間衝突' : ''}
+                                  {coach.name}
+                                  {isOnTimeOff ? ' 🏖️ 休假中' : (!available ? ' ⚠️ 時間衝突' : '')}
                                 </option>
                               )
                             })}
@@ -2033,9 +2049,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                                             }}
                                           >
                                             <option value="">➕ 新增駕駛</option>
-                                            {coaches.filter(c => !assignment.driverIds?.includes(c.id)).map(coach => (
-                                              <option key={coach.id} value={coach.id}>{coach.name}</option>
-                                            ))}
+                                            {coaches.filter(c => !assignment.driverIds?.includes(c.id)).map(coach => {
+                                              const isOnTimeOff = coach.isOnTimeOff
+                                              return (
+                                                <option 
+                                                  key={coach.id} 
+                                                  value={coach.id}
+                                                  disabled={isOnTimeOff}
+                                                  style={isOnTimeOff ? { color: '#999', background: '#f5f5f5' } : {}}
+                                                >
+                                                  {coach.name}{isOnTimeOff ? ' 🏖️ 休假中' : ''}
+                                                </option>
+                                              )
+                                            })}
                                           </select>
                                         </div>
                                           
@@ -2840,26 +2866,42 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                 
                 return (
                   <div key={coach.id} style={{
-                    background: 'white',
+                    background: coach.isOnTimeOff ? '#f5f5f5' : 'white',
                     borderRadius: '12px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    border: '1px solid #f0f0f0',
+                    border: coach.isOnTimeOff ? '1px solid #e0e0e0' : '1px solid #f0f0f0',
                     display: 'flex',
                     flexDirection: 'column',
                     maxHeight: isMobile ? 'none' : '650px',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    opacity: coach.isOnTimeOff ? 0.85 : 1
                   }}>
                     {/* 教練名稱標題 */}
                               <div style={{
                       fontSize: isMobile ? '16px' : '18px',
                       fontWeight: '600',
                       color: designSystem.colors.text.primary,
-                      borderBottom: `2px solid ${designSystem.colors.primary}`,
+                      borderBottom: `2px solid ${coach.isOnTimeOff ? '#bdbdbd' : designSystem.colors.primary}`,
                       paddingBottom: '8px',
                       padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
-                      flexShrink: 0
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
                     }}>
                       🎓 {coach.name} {coachBookings.length > 0 && `(${coachBookings.length})`}
+                      {coach.isOnTimeOff && (
+                        <span style={{
+                          fontSize: '12px',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: '#9e9e9e',
+                          color: 'white',
+                          fontWeight: '500'
+                        }}>
+                          今日休假
+                        </span>
+                      )}
                     </div>
                     
                     {/* 該教練的所有預約 */}
@@ -3492,11 +3534,19 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       </option>
                       {coaches
                         .filter(coach => !assignment.driverIds?.includes(coach.id))
-                        .map(coach => (
-                          <option key={coach.id} value={coach.id}>
-                            {coach.name}
-                          </option>
-                        ))}
+                        .map(coach => {
+                          const isOnTimeOff = coach.isOnTimeOff
+                          return (
+                            <option 
+                              key={coach.id} 
+                              value={coach.id}
+                              disabled={isOnTimeOff}
+                              style={isOnTimeOff ? { color: '#999', background: '#f5f5f5' } : {}}
+                            >
+                              {coach.name}{isOnTimeOff ? ' 🏖️ 休假中' : ''}
+                            </option>
+                          )
+                        })}
                     </select>
                     </div>
                   )}
