@@ -781,7 +781,7 @@ export function LiffMyBookings() {
               color: 'white'
             }}>
               <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
-                帳戶餘額
+                儲值餘額
               </div>
               <div style={{ fontSize: '36px', fontWeight: '700' }}>
                 ${member.balance || 0}

@@ -409,6 +409,38 @@ export function MemberManagement({ user }: MemberManagementProps) {
     return result
   }, [members, searchTerm, membershipTypeFilter])
 
+  // 根據篩選後的會員計算到期提醒
+  const filteredExpiringData = useMemo(() => {
+    const todayStr = getLocalDateString()
+    const thirtyDaysLater = new Date()
+    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30)
+    const thirtyDaysLaterStr = `${thirtyDaysLater.getFullYear()}-${String(thirtyDaysLater.getMonth() + 1).padStart(2, '0')}-${String(thirtyDaysLater.getDate()).padStart(2, '0')}`
+    
+    // 篩選會籍到期
+    const memberIds = new Set(filteredMembers.map(m => m.id))
+    const filteredMembershipExpiring = expiringMemberships.filter((m: any) => {
+      // 找到對應的會員
+      const member = members.find(mem => 
+        (mem.name === m.name || mem.nickname === m.nickname)
+      )
+      return member && memberIds.has(member.id)
+    })
+    
+    // 篩選置板到期
+    const filteredBoardExpiring = expiringBoards.filter((b: any) => {
+      // 找到對應的會員
+      const member = members.find(m => 
+        (m.name === b.member_name || m.nickname === b.member_name)
+      )
+      return member && memberIds.has(member.id)
+    })
+    
+    return {
+      memberships: filteredMembershipExpiring,
+      boards: filteredBoardExpiring
+    }
+  }, [filteredMembers, expiringMemberships, expiringBoards, members])
+
   if (loading) {
     return (
       <div style={{ 
@@ -796,12 +828,17 @@ export function MemberManagement({ user }: MemberManagementProps) {
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           textAlign: 'center',
-          border: expiringMemberships.length > 0 ? '2px solid #ff9800' : 'none'
+          border: filteredExpiringData.memberships.length > 0 ? '2px solid #ff9800' : 'none'
         }}>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>⏰ 會籍即將到期</div>
-          <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: expiringMemberships.length > 0 ? '#ff9800' : '#999' }}>
-            {expiringMemberships.length}
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>⚠️ 會籍到期提醒</div>
+          <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: filteredExpiringData.memberships.length > 0 ? '#ff9800' : '#999' }}>
+            {filteredExpiringData.memberships.length}
           </div>
+          {membershipTypeFilter !== 'all' && (
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+              (已篩選)
+            </div>
+          )}
         </div>
 
         <div style={{
@@ -810,12 +847,17 @@ export function MemberManagement({ user }: MemberManagementProps) {
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           textAlign: 'center',
-          border: expiringBoards.length > 0 ? '2px solid #2196F3' : 'none'
+          border: filteredExpiringData.boards.length > 0 ? '2px solid #2196F3' : 'none'
         }}>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>🏄 置板即將到期</div>
-          <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: expiringBoards.length > 0 ? '#2196F3' : '#999' }}>
-            {expiringBoards.length}
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>🏄 置板到期提醒</div>
+          <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: filteredExpiringData.boards.length > 0 ? '#2196F3' : '#999' }}>
+            {filteredExpiringData.boards.length}
           </div>
+          {membershipTypeFilter !== 'all' && (
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+              (已篩選)
+            </div>
+          )}
         </div>
       </div>
 
@@ -993,7 +1035,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
                   )}
                 </div>
 
-                {/* 第二層：帳戶資料 */}
+                {/* 第二層：儲值資料 */}
                 <div style={{ 
                   background: '#fff',
                   padding: isMobile ? '8px' : '10px 12px',

@@ -140,14 +140,14 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
       
       const today = new Date()
       const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
-      link.setAttribute('download', `會員財務資料_${dateStr}.csv`)
+      link.setAttribute('download', `會員儲值資料_${dateStr}.csv`)
       
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
 
-      alert(`✅ 成功導出 ${allMembers.length} 位會員的財務資料`)
+      alert(`✅ 成功導出 ${allMembers.length} 位會員的儲值資料`)
     } catch (err: any) {
       console.error('導出失敗:', err)
       alert('導出失敗: ' + err.message)
@@ -235,7 +235,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
 
           let resultMsg = ''
           if (updateCount > 0) {
-            resultMsg = `✅ 成功更新 ${updateCount} 位會員的財務資料`
+            resultMsg = `✅ 成功更新 ${updateCount} 位會員的儲值資料`
           }
           if (errorCount > 0) {
             resultMsg += `${updateCount > 0 ? '\n' : ''}⚠️ ${errorCount} 筆失敗（會員不存在）`
@@ -468,7 +468,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           color: '#666',
         }}>
           <div style={{ marginBottom: '4px' }}>
-            <strong style={{ color: '#333' }}>儲值 💰</strong>：客人充值到帳戶
+            <strong style={{ color: '#333' }}>儲值 💰</strong>：客人充值到儲值
           </div>
           <div style={{ marginBottom: '4px' }}>
             <strong style={{ color: '#333' }}>付款 💸</strong>：預約結帳（現金/匯款/扣儲值/船券/指定課程）
@@ -611,7 +611,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                       )}
                     </div>
 
-                    {/* 財務資訊 */}
+                    {/* 儲值資訊 */}
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)',
@@ -982,7 +982,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                 <div style={{ marginBottom: '4px', fontWeight: 'bold', fontSize: '14px' }}>
                   ⚠️ 重要提醒
                 </div>
-                <strong style={{ color: '#d32f2f' }}>導入會直接覆蓋現有賬戶數據，建議先導出備份！</strong>
+                <strong style={{ color: '#d32f2f' }}>導入會直接覆蓋現有儲值數據，建議先導出備份！</strong>
               </div>
 
               {/* CSV 範例 */}

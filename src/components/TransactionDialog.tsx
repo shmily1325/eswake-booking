@@ -226,10 +226,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         }
       }
 
-      // 付款：根據付款方式扣除對應的帳戶
+      // 付款：根據付款方式扣除對應的儲值
       if (transactionType === 'payment') {
         if (paymentMethod === 'cash' || paymentMethod === 'transfer') {
-          // 現金或匯款：不扣除任何帳戶餘額（客人直接付現）
+          // 現金或匯款：不扣除任何儲值餘額（客人直接付現）
           // 金額欄位只是記錄收了多少錢
         } else if (paymentMethod === 'deduct_balance' && numAmount) {
           // 扣儲值：扣除餘額

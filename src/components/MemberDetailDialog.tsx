@@ -135,7 +135,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     }
   }
 
-  // 延遲載入交易記錄（僅預覽用，完整記錄請至「賬戶」頁面查看）
+  // 延遲載入交易記錄（僅預覽用，完整記錄請至「儲值」頁面查看）
   const loadTransactions = async () => {
     if (!memberId) return
     
@@ -345,9 +345,9 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                       </div>
                     </div>
 
-                    {/* 賬戶資訊 */}
+                    {/* 儲值資訊 */}
                     <div style={{ marginBottom: '30px' }}>
-                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>💰 賬戶資訊</h3>
+                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>💰 儲值資訊</h3>
                       <div style={{ 
                         background: '#f8f9fa',
                         borderRadius: '8px',
@@ -448,7 +448,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         fontSize: '13px',
                         color: '#1976d2'
                       }}>
-                        💡 僅顯示最近 20 筆記錄，完整交易記錄請至「賬戶」頁面查看
+                        💡 僅顯示最近 20 筆記錄，完整交易記錄請至「儲值」頁面查看
                       </div>
 
                       {/* 交易記錄列表 */}

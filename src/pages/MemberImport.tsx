@@ -615,7 +615,7 @@ export function MemberImport({ user }: MemberImportProps) {
                     • <strong>配對會員</strong>：填寫配對會員的姓名（雙人會員用）<br/>
                     • <strong>日期格式</strong>：<code style={{ background: '#ffebee', padding: '2px 6px', borderRadius: '3px' }}>YYYY-MM-DD</code>（例：2024-01-01）<br/>
                     • <strong>狀態</strong>：啟用、隱藏<br/>
-                    • <strong>💰 賬戶資料</strong>：請到「會員記帳」頁面導入（儲值、船券等）
+                    • <strong>💰 儲值資料</strong>：請到「會員記帳」頁面導入（儲值、船券等）
                   </p>
           </div>
           <button
