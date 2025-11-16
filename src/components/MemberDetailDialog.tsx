@@ -11,15 +11,17 @@ interface Member {
   birthday: string | null
   phone: string | null
   balance: number
+  vip_voucher_amount: number
   designated_lesson_minutes: number
   boat_voucher_g23_minutes: number
-  boat_voucher_g21_minutes: number
+  boat_voucher_g21_panther_minutes: number
+  gift_boat_hours: number
   membership_end_date: string | null
   membership_start_date: string | null
   membership_type: string
   membership_partner_id: string | null
-  free_hours: number
-  free_hours_used: number
+  board_slot_number: string | null
+  board_expiry_date: string | null
   member_type: string
   notes: string | null
   status: string
@@ -342,7 +344,9 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         <InfoRow label="💵 餘額" value={`$${member.balance.toFixed(0)}`} />
                         <InfoRow label="⏱️ 指定課" value={`${member.designated_lesson_minutes} 分鐘`} />
                         <InfoRow label="🚤 G23 船券" value={`${member.boat_voucher_g23_minutes} 分鐘`} />
-                        <InfoRow label="⛵ G21 船券" value={`${member.boat_voucher_g21_minutes} 分鐘`} />
+                        <InfoRow label="⛵ G21/黑豹 船券" value={`${member.boat_voucher_g21_panther_minutes} 分鐘`} />
+                        <InfoRow label="🎁 VIP 票券" value={`$${member.vip_voucher_amount.toFixed(0)}`} />
+                        <InfoRow label="⏱️ 贈送大船時數" value={`${member.gift_boat_hours} 小時`} />
                       </div>
                     </div>
 
@@ -412,12 +416,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                           <InfoRow 
                             label="🔗 配對會員" 
                             value={member.partner.nickname || member.partner.name} 
-                          />
-                        )}
-                        {(member.free_hours || 0) > 0 && (
-                          <InfoRow 
-                            label="⏱️ 贈送時數" 
-                            value={`剩餘 ${member.free_hours - (member.free_hours_used || 0)} 分 / 總計 ${member.free_hours} 分`} 
                           />
                         )}
                       </div>
