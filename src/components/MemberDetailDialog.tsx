@@ -144,6 +144,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         .from('transactions')
         .select('*')
         .eq('member_id', memberId)
+        .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(20)  // 只顯示最近 20 筆作為快速預覽
 

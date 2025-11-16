@@ -939,23 +939,52 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
               </div>
             </div>
 
-            {/* 類別篩選 */}
+            {/* 類別篩選按鈕 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
                 篩選類別
               </label>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                style={inputStyle}
-              >
-                <option value="all">全部類別</option>
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                flexWrap: 'wrap',
+              }}>
+                <button
+                  onClick={() => setCategoryFilter('all')}
+                  style={{
+                    padding: '8px 16px',
+                    border: categoryFilter === 'all' ? '2px solid #424242' : '2px solid #e0e0e0',
+                    borderRadius: '20px',
+                    background: categoryFilter === 'all' ? '#f5f5f5' : 'white',
+                    color: categoryFilter === 'all' ? '#424242' : '#666',
+                    fontSize: '13px',
+                    fontWeight: categoryFilter === 'all' ? '600' : 'normal',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  全部
+                </button>
                 {CATEGORIES.map(cat => (
-                  <option key={cat.value} value={cat.value}>
+                  <button
+                    key={cat.value}
+                    onClick={() => setCategoryFilter(cat.value)}
+                    style={{
+                      padding: '8px 16px',
+                      border: categoryFilter === cat.value ? '2px solid #424242' : '2px solid #e0e0e0',
+                      borderRadius: '20px',
+                      background: categoryFilter === cat.value ? '#f5f5f5' : 'white',
+                      color: categoryFilter === cat.value ? '#424242' : '#666',
+                      fontSize: '13px',
+                      fontWeight: categoryFilter === cat.value ? '600' : 'normal',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
                     {cat.label}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
             {/* 交易記錄列表 */}

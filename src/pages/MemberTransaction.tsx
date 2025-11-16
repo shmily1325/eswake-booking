@@ -287,8 +287,9 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           *,
           member_id(name, nickname)
         `)
-        .gte('created_at', exportStartDate)
-        .lte('created_at', exportEndDate + 'T23:59:59')
+        .gte('transaction_date', exportStartDate)
+        .lte('transaction_date', exportEndDate)
+        .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })
 
       if (error) throw error
