@@ -124,7 +124,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
   const handleEditTransaction = (tx: Transaction) => {
     setEditingTransaction(tx)
     setEditCategory(tx.category)
-    setEditAdjustType(tx.adjust_type)
+    setEditAdjustType(tx.adjust_type as 'increase' | 'decrease')
     setEditValue(tx.amount ? tx.amount.toString() : tx.minutes ? tx.minutes.toString() : '')
     setEditDescription(tx.description)
     setEditNotes(tx.notes || '')
@@ -652,6 +652,27 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                   <div style={{ color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
                   <div style={{ fontWeight: 'bold', color: '#333' }}>{member.gift_boat_hours.toLocaleString()}分</div>
                 </div>
+              </div>
+            </div>
+
+            {/* 使用說明 */}
+            <div style={{
+              background: '#e3f2fd',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '13px',
+              lineHeight: '1.6',
+              color: '#1976d2',
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '6px' }}>💡 使用說明</div>
+              <div style={{ color: '#424242' }}>
+                <strong>💰 儲值：</strong>會員儲值餘額<br/>
+                <strong>💎 VIP票券：</strong>VIP專用票券餘額<br/>
+                <strong>📚 指定課：</strong>指定教練課程時數（分鐘）<br/>
+                <strong>🚤 G23船券：</strong>G23船隻使用時數（分鐘）<br/>
+                <strong>⛵ G21/黑豹：</strong>G21與黑豹船隻共通時數（分鐘）<br/>
+                <strong>🎁 贈送大船：</strong>贈送的大船使用時數（分鐘）
               </div>
             </div>
 
