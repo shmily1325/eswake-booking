@@ -287,8 +287,9 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           *,
           member_id(name, nickname)
         `)
-        .gte('created_at', `${exportStartDate}T00:00:00`)
-        .lte('created_at', `${exportEndDate}T23:59:59`)
+        .gte('transaction_date', exportStartDate)
+        .lte('transaction_date', exportEndDate)
+        .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -326,7 +327,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
         ['會員', '日期', '交易類型', '類別', '付款方式', '金額', '分鐘數', '說明', '備註', '餘額', '指定課', 'G23船券', 'G21船券'].join(','),
         ...data.map((t: any) => [
           `"${(t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'}"`,
-          t.created_at.split('T')[0],
+          t.transaction_date || t.created_at?.split('T')[0] || '',
           getTypeLabel(t.transaction_type),
           getCategoryLabel(t.category),
           t.payment_method || '',
