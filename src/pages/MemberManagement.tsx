@@ -73,21 +73,21 @@ export function MemberManagement({ user }: MemberManagementProps) {
     return `${year}-${month}-${day}`
   }
 
-  // 格式化日期為 YYYY/MM/DD
+  // 格式化日期為 YYYY-MM-DD
   const formatDate = (dateStr: string) => {
     if (!dateStr) return ''
     
-    // 格式 1: YYYY-MM-DD
+    // 格式 1: YYYY-MM-DD (已經是標準格式)
     if (dateStr.includes('-') && dateStr.split('-').length === 3) {
       const [year, month, day] = dateStr.split('-')
-      return `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
     }
-    // 格式 2: MM/DD/YYYY
+    // 格式 2: MM/DD/YYYY (轉換為 YYYY-MM-DD)
     else if (dateStr.includes('/')) {
       const parts = dateStr.split('/')
       if (parts.length === 3) {
         const [month, day, year] = parts
-        return `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
       }
     }
     
@@ -944,7 +944,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
                         <div>📱 {member.phone}</div>
                       )}
                       {member.birthday && (
-                        <div>🎂 {member.birthday}</div>
+                        <div>🎂 {formatDate(member.birthday)}</div>
                       )}
                       {member.partner && (
                         <div style={{ color: '#2196F3' }}>
@@ -954,13 +954,13 @@ export function MemberManagement({ user }: MemberManagementProps) {
                     </div>
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                       {member.membership_start_date && (
-                        <div>📅 開始：{member.membership_start_date}</div>
+                        <div>📅 開始：{formatDate(member.membership_start_date)}</div>
                       )}
                       {member.membership_end_date && (
                         <div style={{ 
                           color: new Date(member.membership_end_date) < new Date() ? '#f44336' : '#666'
                         }}>
-                          ⏰ 到期：{member.membership_end_date}
+                          ⏰ 到期：{formatDate(member.membership_end_date)}
                           {new Date(member.membership_end_date) < new Date() && ' (已過期)'}
                         </div>
                       )}
@@ -1048,17 +1048,19 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 {(member.board_slots && member.board_slots.length > 0) && (
                   <div style={{ 
                     fontSize: '13px',
-                    color: '#2e7d32',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '4px'
                   }}>
-                    {member.board_slots.map((slot, index) => (
-                      <div key={index}>
-                        🏄 置板 #{slot.slot_number}
-                        {slot.expires_at && ` ⏰：${slot.expires_at}`}
-                      </div>
-                    ))}
+                    {member.board_slots.map((slot, index) => {
+                      const isExpired = slot.expires_at && new Date(slot.expires_at) < new Date()
+                      return (
+                        <div key={index} style={{ color: isExpired ? '#f44336' : '#2e7d32' }}>
+                          🏄 置板 #{slot.slot_number} {slot.expires_at && `⏰到期：${formatDate(slot.expires_at)}`}
+                          {isExpired && ' (已過期)'}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
 
