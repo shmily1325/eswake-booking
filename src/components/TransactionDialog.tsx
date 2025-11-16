@@ -111,8 +111,9 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         .from('transactions')
         .select('*')
         .eq('member_id', member.id)
-        .gte('created_at', startDate)
-        .lte('created_at', endDateStr + 'T23:59:59')
+        .gte('transaction_date', startDate)
+        .lte('transaction_date', endDateStr)
+        .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -425,7 +426,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         
         // 只有有交易時才顯示明細
         if (txList.length > 0) {
-          csvLines.push('"日期","說明","金額","備註"')
+          csvLines.push('"日期","說明","動作","金額","備註"')
           
           // 明細行（按時間正序）
           const sortedTxList = [...txList].reverse()
@@ -435,25 +436,20 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
             const [year, month, day] = date.split('-')
             const formattedDate = `${month}/${day}/${year}`
             
-            // 用文字描述代替正負號（動詞在前）
-            let value: string
+            // 分成動詞和數值兩欄
+            let action: string
+            let amount: string
             if (isAmount) {
-              // 金額：動詞 + 金額
-              if (tx.adjust_type === 'increase') {
-                value = `儲值 ${unit}${tx.amount || 0}`
-              } else {
-                value = `扣除 ${unit}${tx.amount || 0}`
-              }
+              // 金額類別
+              action = tx.adjust_type === 'increase' ? '儲值' : '扣除'
+              amount = `${unit}${tx.amount || 0}`
             } else {
-              // 時數：動詞 + 金額
-              if (tx.adjust_type === 'increase') {
-                value = `增加 ${tx.minutes || 0}分`
-              } else {
-                value = `使用 ${tx.minutes || 0}分`
-              }
+              // 時數類別
+              action = tx.adjust_type === 'increase' ? '增加' : '使用'
+              amount = `${tx.minutes || 0}分`
             }
             
-            csvLines.push(`"${formattedDate}","${tx.description || ''}","${value}","${tx.notes || ''}"`)
+            csvLines.push(`"${formattedDate}","${tx.description || ''}","${action}","${amount}","${tx.notes || ''}"`)
           })
         }
       })
@@ -671,7 +667,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
             <strong>⛵ G21/黑豹：</strong>G21與黑豹船隻共通時數（分鐘）　
             <strong>🎁 贈送大船：</strong>贈送的大船使用時數（分鐘）
           </div>
-        </div>
+        </div> 
 
         {/* Tabs */}
         <div style={{
