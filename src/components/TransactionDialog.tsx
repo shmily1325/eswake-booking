@@ -67,6 +67,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [editCategory, setEditCategory] = useState('')
+  const [editAdjustType, setEditAdjustType] = useState<'increase' | 'decrease'>('increase')
+  const [editValue, setEditValue] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editNotes, setEditNotes] = useState('')
 
   const inputStyle = {
     width: '100%',
@@ -114,6 +120,221 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     }
   }
 
+  // 編輯交易記錄
+  const handleEditTransaction = (tx: Transaction) => {
+    setEditingTransaction(tx)
+    setEditCategory(tx.category)
+    setEditAdjustType(tx.adjust_type)
+    setEditValue(tx.amount ? tx.amount.toString() : tx.minutes ? tx.minutes.toString() : '')
+    setEditDescription(tx.description)
+    setEditNotes(tx.notes || '')
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingTransaction) return
+    
+    const numValue = parseFloat(editValue)
+    if (!numValue || numValue <= 0) {
+      alert('請輸入有效的數值')
+      return
+    }
+
+    if (!editDescription.trim()) {
+      alert('請輸入說明')
+      return
+    }
+
+    try {
+      const categoryConfig = CATEGORIES.find(c => c.value === editCategory)
+      const delta = editAdjustType === 'increase' ? numValue : -numValue
+      
+      // 計算新的餘額/時數（根據新的值重新計算）
+      let updates: any = {}
+      let afterValues: any = {
+        balance_after: member.balance,
+        vip_voucher_amount_after: member.vip_voucher_amount,
+        designated_lesson_minutes_after: member.designated_lesson_minutes,
+        boat_voucher_g23_minutes_after: member.boat_voucher_g23_minutes,
+        boat_voucher_g21_panther_minutes_after: member.boat_voucher_g21_panther_minutes,
+        gift_boat_hours_after: member.gift_boat_hours,
+      }
+
+      // 先計算出原交易對會員資料的影響並還原
+      const oldDelta = editingTransaction.adjust_type === 'increase' 
+        ? (editingTransaction.amount || editingTransaction.minutes || 0)
+        : -(editingTransaction.amount || editingTransaction.minutes || 0)
+      
+      // 根據舊的category還原
+      switch (editingTransaction.category) {
+        case 'balance':
+          updates.balance = member.balance - oldDelta + delta
+          afterValues.balance_after = updates.balance
+          break
+        case 'vip_voucher':
+          updates.vip_voucher_amount = member.vip_voucher_amount - oldDelta + delta
+          afterValues.vip_voucher_amount_after = updates.vip_voucher_amount
+          break
+        case 'designated_lesson':
+          updates.designated_lesson_minutes = member.designated_lesson_minutes - oldDelta + delta
+          afterValues.designated_lesson_minutes_after = updates.designated_lesson_minutes
+          break
+        case 'boat_voucher_g23':
+          updates.boat_voucher_g23_minutes = member.boat_voucher_g23_minutes - oldDelta + delta
+          afterValues.boat_voucher_g23_minutes_after = updates.boat_voucher_g23_minutes
+          break
+        case 'boat_voucher_g21_panther':
+          updates.boat_voucher_g21_panther_minutes = member.boat_voucher_g21_panther_minutes - oldDelta + delta
+          afterValues.boat_voucher_g21_panther_minutes_after = updates.boat_voucher_g21_panther_minutes
+          break
+        case 'gift_boat_hours':
+          updates.gift_boat_hours = member.gift_boat_hours - oldDelta + delta
+          afterValues.gift_boat_hours_after = updates.gift_boat_hours
+          break
+      }
+
+      // 如果類別改變了，需要處理新類別
+      if (editCategory !== editingTransaction.category) {
+        switch (editCategory) {
+          case 'balance':
+            updates.balance = member.balance - oldDelta
+            afterValues.balance_after = updates.balance + delta
+            updates.balance = afterValues.balance_after
+            break
+          case 'vip_voucher':
+            updates.vip_voucher_amount = member.vip_voucher_amount - oldDelta
+            afterValues.vip_voucher_amount_after = updates.vip_voucher_amount + delta
+            updates.vip_voucher_amount = afterValues.vip_voucher_amount_after
+            break
+          case 'designated_lesson':
+            updates.designated_lesson_minutes = member.designated_lesson_minutes - oldDelta
+            afterValues.designated_lesson_minutes_after = updates.designated_lesson_minutes + delta
+            updates.designated_lesson_minutes = afterValues.designated_lesson_minutes_after
+            break
+          case 'boat_voucher_g23':
+            updates.boat_voucher_g23_minutes = member.boat_voucher_g23_minutes - oldDelta
+            afterValues.boat_voucher_g23_minutes_after = updates.boat_voucher_g23_minutes + delta
+            updates.boat_voucher_g23_minutes = afterValues.boat_voucher_g23_minutes_after
+            break
+          case 'boat_voucher_g21_panther':
+            updates.boat_voucher_g21_panther_minutes = member.boat_voucher_g21_panther_minutes - oldDelta
+            afterValues.boat_voucher_g21_panther_minutes_after = updates.boat_voucher_g21_panther_minutes + delta
+            updates.boat_voucher_g21_panther_minutes = afterValues.boat_voucher_g21_panther_minutes_after
+            break
+          case 'gift_boat_hours':
+            updates.gift_boat_hours = member.gift_boat_hours - oldDelta
+            afterValues.gift_boat_hours_after = updates.gift_boat_hours + delta
+            updates.gift_boat_hours = afterValues.gift_boat_hours_after
+            break
+        }
+      }
+
+      // 更新會員資料
+      const { error: updateError } = await supabase
+        .from('members')
+        .update(updates)
+        .eq('id', member.id)
+
+      if (updateError) throw updateError
+
+      // 更新交易記錄
+      const { error } = await supabase
+        .from('transactions')
+        .update({
+          category: editCategory,
+          adjust_type: editAdjustType,
+          amount: categoryConfig?.type === 'amount' ? numValue : null,
+          minutes: categoryConfig?.type === 'minutes' ? numValue : null,
+          description: editDescription.trim(),
+          notes: editNotes.trim() || null,
+          ...afterValues
+        })
+        .eq('id', editingTransaction.id)
+
+      if (error) throw error
+
+      // 重新載入
+      await loadTransactions()
+      onSuccess()
+      setEditingTransaction(null)
+      setEditCategory('')
+      setEditAdjustType('increase')
+      setEditValue('')
+      setEditDescription('')
+      setEditNotes('')
+    } catch (error: any) {
+      console.error('更新失敗:', error)
+      alert(`更新失敗：${error.message}`)
+    }
+  }
+
+  const handleDeleteTransaction = async (tx: Transaction) => {
+    if (!confirm('確定要刪除這筆交易記錄嗎？\n\n注意：這將會還原此交易對會員餘額/時數的影響。')) {
+      return
+    }
+
+    try {
+      // 計算需要還原的值
+      const delta = tx.adjust_type === 'increase' 
+        ? -(tx.amount || tx.minutes || 0)
+        : (tx.amount || tx.minutes || 0)
+      
+      let updates: any = {}
+      
+      switch (tx.category) {
+        case 'balance':
+          updates.balance = member.balance + delta
+          break
+        case 'vip_voucher':
+          updates.vip_voucher_amount = member.vip_voucher_amount + delta
+          break
+        case 'designated_lesson':
+          updates.designated_lesson_minutes = member.designated_lesson_minutes + delta
+          break
+        case 'boat_voucher_g23':
+          updates.boat_voucher_g23_minutes = member.boat_voucher_g23_minutes + delta
+          break
+        case 'boat_voucher_g21_panther':
+          updates.boat_voucher_g21_panther_minutes = member.boat_voucher_g21_panther_minutes + delta
+          break
+        case 'gift_boat_hours':
+          updates.gift_boat_hours = member.gift_boat_hours + delta
+          break
+      }
+
+      // 更新會員資料
+      const { error: updateError } = await supabase
+        .from('members')
+        .update(updates)
+        .eq('id', member.id)
+
+      if (updateError) throw updateError
+
+      // 刪除交易記錄
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', tx.id)
+
+      if (error) throw error
+
+      // 重新載入
+      await loadTransactions()
+      onSuccess()
+    } catch (error: any) {
+      console.error('刪除失敗:', error)
+      alert(`刪除失敗：${error.message}`)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingTransaction(null)
+    setEditCategory('')
+    setEditAdjustType('increase')
+    setEditValue('')
+    setEditDescription('')
+    setEditNotes('')
+  }
+
   // 匯出交易記錄
   const handleExportTransactions = () => {
     if (transactions.length === 0) {
@@ -126,6 +347,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
       const headers = ['日期時間', '項目', '操作', '金額/時數', '說明', '備註']
       const rows = transactions.map(tx => {
         const categoryConfig = CATEGORIES.find(c => c.value === tx.category)
+        // 移除 emoji
+        const categoryLabel = categoryConfig?.label?.replace(/[^\u0000-\u007F\u4E00-\u9FFF]/g, '').trim() || tx.category
         const date = new Date(tx.created_at).toLocaleString('zh-TW', {
           year: 'numeric',
           month: '2-digit',
@@ -138,7 +361,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         
         return [
           date,
-          categoryConfig?.label || tx.category,
+          categoryLabel,
           operation,
           value,
           tx.description || '',
@@ -240,15 +463,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           break
       }
 
-      // 檢查是否會變成負數
-      const newValue = Object.values(updates)[0] as number
-      if (newValue < 0) {
-        alert('餘額或時數不足，無法減少！')
-        setLoading(false)
-        return
-      }
-
-      // 更新會員資料
+      // 更新會員資料（允許負數）
       const { error: updateError } = await supabase
         .from('members')
         .update(updates)
@@ -638,6 +853,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                 {transactions.map((tx) => {
                   const categoryConfig = CATEGORIES.find(c => c.value === tx.category)
                   const isIncrease = tx.adjust_type === 'increase'
+                  const isEditing = editingTransaction?.id === tx.id
                   
                   return (
                     <div
@@ -647,52 +863,235 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                         padding: '14px',
                         borderRadius: '8px',
                         borderLeft: `4px solid ${isIncrease ? '#4caf50' : '#f44336'}`,
+                        cursor: isEditing ? 'default' : 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onClick={() => !isEditing && handleEditTransaction(tx)}
+                      onMouseEnter={(e) => {
+                        if (!isEditing) e.currentTarget.style.background = '#eeeff1'
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isEditing) e.currentTarget.style.background = '#f8f9fa'
                       }}
                     >
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        marginBottom: '8px',
-                      }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
-                            {categoryConfig?.label}
+                      {isEditing ? (
+                        // 編輯模式
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <div style={{ marginBottom: '12px' }}>
+                            <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
+                              {new Date(tx.created_at).toLocaleString('zh-TW', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </div>
+                            
+                            {/* 項目 */}
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                                項目 *
+                              </label>
+                              <select
+                                value={editCategory}
+                                onChange={(e) => setEditCategory(e.target.value)}
+                                style={{ ...inputStyle, fontSize: '14px' }}
+                              >
+                                {CATEGORIES.map(cat => (
+                                  <option key={cat.value} value={cat.value}>
+                                    {cat.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* 操作 */}
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                                操作 *
+                              </label>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditAdjustType('increase')}
+                                  style={{
+                                    padding: '8px',
+                                    border: editAdjustType === 'increase' ? '2px solid #4caf50' : '2px solid #e0e0e0',
+                                    borderRadius: '6px',
+                                    background: editAdjustType === 'increase' ? '#e8f5e9' : 'white',
+                                    color: editAdjustType === 'increase' ? '#4caf50' : '#666',
+                                    fontSize: '13px',
+                                    fontWeight: editAdjustType === 'increase' ? '600' : 'normal',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  ➕ 增加
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditAdjustType('decrease')}
+                                  style={{
+                                    padding: '8px',
+                                    border: editAdjustType === 'decrease' ? '2px solid #f44336' : '2px solid #e0e0e0',
+                                    borderRadius: '6px',
+                                    background: editAdjustType === 'decrease' ? '#ffebee' : 'white',
+                                    color: editAdjustType === 'decrease' ? '#f44336' : '#666',
+                                    fontSize: '13px',
+                                    fontWeight: editAdjustType === 'decrease' ? '600' : 'normal',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  ➖ 減少
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* 數值 */}
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                                {CATEGORIES.find(c => c.value === editCategory)?.type === 'amount' ? '金額 (元)' : '時數 (分鐘)'} *
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                style={{ ...inputStyle, fontSize: '14px' }}
+                              />
+                            </div>
+
+                            {/* 說明 */}
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                                說明 *
+                              </label>
+                              <input
+                                type="text"
+                                value={editDescription}
+                                onChange={(e) => setEditDescription(e.target.value)}
+                                style={{ ...inputStyle, fontSize: '14px' }}
+                              />
+                            </div>
+
+                            {/* 備註 */}
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                                備註
+                              </label>
+                              <textarea
+                                value={editNotes}
+                                onChange={(e) => setEditNotes(e.target.value)}
+                                style={{
+                                  ...inputStyle,
+                                  fontSize: '14px',
+                                  minHeight: '60px',
+                                  resize: 'vertical',
+                                  fontFamily: 'inherit',
+                                }}
+                              />
+                            </div>
                           </div>
-                          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                            📝 {tx.description}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#999' }}>
-                            {new Date(tx.created_at).toLocaleString('zh-TW', {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                          
+                          {/* 按鈕 */}
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={handleSaveEdit}
+                              style={{
+                                flex: 1,
+                                padding: '10px',
+                                background: '#4caf50',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              ✓ 儲存
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTransaction(tx)}
+                              style={{
+                                padding: '10px 16px',
+                                background: '#f44336',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              🗑️
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              style={{
+                                padding: '10px 16px',
+                                background: '#999',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              ✕
+                            </button>
                           </div>
                         </div>
-                        <div style={{
-                          fontSize: '18px',
-                          fontWeight: 'bold',
-                          color: isIncrease ? '#4caf50' : '#f44336',
-                          whiteSpace: 'nowrap',
-                          marginLeft: '12px',
-                        }}>
-                          {isIncrease ? '+' : '-'}{tx.amount ? `$${tx.amount.toLocaleString()}` : `${tx.minutes}分`}
-                        </div>
-                      </div>
-                      {tx.notes && (
-                        <div style={{
-                          fontSize: '13px',
-                          color: '#666',
-                          marginTop: '8px',
-                          padding: '8px',
-                          background: 'white',
-                          borderRadius: '4px',
-                        }}>
-                          💬 {tx.notes}
-                        </div>
+                      ) : (
+                        // 顯示模式
+                        <>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            marginBottom: '8px',
+                          }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                                {categoryConfig?.label}
+                              </div>
+                              <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+                                {tx.description}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#999' }}>
+                                {new Date(tx.created_at).toLocaleString('zh-TW', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </div>
+                            </div>
+                            <div style={{
+                              fontSize: '18px',
+                              fontWeight: 'bold',
+                              color: isIncrease ? '#4caf50' : '#f44336',
+                              whiteSpace: 'nowrap',
+                              marginLeft: '12px',
+                            }}>
+                              {isIncrease ? '+' : '-'}{tx.amount ? `$${tx.amount.toLocaleString()}` : `${tx.minutes}分`}
+                            </div>
+                          </div>
+                          {tx.notes && (
+                            <div style={{
+                              fontSize: '13px',
+                              color: '#666',
+                              marginTop: '8px',
+                              padding: '8px',
+                              background: 'white',
+                              borderRadius: '4px',
+                            }}>
+                              備註：{tx.notes}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )
