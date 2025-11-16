@@ -429,7 +429,7 @@ export function MemberImport({ user }: MemberImportProps) {
     link.click()
   }
 
-  // 方案1：只刪除沒有預約記錄的會員（保留有預約的會員）
+  // 方案1：只刪除沒有任何相關記錄的會員（保留有任何記錄的會員）
   const handleDeleteMembersWithoutBookings = async () => {
     setDeleting(true)
     setError('')
@@ -450,34 +450,70 @@ export function MemberImport({ user }: MemberImportProps) {
         return
       }
 
-      // 檢查這些會員是否有預約記錄
-      const { data: membersWithBookings, error: memberBookingsError } = await supabase
+      // 檢查這些會員是否有任何相關記錄（預約、參與者、財務交易等）
+      const memberIds = allMembers.map(m => m.id)
+      
+      // 1. 查詢 bookings 表中的 member_id（向下相容）
+      const { data: membersWithBookingsDirect, error: bookingsError } = await supabase
         .from('bookings')
         .select('member_id')
-        .in('member_id', allMembers.map(m => m.id))
+        .in('member_id', memberIds)
+        .not('member_id', 'is', null)
 
-      if (memberBookingsError) throw memberBookingsError
+      if (bookingsError) throw bookingsError
 
-      const memberIdsWithBookings = new Set(membersWithBookings?.map(b => b.member_id) || [])
-      const memberIdsWithoutBookings = allMembers
-        .filter(m => !memberIdsWithBookings.has(m.id))
+      // 2. 查詢 booking_members 表中的 member_id（V5 多會員預約）
+      const { data: membersWithBookingsViaTable, error: bookingMembersError } = await supabase
+        .from('booking_members')
+        .select('member_id')
+        .in('member_id', memberIds)
+
+      if (bookingMembersError) throw bookingMembersError
+
+      // 3. 查詢 booking_participants 表中的 member_id（參與者記錄）
+      const { data: membersWithParticipants, error: participantsError } = await supabase
+        .from('booking_participants')
+        .select('member_id')
+        .in('member_id', memberIds)
+        .not('member_id', 'is', null)
+
+      if (participantsError) throw participantsError
+
+      // 4. 查詢 transactions 表中的 member_id（財務交易記錄）
+      const { data: membersWithTransactions, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('member_id')
+        .in('member_id', memberIds)
+        .not('member_id', 'is', null)
+
+      if (transactionsError) throw transactionsError
+
+      // 合併所有查詢結果（只要有任何一種記錄就保留該會員）
+      const memberIdsWithRecords = new Set([
+        ...(membersWithBookingsDirect?.map(b => b.member_id).filter(Boolean) || []),
+        ...(membersWithBookingsViaTable?.map(b => b.member_id) || []),
+        ...(membersWithParticipants?.map(p => p.member_id).filter(Boolean) || []),
+        ...(membersWithTransactions?.map(t => t.member_id).filter(Boolean) || [])
+      ])
+      const memberIdsWithoutRecords = allMembers
+        .filter(m => !memberIdsWithRecords.has(m.id))
         .map(m => m.id)
 
-      if (memberIdsWithoutBookings.length === 0) {
-        setError('❌ 所有會員都有預約記錄，無會員可刪除')
+      if (memberIdsWithoutRecords.length === 0) {
+        setError('❌ 所有會員都有相關記錄（預約、參與者或財務交易），無會員可刪除')
         setDeleting(false)
         return
       }
 
-      // 只刪除沒有預約記錄的會員
+      // 只刪除沒有任何相關記錄的會員
       const { error: deleteError } = await supabase
         .from('members')
         .delete()
-        .in('id', memberIdsWithoutBookings)
+        .in('id', memberIdsWithoutRecords)
 
       if (deleteError) throw deleteError
 
-      setSuccess(`✅ 已刪除 ${memberIdsWithoutBookings.length} 位沒有預約記錄的會員。仍保留 ${memberIdsWithBookings.size} 位有預約記錄的會員。`)
+      setSuccess(`✅ 已刪除 ${memberIdsWithoutRecords.length} 位沒有相關記錄的會員。仍保留 ${memberIdsWithRecords.size} 位有記錄的會員。`)
       setDeleteDialogOpen(false)
     } catch (err: any) {
       setError('刪除失敗: ' + err.message)
@@ -514,6 +550,14 @@ export function MemberImport({ user }: MemberImportProps) {
       const { data: allAnnouncements } = await supabase
         .from('daily_announcements')
         .select('id')
+      
+      const { data: allParticipants } = await supabase
+        .from('booking_participants')
+        .select('id')
+      
+      const { data: allTransactions } = await supabase
+        .from('transactions')
+        .select('id')
 
       // 1. 刪除每日公告（沒有外鍵依賴）
       const { error: announcementError } = await supabase
@@ -539,7 +583,23 @@ export function MemberImport({ user }: MemberImportProps) {
 
       if (boardError) throw boardError
 
-      // 4. 刪除所有預約記錄
+      // 4. 刪除所有財務交易記錄（因為有 member_id 外鍵）
+      const { error: transactionsError } = await supabase
+        .from('transactions')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+
+      if (transactionsError) throw transactionsError
+
+      // 5. 刪除所有參與者記錄（因為有 member_id 外鍵，且 booking_id 有 CASCADE）
+      const { error: participantsError } = await supabase
+        .from('booking_participants')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+
+      if (participantsError) throw participantsError
+
+      // 6. 刪除所有預約記錄（booking_members 會自動 CASCADE 刪除）
       const { error: bookingsError } = await supabase
         .from('bookings')
         .delete()
@@ -547,7 +607,7 @@ export function MemberImport({ user }: MemberImportProps) {
 
       if (bookingsError) throw bookingsError
 
-      // 5. 最後刪除所有會員
+      // 7. 最後刪除所有會員
       const { error: membersError } = await supabase
         .from('members')
         .delete()
@@ -558,6 +618,8 @@ export function MemberImport({ user }: MemberImportProps) {
       setSuccess(`✅ 已完全清空：
 • 會員：${allMembers?.length || 0} 位
 • 預約記錄：${allBookings?.length || 0} 筆
+• 參與者記錄：${allParticipants?.length || 0} 筆
+• 財務交易：${allTransactions?.length || 0} 筆
 • 置板記錄：${allBoards?.length || 0} 筆
 • 教練休假：${allTimeOff?.length || 0} 筆
 • 每日公告：${allAnnouncements?.length || 0} 筆
@@ -946,11 +1008,11 @@ export function MemberImport({ user }: MemberImportProps) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: designSystem.spacing.md }}>
               <div style={{ flex: 1, minWidth: '200px' }}>
                 <div style={{ ...getTextStyle('bodyLarge', isMobile), fontWeight: '600', marginBottom: designSystem.spacing.xs, color: '#d32f2f' }}>
-                  🗑️ 刪除無預約會員
+                  🗑️ 刪除無資料會員
                 </div>
                 <div style={{ ...getTextStyle('bodySmall', isMobile), color: '#666', lineHeight: '1.6' }}>
-                  刪除沒有預約記錄的會員<br/>
-                  保留有預約記錄的會員
+                  刪除沒有任何相關記錄的會員<br/>
+                  保留有記錄的會員（預約、參與者、財務交易等）
                 </div>
               </div>
               <button
@@ -960,7 +1022,7 @@ export function MemberImport({ user }: MemberImportProps) {
                   minWidth: isMobile ? '100%' : '140px'
                 }}
               >
-                刪除無預約會員
+                刪除無資料會員
               </button>
             </div>
           </div>
@@ -1000,7 +1062,7 @@ export function MemberImport({ user }: MemberImportProps) {
 
       <Footer />
 
-      {/* 對話框1：刪除無預約會員 */}
+      {/* 對話框1：刪除無資料會員 */}
       {deleteDialogOpen && (
         <div style={{
           position: 'fixed',
@@ -1023,13 +1085,13 @@ export function MemberImport({ user }: MemberImportProps) {
             padding: designSystem.spacing.xl
           }}>
             <h2 style={{ ...getTextStyle('h2', isMobile), margin: 0, marginBottom: designSystem.spacing.md, color: designSystem.colors.danger }}>
-              🗑️ 確認刪除無預約會員
+              🗑️ 確認刪除無資料會員
             </h2>
             <p style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: designSystem.spacing.xl, lineHeight: '1.6' }}>
               此操作會：<br/>
-              • <strong>刪除</strong>沒有預約記錄的會員<br/>
-              • <strong>保留</strong>有預約記錄的會員<br/>
-              • <strong>保留</strong>所有預約記錄<br/>
+              • <strong>刪除</strong>沒有任何相關記錄的會員（預約、參與者、財務交易等）<br/>
+              • <strong>保留</strong>有任何記錄的會員<br/>
+              • <strong>保留</strong>所有相關記錄<br/>
               <br/>
               <span style={{ color: designSystem.colors.danger }}>此操作<strong>無法復原</strong>，請確認是否繼續？</span>
             </p>
