@@ -90,8 +90,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     
     setLoading(true)
     try {
-      // 並行載入所有資料以提升速度
-      const [memberResult, boardResult, transactionsResult] = await Promise.all([
+      // 優化：只載入會員和置板資料，交易記錄延遲載入
+      const [memberResult, boardResult] = await Promise.all([
         supabase
           .from('members')
           .select('*')
@@ -102,13 +102,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
           .select('*')
           .eq('member_id', memberId)
           .eq('status', 'active')
-          .order('slot_number', { ascending: true }),
-        supabase
-          .from('transactions')
-          .select('*')
-          .eq('member_id', memberId)
-          .order('created_at', { ascending: false})
-          .limit(50)
+          .order('slot_number', { ascending: true })
       ])
 
       if (memberResult.error) throw memberResult.error
@@ -130,14 +124,33 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
 
       if (boardResult.error) throw boardResult.error
       setBoardStorage(boardResult.data || [])
-
-      if (transactionsResult.error) throw transactionsResult.error
-      setTransactions(transactionsResult.data || [])
+      
+      // 交易記錄延遲載入（在需要時才載入）
+      loadTransactions()
     } catch (error) {
       console.error('載入會員資料失敗:', error)
       alert('載入會員資料失敗')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 延遲載入交易記錄（僅預覽用，完整記錄請至「賬戶」頁面查看）
+  const loadTransactions = async () => {
+    if (!memberId) return
+    
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('member_id', memberId)
+        .order('created_at', { ascending: false })
+        .limit(20)  // 只顯示最近 20 筆作為快速預覽
+
+      if (error) throw error
+      setTransactions(data || [])
+    } catch (error) {
+      console.error('載入交易記錄失敗:', error)
     }
   }
 
@@ -332,21 +345,21 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                       </div>
                     </div>
 
-                    {/* 財務資訊 */}
+                    {/* 賬戶資訊 */}
                     <div style={{ marginBottom: '30px' }}>
-                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>💰 財務資訊</h3>
+                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>💰 賬戶資訊</h3>
                       <div style={{ 
                         background: '#f8f9fa',
                         borderRadius: '8px',
                         padding: '15px',
                         border: '1px solid #e0e0e0'
                       }}>
-                        <InfoRow label="💵 餘額" value={`$${member.balance.toFixed(0)}`} />
-                        <InfoRow label="⏱️ 指定課" value={`${member.designated_lesson_minutes} 分鐘`} />
-                        <InfoRow label="🚤 G23 船券" value={`${member.boat_voucher_g23_minutes} 分鐘`} />
-                        <InfoRow label="⛵ G21/黑豹 船券" value={`${member.boat_voucher_g21_panther_minutes} 分鐘`} />
+                        <InfoRow label="💵 儲值" value={`$${member.balance.toFixed(0)}`} />
                         <InfoRow label="🎁 VIP 票券" value={`$${member.vip_voucher_amount.toFixed(0)}`} />
-                        <InfoRow label="⏱️ 贈送大船時數" value={`${member.gift_boat_hours} 小時`} />
+                        <InfoRow label="🚤 G23 船券" value={`${member.boat_voucher_g23_minutes} 分鐘`} />
+                        <InfoRow label="⛵ G21/黑豹共通船券" value={`${member.boat_voucher_g21_panther_minutes} 分鐘`} />
+                        <InfoRow label="⏱️ 贈送大船時數" value={`${member.gift_boat_hours} 分鐘`} />
+                        <InfoRow label="📚 指定課時數" value={`${member.designated_lesson_minutes} 分鐘`} />
                       </div>
                     </div>
 
@@ -417,6 +430,71 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                             label="🔗 配對會員" 
                             value={member.partner.nickname || member.partner.name} 
                           />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 最近交易記錄（預覽） */}
+                    <div style={{ marginBottom: '30px' }}>
+                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>📜 最近交易記錄</h3>
+                      
+                      {/* 提示訊息 */}
+                      <div style={{
+                        background: '#f0f7ff',
+                        border: '1px solid #d0e5ff',
+                        borderRadius: '6px',
+                        padding: '10px 15px',
+                        marginBottom: '12px',
+                        fontSize: '13px',
+                        color: '#1976d2'
+                      }}>
+                        💡 僅顯示最近 20 筆記錄，完整交易記錄請至「賬戶」頁面查看
+                      </div>
+
+                      {/* 交易記錄列表 */}
+                      <div style={{ 
+                        background: '#f8f9fa',
+                        borderRadius: '8px',
+                        padding: '15px',
+                        border: '1px solid #e0e0e0',
+                        maxHeight: '300px',
+                        overflowY: 'auto'
+                      }}>
+                        {transactions.length === 0 ? (
+                          <div style={{ textAlign: 'center', color: '#999', fontSize: '14px', padding: '20px 0' }}>
+                            尚無交易記錄
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {transactions.slice(0, 20).map((transaction) => (
+                              <div key={transaction.id} style={{
+                                padding: '8px',
+                                background: 'white',
+                                borderRadius: '4px',
+                                fontSize: '13px',
+                                borderLeft: '3px solid ' + (transaction.transaction_type === 'charge' ? '#4caf50' : transaction.transaction_type === 'consume' ? '#f44336' : '#ff9800')
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                  <span style={{ fontWeight: 'bold' }}>
+                                    {transaction.transaction_type === 'charge' ? '💰 儲值' : 
+                                     transaction.transaction_type === 'consume' ? '💳 消費' : 
+                                     transaction.transaction_type === 'refund' ? '↩️ 退款' : '🔧 調整'}
+                                  </span>
+                                  <span style={{ color: '#666', fontSize: '12px' }}>
+                                    {new Date(transaction.created_at).toLocaleString('zh-TW', { 
+                                      month: '2-digit', 
+                                      day: '2-digit', 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    })}
+                                  </span>
+                                </div>
+                                <div style={{ color: '#666', fontSize: '12px' }}>
+                                  {transaction.description || '-'}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
