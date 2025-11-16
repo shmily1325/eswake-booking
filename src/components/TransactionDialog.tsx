@@ -46,7 +46,7 @@ const CATEGORIES = [
   { value: 'vip_voucher', label: '💎 VIP票券', unit: '元', type: 'amount' },
   { value: 'designated_lesson', label: '📚 指定課', unit: '分', type: 'minutes' },
   { value: 'boat_voucher_g23', label: '🚤 G23船券', unit: '分', type: 'minutes' },
-  { value: 'boat_voucher_g21_panther', label: '⛵ G21/黑豹', unit: '分', type: 'minutes' },
+  { value: 'boat_voucher_g21_panther', label: '⛵ G21/黑豹船券', unit: '分', type: 'minutes' },
   { value: 'gift_boat_hours', label: '🎁 贈送大船', unit: '分', type: 'minutes' },
 ]
 
@@ -731,7 +731,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                   <div style={{ fontWeight: 'bold', color: '#333' }}>{member.boat_voucher_g23_minutes.toLocaleString()}分</div>
                 </div>
                 <div>
-                  <div style={{ color: '#999', marginBottom: '4px' }}>⛵ G21/黑豹</div>
+                  <div style={{ color: '#999', marginBottom: '4px' }}>⛵ G21/黑豹船券</div>
                   <div style={{ fontWeight: 'bold', color: '#333' }}>{member.boat_voucher_g21_panther_minutes.toLocaleString()}分</div>
                 </div>
                 <div>
@@ -944,9 +944,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
                 篩選類別
               </label>
+              {/* 第一行：全部 + 金額類 */}
               <div style={{ 
                 display: 'flex', 
                 gap: '8px', 
+                marginBottom: '8px',
                 flexWrap: 'wrap',
               }}>
                 <button
@@ -965,7 +967,33 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                 >
                   全部
                 </button>
-                {CATEGORIES.map(cat => (
+                {CATEGORIES.filter(cat => cat.type === 'amount').map(cat => (
+                  <button
+                    key={cat.value}
+                    onClick={() => setCategoryFilter(cat.value)}
+                    style={{
+                      padding: '8px 16px',
+                      border: categoryFilter === cat.value ? '2px solid #424242' : '2px solid #e0e0e0',
+                      borderRadius: '20px',
+                      background: categoryFilter === cat.value ? '#f5f5f5' : 'white',
+                      color: categoryFilter === cat.value ? '#424242' : '#666',
+                      fontSize: '13px',
+                      fontWeight: categoryFilter === cat.value ? '600' : 'normal',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+              {/* 第二行：時數類 */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px',
+                flexWrap: 'wrap',
+              }}>
+                {CATEGORIES.filter(cat => cat.type === 'minutes').map(cat => (
                   <button
                     key={cat.value}
                     onClick={() => setCategoryFilter(cat.value)}
