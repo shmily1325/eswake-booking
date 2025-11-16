@@ -634,24 +634,29 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                       }}
                       style={{
                         padding: '8px 16px',
-                        background: '#424242',
-                        color: 'white',
-                        border: 'none',
+                        background: 'white',
+                        color: '#666',
+                        border: '2px solid #e0e0e0',
                         borderRadius: '8px',
                         fontSize: '13px',
                         fontWeight: '600',
                         cursor: 'pointer',
                         whiteSpace: 'nowrap',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#212121'
+                        e.currentTarget.style.background = '#f8f9fa'
+                        e.currentTarget.style.borderColor = '#424242'
+                        e.currentTarget.style.color = '#424242'
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = '#424242'
+                        e.currentTarget.style.background = 'white'
+                        e.currentTarget.style.borderColor = '#e0e0e0'
+                        e.currentTarget.style.color = '#666'
                       }}
                     >
-                      💳 記帳
+                      💰 記帳
                     </button>
                   </div>
 
