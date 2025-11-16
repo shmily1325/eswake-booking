@@ -510,6 +510,7 @@ export function NewBookingDialog({
           contact_phone: null,                      // TODO: 之後可以加電話
           start_at: newStartAt,
           duration_min: durationMin,
+          activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
           requires_driver: requiresDriver,          // 是否需要駕駛
           status: 'confirmed',
