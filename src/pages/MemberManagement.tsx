@@ -31,6 +31,7 @@ interface Member {
   status: string
   created_at: string
   board_count?: number  // 置板數量（從 board_storage 計算）
+  board_slots?: Array<{ slot_number: number; expires_at: string | null }>  // 置板詳細資訊
   partner?: Member | null  // 配對會員資料
 }
 
@@ -181,8 +182,9 @@ export function MemberManagement({ user }: MemberManagementProps) {
         
         supabase
           .from('board_storage')
-          .select('member_id')
+          .select('member_id, slot_number, expires_at')
           .eq('status', 'active')
+          .order('slot_number', { ascending: true })
       ])
 
       if (membersResult.error) throw membersResult.error
@@ -190,10 +192,16 @@ export function MemberManagement({ user }: MemberManagementProps) {
       const membersData = membersResult.data || []
       const boardData = boardResult.data || []
 
-      // 計算每個會員的置板數量
-      const boardCounts: Record<string, number> = {}
+      // 整理每個會員的置板資料
+      const memberBoards: Record<string, Array<{ slot_number: number; expires_at: string | null }>> = {}
       boardData.forEach((board: any) => {
-        boardCounts[board.member_id] = (boardCounts[board.member_id] || 0) + 1
+        if (!memberBoards[board.member_id]) {
+          memberBoards[board.member_id] = []
+        }
+        memberBoards[board.member_id].push({
+          slot_number: board.slot_number,
+          expires_at: board.expires_at
+        })
       })
 
       // 載入配對會員資料
@@ -218,7 +226,8 @@ export function MemberManagement({ user }: MemberManagementProps) {
       // 合併資料
       const membersWithBoards = membersData.map((member: any) => ({
         ...member,
-        board_count: boardCounts[member.id] || 0,
+        board_slots: memberBoards[member.id] || [],
+        board_count: memberBoards[member.id]?.length || 0,
         partner: member.membership_partner_id ? partnersMap[member.membership_partner_id] : null
       }))
 
@@ -848,46 +857,47 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
               }}
             >
-              {/* 隱藏/恢復按鈕 */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation() // 防止觸發卡片的 onClick
-                  if (member.status === 'inactive') {
-                    handleRestoreMember(member.id)
-                  } else {
-                    handleArchiveMember(member.id)
-                  }
-                }}
-                style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  background: member.status === 'inactive' ? '#4caf50' : '#f5f5f5',
-                  color: member.status === 'inactive' ? 'white' : '#999',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '6px 12px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                  transition: 'all 0.2s',
-                  zIndex: 10
-                }}
-              >
-                {member.status === 'inactive' ? '恢復' : '隱藏'}
-              </button>
-              
               {/* 上下分層式佈局 */}
-              <div style={{ paddingRight: '80px' }}>
+              <div>
                 
                 {/* 第一層：會籍資料 */}
                 <div style={{ 
                   background: '#f8f9fa',
                   padding: isMobile ? '12px' : '16px',
                   borderRadius: '8px',
-                  marginBottom: '12px'
+                  marginBottom: '12px',
+                  position: 'relative'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                  {/* 隱藏/恢復按鈕 */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (member.status === 'inactive') {
+                        handleRestoreMember(member.id)
+                      } else {
+                        handleArchiveMember(member.id)
+                      }
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '12px',
+                      right: '12px',
+                      background: member.status === 'inactive' ? '#4caf50' : '#f5f5f5',
+                      color: member.status === 'inactive' ? 'white' : '#999',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      transition: 'all 0.2s',
+                      zIndex: 10
+                    }}
+                  >
+                    {member.status === 'inactive' ? '恢復' : '隱藏'}
+                  </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '60px' }}>
                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
                       {member.nickname && member.nickname.trim() ? member.nickname : member.name}
                     </h3>
@@ -1039,22 +1049,43 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 </div>
 
                 {/* 第三層：置板資料 */}
-                {member.board_count && member.board_count > 0 && (
+                {(member.board_slots && member.board_slots.length > 0) && (
                   <div style={{ 
-                    background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
-                    padding: '10px 16px',
-                    borderRadius: '8px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    border: '1px solid #a5d6a7'
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px'
                   }}>
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#2e7d32' }}>
-                      🏄 置板
-                    </span>
-                    <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#2e7d32' }}>
-                      {member.board_count} 格
-                    </span>
+                    {member.board_slots.map((slot, index) => (
+                      <div key={index} style={{ 
+                        background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        border: '1px solid #a5d6a7',
+                        minWidth: '100px'
+                      }}>
+                        <div style={{ 
+                          fontSize: '14px', 
+                          fontWeight: 'bold', 
+                          color: '#2e7d32',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          🏄 格位 {slot.slot_number}
+                        </div>
+                        {slot.expires_at && (
+                          <div style={{ 
+                            fontSize: '11px', 
+                            color: '#666'
+                          }}>
+                            到期：{slot.expires_at}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
 
