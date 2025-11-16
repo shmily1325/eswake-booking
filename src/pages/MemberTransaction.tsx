@@ -562,178 +562,215 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                 key={member.id}
                 onClick={() => handleMemberClick(member)}
                 style={{
-                  padding: isMobile ? '16px' : '20px',
-                  borderBottom: '1px solid #f0f0f0',
+                  background: 'white',
+                  borderRadius: '12px',
+                  marginBottom: '15px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  background: 'white',
+                  border: '1px solid #e0e0e0',
+                  overflow: 'hidden',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f8f9fa'
-                  e.currentTarget.style.borderLeftColor = '#667eea'
-                  e.currentTarget.style.borderLeftWidth = '4px'
-                  e.currentTarget.style.paddingLeft = isMobile ? '12px' : '16px'
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)'
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.borderColor = '#1890ff'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'white'
-                  e.currentTarget.style.borderLeftWidth = '0'
-                  e.currentTarget.style.paddingLeft = isMobile ? '16px' : '20px'
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.borderColor = '#e0e0e0'
                 }}
               >
+                {/* 會員基本資訊 */}
                 <div style={{
+                  padding: isMobile ? '12px 16px' : '14px 20px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  gap: '16px',
+                  alignItems: 'center',
                 }}>
-                  {/* 左側：會員資訊 */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div>
                     <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '8px',
+                      fontSize: isMobile ? '16px' : '18px',
+                      fontWeight: 'bold',
+                      marginBottom: '4px',
                     }}>
-                      <span style={{
-                        fontSize: isMobile ? '16px' : '18px',
-                        fontWeight: 'bold',
-                        color: '#333',
-                      }}>
-                        {member.nickname ? `${member.nickname} (${member.name})` : member.name}
-                      </span>
-                      {member.phone && (
-                        <span style={{
-                          fontSize: '13px',
-                          color: '#999',
+                      {member.nickname || member.name}
+                      {member.nickname && (
+                        <span style={{ 
+                          fontSize: '13px', 
+                          opacity: 0.9,
+                          marginLeft: '8px',
+                          fontWeight: 'normal'
                         }}>
-                          {member.phone}
+                          ({member.name})
                         </span>
                       )}
                     </div>
-
-                    {/* 儲值資訊 */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)',
-                      gap: '12px',
-                      marginTop: '10px',
-                    }}>
-                      <div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#999',
-                          marginBottom: '4px',
-                        }}>
-                          餘額
-                        </div>
-                        <div style={{
-                          fontSize: isMobile ? '16px' : '18px',
-                          fontWeight: 'bold',
-                          color: member.balance > 0 ? '#52c41a' : '#999',
-                        }}>
-                          ${member.balance.toFixed(0)}
-                        </div>
+                    {member.phone && (
+                      <div style={{
+                        fontSize: '13px',
+                        opacity: 0.9,
+                      }}>
+                        📱 {member.phone}
                       </div>
-
-                      <div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#999',
-                          marginBottom: '4px',
-                        }}>
-                          指定課
-                        </div>
-                        <div style={{
-                          fontSize: isMobile ? '16px' : '18px',
-                          fontWeight: 'bold',
-                          color: member.designated_lesson_minutes > 0 ? '#faad14' : '#999',
-                        }}>
-                          {member.designated_lesson_minutes}分
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#999',
-                          marginBottom: '4px',
-                        }}>
-                          G23船券
-                        </div>
-                        <div style={{
-                          fontSize: isMobile ? '16px' : '18px',
-                          fontWeight: 'bold',
-                          color: member.boat_voucher_g23_minutes > 0 ? '#1890ff' : '#999',
-                        }}>
-                          {member.boat_voucher_g23_minutes}分
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#999',
-                          marginBottom: '4px',
-                        }}>
-                          G21/黑豹
-                        </div>
-                        <div style={{
-                          fontSize: isMobile ? '16px' : '18px',
-                          fontWeight: 'bold',
-                          color: member.boat_voucher_g21_panther_minutes > 0 ? '#13c2c2' : '#999',
-                        }}>
-                          {member.boat_voucher_g21_panther_minutes}分
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#999',
-                          marginBottom: '4px',
-                        }}>
-                          VIP票券
-                        </div>
-                        <div style={{
-                          fontSize: isMobile ? '16px' : '18px',
-                          fontWeight: 'bold',
-                          color: member.vip_voucher_amount > 0 ? '#9c27b0' : '#999',
-                        }}>
-                          ${member.vip_voucher_amount.toFixed(0)}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#999',
-                          marginBottom: '4px',
-                        }}>
-                          贈送大船
-                        </div>
-                        <div style={{
-                          fontSize: isMobile ? '16px' : '18px',
-                          fontWeight: 'bold',
-                          color: member.gift_boat_hours > 0 ? '#eb2f96' : '#999',
-                        }}>
-                          {member.gift_boat_hours}分
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
-
-                  {/* 右側：操作按鈕 */}
                   <div style={{
-                    padding: '8px 16px',
-                    background: 'white',
-                    color: '#666',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
+                    padding: '6px 14px',
+                    background: 'rgba(255,255,255,0.2)',
+                    borderRadius: '20px',
                     fontSize: '13px',
                     fontWeight: '600',
                     whiteSpace: 'nowrap',
                   }}>
-                    記帳 →
+                    💳 記帳
+                  </div>
+                </div>
+
+                {/* 儲值數據區 */}
+                <div style={{
+                  padding: isMobile ? '12px 16px' : '16px 20px',
+                  background: '#fafafa',
+                }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                    gap: '12px',
+                  }}>
+                    <div style={{
+                      background: 'white',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #e8e8e8',
+                    }}>
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#999',
+                        marginBottom: '6px',
+                      }}>
+                        💰 儲值餘額
+                      </div>
+                      <div style={{
+                        fontSize: isMobile ? '18px' : '20px',
+                        fontWeight: 'bold',
+                        color: member.balance > 0 ? '#52c41a' : '#999',
+                      }}>
+                        ${member.balance.toFixed(0)}
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: 'white',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #e8e8e8',
+                    }}>
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#999',
+                        marginBottom: '6px',
+                      }}>
+                        💎 VIP票券
+                      </div>
+                      <div style={{
+                        fontSize: isMobile ? '18px' : '20px',
+                        fontWeight: 'bold',
+                        color: member.vip_voucher_amount > 0 ? '#9c27b0' : '#999',
+                      }}>
+                        ${member.vip_voucher_amount.toFixed(0)}
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: 'white',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #e8e8e8',
+                    }}>
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#999',
+                        marginBottom: '6px',
+                      }}>
+                        📚 指定課
+                      </div>
+                      <div style={{
+                        fontSize: isMobile ? '18px' : '20px',
+                        fontWeight: 'bold',
+                        color: member.designated_lesson_minutes > 0 ? '#faad14' : '#999',
+                      }}>
+                        {member.designated_lesson_minutes}分
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: 'white',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #e8e8e8',
+                    }}>
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#999',
+                        marginBottom: '6px',
+                      }}>
+                        🚤 G23船券
+                      </div>
+                      <div style={{
+                        fontSize: isMobile ? '18px' : '20px',
+                        fontWeight: 'bold',
+                        color: member.boat_voucher_g23_minutes > 0 ? '#1890ff' : '#999',
+                      }}>
+                        {member.boat_voucher_g23_minutes}分
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: 'white',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #e8e8e8',
+                    }}>
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#999',
+                        marginBottom: '6px',
+                      }}>
+                        ⛵ G21/黑豹
+                      </div>
+                      <div style={{
+                        fontSize: isMobile ? '18px' : '20px',
+                        fontWeight: 'bold',
+                        color: member.boat_voucher_g21_panther_minutes > 0 ? '#13c2c2' : '#999',
+                      }}>
+                        {member.boat_voucher_g21_panther_minutes}分
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: 'white',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #e8e8e8',
+                    }}>
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#999',
+                        marginBottom: '6px',
+                      }}>
+                        🎁 贈送大船
+                      </div>
+                      <div style={{
+                        fontSize: isMobile ? '18px' : '20px',
+                        fontWeight: 'bold',
+                        color: member.gift_boat_hours > 0 ? '#eb2f96' : '#999',
+                      }}>
+                        {member.gift_boat_hours}分
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
