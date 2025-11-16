@@ -413,7 +413,7 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
   // 渲染預約卡片（一般模式）
   const renderBookingCard = (booking: Booking, boat: Boat) => {
     const slots = Math.ceil(booking.duration_min / 15)
-    const coachNames = booking.coaches?.map(c => c.name).join(', ') || '未分配'
+    const coachNames = booking.coaches?.map(c => c.name).join(', ') || ''
     
     // 如果有另外指定駕駛就顯示
     const driverNames = booking.drivers?.map(d => d.name).join(', ') || ''
@@ -454,12 +454,14 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
           </div>
         )}
 
-        {/* 教練姓名 */}
-        <div style={bookingCardContentStyles.coachName(boat.color, isMobile)}>
-          🎓 {coachNames}
-        </div>
+        {/* 教練姓名 - 只在有教練時顯示 */}
+        {coachNames && (
+          <div style={bookingCardContentStyles.coachName(boat.color, isMobile)}>
+            🎓 {coachNames}
+          </div>
+        )}
 
-        {/* 駕駛姓名 */}
+        {/* 駕駛姓名 - 只在有駕駛時顯示 */}
         {driverNames && (
           <div style={{
             ...bookingCardContentStyles.coachName(boat.color, isMobile),

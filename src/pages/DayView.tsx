@@ -354,11 +354,39 @@ export function DayView({ user }: DayViewProps) {
   }
 
   const filteredTimeSlots = useMemo(() => {
+      // 預設時間範圍：5:00 - 19:00
+      let minHour = 5
+      let maxHour = 19
+      
+      // 檢查預約時間，動態調整範圍
+      if (bookings && bookings.length > 0) {
+        bookings.forEach(booking => {
+          const bookingDatetime = booking.start_at.substring(0, 16)
+          const [bookingDate, bookingTime] = bookingDatetime.split('T')
+          
+          // 只檢查當天的預約
+          if (bookingDate === dateParam) {
+            const [startHour] = bookingTime.split(':').map(Number)
+            
+            // 計算結束時間（包含清理時間）
+            const boat = boats.find(b => b.id === booking.boat_id)
+            const cleanupTime = boat?.name === '彈簧床' ? 0 : 15 // 彈簧床不需要清理時間
+            const startMinutes = timeToMinutes(bookingTime)
+            const endMinutes = startMinutes + booking.duration_min + cleanupTime
+            const endHour = Math.ceil(endMinutes / 60)
+            
+            // 更新範圍
+            if (startHour < minHour) minHour = startHour
+            if (endHour > maxHour) maxHour = endHour
+          }
+        })
+      }
+      
       return TIME_SLOTS.filter(slot => {
         const [hour] = slot.split(':').map(Number)
-        return hour >= 5 && hour < 20
+        return hour >= minHour && hour < maxHour + 1
       })
-  }, [])
+  }, [bookings, dateParam, boats])
 
   const displayBoats = useMemo(() => {
     return boats
