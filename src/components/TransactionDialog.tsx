@@ -410,9 +410,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
         // 計算期初值
         const startValue = endValue - totalIncrease + totalDecrease
         
-        // 統計行
+        // 統計行（簡化格式）
         csvLines.push('') // 空行
-        csvLines.push(`"【${categoryLabel}】本月統計：期初 ${unit}${startValue.toLocaleString()} → 期末 ${unit}${endValue.toLocaleString()} (增加 +${unit}${totalIncrease.toLocaleString()}, 減少 -${unit}${totalDecrease.toLocaleString()})"`)
+        if (isAmount) {
+          csvLines.push(`"【${categoryLabel}】${unit}${startValue.toLocaleString()} → ${unit}${endValue.toLocaleString()}"`)
+        } else {
+          csvLines.push(`"【${categoryLabel}】${startValue.toLocaleString()} → ${endValue.toLocaleString()}"`)
+        }
         
         // 只有有交易時才顯示明細
         if (txList.length > 0) {
@@ -422,10 +426,16 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           const sortedTxList = [...txList].reverse()
           sortedTxList.forEach(tx => {
             const date = tx.transaction_date || tx.created_at.substring(0, 10)
-            const sign = tx.adjust_type === 'increase' ? '+' : '-'
-            const value = isAmount ? `${sign}${unit}${tx.amount?.toLocaleString() || 0}` : `${sign}${tx.minutes || 0}分`
+            // 轉換日期格式為 MM/DD/YYYY
+            const [year, month, day] = date.split('-')
+            const formattedDate = `${month}/${day}/${year}`
             
-            csvLines.push(`"${date}","${tx.description || ''}","${value}","${tx.notes || ''}"`)
+            const sign = tx.adjust_type === 'increase' ? '' : '-'
+            const value = isAmount 
+              ? `${sign}${unit}${tx.amount || 0}` 
+              : `${sign}${tx.minutes || 0}分`
+            
+            csvLines.push(`"${formattedDate}","${tx.description || ''}","${value}","${tx.notes || ''}"`)
           })
         }
       })
@@ -625,6 +635,26 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           </button>
         </div>
 
+        {/* 使用說明 */}
+        <div style={{
+          background: '#f5f5f5',
+          padding: '12px 20px',
+          borderBottom: '1px solid #e0e0e0',
+          fontSize: '13px',
+          lineHeight: '1.6',
+          color: '#666',
+        }}>
+          <div style={{ fontWeight: '600', marginBottom: '6px', color: '#424242' }}>💡 使用說明</div>
+          <div>
+            <strong>💰 儲值：</strong>會員儲值餘額　
+            <strong>💎 VIP票券：</strong>VIP專用票券餘額　
+            <strong>📚 指定課：</strong>指定教練課程時數（分鐘）<br/>
+            <strong>🚤 G23船券：</strong>G23船隻使用時數（分鐘）　
+            <strong>⛵ G21/黑豹：</strong>G21與黑豹船隻共通時數（分鐘）　
+            <strong>🎁 贈送大船：</strong>贈送的大船使用時數（分鐘）
+          </div>
+        </div>
+
         {/* Tabs */}
         <div style={{
           display: 'flex',
@@ -713,27 +743,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                   <div style={{ color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
                   <div style={{ fontWeight: 'bold', color: '#333' }}>{member.gift_boat_hours.toLocaleString()}分</div>
                 </div>
-              </div>
-            </div>
-
-            {/* 使用說明 */}
-            <div style={{
-              background: '#e3f2fd',
-              padding: '12px 14px',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              fontSize: '13px',
-              lineHeight: '1.6',
-              color: '#1976d2',
-            }}>
-              <div style={{ fontWeight: '600', marginBottom: '6px' }}>💡 使用說明</div>
-              <div style={{ color: '#424242' }}>
-                <strong>💰 儲值：</strong>會員儲值餘額<br/>
-                <strong>💎 VIP票券：</strong>VIP專用票券餘額<br/>
-                <strong>📚 指定課：</strong>指定教練課程時數（分鐘）<br/>
-                <strong>🚤 G23船券：</strong>G23船隻使用時數（分鐘）<br/>
-                <strong>⛵ G21/黑豹：</strong>G21與黑豹船隻共通時數（分鐘）<br/>
-                <strong>🎁 贈送大船：</strong>贈送的大船使用時數（分鐘）
               </div>
             </div>
 
