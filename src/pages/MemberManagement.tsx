@@ -934,30 +934,35 @@ export function MemberManagement({ user }: MemberManagementProps) {
 
                   <div style={{ 
                     display: 'flex', 
-                    flexWrap: 'wrap',
-                    gap: isMobile ? '8px' : '16px',
+                    flexDirection: 'column',
+                    gap: '4px',
                     fontSize: '13px',
                     color: '#666'
                   }}>
                     {member.phone && (
                       <div>📱 {member.phone}</div>
                     )}
+                    {member.birthday && (
+                      <div>🎂 {member.birthday}</div>
+                    )}
                     {member.partner && (
                       <div style={{ color: '#2196F3' }}>
                         🔗 配對：{member.partner.nickname || member.partner.name}
                       </div>
                     )}
-                    {member.membership_start_date && (
-                      <div>📅 開始：{member.membership_start_date}</div>
-                    )}
-                    {member.membership_end_date && (
-                      <div style={{ 
-                        color: new Date(member.membership_end_date) < new Date() ? '#f44336' : '#666'
-                      }}>
-                        ⏰ 到期：{member.membership_end_date}
-                        {new Date(member.membership_end_date) < new Date() && ' (已過期)'}
-                      </div>
-                    )}
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      {member.membership_start_date && (
+                        <div>📅 開始：{member.membership_start_date}</div>
+                      )}
+                      {member.membership_end_date && (
+                        <div style={{ 
+                          color: new Date(member.membership_end_date) < new Date() ? '#f44336' : '#666'
+                        }}>
+                          ⏰ 到期：{member.membership_end_date}
+                          {new Date(member.membership_end_date) < new Date() && ' (已過期)'}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {member.notes && (
@@ -989,7 +994,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 }}>
                   <div style={{ 
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
                     gap: isMobile ? '8px' : '10px',
                     textAlign: 'center'
                   }}>
@@ -1049,7 +1054,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
                     {member.board_slots.map((slot, index) => (
                       <div key={index}>
                         🏄 置板 #{slot.slot_number}
-                        {slot.expires_at && ` 📅：${slot.expires_at}`}
+                        {slot.expires_at && ` ⏰：${slot.expires_at}`}
                       </div>
                     ))}
                   </div>
