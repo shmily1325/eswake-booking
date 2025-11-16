@@ -874,25 +874,6 @@ export function DayView({ user }: DayViewProps) {
             </button>
           </div>
 
-          {/* 預約規則說明（電腦版） */}
-          {!isMobile && (
-            <div style={{
-              padding: '12px 16px',
-              backgroundColor: '#f8f9fa',
-              borderBottom: '1px solid #e9ecef',
-              fontSize: '12px',
-              color: '#6c757d',
-              lineHeight: '1.6',
-            }}>
-              <div style={{ fontWeight: '600', marginBottom: '6px', color: '#495057' }}>📋 預約規則</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-                <span>• 接船時間：船跟船之間至少 15 分鐘，彈簧床無需接船時間</span>
-                <span>• 教練時間：教練會被卡在船上，計算教練可用時間時含接船時間</span>
-                <span>• 早晨預約：08:00 前的預約必須指定教練</span>
-                <span>• 指定駕駛：須先有教練，彈簧床無需駕駛</span>
-              </div>
-            </div>
-          )}
 
           {/* 表格式顯示 - 船名在左側 */}
           <div style={{ 
@@ -1494,6 +1475,36 @@ export function DayView({ user }: DayViewProps) {
             })}
           </tbody>
         </table>
+        
+        {/* 預約規則說明 - 條列式置中 */}
+        <div style={{
+          padding: isMobile ? '16px' : '20px',
+          backgroundColor: '#f8f9fa',
+          borderTop: '1px solid #e9ecef',
+          textAlign: 'center',
+        }}>
+          <div style={{ 
+            fontWeight: '600', 
+            marginBottom: '12px', 
+            color: '#495057',
+            fontSize: isMobile ? '13px' : '14px'
+          }}>
+            📋 預約規則
+          </div>
+          <div style={{ 
+            display: 'inline-block',
+            textAlign: 'left',
+            fontSize: isMobile ? '12px' : '13px',
+            color: '#6c757d',
+            lineHeight: '1.8',
+          }}>
+            <div>• 接船時間：船跟船之間至少 15 分鐘，彈簧床無需接船時間</div>
+            <div>• 教練時間：教練會被卡在船上，計算教練可用時間時含接船時間</div>
+            <div>• 早晨預約：08:00 前的預約必須指定教練</div>
+            <div>• 指定駕駛：須先有教練，彈簧床無需駕駛</div>
+          </div>
+        </div>
+        
         </div>
         </div>
       )}
