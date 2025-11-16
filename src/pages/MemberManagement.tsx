@@ -877,27 +877,38 @@ export function MemberManagement({ user }: MemberManagementProps) {
                 {member.status === 'inactive' ? '恢復' : '隱藏'}
               </button>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                {/* 左側：基本資訊 */}
-                <div style={{ flex: 1, minWidth: 0, maxWidth: isMobile ? '100%' : '500px', paddingRight: '80px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                    <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
+              {/* 上下分層式佈局 */}
+              <div style={{ paddingRight: '80px' }}>
+                
+                {/* 第一層：會籍資料 */}
+                <div style={{ 
+                  background: '#f8f9fa',
+                  padding: isMobile ? '12px' : '16px',
+                  borderRadius: '8px',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
                       {member.nickname && member.nickname.trim() ? member.nickname : member.name}
                     </h3>
                     {member.nickname && member.nickname.trim() && (
-                      <span style={{ 
-                        fontSize: '14px', 
-                        color: '#666',
-                        background: '#f0f0f0',
-                        padding: '2px 8px',
-                        borderRadius: '4px'
-                      }}>
+                      <span style={{ fontSize: '13px', color: '#999' }}>
                         ({member.name})
                       </span>
                     )}
+                    <span style={{ 
+                      background: member.member_type === 'member' ? '#e3f2fd' : '#f5f5f5',
+                      color: member.member_type === 'member' ? '#1976d2' : '#666',
+                      padding: '3px 10px',
+                      borderRadius: '12px',
+                      fontWeight: 'bold',
+                      fontSize: '12px'
+                    }}>
+                      {member.member_type === 'member' ? '👤 會員' : '👋 客人'}
+                    </span>
                     {member.membership_type === 'dual' && (
                       <span style={{ 
-                        fontSize: '13px', 
+                        fontSize: '12px', 
                         color: '#fff',
                         background: '#2196F3',
                         padding: '3px 10px',
@@ -907,184 +918,146 @@ export function MemberManagement({ user }: MemberManagementProps) {
                         雙人會籍
                       </span>
                     )}
-                    {member.membership_type === 'board' && (
-                      <span style={{ 
-                        fontSize: '13px', 
-                        color: '#fff',
-                        background: '#4caf50',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        fontWeight: '600'
+                  </div>
+
+                  <div style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap',
+                    gap: isMobile ? '8px' : '16px',
+                    fontSize: '13px',
+                    color: '#666'
+                  }}>
+                    {member.membership_start_date && (
+                      <div>📅 開始：{member.membership_start_date}</div>
+                    )}
+                    {member.membership_end_date && (
+                      <div style={{ 
+                        color: new Date(member.membership_end_date) < new Date() ? '#f44336' : '#666'
                       }}>
-                        置板
-                      </span>
+                        ⏰ 到期：{member.membership_end_date}
+                        {new Date(member.membership_end_date) < new Date() && ' (已過期)'}
+                      </div>
+                    )}
+                    {member.partner && (
+                      <div style={{ color: '#2196F3' }}>
+                        🔗 配對：{member.partner.nickname || member.partner.name}
+                      </div>
+                    )}
+                    {member.phone && (
+                      <div>📱 {member.phone}</div>
                     )}
                   </div>
-                  
-                  {member.partner && (
-                    <div style={{ 
-                      fontSize: '13px', 
-                      color: '#2196F3',
-                      marginBottom: '6px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}>
-                      🔗 與 <strong>{member.partner.nickname || member.partner.name}</strong> 共享會籍
-                    </div>
-                  )}
-
-                  {member.board_slot_number && (
-                    <div style={{ fontSize: '13px', color: '#4caf50', marginBottom: '4px' }}>
-                      🏄 置板位：{member.board_slot_number}
-                      {member.board_expiry_date && ` (至 ${member.board_expiry_date})`}
-                    </div>
-                  )}
-                  
-                  {member.phone && (
-                    <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                      📱 {member.phone}
-                    </div>
-                  )}
-
-                  {member.membership_end_date && (
-                    <div style={{ 
-                      fontSize: '13px', 
-                      color: new Date(member.membership_end_date) < new Date() ? '#f44336' : '#666',
-                      marginBottom: '4px'
-                    }}>
-                      📅 會籍至 {member.membership_end_date}
-                      {new Date(member.membership_end_date) < new Date() && ' (已過期)'}
-                    </div>
-                  )}
-
-                  {(member.gift_boat_hours || 0) > 0 && (
-                    <div style={{ fontSize: '13px', color: '#ff9800', marginBottom: '4px' }}>
-                      ⏱️ 贈送大船時數：{member.gift_boat_hours}分
-                    </div>
-                  )}
-                  
-                  {(member.vip_voucher_amount || 0) > 0 && (
-                    <div style={{ fontSize: '13px', color: '#9c27b0', marginBottom: '4px' }}>
-                      💎 VIP票券：${member.vip_voucher_amount.toLocaleString()}
-                    </div>
-                  )}
 
                   {member.notes && (
                     <div style={{ 
-                      fontSize: '13px', 
-                      color: '#999',
                       marginTop: '8px',
+                      fontSize: '13px',
+                      color: '#999',
                       fontStyle: 'italic',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      maxWidth: isMobile ? '250px' : '400px'
+                      whiteSpace: 'nowrap'
                     }}>
-                      備註：{member.notes}
+                      💬 {member.notes}
                     </div>
                   )}
                 </div>
 
-                {/* 右側：權益資訊 */}
-                <div style={{ 
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-                  gap: '10px',
-                  minWidth: isMobile ? 'auto' : '600px',
-                  paddingTop: '40px'  // 避免被隱藏按鈕遮住
-                }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>儲值</div>
-                    <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#f44336' }}>
-                      ${(member.balance || 0).toLocaleString()}
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>VIP票券</div>
-                    <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#9c27b0' }}>
-                      ${(member.vip_voucher_amount || 0).toLocaleString()}
-                    </div>
-                  </div>
-                  
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>指定課</div>
-                    <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#ff9800' }}>
-                      {member.designated_lesson_minutes || 0}分
-                    </div>
-                  </div>
-                  
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>G23券</div>
-                    <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#4caf50' }}>
-                      {member.boat_voucher_g23_minutes || 0}分
-                    </div>
-                  </div>
-                  
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>G21/黑豹</div>
-                    <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#13c2c2' }}>
-                      {member.boat_voucher_g21_panther_minutes || 0}分
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>贈送大船</div>
-                    <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#eb2f96' }}>
-                      {member.gift_boat_hours || 0}分
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 底部：到期資訊 */}
-              <div style={{ 
-                marginTop: '12px',
-                paddingTop: '12px',
-                borderTop: '1px solid #f0f0f0',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                fontSize: '13px'
-              }}>
-                {/* 會員類型 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ 
-                    background: member.member_type === 'member' ? '#e3f2fd' : '#f5f5f5',
-                    color: member.member_type === 'member' ? '#1976d2' : '#666',
-                    padding: '3px 8px',
-                    borderRadius: '4px',
-                    fontWeight: 'bold',
-                    fontSize: '12px'
+                {/* 第二層：帳戶資料 */}
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ 
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)',
+                    gap: '8px'
                   }}>
-                    {member.member_type === 'member' ? '👤 會員' : '👋 客人'}
-                  </span>
-                  {member.member_type === 'member' && member.membership_end_date && (
-                    <span style={{ color: '#666' }}>
-                      到期：{member.membership_end_date}
-                    </span>
-                  )}
-                </div>
-                
-                {/* 置板資訊 */}
-                {member.board_count && member.board_count > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ 
-                      background: '#e8f5e9',
-                      color: '#2e7d32',
-                      padding: '3px 8px',
-                      borderRadius: '4px',
-                      fontWeight: 'bold',
-                      fontSize: '12px'
+                    <div style={{ 
+                      background: 'linear-gradient(135deg, #fff5f5 0%, #ffebee 100%)',
+                      padding: isMobile ? '10px' : '12px',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      border: '1px solid #ffcdd2'
                     }}>
+                      <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>儲值</div>
+                      <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#f44336' }}>
+                        ${(member.balance || 0).toLocaleString()}
+                      </div>
+                    </div>
+
+                    <div style={{ 
+                      background: 'linear-gradient(135deg, #f3e5f5 0%, #f3e5f5 100%)',
+                      padding: isMobile ? '10px' : '12px',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      border: '1px solid #e1bee7'
+                    }}>
+                      <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>VIP票券</div>
+                      <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#9c27b0' }}>
+                        ${(member.vip_voucher_amount || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    
+                    <div style={{ 
+                      background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)',
+                      padding: isMobile ? '10px' : '12px',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      border: '1px solid #ffcc80'
+                    }}>
+                      <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>指定課</div>
+                      <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#ff9800' }}>
+                        {member.designated_lesson_minutes || 0}分
+                      </div>
+                    </div>
+                    
+                    <div style={{ 
+                      background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+                      padding: isMobile ? '10px' : '12px',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      border: '1px solid #a5d6a7'
+                    }}>
+                      <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>G23券</div>
+                      <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#4caf50' }}>
+                        {member.boat_voucher_g23_minutes || 0}分
+                      </div>
+                    </div>
+                    
+                    <div style={{ 
+                      background: 'linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%)',
+                      padding: isMobile ? '10px' : '12px',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      border: '1px solid #80deea',
+                      gridColumn: isMobile ? 'span 2' : 'auto'
+                    }}>
+                      <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>G21/黑豹</div>
+                      <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 'bold', color: '#13c2c2' }}>
+                        {member.boat_voucher_g21_panther_minutes || 0}分
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 第三層：置板資料 */}
+                {member.board_count && member.board_count > 0 && (
+                  <div style={{ 
+                    background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    border: '1px solid #a5d6a7'
+                  }}>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#2e7d32' }}>
                       🏄 置板
                     </span>
-                    <span style={{ color: '#666' }}>
+                    <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#2e7d32' }}>
                       {member.board_count} 格
                     </span>
                   </div>
                 )}
+
               </div>
             </div>
           ))
