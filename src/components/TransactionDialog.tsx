@@ -649,26 +649,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
           </button>
         </div>
 
-        {/* 使用說明 */}
-        <div style={{
-          background: '#f5f5f5',
-          padding: '12px 20px',
-          borderBottom: '1px solid #e0e0e0',
-          fontSize: '13px',
-          lineHeight: '1.6',
-          color: '#666',
-        }}>
-          <div style={{ fontWeight: '600', marginBottom: '6px', color: '#424242' }}>💡 使用說明</div>
-          <div>
-            <strong>💰 儲值：</strong>會員儲值餘額　
-            <strong>💎 VIP票券：</strong>VIP專用票券餘額　
-            <strong>📚 指定課：</strong>指定教練課程時數（分鐘）<br/>
-            <strong>🚤 G23船券：</strong>G23船隻使用時數（分鐘）　
-            <strong>⛵ G21/黑豹：</strong>G21與黑豹船隻共通時數（分鐘）　
-            <strong>🎁 贈送大船：</strong>贈送的大船使用時數（分鐘）
-          </div>
-        </div> 
-
         {/* Tabs */}
         <div style={{
           display: 'flex',

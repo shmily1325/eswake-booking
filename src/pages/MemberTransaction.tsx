@@ -468,16 +468,22 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
           color: '#666',
         }}>
           <div style={{ marginBottom: '4px' }}>
-            <strong style={{ color: '#333' }}>儲值 💰</strong>：客人充值到儲值
+            <strong style={{ color: '#333' }}>💰 儲值</strong>：會員儲值餘額
           </div>
           <div style={{ marginBottom: '4px' }}>
-            <strong style={{ color: '#333' }}>付款 💸</strong>：預約結帳（現金/匯款/扣儲值/船券/指定課程）
+            <strong style={{ color: '#333' }}>💎 VIP票券</strong>：VIP專用票券餘額
           </div>
           <div style={{ marginBottom: '4px' }}>
-            <strong style={{ color: '#333' }}>調整 🔧</strong>：修正錯誤、優惠補貼等（需填寫原因）
+            <strong style={{ color: '#333' }}>📚 指定課</strong>：指定教練課程時數（分鐘）
+          </div>
+          <div style={{ marginBottom: '4px' }}>
+            <strong style={{ color: '#333' }}>🚤 G23船券</strong>：G23船隻使用時數（分鐘）
+          </div>
+          <div style={{ marginBottom: '4px' }}>
+            <strong style={{ color: '#333' }}>⛵ G21/黑豹</strong>：G21與黑豹船隻共通時數（分鐘）
           </div>
           <div>
-            <strong style={{ color: '#333' }}>退款 ↩️</strong>：退還款項給客人
+            <strong style={{ color: '#333' }}>🎁 贈送大船</strong>：贈送的大船使用時數（分鐘）
           </div>
         </div>
       </div>
