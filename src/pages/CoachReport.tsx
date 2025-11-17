@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
@@ -116,6 +116,8 @@ export function CoachReport({ user }: CoachReportProps) {
   // 回報表單
   const [reportingBookingId, setReportingBookingId] = useState<number | null>(null)
   const [reportType, setReportType] = useState<'coach' | 'driver' | 'both'>('coach')
+  const [reportingCoachId, setReportingCoachId] = useState<string | null>(null)
+  const [reportingCoachName, setReportingCoachName] = useState<string>('')
   
   // 駕駛回報
   const [driverDuration, setDriverDuration] = useState<number>(0)
@@ -137,42 +139,6 @@ export function CoachReport({ user }: CoachReportProps) {
     handleSearchChange
   } = useMemberSearch()
 
-  // 按教練分組預約（用於 UI 顯示）
-  const bookingsByCoach = useMemo(() => {
-    if (selectedCoachId !== 'all') {
-      // 如果選了特定教練，不分組
-      return null
-    }
-
-    const map = new Map<string, { coach: Coach; bookings: Booking[] }>()
-    
-    bookings.forEach(booking => {
-      // 教練角色
-      booking.coaches.forEach(coach => {
-        if (!map.has(coach.id)) {
-          map.set(coach.id, { coach, bookings: [] })
-        }
-        if (!map.get(coach.id)!.bookings.find(b => b.id === booking.id)) {
-          map.get(coach.id)!.bookings.push(booking)
-        }
-      })
-      
-      // 駕駛角色
-      booking.drivers.forEach(driver => {
-        if (!map.has(driver.id)) {
-          map.set(driver.id, { coach: driver, bookings: [] })
-        }
-        if (!map.get(driver.id)!.bookings.find(b => b.id === booking.id)) {
-          map.get(driver.id)!.bookings.push(booking)
-        }
-      })
-    })
-    
-    // 按教練姓名排序
-    return new Map([...map.entries()].sort((a, b) => 
-      a[1].coach.name.localeCompare(b[1].coach.name, 'zh-TW')
-    ))
-  }, [bookings, selectedCoachId])
 
   // 載入教練列表
   useEffect(() => {
@@ -429,14 +395,17 @@ export function CoachReport({ user }: CoachReportProps) {
 
   // 開始回報（從分組顯示點擊）
   const startReportWithCoach = (booking: Booking, coachId: string) => {
-    // 暫時設置選定的教練ID（用於後續邏輯）
-    setSelectedCoachId(coachId)
-    
     const type = getReportType(booking, coachId)
     if (!type) return
     
+    // 找到教練名稱
+    const coach = booking.coaches.find(c => c.id === coachId) || booking.drivers.find(d => d.id === coachId)
+    const coachName = coach?.name || ''
+    
     setReportingBookingId(booking.id)
     setReportType(type)
+    setReportingCoachId(coachId)
+    setReportingCoachName(coachName)
     
     // 初始化駕駛回報
     if (booking.coach_report) {
@@ -569,7 +538,7 @@ export function CoachReport({ user }: CoachReportProps) {
 
   // 提交駕駛回報
   const submitDriverReport = async (bookingId: number) => {
-    if (!selectedCoachId || selectedCoachId === 'all') {
+    if (!reportingCoachId) {
       alert('請選擇教練')
       return
     }
@@ -581,7 +550,7 @@ export function CoachReport({ user }: CoachReportProps) {
         .from('coach_reports')
         .upsert({
           booking_id: bookingId,
-          coach_id: selectedCoachId,
+          coach_id: reportingCoachId,
           driver_duration_min: driverDuration,
           reported_at: now
         }, {
@@ -600,7 +569,7 @@ export function CoachReport({ user }: CoachReportProps) {
 
   // 提交教練回報（含軟刪除邏輯）
   const submitCoachReport = async (bookingId: number) => {
-    if (!selectedCoachId || selectedCoachId === 'all') {
+    if (!reportingCoachId) {
       alert('請選擇教練')
       return
     }
@@ -622,7 +591,7 @@ export function CoachReport({ user }: CoachReportProps) {
         .from('booking_participants')
         .select('*')
         .eq('booking_id', bookingId)
-        .eq('coach_id', selectedCoachId)
+        .eq('coach_id', reportingCoachId)
         .eq('is_deleted', false)
       
       // 2. 處理刪除和修改
@@ -648,7 +617,7 @@ export function CoachReport({ user }: CoachReportProps) {
         .from('booking_participants')
         .delete()
         .eq('booking_id', bookingId)
-        .eq('coach_id', selectedCoachId)
+        .eq('coach_id', reportingCoachId)
           .eq('is_deleted', false)
       }
       
@@ -663,7 +632,7 @@ export function CoachReport({ user }: CoachReportProps) {
           
           return {
           booking_id: bookingId,
-          coach_id: selectedCoachId,
+          coach_id: reportingCoachId,
           member_id: p.member_id,
           participant_name: p.participant_name,
           duration_min: p.duration_min,
@@ -709,6 +678,8 @@ export function CoachReport({ user }: CoachReportProps) {
       }
       
       setReportingBookingId(null)
+      setReportingCoachId(null)
+      setReportingCoachName('')
     } catch (error) {
       console.error('提交回報失敗:', error)
     }
@@ -976,101 +947,116 @@ export function CoachReport({ user }: CoachReportProps) {
           <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
             今日沒有預約或所有預約尚未結束
           </div>
-        ) : bookingsByCoach && bookingsByCoach.size > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {Array.from(bookingsByCoach.entries()).map(([coachId, { coach, bookings: coachBookings }]) => (
-              <div key={coachId} style={{
-                background: 'white',
-                borderRadius: '12px',
-                padding: isMobile ? '16px' : '20px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }}>
-                {/* 教練標題 */}
-                <div style={{
-                  fontSize: isMobile ? '18px' : '20px',
-                  fontWeight: '600',
-                  color: '#333',
-                  marginBottom: '16px',
-                  paddingBottom: '12px',
-                  borderBottom: '2px solid #f0f0f0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  🎓 {coach.name}
-                  <span style={{
-                    fontSize: '14px',
-                    color: '#999',
-                    fontWeight: 'normal'
-                  }}>
-                    ({coachBookings.length} 筆預約)
-                  </span>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {bookings.map(booking => (
+              <div
+                key={booking.id}
+                style={{
+                  ...getCardStyle(isMobile),
+                  borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`
+                }}
+              >
+                {/* 預約基本信息 */}
+                <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #e0e0e0' }}>
+                  <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '600', marginBottom: '4px' }}>
+                    {booking.start_at.substring(11, 16)} | {getDisplayContactName(booking)}
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#666' }}>
+                    {booking.boats?.name} • {booking.duration_min}分
+                  </div>
                 </div>
 
-                {/* 該教練的預約列表 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {coachBookings.map(booking => {
-                    const status = getReportStatus(booking, coachId)
-                    const type = getReportType(booking, coachId)
-                    
-                    return (
-                      <div
-                        key={booking.id}
-                        style={{
-                          ...getCardStyle(isMobile),
-                          borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          position: 'relative'
-                        }}
-                        onClick={() => startReportWithCoach(booking, coachId)}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '600', marginBottom: '4px' }}>
-                              {booking.start_at.substring(11, 16)} | {getDisplayContactName(booking)}
-                            </div>
-                            <div style={{ fontSize: '14px', color: '#666' }}>
-                              {booking.boats?.name} • {booking.duration_min}分
-                            </div>
-                          </div>
-                          
-                          {/* 回報狀態 */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-                            {(type === 'coach' || type === 'both') && (
-                              <span style={{
-                                padding: '6px 12px',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                background: status.hasCoachReport ? '#e8f5e9' : '#2196f3',
-                                color: status.hasCoachReport ? '#2e7d32' : 'white',
-                                fontWeight: '600'
-                              }}>
-                                {status.hasCoachReport ? '✓ 已回報' : '回報'}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                {/* 教練列表 */}
+                {booking.coaches.length > 0 && (
+                  <div style={{ marginBottom: booking.drivers.length > 0 ? '12px' : '0' }}>
+                    <div style={{ fontSize: '13px', color: '#999', marginBottom: '8px' }}>
+                      🎓 教練
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {booking.coaches.map(coach => {
+                        const status = getReportStatus(booking, coach.id)
                         
-                        {/* 教練/駕駛信息 */}
-                        {(booking.coaches.length > 0 || booking.drivers.length > 0) && (
-                          <div style={{ fontSize: '13px', color: '#666', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                            {booking.coaches.length > 0 && (
-                              <span>🎓 {booking.coaches.map(c => c.name).join('、')}</span>
-                            )}
-                            {booking.drivers.length > 0 && (
-                              <span>🚤 {booking.drivers.map(d => d.name).join('、')}</span>
-                            )}
+                        return (
+                          <div
+                            key={coach.id}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '8px 12px',
+                              background: '#f9f9f9',
+                              borderRadius: '6px'
+                            }}
+                          >
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                              {coach.name}
+                            </span>
+                            <button
+                              onClick={() => startReportWithCoach(booking, coach.id)}
+                              style={{
+                                ...getButtonStyle(status.hasCoachReport ? 'secondary' : 'primary'),
+                                padding: '6px 12px',
+                                fontSize: '13px',
+                                minWidth: '70px'
+                              }}
+                            >
+                              {status.hasCoachReport ? '✓ 已回報' : '回報'}
+                            </button>
                           </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 駕駛列表 */}
+                {booking.drivers.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '13px', color: '#999', marginBottom: '8px' }}>
+                      🚤 駕駛
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {booking.drivers.map(driver => {
+                        const status = getReportStatus(booking, driver.id)
+                        const hasDriverReport = status.hasDriverReport
+                        
+                        return (
+                          <div
+                            key={driver.id}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '8px 12px',
+                              background: '#f9f9f9',
+                              borderRadius: '6px'
+                            }}
+                          >
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                              {driver.name}
+                            </span>
+                            <button
+                              onClick={() => startReportWithCoach(booking, driver.id)}
+                              style={{
+                                ...getButtonStyle(hasDriverReport ? 'secondary' : 'primary'),
+                                padding: '6px 12px',
+                                fontSize: '13px',
+                                minWidth: '70px'
+                              }}
+                            >
+                              {hasDriverReport ? '✓ 已回報' : '回報'}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
-        ) : null}
+        )}
           </>
         )}
 
@@ -1237,7 +1223,7 @@ export function CoachReport({ user }: CoachReportProps) {
             padding: isMobile ? '20px' : '32px'
           }}>
             <h2 style={{ margin: '0 0 24px 0', fontSize: isMobile ? '20px' : '24px' }}>
-              回報預約
+              回報預約{reportingCoachName && ` - ${reportingCoachName}`}
             </h2>
             
             <div style={{ marginBottom: '24px', padding: '16px', background: '#f5f5f5', borderRadius: '8px' }}>
