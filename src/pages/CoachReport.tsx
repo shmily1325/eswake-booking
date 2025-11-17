@@ -365,10 +365,16 @@ export function CoachReport({ user }: CoachReportProps) {
     const isCoach = booking.coaches.some(c => c.id === coachId)
     const isExplicitDriver = booking.drivers.some(d => d.id === coachId)
     const hasNoDriver = booking.drivers.length === 0
+    const hasNoCoach = booking.coaches.length === 0
     const isImplicitDriver = isCoach && hasNoDriver
     
     const needsCoachReport = isCoach
     const needsDriverReport = isExplicitDriver || isImplicitDriver
+    
+    // 重要：如果預約沒有教練，只有駕駛，駕駛需要回報會員+時數
+    if (hasNoCoach && isExplicitDriver) {
+      return 'both'
+    }
     
     if (needsCoachReport && needsDriverReport) {
       return 'both'
