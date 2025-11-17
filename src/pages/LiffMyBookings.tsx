@@ -30,9 +30,11 @@ interface Transaction {
   id: number
   transaction_date: string
   category: string
-  change_type: string
-  amount: number
-  description: string | null
+  adjust_type: string | null
+  transaction_type: string
+  amount: number | null
+  minutes: number | null
+  description: string
   notes: string | null
 }
 
@@ -49,7 +51,7 @@ export function LiffMyBookings() {
   const [binding, setBinding] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('bookings')
   
-  // 交易记录弹出框
+  // 交易記錄彈出框
   const [showTransactions, setShowTransactions] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -217,12 +219,12 @@ export function LiffMyBookings() {
   const loadTransactions = async (memberId: string, category: string) => {
     setLoadingTransactions(true)
     try {
-      // 计算两个月前的日期
+      // 計算兩個月前的日期
       const twoMonthsAgo = new Date()
       twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2)
       const twoMonthsAgoStr = twoMonthsAgo.toISOString().split('T')[0]
 
-      // 查询该类别的交易记录
+      // 查詢該類別的交易記錄
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
@@ -1152,7 +1154,7 @@ export function LiffMyBookings() {
               animation: 'slideUp 0.3s ease-out'
             }}
           >
-            {/* 标题栏 */}
+            {/* 標題欄 */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -1202,7 +1204,7 @@ export function LiffMyBookings() {
                       padding: '14px',
                       background: '#f8f9fa',
                       borderRadius: '8px',
-                      borderLeft: `4px solid ${transaction.change_type === 'increase' ? '#52c41a' : '#ff4d4f'}`
+                      borderLeft: `4px solid ${transaction.adjust_type === 'increase' || transaction.transaction_type === 'charge' ? '#52c41a' : '#ff4d4f'}`
                     }}
                   >
                     <div style={{
@@ -1217,19 +1219,17 @@ export function LiffMyBookings() {
                       <div style={{
                         fontSize: '18px',
                         fontWeight: '600',
-                        color: transaction.change_type === 'increase' ? '#52c41a' : '#ff4d4f'
+                        color: transaction.adjust_type === 'increase' || transaction.transaction_type === 'charge' ? '#52c41a' : '#ff4d4f'
                       }}>
-                        {transaction.change_type === 'increase' ? '+' : '-'}
+                        {(transaction.adjust_type === 'increase' || transaction.transaction_type === 'charge') ? '+' : '-'}
                         {getCategoryUnit(selectedCategory) === '元' ? '$' : ''}
-                        {transaction.amount}
+                        {transaction.amount || transaction.minutes || 0}
                         {getCategoryUnit(selectedCategory) === '分' ? '分' : ''}
                       </div>
                     </div>
-                    {transaction.description && (
-                      <div style={{ fontSize: '14px', color: '#333', marginBottom: '4px' }}>
-                        {transaction.description}
-                      </div>
-                    )}
+                    <div style={{ fontSize: '14px', color: '#333', marginBottom: '4px' }}>
+                      {transaction.description}
+                    </div>
                     {transaction.notes && (
                       <div style={{ fontSize: '13px', color: '#999' }}>
                         備註：{transaction.notes}
@@ -1274,7 +1274,7 @@ export function LiffMyBookings() {
   )
 }
 
-// 辅助函数：获取类别标签
+// 輔助函數：獲取類別標籤
 function getCategoryLabel(category: string): string {
   const labels: Record<string, string> = {
     'balance': '💰 儲值餘額',
@@ -1287,7 +1287,7 @@ function getCategoryLabel(category: string): string {
   return labels[category] || category
 }
 
-// 辅助函数：获取类别单位
+// 輔助函數：獲取類別單位
 function getCategoryUnit(category: string): string {
   if (category === 'balance' || category === 'vip_voucher') {
     return '元'
