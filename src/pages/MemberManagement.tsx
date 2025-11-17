@@ -953,14 +953,14 @@ export function MemberManagement({ user }: MemberManagementProps) {
                       </span>
                     )}
                     <span style={{ 
-                      background: member.member_type === 'member' ? '#e3f2fd' : '#f5f5f5',
-                      color: member.member_type === 'member' ? '#1976d2' : '#666',
+                      background: member.membership_type === 'board' ? '#fff9e6' : '#e3f2fd',
+                      color: member.membership_type === 'board' ? '#856404' : '#1976d2',
                       padding: '3px 10px',
                       borderRadius: '12px',
                       fontWeight: 'bold',
                       fontSize: '12px'
                     }}>
-                      {member.member_type === 'member' ? '👤 會員' : '👋 客人'}
+                      {member.membership_type === 'board' ? '🎫 非會員' : '👤 會員'}
                     </span>
                     {member.membership_type === 'dual' && (
                       <span style={{ 
