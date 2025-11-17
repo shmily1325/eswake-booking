@@ -340,7 +340,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               >
                 <option value="general">會員</option>
                 <option value="dual">雙人會員</option>
-                <option value="board">置板</option>
+                <option value="board">非會員</option>
               </select>
             </div>
 
@@ -405,21 +405,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                   選擇後將自動建立雙向配對關係
                 </div>
-              </div>
-            )}
-
-            {/* 置板會員提示 */}
-            {formData.membership_type === 'board' && (
-              <div style={{ 
-                marginBottom: '16px',
-                padding: '12px',
-                background: '#e8f5e9',
-                borderRadius: '8px',
-                border: '1px solid #4caf50',
-                fontSize: '13px',
-                color: '#2e7d32'
-              }}>
-                💡 置板會員可以在下方「置板服務」區塊新增多個置板位
               </div>
             )}
 

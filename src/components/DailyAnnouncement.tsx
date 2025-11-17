@@ -40,7 +40,7 @@ export function DailyAnnouncement() {
         .from('daily_announcements')
         .select('*')
         .eq('display_date', today)
-        .limit(5),
+        .order('created_at', { ascending: true }),
       
       // 獲取今日休假教練
       supabase
@@ -129,7 +129,16 @@ export function DailyAnnouncement() {
           {announcements.length > 0 && (
             <div style={{ marginBottom: '6px' }}>
               {announcements.map((ann, idx) => (
-                <div key={ann.id} style={{ color: '#667eea', fontWeight: '500' }}>
+                <div 
+                  key={ann.id} 
+                  style={{ 
+                    color: '#667eea', 
+                    fontWeight: '500',
+                    wordBreak: 'break-word',
+                    whiteSpace: 'pre-wrap',
+                    marginBottom: idx < announcements.length - 1 ? '4px' : '0'
+                  }}
+                >
                   {idx === 0 && '📋 交辦事項：'}
                   {idx > 0 && '　　　　'}
                   {ann.content}

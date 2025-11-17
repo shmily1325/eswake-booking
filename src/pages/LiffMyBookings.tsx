@@ -26,6 +26,16 @@ interface Member {
   gift_boat_hours?: number
 }
 
+interface Transaction {
+  id: number
+  transaction_date: string
+  category: string
+  change_type: string
+  amount: number
+  description: string | null
+  notes: string | null
+}
+
 type TabType = 'bookings' | 'balance' | 'cancel'
 
 export function LiffMyBookings() {
@@ -38,6 +48,12 @@ export function LiffMyBookings() {
   const [phone, setPhone] = useState('')
   const [binding, setBinding] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('bookings')
+  
+  // 交易记录弹出框
+  const [showTransactions, setShowTransactions] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loadingTransactions, setLoadingTransactions] = useState(false)
 
   useEffect(() => {
     initLiff()
@@ -196,6 +212,41 @@ export function LiffMyBookings() {
       setError('載入預約失敗')
       setLoading(false)
     }
+  }
+
+  const loadTransactions = async (memberId: string, category: string) => {
+    setLoadingTransactions(true)
+    try {
+      // 计算两个月前的日期
+      const twoMonthsAgo = new Date()
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2)
+      const twoMonthsAgoStr = twoMonthsAgo.toISOString().split('T')[0]
+
+      // 查询该类别的交易记录
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('member_id', memberId)
+        .eq('category', category)
+        .gte('transaction_date', twoMonthsAgoStr)
+        .order('transaction_date', { ascending: false })
+
+      if (error) throw error
+
+      setTransactions(data || [])
+    } catch (err: any) {
+      console.error('載入交易記錄失敗:', err)
+      alert('載入交易記錄失敗')
+    } finally {
+      setLoadingTransactions(false)
+    }
+  }
+
+  const handleCategoryClick = (category: string) => {
+    if (!member) return
+    setSelectedCategory(category)
+    setShowTransactions(true)
+    loadTransactions(member.id, category)
   }
 
   const handleBinding = async () => {
@@ -771,6 +822,19 @@ export function LiffMyBookings() {
               💰 我的儲值
             </h2>
 
+            {/* 提示 */}
+            <div style={{
+              padding: '10px 12px',
+              background: '#fff9e6',
+              borderRadius: '6px',
+              marginBottom: '12px',
+              fontSize: '13px',
+              color: '#856404',
+              border: '1px solid #ffeaa7'
+            }}>
+              💡 點擊任一項目查看交易明細
+            </div>
+
             {/* 儲值數據 */}
             <div style={{
               display: 'grid',
@@ -778,12 +842,23 @@ export function LiffMyBookings() {
               gap: '12px'
             }}>
               {/* 儲值餘額 */}
-              <div style={{
-                background: '#f8f9fa',
-                borderRadius: '8px',
-                padding: '16px',
-                border: '2px solid #52c41a'
-              }}>
+              <div 
+                onClick={() => handleCategoryClick('balance')}
+                style={{
+                  background: '#f8f9fa',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  border: '2px solid #52c41a',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
+              >
                 <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
                   💰 儲值餘額
                 </div>
@@ -793,12 +868,23 @@ export function LiffMyBookings() {
               </div>
 
               {/* VIP票券 */}
-              <div style={{
-                background: '#f8f9fa',
-                borderRadius: '8px',
-                padding: '16px',
-                border: '2px solid #9c27b0'
-              }}>
+              <div 
+                onClick={() => handleCategoryClick('vip_voucher')}
+                style={{
+                  background: '#f8f9fa',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  border: '2px solid #9c27b0',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
+              >
                 <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
                   💎 VIP票券
                 </div>
@@ -808,11 +894,22 @@ export function LiffMyBookings() {
               </div>
 
               {/* 指定課 */}
-              <div style={{
-                background: '#f8f9fa',
-                borderRadius: '8px',
-                padding: '16px'
-              }}>
+              <div 
+                onClick={() => handleCategoryClick('designated_lesson')}
+                style={{
+                  background: '#f8f9fa',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
+              >
                 <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
                   📚 指定課
                 </div>
@@ -822,11 +919,22 @@ export function LiffMyBookings() {
               </div>
 
               {/* G23船券 */}
-              <div style={{
-                background: '#f8f9fa',
-                borderRadius: '8px',
-                padding: '16px'
-              }}>
+              <div 
+                onClick={() => handleCategoryClick('boat_voucher_g23')}
+                style={{
+                  background: '#f8f9fa',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
+              >
                 <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
                   🚤 G23船券
                 </div>
@@ -836,11 +944,22 @@ export function LiffMyBookings() {
               </div>
 
               {/* G21/黑豹 */}
-              <div style={{
-                background: '#f8f9fa',
-                borderRadius: '8px',
-                padding: '16px'
-              }}>
+              <div 
+                onClick={() => handleCategoryClick('boat_voucher_g21_panther')}
+                style={{
+                  background: '#f8f9fa',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
+              >
                 <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
                   ⛵ G21/黑豹
                 </div>
@@ -850,11 +969,22 @@ export function LiffMyBookings() {
               </div>
 
               {/* 贈送大船 */}
-              <div style={{
-                background: '#f8f9fa',
-                borderRadius: '8px',
-                padding: '16px'
-              }}>
+              <div 
+                onClick={() => handleCategoryClick('gift_boat')}
+                style={{
+                  background: '#f8f9fa',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
+              >
                 <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
                   🎁 贈送大船
                 </div>
@@ -994,6 +1124,125 @@ export function LiffMyBookings() {
         )}
       </div>
 
+      {/* 交易記錄彈出框 */}
+      {showTransactions && (
+        <div
+          onClick={() => setShowTransactions(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            zIndex: 9999
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxHeight: '70vh',
+              background: 'white',
+              borderRadius: '16px 16px 0 0',
+              padding: '20px',
+              overflowY: 'auto',
+              animation: 'slideUp 0.3s ease-out'
+            }}
+          >
+            {/* 标题栏 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+              paddingBottom: '12px',
+              borderBottom: '2px solid #f0f0f0'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#333' }}>
+                {getCategoryLabel(selectedCategory)} 交易記錄
+              </h3>
+              <button
+                onClick={() => setShowTransactions(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  color: '#999',
+                  cursor: 'pointer',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 交易列表 */}
+            {loadingTransactions ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                載入中...
+              </div>
+            ) : transactions.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                最近兩個月無交易記錄
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {transactions.map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    style={{
+                      padding: '14px',
+                      background: '#f8f9fa',
+                      borderRadius: '8px',
+                      borderLeft: `4px solid ${transaction.change_type === 'increase' ? '#52c41a' : '#ff4d4f'}`
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '6px'
+                    }}>
+                      <div style={{ fontSize: '14px', color: '#666' }}>
+                        {transaction.transaction_date}
+                      </div>
+                      <div style={{
+                        fontSize: '18px',
+                        fontWeight: '600',
+                        color: transaction.change_type === 'increase' ? '#52c41a' : '#ff4d4f'
+                      }}>
+                        {transaction.change_type === 'increase' ? '+' : '-'}
+                        {getCategoryUnit(selectedCategory) === '元' ? '$' : ''}
+                        {transaction.amount}
+                        {getCategoryUnit(selectedCategory) === '分' ? '分' : ''}
+                      </div>
+                    </div>
+                    {transaction.description && (
+                      <div style={{ fontSize: '14px', color: '#333', marginBottom: '4px' }}>
+                        {transaction.description}
+                      </div>
+                    )}
+                    {transaction.notes && (
+                      <div style={{ fontSize: '13px', color: '#999' }}>
+                        備註：{transaction.notes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <div style={{
         padding: '20px',
@@ -1010,9 +1259,39 @@ export function LiffMyBookings() {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
+          
+          @keyframes slideUp {
+            from {
+              transform: translateY(100%);
+            }
+            to {
+              transform: translateY(0);
+            }
+          }
         `}
       </style>
     </div>
   )
+}
+
+// 辅助函数：获取类别标签
+function getCategoryLabel(category: string): string {
+  const labels: Record<string, string> = {
+    'balance': '💰 儲值餘額',
+    'vip_voucher': '💎 VIP票券',
+    'designated_lesson': '📚 指定課',
+    'boat_voucher_g23': '🚤 G23船券',
+    'boat_voucher_g21_panther': '⛵ G21/黑豹',
+    'gift_boat': '🎁 贈送大船'
+  }
+  return labels[category] || category
+}
+
+// 辅助函数：获取类别单位
+function getCategoryUnit(category: string): string {
+  if (category === 'balance' || category === 'vip_voucher') {
+    return '元'
+  }
+  return '分'
 }
 

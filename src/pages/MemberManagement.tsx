@@ -325,7 +325,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
         if (member.membership_type === 'dual') {
           membershipTypeLabel = '雙人會員'
         } else if (member.membership_type === 'board') {
-          membershipTypeLabel = '置板'
+          membershipTypeLabel = '非會員'
         }
         
         // 配對會員
@@ -567,7 +567,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
             { value: 'all', label: '全部' },
             { value: 'general', label: '一般會員' },
             { value: 'dual', label: '雙人會員' },
-            { value: 'board', label: '置板會員' }
+            { value: 'board', label: '非會員' }
           ].map(type => (
             <button
               key={type.value}
