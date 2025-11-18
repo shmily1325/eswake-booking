@@ -73,6 +73,7 @@ export function CoachReport({ user }: CoachReportProps) {
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateString())
   const [selectedCoachId, setSelectedCoachId] = useState<string>('all') // 默認顯示"全部"
   const [coaches, setCoaches] = useState<Coach[]>([])
+  const [availableCoaches, setAvailableCoaches] = useState<Coach[]>([]) // 當天有預約的教練
   const [viewMode, setViewMode] = useState<'date' | 'unreported'>('date')
   
   // 預約列表
@@ -164,11 +165,12 @@ export function CoachReport({ user }: CoachReportProps) {
         return
       }
 
-      const [coachesRes, driversRes, reportsRes, participantsRes] = await Promise.all([
+      const [coachesRes, driversRes, reportsRes, participantsRes, bookingMembersRes] = await Promise.all([
         supabase.from('booking_coaches').select('booking_id, coach_id, coaches(id, name)').in('booking_id', bookingIds),
         supabase.from('booking_drivers').select('booking_id, driver_id, coaches:driver_id(id, name)').in('booking_id', bookingIds),
         supabase.from('coach_reports').select('*').in('booking_id', bookingIds),
-        supabase.from('booking_participants').select('*, members(name, nickname)').eq('is_deleted', false).in('booking_id', bookingIds)
+        supabase.from('booking_participants').select('*, members(name, nickname)').eq('is_deleted', false).in('booking_id', bookingIds),
+        supabase.from('booking_members').select('booking_id, member_id, members(name, nickname)').in('booking_id', bookingIds)
       ])
 
       const bookingsWithRelations = validBookings.map((booking: any) => {
@@ -206,8 +208,21 @@ export function CoachReport({ user }: CoachReportProps) {
             }
           })
 
+        // 更新 contact_name - 從 booking_members 取得最新會員名字
+        let updatedContactName = booking.contact_name
+        const bookingMembers = (bookingMembersRes.data || []).filter((bm: any) => bm.booking_id === booking.id)
+        if (bookingMembers.length > 0) {
+          const memberNames = bookingMembers
+            .map((bm: any) => bm.members?.nickname || bm.members?.name)
+            .filter(Boolean)
+          if (memberNames.length > 0) {
+            updatedContactName = memberNames.join(', ')
+          }
+        }
+
         return {
           ...booking,
+          contact_name: updatedContactName,
           coaches: bookingCoaches,
           drivers: bookingDrivers,
           coach_report: coachReport,
@@ -228,8 +243,31 @@ export function CoachReport({ user }: CoachReportProps) {
           })
         }
         setAllBookings(statsBookings)
+        
+        // 篩選當天有預約的教練
+        const coachMap = new Map<string, Coach>()
+        bookingsWithRelations.forEach((booking: any) => {
+          booking.coaches.forEach((coach: Coach) => {
+            if (!coachMap.has(coach.id)) {
+              coachMap.set(coach.id, coach)
+            }
+          })
+          booking.drivers.forEach((driver: Coach) => {
+            if (!coachMap.has(driver.id)) {
+              coachMap.set(driver.id, driver)
+            }
+          })
+        })
+        const availableCoachList = Array.from(coachMap.values())
+        setAvailableCoaches(availableCoachList)
+        
+        // 如果當前選中的教練不在可用列表中，切換到"全部"
+        if (selectedCoachId !== 'all' && !availableCoachList.some(c => c.id === selectedCoachId)) {
+          setSelectedCoachId('all')
+        }
       } else {
         setAllBookings([])
+        setAvailableCoaches(coaches) // 未回報模式顯示所有教練
       }
 
       if (selectedCoachId !== 'all') {
@@ -590,12 +628,35 @@ export function CoachReport({ user }: CoachReportProps) {
     setSelectedDate(`${year}-${month}-${day}`)
   }
 
-  // 計算統計數據
+  // 計算統計數據（更細緻的邏輯）
   const stats = {
     total: allBookings.length,
     reported: allBookings.filter(b => {
       if (selectedCoachId === 'all') {
-        return b.participants && b.participants.length > 0
+        // 檢查所有教練和駕駛是否都已回報
+        const hasCoaches = b.coaches.length > 0
+        const hasDrivers = b.drivers.length > 0
+        
+        if (!hasCoaches && !hasDrivers) return false // 沒有教練也沒有駕駛
+        
+        // 檢查所有教練是否都已回報
+        const allCoachesReported = b.coaches.length === 0 || b.coaches.every((coach: any) => {
+          const type = getReportType(b, coach.id)
+          if (!type) return true
+          const status = getReportStatus(b, coach.id)
+          if (type === 'coach') return status.hasCoachReport
+          if (type === 'driver') return status.hasDriverReport
+          if (type === 'both') return status.hasCoachReport && status.hasDriverReport
+          return true
+        })
+        
+        // 檢查所有駕駛是否都已回報
+        const allDriversReported = b.drivers.length === 0 || b.drivers.every((driver: any) => {
+          const status = getReportStatus(b, driver.id)
+          return status.hasDriverReport
+        })
+        
+        return allCoachesReported && allDriversReported
       } else {
         return b.participants && b.participants.some(p => p.coach_id === selectedCoachId)
       }
@@ -610,7 +671,14 @@ export function CoachReport({ user }: CoachReportProps) {
         if (type === 'both') return !status.hasCoachReport || !status.hasDriverReport
         return false
       } else {
-        const allCoachesReported = b.coaches.every((coach: any) => {
+        // 檢查是否有任何教練或駕駛未回報
+        const hasCoaches = b.coaches.length > 0
+        const hasDrivers = b.drivers.length > 0
+        
+        if (!hasCoaches && !hasDrivers) return false // 沒有教練也沒有駕駛，不算未回報
+        
+        // 檢查教練是否都已回報
+        const allCoachesReported = b.coaches.length === 0 || b.coaches.every((coach: any) => {
           const type = getReportType(b, coach.id)
           if (!type) return true
           const status = getReportStatus(b, coach.id)
@@ -619,7 +687,15 @@ export function CoachReport({ user }: CoachReportProps) {
           if (type === 'both') return status.hasCoachReport && status.hasDriverReport
           return true
         })
-        return !allCoachesReported
+        
+        // 檢查駕駛是否都已回報
+        const allDriversReported = b.drivers.length === 0 || b.drivers.every((driver: any) => {
+          const status = getReportStatus(b, driver.id)
+          return status.hasDriverReport
+        })
+        
+        // 只要有任何一個未回報，就算未回報
+        return !allCoachesReported || !allDriversReported
       }
     }).length
   }
@@ -838,7 +914,7 @@ export function CoachReport({ user }: CoachReportProps) {
               >
                 全部
               </button>
-              {coaches.map(coach => (
+              {(viewMode === 'date' ? availableCoaches : coaches).map(coach => (
                 <button
                   key={coach.id}
                   onClick={() => setSelectedCoachId(coach.id)}
@@ -910,40 +986,42 @@ export function CoachReport({ user }: CoachReportProps) {
 
                   {/* 教練列表 */}
                   {displayCoaches.length > 0 && (
-                    <div style={{ marginBottom: displayDrivers.length > 0 ? '8px' : '0' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {displayCoaches.map(coach => {
-                          const reportType = getReportType(booking, coach.id)
-                          const reportStatus = getReportStatus(booking, coach.id)
-                          
-                          return (
-                            <div
-                              key={coach.id}
-                              style={{
-                                padding: '8px 12px',
-                                background: '#f5f5f5',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                gap: '8px'
-                              }}
-                            >
-                              <span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: '16px' }}>🎓</span>
-                                {coach.name}
-                              </span>
-                              <button
-                                onClick={() => startReportWithCoach(booking, coach.id)}
-                                style={getButtonStyle('primary')}
+                    <div style={{ marginBottom: displayDrivers.length > 0 ? '12px' : '0' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: '20px', marginTop: '6px' }}>🎓</span>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {displayCoaches.map(coach => {
+                            const reportType = getReportType(booking, coach.id)
+                            const reportStatus = getReportStatus(booking, coach.id)
+                            
+                            return (
+                              <div
+                                key={coach.id}
+                                style={{
+                                  padding: '8px 12px',
+                                  background: '#f5f5f5',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  gap: '8px'
+                                }}
                               >
-                                {reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
-                                  ? '修改回報'
-                                  : '回報'}
-                              </button>
-                            </div>
-                          )
-                        })}
+                                <span style={{ fontWeight: '500' }}>
+                                  {coach.name}
+                                </span>
+                                <button
+                                  onClick={() => startReportWithCoach(booking, coach.id)}
+                                  style={getButtonStyle('primary')}
+                                >
+                                  {reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
+                                    ? '修改回報'
+                                    : '回報'}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -951,36 +1029,38 @@ export function CoachReport({ user }: CoachReportProps) {
                   {/* 駕駛列表 */}
                   {displayDrivers.length > 0 && (
                     <div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {displayDrivers.map(driver => {
-                          const reportStatus = getReportStatus(booking, driver.id)
-                          
-                          return (
-                            <div
-                              key={driver.id}
-                              style={{
-                                padding: '8px 12px',
-                                background: '#f5f5f5',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                gap: '8px'
-                              }}
-                            >
-                              <span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: '16px' }}>🚤</span>
-                                {driver.name}
-                              </span>
-                              <button
-                                onClick={() => startReportWithCoach(booking, driver.id)}
-                                style={getButtonStyle('primary')}
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: '20px', marginTop: '6px' }}>🚤</span>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {displayDrivers.map(driver => {
+                            const reportStatus = getReportStatus(booking, driver.id)
+                            
+                            return (
+                              <div
+                                key={driver.id}
+                                style={{
+                                  padding: '8px 12px',
+                                  background: '#f5f5f5',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  gap: '8px'
+                                }}
                               >
-                                {reportStatus.hasDriverReport ? '修改回報' : '回報'}
-                              </button>
-                            </div>
-                          )
-                        })}
+                                <span style={{ fontWeight: '500' }}>
+                                  {driver.name}
+                                </span>
+                                <button
+                                  onClick={() => startReportWithCoach(booking, driver.id)}
+                                  style={getButtonStyle('primary')}
+                                >
+                                  {reportStatus.hasDriverReport ? '修改回報' : '回報'}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     </div>
                   )}
