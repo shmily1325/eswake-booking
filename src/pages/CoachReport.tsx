@@ -339,6 +339,7 @@ export function CoachReport({ user }: CoachReportProps) {
     const needsCoachReport = isCoach
     const needsDriverReport = isExplicitDriver || isImplicitDriver
     
+    // 純駕駛的預約（沒有教練，只有駕駛）需要同時回報駕駛時數和參與者
     if (hasNoCoach && isExplicitDriver) {
       return 'both'
     }
@@ -490,6 +491,12 @@ export function CoachReport({ user }: CoachReportProps) {
   const submitDriverReport = async () => {
     if (!reportingBookingId || !reportingCoachId) return
 
+    console.log('提交駕駛回報:', {
+      booking_id: reportingBookingId,
+      coach_id: reportingCoachId,
+      driver_duration_min: driverDuration
+    })
+
     const { error } = await supabase
       .from('coach_reports')
       .upsert({
@@ -503,7 +510,7 @@ export function CoachReport({ user }: CoachReportProps) {
 
     if (error) {
       console.error('提交駕駛回報失敗:', error)
-      throw error
+      throw new Error(`提交駕駛回報失敗: ${error.message}`)
     }
   }
 
@@ -526,6 +533,7 @@ export function CoachReport({ user }: CoachReportProps) {
     }
 
     try {
+      // 步驟 1: 載入現有參與者記錄
       const { data: oldParticipants, error: fetchError } = await supabase
         .from('booking_participants')
         .select('*')
@@ -533,8 +541,12 @@ export function CoachReport({ user }: CoachReportProps) {
         .eq('coach_id', reportingCoachId)
         .eq('is_deleted', false)
 
-      if (fetchError) throw fetchError
+      if (fetchError) {
+        console.error('載入現有記錄失敗:', fetchError)
+        throw new Error(`載入現有記錄失敗: ${fetchError.message}`)
+      }
 
+      // 步驟 2: 軟刪除已移除的參與者
       const oldParticipantIds = new Set(validParticipants.filter(p => p.id).map(p => p.id))
       const participantsToSoftDelete = (oldParticipants || []).filter(old => !oldParticipantIds.has(old.id))
 
@@ -548,9 +560,13 @@ export function CoachReport({ user }: CoachReportProps) {
           })
           .in('id', participantsToSoftDelete.map(p => p.id))
 
-        if (softDeleteError) throw softDeleteError
+        if (softDeleteError) {
+          console.error('軟刪除記錄失敗:', softDeleteError)
+          throw new Error(`軟刪除記錄失敗: ${softDeleteError.message}`)
+        }
       }
 
+      // 步驟 3: 刪除舊的未刪除記錄（準備重新插入）
       const { error: deleteError } = await supabase
         .from('booking_participants')
         .delete()
@@ -558,8 +574,12 @@ export function CoachReport({ user }: CoachReportProps) {
         .eq('coach_id', reportingCoachId)
         .eq('is_deleted', false)
 
-      if (deleteError) throw deleteError
+      if (deleteError) {
+        console.error('刪除舊記錄失敗:', deleteError)
+        throw new Error(`刪除舊記錄失敗: ${deleteError.message}`)
+      }
 
+      // 步驟 4: 插入新的參與者記錄
       const participantsToInsert = validParticipants.map(p => ({
         booking_id: reportingBookingId,
         coach_id: reportingCoachId,
@@ -573,14 +593,20 @@ export function CoachReport({ user }: CoachReportProps) {
         replaces_id: p.id || null
       }))
 
+      console.log('準備插入的參與者記錄:', participantsToInsert)
+
       const { error: insertError } = await supabase
         .from('booking_participants')
         .insert(participantsToInsert)
 
-      if (insertError) throw insertError
-    } catch (error) {
+      if (insertError) {
+        console.error('插入新記錄失敗:', insertError)
+        throw new Error(`插入新記錄失敗: ${insertError.message}`)
+      }
+    } catch (error: any) {
       console.error('提交教練回報失敗:', error)
-      alert('提交失敗，請重試')
+      const errorMsg = error.message || '未知錯誤'
+      alert(`提交失敗：${errorMsg}\n\n請打開瀏覽器控制台 (F12) 查看詳細錯誤`)
       throw error
     }
   }

@@ -810,30 +810,38 @@ export function CoachAdmin({ user }: { user: User | null }) {
               ...getCardStyle(isMobile),
               marginBottom: '24px'
             }}>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <label style={{ ...getLabelStyle(isMobile) }}>
-                    日期
-                  </label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    style={getInputStyle(isMobile)}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+              {/* 日期選擇 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ ...getLabelStyle(isMobile) }}>
+                  日期
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  style={getInputStyle(isMobile)}
+                />
+              </div>
+              
+              {/* 查看模式切換 */}
+              <div>
+                <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>
+                  查看模式
+                </label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => setCompletedViewMode('booking')}
                     style={{
-                      padding: '8px 16px',
+                      flex: isMobile ? 1 : 'none',
+                      padding: '10px 20px',
                       background: completedViewMode === 'booking' ? '#2196f3' : '#fff',
                       color: completedViewMode === 'booking' ? 'white' : '#666',
-                      border: `1px solid ${completedViewMode === 'booking' ? '#2196f3' : '#ddd'}`,
-                      borderRadius: '6px',
+                      border: `2px solid ${completedViewMode === 'booking' ? '#2196f3' : '#e0e0e0'}`,
+                      borderRadius: '8px',
                       cursor: 'pointer',
                       fontSize: '14px',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
                     }}
                   >
                     📋 按預約查看
@@ -841,14 +849,16 @@ export function CoachAdmin({ user }: { user: User | null }) {
                   <button
                     onClick={() => setCompletedViewMode('coach')}
                     style={{
-                      padding: '8px 16px',
+                      flex: isMobile ? 1 : 'none',
+                      padding: '10px 20px',
                       background: completedViewMode === 'coach' ? '#2196f3' : '#fff',
                       color: completedViewMode === 'coach' ? 'white' : '#666',
-                      border: `1px solid ${completedViewMode === 'coach' ? '#2196f3' : '#ddd'}`,
-                      borderRadius: '6px',
+                      border: `2px solid ${completedViewMode === 'coach' ? '#2196f3' : '#e0e0e0'}`,
+                      borderRadius: '8px',
                       cursor: 'pointer',
                       fontSize: '14px',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
                     }}
                   >
                     👤 按教練統計
