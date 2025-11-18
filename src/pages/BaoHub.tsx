@@ -22,13 +22,8 @@ export function BaoHub({ user }: BaoHubProps) {
     }>
   }> = [
     {
-      section: '🎓 教練',
+      section: '📋 預約相關',
       items: [
-        {
-          title: '人員管理',
-          icon: '👥',
-          link: '/staff'
-        },
         {
           title: '排班',
           icon: '📅',
@@ -73,6 +68,11 @@ export function BaoHub({ user }: BaoHubProps) {
           title: '公告',
           icon: '📢',
           link: '/announcements'
+        },
+        {
+          title: '人員管理',
+          icon: '🎓',
+          link: '/staff'
         },
         {
           title: '數據統計',

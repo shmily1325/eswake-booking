@@ -71,12 +71,13 @@ export function CoachReport({ user }: CoachReportProps) {
   
   // 日期和教練篩選
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateString())
-  const [selectedCoachId, setSelectedCoachId] = useState<string>('all')
+  const [selectedCoachId, setSelectedCoachId] = useState<string>('all') // 默認顯示"全部"
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [viewMode, setViewMode] = useState<'date' | 'unreported'>('date')
   
   // 預約列表
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [allBookings, setAllBookings] = useState<Booking[]>([]) // 用於統計
   const [loading, setLoading] = useState(false)
   
   // 回報表單
@@ -167,7 +168,7 @@ export function CoachReport({ user }: CoachReportProps) {
         supabase.from('booking_coaches').select('booking_id, coach_id, coaches(id, name)').in('booking_id', bookingIds),
         supabase.from('booking_drivers').select('booking_id, driver_id, coaches:driver_id(id, name)').in('booking_id', bookingIds),
         supabase.from('coach_reports').select('*').in('booking_id', bookingIds),
-        supabase.from('booking_participants').select('*').eq('is_deleted', false).in('booking_id', bookingIds)
+        supabase.from('booking_participants').select('*, members(name, nickname)').eq('is_deleted', false).in('booking_id', bookingIds)
       ])
 
       const bookingsWithRelations = validBookings.map((booking: any) => {
@@ -183,19 +184,27 @@ export function CoachReport({ user }: CoachReportProps) {
         
         const bookingParticipants = (participantsRes.data || [])
           .filter(p => p.booking_id === booking.id)
-          .map(p => ({
-            id: p.id,
-            coach_id: p.coach_id,
-            member_id: p.member_id,
-            participant_name: p.participant_name,
-            duration_min: p.duration_min,
-            payment_method: p.payment_method,
-            notes: p.notes,
-            status: p.status,
-            is_deleted: p.is_deleted,
-            transaction_id: p.transaction_id,
-            replaces_id: p.replaces_id
-          }))
+          .map(p => {
+            // 如果有 member_id，優先使用 members 表的最新資料
+            let displayName = p.participant_name
+            if (p.member_id && p.members) {
+              displayName = p.members.nickname || p.members.name
+            }
+            
+            return {
+              id: p.id,
+              coach_id: p.coach_id,
+              member_id: p.member_id,
+              participant_name: displayName,
+              duration_min: p.duration_min,
+              payment_method: p.payment_method,
+              notes: p.notes,
+              status: p.status,
+              is_deleted: p.is_deleted,
+              transaction_id: p.transaction_id,
+              replaces_id: p.replaces_id
+            }
+          })
 
         return {
           ...booking,
@@ -207,6 +216,21 @@ export function CoachReport({ user }: CoachReportProps) {
       })
 
       let filteredBookings = bookingsWithRelations
+      
+      // 保存所有預約用於統計（按日期模式時）
+      if (viewMode === 'date') {
+        let statsBookings = bookingsWithRelations
+        if (selectedCoachId !== 'all') {
+          statsBookings = statsBookings.filter((booking: any) => {
+            const isCoach = booking.coaches.some((c: any) => c.id === selectedCoachId)
+            const isDriver = booking.drivers.some((d: any) => d.id === selectedCoachId)
+            return isCoach || isDriver
+          })
+        }
+        setAllBookings(statsBookings)
+      } else {
+        setAllBookings([])
+      }
 
       if (selectedCoachId !== 'all') {
         filteredBookings = filteredBookings.filter((booking: any) => {
@@ -556,6 +580,50 @@ export function CoachReport({ user }: CoachReportProps) {
 
   const reportingBooking = bookings.find(b => b.id === reportingBookingId)
 
+  // 快捷日期按鈕
+  const setDateOffset = (days: number) => {
+    const date = new Date()
+    date.setDate(date.getDate() + days)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    setSelectedDate(`${year}-${month}-${day}`)
+  }
+
+  // 計算統計數據
+  const stats = {
+    total: allBookings.length,
+    reported: allBookings.filter(b => {
+      if (selectedCoachId === 'all') {
+        return b.participants && b.participants.length > 0
+      } else {
+        return b.participants && b.participants.some(p => p.coach_id === selectedCoachId)
+      }
+    }).length,
+    unreported: allBookings.filter(b => {
+      if (selectedCoachId !== 'all') {
+        const type = getReportType(b, selectedCoachId)
+        if (!type) return false
+        const status = getReportStatus(b, selectedCoachId)
+        if (type === 'coach') return !status.hasCoachReport
+        if (type === 'driver') return !status.hasDriverReport
+        if (type === 'both') return !status.hasCoachReport || !status.hasDriverReport
+        return false
+      } else {
+        const allCoachesReported = b.coaches.every((coach: any) => {
+          const type = getReportType(b, coach.id)
+          if (!type) return true
+          const status = getReportStatus(b, coach.id)
+          if (type === 'coach') return status.hasCoachReport
+          if (type === 'driver') return status.hasDriverReport
+          if (type === 'both') return status.hasCoachReport && status.hasDriverReport
+          return true
+        })
+        return !allCoachesReported
+      }
+    }).length
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       <PageHeader 
@@ -571,71 +639,225 @@ export function CoachReport({ user }: CoachReportProps) {
         margin: '0 auto',
         width: '100%'
       }}>
+        {/* 標籤頁式視圖切換 */}
+        <div style={{
+          display: 'flex',
+          gap: '4px',
+          marginBottom: '0',
+          borderBottom: '2px solid #e0e0e0'
+        }}>
+          <button
+            onClick={() => setViewMode('date')}
+            style={{
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '14px 16px' : '14px 32px',
+              background: viewMode === 'date' ? 'white' : 'transparent',
+              color: viewMode === 'date' ? '#2196f3' : '#999',
+              border: 'none',
+              borderBottom: viewMode === 'date' ? '3px solid #2196f3' : '3px solid transparent',
+              cursor: 'pointer',
+              fontSize: isMobile ? '15px' : '16px',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              marginBottom: '-2px'
+            }}
+          >
+            📅 按日期
+          </button>
+          <button
+            onClick={() => setViewMode('unreported')}
+            style={{
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '14px 16px' : '14px 32px',
+              background: viewMode === 'unreported' ? 'white' : 'transparent',
+              color: viewMode === 'unreported' ? '#ff9800' : '#999',
+              border: 'none',
+              borderBottom: viewMode === 'unreported' ? '3px solid #ff9800' : '3px solid transparent',
+              cursor: 'pointer',
+              fontSize: isMobile ? '15px' : '16px',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              marginBottom: '-2px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            ⚠️ 未回報
+            {viewMode === 'unreported' && bookings.length > 0 && (
+              <span style={{
+                background: '#ff9800',
+                color: 'white',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '13px',
+                fontWeight: 'bold'
+              }}>
+                {bookings.length}
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* 篩選區 */}
         <div style={{
           ...getCardStyle(isMobile),
-          marginBottom: '24px'
+          marginBottom: '24px',
+          borderTopLeftRadius: 0,
+          borderTopRightRadius: 0
         }}>
-          {/* 查看模式切換 */}
-          <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setViewMode('date')}
-              style={{
-                padding: '8px 16px',
-                background: viewMode === 'date' ? '#2196f3' : '#fff',
-                color: viewMode === 'date' ? 'white' : '#666',
-                border: `1px solid ${viewMode === 'date' ? '#2196f3' : '#ddd'}`,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
-            >
-              📅 按日期查看
-            </button>
-            <button
-              onClick={() => setViewMode('unreported')}
-              style={{
-                padding: '8px 16px',
-                background: viewMode === 'unreported' ? '#ff9800' : '#fff',
-                color: viewMode === 'unreported' ? 'white' : '#666',
-                border: `1px solid ${viewMode === 'unreported' ? '#ff9800' : '#ddd'}`,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
-            >
-              ⚠️ 查看所有未回報（近30天）
-            </button>
-          </div>
-
           {/* 日期選擇 - 只在按日期模式顯示 */}
           {viewMode === 'date' && (
-            <div style={{ flex: 1 }}>
-              <label style={{ ...getLabelStyle(isMobile) }}>日期</label>
-              <input 
-                type="date" 
-                value={selectedDate} 
-                onChange={(e) => setSelectedDate(e.target.value)} 
-                style={getInputStyle(isMobile)} 
-              />
-            </div>
+            <>
+              {/* 統計摘要 */}
+              {stats.total > 0 && (
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  marginBottom: '20px',
+                  padding: '16px',
+                  background: '#f8f9fa',
+                  borderRadius: '8px',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ flex: 1, minWidth: isMobile ? '80px' : '100px' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>總預約</div>
+                    <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#333' }}>{stats.total}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: isMobile ? '80px' : '100px' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>已回報</div>
+                    <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#4caf50' }}>{stats.reported}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: isMobile ? '80px' : '100px' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>未回報</div>
+                    <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#ff9800' }}>{stats.unreported}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* 快捷日期按鈕 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>日期</label>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setDateOffset(-1)}
+                    style={{
+                      flex: isMobile ? 1 : 'none',
+                      padding: '10px 20px',
+                      background: 'white',
+                      color: '#666',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#2196f3'
+                      e.currentTarget.style.color = '#2196f3'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e0e0e0'
+                      e.currentTarget.style.color = '#666'
+                    }}
+                  >
+                    昨天
+                  </button>
+                  <button
+                    onClick={() => setDateOffset(0)}
+                    style={{
+                      flex: isMobile ? 1 : 'none',
+                      padding: '10px 20px',
+                      background: selectedDate === getLocalDateString() ? '#2196f3' : 'white',
+                      color: selectedDate === getLocalDateString() ? 'white' : '#666',
+                      border: `2px solid ${selectedDate === getLocalDateString() ? '#2196f3' : '#e0e0e0'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    今天
+                  </button>
+                  <button
+                    onClick={() => setDateOffset(1)}
+                    style={{
+                      flex: isMobile ? 1 : 'none',
+                      padding: '10px 20px',
+                      background: 'white',
+                      color: '#666',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#2196f3'
+                      e.currentTarget.style.color = '#2196f3'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e0e0e0'
+                      e.currentTarget.style.color = '#666'
+                    }}
+                  >
+                    明天
+                  </button>
+                </div>
+                <input 
+                  type="date" 
+                  value={selectedDate} 
+                  onChange={(e) => setSelectedDate(e.target.value)} 
+                  style={getInputStyle(isMobile)} 
+                />
+              </div>
+            </>
           )}
 
-          {/* 教練選擇 */}
+          {/* 教練選擇 - 按鈕組 */}
           <div style={{ marginTop: viewMode === 'date' ? '16px' : 0 }}>
-            <label style={{ ...getLabelStyle(isMobile) }}>教練</label>
-            <select
-              value={selectedCoachId}
-              onChange={(e) => setSelectedCoachId(e.target.value)}
-              style={getInputStyle(isMobile)}
-            >
-              <option value="all">全部教練</option>
+            <label style={{ ...getLabelStyle(isMobile), marginBottom: '12px' }}>教練</label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setSelectedCoachId('all')}
+                style={{
+                  padding: '10px 20px',
+                  background: selectedCoachId === 'all' ? '#2196f3' : 'white',
+                  color: selectedCoachId === 'all' ? 'white' : '#666',
+                  border: `2px solid ${selectedCoachId === 'all' ? '#2196f3' : '#e0e0e0'}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s'
+                }}
+              >
+                全部
+              </button>
               {coaches.map(coach => (
-                <option key={coach.id} value={coach.id}>{coach.name}</option>
+                <button
+                  key={coach.id}
+                  onClick={() => setSelectedCoachId(coach.id)}
+                  style={{
+                    padding: '10px 20px',
+                    background: selectedCoachId === coach.id ? '#2196f3' : 'white',
+                    color: selectedCoachId === coach.id ? 'white' : '#666',
+                    border: `2px solid ${selectedCoachId === coach.id ? '#2196f3' : '#e0e0e0'}`,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {coach.name}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
         </div>
 
@@ -677,7 +899,7 @@ export function CoachReport({ user }: CoachReportProps) {
                       {booking.start_at.substring(0, 10)} {booking.start_at.substring(11, 16)} | {booking.boats?.name} ({booking.duration_min}分)
                     </div>
                     <div style={{ color: '#666', fontSize: '14px' }}>
-                      預約人：{booking.contact_name || '未命名'}
+                      {booking.contact_name || '未命名'}
                     </div>
                     {booking.notes && (
                       <div style={{ color: '#999', fontSize: '13px', marginTop: '4px' }}>
@@ -688,10 +910,7 @@ export function CoachReport({ user }: CoachReportProps) {
 
                   {/* 教練列表 */}
                   {displayCoaches.length > 0 && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-                        教練：
-                      </div>
+                    <div style={{ marginBottom: displayDrivers.length > 0 ? '8px' : '0' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {displayCoaches.map(coach => {
                           const reportType = getReportType(booking, coach.id)
@@ -701,7 +920,7 @@ export function CoachReport({ user }: CoachReportProps) {
                             <div
                               key={coach.id}
                               style={{
-                                padding: '8px',
+                                padding: '8px 12px',
                                 background: '#f5f5f5',
                                 borderRadius: '6px',
                                 display: 'flex',
@@ -710,7 +929,10 @@ export function CoachReport({ user }: CoachReportProps) {
                                 gap: '8px'
                               }}
                             >
-                              <span style={{ fontWeight: '500' }}>{coach.name}</span>
+                              <span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '16px' }}>🎓</span>
+                                {coach.name}
+                              </span>
                               <button
                                 onClick={() => startReportWithCoach(booking, coach.id)}
                                 style={getButtonStyle('primary')}
@@ -729,9 +951,6 @@ export function CoachReport({ user }: CoachReportProps) {
                   {/* 駕駛列表 */}
                   {displayDrivers.length > 0 && (
                     <div>
-                      <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-                        駕駛：
-                      </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {displayDrivers.map(driver => {
                           const reportStatus = getReportStatus(booking, driver.id)
@@ -740,7 +959,7 @@ export function CoachReport({ user }: CoachReportProps) {
                             <div
                               key={driver.id}
                               style={{
-                                padding: '8px',
+                                padding: '8px 12px',
                                 background: '#f5f5f5',
                                 borderRadius: '6px',
                                 display: 'flex',
@@ -749,7 +968,10 @@ export function CoachReport({ user }: CoachReportProps) {
                                 gap: '8px'
                               }}
                             >
-                              <span style={{ fontWeight: '500' }}>{driver.name}</span>
+                              <span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '16px' }}>🚤</span>
+                                {driver.name}
+                              </span>
                               <button
                                 onClick={() => startReportWithCoach(booking, driver.id)}
                                 style={getButtonStyle('primary')}
