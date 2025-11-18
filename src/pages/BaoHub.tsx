@@ -49,6 +49,11 @@ export function BaoHub({ user }: BaoHubProps) {
       link: '/coach-report'
     },
     {
+      title: '預約管理後台',
+      icon: '👨‍🏫',
+      link: '/coach-admin'
+    },
+    {
       title: '人員管理',
       icon: '🎓',
       link: '/staff'

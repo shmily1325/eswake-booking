@@ -8,6 +8,7 @@ import { SearchPage } from './pages/SearchPage'
 import { SearchBookings } from './pages/SearchBookings'
 // import { CoachCheck } from './pages/CoachCheck'
 import { CoachReport } from './pages/CoachReport'
+import { CoachAdmin } from './pages/CoachAdmin'
 import { CoachAssignment } from './pages/CoachAssignment'
 import { CoachOverview } from './pages/CoachOverview'
 import { MemberImport } from './pages/MemberImport'
@@ -86,6 +87,7 @@ function App() {
         <Route path="/search-bookings" element={<SearchBookings user={user} />} />
         {/* <Route path="/coach-check" element={<CoachCheck user={user} />} /> */}
         <Route path="/coach-report" element={<CoachReport user={user} />} />
+        <Route path="/coach-admin" element={<CoachAdmin user={user} />} />
         <Route path="/coach-assignment" element={<CoachAssignment user={user} />} />
         <Route path="/coach-overview" element={<CoachOverview user={user} />} />
           <Route path="/member-import" element={<MemberImport user={user} />} />
