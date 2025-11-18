@@ -6,7 +6,6 @@ import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { useMemberSearch } from '../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
-import { getDisplayContactName } from '../utils/bookingFormat'
 import { isFacility } from '../utils/facility'
 import { getLocalDateString } from '../utils/date'
 
@@ -675,10 +674,10 @@ export function CoachReport({ user }: CoachReportProps) {
                   {/* 預約資訊 */}
                   <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #e0e0e0' }}>
                     <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '4px' }}>
-                      {booking.start_at.substring(11, 16)} | {booking.boats?.name} ({booking.duration_min}分)
+                      {booking.start_at.substring(0, 10)} {booking.start_at.substring(11, 16)} | {booking.boats?.name} ({booking.duration_min}分)
                     </div>
                     <div style={{ color: '#666', fontSize: '14px' }}>
-                      {getDisplayContactName(booking.contact_name)}
+                      預約人：{booking.contact_name || '未命名'}
                     </div>
                     {booking.notes && (
                       <div style={{ color: '#999', fontSize: '13px', marginTop: '4px' }}>

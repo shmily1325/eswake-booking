@@ -12,63 +12,86 @@ export function BaoHub({ user }: BaoHubProps) {
   const { isMobile } = useResponsive()
 
   const baoFeatures: Array<{
-    title: string
-    icon: string
-    link: string
-    comingSoon?: boolean
-    disabled?: boolean
+    section: string
+    items: Array<{
+      title: string
+      icon: string
+      link: string
+      comingSoon?: boolean
+      disabled?: boolean
+    }>
   }> = [
     {
-      title: '排班',
-      icon: '📅',
-      link: '/coach-assignment'
+      section: '🎓 教練',
+      items: [
+        {
+          title: '人員管理',
+          icon: '👥',
+          link: '/staff'
+        },
+        {
+          title: '排班',
+          icon: '📅',
+          link: '/coach-assignment'
+        },
+        {
+          title: '教練回報',
+          icon: '📝',
+          link: '/coach-report'
+        },
+        {
+          title: '回報管理',
+          icon: '⚙️',
+          link: '/coach-admin'
+        }
+      ]
     },
     {
-      title: '公告',
-      icon: '📢',
-      link: '/announcements'
+      section: '👥 會員相關',
+      items: [
+        {
+          title: '會員管理',
+          icon: '👥',
+          link: '/members'
+        },
+        {
+          title: '會員儲值',
+          icon: '💰',
+          link: '/member-transaction'
+        },
+        {
+          title: '置板管理',
+          icon: '🏄',
+          link: '/boards'
+        }
+      ]
     },
     {
-      title: '預約狀況',
-      icon: '📊',
-      link: '/coach-overview'
-    },
-    {
-      title: '會員管理',
-      icon: '👥',
-      link: '/members'
-    },
-    {
-      title: '會員儲值',
-      icon: '💰',
-      link: '/member-transaction'
-    },
-    {
-      title: '預約回報',
-      icon: '📝',
-      link: '/coach-report'
-    },
-    {
-      title: '預約管理後台',
-      icon: '👨‍🏫',
-      link: '/coach-admin'
-    },
-    {
-      title: '人員管理',
-      icon: '🎓',
-      link: '/staff'
-    },
-    {
-      title: '匯出',
-      icon: '💾',
-      link: '/backup'
-    },
-    {
-      title: 'LINE 提醒設置',
-      icon: '📱',
-      link: '/line-settings',
-      disabled: true
-    },
+      section: '🔧 系統工具',
+      items: [
+        {
+          title: '公告',
+          icon: '📢',
+          link: '/announcements'
+        },
+        {
+          title: '數據統計',
+          icon: '📊',
+          link: '/coach-overview'
+        },
+        {
+          title: '匯出',
+          icon: '💾',
+          link: '/backup'
+        },
+        {
+          title: 'LINE 提醒設置',
+          icon: '📱',
+          link: '/line-settings',
+          disabled: true
+        }
+      ]
+    }
   ]
 
   return (
@@ -149,144 +172,161 @@ export function BaoHub({ user }: BaoHubProps) {
           </div>
         </div>
 
-        {/* Feature Cards Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-          gap: '15px',
-          marginBottom: '40px'
-        }}>
-          {baoFeatures.map((feature) => (
-            feature.comingSoon ? (
-              <div
-                key={feature.title}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.5)',
-                  backdropFilter: 'blur(10px)',
-                  borderRadius: '16px',
-                  padding: isMobile ? '30px 15px' : '35px 20px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                  textAlign: 'center',
-                  position: 'relative',
-                  opacity: 0.6,
-                  cursor: 'not-allowed',
-                  border: '1px solid rgba(224, 224, 224, 0.5)'
-                }}
-              >
-                <div style={{
-                  position: 'absolute',
-                  top: '10px',
-                  right: '10px',
-                  background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
-                  color: 'white',
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '11px',
-                  fontWeight: 'bold'
-                }}>
-                  即將推出
-                </div>
-                <div style={{ 
-                  fontSize: isMobile ? '36px' : '42px',
-                  marginBottom: isMobile ? '8px' : '12px'
-                }}>
-                  {feature.icon}
-                </div>
-                <h2 style={{
-                  margin: 0,
-                  fontSize: isMobile ? '15px' : '17px',
-                  fontWeight: '600',
-                  color: '#000',
-                  letterSpacing: '0.5px'
-                }}>
-                  {feature.title}
-                </h2>
-              </div>
-            ) : feature.disabled ? (
-              <div
-                key={feature.title}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.5)',
-                  backdropFilter: 'blur(10px)',
-                  borderRadius: '16px',
-                  padding: isMobile ? '30px 15px' : '35px 20px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                  textAlign: 'center',
-                  opacity: 0.5,
-                  cursor: 'not-allowed',
-                  border: '1px solid rgba(224, 224, 224, 0.5)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: isMobile ? '8px' : '12px'
-                }}
-              >
-                <div style={{ 
-                  fontSize: isMobile ? '36px' : '42px',
-                  marginBottom: '5px'
-                }}>
-                  {feature.icon}
-                </div>
-                <h2 style={{
-                  margin: 0,
-                  fontSize: isMobile ? '15px' : '17px',
-                  fontWeight: '600',
-                  color: '#000',
-                  letterSpacing: '0.5px'
-                }}>
-                  {feature.title}
-                </h2>
-              </div>
-            ) : (
-              <Link
-                key={feature.title}
-                to={feature.link}
-                style={{
-                  textDecoration: 'none',
-                  background: 'rgba(255, 255, 255, 0.7)',
-                  backdropFilter: 'blur(10px)',
-                  borderRadius: '16px',
-                  padding: isMobile ? '30px 15px' : '35px 20px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                  transition: 'all 0.3s ease',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  textAlign: 'center',
-                  gap: isMobile ? '8px' : '12px',
-                  cursor: 'pointer',
-                  border: '1px solid rgba(224, 224, 224, 0.5)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-5px)'
-                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
-                  e.currentTarget.style.borderColor = '#000'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                  e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
-                }}
-              >
-                <div style={{
-                  fontSize: isMobile ? '36px' : '42px',
-                  marginBottom: '5px'
-                }}>
-                  {feature.icon}
-                </div>
-                <h2 style={{
-                  margin: 0,
-                  fontSize: isMobile ? '15px' : '17px',
-                  fontWeight: '600',
-                  color: '#000',
-                  letterSpacing: '0.5px'
-                }}>
-                  {feature.title}
-                </h2>
-              </Link>
-            )
-          ))}
-        </div>
+        {/* Feature Cards by Section */}
+        {baoFeatures.map((section, sectionIdx) => (
+          <div key={sectionIdx} style={{ marginBottom: '40px' }}>
+            {/* Section Title */}
+            <h3 style={{
+              margin: '0 0 20px 0',
+              fontSize: isMobile ? '18px' : '20px',
+              fontWeight: '700',
+              color: '#333',
+              paddingBottom: '12px',
+              borderBottom: '2px solid rgba(0, 0, 0, 0.1)',
+              letterSpacing: '0.5px'
+            }}>
+              {section.section}
+            </h3>
+
+            {/* Cards Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+              gap: '15px'
+            }}>
+              {section.items.map((feature) => (
+                feature.comingSoon ? (
+                  <div
+                    key={feature.title}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.5)',
+                      backdropFilter: 'blur(10px)',
+                      borderRadius: '16px',
+                      padding: isMobile ? '30px 15px' : '35px 20px',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                      textAlign: 'center',
+                      position: 'relative',
+                      opacity: 0.6,
+                      cursor: 'not-allowed',
+                      border: '1px solid rgba(224, 224, 224, 0.5)'
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: '10px',
+                      right: '10px',
+                      background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                      color: 'white',
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      fontWeight: 'bold'
+                    }}>
+                      即將推出
+                    </div>
+                    <div style={{ 
+                      fontSize: isMobile ? '36px' : '42px',
+                      marginBottom: isMobile ? '8px' : '12px'
+                    }}>
+                      {feature.icon}
+                    </div>
+                    <h2 style={{
+                      margin: 0,
+                      fontSize: isMobile ? '15px' : '17px',
+                      fontWeight: '600',
+                      color: '#000',
+                      letterSpacing: '0.5px'
+                    }}>
+                      {feature.title}
+                    </h2>
+                  </div>
+                ) : feature.disabled ? (
+                  <div
+                    key={feature.title}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.5)',
+                      backdropFilter: 'blur(10px)',
+                      borderRadius: '16px',
+                      padding: isMobile ? '30px 15px' : '35px 20px',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                      textAlign: 'center',
+                      opacity: 0.5,
+                      cursor: 'not-allowed',
+                      border: '1px solid rgba(224, 224, 224, 0.5)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: isMobile ? '8px' : '12px'
+                    }}
+                  >
+                    <div style={{ 
+                      fontSize: isMobile ? '36px' : '42px',
+                      marginBottom: '5px'
+                    }}>
+                      {feature.icon}
+                    </div>
+                    <h2 style={{
+                      margin: 0,
+                      fontSize: isMobile ? '15px' : '17px',
+                      fontWeight: '600',
+                      color: '#000',
+                      letterSpacing: '0.5px'
+                    }}>
+                      {feature.title}
+                    </h2>
+                  </div>
+                ) : (
+                  <Link
+                    key={feature.title}
+                    to={feature.link}
+                    style={{
+                      textDecoration: 'none',
+                      background: 'rgba(255, 255, 255, 0.7)',
+                      backdropFilter: 'blur(10px)',
+                      borderRadius: '16px',
+                      padding: isMobile ? '30px 15px' : '35px 20px',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                      transition: 'all 0.3s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      gap: isMobile ? '8px' : '12px',
+                      cursor: 'pointer',
+                      border: '1px solid rgba(224, 224, 224, 0.5)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-5px)'
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
+                      e.currentTarget.style.borderColor = '#000'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
+                      e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
+                    }}
+                  >
+                    <div style={{
+                      fontSize: isMobile ? '36px' : '42px',
+                      marginBottom: '5px'
+                    }}>
+                      {feature.icon}
+                    </div>
+                    <h2 style={{
+                      margin: 0,
+                      fontSize: isMobile ? '15px' : '17px',
+                      fontWeight: '600',
+                      color: '#000',
+                      letterSpacing: '0.5px'
+                    }}>
+                      {feature.title}
+                    </h2>
+                  </Link>
+                )
+              ))}
+            </div>
+          </div>
+        ))}
 
         {/* Footer */}
         <Footer />
