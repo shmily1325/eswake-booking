@@ -75,17 +75,81 @@
 
 **判斷規則：**
 1. **沒有教練，只有駕駛（純駕駛預約）** → `both`
+   - 回報內容：駕駛時數 + 參與者
    - 駕駛需要回報駕駛時數（`driver_duration_min`）
-   - 駕駛需要回報參與者（作為教練角色填寫參與者資訊）
-   - 因為沒有教練，駕駛要承擔記錄參與者的責任
+   - 駕駛需要回報參與者（因為沒有教練，駕駛要承擔記錄參與者的責任）
+   - **統計歸屬**（使用 `is_teaching` 欄位判斷）：
+     - ✅ 駕駛時數 → 計入該駕駛的**駕駛時數**
+     - 參與者時數 → 根據 `is_teaching` 欄位：
+       - **指定課**（`designated_paid` / `designated_free`）→ `is_teaching = true` ✅ 計入教學時數
+       - **非指定課** → `is_teaching = false` ❌ 不計入教學時數
+   
 2. **是教練也是駕駛（教練兼駕駛）** → `both`
+   - 回報內容：駕駛時數 + 參與者
    - 需要回報駕駛時數
    - 需要回報參與者
+   - **統計歸屬**：
+     - ✅ 駕駛時數 → 計入該人的**駕駛時數**
+     - ✅ 參與者時數 → `is_teaching = true` → 計入該人的**教練教學時數**
+   
 3. **只是教練** → `coach`
+   - 回報內容：參與者
    - 只需要回報參與者
+   - **統計歸屬**：
+     - ✅ 參與者時數 → `is_teaching = true` → 計入該教練的**教練教學時數**
+   
 4. **只是駕駛（有教練的預約）** → `driver`
+   - 回報內容：駕駛時數
    - 只需要回報駕駛時數
    - 參與者由教練回報
+   - **統計歸屬**：
+     - ✅ 駕駛時數 → 計入該駕駛的**駕駛時數**
+
+### 參與者記錄的雙欄位設計
+
+**欄位分離**（v2.0）：
+
+1. **`payment_method`**（收費方式）
+   - `cash` - 💵 現金
+   - `transfer` - 🏦 匯款
+   - `balance` - 💰 扣儲值
+   - `voucher` - 🎫 票券
+
+2. **`lesson_type`**（教學方式）
+   - `undesignated` - 不指定
+   - `designated_paid` - 指定（需收費）
+   - `designated_free` - 指定（不需收費）
+
+3. **`is_teaching`**（是否計入教學時數）
+   - 自動計算，不需手動設置
+
+**自動判斷規則**（在提交回報時設定）：
+```typescript
+// 簡化邏輯：只看是否選擇「指定課」，不管角色
+is_teaching = 
+  lesson_type === 'designated_paid' ||      // 指定（需收費）
+  lesson_type === 'designated_free'         // 指定（不需收費）
+```
+
+**設計優點**：
+- ✅ **邏輯清晰**：收費和教學分開
+- ✅ **UI 直觀**：兩組獨立按鈕（教學方式藍色 / 收費方式綠色）
+- ✅ **資料完整**：知道「指定課+現金付」的完整資訊
+- ✅ **易於統計**：只需檢查 `is_teaching` 欄位
+- ✅ **極度靈活**：同一預約中，每個參與者可以獨立選擇是否為指定課
+
+**靈活性範例**：
+同一條船（同一個預約），可以混合不同教學方式：
+```
+預約：10:00 G21 (教練：阿明)
+  參與者A（會員小明）→ 指定（需收費）+ 現金     → is_teaching = true  ✅
+  參與者B（會員小華）→ 不指定 + 扣儲值          → is_teaching = false ❌
+  參與者C（非會員路人）→ 不指定 + 現金          → is_teaching = false ❌
+
+統計結果：
+  - 阿明的教學時數：60分（只計算小明）
+  - 總參與時數：180分
+```
 
 ### 2. 角色判定
 
@@ -880,7 +944,121 @@ CoachReport
 7. 記錄移至「已結案記錄」Tab
 8. 時數統計保留，但不關聯任何會員
 
-### 範例 8: 查看教練細帳
+### 範例 8: 查詢教練的駕駛與教學時數
+
+**重要概念：駕駛 ≠ 教練**
+
+即使駕駛需要填寫參與者資訊，他們的參與者時數**不會**計入教練教學時數。
+
+#### 查詢邏輯（使用 `is_teaching` 欄位）：
+
+**教練教學時數**（從 `booking_participants` 表，使用 `is_teaching` 篩選）：
+```sql
+SELECT 
+  bp.coach_id,
+  c.name as 教練名稱,
+  SUM(bp.duration_min) as 教學時數
+FROM booking_participants bp
+LEFT JOIN coaches c ON c.id = bp.coach_id
+WHERE 
+  bp.is_deleted = false
+  AND bp.is_teaching = true  -- 關鍵：只計算標記為教學的記錄
+  AND bp.booking_id IN (...)  -- 篩選條件
+GROUP BY bp.coach_id, c.name
+ORDER BY 教學時數 DESC
+```
+
+**駕駛時數**（從 `coach_reports` 表）：
+```sql
+SELECT 
+  cr.coach_id,
+  c.name as 教練名稱,
+  SUM(cr.driver_duration_min) as 駕駛時數
+FROM coach_reports cr
+LEFT JOIN coaches c ON c.id = cr.coach_id
+WHERE cr.booking_id IN (...)  -- 篩選條件
+GROUP BY cr.coach_id, c.name
+ORDER BY 駕駛時數 DESC
+```
+
+**優點**：
+- ✅ 查詢邏輯超簡單，只需要一個 WHERE 條件
+- ✅ 自動處理指定課的特殊情況
+- ✅ 精確區分教學與非教學
+- ✅ 不需要複雜的 JOIN 判斷
+
+**關鍵差異**：
+
+**純駕駛（Jerry）- 不指定課範例**：
+- 預約：09:00 G21 (60分)
+- 角色：只有駕駛，**沒有教練**
+- 回報內容：
+  - 駕駛時數：60分
+  - 參與者：不指定非會員（60分）
+  - 教學方式：**不指定**
+  - 收費方式：現金
+- 資料庫記錄：
+  ```
+  booking_drivers: Jerry
+  booking_coaches: (空) ← 關鍵！
+  coach_reports: Jerry, driver_duration_min=60
+  booking_participants: 
+    coach_id: Jerry,
+    participant_name: "不指定非會員",
+    duration_min: 60,
+    lesson_type: 'undesignated',  ← 不指定
+    payment_method: 'cash',
+    is_teaching: false  ← 自動判斷（駕駛+不指定=不算教學）
+  ```
+- 統計結果：
+  - Jerry 的教練教學時數：**0 分** ❌（因為 `is_teaching = false`）
+  - Jerry 的駕駛時數：**60 分** ✅
+
+**純駕駛（Jerry）- 指定課範例**：
+- 預約：10:00 G21 (60分)
+- 角色：只有駕駛，**沒有教練**
+- 回報內容：
+  - 駕駛時數：60分
+  - 參與者：會員C（60分）
+  - 教學方式：**指定（需收費）**
+  - 收費方式：現金
+- 資料庫記錄：
+  ```
+  booking_drivers: Jerry
+  booking_coaches: (空)
+  coach_reports: Jerry, driver_duration_min=60
+  booking_participants: 
+    coach_id: Jerry,
+    member_id: C,
+    duration_min: 60,
+    lesson_type: 'designated_paid',  ← 指定課
+    payment_method: 'cash',
+    is_teaching: true  ← 自動判斷（駕駛+指定=算教學）
+  ```
+- 統計結果：
+  - Jerry 的教練教學時數：**60 分** ✅（因為 `is_teaching = true`）
+  - Jerry 的駕駛時數：**60 分** ✅
+
+**教練兼駕駛（小胖）範例**：
+- 預約：10:00 粉紅 (60分)
+- 角色：教練 + 駕駛
+- 回報內容：
+  - 駕駛時數：60分
+  - 參與者：Ingrid（60分，現金）
+- 資料庫記錄：
+  ```
+  booking_drivers: 小胖
+  booking_coaches: 小胖 ← 關鍵！
+  coach_reports: 小胖, driver_duration_min=60
+  booking_participants: 
+    小胖, participant_name="Ingrid", 
+    duration_min=60, is_teaching=true ← 自動判斷（因為在 booking_coaches）
+  ```
+- 統計結果：
+  - 小胖的教練教學時數：**60 分** ✅（因為 `is_teaching = true`）
+  - 小胖的駕駛時數：**60 分** ✅
+
+### 範例 9: 查看教練細帳
 
 1. 管理員進入「已結案記錄」Tab
 2. 選擇要查看的日期

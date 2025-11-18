@@ -46,6 +46,7 @@ interface Participant {
   participant_name: string
   duration_min: number
   payment_method: string
+  lesson_type: string  // 新增：教學方式
   notes?: string
   status?: string
   is_deleted?: boolean
@@ -58,10 +59,14 @@ interface CoachReportProps {
 }
 
 const PAYMENT_METHODS = [
-  { value: 'cash', label: '現金' },
-  { value: 'transfer', label: '匯款' },
-  { value: 'balance', label: '扣儲值' },
-  { value: 'voucher', label: '票券' },
+  { value: 'cash', label: '💵 現金' },
+  { value: 'transfer', label: '🏦 匯款' },
+  { value: 'balance', label: '💰 扣儲值' },
+  { value: 'voucher', label: '🎫 票券' }
+]
+
+const LESSON_TYPES = [
+  { value: 'undesignated', label: '不指定' },
   { value: 'designated_paid', label: '指定（需收費）' },
   { value: 'designated_free', label: '指定（不需收費）' }
 ]
@@ -200,6 +205,7 @@ export function CoachReport({ user }: CoachReportProps) {
               participant_name: displayName,
               duration_min: p.duration_min,
               payment_method: p.payment_method,
+              lesson_type: p.lesson_type || 'undesignated',  // 兼容旧数据
               notes: p.notes,
               status: p.status,
               is_deleted: p.is_deleted,
@@ -432,6 +438,7 @@ export function CoachReport({ user }: CoachReportProps) {
           participant_name: member.nickname || member.name,
           duration_min: defaultDuration,
           payment_method: 'cash',
+          lesson_type: 'undesignated',  // 默认不指定
           status: 'pending'
         })
       })
@@ -451,6 +458,7 @@ export function CoachReport({ user }: CoachReportProps) {
                 participant_name: contactName,
                 duration_min: defaultDuration,
                 payment_method: 'cash',
+                lesson_type: 'undesignated',  // 默认不指定
                 status: 'not_applicable'
               })
             }
@@ -464,6 +472,7 @@ export function CoachReport({ user }: CoachReportProps) {
           participant_name: '',
           duration_min: defaultDuration,
           payment_method: 'cash',
+          lesson_type: 'undesignated',  // 默认不指定
           status: 'pending'
         })
       }
@@ -580,18 +589,28 @@ export function CoachReport({ user }: CoachReportProps) {
       }
 
       // 步驟 4: 插入新的參與者記錄
-      const participantsToInsert = validParticipants.map(p => ({
-        booking_id: reportingBookingId,
-        coach_id: reportingCoachId,
-        member_id: p.member_id,
-        participant_name: p.participant_name,
-        duration_min: p.duration_min,
-        payment_method: p.payment_method,
-        notes: p.notes || null,
-        status: p.member_id ? 'pending' : 'not_applicable',
-        reported_at: new Date().toISOString(),
-        replaces_id: p.id || null
-      }))
+      const participantsToInsert = validParticipants.map(p => {
+        // 判斷是否計入教學時數
+        // 規則：只看是否選擇「指定課」，不管角色
+        const isTeaching = 
+          p.lesson_type === 'designated_paid' ||  // 指定（需收費）
+          p.lesson_type === 'designated_free'     // 指定（不需收費）
+        
+        return {
+          booking_id: reportingBookingId,
+          coach_id: reportingCoachId,
+          member_id: p.member_id,
+          participant_name: p.participant_name,
+          duration_min: p.duration_min,
+          payment_method: p.payment_method,
+          lesson_type: p.lesson_type,  // 新增教學方式
+          notes: p.notes || null,
+          status: p.member_id ? 'pending' : 'not_applicable',
+          reported_at: new Date().toISOString(),
+          replaces_id: p.id || null,
+          is_teaching: isTeaching
+        }
+      })
 
       console.log('準備插入的參與者記錄:', participantsToInsert)
 
@@ -620,6 +639,7 @@ export function CoachReport({ user }: CoachReportProps) {
         participant_name: '',
         duration_min: booking?.duration_min || 60,
         payment_method: 'cash',
+        lesson_type: 'undesignated',  // 默认不指定
         status: 'pending'
       }
     ])
@@ -1313,20 +1333,60 @@ export function CoachReport({ user }: CoachReportProps) {
                         />
                       </div>
 
-                      {/* 付款方式 */}
-                      <div>
-                        <label style={{ ...getLabelStyle(isMobile) }}>付款方式</label>
-                        <select
-                          value={participant.payment_method}
-                          onChange={(e) => updateParticipant(index, 'payment_method', e.target.value)}
-                          style={getInputStyle(isMobile)}
-                        >
-                          {PAYMENT_METHODS.map(method => (
-                            <option key={method.value} value={method.value}>
-                              {method.label}
-                            </option>
+                      {/* 教學方式 */}
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>教學方式</label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {LESSON_TYPES.map(type => (
+                            <button
+                              key={type.value}
+                              type="button"
+                              onClick={() => updateParticipant(index, 'lesson_type', type.value)}
+                              style={{
+                                flex: isMobile ? '1 1 calc(50% - 4px)' : 'none',
+                                padding: '10px 16px',
+                                background: participant.lesson_type === type.value ? '#2196f3' : 'white',
+                                color: participant.lesson_type === type.value ? 'white' : '#666',
+                                border: `2px solid ${participant.lesson_type === type.value ? '#2196f3' : '#e0e0e0'}`,
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              {type.label}
+                            </button>
                           ))}
-                        </select>
+                        </div>
+                      </div>
+
+                      {/* 收費方式 */}
+                      <div>
+                        <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>收費方式</label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {PAYMENT_METHODS.map(method => (
+                            <button
+                              key={method.value}
+                              type="button"
+                              onClick={() => updateParticipant(index, 'payment_method', method.value)}
+                              style={{
+                                flex: isMobile ? '1 1 calc(50% - 4px)' : 'none',
+                                padding: '10px 16px',
+                                background: participant.payment_method === method.value ? '#4caf50' : 'white',
+                                color: participant.payment_method === method.value ? 'white' : '#666',
+                                border: `2px solid ${participant.payment_method === method.value ? '#4caf50' : '#e0e0e0'}`,
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              {method.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ))}
