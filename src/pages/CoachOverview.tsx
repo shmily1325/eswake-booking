@@ -231,9 +231,9 @@ export function CoachOverview({ user }: CoachOverviewProps) {
 
   const getLessonTypeLabel = (type: string) => {
     const labels: { [key: string]: string } = {
-      'designated': '指定',
       'undesignated': '不指定',
-      'trial': '體驗'
+      'designated_paid': '指定（需收費）',
+      'designated_free': '指定（不需收費）'
     }
     return labels[type] || type
   }
@@ -242,8 +242,6 @@ export function CoachOverview({ user }: CoachOverviewProps) {
   const totalTeachingMinutes = coachStats.reduce((sum, s) => sum + s.teachingMinutes, 0)
   const totalDrivingMinutes = coachStats.reduce((sum, s) => sum + s.drivingMinutes, 0)
   const totalBookings = new Set(coachStats.flatMap(s => s.details.map(d => d.bookingId))).size
-
-  const maxMinutes = Math.max(...coachStats.map(s => s.totalMinutes), 1)
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -428,72 +426,103 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                   </div>
                 </div>
 
-                {/* 柱狀圖 */}
+                {/* 圖表區 - 並排顯示 */}
                 <div style={{
-                  ...getCardStyle(isMobile),
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                  gap: '16px',
                   marginBottom: '24px'
                 }}>
-                  <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#333' }}>
-                    📊 教練工作量對比
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {coachStats.map(stat => (
-                      <div key={stat.coachId}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
-                            {stat.coachName}
-                          </span>
-                          <span style={{ fontSize: '13px', color: '#666' }}>
-                            {stat.totalMinutes} 分 ({(stat.totalMinutes / 60).toFixed(1)} 小時)
-                          </span>
-                        </div>
-                        <div style={{
-                          width: '100%',
-                          height: '32px',
-                          background: '#f5f5f5',
-                          borderRadius: '8px',
-                          overflow: 'hidden',
-                          display: 'flex'
-                        }}>
-                          {/* 教學時數 */}
-                          <div
-                            style={{
-                              width: `${(stat.teachingMinutes / maxMinutes) * 100}%`,
-                              background: 'linear-gradient(90deg, #2196f3, #1976d2)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: 'white',
-                              fontSize: '12px',
-                              fontWeight: '600'
-                            }}
-                            title={`教學: ${stat.teachingMinutes}分`}
-                          >
-                            {stat.teachingMinutes > 0 && `${stat.teachingMinutes}分`}
+                  {/* 教學時數圖表 */}
+                  <div style={getCardStyle(isMobile)}>
+                    <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#2196f3' }}>
+                      🎓 教學時數對比
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {coachStats.map(stat => (
+                        <div key={`teaching-${stat.coachId}`}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                              {stat.coachName}
+                            </span>
+                            <span style={{ fontSize: '12px', color: '#666' }}>
+                              {stat.teachingMinutes}分 ({stat.teachingCount}筆)
+                            </span>
                           </div>
-                          {/* 駕駛時數 */}
-                          <div
-                            style={{
-                              width: `${(stat.drivingMinutes / maxMinutes) * 100}%`,
-                              background: 'linear-gradient(90deg, #4caf50, #388e3c)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: 'white',
-                              fontSize: '12px',
-                              fontWeight: '600'
-                            }}
-                            title={`駕駛: ${stat.drivingMinutes}分`}
-                          >
-                            {stat.drivingMinutes > 0 && `${stat.drivingMinutes}分`}
+                          <div style={{
+                            width: '100%',
+                            height: '24px',
+                            background: '#e3f2fd',
+                            borderRadius: '6px',
+                            overflow: 'hidden'
+                          }}>
+                            <div
+                              style={{
+                                width: `${(stat.teachingMinutes / Math.max(...coachStats.map(s => s.teachingMinutes), 1)) * 100}%`,
+                                height: '100%',
+                                background: 'linear-gradient(90deg, #2196f3, #1976d2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                paddingRight: '8px',
+                                color: 'white',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                transition: 'width 0.3s'
+                              }}
+                            >
+                              {stat.teachingMinutes > 0 && `${stat.teachingMinutes}分`}
+                            </div>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '16px', marginTop: '4px', fontSize: '12px', color: '#666' }}>
-                          <span>🎓 教學: {stat.teachingMinutes}分 ({stat.teachingCount}筆)</span>
-                          <span>🚤 駕駛: {stat.drivingMinutes}分 ({stat.drivingCount}筆)</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 駕駛時數圖表 */}
+                  <div style={getCardStyle(isMobile)}>
+                    <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#4caf50' }}>
+                      🚤 駕駛時數對比
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {coachStats.map(stat => (
+                        <div key={`driving-${stat.coachId}`}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                              {stat.coachName}
+                            </span>
+                            <span style={{ fontSize: '12px', color: '#666' }}>
+                              {stat.drivingMinutes}分 ({stat.drivingCount}筆)
+                            </span>
+                          </div>
+                          <div style={{
+                            width: '100%',
+                            height: '24px',
+                            background: '#e8f5e9',
+                            borderRadius: '6px',
+                            overflow: 'hidden'
+                          }}>
+                            <div
+                              style={{
+                                width: `${(stat.drivingMinutes / Math.max(...coachStats.map(s => s.drivingMinutes), 1)) * 100}%`,
+                                height: '100%',
+                                background: 'linear-gradient(90deg, #4caf50, #388e3c)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                paddingRight: '8px',
+                                color: 'white',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                transition: 'width 0.3s'
+                              }}
+                            >
+                              {stat.drivingMinutes > 0 && `${stat.drivingMinutes}分`}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -527,93 +556,68 @@ export function CoachOverview({ user }: CoachOverviewProps) {
 
                       {/* 細帳 */}
                       {expandedCoachId === stat.coachId && (
-                        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
-                          {stat.details.map((detail, idx) => (
-                            <div
-                              key={`${detail.bookingId}-${idx}`}
-                              style={{
-                                padding: '12px',
-                                background: '#f8f9fa',
-                                borderRadius: '8px',
-                                marginBottom: '12px'
-                              }}
-                            >
-                              {/* 預約資訊 */}
-                              <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                marginBottom: '8px',
-                                paddingBottom: '8px',
-                                borderBottom: '1px solid #e0e0e0'
-                              }}>
-                                <div>
-                                  <span style={{ fontWeight: '600', color: '#333' }}>
-                                    {detail.date} {detail.time}
-                                  </span>
-                                  <span style={{ marginLeft: '8px', color: '#666' }}>
-                                    | {detail.boatName} ({detail.duration}分)
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* 駕駛時數 */}
-                              {detail.driverDuration && (
-                                <div style={{
-                                  padding: '8px',
-                                  background: '#e8f5e9',
-                                  borderRadius: '6px',
-                                  marginBottom: '8px',
-                                  fontSize: '13px',
-                                  color: '#2e7d32'
-                                }}>
-                                  🚤 駕駛時數：{detail.driverDuration} 分
-                                </div>
-                              )}
-
-                              {/* 參與者列表 */}
-                              {detail.participants.length > 0 && (
-                                <div>
-                                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#666', marginBottom: '6px' }}>
-                                    👥 學員：
-                                  </div>
-                                  {detail.participants.map((p, pIdx) => (
-                                    <div
-                                      key={pIdx}
-                                      style={{
-                                        padding: '6px 10px',
-                                        background: 'white',
-                                        borderRadius: '6px',
-                                        marginBottom: '4px',
-                                        fontSize: '13px',
-                                        display: 'flex',
-                                        justifyContent: 'space-between'
-                                      }}
-                                    >
-                                      <span>
-                                        {p.memberName ? (
-                                          <>
-                                            <span style={{ color: '#2196f3', fontWeight: '600' }}>
-                                              {p.memberName}
-                                            </span>
-                                            {p.name !== p.memberName && (
-                                              <span style={{ color: '#999', marginLeft: '4px' }}>
-                                                ({p.name})
-                                              </span>
+                        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0', overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                            <thead>
+                              <tr style={{ background: '#f5f5f5' }}>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#666' }}>日期時間</th>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#666' }}>船隻</th>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#666' }}>學員</th>
+                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#666' }}>教學</th>
+                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#666' }}>駕駛</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stat.details.map((detail, idx) => (
+                                <tr key={`${detail.bookingId}-${idx}`} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                  <td style={{ padding: '10px', whiteSpace: 'nowrap' }}>
+                                    <div style={{ fontWeight: '600', color: '#333' }}>{detail.date}</div>
+                                    <div style={{ color: '#999', fontSize: '12px' }}>{detail.time}</div>
+                                  </td>
+                                  <td style={{ padding: '10px' }}>
+                                    <div style={{ color: '#666' }}>{detail.boatName}</div>
+                                    <div style={{ color: '#999', fontSize: '12px' }}>({detail.duration}分)</div>
+                                  </td>
+                                  <td style={{ padding: '10px' }}>
+                                    {detail.participants.length > 0 ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        {detail.participants.map((p, pIdx) => (
+                                          <div key={pIdx}>
+                                            {p.memberName ? (
+                                              <span style={{ color: '#2196f3', fontWeight: '600' }}>{p.memberName}</span>
+                                            ) : (
+                                              <span style={{ color: '#333' }}>{p.name}</span>
                                             )}
-                                          </>
-                                        ) : (
-                                          <span style={{ color: '#333' }}>{p.name}</span>
-                                        )}
+                                            <span style={{ color: '#999', fontSize: '12px', marginLeft: '4px' }}>
+                                              {p.lessonType} {p.duration}分
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: '#999' }}>-</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '10px', textAlign: 'center' }}>
+                                    {detail.participants.length > 0 ? (
+                                      <span style={{ color: '#2196f3', fontWeight: '600' }}>
+                                        {detail.participants.reduce((sum, p) => sum + p.duration, 0)}分
                                       </span>
-                                      <span style={{ color: '#666' }}>
-                                        {p.lessonType} · {p.duration}分
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                    ) : (
+                                      <span style={{ color: '#999' }}>-</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '10px', textAlign: 'center' }}>
+                                    {detail.driverDuration ? (
+                                      <span style={{ color: '#4caf50', fontWeight: '600' }}>{detail.driverDuration}分</span>
+                                    ) : (
+                                      <span style={{ color: '#999' }}>-</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
                       )}
                     </div>

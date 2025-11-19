@@ -1251,7 +1251,7 @@ export function LiffMyBookings() {
         color: '#999',
         fontSize: '12px'
       }}>
-        ES Wake 預約系統 © 2024
+        ES Wake 預約系統 © {new Date().getFullYear()}
       </div>
 
       <style>

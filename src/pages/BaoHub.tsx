@@ -22,13 +22,18 @@ export function BaoHub({ user }: BaoHubProps) {
     }>
   }> = [
     {
-      section: '📋 預約相關',
+      section: '📅 排班',
       items: [
         {
           title: '排班',
           icon: '📅',
           link: '/coach-assignment'
-        },
+        }
+      ]
+    },
+    {
+      section: '📋 預約相關',
+      items: [
         {
           title: '教練回報',
           icon: '📝',
@@ -38,6 +43,11 @@ export function BaoHub({ user }: BaoHubProps) {
           title: '回報管理',
           icon: '⚙️',
           link: '/coach-admin'
+        },
+        {
+          title: '數據統計',
+          icon: '📊',
+          link: '/coach-overview'
         }
       ]
     },
@@ -73,11 +83,6 @@ export function BaoHub({ user }: BaoHubProps) {
           title: '人員管理',
           icon: '🎓',
           link: '/staff'
-        },
-        {
-          title: '數據統計',
-          icon: '📊',
-          link: '/coach-overview'
         },
         {
           title: '匯出',
