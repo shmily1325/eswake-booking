@@ -9,28 +9,16 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useMemberSearch } from '../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { getLocalDateString, getLocalTimestamp } from '../utils/date'
+import { extractDate, extractTime } from '../utils/formatters'
+import type { Member } from '../types/booking'
 
 // ============ Types ============
-
 
 interface MemberSearchResult {
   id: string
   name: string
   nickname: string | null
   phone: string | null
-}
-
-interface FullMember {
-  id: string
-  name: string
-  nickname: string | null
-  phone: string | null
-  balance: number
-  vip_voucher_amount: number
-  designated_lesson_minutes: number
-  boat_voucher_g23_minutes: number
-  boat_voucher_g21_panther_minutes: number
-  gift_boat_hours: number
 }
 
 interface PendingReport {
@@ -82,7 +70,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
   
   // 處理扣款
   const [processingReport, setProcessingReport] = useState<PendingReport | null>(null)
-  const [processingMember, setProcessingMember] = useState<FullMember | null>(null)
+  const [processingMember, setProcessingMember] = useState<Member | null>(null)
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
   
   // 關聯會員
@@ -726,7 +714,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                             borderBottom: '1px solid #e0e0e0' 
                           }}>
                             <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '4px' }}>
-                              {booking.start_at.substring(0, 10)} {booking.start_at.substring(11, 16)} | {booking.boats?.name} ({booking.duration_min}分)
+                              {extractDate(booking.start_at)} {extractTime(booking.start_at)} | {booking.boats?.name} ({booking.duration_min}分)
                             </div>
                             <div style={{ color: '#666', fontSize: '14px' }}>
                               預約人：{booking.contact_name}
@@ -821,7 +809,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                             borderBottom: '1px solid #e0e0e0' 
                           }}>
                             <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '4px' }}>
-                              {booking.start_at.substring(0, 10)} {booking.start_at.substring(11, 16)} | {booking.boats?.name} ({booking.duration_min}分)
+                              {extractDate(booking.start_at)} {extractTime(booking.start_at)} | {booking.boats?.name} ({booking.duration_min}分)
                             </div>
                             <div style={{ color: '#666', fontSize: '14px' }}>
                               預約人：{booking.contact_name}
@@ -1100,7 +1088,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                         }}>
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '18px', marginBottom: '4px' }}>
-                              {stat.booking.start_at.substring(0, 10)} {stat.booking.start_at.substring(11, 16)} | {stat.booking.boats?.name}
+                              {extractDate(stat.booking.start_at)} {extractTime(stat.booking.start_at)} | {stat.booking.boats?.name}
                             </div>
                             <div style={{ color: '#666', fontSize: '14px' }}>
                               {stat.booking.contact_name}
@@ -1276,7 +1264,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                   }}
                                 >
                                   <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                    {record.bookings.start_at.substring(11, 16)} | {record.bookings.boats?.name}
+                                    {extractTime(record.bookings.start_at)} | {record.bookings.boats?.name}
                                   </div>
                                   <div style={{ color: '#666' }}>
                                     學員：{record.members?.nickname || record.members?.name || record.participant_name}
@@ -1315,7 +1303,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                   }}
                                 >
                                   <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                    {record.bookings.start_at.substring(11, 16)} | {record.bookings.boats?.name}
+                                    {extractTime(record.bookings.start_at)} | {record.bookings.boats?.name}
                                   </div>
                                   <div style={{ color: '#666' }}>
                                     駕駛時數：{record.driver_duration_min}分

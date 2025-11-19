@@ -1,76 +1,46 @@
 /**
- * 預約系統常數定義
- * 
- * 集中管理所有業務邏輯相關的常數
- * 修改這裡的值會影響整個系統的行為
+ * 預約相關的常數定義
  */
 
-// ==================== 時間相關 ====================
+import type { PaymentMethod, LessonType } from '../types/booking'
 
-/**
- * 接船清理時間（分鐘）
- * 大部分船隻在預約結束後需要的清理時間
- */
-export const CLEANUP_TIME_MINUTES = 15
+export const PAYMENT_METHODS: Array<{ value: PaymentMethod; label: string }> = [
+  { value: 'cash', label: '現金' },
+  { value: 'transfer', label: '匯款' },
+  { value: 'balance', label: '扣儲值' },
+  { value: 'voucher', label: '票券' }
+]
 
-/**
- * 時間格子間隔（分鐘）
- * 預約時間軸的最小時間單位
- */
-export const TIME_SLOT_MINUTES = 15
+export const LESSON_TYPES: Array<{ value: LessonType; label: string }> = [
+  { value: 'undesignated', label: '不指定' },
+  { value: 'designated_paid', label: '指定（需收費）' },
+  { value: 'designated_free', label: '指定（不需收費）' }
+]
 
-/**
- * 早上預約教練限制時間（小時）
- * 此時間之前的預約必須指定教練
- */
-export const EARLY_BOOKING_HOUR_LIMIT = 8
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: '現金',
+  transfer: '匯款',
+  balance: '扣儲值',
+  voucher: '票券'
+}
 
-// ==================== 船隻相關 ====================
+export const LESSON_TYPE_LABELS: Record<LessonType, string> = {
+  undesignated: '不指定',
+  designated_paid: '指定（需收費）',
+  designated_free: '指定（不需收費）'
+}
 
-/**
- * 彈簧床船名
- * 特殊規則：不需要清理時間
- */
-export const TRAMPOLINE_BOAT_NAME = '彈簧床'
+// 預約狀態
+export const BOOKING_STATUS = {
+  PENDING: 'pending',
+  CONFIRMED: 'confirmed',
+  CANCELLED: 'cancelled',
+  COMPLETED: 'completed'
+} as const
 
-// ==================== 時間範圍 ====================
-
-/**
- * 最早可預約時段
- */
-export const EARLIEST_TIME_SLOT = '04:30'
-
-/**
- * 營業時間開始（小時）
- */
-export const BUSINESS_HOURS_START = 5
-
-/**
- * 營業時間結束（小時）
- */
-export const BUSINESS_HOURS_END = 20
-
-// ==================== 會員搜尋 ====================
-
-/**
- * 會員搜尋最大顯示結果數
- */
-export const MAX_MEMBER_SEARCH_RESULTS = 10
-
-/**
- * 會員搜尋防抖延遲（毫秒）
- */
-export const MEMBER_SEARCH_DEBOUNCE_MS = 300
-
-// ==================== 重複預約 ====================
-
-/**
- * 預設重複次數
- */
-export const DEFAULT_REPEAT_COUNT = 8
-
-/**
- * 最大重複次數（約1年）
- */
-export const MAX_REPEAT_COUNT = 52
-
+// 參與者狀態
+export const PARTICIPANT_STATUS = {
+  PENDING: 'pending',
+  PROCESSED: 'processed',
+  NOT_APPLICABLE: 'not_applicable'
+} as const

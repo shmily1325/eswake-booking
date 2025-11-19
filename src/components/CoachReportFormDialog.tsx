@@ -1,36 +1,12 @@
 /**
- * 教练回报表单对话框组件
- * 包含驾驶回报和参与者回报
+ * 教練回報表單對話框組件
+ * 包含駕駛回報和參與者回報
  */
 
 import { ParticipantFormItem } from './ParticipantFormItem'
 import { getButtonStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
-
-interface Member {
-  id: string
-  name: string
-  nickname: string | null
-  phone: string | null
-}
-
-interface Participant {
-  id?: number
-  member_id: string | null
-  participant_name: string
-  duration_min: number
-  payment_method: string
-  lesson_type: string
-  notes?: string
-}
-
-interface Booking {
-  id: number
-  start_at: string
-  duration_min: number
-  contact_name: string
-  notes: string | null
-  boats: { name: string; color: string } | null
-}
+import { extractDate, extractTime } from '../utils/formatters'
+import type { Member, Participant, Booking } from '../types/booking'
 
 interface CoachReportFormDialogProps {
   booking: Booking | undefined
@@ -122,8 +98,7 @@ export function CoachReportFormDialog({
             📝 回報 - {coachName}
           </h2>
           <div style={{ marginTop: '8px', color: '#666', fontSize: '14px' }}>
-            {booking.start_at.substring(0, 10)}{' '}
-            {booking.start_at.substring(11, 16)} |{' '}
+            {extractDate(booking.start_at)} {extractTime(booking.start_at)} |{' '}
             {booking.boats?.name} ({booking.duration_min}分)
           </div>
           {booking.notes && (

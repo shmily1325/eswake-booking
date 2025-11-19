@@ -9,6 +9,7 @@ import { useMemberSearch } from '../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { isFacility } from '../utils/facility'
 import { getLocalDateString, getLocalTimestamp } from '../utils/date'
+import { extractDate, extractTime } from '../utils/formatters'
 import {
   validateParticipants,
   calculateIsTeaching,
@@ -21,50 +22,17 @@ import {
   filterUnreportedBookings,
   fetchBookingRelations
 } from '../utils/bookingDataHelpers'
-
-interface Coach {
-  id: string
-  name: string
-}
+import type {
+  Coach,
+  Booking,
+  Participant
+} from '../types/booking'
 
 interface MemberSearchResult {
   id: string
   name: string
   nickname: string | null
   phone: string | null
-}
-
-interface Booking {
-  id: number
-  start_at: string
-  duration_min: number
-  contact_name: string
-  notes: string | null
-  boat_id: number
-  requires_driver: boolean
-  boats: { name: string; color: string } | null
-  coaches: Coach[]
-  drivers: Coach[]
-  coach_report?: {
-    driver_duration_min: number
-    reported_at: string
-  }
-  participants?: Participant[]
-}
-
-interface Participant {
-  id?: number
-  coach_id?: string | null
-  member_id: string | null
-  participant_name: string
-  duration_min: number
-  payment_method: string
-  lesson_type: string  // 新增：教學方式
-  notes?: string
-  status?: string
-  is_deleted?: boolean
-  transaction_id?: number | null
-  replaces_id?: number | null
 }
 
 interface CoachReportProps {
@@ -184,9 +152,9 @@ export function CoachReport({ user }: CoachReportProps) {
         return
       }
 
-      // 使用辅助函数查询和组装关联数据
+      // 使用輔助函數查詢和組裝關聯數據
       const relations = await fetchBookingRelations(bookingIds)
-      const bookingsWithRelations = assembleBookingsWithRelations(validBookings, relations)
+      const bookingsWithRelations = assembleBookingsWithRelations(validBookings as any, relations)
 
       let filteredBookings = bookingsWithRelations
       
@@ -202,7 +170,7 @@ export function CoachReport({ user }: CoachReportProps) {
         }
         setAllBookings(statsBookings)
         
-        // 使用辅助函数提取当天有预约的教练
+        // 使用輔助函數提取當天有預約的教練
         const availableCoachList = extractAvailableCoaches(bookingsWithRelations)
         setAvailableCoaches(availableCoachList)
         
@@ -215,7 +183,7 @@ export function CoachReport({ user }: CoachReportProps) {
         setAvailableCoaches(coaches) // 未回報模式顯示所有教練
       }
 
-      // 使用辅助函数筛选预约
+      // 使用輔助函數篩選預約
       filteredBookings = filterBookingsByCoach(filteredBookings, selectedCoachId)
 
       if (viewMode === 'unreported') {
@@ -236,10 +204,10 @@ export function CoachReport({ user }: CoachReportProps) {
   }
 
   const getReportType = (booking: Booking, coachId: string): 'coach' | 'driver' | 'both' | null => {
-    const isCoach = booking.coaches.some(c => c.id === coachId)
-    const isExplicitDriver = booking.drivers.some(d => d.id === coachId)
-    const hasNoDriver = booking.drivers.length === 0
-    const hasNoCoach = booking.coaches.length === 0
+    const isCoach = (booking.coaches || []).some(c => c.id === coachId)
+    const isExplicitDriver = (booking.drivers || []).some(d => d.id === coachId)
+    const hasNoDriver = (booking.drivers || []).length === 0
+    const hasNoCoach = (booking.coaches || []).length === 0
     
     const boatName = booking.boats?.name || ''
     const isFacilityBooking = isFacility(boatName)
@@ -270,7 +238,7 @@ export function CoachReport({ user }: CoachReportProps) {
     if (!type) return { hasCoachReport: false, hasDriverReport: false }
     
     const hasCoachReport = !!(booking.participants && booking.participants.length > 0 && 
-      booking.coaches.some(c => c.id === coachId))
+      (booking.coaches || []).some(c => c.id === coachId))
     const hasDriverReport = !!booking.coach_report
     
     return { hasCoachReport, hasDriverReport }
@@ -280,7 +248,7 @@ export function CoachReport({ user }: CoachReportProps) {
     const type = getReportType(booking, coachId)
     if (!type) return
     
-    const coach = booking.coaches.find(c => c.id === coachId) || booking.drivers.find(d => d.id === coachId)
+    const coach = (booking.coaches || []).find(c => c.id === coachId) || (booking.drivers || []).find(d => d.id === coachId)
     const coachName = coach?.name || ''
     
     setReportingBookingId(booking.id)
@@ -642,13 +610,13 @@ export function CoachReport({ user }: CoachReportProps) {
     reported: allBookings.filter(b => {
       if (selectedCoachId === 'all') {
         // 檢查所有教練和駕駛是否都已回報
-        const hasCoaches = b.coaches.length > 0
-        const hasDrivers = b.drivers.length > 0
+        const hasCoaches = (b.coaches || []).length > 0
+        const hasDrivers = (b.drivers || []).length > 0
         
         if (!hasCoaches && !hasDrivers) return false // 沒有教練也沒有駕駛
         
         // 檢查所有教練是否都已回報
-        const allCoachesReported = b.coaches.length === 0 || b.coaches.every((coach: any) => {
+        const allCoachesReported = (b.coaches || []).length === 0 || (b.coaches || []).every((coach: any) => {
           const type = getReportType(b, coach.id)
           if (!type) return true
           const status = getReportStatus(b, coach.id)
@@ -659,7 +627,7 @@ export function CoachReport({ user }: CoachReportProps) {
         })
         
         // 檢查所有駕駛是否都已回報
-        const allDriversReported = b.drivers.length === 0 || b.drivers.every((driver: any) => {
+        const allDriversReported = (b.drivers || []).length === 0 || (b.drivers || []).every((driver: any) => {
           const status = getReportStatus(b, driver.id)
           return status.hasDriverReport
         })
@@ -680,13 +648,13 @@ export function CoachReport({ user }: CoachReportProps) {
         return false
       } else {
         // 檢查是否有任何教練或駕駛未回報
-        const hasCoaches = b.coaches.length > 0
-        const hasDrivers = b.drivers.length > 0
+        const hasCoaches = (b.coaches || []).length > 0
+        const hasDrivers = (b.drivers || []).length > 0
         
         if (!hasCoaches && !hasDrivers) return false // 沒有教練也沒有駕駛，不算未回報
         
         // 檢查教練是否都已回報
-        const allCoachesReported = b.coaches.length === 0 || b.coaches.every((coach: any) => {
+        const allCoachesReported = (b.coaches || []).length === 0 || (b.coaches || []).every((coach: any) => {
           const type = getReportType(b, coach.id)
           if (!type) return true
           const status = getReportStatus(b, coach.id)
@@ -697,7 +665,7 @@ export function CoachReport({ user }: CoachReportProps) {
         })
         
         // 檢查駕駛是否都已回報
-        const allDriversReported = b.drivers.length === 0 || b.drivers.every((driver: any) => {
+        const allDriversReported = (b.drivers || []).length === 0 || (b.drivers || []).every((driver: any) => {
           const status = getReportStatus(b, driver.id)
           return status.hasDriverReport
         })
@@ -987,12 +955,12 @@ export function CoachReport({ user }: CoachReportProps) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {bookings.map(booking => {
               const displayCoaches = selectedCoachId === 'all' 
-                ? booking.coaches 
-                : booking.coaches.filter(c => c.id === selectedCoachId)
+                ? (booking.coaches || [])
+                : (booking.coaches || []).filter(c => c.id === selectedCoachId)
               
               const displayDrivers = selectedCoachId === 'all'
-                ? booking.drivers
-                : booking.drivers.filter(d => d.id === selectedCoachId)
+                ? (booking.drivers || [])
+                : (booking.drivers || []).filter(d => d.id === selectedCoachId)
 
               const shouldShow = displayCoaches.length > 0 || displayDrivers.length > 0
 
@@ -1009,7 +977,7 @@ export function CoachReport({ user }: CoachReportProps) {
                   {/* 預約資訊 */}
                   <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #e0e0e0' }}>
                     <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '4px' }}>
-                      {booking.start_at.substring(0, 10)} {booking.start_at.substring(11, 16)} | {booking.boats?.name} ({booking.duration_min}分)
+                      {extractDate(booking.start_at)} {extractTime(booking.start_at)} | {booking.boats?.name} ({booking.duration_min}分)
                     </div>
                     <div style={{ color: '#666', fontSize: '14px' }}>
                       {booking.contact_name || '未命名'}
@@ -1022,8 +990,8 @@ export function CoachReport({ user }: CoachReportProps) {
                   </div>
 
                   {/* 教練列表 */}
-                  {displayCoaches.length > 0 && (
-                    <div style={{ marginBottom: displayDrivers.length > 0 ? '12px' : '0' }}>
+                  {displayCoaches && displayCoaches.length > 0 && (
+                    <div style={{ marginBottom: (displayDrivers && displayDrivers.length > 0) ? '12px' : '0' }}>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                         <span style={{ fontSize: '20px', marginTop: '6px' }}>🎓</span>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1064,7 +1032,7 @@ export function CoachReport({ user }: CoachReportProps) {
                   )}
 
                   {/* 駕駛列表 */}
-                  {displayDrivers.length > 0 && (
+                  {displayDrivers && displayDrivers.length > 0 && (
                     <div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                         <span style={{ fontSize: '20px', marginTop: '6px' }}>🚤</span>
@@ -1117,7 +1085,7 @@ export function CoachReport({ user }: CoachReportProps) {
         participants={participants}
         isMobile={isMobile}
         memberSearchTerm={memberSearchTerm}
-        filteredMembers={filteredMembers}
+        filteredMembers={filteredMembers as any}
         lessonTypes={LESSON_TYPES}
         paymentMethods={PAYMENT_METHODS}
         onDriverDurationChange={setDriverDuration}

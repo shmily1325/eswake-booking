@@ -6,6 +6,7 @@ import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { useRequireAdmin } from '../utils/auth'
 import { getCardStyle } from '../styles/designSystem'
+import { extractDate, extractTime } from '../utils/formatters'
 
 interface CoachOverviewProps {
   user: User
@@ -135,8 +136,8 @@ export function CoachOverview({ user }: CoachOverviewProps) {
         if (!detail) {
           detail = {
               bookingId,
-            date: record.bookings.start_at.substring(0, 10),
-            time: record.bookings.start_at.substring(11, 16),
+            date: extractDate(record.bookings.start_at),
+            time: extractTime(record.bookings.start_at),
             boatName: record.bookings.boats?.name || '未知',
             duration: record.bookings.duration_min || 0,
             participants: []
@@ -181,8 +182,8 @@ export function CoachOverview({ user }: CoachOverviewProps) {
         if (!detail) {
           detail = {
             bookingId,
-            date: record.bookings.start_at.substring(0, 10),
-            time: record.bookings.start_at.substring(11, 16),
+            date: extractDate(record.bookings.start_at),
+            time: extractTime(record.bookings.start_at),
             boatName: record.bookings.boats?.name || '未知',
             duration: record.bookings.duration_min || 0,
             participants: []

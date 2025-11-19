@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { extractDate, extractTime } from '../utils/formatters'
 
 interface CoachStats {
   coachId: string
@@ -125,8 +126,8 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
         if (!detail) {
           detail = {
             bookingId,
-            date: record.bookings.start_at.substring(0, 10),
-            time: record.bookings.start_at.substring(11, 16),
+            date: extractDate(record.bookings.start_at),
+            time: extractTime(record.bookings.start_at),
             boatName: record.bookings.boats?.name || '未知',
             duration: record.bookings.duration_min || 0,
             participants: []
@@ -170,8 +171,8 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
         if (!detail) {
           detail = {
             bookingId,
-            date: record.bookings.start_at.substring(0, 10),
-            time: record.bookings.start_at.substring(11, 16),
+            date: extractDate(record.bookings.start_at),
+            time: extractTime(record.bookings.start_at),
             boatName: record.bookings.boats?.name || '未知',
             duration: record.bookings.duration_min || 0,
             participants: []

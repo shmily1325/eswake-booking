@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
+import { extractDate, extractTime } from '../utils/formatters'
 
 interface BackupPageProps {
   user: User
@@ -123,14 +124,14 @@ export function BackupPage({ user }: BackupPageProps) {
         const activities = booking.activity_types?.join('+') || ''
         const notes = (booking.notes || '').replace(/"/g, '""').replace(/\n/g, ' ')
         
-        const startTime = booking.start_at.substring(11, 16)
+        const startTime = extractTime(booking.start_at)
         const [startHour, startMin] = startTime.split(':').map(Number)
         const totalMinutes = startHour * 60 + startMin - 30
         const arrivalHour = Math.floor(totalMinutes / 60)
         const arrivalMin = totalMinutes % 60
         const arrivalTime = `${arrivalHour.toString().padStart(2, '0')}:${arrivalMin.toString().padStart(2, '0')}`
         
-        const bookingDate = booking.start_at.substring(0, 10).replace(/-/g, '/')
+        const bookingDate = extractDate(booking.start_at).replace(/-/g, '/')
         
         // 回報資訊
         const participants = participantsByBooking[booking.id] || []
@@ -226,7 +227,7 @@ export function BackupPage({ user }: BackupPageProps) {
       participants.forEach((p: any) => {
         const memberName = p.participant_name
         const booking = p.bookings
-        const bookingDate = booking.start_at.substring(0, 10).replace(/-/g, '/')
+        const bookingDate = extractDate(booking.start_at).replace(/-/g, '/')
         const isDesignated = p.payment_method === 'designated_paid' || p.payment_method === 'designated_free'
 
         if (!memberStats[memberName]) {
@@ -336,8 +337,8 @@ export function BackupPage({ user }: BackupPageProps) {
         }
       } = {}
       bookings.forEach(b => {
-        const bookingDate = b.start_at.substring(0, 10).replace(/-/g, '/')
-        const startTime = b.start_at.substring(11, 16)
+        const bookingDate = extractDate(b.start_at).replace(/-/g, '/')
+        const startTime = extractTime(b.start_at)
         const boatName = (b as any).boats?.name || '未指定'
         bookingInfoMap[b.id] = {
           date: bookingDate,

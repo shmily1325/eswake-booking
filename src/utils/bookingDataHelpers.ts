@@ -1,59 +1,83 @@
 /**
- * 预约数据加载辅助函数
- * 用于拆分 CoachReport 中的 loadBookings 逻辑
+ * 預約數據加載輔助函數
+ * 用於拆分 CoachReport 中的 loadBookings 邏輯
  */
 
 import { supabase } from '../lib/supabase'
-
-interface Coach {
-  id: string
-  name: string
-}
-
-interface Booking {
-  id: any
-  start_at: any
-  duration_min: any
-  contact_name: any
-  notes: any
-  boat_id: any
-  requires_driver: any
-  status: any
-  boats: any
-}
+import type { Booking, Coach, Participant, CoachReport } from '../types/booking'
 
 interface BookingRelations {
-  coaches: any[]
-  drivers: any[]
-  reports: any[]
-  participants: any[]
-  bookingMembers: any[]
+  coaches: Array<{
+    booking_id: number
+    coach_id: string
+    coaches: Coach | null
+  }>
+  drivers: Array<{
+    booking_id: number
+    driver_id: string
+    coaches: Coach | null
+  }>
+  reports: CoachReport[]
+  participants: Array<Participant & {
+    members?: {
+      name: string
+      nickname: string | null
+    } | null
+  }>
+  bookingMembers: Array<{
+    booking_id: number
+    member_id: string
+    members?: {
+      name: string
+      nickname: string | null
+    } | null
+  }>
 }
 
 /**
- * 组装预约对象，添加关联数据
+ * 組裝預約對象，添加關聯數據
+ * 
+ * @param bookings - 預約列表（不含關聯數據）
+ * @param relations - 關聯數據（教練、駕駛、回報、參與者等）
+ * @returns 完整的預約對象數組
+ * 
+ * @throws {TypeError} 如果 bookings 或 relations 不是有效的對象
+ * 
+ * @example
+ * ```typescript
+ * const bookings = await fetchBookings()
+ * const relations = await fetchBookingRelations(bookings.map(b => b.id))
+ * const fullBookings = assembleBookingsWithRelations(bookings, relations)
+ * ```
  */
 export function assembleBookingsWithRelations(
-  bookings: Booking[],
+  bookings: Omit<Booking, 'coaches' | 'drivers' | 'coach_report' | 'participants'>[],
   relations: BookingRelations
-): any[] {
+): Booking[] {
+  if (!bookings || !Array.isArray(bookings)) {
+    throw new TypeError('bookings 必須是陣列')
+  }
+  
+  if (!relations || typeof relations !== 'object') {
+    throw new TypeError('relations 必須是物件')
+  }
   return bookings.map(booking => {
     const bookingCoaches = (relations.coaches || [])
-      .filter((bc: any) => bc.booking_id === booking.id)
-      .map((bc: any) => ({ id: bc.coach_id, name: bc.coaches?.name || '' }))
+      .filter(bc => bc.booking_id === booking.id)
+      .map(bc => ({ id: bc.coach_id, name: bc.coaches?.name || '' }))
 
     const bookingDrivers = (relations.drivers || [])
-      .filter((bd: any) => bd.booking_id === booking.id)
-      .map((bd: any) => ({ id: bd.driver_id, name: bd.coaches?.name || '' }))
+      .filter(bd => bd.booking_id === booking.id)
+      .map(bd => ({ id: bd.driver_id, name: bd.coaches?.name || '' }))
 
     const coachReport = (relations.reports || []).find(
-      (r: any) => r.booking_id === booking.id
+      r => r.booking_id === booking.id
     )
 
     const bookingParticipants = (relations.participants || [])
-      .filter((p: any) => p.booking_id === booking.id)
-      .map((p: any) => {
-        // 如果有 member_id，优先使用 members 表的最新资料
+      .filter(p => p.booking_id === booking.id)
+      .map(p => {
+        // 如果有 member_id，優先使用 members 表的最新資料
         let displayName = p.participant_name
         if (p.member_id && p.members) {
           displayName = p.members.nickname || p.members.name
@@ -75,14 +99,14 @@ export function assembleBookingsWithRelations(
         }
       })
 
-    // 更新 contact_name - 从 booking_members 取得最新会员名字
+    // 更新 contact_name - 從 booking_members 取得最新會員名字
     let updatedContactName = booking.contact_name
     const bookingMembers = (relations.bookingMembers || []).filter(
-      (bm: any) => bm.booking_id === booking.id
+      bm => bm.booking_id === booking.id
     )
     if (bookingMembers.length > 0) {
       const memberNames = bookingMembers
-        .map((bm: any) => bm.members?.nickname || bm.members?.name)
+        .map(bm => bm.members?.nickname || bm.members?.name)
         .filter(Boolean)
       if (memberNames.length > 0) {
         updatedContactName = memberNames.join(', ')
@@ -101,18 +125,33 @@ export function assembleBookingsWithRelations(
 }
 
 /**
- * 提取当天有预约的教练列表
+ * 提取當天有預約的教練列表
+ * 
+ * @param bookings - 預約列表
+ * @returns 不重複的教練列表
+ * 
+ * @throws {TypeError} 如果 bookings 不是陣列
+ * 
+ * @example
+ * ```typescript
+ * const coaches = extractAvailableCoaches(bookings)
+ * // 返回: [{ id: '123', name: 'Jerry' }, ...]
+ * ```
  */
-export function extractAvailableCoaches(bookings: any[]): Coach[] {
+export function extractAvailableCoaches(bookings: Booking[]): Coach[] {
+  if (!bookings || !Array.isArray(bookings)) {
+    throw new TypeError('bookings 必須是陣列')
+  }
+  
   const coachMap = new Map<string, Coach>()
 
   bookings.forEach(booking => {
-    booking.coaches.forEach((coach: Coach) => {
+    ;(booking.coaches || []).forEach(coach => {
       if (!coachMap.has(coach.id)) {
         coachMap.set(coach.id, coach)
       }
     })
-    booking.drivers.forEach((driver: Coach) => {
+    ;(booking.drivers || []).forEach(driver => {
       if (!coachMap.has(driver.id)) {
         coachMap.set(driver.id, driver)
       }
@@ -123,32 +162,85 @@ export function extractAvailableCoaches(bookings: any[]): Coach[] {
 }
 
 /**
- * 按教练筛选预约
+ * 按教練篩選預約
+ * 
+ * @param bookings - 預約列表
+ * @param coachId - 教練 ID，'all' 表示不篩選
+ * @returns 篩選後的預約列表
+ * 
+ * @throws {TypeError} 如果參數類型不正確
+ * 
+ * @example
+ * ```typescript
+ * const myBookings = filterBookingsByCoach(allBookings, 'coach-123')
+ * const allBookings = filterBookingsByCoach(bookings, 'all')
+ * ```
  */
 export function filterBookingsByCoach(
-  bookings: any[],
+  bookings: Booking[],
   coachId: string
-): any[] {
+): Booking[] {
+  if (!bookings || !Array.isArray(bookings)) {
+    throw new TypeError('bookings 必須是陣列')
+  }
+  
+  if (typeof coachId !== 'string') {
+    throw new TypeError('coachId 必須是字串')
+  }
+  
   if (coachId === 'all') {
     return bookings
   }
 
   return bookings.filter(booking => {
-    const isCoach = booking.coaches.some((c: any) => c.id === coachId)
-    const isDriver = booking.drivers.some((d: any) => d.id === coachId)
+    const isCoach = booking.coaches?.some(c => c.id === coachId) ?? false
+    const isDriver = booking.drivers?.some(d => d.id === coachId) ?? false
     return isCoach || isDriver
   })
 }
 
 /**
- * 筛选未回报的预约
+ * 篩選未回報的預約
+ * 
+ * @param bookings - 預約列表
+ * @param coachId - 教練 ID，'all' 表示查看所有教練的未回報預約
+ * @param getReportType - 獲取回報類型的函數
+ * @param getReportStatus - 獲取回報狀態的函數
+ * @returns 未回報的預約列表
+ * 
+ * @throws {TypeError} 如果參數類型不正確
+ * 
+ * @example
+ * ```typescript
+ * const unreported = filterUnreportedBookings(
+ *   bookings, 
+ *   'coach-123', 
+ *   getReportType, 
+ *   getReportStatus
+ * )
+ * ```
  */
 export function filterUnreportedBookings(
-  bookings: any[],
+  bookings: Booking[],
   coachId: string,
-  getReportType: (booking: any, coachId: string) => string | null,
-  getReportStatus: (booking: any, coachId: string) => { hasCoachReport: boolean; hasDriverReport: boolean }
-): any[] {
+  getReportType: (booking: Booking, coachId: string) => string | null,
+  getReportStatus: (booking: Booking, coachId: string) => { hasCoachReport: boolean; hasDriverReport: boolean }
+): Booking[] {
+  if (!bookings || !Array.isArray(bookings)) {
+    throw new TypeError('bookings 必須是陣列')
+  }
+  
+  if (typeof coachId !== 'string') {
+    throw new TypeError('coachId 必須是字串')
+  }
+  
+  if (typeof getReportType !== 'function') {
+    throw new TypeError('getReportType 必須是函數')
+  }
+  
+  if (typeof getReportStatus !== 'function') {
+    throw new TypeError('getReportStatus 必須是函數')
+  }
   if (coachId !== 'all') {
     return bookings.filter(booking => {
       const type = getReportType(booking, coachId)
@@ -165,7 +257,7 @@ export function filterUnreportedBookings(
     })
   } else {
     return bookings.filter(booking => {
-      const allCoachesReported = booking.coaches.every((coach: any) => {
+      const allCoachesReported = (booking.coaches || []).every(coach => {
         const type = getReportType(booking, coach.id)
         if (!type) return true
         const status = getReportStatus(booking, coach.id)
@@ -176,13 +268,13 @@ export function filterUnreportedBookings(
         return true
       })
 
-      const allDriversReported = booking.drivers.every((driver: any) => {
+      const allDriversReported = (booking.drivers || []).every(driver => {
         const status = getReportStatus(booking, driver.id)
         return status.hasDriverReport
       })
 
-      const hasNoCoach = booking.coaches.length === 0
-      if (hasNoCoach && booking.drivers.length > 0) {
+      const hasNoCoach = (booking.coaches || []).length === 0
+      if (hasNoCoach && (booking.drivers || []).length > 0) {
         return !booking.participants || booking.participants.length === 0
       }
 
@@ -192,11 +284,45 @@ export function filterUnreportedBookings(
 }
 
 /**
- * 查询预约的关联数据
+ * 查詢預約的關聯數據
+ * 
+ * 從資料庫批量查詢預約相關的所有關聯數據，包括：
+ * - 教練列表 (booking_coaches)
+ * - 駕駛列表 (booking_drivers)
+ * - 回報記錄 (coach_reports)
+ * - 參與者列表 (booking_participants)
+ * - 預約會員 (booking_members)
+ * 
+ * @param bookingIds - 預約 ID 陣列
+ * @returns 包含所有關聯數據的物件
+ * 
+ * @throws {TypeError} 如果 bookingIds 不是陣列
+ * @throws {Error} 如果資料庫查詢失敗
+ * 
+ * @example
+ * ```typescript
+ * const relations = await fetchBookingRelations([1, 2, 3])
+ * console.log(relations.coaches) // 所有教練
+ * console.log(relations.participants) // 所有參與者
+ * ```
  */
 export async function fetchBookingRelations(
   bookingIds: number[]
 ): Promise<BookingRelations> {
+  if (!bookingIds || !Array.isArray(bookingIds)) {
+    throw new TypeError('bookingIds 必須是陣列')
+  }
+  
+  if (bookingIds.length === 0) {
+    // 空陣列直接返回空結果
+    return {
+      coaches: [],
+      drivers: [],
+      reports: [],
+      participants: [],
+      bookingMembers: []
+    }
+  }
   const [coachesRes, driversRes, reportsRes, participantsRes, bookingMembersRes] =
     await Promise.all([
       supabase
@@ -220,11 +346,11 @@ export async function fetchBookingRelations(
     ])
 
   return {
-    coaches: coachesRes.data || [],
-    drivers: driversRes.data || [],
-    reports: reportsRes.data || [],
-    participants: participantsRes.data || [],
-    bookingMembers: bookingMembersRes.data || []
+    coaches: (coachesRes.data as any) || [],
+    drivers: (driversRes.data as any) || [],
+    reports: (reportsRes.data as any) || [],
+    participants: (participantsRes.data as any) || [],
+    bookingMembers: (bookingMembersRes.data as any) || []
   }
 }
 

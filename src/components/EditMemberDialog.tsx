@@ -119,7 +119,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   const handleRemoveBoardSlot = async (index: number) => {
     const slot = boardSlots[index]
     if (slot.id) {
-      // 如果有 ID，从数据库删除
+      // 如果有 ID，從資料庫刪除
       const { error } = await supabase
         .from('board_storage')
         .update({ status: 'inactive' })

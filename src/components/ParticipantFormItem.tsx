@@ -1,25 +1,10 @@
 /**
- * 单个参与者表单项组件
- * 用于教练回报中的参与者信息输入
+ * 單個參與者表單項組件
+ * 用於教練回報中的參與者信息輸入
  */
 
 import { getInputStyle, getLabelStyle } from '../styles/designSystem'
-
-interface Member {
-  id: string
-  name: string
-  nickname: string | null
-  phone: string | null
-}
-
-interface Participant {
-  member_id: string | null
-  participant_name: string
-  duration_min: number
-  payment_method: string
-  lesson_type: string
-  notes?: string
-}
+import type { Member, Participant } from '../types/booking'
 
 interface ParticipantFormItemProps {
   participant: Participant

@@ -1,0 +1,96 @@
+refactor: 代碼品質改善與專案結構整理
+
+## 📦 專案結構優化
+
+### 新增資料夾結構
+- ✨ `migrations/` - 整理所有資料庫遷移腳本（29個SQL檔案）
+- ✨ `docs/archive/` - 歷史記錄與已完成的問題記錄
+- ✨ `docs/testing/` - 測試文檔與工具
+- ✨ `docs/features/` - 功能模組說明文檔
+- ✨ `src/types/` - 共用類型定義
+- ✨ `src/utils/formatters.ts` - 格式化工具函數（357行）
+
+### 文檔整理
+- 📝 根目錄保留6個重要指南（DATABASE_SETUP, LINE_SETUP等）
+- 📝 歷史記錄移至 docs/archive/
+- 📝 測試文檔移至 docs/testing/
+- 📝 新增 docs/README.md 導覽文檔
+- 📝 新增 migrations/README.md 說明文檔
+
+## 🎯 代碼品質改善
+
+### 類型安全強化
+- ✨ 新增 `src/types/booking.ts` 集中所有類型定義
+- ✅ 移除 any 類型，使用明確的類型定義
+- ✅ 統一 Member, Booking, Participant 等介面定義
+- ✅ 修復 TransactionDialog 和 CoachAdmin 的類型不匹配問題
+
+### 常數集中管理
+- ✨ 新增 `src/constants/booking.ts` 集中常數定義
+- ✅ PAYMENT_METHODS, LESSON_TYPES, BOOKING_STATUS 等
+- ✅ 避免重複定義，提高可維護性
+
+### 工具函數重構
+- ✨ 新增 `src/utils/formatters.ts` 格式化工具函數
+  - formatDate, formatTime, formatDateTime
+  - formatCurrency, formatDuration
+  - extractDate, extractTime
+  - getPaymentMethodLabel, getLessonTypeLabel
+  - getMemberDisplayName
+- ✅ 更新 `src/utils/bookingDataHelpers.ts` 移除 any 類型
+- ✅ 更新 `src/utils/participantValidation.ts` 使用共用類型
+- ✅ 所有函數加入完整 JSDoc 文檔和錯誤處理
+
+### 代碼清理
+- 🗑️ 刪除臨時檔案（.tmp, .backup, tatus等）
+- 🗑️ 移除重複的代碼品質文檔
+- ✅ 統一註解為繁體中文
+- ✅ 修復所有 TypeScript linter 錯誤
+
+## 🔧 功能優化
+
+### 組件改進
+- ✅ CoachReportFormDialog - 使用共用類型和格式化函數
+- ✅ ParticipantFormItem - 使用共用類型
+- ✅ TransactionDialog - 統一 Member 類型定義
+- ✅ EditMemberDialog - 統一註解語言
+- ✅ CoachAdmin - 移除 any 類型轉換
+- ✅ CoachReport - 修復 undefined 錯誤
+
+### 頁面優化
+- ✅ 使用 extractDate/extractTime 替代字串截取（8處）
+- ✅ 提高代碼可讀性和可維護性
+
+## 🛡️ 安全性
+
+### Git 管理改進
+- ✅ 更新 .gitignore 加入臨時檔案規則
+- ✅ 清理錯誤產生的 git 檔案
+
+## 📊 改善統計
+
+- 📁 整理 29 個 SQL 檔案到 migrations/
+- 📁 整理 16 個文檔檔案到 docs/
+- 🗑️ 刪除 5 個臨時檔案
+- ✨ 新增 3 個核心工具檔案
+- ✅ 修復 21 個 linter 錯誤
+- ✅ 0 個功能變更（向下兼容）
+
+## ⚠️ 重要提醒
+
+### ✅ 用戶資料不受影響
+- 所有變更純代碼重構
+- 無資料庫結構修改
+- 無業務邏輯變更
+- 向下完全兼容
+
+### ✅ 測試建議
+- 教練回報功能
+- 會員管理功能
+- 預約系統
+- 財務交易功能
+
+---
+
+**總結：** 這次提交主要進行代碼品質改善和專案結構優化，提高可維護性和可讀性，不影響任何現有功能和用戶資料。
+

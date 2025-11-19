@@ -2,18 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
-
-interface Member {
-  id: string
-  name: string
-  nickname: string | null
-  balance: number
-  vip_voucher_amount: number
-  designated_lesson_minutes: number
-  boat_voucher_g23_minutes: number
-  boat_voucher_g21_panther_minutes: number
-  gift_boat_hours: number
-}
+import type { Member } from '../types/booking'
 
 interface TransactionDialogProps {
   open: boolean

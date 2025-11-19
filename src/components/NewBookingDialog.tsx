@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
 import { getDisplayContactName } from '../utils/bookingFormat'
 import { isFacility } from '../utils/facility'
+import { extractDate } from '../utils/formatters'
 import { 
   EARLY_BOOKING_HOUR_LIMIT,
   MEMBER_SEARCH_DEBOUNCE_MS 
@@ -443,7 +444,7 @@ export function NewBookingDialog({
             
             // 篩選出同一天的預約（純字符串比較）
             const sameDayBookings = (allBookings || []).filter(booking => {
-              const bookingDate = booking.start_at.substring(0, 10) // "2025-10-30"
+              const bookingDate = extractDate(booking.start_at) // "2025-10-30"
               return bookingDate === dateStr
             })
             
