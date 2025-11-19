@@ -335,7 +335,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                 type="text"
                 value={formData.nickname}
                 onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                placeholder="例如：阿明+那個男人 或 阿明/辣個男人"
+                placeholder="例如：阿明+那個男人"
                 maxLength={100}
                 style={inputStyle}
                 onFocus={handleFocus}
