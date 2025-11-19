@@ -95,6 +95,8 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
       
       if (bookingsData && bookingsData.length > 0) {
         const bookingIds = bookingsData.map((b: any) => b.id)
+        
+        // 查詢教練資料
         const { data: bookingCoachesData } = await supabase
           .from('booking_coaches')
           .select('booking_id, coaches:coach_id(id, name)')
@@ -112,8 +114,46 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
           }
         }
         
+        // ✅ 新增：查詢會員資料以獲取最新的暱稱
+        const { data: bookingMembersData } = await supabase
+          .from('booking_members')
+          .select('booking_id, members:member_id(id, name, nickname)')
+          .in('booking_id', bookingIds)
+        
+        const membersByBooking: { [key: number]: any[] } = {}
+        for (const item of bookingMembersData || []) {
+          const bookingId = item.booking_id
+          const member = (item as any).members
+          if (member) {
+            if (!membersByBooking[bookingId]) {
+              membersByBooking[bookingId] = []
+            }
+            membersByBooking[bookingId].push(member)
+          }
+        }
+        
+        // ✅ 組合教練和會員資料，並更新 contact_name 為最新暱稱
         bookingsData.forEach((booking: any) => {
           booking.coaches = coachesByBooking[booking.id] || []
+          
+          // 如果有會員資料，使用最新的暱稱更新 contact_name
+          const members = membersByBooking[booking.id] || []
+          if (members.length > 0) {
+            // 組合所有會員的最新名稱（優先使用 nickname）
+            const memberNames = members.map(m => m.nickname || m.name)
+            
+            // 提取非會員名字（從原始 contact_name 中排除會員名字）
+            const originalNames = booking.contact_name.split(',').map((n: string) => n.trim())
+            const nonMemberNames = originalNames.filter((name: string) => 
+              !members.some(m => m.name === name || m.nickname === name)
+            )
+            
+            // 組合最終名稱
+            const allNames = [...memberNames, ...nonMemberNames].filter(Boolean)
+            if (allNames.length > 0) {
+              booking.contact_name = allNames.join(', ')
+            }
+          }
         })
       }
       
@@ -144,53 +184,73 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
     return `${arrivalHour.toString().padStart(2, '0')}${arrivalMinute.toString().padStart(2, '0')}`
   }
   
+  // ✅ 改為以單一會員為主軸
   const getStudentList = (): string[] => {
     const students = new Set<string>()
-    bookings.forEach(booking => students.add(booking.contact_name))
+    bookings.forEach(booking => {
+      // 拆分會員名字（用逗號分隔）
+      const names = booking.contact_name.split(',').map(n => n.trim())
+      names.forEach(name => students.add(name))
+    })
     return Array.from(students).sort()
   }
   
   const generateMessageForStudent = (studentName: string): string => {
-    const studentBookings = bookings.filter(b => b.contact_name === studentName)
+    // ✅ 找出所有包含此會員的預約
+    const studentBookings = bookings
+      .filter(b => {
+        const names = b.contact_name.split(',').map(n => n.trim())
+        return names.includes(studentName)
+      })
+      .sort((a, b) => a.start_at.localeCompare(b.start_at)) // 按時間排序
     
     let message = `${studentName}你好\n提醒你，明天有預約\n\n`
     
-    const coachBookings = new Map<string, Booking[]>()
-    studentBookings.forEach(booking => {
+    let previousCoachNames = ''
+    
+    // ✅ 按順序處理每個預約
+    studentBookings.forEach((booking, index) => {
       const coachNames = booking.coaches && booking.coaches.length > 0
-        ? booking.coaches.map(c => c.name).join(' / ')
+        ? booking.coaches.map(c => c.name).join('/')
         : '未指定'
+      const startTime = formatTimeNoColon(booking.start_at)
+      const boatName = booking.boats?.name || ''
+      const isFacility = boatName.includes('彈簧床')
       
-      if (!coachBookings.has(coachNames)) {
-        coachBookings.set(coachNames, [])
+      if (index === 0) {
+        // 第一船：教練 + 抵達時間 + 下水時間（或彈簧床）
+        const arrivalTime = getArrivalTimeNoColon(booking.start_at)
+        message += `${coachNames}教練\n`
+        message += `${arrivalTime}抵達\n`
+        if (isFacility) {
+          message += `${startTime}彈簧床\n`
+        } else {
+          message += `${startTime}下水\n`
+        }
+        previousCoachNames = coachNames
+      } else {
+        // 第二船之後：檢查是否同一個教練
+        if (coachNames === previousCoachNames) {
+          // 同一個教練：只顯示時間，不顯示教練名稱
+          if (isFacility) {
+            message += `${startTime}彈簧床\n`
+          } else {
+            message += `${startTime}下水\n`
+          }
+        } else {
+          // 不同教練：顯示教練名稱 + 時間
+          message += `\n${coachNames}教練\n`
+          if (isFacility) {
+            message += `${startTime}彈簧床\n`
+          } else {
+            message += `${startTime}下水\n`
+          }
+          previousCoachNames = coachNames
+        }
       }
-      coachBookings.get(coachNames)!.push(booking)
     })
     
-    coachBookings.forEach((bookings, coachName) => {
-      message += `${coachName}教練\n`
-      
-      const uniqueTimes = new Map<string, Booking>()
-      bookings.forEach(booking => {
-        const key = `${booking.start_at}-${booking.duration_min}`
-        if (!uniqueTimes.has(key)) {
-          uniqueTimes.set(key, booking)
-        }
-      })
-      
-      const sortedBookings = Array.from(uniqueTimes.values()).sort((a, b) => {
-        const aTime = a.start_at.substring(0, 16)
-        const bTime = b.start_at.substring(0, 16)
-        return aTime.localeCompare(bTime)
-      })
-      
-      sortedBookings.forEach(booking => {
-        const arrivalTime = getArrivalTimeNoColon(booking.start_at)
-        const startTime = formatTimeNoColon(booking.start_at)
-        message += `${arrivalTime}抵達\n`
-        message += `${startTime}下水\n\n`
-      })
-    })
+    message += '\n'
     
     if (includeWeatherWarning) {
       message += weatherWarning + '\n\n'
@@ -469,7 +529,11 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
               {getStudentList().map((studentName) => {
                 const isExpanded = selectedStudent === studentName
                 const isCopied = copiedStudent === studentName
-                const studentBookings = bookings.filter(b => b.contact_name === studentName)
+                // ✅ 修改：查找包含此會員的所有預約
+                const studentBookings = bookings.filter(b => {
+                  const names = b.contact_name.split(',').map(n => n.trim())
+                  return names.includes(studentName)
+                })
                 
                 const uniqueBookingKeys = new Set<string>()
                 studentBookings.forEach(b => {
