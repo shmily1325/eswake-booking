@@ -1,0 +1,35 @@
+import { useState, useEffect } from 'react'
+
+/**
+ * 監聽網路狀態
+ * 
+ * @returns {boolean} 是否在線
+ * 
+ * @example
+ * ```tsx
+ * const isOnline = useOnlineStatus()
+ * 
+ * if (!isOnline) {
+ *   return <div>網路已中斷</div>
+ * }
+ * ```
+ */
+export function useOnlineStatus(): boolean {
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+  
+  return isOnline
+}
+

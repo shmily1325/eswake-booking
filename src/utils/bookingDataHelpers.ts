@@ -346,11 +346,11 @@ export async function fetchBookingRelations(
     ])
 
   return {
-    coaches: (coachesRes.data as any) || [],
-    drivers: (driversRes.data as any) || [],
-    reports: (reportsRes.data as any) || [],
-    participants: (participantsRes.data as any) || [],
-    bookingMembers: (bookingMembersRes.data as any) || []
+    coaches: (coachesRes.data as unknown as BookingRelations['coaches']) || [],
+    drivers: (driversRes.data as unknown as BookingRelations['drivers']) || [],
+    reports: (reportsRes.data as BookingRelations['reports']) || [],
+    participants: (participantsRes.data as unknown as BookingRelations['participants']) || [],
+    bookingMembers: (bookingMembersRes.data as unknown as BookingRelations['bookingMembers']) || []
   }
 }
 

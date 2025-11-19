@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { logger } from './logger'
 
 
 // 超級管理員（硬編碼，始終有權限）
@@ -36,7 +37,7 @@ async function loadAdminEmails(): Promise<string[]> {
       .select('email')
     
     if (error) {
-      console.error('Failed to load admin emails:', error)
+      logger.error('Failed to load admin emails:', error)
       return SUPER_ADMINS
     }
     
@@ -45,7 +46,7 @@ async function loadAdminEmails(): Promise<string[]> {
     cacheTimestamp = now
     return adminEmailsCache
   } catch (err) {
-    console.error('Failed to load admin emails:', err)
+    logger.error('Failed to load admin emails:', err)
     return SUPER_ADMINS
   }
 }
@@ -67,7 +68,7 @@ async function loadAllowedEmails(): Promise<string[]> {
       .select('email')
     
     if (error) {
-      console.error('Failed to load allowed emails:', error)
+      logger.error('Failed to load allowed emails:', error)
       return SUPER_ADMINS
     }
     
@@ -75,7 +76,7 @@ async function loadAllowedEmails(): Promise<string[]> {
     allowedEmailsCache = [...SUPER_ADMINS, ...emails]
     return allowedEmailsCache
   } catch (err) {
-    console.error('Failed to load allowed emails:', err)
+    logger.error('Failed to load allowed emails:', err)
     return SUPER_ADMINS
   }
 }

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { logger } from './logger'
 
 interface TimeSlot {
   startMinutes: number
@@ -317,15 +318,20 @@ export async function checkCoachesConflictBatch(
     .lte('bookings.start_at', `${dateStr}T23:59:59`)
 
   if (coachError || driverError) {
-    console.error('查詢教練預約時發生錯誤:', coachError || driverError)
+    logger.error('查詢教練預約時發生錯誤:', coachError || driverError)
     return { hasConflict: false, conflictCoaches: [] }
   }
 
   // 整理每位教練的預約（合併教練和駕駛的預約）
-  const coachBookingsMap = new Map<string, any[]>()
+  const coachBookingsMap = new Map<string, Array<{
+    id: number
+    start_at: string
+    duration_min: number
+    contact_name: string
+  }>>()
   
   // 處理教練預約
-  coachBookingsData?.forEach(item => {
+  coachBookingsData?.forEach((item: any) => {
     const coachId = item.coach_id
     const bookings = coachBookingsMap.get(coachId) || []
     bookings.push(item.bookings)
@@ -333,7 +339,7 @@ export async function checkCoachesConflictBatch(
   })
   
   // 處理駕駛預約
-  driverBookingsData?.forEach(item => {
+  driverBookingsData?.forEach((item: any) => {
     const driverId = item.driver_id
     const bookings = coachBookingsMap.get(driverId) || []
     bookings.push(item.bookings)
