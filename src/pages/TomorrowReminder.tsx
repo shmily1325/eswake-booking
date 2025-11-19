@@ -136,24 +136,53 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
         bookingsData.forEach((booking: any) => {
           booking.coaches = coachesByBooking[booking.id] || []
           
-          // 如果有會員資料，使用最新的暱稱更新 contact_name
+          // ✅ 如果有會員資料，智能更新名稱：保留訪客，更新會員
           const members = membersByBooking[booking.id] || []
           if (members.length > 0) {
-            // 組合所有會員的最新名稱（優先使用 nickname）
-            const memberNames = members.map(m => m.nickname || m.name)
-            
-            // 提取非會員名字（從原始 contact_name 中排除會員名字）
             const originalNames = booking.contact_name.split(',').map((n: string) => n.trim())
-            const nonMemberNames = originalNames.filter((name: string) => 
-              !members.some(m => m.name === name || m.nickname === name)
-            )
             
-            // 組合最終名稱
-            const allNames = [...memberNames, ...nonMemberNames].filter(Boolean)
-            if (allNames.length > 0) {
-              booking.contact_name = allNames.join(', ')
+            // 策略：如果名字數量 = 會員數量，直接全部替換（純會員預約）
+            if (members.length === originalNames.length) {
+              booking.contact_name = members.map(m => m.nickname || m.name).join(', ')
+            } else {
+              // 混合預約：需要區分會員和訪客
+              const updatedNames: string[] = []
+              const processedMemberIds = new Set<string>()
+              
+              originalNames.forEach((name: string) => {
+                // 嘗試匹配會員（完全匹配或部分匹配）
+                const matchedMember = members.find(m => {
+                  // 完全匹配
+                  if (name === m.name || name === m.nickname) return true
+                  // 部分匹配：處理 "Ingrid/Joanna" 這種複合名稱
+                  const nameParts = name.split('/').map(p => p.trim())
+                  if (nameParts.some(part => part === m.name || part === m.nickname)) return true
+                  return false
+                })
+                
+                if (matchedMember && !processedMemberIds.has(matchedMember.id)) {
+                  // 找到會員：用最新暱稱
+                  updatedNames.push(matchedMember.nickname || matchedMember.name)
+                  processedMemberIds.add(matchedMember.id)
+                } else if (!matchedMember) {
+                  // 不是會員：保留訪客名字
+                  updatedNames.push(name)
+                }
+              })
+              
+              // 確保所有會員都出現（防止遺漏）
+              members.forEach(m => {
+                if (!processedMemberIds.has(m.id)) {
+                  updatedNames.push(m.nickname || m.name)
+                }
+              })
+              
+              if (updatedNames.length > 0) {
+                booking.contact_name = updatedNames.join(', ')
+              }
             }
           }
+          // 如果沒有會員資料，保持原始的 contact_name（純訪客）
         })
       }
       
