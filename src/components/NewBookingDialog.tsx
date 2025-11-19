@@ -5,6 +5,7 @@ import { logBookingCreation } from '../utils/auditLog'
 import { getDisplayContactName } from '../utils/bookingFormat'
 import { isFacility } from '../utils/facility'
 import { checkCoachesConflictBatch } from '../utils/bookingConflict'
+import { filterMembers, composeFinalStudentName, toggleSelection } from '../utils/memberUtils'
 import { 
   EARLY_BOOKING_HOUR_LIMIT,
   MEMBER_SEARCH_DEBOUNCE_MS 
@@ -191,31 +192,20 @@ export function NewBookingDialog({
   }
 
   // 過濾會員列表
-  const filteredMembers = useMemo(() => {
-    if (!memberSearchTerm.trim()) return []
-    
-    const searchLower = memberSearchTerm.toLowerCase()
-    return members.filter(member => 
-      member.name.toLowerCase().includes(searchLower) ||
-      (member.nickname && member.nickname.toLowerCase().includes(searchLower)) ||
-      (member.phone && member.phone.includes(searchLower))
-    ).slice(0, 10) // 只顯示前 10 筆
-  }, [members, memberSearchTerm])
+  // 使用共用函數過濾會員列表
+  const filteredMembers = useMemo(() => 
+    filterMembers(members, memberSearchTerm, 10),
+    [members, memberSearchTerm]
+  )
 
+  // 使用共用函數切換教練選擇
   const toggleCoach = (coachId: string) => {
-    setSelectedCoaches(prev => 
-      prev.includes(coachId)
-        ? prev.filter(id => id !== coachId)
-        : [...prev, coachId]
-    )
+    setSelectedCoaches(prev => toggleSelection(prev, coachId))
   }
 
+  // 使用共用函數切換活動類型選擇
   const toggleActivityType = (type: string) => {
-    setActivityTypes(prev =>
-      prev.includes(type)
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
-    )
+    setActivityTypes(prev => toggleSelection(prev, type))
   }
 
   // 生成所有重複日期
@@ -427,14 +417,8 @@ export function NewBookingDialog({
           continue
         }
       
-        // 決定最終的學生名字（會員 + 非會員）
-        const memberNames = selectedMemberIds.length > 0
-          ? members.filter(m => selectedMemberIds.includes(m.id)).map(m => m.nickname || m.name)
-          : []
-        
-        const allNames = [...memberNames, ...manualNames]
-        
-        const finalStudentName = allNames.join(', ')
+        // 使用共用函數決定最終的學生名字（會員 + 非會員）
+        const finalStudentName = composeFinalStudentName(members, selectedMemberIds, manualNames)
 
         // 創建預約
         const bookingToInsert = {
