@@ -1081,8 +1081,8 @@ export function CoachReport({ user }: CoachReportProps) {
         onCancel={() => setReportingBookingId(null)}
       />
 
+
       <Footer />
     </div>
   )
 }
-
