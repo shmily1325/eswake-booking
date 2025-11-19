@@ -45,7 +45,8 @@ interface CoachReportFormDialogProps {
   paymentMethods: Array<{ value: string; label: string }>
   onDriverDurationChange: (value: number) => void
   onParticipantUpdate: (index: number, field: keyof Participant, value: any) => void
-  onParticipantAdd: () => void
+  onParticipantAddMember: () => void
+  onParticipantAddGuest: () => void
   onParticipantRemove: (index: number) => void
   onMemberSearch: (value: string, index: number) => void
   onMemberSelect: (index: number, member: Member) => void
@@ -66,7 +67,8 @@ export function CoachReportFormDialog({
   paymentMethods,
   onDriverDurationChange,
   onParticipantUpdate,
-  onParticipantAdd,
+  onParticipantAddMember,
+  onParticipantAddGuest,
   onParticipantRemove,
   onMemberSearch,
   onMemberSelect,
@@ -179,48 +181,82 @@ export function CoachReportFormDialog({
                 🎓 參與者回報
               </h3>
 
+              {/* 已添加的参与者列表 */}
+              {participants.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
+                    已添加的參與者：
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {participants.map((participant, index) => (
+                      <ParticipantFormItem
+                        key={index}
+                        participant={participant}
+                        index={index}
+                        isMobile={isMobile}
+                        showRemoveButton={true}
+                        memberSearchTerm={memberSearchTerm}
+                        filteredMembers={filteredMembers}
+                        lessonTypes={lessonTypes}
+                        paymentMethods={paymentMethods}
+                        onUpdate={onParticipantUpdate}
+                        onRemove={onParticipantRemove}
+                        onSearchChange={onMemberSearch}
+                        onSelectMember={onMemberSelect}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 添加参与者区域 */}
               <div
                 style={{
-                  padding: '12px',
-                  background: '#fff3e0',
-                  borderRadius: '6px',
-                  marginBottom: '16px',
-                  fontSize: '14px'
+                  padding: '16px',
+                  background: '#f8f9fa',
+                  borderRadius: '8px',
+                  border: '2px dashed #ddd'
                 }}
               >
-                💡 提示：點擊姓名欄位可搜尋會員，或直接輸入客人姓名
-              </div>
+                <div style={{ marginBottom: '12px', fontWeight: '600', fontSize: '15px' }}>
+                  ➕ 新增參與者
+                </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {participants.map((participant, index) => (
-                  <ParticipantFormItem
-                    key={index}
-                    participant={participant}
-                    index={index}
-                    isMobile={isMobile}
-                    showRemoveButton={participants.length > 1}
-                    memberSearchTerm={memberSearchTerm}
-                    filteredMembers={filteredMembers}
-                    lessonTypes={lessonTypes}
-                    paymentMethods={paymentMethods}
-                    onUpdate={onParticipantUpdate}
-                    onRemove={onParticipantRemove}
-                    onSearchChange={onMemberSearch}
-                    onSelectMember={onMemberSelect}
-                  />
-                ))}
-              </div>
+                {/* 会员搜索 */}
+                <div style={{ marginBottom: '12px' }}>
+                  <button
+                    onClick={onParticipantAddMember}
+                    style={{
+                      ...getButtonStyle('primary'),
+                      width: '100%'
+                    }}
+                  >
+                    👤 搜尋並新增會員
+                  </button>
+                </div>
 
-              <button
-                onClick={onParticipantAdd}
-                style={{
-                  ...getButtonStyle('secondary'),
-                  width: '100%',
-                  marginTop: '16px'
-                }}
-              >
-                + 新增參與者
-              </button>
+                {/* 或直接输入非会员 */}
+                <div
+                  style={{
+                    textAlign: 'center',
+                    color: '#999',
+                    fontSize: '13px',
+                    margin: '8px 0'
+                  }}
+                >
+                  ── 或 ──
+                </div>
+
+                <button
+                  onClick={onParticipantAddGuest}
+                  style={{
+                    ...getButtonStyle('secondary'),
+                    width: '100%'
+                  }}
+                >
+                  ✏️ 直接輸入客人姓名（非會員）
+                </button>
+              </div>
             </div>
           )}
         </div>

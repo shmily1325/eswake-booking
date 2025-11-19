@@ -11,8 +11,6 @@ import { isFacility } from '../utils/facility'
 import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 import {
   validateParticipants,
-  checkPossibleMembers,
-  confirmPossibleMembers,
   calculateIsTeaching,
   calculateParticipantStatus
 } from '../utils/participantValidation'
@@ -112,7 +110,6 @@ export function CoachReport({ user }: CoachReportProps) {
   // 會員搜尋
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
   const { 
-    members,
     filteredMembers,
     handleSearchChange 
   } = useMemberSearch()
@@ -391,17 +388,22 @@ export function CoachReport({ user }: CoachReportProps) {
   }
 
   const submitReport = async () => {
-    if (reportType === 'driver' || reportType === 'both') {
-      await submitDriverReport()
+    try {
+      if (reportType === 'driver' || reportType === 'both') {
+        await submitDriverReport()
+      }
+      
+      if (reportType === 'coach' || reportType === 'both') {
+        await submitCoachReport()
+      }
+      
+      alert('回報成功！')
+      setReportingBookingId(null)
+      loadBookings()
+    } catch (error) {
+      // 錯誤已在子函數中處理，這裡不再重複顯示
+      console.error('提交回報失敗:', error)
     }
-    
-    if (reportType === 'coach' || reportType === 'both') {
-      await submitCoachReport()
-    }
-    
-    alert('回報成功！')
-    setReportingBookingId(null)
-    loadBookings()
   }
 
   const submitDriverReport = async () => {
@@ -440,11 +442,15 @@ export function CoachReport({ user }: CoachReportProps) {
       // 使用验证工具进行验证
       const validParticipants = validateParticipants(participants)
       
-      // 智能验证：检查是否有名字匹配会员但没选择会员的情况
-      const possibleMembers = checkPossibleMembers(validParticipants, members)
-      if (possibleMembers.length > 0) {
-        const confirmed = confirmPossibleMembers(possibleMembers)
-        if (!confirmed) return
+      // 檢查：如果是「會員」狀態但沒有選擇具體會員，提示用戶
+      const memberStatusWithoutId = validParticipants.filter(
+        p => p.status === 'pending' && !p.member_id
+      )
+      
+      if (memberStatusWithoutId.length > 0) {
+        const names = memberStatusWithoutId.map(p => p.participant_name || '(未填寫)').join('、')
+        alert(`以下參與者標記為會員但尚未選擇：${names}\n\n請點擊該參與者從會員列表選擇，或刪除後改用「新增客人」`)
+        return
       }
       
       // 继续提交流程
@@ -566,7 +572,24 @@ export function CoachReport({ user }: CoachReportProps) {
     }
   }
 
-  const addParticipant = () => {
+  // 新增会员参与者（从会员列表选择）
+  const addMemberParticipant = () => {
+    const booking = bookings.find(b => b.id === reportingBookingId)
+    setParticipants([
+      ...participants,
+      {
+        member_id: null,  // 等待用户选择
+        participant_name: '',
+        duration_min: booking?.duration_min || 60,
+        payment_method: 'balance',  // 会员默认扣储值
+        lesson_type: 'undesignated',
+        status: 'pending'  // 会员状态
+      }
+    ])
+  }
+
+  // 新增客人参与者（非会员，直接输入姓名）
+  const addGuestParticipant = () => {
     const booking = bookings.find(b => b.id === reportingBookingId)
     setParticipants([
       ...participants,
@@ -574,9 +597,9 @@ export function CoachReport({ user }: CoachReportProps) {
         member_id: null,
         participant_name: '',
         duration_min: booking?.duration_min || 60,
-        payment_method: 'cash',
-        lesson_type: 'undesignated',  // 默认不指定
-        status: 'pending'
+        payment_method: 'cash',  // 客人默认现金
+        lesson_type: 'undesignated',
+        status: 'not_applicable'  // 非会员状态
       }
     ])
   }
@@ -1070,7 +1093,8 @@ export function CoachReport({ user }: CoachReportProps) {
         paymentMethods={PAYMENT_METHODS}
         onDriverDurationChange={setDriverDuration}
         onParticipantUpdate={updateParticipant}
-        onParticipantAdd={addParticipant}
+        onParticipantAddMember={addMemberParticipant}
+        onParticipantAddGuest={addGuestParticipant}
         onParticipantRemove={removeParticipant}
         onMemberSearch={(value) => {
           setMemberSearchTerm(value)
