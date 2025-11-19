@@ -397,7 +397,7 @@ export function MemberImport({ user }: MemberImportProps) {
   }
 
   const downloadTemplate = () => {
-    const template = '姓名,暱稱,會員類型,會籍類型,配對會員,會員開始日期,會員截止日,電話,生日,備註,狀態\n林敏,Ming,會員,一般會員,,2024-01-01,2055-12-31,0986937619,1990-01-01,這是範例,啟用\n賴奕茵,Ingrid Lai,會員,雙人會員,林敏,2024-06-01,2026-06-01,0912345678,1988-12-10,雙人配對範例,啟用\n'
+    const template = '姓名,暱稱,會籍類型,配對會員,會員開始日期,會員截止日,電話,生日,備註,狀態\n林敏,Ming,一般會員,,2024-01-01,2055-12-31,0986937619,1990-01-01,這是範例,啟用\n賴奕茵,Ingrid Lai,雙人會員,林敏,2024-06-01,2026-06-01,0912345678,1988-12-10,雙人配對範例,啟用\n'
     const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -658,9 +658,9 @@ export function MemberImport({ user }: MemberImportProps) {
               border: '1px solid #dee2e6',
               whiteSpace: 'pre'
             }}>
-姓名,暱稱,會員類型,會籍類型,配對會員,會員開始日期,會員截止日,電話,生日,備註,狀態{'\n'}
-林敏,Ming,會員,一般會員,,2024-01-01,2055-12-31,0986937619,1990-01-01,這是範例,啟用{'\n'}
-賴奕茵,Ingrid,會員,雙人會員,林敏,2024-06-01,2026-06-01,0912345678,1988-12-10,,,雙人配對,啟用
+姓名,暱稱,會籍類型,配對會員,會員開始日期,會員截止日,電話,生日,備註,狀態{'\n'}
+林敏,Ming,一般會員,,2024-01-01,2055-12-31,0986937619,1990-01-01,這是範例,啟用{'\n'}
+賴奕茵,Ingrid,雙人會員,林敏,2024-06-01,2026-06-01,0912345678,1988-12-10,雙人配對,啟用
             </code>
                   <div style={{
                     background: '#fff3cd',
@@ -681,8 +681,7 @@ export function MemberImport({ user }: MemberImportProps) {
                   </div>
                   <p style={{ margin: 0, fontSize: '13px' }}>
                     • <strong>姓名</strong>為必填，其他選填<br/>
-                    • <strong>會員類型</strong>：會員、客人<br/>
-                    • <strong>會籍類型</strong>：一般會員、雙人會員、置板<br/>
+                    • <strong>會籍類型</strong>：一般會員、雙人會員、非會員<br/>
                     • <strong>配對會員</strong>：填寫配對會員的姓名（雙人會員用）<br/>
                     • <strong>日期格式</strong>：<code style={{ background: '#ffebee', padding: '2px 6px', borderRadius: '3px' }}>YYYY-MM-DD</code>（例：2024-01-01）<br/>
                     • <strong>狀態</strong>：啟用、隱藏<br/>
