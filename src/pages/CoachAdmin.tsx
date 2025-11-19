@@ -217,7 +217,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
         .select(`
           *,
           bookings!inner(
-            id, start_at, duration_min, boat_id,
+            id, start_at, duration_min, contact_name, boat_id,
             boats(name, color)
           ),
           coaches:coach_id(id, name)
@@ -1304,6 +1304,9 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                 >
                                   <div style={{ fontWeight: '600', marginBottom: '4px' }}>
                                     {extractTime(record.bookings.start_at)} | {record.bookings.boats?.name}
+                                  </div>
+                                  <div style={{ color: '#666', marginBottom: '4px' }}>
+                                    預約人：{record.bookings.contact_name || '未命名'}
                                   </div>
                                   <div style={{ color: '#666' }}>
                                     駕駛時數：{record.driver_duration_min}分

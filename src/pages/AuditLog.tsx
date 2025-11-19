@@ -29,45 +29,90 @@ interface AuditLogProps {
 /**
  * 解析 details 字串，提取關鍵資訊
  * 
- * 格式固定為：「操作：日期 時間 時長 船隻 會員 教練名教練」
- * 例如：「新增預約：11/01 22:45 60分 黑豹 BAO 木鳥教練」
+ * 不同操作有不同格式：
+ * - 新增預約：「日期 時間 時長 船隻 會員 教練」
+ * - 修改預約：「日期 時間 船隻 · 變更 · 欄位: 舊值 → 新值」
+ * - 刪除預約：「日期 時間 船隻 會員」
  */
 function parseDetails(details: string): ParsedDetails {
   const info: ParsedDetails = { rawText: details }
+  
+  // 判斷操作類型
+  const isCreate = details.startsWith('新增預約')
+  const isUpdate = details.startsWith('修改預約')
+  const isDelete = details.startsWith('刪除預約')
   
   // 1. 提取時間（格式：11/01 13:45）
   const timeMatch = details.match(/(\d{1,2}\/\d{1,2}\s+\d{2}:\d{2})/)
   if (timeMatch) info.time = timeMatch[1]
   
-  // 2. 提取時長（60分 或 60 分）
+  // 2. 提取時長（60分）
   const durationMatch = details.match(/(\d+)\s*分/)
   if (durationMatch) info.duration = `${durationMatch[1]}分`
   
-  // 3. 提取所有教練名（XX教練 或 XX老師，可能有多個）
+  // 3. 提取教練（XX教練）
   const coachMatches = details.match(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g)
   if (coachMatches) {
     const coaches = coachMatches.map(m => m.replace(/教練|老師/g, '').trim())
     info.coach = coaches.join('/')
   }
   
-  // 4. 移除已識別的部分，剩下按空格分割
-  let remaining = details
-    .replace(/^(新增預約|修改預約|刪除預約|排班)[:：]\s*/, '') // 移除操作類型
-    .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '') // 移除時間
-    .replace(/\d+\s*分/, '') // 移除時長
-    .replace(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g, '') // 移除教練文字
-    .replace(/[、，,\s]+/g, ' ') // 統一分隔符為空格
-    .trim()
-  
-  // 5. 按空格分割，第一個是船隻，第二個是會員
-  const parts = remaining.split(/\s+/).filter(p => p.length > 0)
-  
-  if (parts.length >= 1) {
-    info.boat = parts[0] // 第一個詞是船隻
-  }
-  
-  if (parts.length >= 2) {
-    info.member = parts[1] // 第二個詞是會員
+  if (isCreate) {
+    // 新增預約：日期 時間 時長 船隻 會員 教練
+    let remaining = details
+      .replace(/^新增預約[:：]\s*/, '')
+      .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
+      .replace(/\d+\s*分/, '')
+      .replace(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g, '')
+      .replace(/[、，,\s]+/g, ' ')
+      .trim()
+    
+    const parts = remaining.split(/\s+/).filter(p => p.length > 0)
+    if (parts.length >= 1) info.boat = parts[0]
+    if (parts.length >= 2) info.member = parts[1]
+    
+  } else if (isUpdate) {
+    // 修改預約：日期 時間 船隻 · 變更 · ...
+    // 提取 "·" 之前的內容（包含日期時間船隻）
+    const beforeChange = details.split('·')[0]
+    
+    let remaining = beforeChange
+      .replace(/^修改預約[:：]\s*/, '')
+      .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
+      .trim()
+    
+    // 剩下的第一個詞應該就是船隻
+    const parts = remaining.split(/\s+/).filter(p => p.length > 0)
+    if (parts.length >= 1) {
+      info.boat = parts[0]
+    }
+    
+    // 修改預約通常沒有會員資訊，只在「聯絡:」欄位有變更時才提取
+    // 格式：「聯絡: 舊名 → 新名」，我們取箭頭後面的新名
+    const contactMatch = details.match(/聯絡[:：]\s*[^→]*→\s*([^\s·]+)/)
+    if (contactMatch && contactMatch[1].trim()) {
+      info.member = contactMatch[1].trim()
+    } else {
+      // 如果沒有箭頭，可能只是顯示名稱
+      const contactMatch2 = details.match(/聯絡[:：]\s*([^\s·→]+)/)
+      if (contactMatch2 && contactMatch2[1].trim()) {
+        info.member = contactMatch2[1].trim()
+      }
+    }
+    
+  } else if (isDelete) {
+    // 刪除預約：日期 時間 船隻 會員
+    let remaining = details
+      .replace(/^刪除預約[:：]\s*/, '')
+      .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
+      .replace(/\d+\s*分/, '')
+      .replace(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g, '')
+      .replace(/[、，,\s]+/g, ' ')
+      .trim()
+    
+    const parts = remaining.split(/\s+/).filter(p => p.length > 0)
+    if (parts.length >= 1) info.boat = parts[0]
+    if (parts.length >= 2) info.member = parts[1]
   }
   
   return info
