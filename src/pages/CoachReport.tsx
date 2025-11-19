@@ -11,7 +11,6 @@ import { isFacility } from '../utils/facility'
 import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 import { extractDate, extractTime } from '../utils/formatters'
 import {
-  validateParticipants,
   calculateIsTeaching,
   calculateParticipantStatus
 } from '../utils/participantValidation'
