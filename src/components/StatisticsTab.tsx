@@ -227,54 +227,72 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
       {/* 篩選區 */}
       <div style={{
         ...getCardStyle(isMobile),
-        marginBottom: '24px',
-        display: 'flex',
-        gap: '16px',
-        flexWrap: 'wrap',
-        alignItems: 'flex-end'
+        marginBottom: '24px'
       }}>
-        {/* 月份選擇 */}
-        <div style={{ flex: 1, minWidth: '200px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px', color: '#333' }}>
-            月份
-          </label>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '14px'
-            }}
-          />
-        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+          gap: '16px',
+          marginBottom: '16px'
+        }}>
+          {/* 月份選擇 */}
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              fontWeight: '600', 
+              fontSize: '14px', 
+              color: '#666' 
+            }}>
+              📅 月份
+            </label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '15px',
+                fontWeight: '500'
+              }}
+            />
+          </div>
 
-        {/* 教練篩選 */}
-        <div style={{ flex: 1, minWidth: '200px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px', color: '#333' }}>
-            教練
-          </label>
-          <select
-            value={selectedCoachId}
-            onChange={(e) => setSelectedCoachId(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '14px'
-            }}
-          >
-            <option value="all">全部教練</option>
-            {coachStats.map(stat => (
-              <option key={stat.coachId} value={stat.coachId}>
-                {stat.coachName}
-              </option>
-            ))}
-          </select>
+          {/* 教練篩選 */}
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              fontWeight: '600', 
+              fontSize: '14px', 
+              color: '#666' 
+            }}>
+              🎓 教練
+            </label>
+            <select
+              value={selectedCoachId}
+              onChange={(e) => setSelectedCoachId(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '15px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="all">全部教練</option>
+              {coachStats.map(stat => (
+                <option key={stat.coachId} value={stat.coachId}>
+                  {stat.coachName}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -296,44 +314,53 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
             marginBottom: '24px'
           }}>
             <div style={{
-              padding: '16px',
-              background: '#f0f9ff',
-              borderRadius: '8px',
-              border: '1px solid #bae6fd'
+              padding: '20px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
             }}>
-              <div style={{ fontSize: '13px', color: '#0369a1', marginBottom: '4px' }}>總教學時數</div>
-              <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#0c4a6e' }}>
-                {totalTeachingMinutes} 分
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)', marginBottom: '8px', fontWeight: '500' }}>
+                🎓 教學時數
               </div>
-              <div style={{ fontSize: '12px', color: '#0369a1' }}>
-                ({(totalTeachingMinutes / 60).toFixed(1)} 小時)
+              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>
+                {totalTeachingMinutes}
+              </div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)' }}>
+                分鐘 ({(totalTeachingMinutes / 60).toFixed(1)} 小時)
               </div>
             </div>
 
             <div style={{
-              padding: '16px',
-              background: '#f0fdf4',
-              borderRadius: '8px',
-              border: '1px solid #bbf7d0'
+              padding: '20px',
+              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(245, 87, 108, 0.3)'
             }}>
-              <div style={{ fontSize: '13px', color: '#15803d', marginBottom: '4px' }}>總駕駛時數</div>
-              <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#166534' }}>
-                {totalDrivingMinutes} 分
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)', marginBottom: '8px', fontWeight: '500' }}>
+                🚤 駕駛時數
               </div>
-              <div style={{ fontSize: '12px', color: '#15803d' }}>
-                ({(totalDrivingMinutes / 60).toFixed(1)} 小時)
+              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>
+                {totalDrivingMinutes}
+              </div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)' }}>
+                分鐘 ({(totalDrivingMinutes / 60).toFixed(1)} 小時)
               </div>
             </div>
 
             <div style={{
-              padding: '16px',
-              background: '#fef3c7',
-              borderRadius: '8px',
-              border: '1px solid #fde047'
+              padding: '20px',
+              background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(79, 172, 254, 0.3)'
             }}>
-              <div style={{ fontSize: '13px', color: '#a16207', marginBottom: '4px' }}>總預約數</div>
-              <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#854d0e' }}>
-                {totalBookings} 筆
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)', marginBottom: '8px', fontWeight: '500' }}>
+                📊 總預約數
+              </div>
+              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>
+                {totalBookings}
+              </div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)' }}>
+                筆記錄
               </div>
             </div>
           </div>
@@ -347,7 +374,14 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
           }}>
             {/* 教學時數圖表 */}
             <div style={getCardStyle(isMobile)}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#2196f3' }}>
+              <h3 style={{ 
+                margin: '0 0 20px 0', 
+                fontSize: '18px', 
+                fontWeight: '700', 
+                color: '#333',
+                paddingBottom: '12px',
+                borderBottom: '2px solid #667eea'
+              }}>
                 🎓 教學時數對比
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -393,7 +427,14 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
 
             {/* 駕駛時數圖表 */}
             <div style={getCardStyle(isMobile)}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#4caf50' }}>
+              <h3 style={{ 
+                margin: '0 0 20px 0', 
+                fontSize: '18px', 
+                fontWeight: '700', 
+                color: '#333',
+                paddingBottom: '12px',
+                borderBottom: '2px solid #f5576c'
+              }}>
                 🚤 駕駛時數對比
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -440,8 +481,20 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
 
           {/* 教練列表（可展開細帳） */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h2 style={{ 
+              margin: '0 0 8px 0', 
+              fontSize: '20px', 
+              fontWeight: '700', 
+              color: '#333' 
+            }}>
+              📋 教練細帳
+            </h2>
             {coachStats.map(stat => (
-              <div key={stat.coachId} style={getCardStyle(isMobile)}>
+              <div key={stat.coachId} style={{
+                ...getCardStyle(isMobile),
+                border: expandedCoachId === stat.coachId ? '2px solid #667eea' : '1px solid #e0e0e0',
+                transition: 'all 0.3s'
+              }}>
                 {/* 教練標題 */}
                 <div
                   onClick={() => setExpandedCoachId(expandedCoachId === stat.coachId ? null : stat.coachId)}
@@ -450,19 +503,53 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     cursor: 'pointer',
-                    padding: '4px 0'
+                    padding: '8px 0',
+                    userSelect: 'none'
                   }}
                 >
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#333' }}>
-                      {stat.coachName}
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ 
+                      margin: 0, 
+                      fontSize: '20px', 
+                      fontWeight: '700', 
+                      color: '#333',
+                      marginBottom: '8px'
+                    }}>
+                      🎓 {stat.coachName}
                     </h3>
-                    <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
-                      教學 {stat.teachingMinutes}分 ({stat.teachingCount}筆) | 駕駛 {stat.drivingMinutes}分 ({stat.drivingCount}筆)
+                    <div style={{ 
+                      fontSize: '14px', 
+                      color: '#666',
+                      display: 'flex',
+                      gap: '16px',
+                      flexWrap: 'wrap'
+                    }}>
+                      <span style={{ 
+                        padding: '4px 12px', 
+                        background: '#f0f9ff', 
+                        borderRadius: '6px',
+                        fontWeight: '500'
+                      }}>
+                        🎓 教學 {stat.teachingMinutes}分 ({stat.teachingCount}筆)
+                      </span>
+                      <span style={{ 
+                        padding: '4px 12px', 
+                        background: '#fef2f2', 
+                        borderRadius: '6px',
+                        fontWeight: '500'
+                      }}>
+                        🚤 駕駛 {stat.drivingMinutes}分 ({stat.drivingCount}筆)
+                      </span>
                     </div>
                   </div>
-                  <div style={{ fontSize: '24px' }}>
-                    {expandedCoachId === stat.coachId ? '▼' : '▶'}
+                  <div style={{ 
+                    fontSize: '20px',
+                    color: '#667eea',
+                    marginLeft: '16px',
+                    transition: 'transform 0.3s',
+                    transform: expandedCoachId === stat.coachId ? 'rotate(90deg)' : 'rotate(0deg)'
+                  }}>
+                    ▶
                   </div>
                 </div>
 

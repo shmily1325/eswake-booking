@@ -652,7 +652,7 @@ export function BackupPage({ user }: BackupPageProps) {
                   />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>
-                      👨‍🏫 教練時數詳細記錄（內有教練對帳表）
+                      🎓 教練時數詳細記錄（內有教練對帳表）
                     </div>
                     <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
                       每一行顯示：教練姓名、日期、學員姓名、時長、是否指定課、總時數、指定課時數、一般時數。每次教學都重複顯示教練資訊，方便Excel篩選與核算薪資。
