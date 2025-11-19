@@ -10,9 +10,10 @@ interface PageHeaderProps {
   showBaoLink?: boolean
   showHomeLink?: boolean
   breadcrumbs?: Array<{ label: string; link: string }>
+  extraLinks?: Array<{ label: string; link: string }> // 新增：額外的連結按鈕
 }
 
-export function PageHeader({ title, user, showBaoLink = false, showHomeLink = true, breadcrumbs }: PageHeaderProps) {
+export function PageHeader({ title, user, showBaoLink = false, showHomeLink = true, breadcrumbs, extraLinks }: PageHeaderProps) {
   const { isMobile } = useResponsive()
 
   const navButtonStyle: React.CSSProperties = {
@@ -89,6 +90,11 @@ export function PageHeader({ title, user, showBaoLink = false, showHomeLink = tr
               ← BAO
             </Link>
           )}
+          {extraLinks && extraLinks.map((link, index) => (
+            <Link key={index} to={link.link} style={navButtonStyle}>
+              {link.label}
+            </Link>
+          ))}
           {showHomeLink && (
             <Link to="/" style={navButtonStyle}>
               ← HOME

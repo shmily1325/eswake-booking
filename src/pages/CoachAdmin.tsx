@@ -504,6 +504,9 @@ export function CoachAdmin({ user }: { user: User | null }) {
         user={user!} 
         title="預約管理後台"
         showBaoLink={true}
+        extraLinks={[
+          { label: '← 預約回報', link: '/coach-report' }
+        ]}
       />
       
       <div style={{ 

@@ -752,6 +752,9 @@ export function CoachReport({ user }: CoachReportProps) {
         user={user} 
         title="預約回報"
         showBaoLink={true}
+        extraLinks={[
+          { label: '回報管理 →', link: '/coach-admin' }
+        ]}
       />
       
       <div style={{ 
