@@ -697,10 +697,10 @@ export function CoachAdmin({ user }: { user: User | null }) {
                             borderBottom: '1px solid #e0e0e0' 
                           }}>
                             <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '4px' }}>
-                              {booking.start_at.substring(11, 16)} | {booking.boats?.name}
+                              {booking.start_at.substring(0, 10)} {booking.start_at.substring(11, 16)} | {booking.boats?.name} ({booking.duration_min}分)
                             </div>
                             <div style={{ color: '#666', fontSize: '14px' }}>
-                              {booking.contact_name}
+                              預約人：{booking.contact_name}
                             </div>
                           </div>
 
@@ -792,10 +792,10 @@ export function CoachAdmin({ user }: { user: User | null }) {
                             borderBottom: '1px solid #e0e0e0' 
                           }}>
                             <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '4px' }}>
-                              {booking.start_at.substring(11, 16)} | {booking.boats?.name}
+                              {booking.start_at.substring(0, 10)} {booking.start_at.substring(11, 16)} | {booking.boats?.name} ({booking.duration_min}分)
                             </div>
                             <div style={{ color: '#666', fontSize: '14px' }}>
-                              {booking.contact_name}
+                              預約人：{booking.contact_name}
                             </div>
                           </div>
 
@@ -1370,7 +1370,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
       )}
 
       {/* TransactionDialog */}
-      {transactionDialogOpen && processingMember && (
+      {transactionDialogOpen && processingMember && processingReport && (
         <TransactionDialog
           open={transactionDialogOpen}
           member={processingMember}
@@ -1380,6 +1380,8 @@ export function CoachAdmin({ user }: { user: User | null }) {
             setProcessingMember(null)
           }}
           onSuccess={handleTransactionComplete}
+          defaultDescription={`${processingReport.bookings?.boats?.name} ${processingReport.duration_min}分 ${processingReport.coaches?.name}教練`}
+          defaultTransactionDate={processingReport.bookings?.start_at?.substring(0, 10)}
         />
       )}
     </div>

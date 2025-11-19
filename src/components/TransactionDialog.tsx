@@ -20,6 +20,8 @@ interface TransactionDialogProps {
   member: Member
   onClose: () => void
   onSuccess: () => void
+  defaultDescription?: string  // 自動填入的說明
+  defaultTransactionDate?: string  // 自動填入的交易日期
 }
 
 interface Transaction {
@@ -50,7 +52,7 @@ const CATEGORIES = [
   { value: 'gift_boat_hours', label: '🎁 贈送大船', unit: '分', type: 'minutes' },
 ]
 
-export function TransactionDialog({ open, member, onClose, onSuccess }: TransactionDialogProps) {
+export function TransactionDialog({ open, member, onClose, onSuccess, defaultDescription, defaultTransactionDate }: TransactionDialogProps) {
   const { isMobile } = useResponsive()
   const [activeTab, setActiveTab] = useState<'transaction' | 'history'>('transaction')
   const [loading, setLoading] = useState(false)
@@ -96,6 +98,18 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
     setNotes('')
     setTransactionDate(getLocalDateString())
   }
+
+  // 當對話框開啟時，自動填入預約資訊
+  useEffect(() => {
+    if (open) {
+      if (defaultDescription) {
+        setDescription(defaultDescription)
+      }
+      if (defaultTransactionDate) {
+        setTransactionDate(defaultTransactionDate)
+      }
+    }
+  }, [open, defaultDescription, defaultTransactionDate])
 
   // 加載交易記錄
   const loadTransactions = async () => {
@@ -827,10 +841,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                   交易日期 *
                 </label>
                 <input
-                  type="date"
+                  type="text"
                   value={transactionDate}
                   onChange={(e) => setTransactionDate(e.target.value)}
                   style={inputStyle}
+                  placeholder="YYYY-MM-DD"
                   required
                 />
               </div>
@@ -1157,10 +1172,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess }: Transact
                                 交易日期 *
                               </label>
                               <input
-                                type="date"
+                                type="text"
                                 value={editTransactionDate}
                                 onChange={(e) => setEditTransactionDate(e.target.value)}
                                 style={{ ...inputStyle, fontSize: '14px' }}
+                                placeholder="YYYY-MM-DD"
                               />
                             </div>
 
