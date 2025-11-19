@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
 import { getDisplayContactName } from '../utils/bookingFormat'
+import { checkCoachesConflictBatch } from '../utils/bookingConflict'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { useResponsive } from '../hooks/useResponsive'
 import { isFacility } from '../utils/facility'
@@ -360,78 +361,28 @@ export function EditBookingDialog({
         }
       }
       
-      // 檢查教練衝突（如果有選擇教練）
+      // ✅ 優化：使用批量檢查教練衝突（避免 N+1 查詢）
       if (selectedCoaches.length > 0) {
-        for (const coachId of selectedCoaches) {
-          // 第一步：查詢該教練的所有預約關聯（作為教練或駕駛）
-          const [coachResult, driverResult] = await Promise.all([
-            supabase
-              .from('booking_coaches')
-              .select('booking_id')
-              .eq('coach_id', coachId),
-            supabase
-              .from('booking_drivers')
-              .select('booking_id')
-              .eq('driver_id', coachId)
-          ])
-          
-          if (coachResult.error || driverResult.error) {
-            setError('檢查教練衝突時發生錯誤')
-            setLoading(false)
-            return
-          }
-          
-          // 合併教練和駕駛的預約 ID（去重）
-          const allBookingIds = new Set([
-            ...(coachResult.data || []).map(item => item.booking_id),
-            ...(driverResult.data || []).map(item => item.booking_id)
-          ])
-          
-          if (allBookingIds.size === 0) {
-            continue // 該教練沒有任何預約，跳過
-          }
-          
-          // 第二步：查詢這些預約的詳細信息（包含船隻資料）
-          const bookingIds = Array.from(allBookingIds)
-          const { data: coachBookings, error: bookingError } = await supabase
-            .from('bookings')
-            .select('id, start_at, duration_min, contact_name, boat_id, boats(id, name), booking_members(member_id, members:member_id(id, name, nickname))')
-            .in('id', bookingIds)
-            .gte('start_at', `${startDate}T00:00:00`)
-            .lte('start_at', `${startDate}T23:59:59`)
-          
-          if (bookingError) {
-            setError('檢查教練衝突時發生錯誤')
-            setLoading(false)
-            return
-          }
-          
-          for (const coachBooking of coachBookings || []) {
-            // 跳過當前編輯的預約
-            if (coachBooking.id === booking.id) {
-              continue
-            }
-            
-            // 純字符串比較
-            const bookingDatetime = coachBooking.start_at.substring(0, 16)
-            const [, bookingTime] = bookingDatetime.split('T')
-            const [bookingHour, bookingMinute] = bookingTime.split(':').map(Number)
-            
-            const bookingStartMinutes = bookingHour * 60 + bookingMinute
-            // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
-            const coachBookingBoat = coachBooking.boats as any
-            const cleanupTime = isFacility(coachBookingBoat?.name) ? 0 : 15
-            const bookingEndMinutes = bookingStartMinutes + coachBooking.duration_min + cleanupTime
-            
-            // 檢查時間重疊（新預約也要加上整理船時間）
-            const newEndWithCleanup = newEndMinutes + (isFacility(selectedBoat?.name) ? 0 : 15)
-            if (!(newEndWithCleanup <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
-              const coach = coaches.find(c => c.id === coachId)
-              setError(`教練 ${coach?.name || '未知'} 在此時段已有其他預約（${getDisplayContactName(coachBooking)}）`)
-              setLoading(false)
-              return
-            }
-          }
+        // 建立教練名稱映射
+        const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
+        
+        // 使用優化後的批量查詢
+        const conflictResult = await checkCoachesConflictBatch(
+          selectedCoaches,
+          startDate,
+          startTime,
+          durationMin,
+          coachesMap
+        )
+        
+        if (conflictResult.hasConflict) {
+          // 組合所有衝突訊息
+          const conflictMessages = conflictResult.conflictCoaches
+            .map(c => `${c.coachName}: ${c.reason}`)
+            .join('\n')
+          setError(`教練衝突：\n${conflictMessages}`)
+          setLoading(false)
+          return
         }
       }
 

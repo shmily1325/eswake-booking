@@ -240,3 +240,134 @@ export async function checkDriverConflict(
   return { hasConflict: false, reason: '' }
 }
 
+/**
+ * 批量檢查多位教練的衝突（優化版）
+ * 使用 JOIN 一次性查詢所有教練的預約，避免 N+1 問題
+ * 
+ * @param coachIds 教練 ID 列表
+ * @param dateStr 日期字串 "YYYY-MM-DD"
+ * @param startTime 開始時間 "HH:MM"
+ * @param durationMin 持續時間（分鐘）
+ * @param coachesMap 教練 ID 到名稱的映射 Map<coachId, { name: string }>
+ * @returns 衝突檢查結果，包含所有有衝突的教練資訊
+ * 
+ * @example
+ * ```typescript
+ * const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
+ * const result = await checkCoachesConflictBatch(
+ *   ['coach1', 'coach2', 'coach3'],
+ *   '2025-11-19',
+ *   '14:00',
+ *   60,
+ *   coachesMap
+ * )
+ * if (result.hasConflict) {
+ *   console.log('有衝突的教練:', result.conflictCoaches)
+ * }
+ * ```
+ */
+export async function checkCoachesConflictBatch(
+  coachIds: string[],
+  dateStr: string,
+  startTime: string,
+  durationMin: number,
+  coachesMap: Map<string, { name: string }>
+): Promise<{
+  hasConflict: boolean
+  conflictCoaches: Array<{ coachId: string; coachName: string; reason: string }>
+}> {
+  // 如果沒有教練需要檢查，直接返回
+  if (coachIds.length === 0) {
+    return { hasConflict: false, conflictCoaches: [] }
+  }
+
+  const newSlot = calculateTimeSlot(startTime, durationMin)
+  
+  // ✅ 優化：一次性查詢所有教練的預約（使用 JOIN）
+  // 查詢教練預約（作為教練）
+  const { data: coachBookingsData, error: coachError } = await supabase
+    .from('booking_coaches')
+    .select(`
+      coach_id,
+      bookings!inner(
+        id,
+        start_at,
+        duration_min,
+        contact_name
+      )
+    `)
+    .in('coach_id', coachIds)
+    .gte('bookings.start_at', `${dateStr}T00:00:00`)
+    .lte('bookings.start_at', `${dateStr}T23:59:59`)
+
+  // ✅ 優化：一次性查詢所有駕駛的預約
+  const { data: driverBookingsData, error: driverError } = await supabase
+    .from('booking_drivers')
+    .select(`
+      driver_id,
+      bookings!inner(
+        id,
+        start_at,
+        duration_min,
+        contact_name
+      )
+    `)
+    .in('driver_id', coachIds)
+    .gte('bookings.start_at', `${dateStr}T00:00:00`)
+    .lte('bookings.start_at', `${dateStr}T23:59:59`)
+
+  if (coachError || driverError) {
+    console.error('查詢教練預約時發生錯誤:', coachError || driverError)
+    return { hasConflict: false, conflictCoaches: [] }
+  }
+
+  // 整理每位教練的預約（合併教練和駕駛的預約）
+  const coachBookingsMap = new Map<string, any[]>()
+  
+  // 處理教練預約
+  coachBookingsData?.forEach(item => {
+    const coachId = item.coach_id
+    const bookings = coachBookingsMap.get(coachId) || []
+    bookings.push(item.bookings)
+    coachBookingsMap.set(coachId, bookings)
+  })
+  
+  // 處理駕駛預約
+  driverBookingsData?.forEach(item => {
+    const driverId = item.driver_id
+    const bookings = coachBookingsMap.get(driverId) || []
+    bookings.push(item.bookings)
+    coachBookingsMap.set(driverId, bookings)
+  })
+
+  // 檢查每位教練是否有衝突
+  const conflictCoaches: Array<{ coachId: string; coachName: string; reason: string }> = []
+  
+  for (const coachId of coachIds) {
+    const bookings = coachBookingsMap.get(coachId) || []
+    
+    // 檢查該教練的每個預約
+    for (const booking of bookings) {
+      const existingTime = booking.start_at.substring(11, 16)
+      const existingSlot = calculateTimeSlot(existingTime, booking.duration_min)
+      
+      if (checkTimeSlotConflict(newSlot, existingSlot)) {
+        const coachInfo = coachesMap.get(coachId)
+        const coachName = coachInfo?.name || '未知教練'
+        
+        conflictCoaches.push({
+          coachId,
+          coachName,
+          reason: `與 ${booking.contact_name} 的預約時間衝突 (${existingTime}-${minutesToTime(existingSlot.endMinutes)})`
+        })
+        break // 找到一個衝突就跳出，不需要繼續檢查該教練的其他預約
+      }
+    }
+  }
+
+  return {
+    hasConflict: conflictCoaches.length > 0,
+    conflictCoaches
+  }
+}
+

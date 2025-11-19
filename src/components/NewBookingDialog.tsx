@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
 import { getDisplayContactName } from '../utils/bookingFormat'
 import { isFacility } from '../utils/facility'
-import { extractDate } from '../utils/formatters'
+import { checkCoachesConflictBatch } from '../utils/bookingConflict'
 import { 
   EARLY_BOOKING_HOUR_LIMIT,
   MEMBER_SEARCH_DEBOUNCE_MS 
@@ -392,92 +392,32 @@ export function NewBookingDialog({
           }
         }
         
-        // 檢查教練衝突（如果有選擇教練）
+        // ✅ 優化：使用批量檢查教練衝突（避免 N+1 查詢）
         if (!hasConflict && selectedCoaches.length > 0) {
-          console.log(`🔍 開始檢查 ${selectedCoaches.length} 位教練的衝突...`)
-          for (const coachId of selectedCoaches) {
-            const coachName = coaches.find(c => c.id === coachId)?.name || '未知'
-            console.log(`🔍 檢查教練: ${coachName} (ID: ${coachId})`)
-            
-            // 第一步：查詢該教練作為教練或駕駛的所有預約關聯
-            const [coachResult, driverResult] = await Promise.all([
-              supabase
-                .from('booking_coaches')
-                .select('booking_id')
-                .eq('coach_id', coachId),
-              supabase
-                .from('booking_drivers')
-                .select('booking_id')
-                .eq('driver_id', coachId)
-            ])
-            
-            console.log(`📋 教練 ${coachName} 作為教練的預約數量: ${coachResult.data?.length || 0}`)
-            console.log(`📋 教練 ${coachName} 作為駕駛的預約數量: ${driverResult.data?.length || 0}`)
-            
-            if (coachResult.error || driverResult.error) {
-              hasConflict = true
-              conflictReason = '檢查教練衝突時發生錯誤'
-              break
-            }
-            
-            // 合併所有預約ID（去重）
-            const allBookingIds = Array.from(new Set([
-              ...(coachResult.data?.map(item => item.booking_id) || []),
-              ...(driverResult.data?.map(item => item.booking_id) || [])
-            ]))
-            
-            if (allBookingIds.length === 0) {
-              continue // 該教練沒有任何預約，跳過
-            }
-            
-            // 查詢所有預約的詳細信息（包含船隻資料）
-            const { data: allBookings, error: bookingError } = await supabase
-              .from('bookings')
-              .select('id, start_at, duration_min, contact_name, boat_id, boats(id, name), booking_members(member_id, members:member_id(id, name, nickname))')
-              .in('id', allBookingIds)
-            
-            if (bookingError) {
-              hasConflict = true
-              conflictReason = '檢查教練衝突時發生錯誤'
-              break
-            }
-            
-            // 篩選出同一天的預約（純字符串比較）
-            const sameDayBookings = (allBookings || []).filter(booking => {
-              const bookingDate = extractDate(booking.start_at) // "2025-10-30"
-              return bookingDate === dateStr
-            })
-            
-            console.log(`📅 教練 ${coachName} 在 ${dateStr} 的所有預約數（教練+駕駛）: ${sameDayBookings.length}`)
-            
-            for (const booking of sameDayBookings) {
-              // 純字符串比較
-              const bookingDatetime = booking.start_at.substring(0, 16)
-              const [, bookingTime] = bookingDatetime.split('T')
-              const [bookingHour, bookingMinute] = bookingTime.split(':').map(Number)
-              
-              const bookingStartMinutes = bookingHour * 60 + bookingMinute
-              // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
-              const bookingBoat = booking.boats as any
-              const cleanupTime = isFacility(bookingBoat?.name) ? 0 : 15
-              const bookingEndMinutes = bookingStartMinutes + booking.duration_min + cleanupTime
-              
-              // 新預約也要加上整理船時間
-              const newEndWithCleanup = newEndMinutes + (isFacility(selectedBoat?.name) ? 0 : 15)
-              
-              console.log(`⏰ 檢查時段: 新預約 ${newStartMinutes}-${newEndWithCleanup} vs 現有預約 ${bookingStartMinutes}-${bookingEndMinutes} (${booking.contact_name})`)
-              
-              // 檢查時間重疊
-              if (!(newEndWithCleanup <= bookingStartMinutes || newStartMinutes >= bookingEndMinutes)) {
-                const coach = coaches.find(c => c.id === coachId)
-                hasConflict = true
-                conflictReason = `${coach?.name || '未知'} 在此時段已有其他預約（${getDisplayContactName(booking)}）`
-                console.log(`❌ 衝突！${conflictReason}`)
-                break
-              }
-            }
-            
-            if (hasConflict) break
+          console.log(`🔍 開始批量檢查 ${selectedCoaches.length} 位教練的衝突...`)
+          
+          // 建立教練名稱映射
+          const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
+          
+          // 使用優化後的批量查詢
+          const conflictResult = await checkCoachesConflictBatch(
+            selectedCoaches,
+            dateStr,
+            timeStr,
+            durationMin,
+            coachesMap
+          )
+          
+          if (conflictResult.hasConflict) {
+            hasConflict = true
+            // 組合所有衝突訊息
+            const conflictMessages = conflictResult.conflictCoaches
+              .map(c => `${c.coachName}: ${c.reason}`)
+              .join('\n')
+            conflictReason = `教練衝突：\n${conflictMessages}`
+            console.log('❌ 發現教練衝突:', conflictResult.conflictCoaches)
+          } else {
+            console.log('✅ 所有教練無衝突')
           }
         }
         
