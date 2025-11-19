@@ -107,12 +107,13 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
       }
 
       const headers = [
-        '姓名', '儲值', 'VIP票券', '指定課時數', 'G23船券', 'G21/黑豹船券', '贈送大船時數'
+        '姓名', '暱稱', '儲值', 'VIP票券', '指定課時數', 'G23船券', 'G21/黑豹船券', '贈送大船時數'
       ]
 
       const rows = allMembers.map((member: any) => {
         return [
           member.name || '',
+          member.nickname || '',
           member.balance || 0,
           member.vip_voucher_amount || 0,
           member.designated_lesson_minutes || 0,
@@ -175,6 +176,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
         transformHeader: (header: string) => {
           const headerMap: Record<string, string> = {
             '姓名': 'name',
+            '暱稱': 'nickname',
             '儲值': 'balance',
             'VIP票券': 'vip_voucher_amount',
             '指定課時數': 'designated_lesson_minutes',
@@ -922,9 +924,10 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                   💡 導入說明
                 </div>
                 <div style={{ color: '#666' }}>
-                  • CSV 格式：<code style={{ background: '#e9ecef', padding: '2px 6px', borderRadius: '4px' }}>姓名,暱稱,儲值,VIP票券,指定課時數,G23船券,G21/黑豹船券,贈送大船時數,狀態</code><br />
+                  • CSV 格式：<code style={{ background: '#e9ecef', padding: '2px 6px', borderRadius: '4px' }}>姓名,暱稱,儲值,VIP票券,指定課時數,G23船券,G21/黑豹船券,贈送大船時數</code><br />
                   • 只更新已存在的會員（不會創建新會員）<br />
                   • 會根據會員姓名自動匹配<br />
+                  • <strong style={{ color: '#2196F3' }}>只更新財務字段</strong>（儲值、票券、船券等），<strong style={{ color: '#2196F3' }}>不會更新暱稱</strong><br />
                   • 會員不存在時會被跳過並報告錯誤
                 </div>
               </div>
@@ -943,7 +946,8 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                 <div style={{ marginBottom: '4px', fontWeight: 'bold', fontSize: '14px' }}>
                   ⚠️ 重要提醒
                 </div>
-                <strong style={{ color: '#d32f2f' }}>導入會直接覆蓋現有儲值數據，建議先導出備份！</strong>
+                <div><strong style={{ color: '#d32f2f' }}>導入會直接覆蓋現有財務數據，建議先導出備份！</strong></div>
+                <div style={{ marginTop: '4px', fontSize: '13px' }}>（暱稱不會被覆蓋，保持原有設定）</div>
               </div>
 
               {/* CSV 範例 */}

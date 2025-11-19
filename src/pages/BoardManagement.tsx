@@ -79,14 +79,13 @@ export function BoardManagement({ user }: BoardManagementProps) {
         return
       }
 
-      const headers = ['姓名', '暱稱', '格位號碼', '到期日', '備註', '狀態']
+      const headers = ['姓名', '暱稱', '格位號碼', '到期日', '備註']
       const rows = allBoards.map((board: any) => [
         board.members?.name || '',
         board.members?.nickname || '',
         board.slot_number,
         board.expires_at || '',
-        board.notes || '',
-        board.status === 'active' ? '啟用' : '停用'
+        board.notes || ''
       ])
 
       const csvContent = [
@@ -1187,8 +1186,9 @@ export function BoardManagement({ user }: BoardManagementProps) {
                 </div>
                 <div style={{ color: '#666' }}>
                   • CSV 格式：<code style={{ background: '#e9ecef', padding: '2px 6px', borderRadius: '4px' }}>姓名,暱稱,格位號碼,到期日,備註</code><br />
-                  • 支持一個會員多個格位（每個格位一行）<br />
                   • 會根據會員姓名自動匹配會員資料<br />
+                  • <strong style={{ color: '#2196F3' }}>只更新置板資訊</strong>（格位號碼、到期日、備註），<strong style={{ color: '#2196F3' }}>不會更新會員暱稱</strong><br />
+                  • 支持一個會員多個格位（每個格位一行）<br />
                   • 格位號碼範圍：1-145<br />
                   • 如果格位已存在會更新，不存在則新增
                 </div>
