@@ -29,8 +29,8 @@ interface AuditLogProps {
 /**
  * 解析 details 字串，提取關鍵資訊
  * 
- * 格式通常為：「操作：日期 時間 時長 會員名 船隻/活動 教練名教練」
- * 例如：「新增預約：11/21 08:00 30分 约红 墊跳 Jerry教練」
+ * 格式固定為：「操作：日期 時間 時長 船隻 會員 教練名教練」
+ * 例如：「新增預約：11/01 22:45 60分 黑豹 BAO 木鳥教練」
  */
 function parseDetails(details: string): ParsedDetails {
   const info: ParsedDetails = { rawText: details }
@@ -50,48 +50,24 @@ function parseDetails(details: string): ParsedDetails {
     info.coach = coaches.join('/')
   }
   
-  // 4. 移除已識別的部分，剩下的來找船隻和會員
+  // 4. 移除已識別的部分，剩下按空格分割
   let remaining = details
     .replace(/^(新增預約|修改預約|刪除預約|排班)[:：]\s*/, '') // 移除操作類型
     .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '') // 移除時間
     .replace(/\d+\s*分/, '') // 移除時長
+    .replace(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g, '') // 移除教練文字
+    .replace(/[、，,\s]+/g, ' ') // 統一分隔符為空格
+    .trim()
   
-  if (info.coach) {
-    // 移除教練相關文字
-    const coachNames = info.coach.split('/')
-    coachNames.forEach(coach => {
-      remaining = remaining.replace(new RegExp(`${coach}\\s*(?:教練|老師)?`, 'g'), '')
-    })
+  // 5. 按空格分割，第一個是船隻，第二個是會員
+  const parts = remaining.split(/\s+/).filter(p => p.length > 0)
+  
+  if (parts.length >= 1) {
+    info.boat = parts[0] // 第一個詞是船隻
   }
   
-  // 5. 提取船隻（常見船名或特定詞彙）
-  // 船隻通常是：G23, G21, Panther, BAO, Sky, Anita, 彈簧床, 墊跳, 不鳥, 木鳥等
-  const boatKeywords = [
-    'G23', 'G21', 'Panther', 'BAO', 'Sky', 'Anita', 
-    '彈簧床', '墊跳', '不鳥', '木鳥', '可愛', '磅礡'
-  ]
-  
-  for (const keyword of boatKeywords) {
-    if (remaining.includes(keyword)) {
-      info.boat = keyword
-      remaining = remaining.replace(keyword, '')
-      break
-    }
-  }
-  
-  // 如果沒找到關鍵字，嘗試匹配英文大寫開頭的詞（可能是船名）
-  if (!info.boat) {
-    const boatMatch = remaining.match(/\b([A-Z][A-Za-z]*\d*)\b/)
-    if (boatMatch && boatMatch[1].length >= 2) {
-      info.boat = boatMatch[1]
-      remaining = remaining.replace(boatMatch[1], '')
-    }
-  }
-  
-  // 6. 剩下的中文就是會員名（通常在最前面）
-  const memberMatch = remaining.match(/([\u4e00-\u9fa5]{2,10})/)
-  if (memberMatch) {
-    info.member = memberMatch[1].trim()
+  if (parts.length >= 2) {
+    info.member = parts[1] // 第二個詞是會員
   }
   
   return info
