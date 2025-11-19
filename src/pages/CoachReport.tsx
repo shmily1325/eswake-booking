@@ -572,24 +572,8 @@ export function CoachReport({ user }: CoachReportProps) {
     }
   }
 
-  // 新增会员参与者（从会员列表选择）
-  const addMemberParticipant = () => {
-    const booking = bookings.find(b => b.id === reportingBookingId)
-    setParticipants([
-      ...participants,
-      {
-        member_id: null,  // 等待用户选择
-        participant_name: '',
-        duration_min: booking?.duration_min || 60,
-        payment_method: 'balance',  // 会员默认扣储值
-        lesson_type: 'undesignated',
-        status: 'pending'  // 会员状态
-      }
-    ])
-  }
-
-  // 新增客人参与者（非会员，直接输入姓名）
-  const addGuestParticipant = () => {
+  // 新增參與者（統一入口）
+  const addParticipant = () => {
     const booking = bookings.find(b => b.id === reportingBookingId)
     setParticipants([
       ...participants,
@@ -597,11 +581,23 @@ export function CoachReport({ user }: CoachReportProps) {
         member_id: null,
         participant_name: '',
         duration_min: booking?.duration_min || 60,
-        payment_method: 'cash',  // 客人默认现金
+        payment_method: 'cash',  // 默認現金
         lesson_type: 'undesignated',
-        status: 'not_applicable'  // 非会员状态
+        status: 'not_applicable'  // 默認非會員
       }
     ])
+  }
+
+  // 清除會員綁定
+  const clearMember = (index: number) => {
+    const updated = [...participants]
+    updated[index] = {
+      ...updated[index],
+      member_id: null,
+      payment_method: 'cash',
+      status: 'not_applicable'
+    }
+    setParticipants(updated)
   }
 
   const removeParticipant = (index: number) => {
@@ -615,13 +611,14 @@ export function CoachReport({ user }: CoachReportProps) {
   }
 
   const selectMember = (index: number, member: MemberSearchResult) => {
-    // 一次性更新所有字段，避免状态更新丢失
+    // 一次性更新所有字段，選了會員自動調整收費方式
     const updated = [...participants]
     updated[index] = {
       ...updated[index],
       member_id: member.id,
       participant_name: member.nickname || member.name,
-      status: 'pending'
+      payment_method: 'balance',  // 會員自動改為扣儲值
+      status: 'pending'  // 會員狀態
     }
     setParticipants(updated)
     setMemberSearchTerm('')
@@ -1099,9 +1096,9 @@ export function CoachReport({ user }: CoachReportProps) {
         paymentMethods={PAYMENT_METHODS}
         onDriverDurationChange={setDriverDuration}
         onParticipantUpdate={updateParticipant}
-        onParticipantAddMember={addMemberParticipant}
-        onParticipantAddGuest={addGuestParticipant}
+        onParticipantAdd={addParticipant}
         onParticipantRemove={removeParticipant}
+        onClearMember={clearMember}
         onMemberSearch={(value) => {
           setMemberSearchTerm(value)
           handleSearchChange(value)

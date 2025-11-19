@@ -32,6 +32,7 @@ interface ParticipantFormItemProps {
   paymentMethods: Array<{ value: string; label: string }>
   onUpdate: (index: number, field: keyof Participant, value: any) => void
   onRemove: (index: number) => void
+  onClearMember: (index: number) => void
   onSearchChange: (value: string, index: number) => void
   onSelectMember: (index: number, member: Member) => void
 }
@@ -47,6 +48,7 @@ export function ParticipantFormItem({
   paymentMethods,
   onUpdate,
   onRemove,
+  onClearMember,
   onSearchChange,
   onSelectMember
 }: ParticipantFormItemProps) {
@@ -80,22 +82,39 @@ export function ParticipantFormItem({
         </button>
       )}
 
-      {/* 会员状态标签 */}
-      <div style={{ marginBottom: '12px' }}>
+      {/* 会员状态标签 + 清除按钮 */}
+      <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         {participant.member_id ? (
-          <span
-            style={{
-              display: 'inline-block',
-              padding: '4px 12px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              borderRadius: '12px',
-              fontSize: '12px',
-              fontWeight: '600'
-            }}
-          >
-            👤 會員
-          </span>
+          <>
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '4px 12px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: '600'
+              }}
+            >
+              👤 會員
+            </span>
+            <button
+              onClick={() => onClearMember(index)}
+              style={{
+                padding: '4px 8px',
+                background: '#ff5252',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              ❌ 清除
+            </button>
+          </>
         ) : (
           <span
             style={{
@@ -124,7 +143,12 @@ export function ParticipantFormItem({
             onUpdate(index, 'participant_name', e.target.value)
             onSearchChange(e.target.value, index)
           }}
-          style={getInputStyle(isMobile)}
+          readOnly={!!participant.member_id}
+          style={{
+            ...getInputStyle(isMobile),
+            background: participant.member_id ? '#f0f0f0' : 'white',
+            cursor: participant.member_id ? 'not-allowed' : 'text'
+          }}
           placeholder="搜尋會員或輸入姓名"
         />
 

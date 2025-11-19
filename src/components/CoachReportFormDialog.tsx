@@ -45,9 +45,9 @@ interface CoachReportFormDialogProps {
   paymentMethods: Array<{ value: string; label: string }>
   onDriverDurationChange: (value: number) => void
   onParticipantUpdate: (index: number, field: keyof Participant, value: any) => void
-  onParticipantAddMember: () => void
-  onParticipantAddGuest: () => void
+  onParticipantAdd: () => void
   onParticipantRemove: (index: number) => void
+  onClearMember: (index: number) => void
   onMemberSearch: (value: string, index: number) => void
   onMemberSelect: (index: number, member: Member) => void
   onSubmit: () => void
@@ -67,9 +67,9 @@ export function CoachReportFormDialog({
   paymentMethods,
   onDriverDurationChange,
   onParticipantUpdate,
-  onParticipantAddMember,
-  onParticipantAddGuest,
+  onParticipantAdd,
   onParticipantRemove,
+  onClearMember,
   onMemberSearch,
   onMemberSelect,
   onSubmit,
@@ -201,6 +201,7 @@ export function CoachReportFormDialog({
                         paymentMethods={paymentMethods}
                         onUpdate={onParticipantUpdate}
                         onRemove={onParticipantRemove}
+                        onClearMember={onClearMember}
                         onSearchChange={onMemberSearch}
                         onSelectMember={onMemberSelect}
                       />
@@ -218,44 +219,18 @@ export function CoachReportFormDialog({
                   border: '2px dashed #ddd'
                 }}
               >
-                <div style={{ marginBottom: '12px', fontWeight: '600', fontSize: '15px' }}>
-                  ➕ 新增參與者
-                </div>
-
-                {/* 会员搜索 */}
-                <div style={{ marginBottom: '12px' }}>
-                  <button
-                    onClick={onParticipantAddMember}
-                    style={{
-                      ...getButtonStyle('primary'),
-                      width: '100%'
-                    }}
-                  >
-                    👤 搜尋並新增會員
-                  </button>
-                </div>
-
-                {/* 或直接输入非会员 */}
-                <div
-                  style={{
-                    textAlign: 'center',
-                    color: '#999',
-                    fontSize: '13px',
-                    margin: '8px 0'
-                  }}
-                >
-                  ── 或 ──
-                </div>
-
                 <button
-                  onClick={onParticipantAddGuest}
+                  onClick={onParticipantAdd}
                   style={{
-                    ...getButtonStyle('secondary'),
+                    ...getButtonStyle('primary'),
                     width: '100%'
                   }}
                 >
-                  ✏️ 直接輸入客人姓名（非會員）
+                  ➕ 新增參與者
                 </button>
+                <div style={{ fontSize: '12px', color: '#999', marginTop: '8px', textAlign: 'center' }}>
+                  可搜尋會員或直接輸入客人姓名
+                </div>
               </div>
             </div>
           )}
