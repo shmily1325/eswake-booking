@@ -694,6 +694,46 @@ export function CoachReport({ user }: CoachReportProps) {
         margin: '0 auto',
         width: '100%'
       }}>
+        {/* 回報規則說明 */}
+        <div style={{
+          background: '#f5f5f5',
+          border: '1px solid #e0e0e0',
+          borderRadius: '8px',
+          padding: isMobile ? '12px' : '16px',
+          marginBottom: '20px'
+        }}>
+          <div style={{
+            fontSize: isMobile ? '13px' : '14px',
+            fontWeight: '600',
+            marginBottom: '12px',
+            color: '#333'
+          }}>
+            📋 回報規則
+          </div>
+          <div style={{
+            fontSize: isMobile ? '12px' : '13px',
+            color: '#666',
+            lineHeight: '1.8'
+          }}>
+            <div style={{ marginBottom: '8px' }}>
+              <strong>回報內容：</strong>
+            </div>
+            <div style={{ paddingLeft: '12px', marginBottom: '8px' }}>
+              • <strong>只是教練</strong> → 回報參與者<br/>
+              • <strong>只是駕駛</strong>（有教練的預約）→ 回報駕駛時數<br/>
+              • <strong>教練兼駕駛</strong> → 回報駕駛時數 + 參與者<br/>
+              • <strong>沒有教練，只有駕駛</strong> → 回報駕駛時數 + 參與者
+            </div>
+            <div style={{ marginBottom: '4px' }}>
+              <strong>時數計算：</strong>
+            </div>
+            <div style={{ paddingLeft: '12px' }}>
+              • <strong>指定課</strong>（指定需收費/不需收費）→ 計入教學時數<br/>
+              • <strong>不指定</strong> → 不計入教學時數
+            </div>
+          </div>
+        </div>
+
         {/* 標籤頁式視圖切換 */}
         <div style={{
           display: 'flex',

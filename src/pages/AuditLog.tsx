@@ -72,32 +72,19 @@ function parseDetails(details: string): ParsedDetails {
     if (parts.length >= 2) info.member = parts[1]
     
   } else if (isUpdate) {
-    // 修改預約：日期 時間 船隻 · 變更 · ...
-    // 提取 "·" 之前的內容（包含日期時間船隻）
-    const beforeChange = details.split('·')[0]
+    // 修改預約：日期 時間 [名稱]，變更：...
+    // 只從「變更」內容中提取明確的欄位
     
-    let remaining = beforeChange
-      .replace(/^修改預約[:：]\s*/, '')
-      .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
-      .trim()
-    
-    // 剩下的第一個詞應該就是船隻
-    const parts = remaining.split(/\s+/).filter(p => p.length > 0)
-    if (parts.length >= 1) {
-      info.boat = parts[0]
+    // 提取船隻變更（船隻: XX → YY）
+    const boatChangeMatch = details.match(/船隻[:：]\s*[^→]*→\s*([^，\s]+)/)
+    if (boatChangeMatch) {
+      info.boat = boatChangeMatch[1].trim()
     }
     
-    // 修改預約通常沒有會員資訊，只在「聯絡:」欄位有變更時才提取
-    // 格式：「聯絡: 舊名 → 新名」，我們取箭頭後面的新名
-    const contactMatch = details.match(/聯絡[:：]\s*[^→]*→\s*([^\s·]+)/)
-    if (contactMatch && contactMatch[1].trim()) {
-      info.member = contactMatch[1].trim()
-    } else {
-      // 如果沒有箭頭，可能只是顯示名稱
-      const contactMatch2 = details.match(/聯絡[:：]\s*([^\s·→]+)/)
-      if (contactMatch2 && contactMatch2[1].trim()) {
-        info.member = contactMatch2[1].trim()
-      }
+    // 提取聯絡人變更（聯絡: XX → YY）
+    const contactChangeMatch = details.match(/聯絡[:：]\s*[^→]*→\s*([^，\s]+)/)
+    if (contactChangeMatch) {
+      info.member = contactChangeMatch[1].trim()
     }
     
   } else if (isDelete) {

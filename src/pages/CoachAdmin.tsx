@@ -60,7 +60,11 @@ export function CoachAdmin({ user }: { user: User | null }) {
   
   // Tab 管理
   const [activeTab, setActiveTab] = useState<TabType>('pending')
-  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString())
+  const [selectedDate, setSelectedDate] = useState(() => {
+    // 默認為本月 (YYYY-MM 格式)
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
   const [pendingViewMode, setPendingViewMode] = useState<'date' | 'all'>('all') // 默認：查看全部
   const [loading, setLoading] = useState(false)
 
@@ -1264,7 +1268,10 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                   }}
                                 >
                                   <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                    {extractTime(record.bookings.start_at)} | {record.bookings.boats?.name}
+                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)} | {record.bookings.boats?.name}
+                                  </div>
+                                  <div style={{ color: '#666', marginBottom: '4px' }}>
+                                    預約人：{record.bookings.contact_name || '未命名'}
                                   </div>
                                   <div style={{ color: '#666' }}>
                                     學員：{record.members?.nickname || record.members?.name || record.participant_name}
@@ -1303,7 +1310,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                   }}
                                 >
                                   <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                    {extractTime(record.bookings.start_at)} | {record.bookings.boats?.name}
+                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)} | {record.bookings.boats?.name}
                                   </div>
                                   <div style={{ color: '#666', marginBottom: '4px' }}>
                                     預約人：{record.bookings.contact_name || '未命名'}
