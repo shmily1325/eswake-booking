@@ -44,3 +44,9 @@ export const PARTICIPANT_STATUS = {
   PROCESSED: 'processed',
   NOT_APPLICABLE: 'not_applicable'
 } as const
+
+// 預約規則常數
+export const EARLY_BOOKING_HOUR_LIMIT = 8 // 08:00 之前的預約必須指定教練
+export const MEMBER_SEARCH_DEBOUNCE_MS = 300 // 會員搜尋防抖延遲（毫秒）
+export const CLEANUP_TIME_MINUTES = 15 // 船隻清理時間（分鐘）
+export const TIME_SLOT_MINUTES = 15 // 時間槽間隔（分鐘）
