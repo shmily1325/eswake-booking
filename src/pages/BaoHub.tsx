@@ -22,32 +22,22 @@ export function BaoHub({ user }: BaoHubProps) {
     }>
   }> = [
     {
-      section: '📅 排班',
+      section: '📋 預約相關',
       items: [
         {
           title: '排班',
           icon: '📅',
           link: '/coach-assignment'
-        }
-      ]
-    },
-    {
-      section: '📋 預約相關',
-      items: [
+        },
         {
           title: '教練回報',
           icon: '📝',
           link: '/coach-report'
         },
         {
-          title: '回報管理',
-          icon: '⚙️',
+          title: '回報管理中心',
+          icon: '💼',
           link: '/coach-admin'
-        },
-        {
-          title: '數據統計',
-          icon: '📊',
-          link: '/coach-overview'
         }
       ]
     },

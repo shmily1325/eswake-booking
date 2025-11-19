@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { TransactionDialog } from '../components/TransactionDialog'
+import { StatisticsTab } from '../components/StatisticsTab'
 import { useResponsive } from '../hooks/useResponsive'
 import { useMemberSearch } from '../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
@@ -54,16 +55,14 @@ interface PendingReport {
   old_participant?: any
 }
 
-type TabType = 'pending' | 'completed'
+type TabType = 'pending' | 'completed' | 'statistics'
 type CompletedViewMode = 'booking' | 'coach'
 
 const PAYMENT_METHODS = [
-  { value: 'cash', label: '現金' },
-  { value: 'transfer', label: '匯款' },
-  { value: 'balance', label: '扣儲值' },
-  { value: 'voucher', label: '票券' },
-  { value: 'designated_paid', label: '指定（需收費）' },
-  { value: 'designated_free', label: '指定（不需收費）' }
+  { value: 'cash', label: '💵 現金' },
+  { value: 'transfer', label: '🏦 匯款' },
+  { value: 'balance', label: '💰 扣儲值' },
+  { value: 'voucher', label: '🎫 票券' }
 ]
 
 // ============ Main Component ============
@@ -518,7 +517,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       <PageHeader 
         user={user!} 
-        title="回報管理"
+        title="💼 回報管理中心"
         showBaoLink={true}
         extraLinks={[
           { label: '← 預約回報', link: '/coach-report' }
@@ -567,7 +566,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
               gap: '8px'
             }}
           >
-            待處理記錄
+            📋 待處理
             {(pendingReports.length + nonMemberReports.length) > 0 && (
               <span style={{
                 background: 'white',
@@ -596,7 +595,24 @@ export function CoachAdmin({ user }: { user: User | null }) {
               transition: 'all 0.2s'
             }}
           >
-            已結案記錄
+            ✅ 已處理
+          </button>
+          <button
+            onClick={() => setActiveTab('statistics')}
+            style={{
+              padding: '12px 24px',
+              background: activeTab === 'statistics' ? '#2196f3' : 'transparent',
+              color: activeTab === 'statistics' ? 'white' : '#666',
+              border: 'none',
+              borderBottom: activeTab === 'statistics' ? '3px solid #2196f3' : 'none',
+              borderRadius: '8px 8px 0 0',
+              cursor: 'pointer',
+              fontSize: isMobile ? '14px' : '16px',
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}
+          >
+            📊 統計報表
           </button>
         </div>
 
@@ -888,17 +904,81 @@ export function CoachAdmin({ user }: { user: User | null }) {
               ...getCardStyle(isMobile),
               marginBottom: '24px'
             }}>
-              {/* 日期選擇 */}
+              {/* 月份選擇 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ ...getLabelStyle(isMobile) }}>
-                  日期
+                <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>
+                  查詢期間
                 </label>
+                
+                {/* 快捷按鈕 */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => {
+                      const today = new Date()
+                      const year = today.getFullYear()
+                      const month = String(today.getMonth() + 1).padStart(2, '0')
+                      setSelectedDate(`${year}-${month}`)
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#e3f2fd',
+                      color: '#1976d2',
+                      border: '2px solid #90caf9',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    📅 本月
+                  </button>
+                  <button
+                    onClick={() => {
+                      const today = new Date()
+                      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+                      const year = lastMonth.getFullYear()
+                      const month = String(lastMonth.getMonth() + 1).padStart(2, '0')
+                      setSelectedDate(`${year}-${month}`)
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#fff3e0',
+                      color: '#e65100',
+                      border: '2px solid #ffb74d',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    📆 上月
+                  </button>
+                  <button
+                    onClick={() => setSelectedDate(getLocalDateString())}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#e8f5e9',
+                      color: '#2e7d32',
+                      border: '2px solid #81c784',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    🗓️ 今天
+                  </button>
+                </div>
+                
                 <input
-                  type="date"
-                  value={selectedDate}
+                  type="month"
+                  value={selectedDate.substring(0, 7)}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   style={getInputStyle(isMobile)}
                 />
+                <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                  顯示整個月的已結案記錄
+                </div>
               </div>
               
               {/* 查看模式切換 */}
@@ -1367,6 +1447,11 @@ export function CoachAdmin({ user }: { user: User | null }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tab 3: 統計報表 */}
+      {activeTab === 'statistics' && (
+        <StatisticsTab isMobile={isMobile} />
       )}
 
       {/* TransactionDialog */}

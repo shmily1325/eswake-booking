@@ -10,7 +10,6 @@ import { SearchBookings } from './pages/SearchBookings'
 import { CoachReport } from './pages/CoachReport'
 import { CoachAdmin } from './pages/CoachAdmin'
 import { CoachAssignment } from './pages/CoachAssignment'
-import { CoachOverview } from './pages/CoachOverview'
 import { MemberImport } from './pages/MemberImport'
 import { AuditLog } from './pages/AuditLog'
 import { TomorrowReminder } from './pages/TomorrowReminder'
@@ -89,7 +88,6 @@ function App() {
         <Route path="/coach-report" element={<CoachReport user={user} />} />
         <Route path="/coach-admin" element={<CoachAdmin user={user} />} />
         <Route path="/coach-assignment" element={<CoachAssignment user={user} />} />
-        <Route path="/coach-overview" element={<CoachOverview user={user} />} />
           <Route path="/member-import" element={<MemberImport user={user} />} />
         <Route path="/audit-log" element={<AuditLog user={user} />} />
               <Route path="/tomorrow" element={<TomorrowReminder user={user} />} />
