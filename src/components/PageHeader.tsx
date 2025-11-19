@@ -85,16 +85,16 @@ export function PageHeader({ title, user, showBaoLink = false, showHomeLink = tr
           {title}
         </h1>
         <div style={{ display: 'flex', gap: designSystem.spacing.sm, alignItems: 'center' }}>
-          {showBaoLink && (
-            <Link to="/bao" style={navButtonStyle}>
-              ← BAO
-            </Link>
-          )}
           {extraLinks && extraLinks.map((link, index) => (
             <Link key={index} to={link.link} style={navButtonStyle}>
               {link.label}
             </Link>
           ))}
+          {showBaoLink && (
+            <Link to="/bao" style={navButtonStyle}>
+              ← BAO
+            </Link>
+          )}
           {showHomeLink && (
             <Link to="/" style={navButtonStyle}>
               ← HOME

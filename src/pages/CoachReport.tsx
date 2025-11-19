@@ -72,10 +72,10 @@ interface CoachReportProps {
 }
 
 const PAYMENT_METHODS = [
-  { value: 'cash', label: '💵 現金' },
-  { value: 'transfer', label: '🏦 匯款' },
-  { value: 'balance', label: '💰 扣儲值' },
-  { value: 'voucher', label: '🎫 票券' }
+  { value: 'cash', label: '現金' },
+  { value: 'transfer', label: '匯款' },
+  { value: 'balance', label: '扣儲值' },
+  { value: 'voucher', label: '票券' }
 ]
 
 const LESSON_TYPES = [
@@ -734,24 +734,6 @@ export function CoachReport({ user }: CoachReportProps) {
           borderBottom: '2px solid #e0e0e0'
         }}>
             <button
-              onClick={() => setViewMode('date')}
-              style={{
-              flex: isMobile ? 1 : 'none',
-              padding: isMobile ? '14px 16px' : '14px 32px',
-              background: viewMode === 'date' ? 'white' : 'transparent',
-              color: viewMode === 'date' ? '#2196f3' : '#999',
-              border: 'none',
-              borderBottom: viewMode === 'date' ? '3px solid #2196f3' : '3px solid transparent',
-                cursor: 'pointer',
-              fontSize: isMobile ? '15px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              marginBottom: '-2px'
-              }}
-            >
-            📅 按日期
-            </button>
-            <button
               onClick={() => setViewMode('unreported')}
               style={{
               flex: isMobile ? 1 : 'none',
@@ -771,7 +753,7 @@ export function CoachReport({ user }: CoachReportProps) {
               gap: '6px'
               }}
             >
-            ⚠️ 未回報
+            ⚠️ 查看全部
             {viewMode === 'unreported' && bookings.length > 0 && (
               <span style={{
                 background: '#ff9800',
@@ -785,7 +767,80 @@ export function CoachReport({ user }: CoachReportProps) {
               </span>
             )}
             </button>
+            <button
+              onClick={() => setViewMode('date')}
+              style={{
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '14px 16px' : '14px 32px',
+              background: viewMode === 'date' ? 'white' : 'transparent',
+              color: viewMode === 'date' ? '#2196f3' : '#999',
+              border: 'none',
+              borderBottom: viewMode === 'date' ? '3px solid #2196f3' : '3px solid transparent',
+                cursor: 'pointer',
+              fontSize: isMobile ? '15px' : '16px',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              marginBottom: '-2px'
+              }}
+            >
+            📅 按日期查看
+            </button>
           </div>
+
+        {/* 統計摘要 - 獨立在外面 */}
+        {viewMode === 'date' && stats.total > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+            gap: '16px',
+            marginBottom: '24px'
+          }}>
+            <div style={{
+              padding: '20px',
+              background: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              borderLeft: '4px solid #90caf9'
+            }}>
+              <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                總預約
+              </div>
+              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
+                {stats.total}
+              </div>
+            </div>
+
+            <div style={{
+              padding: '20px',
+              background: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              borderLeft: '4px solid #81c784'
+            }}>
+              <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                已回報
+              </div>
+              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
+                {stats.reported}
+              </div>
+            </div>
+
+            <div style={{
+              padding: '20px',
+              background: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              borderLeft: '4px solid #ffb74d'
+            }}>
+              <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                未回報
+              </div>
+              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
+                {stats.unreported}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 篩選區 */}
         <div style={{
@@ -796,105 +851,77 @@ export function CoachReport({ user }: CoachReportProps) {
         }}>
           {/* 日期選擇 - 只在按日期模式顯示 */}
           {viewMode === 'date' && (
-            <>
-              {/* 統計摘要 */}
-              {stats.total > 0 && (
-                <div style={{
-                  display: 'flex',
-                  gap: '12px',
-                  marginBottom: '20px',
-                  padding: '16px',
-                  background: '#f8f9fa',
-                  borderRadius: '8px',
-                  flexWrap: 'wrap'
-                }}>
-                  <div style={{ flex: 1, minWidth: isMobile ? '80px' : '100px' }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>總預約</div>
-                    <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#333' }}>{stats.total}</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: isMobile ? '80px' : '100px' }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>已回報</div>
-                    <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#4caf50' }}>{stats.reported}</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: isMobile ? '80px' : '100px' }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>未回報</div>
-                    <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#ff9800' }}>{stats.unreported}</div>
-                  </div>
-                </div>
-              )}
-
-              {/* 快捷日期按鈕 */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>日期</label>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => setDateOffset(-1)}
-                    style={{
-                      flex: isMobile ? 1 : 'none',
-                      padding: '10px 20px',
-                      background: 'white',
-                      color: '#666',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#2196f3'
-                      e.currentTarget.style.color = '#2196f3'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#e0e0e0'
-                      e.currentTarget.style.color = '#666'
-                    }}
-                  >
-                    昨天
-                  </button>
-                  <button
-                    onClick={() => setDateOffset(0)}
-                    style={{
-                      flex: isMobile ? 1 : 'none',
-                      padding: '10px 20px',
-                      background: selectedDate === getLocalDateString() ? '#2196f3' : 'white',
-                      color: selectedDate === getLocalDateString() ? 'white' : '#666',
-                      border: `2px solid ${selectedDate === getLocalDateString() ? '#2196f3' : '#e0e0e0'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    今天
-                  </button>
-                  <button
-                    onClick={() => setDateOffset(1)}
-                    style={{
-                      flex: isMobile ? 1 : 'none',
-                      padding: '10px 20px',
-                      background: 'white',
-                      color: '#666',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#2196f3'
-                      e.currentTarget.style.color = '#2196f3'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#e0e0e0'
-                      e.currentTarget.style.color = '#666'
-                    }}
-                  >
-                    明天
-                  </button>
-                </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>日期</label>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setDateOffset(-2)}
+                  style={{
+                    flex: isMobile ? 1 : 'none',
+                    padding: '10px 20px',
+                    background: 'white',
+                    color: '#666',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#2196f3'
+                    e.currentTarget.style.color = '#2196f3'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#e0e0e0'
+                    e.currentTarget.style.color = '#666'
+                  }}
+                >
+                  前天
+                </button>
+                <button
+                  onClick={() => setDateOffset(-1)}
+                  style={{
+                    flex: isMobile ? 1 : 'none',
+                    padding: '10px 20px',
+                    background: 'white',
+                    color: '#666',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#2196f3'
+                    e.currentTarget.style.color = '#2196f3'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#e0e0e0'
+                    e.currentTarget.style.color = '#666'
+                  }}
+                >
+                  昨天
+                </button>
+                <button
+                  onClick={() => setDateOffset(0)}
+                  style={{
+                    flex: isMobile ? 1 : 'none',
+                    padding: '10px 20px',
+                    background: selectedDate === getLocalDateString() ? '#2196f3' : 'white',
+                    color: selectedDate === getLocalDateString() ? 'white' : '#666',
+                    border: `2px solid ${selectedDate === getLocalDateString() ? '#2196f3' : '#e0e0e0'}`,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  今天
+                </button>
+              </div>
               <input 
                 type="date" 
                 value={selectedDate} 
@@ -902,7 +929,6 @@ export function CoachReport({ user }: CoachReportProps) {
                 style={getInputStyle(isMobile)} 
               />
             </div>
-            </>
           )}
 
           {/* 教練選擇 - 按鈕組 */}

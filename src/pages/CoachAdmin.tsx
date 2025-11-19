@@ -59,10 +59,10 @@ type TabType = 'pending' | 'completed' | 'statistics'
 type CompletedViewMode = 'booking' | 'coach'
 
 const PAYMENT_METHODS = [
-  { value: 'cash', label: '💵 現金' },
-  { value: 'transfer', label: '🏦 匯款' },
-  { value: 'balance', label: '💰 扣儲值' },
-  { value: 'voucher', label: '🎫 票券' }
+  { value: 'cash', label: '現金' },
+  { value: 'transfer', label: '匯款' },
+  { value: 'balance', label: '扣儲值' },
+  { value: 'voucher', label: '票券' }
 ]
 
 // ============ Main Component ============
@@ -1100,7 +1100,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                         }}>
                           <div>
                             <div style={{ fontWeight: '600', fontSize: '18px', marginBottom: '4px' }}>
-                              {stat.booking.start_at.substring(11, 16)} | {stat.booking.boats?.name}
+                              {stat.booking.start_at.substring(0, 10)} {stat.booking.start_at.substring(11, 16)} | {stat.booking.boats?.name}
                             </div>
                             <div style={{ color: '#666', fontSize: '14px' }}>
                               {stat.booking.contact_name}

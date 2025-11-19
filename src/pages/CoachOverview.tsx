@@ -26,7 +26,7 @@ interface CoachStats {
 
 interface BookingDetail {
   bookingId: number
-  date: string
+    date: string
   time: string
   boatName: string
   duration: number
@@ -52,7 +52,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
   })
   const [selectedCoachId, setSelectedCoachId] = useState<string>('all')
   const [loading, setLoading] = useState(false)
-  
+
   const [coachStats, setCoachStats] = useState<CoachStats[]>([])
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null)
 
@@ -134,7 +134,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
         
         if (!detail) {
           detail = {
-            bookingId,
+              bookingId,
             date: record.bookings.start_at.substring(0, 10),
             time: record.bookings.start_at.substring(11, 16),
             boatName: record.bookings.boats?.name || '未知',
@@ -168,7 +168,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
             totalMinutes: 0,
             details: []
           })
-        }
+  }
 
         const stats = coachMap.get(coachId)!
         stats.drivingMinutes += record.driver_duration_min || 0
@@ -236,7 +236,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
       'designated_free': '指定（不需收費）'
     }
     return labels[type] || type
-  }
+      }
 
   // 統計摘要
   const totalTeachingMinutes = coachStats.reduce((sum, s) => sum + s.teachingMinutes, 0)
@@ -247,8 +247,8 @@ export function CoachOverview({ user }: CoachOverviewProps) {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <PageHeader user={user} title="教練工作報表" />
       
-      <div style={{
-        flex: 1,
+      <div style={{ 
+        flex: 1, 
         padding: isMobile ? '16px' : '24px',
         maxWidth: '1400px',
         width: '100%',
@@ -325,7 +325,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
               <div style={{ flex: 1, minWidth: '200px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px', color: '#333' }}>
                   月份
-                </label>
+              </label>
                 <input
                   type="month"
                   value={selectedMonth}
@@ -339,32 +339,32 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                   }}
                 />
               </div>
-
-              {/* 教練篩選 */}
+          
+          {/* 教練篩選 */}
               <div style={{ flex: 1, minWidth: '200px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px', color: '#333' }}>
                   教練
-                </label>
-                <select
-                  value={selectedCoachId}
-                  onChange={(e) => setSelectedCoachId(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
+            </label>
+            <select
+              value={selectedCoachId}
+              onChange={(e) => setSelectedCoachId(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px',
                     border: '2px solid #e0e0e0',
                     borderRadius: '8px',
-                    fontSize: '14px'
-                  }}
-                >
-                  <option value="all">全部教練</option>
+                fontSize: '14px'
+              }}
+            >
+              <option value="all">全部教練</option>
                   {coachStats.map(stat => (
                     <option key={stat.coachId} value={stat.coachId}>
                       {stat.coachName}
                     </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+              ))}
+            </select>
+          </div>
+        </div>
 
             {loading ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
@@ -373,58 +373,58 @@ export function CoachOverview({ user }: CoachOverviewProps) {
             ) : coachStats.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                 本月無記錄
-              </div>
+            </div>
             ) : (
               <>
                 {/* 統計摘要 */}
-                <div style={{
-                  display: 'grid',
+            <div style={{ 
+              display: 'grid', 
                   gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
                   gap: '16px',
-                  marginBottom: '24px'
-                }}>
-                  <div style={{
+              marginBottom: '24px'
+            }}>
+              <div style={{
                     padding: '16px',
                     background: '#f0f9ff',
-                    borderRadius: '8px',
+                borderRadius: '8px',
                     border: '1px solid #bae6fd'
-                  }}>
+              }}>
                     <div style={{ fontSize: '13px', color: '#0369a1', marginBottom: '4px' }}>總教學時數</div>
                     <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#0c4a6e' }}>
                       {totalTeachingMinutes} 分
                     </div>
                     <div style={{ fontSize: '12px', color: '#0369a1' }}>
                       ({(totalTeachingMinutes / 60).toFixed(1)} 小時)
-                    </div>
-                  </div>
+                </div>
+              </div>
 
-                  <div style={{
+              <div style={{
                     padding: '16px',
                     background: '#f0fdf4',
-                    borderRadius: '8px',
+                borderRadius: '8px',
                     border: '1px solid #bbf7d0'
-                  }}>
+              }}>
                     <div style={{ fontSize: '13px', color: '#15803d', marginBottom: '4px' }}>總駕駛時數</div>
                     <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#166534' }}>
                       {totalDrivingMinutes} 分
                     </div>
                     <div style={{ fontSize: '12px', color: '#15803d' }}>
                       ({(totalDrivingMinutes / 60).toFixed(1)} 小時)
-                    </div>
-                  </div>
+                </div>
+              </div>
 
-                  <div style={{
+              <div style={{
                     padding: '16px',
                     background: '#fef3c7',
-                    borderRadius: '8px',
+                borderRadius: '8px',
                     border: '1px solid #fde047'
-                  }}>
+              }}>
                     <div style={{ fontSize: '13px', color: '#a16207', marginBottom: '4px' }}>總預約數</div>
                     <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#854d0e' }}>
                       {totalBookings} 筆
-                    </div>
-                  </div>
                 </div>
+              </div>
+            </div>
 
                 {/* 圖表區 - 並排顯示 */}
                 <div style={{
@@ -444,22 +444,22 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                             <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>
                               {stat.coachName}
-                            </span>
+                          </span>
                             <span style={{ fontSize: '12px', color: '#666' }}>
                               {stat.teachingMinutes}分 ({stat.teachingCount}筆)
-                            </span>
-                          </div>
-                          <div style={{
-                            width: '100%',
+                          </span>
+                        </div>
+                        <div style={{
+                          width: '100%',
                             height: '24px',
                             background: '#e3f2fd',
                             borderRadius: '6px',
-                            overflow: 'hidden'
-                          }}>
+                          overflow: 'hidden'
+                        }}>
                             <div
                               style={{
                                 width: `${(stat.teachingMinutes / Math.max(...coachStats.map(s => s.teachingMinutes), 1)) * 100}%`,
-                                height: '100%',
+                            height: '100%',
                                 background: 'linear-gradient(90deg, #2196f3, #1976d2)',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -468,7 +468,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                                 color: 'white',
                                 fontSize: '11px',
                                 fontWeight: '600',
-                                transition: 'width 0.3s'
+                            transition: 'width 0.3s'
                               }}
                             >
                               {stat.teachingMinutes > 0 && `${stat.teachingMinutes}分`}
@@ -476,8 +476,8 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </div>
+                </div>
+              </div>
 
                   {/* 駕駛時數圖表 */}
                   <div style={getCardStyle(isMobile)}>
@@ -494,16 +494,16 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                             <span style={{ fontSize: '12px', color: '#666' }}>
                               {stat.drivingMinutes}分 ({stat.drivingCount}筆)
                             </span>
-                          </div>
-                          <div style={{
+          </div>
+        <div style={{
                             width: '100%',
                             height: '24px',
                             background: '#e8f5e9',
                             borderRadius: '6px',
                             overflow: 'hidden'
-                          }}>
+        }}>
                             <div
-                              style={{
+            style={{
                                 width: `${(stat.drivingMinutes / Math.max(...coachStats.map(s => s.drivingMinutes), 1)) * 100}%`,
                                 height: '100%',
                                 background: 'linear-gradient(90deg, #4caf50, #388e3c)',
@@ -522,18 +522,18 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </div>
-                </div>
+        </div>
+          </div>
+              </div>
 
                 {/* 教練列表（可展開細帳） */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {coachStats.map(stat => (
                     <div key={stat.coachId} style={getCardStyle(isMobile)}>
                       {/* 教練標題 */}
                       <div
                         onClick={() => setExpandedCoachId(expandedCoachId === stat.coachId ? null : stat.coachId)}
-                        style={{
+                      style={{
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
@@ -547,7 +547,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                           </h3>
                           <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
                             教學 {stat.teachingMinutes}分 ({stat.teachingCount}筆) | 駕駛 {stat.drivingMinutes}分 ({stat.drivingCount}筆)
-                          </div>
+                        </div>
                         </div>
                         <div style={{ fontSize: '24px' }}>
                           {expandedCoachId === stat.coachId ? '▼' : '▶'}
@@ -591,9 +591,9 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                                             <span style={{ color: '#999', fontSize: '12px', marginLeft: '4px' }}>
                                               {p.lessonType} {p.duration}分
                                             </span>
-                                          </div>
-                                        ))}
-                                      </div>
+                              </div>
+                            ))}
+                          </div>
                                     ) : (
                                       <span style={{ color: '#999' }}>-</span>
                                     )}
@@ -622,7 +622,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
                       )}
                     </div>
                   ))}
-                </div>
+              </div>
               </>
             )}
           </>
@@ -631,7 +631,7 @@ export function CoachOverview({ user }: CoachOverviewProps) {
         {/* 未來預約 Tab */}
         {activeTab === 'future' && (
           <div style={{
-            ...getCardStyle(isMobile),
+                      ...getCardStyle(isMobile),
             textAlign: 'center',
             padding: '60px 20px',
             color: '#999'
