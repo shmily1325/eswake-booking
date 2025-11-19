@@ -187,8 +187,21 @@ export function CoachAdmin({ user }: { user: User | null }) {
   const loadCompletedReports = async () => {
     setLoading(true)
     try {
-      const startOfDay = `${selectedDate}T00:00:00`
-      const endOfDay = `${selectedDate}T23:59:59`
+      // 判斷是月份查詢還是日期查詢
+      let startOfDay: string
+      let endOfDay: string
+      
+      if (selectedDate.length === 7) {
+        // 月份格式 YYYY-MM
+        const [year, month] = selectedDate.split('-')
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+        startOfDay = `${selectedDate}-01T00:00:00`
+        endOfDay = `${selectedDate}-${String(lastDay).padStart(2, '0')}T23:59:59`
+      } else {
+        // 日期格式 YYYY-MM-DD
+        startOfDay = `${selectedDate}T00:00:00`
+        endOfDay = `${selectedDate}T23:59:59`
+      }
 
       // 1. 載入教學記錄 (只載入已結案的 processed)
       const { data: participantsData, error: participantsError } = await supabase
@@ -537,7 +550,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
           marginBottom: '24px',
           color: '#333'
         }}>
-          回報管理
+          💼 回報管理中心
         </h1>
 
         {/* Tab 切換 */}

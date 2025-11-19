@@ -40,7 +40,8 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
   })
   const [selectedCoachId, setSelectedCoachId] = useState<string>('all')
   const [loading, setLoading] = useState(false)
-  const [coachStats, setCoachStats] = useState<CoachStats[]>([])
+  const [allCoachStats, setAllCoachStats] = useState<CoachStats[]>([]) // 完整列表
+  const [coachStats, setCoachStats] = useState<CoachStats[]>([]) // 顯示用的過濾列表
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -194,6 +195,10 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
 
       statsArray.sort((a, b) => b.totalMinutes - a.totalMinutes)
 
+      // 保存完整列表供下拉選單使用
+      setAllCoachStats(statsArray)
+      
+      // 根據選擇過濾顯示
       const filteredStats = selectedCoachId === 'all' 
         ? statsArray 
         : statsArray.filter(s => s.coachId === selectedCoachId)
@@ -296,7 +301,7 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
               onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
             >
               <option value="all">全部教練</option>
-              {coachStats.map(stat => (
+              {allCoachStats.map(stat => (
                 <option key={stat.coachId} value={stat.coachId}>
                   {stat.coachName}
                 </option>
