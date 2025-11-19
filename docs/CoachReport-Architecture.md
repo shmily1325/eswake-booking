@@ -180,6 +180,10 @@ bookingStats  // 按預約統計
 3. 打開 TransactionDialog
    ↓
 4. 完成扣款後更新 status='processed'
+   ↓
+5. 自動重新載入資料
+   ↓
+6. 顯示成功提示
 
 非會員記錄：
 1. 載入 status='not_applicable' 的 booking_participants
@@ -187,12 +191,18 @@ bookingStats  // 按預約統計
    ↓
 2a. 關聯會員：
     - 更新 member_id
+    - 更新 participant_name
     - 更新 status='pending'
-    - 移至會員待扣款
+    - 自動重新載入資料
+    - 記錄移至會員待扣款區域
+    - 顯示成功提示：「✅ 已成功關聯到會員：XXX」
    
 2b. 直接結案：
+    - 確認對話框
     - 更新 status='processed'
-    - 移至已結案記錄
+    - 自動重新載入資料
+    - 記錄移至已結案記錄頁籤
+    - 顯示成功提示：「✅ 已成功結案：XXX」
 ```
 
 ### CoachAdmin - Tab 2 (已結案記錄)

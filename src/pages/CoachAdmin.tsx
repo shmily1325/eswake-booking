@@ -191,7 +191,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
       const startOfDay = `${selectedDate}T00:00:00`
       const endOfDay = `${selectedDate}T23:59:59`
 
-      // 1. 載入教學記錄 (包含 processed 和 not_applicable)
+      // 1. 載入教學記錄 (只載入已結案的 processed)
       const { data: participantsData, error: participantsError } = await supabase
         .from('booking_participants')
         .select(`
@@ -203,7 +203,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
           coaches:coach_id(id, name),
           members(id, name, nickname)
         `)
-        .in('status', ['processed', 'not_applicable'])
+        .eq('status', 'processed')
         .eq('is_deleted', false)
         .gte('bookings.start_at', startOfDay)
         .lte('bookings.start_at', endOfDay)
@@ -315,13 +315,15 @@ export function CoachAdmin({ user }: { user: User | null }) {
 
       if (error) throw error
 
-      alert(`已關聯到會員：${member.nickname || member.name}`)
+      // 先關閉對話框
       setShowMemberSearchDialog(false)
       setLinkingReport(null)
       setMemberSearchTerm('')
       
-      // 重新載入
+      // 重新載入資料
       await Promise.all([loadPendingReports(), loadNonMemberReports()])
+      
+      alert(`✅ 已成功關聯到會員：${member.nickname || member.name}\n\n記錄已移至「會員待扣款」區域，請查看上方列表。`)
     } catch (error) {
       console.error('關聯會員失敗:', error)
       alert('關聯會員失敗')
@@ -347,10 +349,10 @@ export function CoachAdmin({ user }: { user: User | null }) {
 
       if (error) throw error
 
-      alert('已結案')
-      
-      // 重新載入
+      // 重新載入資料
       await loadNonMemberReports()
+      
+      alert(`✅ 已成功結案：${report.participant_name}\n\n記錄已移至「已結案記錄」頁籤。`)
     } catch (error) {
       console.error('結案失敗:', error)
       alert('結案失敗')
