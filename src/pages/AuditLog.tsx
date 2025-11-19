@@ -28,31 +28,71 @@ interface AuditLogProps {
 
 /**
  * 解析 details 字串，提取關鍵資訊
+ * 
+ * 格式通常為：「操作：日期 時間 時長 會員名 船隻/活動 教練名教練」
+ * 例如：「新增預約：11/21 08:00 30分 约红 墊跳 Jerry教練」
  */
 function parseDetails(details: string): ParsedDetails {
   const info: ParsedDetails = { rawText: details }
   
-  // 提取時間（格式：11/01 13:45 或 2025-11-01 13:45）
+  // 1. 提取時間（格式：11/01 13:45）
   const timeMatch = details.match(/(\d{1,2}\/\d{1,2}\s+\d{2}:\d{2})/)
   if (timeMatch) info.time = timeMatch[1]
   
-  // 提取船隻（G23, BAO, 彈簧床等）
-  const boatMatch = details.match(/([A-Z]\d{2}|[A-Z]{2,4}|彈簧床|[\u4e00-\u9fa5]+床)/)
-  if (boatMatch) info.boat = boatMatch[1]
-  
-  // 提取會員名稱（中文名字，通常在最前面或「會員：」後面）
-  const memberMatch = details.match(/(?:會員：)?([A-Z][a-z]+|[\u4e00-\u9fa5]{2,10})(?:\s|,|;|$)/)
-  if (memberMatch && !memberMatch[1].includes('教練') && !memberMatch[1].includes('預約')) {
-    info.member = memberMatch[1]
-  }
-  
-  // 提取教練名稱（XX教練 或 教練：XX）
-  const coachMatch = details.match(/(?:教練[:：]?\s*)?([A-Z][a-z]+|[\u4e00-\u9fa5]{2,5})(?:教練|老師)/)
-  if (coachMatch) info.coach = coachMatch[1]
-  
-  // 提取時長（60分 或 60 分）
+  // 2. 提取時長（60分 或 60 分）
   const durationMatch = details.match(/(\d+)\s*分/)
   if (durationMatch) info.duration = `${durationMatch[1]}分`
+  
+  // 3. 提取所有教練名（XX教練 或 XX老師，可能有多個）
+  const coachMatches = details.match(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g)
+  if (coachMatches) {
+    const coaches = coachMatches.map(m => m.replace(/教練|老師/g, '').trim())
+    info.coach = coaches.join('/')
+  }
+  
+  // 4. 移除已識別的部分，剩下的來找船隻和會員
+  let remaining = details
+    .replace(/^(新增預約|修改預約|刪除預約|排班)[:：]\s*/, '') // 移除操作類型
+    .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '') // 移除時間
+    .replace(/\d+\s*分/, '') // 移除時長
+  
+  if (info.coach) {
+    // 移除教練相關文字
+    const coachNames = info.coach.split('/')
+    coachNames.forEach(coach => {
+      remaining = remaining.replace(new RegExp(`${coach}\\s*(?:教練|老師)?`, 'g'), '')
+    })
+  }
+  
+  // 5. 提取船隻（常見船名或特定詞彙）
+  // 船隻通常是：G23, G21, Panther, BAO, Sky, Anita, 彈簧床, 墊跳, 不鳥, 木鳥等
+  const boatKeywords = [
+    'G23', 'G21', 'Panther', 'BAO', 'Sky', 'Anita', 
+    '彈簧床', '墊跳', '不鳥', '木鳥', '可愛', '磅礡'
+  ]
+  
+  for (const keyword of boatKeywords) {
+    if (remaining.includes(keyword)) {
+      info.boat = keyword
+      remaining = remaining.replace(keyword, '')
+      break
+    }
+  }
+  
+  // 如果沒找到關鍵字，嘗試匹配英文大寫開頭的詞（可能是船名）
+  if (!info.boat) {
+    const boatMatch = remaining.match(/\b([A-Z][A-Za-z]*\d*)\b/)
+    if (boatMatch && boatMatch[1].length >= 2) {
+      info.boat = boatMatch[1]
+      remaining = remaining.replace(boatMatch[1], '')
+    }
+  }
+  
+  // 6. 剩下的中文就是會員名（通常在最前面）
+  const memberMatch = remaining.match(/([\u4e00-\u9fa5]{2,10})/)
+  if (memberMatch) {
+    info.member = memberMatch[1].trim()
+  }
   
   return info
 }
@@ -519,7 +559,7 @@ export function AuditLog({ user }: AuditLogProps) {
               {/* 日期標題 */}
               <div style={{
                 padding: '10px 16px',
-                backgroundColor: '#667eea',
+                backgroundColor: '#007bff',
                 color: 'white',
                 borderRadius: '8px',
                 marginBottom: '12px',
@@ -639,7 +679,7 @@ export function AuditLog({ user }: AuditLogProps) {
                               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#ffe0b2'}
                               onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fff3e0'}
                             >
-                              👨‍🏫 {parsed.coach}
+                              🎓 {parsed.coach}
                             </button>
                           )}
                           {parsed.time && (
