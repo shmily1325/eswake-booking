@@ -954,28 +954,28 @@ export function CoachAdmin({ user }: { user: User | null }) {
                 {/* 總計卡片 */}
                 {(completedViewMode === 'booking' ? bookingStats.length : coachStats.length) > 0 && (
                   <div style={{
-                    ...getCardStyle(isMobile),
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
+                    padding: '16px',
+                    background: '#f8f9fa',
+                    borderRadius: '8px',
                     marginBottom: '24px'
                   }}>
-                    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>📊 當日總計</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
+                    <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#666' }}>📊 當日總計</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                       <div>
-                        <div style={{ fontSize: '14px', opacity: 0.9 }}>總教學時數</div>
-                        <div style={{ fontSize: '32px', fontWeight: 'bold', marginTop: '4px' }}>
+                        <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>總教學時數</div>
+                        <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#333' }}>
                           {completedReports.reduce((sum, r) => sum + (r.duration_min || 0), 0)} 分
                         </div>
-                        <div style={{ fontSize: '14px', opacity: 0.8, marginTop: '4px' }}>
+                        <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
                           ({(completedReports.reduce((sum, r) => sum + (r.duration_min || 0), 0) / 60).toFixed(1)} 小時)
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '14px', opacity: 0.9 }}>總駕駛時數</div>
-                        <div style={{ fontSize: '32px', fontWeight: 'bold', marginTop: '4px' }}>
+                        <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>總駕駛時數</div>
+                        <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#333' }}>
                           {completedDriverReports.reduce((sum, r) => sum + (r.driver_duration_min || 0), 0)} 分
                         </div>
-                        <div style={{ fontSize: '14px', opacity: 0.8, marginTop: '4px' }}>
+                        <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
                           ({(completedDriverReports.reduce((sum, r) => sum + (r.driver_duration_min || 0), 0) / 60).toFixed(1)} 小時)
                         </div>
                       </div>
