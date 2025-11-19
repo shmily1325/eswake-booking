@@ -10,7 +10,8 @@ import { supabase } from '../lib/supabase'
 export const SUPER_ADMINS = [
   'callumbao1122@gmail.com',
   'pjpan0511@gmail.com',
-  'minlin1325@gmail.com'
+  'minlin1325@gmail.com',
+  'yylai0@gmail.com'
 ]
 
 // 權限緩存

@@ -537,7 +537,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
           marginBottom: '24px',
           color: '#333'
         }}>
-          教練管理後台
+          回報管理
         </h1>
 
         {/* Tab 切換 */}
@@ -1326,6 +1326,11 @@ export function CoachAdmin({ user }: { user: User | null }) {
             )}
           </>
         )}
+
+        {/* Tab 3: 統計報表 */}
+        {activeTab === 'statistics' && (
+          <StatisticsTab isMobile={isMobile} />
+        )}
       </div>
 
       <Footer />
@@ -1447,11 +1452,6 @@ export function CoachAdmin({ user }: { user: User | null }) {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Tab 3: 統計報表 */}
-      {activeTab === 'statistics' && (
-        <StatisticsTab isMobile={isMobile} />
       )}
 
       {/* TransactionDialog */}
