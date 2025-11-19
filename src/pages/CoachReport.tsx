@@ -615,9 +615,15 @@ export function CoachReport({ user }: CoachReportProps) {
   }
 
   const selectMember = (index: number, member: MemberSearchResult) => {
-    updateParticipant(index, 'member_id', member.id)
-    updateParticipant(index, 'participant_name', member.nickname || member.name)
-    updateParticipant(index, 'status', 'pending')
+    // 一次性更新所有字段，避免状态更新丢失
+    const updated = [...participants]
+    updated[index] = {
+      ...updated[index],
+      member_id: member.id,
+      participant_name: member.nickname || member.name,
+      status: 'pending'
+    }
+    setParticipants(updated)
     setMemberSearchTerm('')
   }
 
