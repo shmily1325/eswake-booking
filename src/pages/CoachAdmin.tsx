@@ -191,7 +191,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
       const startOfDay = `${selectedDate}T00:00:00`
       const endOfDay = `${selectedDate}T23:59:59`
 
-      // 1. 載入教學記錄 (processed participants)
+      // 1. 載入教學記錄 (包含 processed 和 not_applicable)
       const { data: participantsData, error: participantsError } = await supabase
         .from('booking_participants')
         .select(`
@@ -203,7 +203,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
           coaches:coach_id(id, name),
           members(id, name, nickname)
         `)
-        .eq('status', 'processed')
+        .in('status', ['processed', 'not_applicable'])
         .eq('is_deleted', false)
         .gte('bookings.start_at', startOfDay)
         .lte('bookings.start_at', endOfDay)

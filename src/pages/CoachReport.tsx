@@ -1192,7 +1192,7 @@ export function CoachReport({ user }: CoachReportProps) {
             {(reportType === 'coach' || reportType === 'both') && (
               <div>
                 <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>
-                  🎓 教練回報（參與者）
+                  🎓 參與者回報
                 </h3>
                 
                 <div style={{ 
