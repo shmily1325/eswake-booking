@@ -71,10 +71,16 @@ submitCoachReport()   // 參與者 + 時數
 **功能範圍**：
 
 #### Tab 1: 待處理記錄
-- 會員待扣款列表（`status = 'pending'`）
+
+**查看模式**：
+- 📅 **按日期查看** - 查看特定日期的待處理記錄
+- 📋 **查看全部** - 查看所有日期的待處理記錄（防止遺漏）
+
+**會員待扣款列表**（`status = 'pending'`）
   - 處理會員扣款（TransactionDialog）
   - 顯示修改記錄標記
-- 非會員記錄列表（`status = 'not_applicable'`）
+  
+**非會員記錄列表**（`status = 'not_applicable'`）
   - 🔗 關聯會員功能
   - ✓ 直接結案功能
 
@@ -93,7 +99,10 @@ submitCoachReport()   // 參與者 + 時數
 
 **核心邏輯**：
 ```typescript
-// Tab 1 資料載入
+// Tab 1 查看模式
+pendingViewMode: 'date' | 'all'
+
+// Tab 1 資料載入（根據 pendingViewMode 決定是否過濾日期）
 loadPendingReports()      // 會員待扣款
 loadNonMemberReports()    // 非會員記錄
 
@@ -158,8 +167,13 @@ bookingStats  // 按預約統計
 ### CoachAdmin - Tab 1 (待處理記錄)
 
 ```
+查看模式切換：
+- 📅 按日期查看：過濾特定日期的記錄
+- 📋 查看全部：顯示所有日期的記錄（防止遺漏）
+
 會員待扣款：
 1. 載入 status='pending' 的 booking_participants
+   - 根據 pendingViewMode 決定是否過濾日期
    ↓
 2. 管理員點擊「處理扣款」
    ↓
@@ -169,6 +183,7 @@ bookingStats  // 按預約統計
 
 非會員記錄：
 1. 載入 status='not_applicable' 的 booking_participants
+   - 根據 pendingViewMode 決定是否過濾日期
    ↓
 2a. 關聯會員：
     - 更新 member_id
@@ -227,6 +242,11 @@ bookingStats  // 按預約統計
 - 包含教練回報、駕駛回報、學生結帳
 - 更符合實際業務流程
 
+### 6. 新功能：待處理記錄查看模式
+- **按日期查看**：查看特定日期的待處理記錄（日常使用）
+- **查看全部**：查看所有日期的待處理記錄（防止遺漏，清理積壓）
+- 靈活切換，避免遺漏歷史未處理記錄
+
 ## 📝 參考文檔
 
 - **CoachReport 詳細邏輯**: `CoachReport-Logic.md`
@@ -251,5 +271,6 @@ bookingStats  // 按預約統計
 
 ---
 
-更新日期：2025-11-18
+更新日期：2025-11-19
+- 新增待處理記錄查看模式（按日期查看 / 查看全部）
 

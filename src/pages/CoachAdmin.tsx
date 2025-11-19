@@ -74,6 +74,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
   // Tab 管理
   const [activeTab, setActiveTab] = useState<TabType>('pending')
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateString())
+  const [pendingViewMode, setPendingViewMode] = useState<'date' | 'all'>('date') // 新增：查看模式
   const [loading, setLoading] = useState(false)
 
   // Tab 1: 待處理記錄 (合併會員 + 非會員)
@@ -107,10 +108,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
   const loadPendingReports = async () => {
     setLoading(true)
     try {
-      const startOfDay = `${selectedDate}T00:00:00`
-      const endOfDay = `${selectedDate}T23:59:59`
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('booking_participants')
         .select(`
           *,
@@ -123,9 +121,19 @@ export function CoachAdmin({ user }: { user: User | null }) {
         `)
         .eq('status', 'pending')
         .eq('is_deleted', false)
-        .gte('bookings.start_at', startOfDay)
-        .lte('bookings.start_at', endOfDay)
-        .order('bookings(start_at)')
+
+      // 根據查看模式決定是否過濾日期
+      if (pendingViewMode === 'date') {
+        const startOfDay = `${selectedDate}T00:00:00`
+        const endOfDay = `${selectedDate}T23:59:59`
+        query = query
+          .gte('bookings.start_at', startOfDay)
+          .lte('bookings.start_at', endOfDay)
+      }
+
+      query = query.order('bookings(start_at)')
+
+      const { data, error } = await query
 
       if (error) throw error
       setPendingReports(data || [])
@@ -140,10 +148,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
   const loadNonMemberReports = async () => {
     setLoading(true)
     try {
-      const startOfDay = `${selectedDate}T00:00:00`
-      const endOfDay = `${selectedDate}T23:59:59`
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('booking_participants')
         .select(`
           *,
@@ -156,9 +161,19 @@ export function CoachAdmin({ user }: { user: User | null }) {
         `)
         .eq('status', 'not_applicable')
         .eq('is_deleted', false)
-        .gte('bookings.start_at', startOfDay)
-        .lte('bookings.start_at', endOfDay)
-        .order('bookings(start_at)')
+
+      // 根據查看模式決定是否過濾日期
+      if (pendingViewMode === 'date') {
+        const startOfDay = `${selectedDate}T00:00:00`
+        const endOfDay = `${selectedDate}T23:59:59`
+        query = query
+          .gte('bookings.start_at', startOfDay)
+          .lte('bookings.start_at', endOfDay)
+      }
+
+      query = query.order('bookings(start_at)')
+
+      const { data, error } = await query
 
       if (error) throw error
       setNonMemberReports(data || [])
@@ -349,12 +364,12 @@ export function CoachAdmin({ user }: { user: User | null }) {
   }, [memberSearchTerm, handleSearchChange])
 
   useEffect(() => {
-    if (activeTab === 'pending' && selectedDate) {
+    if (activeTab === 'pending') {
       Promise.all([loadPendingReports(), loadNonMemberReports()])
     } else if (activeTab === 'completed' && selectedDate) {
       loadCompletedReports()
     }
-  }, [selectedDate, activeTab])
+  }, [selectedDate, activeTab, pendingViewMode])
 
   // ============ 資料處理 ============
 
@@ -573,17 +588,61 @@ export function CoachAdmin({ user }: { user: User | null }) {
               ...getCardStyle(isMobile),
               marginBottom: '24px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <label style={{ ...getLabelStyle(isMobile) }}>
-                  日期
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  style={getInputStyle(isMobile)}
-                />
+              {/* 查看模式切換 */}
+              <div style={{ marginBottom: pendingViewMode === 'date' ? '16px' : 0 }}>
+                <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>查看模式</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setPendingViewMode('date')}
+                    style={{
+                      flex: isMobile ? 1 : 'none',
+                      padding: '10px 20px',
+                      background: pendingViewMode === 'date' ? '#2196f3' : '#fff',
+                      color: pendingViewMode === 'date' ? 'white' : '#666',
+                      border: `2px solid ${pendingViewMode === 'date' ? '#2196f3' : '#e0e0e0'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    📅 按日期查看
+                  </button>
+                  <button
+                    onClick={() => setPendingViewMode('all')}
+                    style={{
+                      flex: isMobile ? 1 : 'none',
+                      padding: '10px 20px',
+                      background: pendingViewMode === 'all' ? '#ff9800' : '#fff',
+                      color: pendingViewMode === 'all' ? 'white' : '#666',
+                      border: `2px solid ${pendingViewMode === 'all' ? '#ff9800' : '#e0e0e0'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    📋 查看全部
+                  </button>
+                </div>
               </div>
+
+              {/* 日期選擇（僅在按日期查看時顯示） */}
+              {pendingViewMode === 'date' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label style={{ ...getLabelStyle(isMobile) }}>
+                    日期
+                  </label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    style={getInputStyle(isMobile)}
+                  />
+                </div>
+              )}
             </div>
 
             {loading ? (
