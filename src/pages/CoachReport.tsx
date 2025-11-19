@@ -407,8 +407,14 @@ export function CoachReport({ user }: CoachReportProps) {
     }
 
     try {
-      // 使用验证工具进行验证
-      const validParticipants = validateParticipants(participants)
+      // 允許單個教練不回報參與者（其他教練可能已經回報了）
+      // 只過濾掉空名字的參與者，不強制要求至少一個
+      const validParticipants = participants.filter(p => p.participant_name.trim())
+      
+      // 驗證時數
+      if (validParticipants.some(p => p.duration_min <= 0)) {
+        throw new Error('時數必須大於 0')
+      }
       
       // 檢查：如果是「會員」狀態但沒有選擇具體會員，提示用戶
       const memberStatusWithoutId = validParticipants.filter(

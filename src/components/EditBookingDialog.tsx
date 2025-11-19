@@ -545,14 +545,42 @@ export function EditBookingDialog({
   }
 
   const handleDelete = async () => {
-    if (!confirm('確定要刪除這個預約嗎？')) {
-      return
-    }
-
     setLoading(true)
-
+    
     try {
-      // 刪除預約（CASCADE 會自動刪除 booking_coaches）
+      // 檢查是否已有回報記錄
+      const [participantsResult, reportsResult] = await Promise.all([
+        supabase
+          .from('booking_participants')
+          .select('id', { count: 'exact', head: true })
+          .eq('booking_id', booking.id)
+          .eq('is_deleted', false),
+        supabase
+          .from('coach_reports')
+          .select('id', { count: 'exact', head: true })
+          .eq('booking_id', booking.id)
+      ])
+
+      const hasParticipants = (participantsResult.count || 0) > 0
+      const hasDriverReports = (reportsResult.count || 0) > 0
+      const hasReports = hasParticipants || hasDriverReports
+
+      // 根據是否有回報給予不同的提示
+      let confirmMessage = '確定要刪除這個預約嗎？'
+      if (hasReports) {
+        const reportTypes = []
+        if (hasParticipants) reportTypes.push(`參與者記錄 ${participantsResult.count} 筆`)
+        if (hasDriverReports) reportTypes.push(`駕駛回報 ${reportsResult.count} 筆`)
+        
+        confirmMessage = `⚠️ 此預約已有回報記錄：\n${reportTypes.join('、')}\n\n刪除預約將會同時刪除所有回報記錄！\n\n確定要刪除嗎？`
+      }
+
+      if (!confirm(confirmMessage)) {
+        setLoading(false)
+        return
+      }
+
+      // 刪除預約（CASCADE 會自動刪除相關記錄）
       const { error: deleteError } = await supabase
         .from('bookings')
         .delete()
