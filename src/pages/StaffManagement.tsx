@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
+import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 
 interface StaffManagementProps {
   user: User
@@ -90,7 +91,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
         .insert([{
           name: newCoachName.trim(),
           status: 'active',
-          created_at: new Date().toISOString()
+          created_at: getLocalTimestamp()
         }])
 
       if (error) throw error
@@ -177,7 +178,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
           start_date: timeOffStartDate,
           end_date: timeOffEndDate,
           reason: timeOffReason,
-          created_at: new Date().toISOString()
+          created_at: getLocalTimestamp()  // coach_time_off 表使用 TEXT
         }])
 
       if (error) throw error
@@ -216,8 +217,7 @@ export function StaffManagement({ user }: StaffManagementProps) {
 
   const openTimeOffDialog = (coach: Coach) => {
     setSelectedCoach(coach)
-    const today = new Date()
-    const dateStr = today.toISOString().substring(0, 10)
+    const dateStr = getLocalDateString()
     setTimeOffStartDate(dateStr)
     setTimeOffEndDate(dateStr)
     setTimeOffReason('')

@@ -7,7 +7,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useMemberSearch } from '../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { isFacility } from '../utils/facility'
-import { getLocalDateString } from '../utils/date'
+import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 
 interface Coach {
   id: string
@@ -151,7 +151,8 @@ export function CoachReport({ user }: CoachReportProps) {
       } else {
         const thirtyDaysAgo = new Date()
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-        bookingsQuery = bookingsQuery.gte('start_at', thirtyDaysAgo.toISOString())
+        const thirtyDaysAgoStr = getLocalDateString(thirtyDaysAgo) + 'T00:00:00'
+        bookingsQuery = bookingsQuery.gte('start_at', thirtyDaysAgoStr)
       }
 
       const { data: bookingsData, error: bookingsError } = await bookingsQuery
@@ -199,18 +200,18 @@ export function CoachReport({ user }: CoachReportProps) {
             }
             
             return {
-              id: p.id,
-              coach_id: p.coach_id,
-              member_id: p.member_id,
+            id: p.id,
+            coach_id: p.coach_id,
+            member_id: p.member_id,
               participant_name: displayName,
-              duration_min: p.duration_min,
-              payment_method: p.payment_method,
+            duration_min: p.duration_min,
+            payment_method: p.payment_method,
               lesson_type: p.lesson_type || 'undesignated',  // 兼容旧数据
-              notes: p.notes,
-              status: p.status,
-              is_deleted: p.is_deleted,
-              transaction_id: p.transaction_id,
-              replaces_id: p.replaces_id
+            notes: p.notes,
+            status: p.status,
+            is_deleted: p.is_deleted,
+            transaction_id: p.transaction_id,
+            replaces_id: p.replaces_id
             }
           })
 
@@ -512,7 +513,7 @@ export function CoachReport({ user }: CoachReportProps) {
         booking_id: reportingBookingId,
         coach_id: reportingCoachId,
         driver_duration_min: driverDuration,
-        reported_at: new Date().toISOString()
+        reported_at: getLocalTimestamp()
       }, {
         onConflict: 'booking_id,coach_id'
       })
@@ -564,8 +565,8 @@ export function CoachReport({ user }: CoachReportProps) {
           .from('booking_participants')
           .update({
             is_deleted: true,
-            deleted_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            deleted_at: getLocalTimestamp(),
+            updated_at: getLocalTimestamp()
           })
           .in('id', participantsToSoftDelete.map(p => p.id))
 
@@ -596,17 +597,25 @@ export function CoachReport({ user }: CoachReportProps) {
           p.lesson_type === 'designated_paid' ||  // 指定（需收費）
           p.lesson_type === 'designated_free'     // 指定（不需收費）
         
-        return {
-          booking_id: reportingBookingId,
-          coach_id: reportingCoachId,
+        const status = p.member_id ? 'pending' : 'not_applicable'
+        
+        console.log(`參與者 ${p.participant_name}:`, {
           member_id: p.member_id,
-          participant_name: p.participant_name,
-          duration_min: p.duration_min,
-          payment_method: p.payment_method,
+          status: status,
+          is_會員: !!p.member_id
+        })
+        
+        return {
+        booking_id: reportingBookingId,
+        coach_id: reportingCoachId,
+        member_id: p.member_id,
+        participant_name: p.participant_name,
+        duration_min: p.duration_min,
+        payment_method: p.payment_method,
           lesson_type: p.lesson_type,  // 新增教學方式
-          notes: p.notes || null,
-          status: p.member_id ? 'pending' : 'not_applicable',
-          reported_at: new Date().toISOString(),
+        notes: p.notes || null,
+          status: status,
+          reported_at: getLocalTimestamp(),
           replaces_id: p.id || null,
           is_teaching: isTeaching
         }
@@ -771,34 +780,34 @@ export function CoachReport({ user }: CoachReportProps) {
           marginBottom: '0',
           borderBottom: '2px solid #e0e0e0'
         }}>
-          <button
-            onClick={() => setViewMode('date')}
-            style={{
+            <button
+              onClick={() => setViewMode('date')}
+              style={{
               flex: isMobile ? 1 : 'none',
               padding: isMobile ? '14px 16px' : '14px 32px',
               background: viewMode === 'date' ? 'white' : 'transparent',
               color: viewMode === 'date' ? '#2196f3' : '#999',
               border: 'none',
               borderBottom: viewMode === 'date' ? '3px solid #2196f3' : '3px solid transparent',
-              cursor: 'pointer',
+                cursor: 'pointer',
               fontSize: isMobile ? '15px' : '16px',
               fontWeight: '600',
               transition: 'all 0.2s',
               marginBottom: '-2px'
-            }}
-          >
+              }}
+            >
             📅 按日期
-          </button>
-          <button
-            onClick={() => setViewMode('unreported')}
-            style={{
+            </button>
+            <button
+              onClick={() => setViewMode('unreported')}
+              style={{
               flex: isMobile ? 1 : 'none',
               padding: isMobile ? '14px 16px' : '14px 32px',
               background: viewMode === 'unreported' ? 'white' : 'transparent',
               color: viewMode === 'unreported' ? '#ff9800' : '#999',
               border: 'none',
               borderBottom: viewMode === 'unreported' ? '3px solid #ff9800' : '3px solid transparent',
-              cursor: 'pointer',
+                cursor: 'pointer',
               fontSize: isMobile ? '15px' : '16px',
               fontWeight: '600',
               transition: 'all 0.2s',
@@ -807,8 +816,8 @@ export function CoachReport({ user }: CoachReportProps) {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '6px'
-            }}
-          >
+              }}
+            >
             ⚠️ 未回報
             {viewMode === 'unreported' && bookings.length > 0 && (
               <span style={{
@@ -822,8 +831,8 @@ export function CoachReport({ user }: CoachReportProps) {
                 {bookings.length}
               </span>
             )}
-          </button>
-        </div>
+            </button>
+          </div>
 
         {/* 篩選區 */}
         <div style={{
@@ -933,13 +942,13 @@ export function CoachReport({ user }: CoachReportProps) {
                     明天
                   </button>
                 </div>
-                <input 
-                  type="date" 
-                  value={selectedDate} 
-                  onChange={(e) => setSelectedDate(e.target.value)} 
-                  style={getInputStyle(isMobile)} 
-                />
-              </div>
+              <input 
+                type="date" 
+                value={selectedDate} 
+                onChange={(e) => setSelectedDate(e.target.value)} 
+                style={getInputStyle(isMobile)} 
+              />
+            </div>
             </>
           )}
 
@@ -1039,37 +1048,37 @@ export function CoachReport({ user }: CoachReportProps) {
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                         <span style={{ fontSize: '20px', marginTop: '6px' }}>🎓</span>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {displayCoaches.map(coach => {
-                            const reportType = getReportType(booking, coach.id)
-                            const reportStatus = getReportStatus(booking, coach.id)
-                            
-                            return (
-                              <div
-                                key={coach.id}
-                                style={{
+                        {displayCoaches.map(coach => {
+                          const reportType = getReportType(booking, coach.id)
+                          const reportStatus = getReportStatus(booking, coach.id)
+                          
+                          return (
+                            <div
+                              key={coach.id}
+                              style={{
                                   padding: '8px 12px',
-                                  background: '#f5f5f5',
-                                  borderRadius: '6px',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  gap: '8px'
-                                }}
-                              >
+                                background: '#f5f5f5',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                gap: '8px'
+                              }}
+                            >
                                 <span style={{ fontWeight: '500' }}>
                                   {coach.name}
                                 </span>
-                                <button
-                                  onClick={() => startReportWithCoach(booking, coach.id)}
-                                  style={getButtonStyle('primary')}
-                                >
-                                  {reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
-                                    ? '修改回報'
-                                    : '回報'}
-                                </button>
-                              </div>
-                            )
-                          })}
+                              <button
+                                onClick={() => startReportWithCoach(booking, coach.id)}
+                                style={getButtonStyle('primary')}
+                              >
+                                {reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
+                                  ? '修改回報'
+                                  : '回報'}
+                              </button>
+                            </div>
+                          )
+                        })}
                         </div>
                       </div>
                     </div>
@@ -1081,34 +1090,34 @@ export function CoachReport({ user }: CoachReportProps) {
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                         <span style={{ fontSize: '20px', marginTop: '6px' }}>🚤</span>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {displayDrivers.map(driver => {
-                            const reportStatus = getReportStatus(booking, driver.id)
-                            
-                            return (
-                              <div
-                                key={driver.id}
-                                style={{
+                        {displayDrivers.map(driver => {
+                          const reportStatus = getReportStatus(booking, driver.id)
+                          
+                          return (
+                            <div
+                              key={driver.id}
+                              style={{
                                   padding: '8px 12px',
-                                  background: '#f5f5f5',
-                                  borderRadius: '6px',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  gap: '8px'
-                                }}
-                              >
+                                background: '#f5f5f5',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                gap: '8px'
+                              }}
+                            >
                                 <span style={{ fontWeight: '500' }}>
                                   {driver.name}
                                 </span>
-                                <button
-                                  onClick={() => startReportWithCoach(booking, driver.id)}
-                                  style={getButtonStyle('primary')}
-                                >
-                                  {reportStatus.hasDriverReport ? '修改回報' : '回報'}
-                                </button>
-                              </div>
-                            )
-                          })}
+                              <button
+                                onClick={() => startReportWithCoach(booking, driver.id)}
+                                style={getButtonStyle('primary')}
+                              >
+                                {reportStatus.hasDriverReport ? '修改回報' : '回報'}
+                              </button>
+                            </div>
+                          )
+                        })}
                         </div>
                       </div>
                     </div>

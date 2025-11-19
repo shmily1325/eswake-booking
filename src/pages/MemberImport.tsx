@@ -6,6 +6,7 @@ import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getButtonStyle, getCardStyle, getTextStyle } from '../styles/designSystem'
+import { getLocalTimestamp } from '../utils/date'
 
 interface MemberImportProps {
   user: User
@@ -250,7 +251,7 @@ export function MemberImport({ user }: MemberImportProps) {
           gift_boat_hours: 0,
           notes: member.notes || null,
           status: status,
-          created_at: new Date().toISOString()
+          created_at: getLocalTimestamp()
         }
       })
 

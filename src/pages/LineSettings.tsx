@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
+import { getLocalTimestamp } from '../utils/date'
 
 interface LineSettingsProps {
   user: User
@@ -84,7 +85,7 @@ export function LineSettings({ user }: LineSettingsProps) {
           .update({ 
             setting_value: update.setting_value,
             updated_by: user.id,
-            updated_at: new Date().toISOString()
+            updated_at: getLocalTimestamp()
           })
           .eq('setting_key', update.setting_key)
       }

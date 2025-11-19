@@ -208,20 +208,21 @@ bookingStats  // 按預約統計
 ### CoachAdmin - Tab 2 (已結案記錄)
 
 ```
-1. 載入當日所有 status='processed' 的記錄
-   - booking_participants (教學記錄)
-   - coach_reports (駕駛記錄)
+1. 載入當日已結案記錄
+   - booking_participants: status='processed' (僅已結案的記錄)
+   - coach_reports: 所有駕駛記錄
+   - 根據 bookings.start_at 過濾當日記錄
    ↓
 2a. 按預約查看：
     - 以 booking_id 分組
-    - 顯示該預約的所有教練回報
-    - 顯示該預約的所有駕駛回報
-    - 顯示該預約的所有學生結帳
+    - 顯示該預約的所有教練回報（參與者列表）
+    - 顯示該預約的所有駕駛回報（駕駛時數）
+    - 顯示統計資訊（總教學時數 / 總駕駛時數）
    
 2b. 按教練統計：
     - 以 coach_id 分組
-    - 累加教學時數
-    - 累加駕駛時數
+    - 累加教學時數（從 booking_participants，使用 is_teaching 篩選）
+    - 累加駕駛時數（從 coach_reports）
     - 顯示明細列表
 ```
 
@@ -264,6 +265,77 @@ bookingStats  // 按預約統計
   - 核心概念：回報類型、角色判定
   - 數據表關聯
   - 使用流程範例
+  - 教學方式和收費方式分離邏輯
+
+## 🗄️ 資料庫遷移
+
+### 必要欄位
+
+執行 `complete_migration.sql` 以添加所有必要欄位：
+
+1. **`is_teaching`** (BOOLEAN)
+   - 是否計入教學時數
+   - 自動計算，根據 `lesson_type` 判斷
+
+2. **`reported_at`** (TEXT)
+   - 回報時間（格式：`YYYY-MM-DDTHH:mm:ss`）
+   - 記錄教練提交回報的時間
+   - 使用 TEXT 存儲，避免時區轉換
+
+3. **`updated_at`** (TEXT)
+   - 更新時間（格式：`YYYY-MM-DDTHH:mm:ss`）
+   - 記錄最後更新時間
+   - 使用 TEXT 存儲，避免時區轉換
+
+4. **`deleted_at`** (TEXT)
+   - 刪除時間（格式：`YYYY-MM-DDTHH:mm:ss`）
+   - 軟刪除時記錄的時間
+   - 使用 TEXT 存儲，避免時區轉換
+
+5. **`is_deleted`** (BOOLEAN)
+   - 是否已軟刪除
+   - 預設為 `false`
+
+6. **`lesson_type`** (VARCHAR)
+   - 教學方式：`undesignated` / `designated_paid` / `designated_free`
+   - 與 `payment_method` 分離
+
+### 時區處理策略
+
+為避免時區轉換問題，系統採用以下策略：
+
+- **資料庫欄位類型**：所有時間戳欄位使用 `TEXT` 類型（非 `TIMESTAMP WITH TIME ZONE`）
+- **時間格式**：統一使用 `YYYY-MM-DDTHH:mm:ss` 格式
+- **工具函數**：使用 `getLocalTimestamp()` 生成本地時間戳
+- **優點**：
+  - ✅ 無時區轉換：直接使用本地時間
+  - ✅ 格式統一：所有時間戳格式一致
+  - ✅ 易於調試：時間戳與本地時間完全一致
+  - ✅ 避免 UTC 混淆：不需要在 UTC 和本地時間之間轉換
+
+```typescript
+// 舊方式（有時區問題）
+reported_at: new Date().toISOString()  // "2025-11-19T08:00:00.000Z" (UTC)
+
+// 新方式（無時區轉換）
+reported_at: getLocalTimestamp()  // "2025-11-19T16:00:00" (台灣本地時間)
+```
+
+### 遷移步驟
+
+```bash
+# 1. 前往 Supabase SQL Editor
+# 2. 執行 complete_migration.sql
+# 3. 驗證資料正確性
+# 4. 刷新應用
+```
+
+### 資料完整性
+
+- ✅ 自動遷移現有資料
+- ✅ 清理舊的 `payment_method` 值
+- ✅ 建立必要索引
+- ✅ 驗證查詢確認資料正確
 
 ## 🎉 總結
 
@@ -281,6 +353,22 @@ bookingStats  // 按預約統計
 
 ---
 
-更新日期：2025-11-19
-- 新增待處理記錄查看模式（按日期查看 / 查看全部）
+## 📅 更新記錄
+
+### 2025-11-19 (最新)
+- ✅ 新增待處理記錄查看模式（按日期查看 / 查看全部）
+- ✅ 分離教學方式和收費方式為獨立欄位
+- ✅ 簡化 `is_teaching` 邏輯（只看是否選擇指定課）
+- ✅ 修復已結案記錄查詢邏輯（僅顯示 `status='processed'`）
+- ✅ 優化關聯會員和直接結案的提示訊息
+- ✅ 新增頁面互聯功能（預約回報 ↔ 回報管理）
+- ✅ 新增完整資料庫遷移腳本 `complete_migration.sql`
+- ✅ 統一時區處理：全面使用本地時間戳（避免 UTC 轉換）
+- ✅ 新增 `getLocalTimestamp()` 工具函數處理所有時間戳欄位
+- ✅ 修改所有程式碼使用 `getLocalTimestamp()` 和 `getLocalDateString()`
+- ✅ 新增 `fix_coaches_timestamp.sql` 將 coaches 表轉換為 TEXT 格式
+
+### 2025-11-18 (初始版本)
+- 🎉 重構教練回報系統，拆分為 CoachReport 和 CoachAdmin
+- 📋 實現角色分離和職責單一化
 

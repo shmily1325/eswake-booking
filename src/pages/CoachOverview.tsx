@@ -7,6 +7,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useRequireAdmin } from '../utils/auth'
 import { getButtonStyle, getCardStyle } from '../styles/designSystem'
 import { getDisplayContactName } from '../utils/bookingFormat'
+import { getLocalDateString } from '../utils/date'
 
 interface Coach {
   id: string
@@ -358,9 +359,9 @@ export function CoachOverview({ user }: CoachOverviewProps) {
   const loadFutureBookingsSummary = async () => {
     try {
       const now = new Date()
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+      const todayStart = getLocalDateString(now) + 'T00:00:00'
       const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      const sevenDaysEnd = new Date(sevenDaysLater.getFullYear(), sevenDaysLater.getMonth(), sevenDaysLater.getDate(), 23, 59, 59).toISOString()
+      const sevenDaysEnd = getLocalDateString(sevenDaysLater) + 'T23:59:59'
 
       // 獲取未來7天的預約
       const { data: bookings, error } = await supabase

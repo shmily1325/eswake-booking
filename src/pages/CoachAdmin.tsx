@@ -7,7 +7,7 @@ import { TransactionDialog } from '../components/TransactionDialog'
 import { useResponsive } from '../hooks/useResponsive'
 import { useMemberSearch } from '../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
-import { getLocalDateString } from '../utils/date'
+import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 
 // ============ Types ============
 
@@ -74,7 +74,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
   // Tab 管理
   const [activeTab, setActiveTab] = useState<TabType>('pending')
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateString())
-  const [pendingViewMode, setPendingViewMode] = useState<'date' | 'all'>('date') // 新增：查看模式
+  const [pendingViewMode, setPendingViewMode] = useState<'date' | 'all'>('all') // 默認：查看全部
   const [loading, setLoading] = useState(false)
 
   // Tab 1: 待處理記錄 (合併會員 + 非會員)
@@ -277,7 +277,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
         .from('booking_participants')
         .update({ 
           status: 'processed',
-          updated_at: new Date().toISOString()
+          updated_at: getLocalTimestamp()
         })
         .eq('id', processingReport.id)
 
@@ -303,17 +303,31 @@ export function CoachAdmin({ user }: { user: User | null }) {
     if (!report) return
 
     try {
-      const { error } = await supabase
+      console.log('關聯會員 - 更新前:', {
+        report_id: report.id,
+        current_status: report.status,
+        current_member_id: report.member_id,
+        new_member_id: member.id,
+        new_member_name: member.nickname || member.name
+      })
+
+      const { data, error } = await supabase
         .from('booking_participants')
         .update({
           member_id: member.id,
           participant_name: member.nickname || member.name,
           status: 'pending',
-          updated_at: new Date().toISOString()
+          updated_at: getLocalTimestamp()
         })
         .eq('id', report.id)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('更新失敗 - 錯誤詳情:', error)
+        throw error
+      }
+
+      console.log('關聯會員 - 更新後:', data)
 
       // 先關閉對話框
       setShowMemberSearchDialog(false)
@@ -326,7 +340,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
       alert(`✅ 已成功關聯到會員：${member.nickname || member.name}\n\n記錄已移至「會員待扣款」區域，請查看上方列表。`)
     } catch (error) {
       console.error('關聯會員失敗:', error)
-      alert('關聯會員失敗')
+      alert(`❌ 關聯會員失敗：${error instanceof Error ? error.message : '未知錯誤'}`)
     }
   }
 
@@ -343,7 +357,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
         .from('booking_participants')
         .update({
           status: 'processed',
-          updated_at: new Date().toISOString()
+          updated_at: getLocalTimestamp()
         })
         .eq('id', report.id)
 
@@ -504,7 +518,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       <PageHeader 
         user={user!} 
-        title="預約管理後台"
+        title="回報管理"
         showBaoLink={true}
         extraLinks={[
           { label: '← 預約回報', link: '/coach-report' }

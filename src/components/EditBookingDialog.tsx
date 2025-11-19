@@ -6,6 +6,7 @@ import { getDisplayContactName } from '../utils/bookingFormat'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { useResponsive } from '../hooks/useResponsive'
 import { isFacility } from '../utils/facility'
+import { getLocalTimestamp } from '../utils/date'
 
 interface Coach {
   id: string
@@ -455,7 +456,7 @@ export function EditBookingDialog({
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
           requires_driver: requiresDriver,
-          updated_at: new Date().toISOString(),
+          updated_at: getLocalTimestamp(),
         })
         .eq('id', booking.id)
 

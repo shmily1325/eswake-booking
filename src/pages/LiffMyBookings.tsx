@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import liff from '@line/liff'
+import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 
 interface Booking {
   id: string
@@ -140,7 +141,7 @@ export function LiffMyBookings() {
 
   const loadBookings = async (memberId: string) => {
     try {
-      const today = new Date().toISOString().split('T')[0]
+      const today = getLocalDateString()
 
       // 查詢該會員的預約（透過 booking_members）
       const { data: bookingMembers } = await supabase
@@ -222,7 +223,7 @@ export function LiffMyBookings() {
       // 計算兩個月前的日期
       const twoMonthsAgo = new Date()
       twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2)
-      const twoMonthsAgoStr = twoMonthsAgo.toISOString().split('T')[0]
+      const twoMonthsAgoStr = getLocalDateString(twoMonthsAgo)
 
       // 查詢該類別的交易記錄
       const { data, error } = await supabase
@@ -299,8 +300,8 @@ export function LiffMyBookings() {
           member_id: memberData.id,
           phone: memberData.phone,
           status: 'active',
-          completed_at: new Date().toISOString(),
-          created_at: new Date().toISOString()
+          completed_at: getLocalTimestamp(),
+          created_at: getLocalTimestamp()
         }, {
           onConflict: 'line_user_id'
         })

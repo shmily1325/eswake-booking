@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
+import { getLocalTimestamp } from '../utils/date'
 
 interface AddMemberDialogProps {
   open: boolean
@@ -118,7 +119,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           boat_voucher_g23_minutes: 0,
           boat_voucher_g21_minutes: 0,
           status: 'active',
-          created_at: new Date().toISOString()
+          created_at: getLocalTimestamp()
         }])
         .select()
         .single()

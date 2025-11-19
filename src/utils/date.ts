@@ -25,6 +25,22 @@ export function getLocalDateTimeString(date: Date): string {
 }
 
 /**
+ * 獲取當前本地時間戳（避免時區偏移）
+ * 用於資料庫的 timestamp 欄位（stored as TEXT）
+ * @returns YYYY-MM-DDTHH:mm:ss 格式的本地時間字串
+ */
+export function getLocalTimestamp(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+}
+
+/**
  * 直接從資料庫的 timestamp 字串中提取日期和時間
  * 不做任何時區轉換，直接取前 16 個字符
  * @param dbTimestamp - 資料庫返回的時間戳字串
