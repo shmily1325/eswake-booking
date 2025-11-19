@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
+import { useResponsive } from '../hooks/useResponsive'
 
 interface AuditLogEntry {
   id: number
@@ -12,57 +13,172 @@ interface AuditLogEntry {
   created_at: string
 }
 
+interface ParsedDetails {
+  member?: string
+  boat?: string
+  coach?: string
+  time?: string
+  duration?: string
+  rawText: string
+}
+
 interface AuditLogProps {
   user: User
 }
 
+/**
+ * 解析 details 字串，提取關鍵資訊
+ */
+function parseDetails(details: string): ParsedDetails {
+  const info: ParsedDetails = { rawText: details }
+  
+  // 提取時間（格式：11/01 13:45 或 2025-11-01 13:45）
+  const timeMatch = details.match(/(\d{1,2}\/\d{1,2}\s+\d{2}:\d{2})/)
+  if (timeMatch) info.time = timeMatch[1]
+  
+  // 提取船隻（G23, BAO, 彈簧床等）
+  const boatMatch = details.match(/([A-Z]\d{2}|[A-Z]{2,4}|彈簧床|[\u4e00-\u9fa5]+床)/)
+  if (boatMatch) info.boat = boatMatch[1]
+  
+  // 提取會員名稱（中文名字，通常在最前面或「會員：」後面）
+  const memberMatch = details.match(/(?:會員：)?([A-Z][a-z]+|[\u4e00-\u9fa5]{2,10})(?:\s|,|;|$)/)
+  if (memberMatch && !memberMatch[1].includes('教練') && !memberMatch[1].includes('預約')) {
+    info.member = memberMatch[1]
+  }
+  
+  // 提取教練名稱（XX教練 或 教練：XX）
+  const coachMatch = details.match(/(?:教練[:：]?\s*)?([A-Z][a-z]+|[\u4e00-\u9fa5]{2,5})(?:教練|老師)/)
+  if (coachMatch) info.coach = coachMatch[1]
+  
+  // 提取時長（60分 或 60 分）
+  const durationMatch = details.match(/(\d+)\s*分/)
+  if (durationMatch) info.duration = `${durationMatch[1]}分`
+  
+  return info
+}
+
+/**
+ * 高亮搜尋文字
+ */
+function highlightText(text: string, query: string): React.ReactNode {
+  if (!query.trim()) return text
+  
+  const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
+  
+  return parts.map((part, i) => 
+    part.toLowerCase() === query.toLowerCase() 
+      ? <mark key={i} style={{ background: '#ffeb3b', padding: '0 2px', borderRadius: '2px' }}>{part}</mark>
+      : part
+  )
+}
+
+/**
+ * 格式化日期（用於分組標題）
+ */
+function formatDateHeader(dateStr: string): string {
+  try {
+    const [year, month, day] = dateStr.split('-')
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    
+    const isToday = date.toDateString() === today.toDateString()
+    const isYesterday = date.toDateString() === yesterday.toDateString()
+    
+    if (isToday) return `今天 ${month}/${day}`
+    if (isYesterday) return `昨天 ${month}/${day}`
+    
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+    const weekday = weekdays[date.getDay()]
+    
+    return `${month}/${day} (${weekday})`
+  } catch {
+    return dateStr
+  }
+}
+
 export function AuditLog({ user }: AuditLogProps) {
+  const { isMobile } = useResponsive()
+  
+  // 原有 state
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'add' | 'edit' | 'delete'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [displayedLogs, setDisplayedLogs] = useState<AuditLogEntry[]>([])
+  
+  // 新增：日期範圍篩選
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() - 7)
+    return date.toISOString().split('T')[0]
+  })
+  const [endDate, setEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0]
+  })
+  
+  // 新增：操作者篩選
+  const [selectedOperator, setSelectedOperator] = useState<string>('all')
 
   useEffect(() => {
     fetchLogs()
-  }, [filter])
+  }, [filter, startDate, endDate])
 
-  useEffect(() => {
-    // 客户端搜索过滤
-    if (searchQuery.trim() === '') {
-      setDisplayedLogs(logs)
-    } else {
-      const filtered = logs.filter(log => 
-        log.details.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.user_email.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-      setDisplayedLogs(filtered)
+  // 計算所有操作者
+  const operators = useMemo(() => {
+    const uniqueOperators = [...new Set(logs.map(log => log.user_email))]
+    return uniqueOperators.sort()
+  }, [logs])
+
+  // 篩選和搜尋邏輯
+  const displayedLogs = useMemo(() => {
+    let filtered = logs
+    
+    // 操作者篩選
+    if (selectedOperator !== 'all') {
+      filtered = filtered.filter(log => log.user_email === selectedOperator)
     }
-  }, [searchQuery, logs])
+    
+    // 搜尋篩選
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(log => 
+        log.details.toLowerCase().includes(query) ||
+        log.user_email.toLowerCase().includes(query)
+      )
+    }
+    
+    return filtered
+  }, [logs, selectedOperator, searchQuery])
+
+  // 按日期分組
+  const groupedLogs = useMemo(() => {
+    const groups: Record<string, AuditLogEntry[]> = {}
+    
+    displayedLogs.forEach(log => {
+      const date = log.created_at.split('T')[0]
+      if (!groups[date]) groups[date] = []
+      groups[date].push(log)
+    })
+    
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]))
+  }, [displayedLogs])
 
   const fetchLogs = async () => {
     setLoading(true)
     
     try {
-      // 只查詢預約相關的記錄（最近 7 天）
-      const sevenDaysAgo = new Date()
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-      
-      // 使用本地時間格式 YYYY-MM-DDTHH:MM:SS
-      const year = sevenDaysAgo.getFullYear()
-      const month = String(sevenDaysAgo.getMonth() + 1).padStart(2, '0')
-      const day = String(sevenDaysAgo.getDate()).padStart(2, '0')
-      const sevenDaysAgoStr = `${year}-${month}-${day}T00:00:00`
-      
-      console.log('Querying audit logs from:', sevenDaysAgoStr)
+      const startDateStr = `${startDate}T00:00:00`
+      const endDateStr = `${endDate}T23:59:59`
       
       let query = supabase
         .from('audit_log')
         .select('*')
         .in('table_name', ['bookings', 'coach_assignment'])
-        .gte('created_at', sevenDaysAgoStr)
+        .gte('created_at', startDateStr)
+        .lte('created_at', endDateStr)
         .order('created_at', { ascending: false })
-        .limit(200)
+        .limit(500)
 
       // 根據篩選條件過濾 action
       if (filter !== 'all') {
@@ -79,8 +195,6 @@ export function AuditLog({ user }: AuditLogProps) {
       if (error) {
         console.error('Error fetching audit logs:', error)
       } else {
-        console.log('Fetched audit logs:', data)
-        console.log('Total logs count:', data?.length || 0)
         setLogs(data || [])
       }
     } catch (err) {
@@ -94,8 +208,7 @@ export function AuditLog({ user }: AuditLogProps) {
     if (!dateString) return ''
     
     try {
-      // 直接從 TEXT 格式解析：2025-11-09T23:15:00
-      const datetime = dateString.substring(0, 16) // 取到分鐘
+      const datetime = dateString.substring(0, 16)
       const [dateStr, timeStr] = datetime.split('T')
       const [, month, day] = dateStr.split('-')
       
@@ -108,51 +221,60 @@ export function AuditLog({ user }: AuditLogProps) {
 
   const getOperationColor = (action: string) => {
     switch (action) {
-      case 'create':
-        return '#28a745'
-      case 'update':
-        return '#007bff'
-      case 'delete':
-        return '#dc3545'
-      default:
-        return '#666'
+      case 'create': return '#28a745'
+      case 'update': return '#007bff'
+      case 'delete': return '#dc3545'
+      default: return '#666'
     }
   }
 
   const getOperationIcon = (action: string) => {
     switch (action) {
-      case 'create':
-        return '➕'
-      case 'update':
-        return '✏️'
-      case 'delete':
-        return '🗑️'
-      default:
-        return '📝'
+      case 'create': return '➕'
+      case 'update': return '✏️'
+      case 'delete': return '🗑️'
+      default: return '📝'
     }
   }
 
   const getOperationText = (action: string, tableName: string) => {
-    // 根據 table_name 區分操作類型
-    if (tableName === 'coach_assignment') {
-      return '排班'
-    }
+    if (tableName === 'coach_assignment') return '排班'
     
     switch (action) {
-      case 'create':
-        return '新增預約'
-      case 'update':
-        return '修改預約'
-      case 'delete':
-        return '刪除預約'
-      default:
-        return '未知操作'
+      case 'create': return '新增預約'
+      case 'update': return '修改預約'
+      case 'delete': return '刪除預約'
+      default: return '未知操作'
+    }
+  }
+
+  const setQuickDateRange = (range: 'today' | '7days' | '30days' | 'all') => {
+    const end = new Date().toISOString().split('T')[0]
+    setEndDate(end)
+    
+    const start = new Date()
+    switch (range) {
+      case 'today':
+        setStartDate(end)
+        break
+      case '7days':
+        start.setDate(start.getDate() - 7)
+        setStartDate(start.toISOString().split('T')[0])
+        break
+      case '30days':
+        start.setDate(start.getDate() - 30)
+        setStartDate(start.toISOString().split('T')[0])
+        break
+      case 'all':
+        start.setDate(start.getDate() - 90)
+        setStartDate(start.toISOString().split('T')[0])
+        break
     }
   }
 
   return (
     <div style={{
-      padding: '15px',
+      padding: isMobile ? '10px' : '15px',
       maxWidth: '1400px',
       margin: '0 auto',
       minHeight: '100vh',
@@ -160,7 +282,7 @@ export function AuditLog({ user }: AuditLogProps) {
     }}>
       <PageHeader title="📝 編輯記錄" user={user} />
 
-      {/* Search Bar */}
+      {/* 日期範圍篩選 */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
@@ -168,26 +290,154 @@ export function AuditLog({ user }: AuditLogProps) {
         marginBottom: '15px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
       }}>
-        <input
-          type="text"
-          placeholder="🔍 搜尋會員名稱、操作者或預約內容..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            fontSize: '14px',
-            border: '1px solid #dee2e6',
-            borderRadius: '6px',
-            outline: 'none',
-            transition: 'border-color 0.2s',
-          }}
-          onFocus={(e) => e.currentTarget.style.borderColor = '#007bff'}
-          onBlur={(e) => e.currentTarget.style.borderColor = '#dee2e6'}
-        />
+        <div style={{ 
+          display: 'flex', 
+          gap: '10px', 
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          marginBottom: '12px'
+        }}>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              fontSize: '14px',
+              border: '1px solid #dee2e6',
+              borderRadius: '6px',
+              outline: 'none',
+            }}
+          />
+          <span style={{ color: '#666', fontSize: '14px' }}>至</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              fontSize: '14px',
+              border: '1px solid #dee2e6',
+              borderRadius: '6px',
+              outline: 'none',
+            }}
+          />
+        </div>
+        
+        {/* 快速選擇按鈕 */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setQuickDateRange('today')}
+            style={{
+              padding: '6px 12px',
+              fontSize: '13px',
+              border: '1px solid #dee2e6',
+              borderRadius: '4px',
+              backgroundColor: 'white',
+              cursor: 'pointer',
+              color: '#666',
+            }}
+          >
+            今天
+          </button>
+          <button
+            onClick={() => setQuickDateRange('7days')}
+            style={{
+              padding: '6px 12px',
+              fontSize: '13px',
+              border: '1px solid #dee2e6',
+              borderRadius: '4px',
+              backgroundColor: 'white',
+              cursor: 'pointer',
+              color: '#666',
+            }}
+          >
+            最近 7 天
+          </button>
+          <button
+            onClick={() => setQuickDateRange('30days')}
+            style={{
+              padding: '6px 12px',
+              fontSize: '13px',
+              border: '1px solid #dee2e6',
+              borderRadius: '4px',
+              backgroundColor: 'white',
+              cursor: 'pointer',
+              color: '#666',
+            }}
+          >
+            最近 30 天
+          </button>
+          <button
+            onClick={() => setQuickDateRange('all')}
+            style={{
+              padding: '6px 12px',
+              fontSize: '13px',
+              border: '1px solid #dee2e6',
+              borderRadius: '4px',
+              backgroundColor: 'white',
+              cursor: 'pointer',
+              color: '#666',
+            }}
+          >
+            最近 90 天
+          </button>
+        </div>
       </div>
 
-      {/* Filters */}
+      {/* 搜尋框 + 操作者篩選 */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: '15px',
+        marginBottom: '15px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          gap: '10px', 
+          flexWrap: 'wrap',
+          marginBottom: '10px'
+        }}>
+          <input
+            type="text"
+            placeholder="🔍 搜尋會員名稱、操作者或預約內容..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              flex: '1 1 300px',
+              padding: '12px 16px',
+              fontSize: '14px',
+              border: '1px solid #dee2e6',
+              borderRadius: '6px',
+              outline: 'none',
+            }}
+          />
+          
+          {/* 操作者下拉選單 */}
+          <select
+            value={selectedOperator}
+            onChange={(e) => setSelectedOperator(e.target.value)}
+            style={{
+              padding: '12px 16px',
+              fontSize: '14px',
+              border: '1px solid #dee2e6',
+              borderRadius: '6px',
+              outline: 'none',
+              cursor: 'pointer',
+              backgroundColor: 'white',
+              minWidth: '200px',
+            }}
+          >
+            <option value="all">👤 全部操作者</option>
+            {operators.map(email => (
+              <option key={email} value={email}>{email.split('@')[0]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* 操作類型篩選 */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
@@ -196,70 +446,33 @@ export function AuditLog({ user }: AuditLogProps) {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
       }}>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => setFilter('all')}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '6px',
-              border: filter === 'all' ? '2px solid #007bff' : '1px solid #dee2e6',
-              backgroundColor: filter === 'all' ? '#e7f3ff' : 'white',
-              color: filter === 'all' ? '#007bff' : '#333',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-            }}
-          >
-            全部
-          </button>
-          <button
-            onClick={() => setFilter('add')}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '6px',
-              border: filter === 'add' ? '2px solid #28a745' : '1px solid #dee2e6',
-              backgroundColor: filter === 'add' ? '#d4edda' : 'white',
-              color: filter === 'add' ? '#28a745' : '#333',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-            }}
-          >
-            ➕ 新增
-          </button>
-          <button
-            onClick={() => setFilter('edit')}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '6px',
-              border: filter === 'edit' ? '2px solid #007bff' : '1px solid #dee2e6',
-              backgroundColor: filter === 'edit' ? '#d1ecf1' : 'white',
-              color: filter === 'edit' ? '#007bff' : '#333',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-            }}
-          >
-            ✏️ 修改
-          </button>
-          <button
-            onClick={() => setFilter('delete')}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '6px',
-              border: filter === 'delete' ? '2px solid #dc3545' : '1px solid #dee2e6',
-              backgroundColor: filter === 'delete' ? '#f8d7da' : 'white',
-              color: filter === 'delete' ? '#dc3545' : '#333',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-            }}
-          >
-            🗑️ 刪除
-          </button>
+          {[
+            { key: 'all', label: '全部', color: '#007bff', bgColor: '#e7f3ff' },
+            { key: 'add', label: '➕ 新增', color: '#28a745', bgColor: '#d4edda' },
+            { key: 'edit', label: '✏️ 修改', color: '#007bff', bgColor: '#d1ecf1' },
+            { key: 'delete', label: '🗑️ 刪除', color: '#dc3545', bgColor: '#f8d7da' },
+          ].map(({ key, label, color, bgColor }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key as any)}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '6px',
+                border: filter === key ? `2px solid ${color}` : '1px solid #dee2e6',
+                backgroundColor: filter === key ? bgColor : 'white',
+                color: filter === key ? color : '#333',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Results Count */}
+      {/* 結果統計 */}
       {!loading && logs.length > 0 && (
         <div style={{
           marginBottom: '12px',
@@ -267,15 +480,15 @@ export function AuditLog({ user }: AuditLogProps) {
           color: '#666',
           padding: '0 4px',
         }}>
-          {searchQuery ? (
-            <>找到 <strong>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）</>
+          {searchQuery || selectedOperator !== 'all' ? (
+            <>找到 <strong style={{ color: '#007bff' }}>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）</>
           ) : (
-            <>共 <strong>{logs.length}</strong> 筆記錄</>
+            <>共 <strong style={{ color: '#007bff' }}>{logs.length}</strong> 筆記錄</>
           )}
         </div>
       )}
 
-      {/* Logs */}
+      {/* 記錄列表 */}
       {loading ? (
         <div style={{
           padding: '40px',
@@ -296,76 +509,192 @@ export function AuditLog({ user }: AuditLogProps) {
           color: '#999',
           fontSize: '16px',
         }}>
-          {searchQuery ? '沒有符合的記錄' : '沒有記錄'}
+          {searchQuery || selectedOperator !== 'all' ? '沒有符合的記錄' : '沒有記錄'}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {displayedLogs.map((log) => (
-            <div
-              key={log.id}
-              style={{
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                padding: '16px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                borderLeft: `4px solid ${getOperationColor(log.action)}`,
-              }}
-            >
+        // 按日期分組顯示
+        <>
+          {groupedLogs.map(([date, logsInDate]) => (
+            <div key={date} style={{ marginBottom: '24px' }}>
+              {/* 日期標題 */}
               <div style={{
+                padding: '10px 16px',
+                backgroundColor: '#667eea',
+                color: 'white',
+                borderRadius: '8px',
+                marginBottom: '12px',
+                fontSize: '15px',
+                fontWeight: '600',
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: '12px',
-                flexWrap: 'wrap',
-                gap: '10px',
+                alignItems: 'center',
               }}>
-                <div>
-                  <span style={{
-                    fontSize: '18px',
-                    marginRight: '8px',
-                  }}>
-                    {getOperationIcon(log.action)}
-                  </span>
-                  <span style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: getOperationColor(log.action),
-                  }}>
-                    {getOperationText(log.action, log.table_name)}
-                  </span>
-                </div>
-                <div style={{
-                  fontSize: '13px',
-                  color: '#666',
-                }}>
-                  {formatDateTime(log.created_at)}
-                </div>
+                <span>📅 {formatDateHeader(date)}</span>
+                <span style={{ fontSize: '13px', opacity: 0.9 }}>
+                  {logsInDate.length} 筆
+                </span>
               </div>
 
-              <div style={{
-                fontSize: '14px',
-                color: '#333',
-                lineHeight: '1.6',
-              }}>
-                <div style={{ marginBottom: '8px' }}>
-                  <strong>操作者：</strong>{log.user_email}
-                </div>
-                <div style={{
-                  marginTop: '12px',
-                  padding: '12px',
-                  backgroundColor: '#f8f9fa',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  color: '#333',
-                  whiteSpace: 'pre-wrap',
-                  lineHeight: '1.6'
-                }}>
-                  {log.details}
-                </div>
+              {/* 該日期的所有記錄 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {logsInDate.map((log) => {
+                  const parsed = parseDetails(log.details)
+                  
+                  return (
+                    <div
+                      key={log.id}
+                      style={{
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        borderLeft: `4px solid ${getOperationColor(log.action)}`,
+                      }}
+                    >
+                      {/* 標題列 */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: '12px',
+                        flexWrap: 'wrap',
+                        gap: '10px',
+                      }}>
+                        <div>
+                          <span style={{ fontSize: '18px', marginRight: '8px' }}>
+                            {getOperationIcon(log.action)}
+                          </span>
+                          <span style={{
+                            fontSize: '16px',
+                            fontWeight: '600',
+                            color: getOperationColor(log.action),
+                          }}>
+                            {getOperationText(log.action, log.table_name)}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#666' }}>
+                          {formatDateTime(log.created_at)}
+                        </div>
+                      </div>
+
+                      {/* 解析出的關鍵資訊標籤 */}
+                      {(parsed.member || parsed.boat || parsed.coach || parsed.time || parsed.duration) && (
+                        <div style={{ 
+                          display: 'flex', 
+                          gap: '8px', 
+                          flexWrap: 'wrap', 
+                          marginBottom: '12px' 
+                        }}>
+                          {parsed.member && (
+                            <button
+                              onClick={() => setSearchQuery(parsed.member!)}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: '13px',
+                                border: 'none',
+                                borderRadius: '4px',
+                                backgroundColor: '#e3f2fd',
+                                color: '#1976d2',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#bbdefb'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e3f2fd'}
+                            >
+                              👤 {parsed.member}
+                            </button>
+                          )}
+                          {parsed.boat && (
+                            <button
+                              onClick={() => setSearchQuery(parsed.boat!)}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: '13px',
+                                border: 'none',
+                                borderRadius: '4px',
+                                backgroundColor: '#f3e5f5',
+                                color: '#7b1fa2',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e1bee7'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f3e5f5'}
+                            >
+                              🚤 {parsed.boat}
+                            </button>
+                          )}
+                          {parsed.coach && (
+                            <button
+                              onClick={() => setSearchQuery(parsed.coach!)}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: '13px',
+                                border: 'none',
+                                borderRadius: '4px',
+                                backgroundColor: '#fff3e0',
+                                color: '#e65100',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#ffe0b2'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fff3e0'}
+                            >
+                              👨‍🏫 {parsed.coach}
+                            </button>
+                          )}
+                          {parsed.time && (
+                            <span style={{
+                              padding: '4px 10px',
+                              fontSize: '13px',
+                              borderRadius: '4px',
+                              backgroundColor: '#e8f5e9',
+                              color: '#2e7d32',
+                            }}>
+                              🕐 {parsed.time}
+                            </span>
+                          )}
+                          {parsed.duration && (
+                            <span style={{
+                              padding: '4px 10px',
+                              fontSize: '13px',
+                              borderRadius: '4px',
+                              backgroundColor: '#fce4ec',
+                              color: '#c2185b',
+                            }}>
+                              ⏱️ {parsed.duration}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 操作者 */}
+                      <div style={{ marginBottom: '8px', fontSize: '14px' }}>
+                        <strong>操作者：</strong>
+                        <span style={{ color: '#666' }}>
+                          {highlightText(log.user_email, searchQuery)}
+                        </span>
+                      </div>
+
+                      {/* 詳細內容（帶高亮） */}
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        color: '#333',
+                        whiteSpace: 'pre-wrap',
+                        lineHeight: '1.6'
+                      }}>
+                        {highlightText(log.details, searchQuery)}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           ))}
-        </div>
+        </>
       )}
     </div>
   )
