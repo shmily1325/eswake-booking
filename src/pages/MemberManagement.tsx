@@ -22,9 +22,8 @@ interface Member {
   gift_boat_hours: number  // 贈送大船時數
   membership_end_date: string | null
   membership_start_date: string | null
-  membership_type: string  // 'general', 'dual', 'board'
+  membership_type: string  // 'general', 'dual', 'guest' (非會員、一般會員、雙人會員)
   membership_partner_id: string | null
-  member_type: string  // 'guest' or 'member'
   board_slot_number: string | null
   board_expiry_date: string | null
   notes: string | null
@@ -51,7 +50,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
   const [showInactive, setShowInactive] = useState(false)
   const [expiringMemberships, setExpiringMemberships] = useState<any[]>([])
   const [expiringBoards, setExpiringBoards] = useState<any[]>([])
-  const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 'all', 'general', 'dual', 'board'
+  const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 'all', 'general', 'dual', 'guest'
   
   // TODO: Will use user for creating/updating members and permission control
   // Current user email will be logged for debugging
@@ -168,7 +167,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
         supabase
           .from('members')
           .select(`
-            id, name, nickname, phone, birthday, notes, member_type, 
+            id, name, nickname, phone, birthday, notes, 
             balance, vip_voucher_amount, designated_lesson_minutes, 
             boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, 
             gift_boat_hours, membership_end_date, membership_start_date,
@@ -276,7 +275,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
       const { data: allMembers, error } = await supabase
         .from('members')
         .select(`
-          id, name, nickname, phone, birthday, notes, member_type, 
+          id, name, nickname, phone, birthday, notes, 
           balance, vip_voucher_amount, designated_lesson_minutes, 
           boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, 
           gift_boat_hours, membership_end_date, membership_start_date,
@@ -312,19 +311,16 @@ export function MemberManagement({ user }: MemberManagementProps) {
 
       // 準備 CSV 內容
       const headers = [
-        '姓名', '暱稱', '會員類型', '會籍類型', '配對會員', 
+        '姓名', '暱稱', '會籍類型', '配對會員', 
         '會員開始日期', '會員截止日', '電話', '生日', '備註', '狀態'
       ]
 
       const rows = allMembers.map((member: any) => {
-        // 會員類型
-        const memberTypeLabel = member.member_type === 'member' ? '會員' : '客人'
-        
         // 會籍類型
         let membershipTypeLabel = '一般會員'
         if (member.membership_type === 'dual') {
           membershipTypeLabel = '雙人會員'
-        } else if (member.membership_type === 'board') {
+        } else if (member.membership_type === 'guest') {
           membershipTypeLabel = '非會員'
         }
         
@@ -336,7 +332,6 @@ export function MemberManagement({ user }: MemberManagementProps) {
         return [
           member.name || '',
           member.nickname || '',
-          memberTypeLabel,
           membershipTypeLabel,
           partnerName,
           member.membership_start_date || '',
@@ -390,9 +385,6 @@ export function MemberManagement({ user }: MemberManagementProps) {
     // 篩選會員種類
     if (membershipTypeFilter !== 'all') {
       result = result.filter(member => {
-        if (membershipTypeFilter === 'guest') {
-          return member.member_type === 'guest'
-        }
         return member.membership_type === membershipTypeFilter
       })
     }
@@ -567,7 +559,7 @@ export function MemberManagement({ user }: MemberManagementProps) {
             { value: 'all', label: '全部' },
             { value: 'general', label: '一般會員' },
             { value: 'dual', label: '雙人會員' },
-            { value: 'board', label: '非會員' }
+            { value: 'guest', label: '非會員' }
           ].map(type => (
             <button
               key={type.value}
@@ -953,14 +945,14 @@ export function MemberManagement({ user }: MemberManagementProps) {
                       </span>
                     )}
                     <span style={{ 
-                      background: member.membership_type === 'board' ? '#fff9e6' : '#e3f2fd',
-                      color: member.membership_type === 'board' ? '#856404' : '#1976d2',
+                      background: member.membership_type === 'guest' ? '#fff9e6' : '#e3f2fd',
+                      color: member.membership_type === 'guest' ? '#856404' : '#1976d2',
                       padding: '3px 10px',
                       borderRadius: '12px',
                       fontWeight: 'bold',
                       fontSize: '12px'
                     }}>
-                      {member.membership_type === 'board' ? '🎫 非會員' : '👤 會員'}
+                      {member.membership_type === 'guest' ? '🎫 非會員' : '👤 會員'}
                     </span>
                     {member.membership_type === 'dual' && (
                       <span style={{ 

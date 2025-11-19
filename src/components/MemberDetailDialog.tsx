@@ -22,7 +22,6 @@ interface Member {
   membership_partner_id: string | null
   board_slot_number: string | null
   board_expiry_date: string | null
-  member_type: string
   notes: string | null
   status: string
   created_at: string
@@ -875,7 +874,7 @@ function getMembershipTypeLabel(type: string): string {
   switch (type) {
     case 'general': return '會員'
     case 'dual': return '雙人會員'
-    case 'board': return '非會員'
+    case 'guest': return '非會員'
     default: return type || '會員'
   }
 }

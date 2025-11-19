@@ -104,7 +104,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           nickname: formData.nickname.trim() || null,
           birthday: formData.birthday || null,
           phone: formData.phone.trim() || null,
-          member_type: 'member',
           membership_type: formData.membership_type,
           membership_start_date: formData.membership_start_date || null,
           membership_end_date: formData.membership_end_date || null,
@@ -341,7 +340,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               >
                 <option value="general">會員</option>
                 <option value="dual">雙人會員</option>
-                <option value="board">非會員</option>
+                <option value="guest">非會員</option>
               </select>
             </div>
 

@@ -30,7 +30,7 @@ export function BaoHub({ user }: BaoHubProps) {
           link: '/coach-assignment'
         },
         {
-          title: '教練回報',
+          title: '預約回報',
           icon: '📝',
           link: '/coach-report'
         },

@@ -17,7 +17,6 @@ interface ParsedMember {
   nickname?: string
   phone?: string
   birthday?: string
-  member_type?: string
   membership_type?: string
   partner_name?: string  // 配對會員姓名
   membership_start_date?: string
@@ -62,13 +61,10 @@ export function MemberImport({ user }: MemberImportProps) {
           const headerMap: Record<string, string> = {
             '姓名': 'name',
             '暱稱': 'nickname',
-            '會員類型': 'member_type',
             '會籍類型': 'membership_type',
-            '會員': 'membership_type',  // 兼容舊格式
             '配對會員': 'partner_name',
             '會員開始日期': 'membership_start_date',
             '會員截止日': 'membership_end_date',
-            '會員到期日': 'membership_end_date',
             '生日': 'birthday',
             '電話': 'phone',
             '備註': 'notes',
@@ -84,7 +80,6 @@ export function MemberImport({ user }: MemberImportProps) {
               nickname: row.nickname || undefined,
               phone: row.phone || undefined,
               birthday: row.birthday || undefined,
-              member_type: row.member_type || undefined,
               membership_type: row.membership_type || undefined,
               partner_name: row.partner_name || undefined,
               membership_start_date: row.membership_start_date || undefined,
@@ -147,16 +142,7 @@ export function MemberImport({ user }: MemberImportProps) {
       let updateCount = 0
       if (existingMembers.length > 0) {
         for (const member of existingMembers) {
-          // 會員類型
-          let memberType = 'member'
-          if (member.member_type) {
-            const type = member.member_type.trim()
-            if (type === '客人' || type === 'guest') {
-              memberType = 'guest'
-            }
-          }
-
-          // 會籍類型
+          // 會籍類型 (用來區分：非會員、一般會員、雙人會員)
           let membershipType = 'general'
           if (member.membership_type) {
             const type = member.membership_type.trim()
@@ -164,8 +150,8 @@ export function MemberImport({ user }: MemberImportProps) {
               membershipType = 'general'
             } else if (type === '雙人會員' || type === 'dual') {
               membershipType = 'dual'
-            } else if (type === '置板' || type === 'board') {
-              membershipType = 'board'
+            } else if (type === '非會員' || type === 'guest' || type === '客人') {
+              membershipType = 'guest'
             }
           }
 
@@ -182,7 +168,6 @@ export function MemberImport({ user }: MemberImportProps) {
             nickname: member.nickname || null,
             phone: member.phone || null,
             birthday: member.birthday || null,
-            member_type: memberType,
             membership_type: membershipType,
             membership_start_date: member.membership_start_date || null,
             membership_end_date: member.membership_end_date || null,
@@ -203,16 +188,7 @@ export function MemberImport({ user }: MemberImportProps) {
 
       // 4. 插入新會員（第一階段：不包含配對關係）
       const membersToInsert = newMembers.map(member => {
-        // 會員類型
-        let memberType = 'member'
-        if (member.member_type) {
-          const type = member.member_type.trim()
-          if (type === '客人' || type === 'guest') {
-            memberType = 'guest'
-          }
-        }
-
-        // 會籍類型
+        // 會籍類型 (用來區分：非會員、一般會員、雙人會員)
         let membershipType = 'general'
         if (member.membership_type) {
           const type = member.membership_type.trim()
@@ -220,8 +196,8 @@ export function MemberImport({ user }: MemberImportProps) {
             membershipType = 'general'
           } else if (type === '雙人會員' || type === 'dual') {
             membershipType = 'dual'
-          } else if (type === '置板' || type === 'board') {
-            membershipType = 'board'
+          } else if (type === '非會員' || type === 'guest' || type === '客人') {
+            membershipType = 'guest'
           }
         }
 
@@ -239,7 +215,6 @@ export function MemberImport({ user }: MemberImportProps) {
           nickname: member.nickname || null,
           phone: member.phone || null,
           birthday: member.birthday || null,
-          member_type: memberType,
           membership_type: membershipType,
           membership_start_date: member.membership_start_date || null,
           membership_end_date: member.membership_end_date || null,
@@ -826,9 +801,9 @@ export function MemberImport({ user }: MemberImportProps) {
                           membershipTypeDisplay = '雙人會員'
                           membershipTypeColor = '#f3e5f5'
                           membershipTypeTextColor = '#9c27b0'
-                        } else if (type === '置板' || type === 'board') {
-                          membershipTypeDisplay = '置板'
-                          membershipTypeColor = '#e8f5e9'
+                        } else if (type === '非會員' || type === 'guest') {
+                          membershipTypeDisplay = '非會員'
+                          membershipTypeColor = '#fff9e6'
                           membershipTypeTextColor = '#4caf50'
                         }
                       }
@@ -891,9 +866,9 @@ export function MemberImport({ user }: MemberImportProps) {
                       membershipTypeDisplay = '雙人會員'
                       membershipTypeColor = '#f3e5f5'
                       membershipTypeTextColor = '#9c27b0'
-                    } else if (type === '置板' || type === 'board') {
-                      membershipTypeDisplay = '置板'
-                      membershipTypeColor = '#e8f5e9'
+                    } else if (type === '非會員' || type === 'guest') {
+                      membershipTypeDisplay = '非會員'
+                      membershipTypeColor = '#fff9e6'
                       membershipTypeTextColor = '#4caf50'
                     }
                   }

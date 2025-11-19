@@ -8,7 +8,6 @@ interface Member {
   nickname: string | null
   birthday: string | null
   phone: string | null
-  member_type: string
   membership_type: string
   membership_start_date: string | null
   membership_end_date: string | null
@@ -161,7 +160,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
           nickname: formData.nickname || null,
           birthday: formData.birthday || null,
           phone: formData.phone || null,
-          member_type: 'member',
           membership_type: formData.membership_type,
           membership_start_date: formData.membership_start_date || null,
           membership_end_date: formData.membership_end_date || null,
@@ -389,7 +387,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               >
                 <option value="general">會員</option>
                 <option value="dual">雙人會員</option>
-                <option value="board">置板</option>
+                <option value="guest">非會員</option>
               </select>
             </div>
 

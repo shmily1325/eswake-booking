@@ -724,9 +724,9 @@ export function CoachReport({ user }: CoachReportProps) {
               <strong>回報內容：</strong>
             </div>
             <div style={{ paddingLeft: '12px', marginBottom: '8px' }}>
-              • <strong>只是教練</strong> → 僅能回報參與者<br/>
+              • <strong>只是教練</strong> → 僅能回報參與者（如果多位教練，可各自回報）<br/>
               • <strong>只是駕駛</strong>（有教練的預約）→ 僅能回報駕駛時數<br/>
-              • <strong>教練兼駕駛</strong> → 回報駕駛時數 + 參與者（多位教練的話就各自回報）<br/>
+              • <strong>教練兼駕駛</strong> → 回報駕駛時數 + 參與者（如果多位教練，可各自回報）<br/>
               • <strong>沒有教練，只有駕駛</strong> → 回報駕駛時數 + 參與者
             </div>
             <div style={{ marginBottom: '4px' }}>
