@@ -610,11 +610,29 @@ export function CoachReport({ user }: CoachReportProps) {
   }
 
   // 導出當日回報為 CSV
-  const exportToCSV = () => {
+  const exportToCSV = async () => {
     if (allBookings.length === 0) {
       alert('沒有資料可以匯出')
       return
     }
+
+    // 查詢所有預約的駕駛回報記錄
+    const bookingIds = allBookings.map(b => b.id)
+    const { data: allCoachReports } = await supabase
+      .from('coach_reports')
+      .select('booking_id, coach_id, driver_duration_min')
+      .in('booking_id', bookingIds)
+
+    // 建立駕駛回報查找映射
+    const driverReportsMap = new Map<number, Map<string, number>>()
+    allCoachReports?.forEach(report => {
+      if (!driverReportsMap.has(report.booking_id)) {
+        driverReportsMap.set(report.booking_id, new Map())
+      }
+      if (report.driver_duration_min) {
+        driverReportsMap.get(report.booking_id)!.set(report.coach_id, report.driver_duration_min)
+      }
+    })
 
     // CSV 標題
     const headers = [
@@ -624,6 +642,7 @@ export function CoachReport({ user }: CoachReportProps) {
       '時長(分)',
       '教練',
       '駕駛',
+      '駕駛時長(分)',
       '參與者姓名',
       '參與者時長(分)',
       '付款方式',
@@ -643,6 +662,14 @@ export function CoachReport({ user }: CoachReportProps) {
       const coachNames = (booking.coaches || []).map(c => c.name).join('、') || '無'
       const driverNames = (booking.drivers || []).map(d => d.name).join('、') || '無'
       const notes = (booking.notes || '').replace(/[\n\r]/g, ' ') // 移除換行符
+      
+      // 獲取所有駕駛的回報時長
+      const driverReports = driverReportsMap.get(booking.id)
+      let driverDuration = '-'
+      if (driverReports && driverReports.size > 0) {
+        const durations = Array.from(driverReports.values())
+        driverDuration = durations.join('、')
+      }
 
       // 如果有參與者記錄，每個參與者一行
       if (booking.participants && booking.participants.length > 0) {
@@ -657,6 +684,7 @@ export function CoachReport({ user }: CoachReportProps) {
             durationMin,
             coachNames,
             driverNames,
+            driverDuration.toString(),
             p.participant_name,
             p.duration_min.toString(),
             paymentMethodLabel,
@@ -682,6 +710,7 @@ export function CoachReport({ user }: CoachReportProps) {
           durationMin,
           coachNames,
           driverNames,
+          driverDuration.toString(),
           '-',
           '-',
           '-',
