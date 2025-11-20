@@ -609,6 +609,118 @@ export function CoachReport({ user }: CoachReportProps) {
     setSelectedDate(`${year}-${month}-${day}`)
   }
 
+  // 導出當日回報為 CSV
+  const exportToCSV = () => {
+    if (allBookings.length === 0) {
+      alert('沒有資料可以匯出')
+      return
+    }
+
+    // CSV 標題
+    const headers = [
+      '預約時間',
+      '船隻',
+      '預約人',
+      '時長(分)',
+      '教練',
+      '駕駛',
+      '參與者姓名',
+      '參與者時長(分)',
+      '付款方式',
+      '課程類型',
+      '回報狀態',
+      '備註'
+    ]
+
+    // 準備 CSV 資料
+    const rows: string[][] = []
+
+    allBookings.forEach(booking => {
+      const startTime = extractDate(booking.start_at) + ' ' + extractTime(booking.start_at)
+      const boatName = booking.boats?.name || ''
+      const contactName = booking.contact_name || ''
+      const durationMin = booking.duration_min.toString()
+      const coachNames = (booking.coaches || []).map(c => c.name).join('、') || '無'
+      const driverNames = (booking.drivers || []).map(d => d.name).join('、') || '無'
+      const notes = (booking.notes || '').replace(/[\n\r]/g, ' ') // 移除換行符
+
+      // 如果有參與者記錄，每個參與者一行
+      if (booking.participants && booking.participants.length > 0) {
+        booking.participants.forEach(p => {
+          const paymentMethodLabel = PAYMENT_METHODS.find(pm => pm.value === p.payment_method)?.label || p.payment_method
+          const lessonTypeLabel = LESSON_TYPES.find(lt => lt.value === p.lesson_type)?.label || p.lesson_type
+          
+          rows.push([
+            startTime,
+            boatName,
+            contactName,
+            durationMin,
+            coachNames,
+            driverNames,
+            p.participant_name,
+            p.duration_min.toString(),
+            paymentMethodLabel,
+            lessonTypeLabel,
+            '已回報',
+            notes
+          ])
+        })
+      } else {
+        // 沒有參與者記錄（未回報或只有駕駛回報）
+        const hasDriverReport = booking.drivers && booking.drivers.length > 0 && 
+          booking.drivers.some(d => {
+            const status = getReportStatus(booking, d.id)
+            return status.hasDriverReport
+          })
+        
+        const reportStatus = hasDriverReport ? '已回報駕駛' : '未回報'
+        
+        rows.push([
+          startTime,
+          boatName,
+          contactName,
+          durationMin,
+          coachNames,
+          driverNames,
+          '-',
+          '-',
+          '-',
+          '-',
+          reportStatus,
+          notes
+        ])
+      }
+    })
+
+    // 轉換為 CSV 字符串
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(cell => {
+          // 處理包含逗號或引號的內容
+          const cellStr = String(cell)
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`
+          }
+          return cellStr
+        }).join(',')
+      )
+    ].join('\n')
+
+    // 添加 BOM 以支持 Excel 正確顯示中文
+    const BOM = '\uFEFF'
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', `回報記錄_${selectedDate}_${selectedCoachId === 'all' ? '全部教練' : availableCoaches.find(c => c.id === selectedCoachId)?.name || '未知'}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   // 計算統計數據（更細緻的邏輯）
   const stats = {
     total: allBookings.length,
@@ -802,57 +914,92 @@ export function CoachReport({ user }: CoachReportProps) {
 
         {/* 統計摘要 - 獨立在外面 */}
         {viewMode === 'date' && stats.total > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-            gap: '16px',
-            marginBottom: '24px'
-          }}>
+          <>
             <div style={{
-              padding: '20px',
-              background: 'white',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              borderLeft: '4px solid #90caf9'
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+              gap: '16px',
+              marginBottom: '16px'
             }}>
-              <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                總預約
+              <div style={{
+                padding: '20px',
+                background: 'white',
+                borderRadius: '12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                borderLeft: '4px solid #90caf9'
+              }}>
+                <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                  總預約
+                </div>
+                <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
+                  {stats.total}
+                </div>
               </div>
-              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
-                {stats.total}
+
+              <div style={{
+                padding: '20px',
+                background: 'white',
+                borderRadius: '12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                borderLeft: '4px solid #81c784'
+              }}>
+                <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                  已回報
+                </div>
+                <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
+                  {stats.reported}
+                </div>
+              </div>
+
+              <div style={{
+                padding: '20px',
+                background: 'white',
+                borderRadius: '12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                borderLeft: '4px solid #ffb74d'
+              }}>
+                <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                  未回報
+                </div>
+                <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
+                  {stats.unreported}
+                </div>
               </div>
             </div>
 
+            {/* 匯出按鈕 */}
             <div style={{
-              padding: '20px',
-              background: 'white',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              borderLeft: '4px solid #81c784'
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginBottom: '24px'
             }}>
-              <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                已回報
-              </div>
-              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
-                {stats.reported}
-              </div>
+              <button
+                onClick={exportToCSV}
+                style={{
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.4)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.3)'
+                }}
+              >
+                匯出回報記錄
+              </button>
             </div>
-
-            <div style={{
-              padding: '20px',
-              background: 'white',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              borderLeft: '4px solid #ffb74d'
-            }}>
-              <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                未回報
-              </div>
-              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
-                {stats.unreported}
-              </div>
-            </div>
-          </div>
+          </>
         )}
 
         {/* 篩選區 */}
