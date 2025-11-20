@@ -236,6 +236,7 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
     let message = `${studentName}你好\n提醒你，明天有預約\n\n`
     
     let previousCoachNames = ''
+    let boatCount = 0  // 只計算真正的船（不含彈簧床）
     
     // ✅ 按順序處理每個預約
     studentBookings.forEach((booking, index) => {
@@ -246,8 +247,13 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
       const boatName = booking.boats?.name || ''
       const isFacility = boatName.includes('彈簧床')
       
+      // 如果不是彈簧床，船次計數增加
+      if (!isFacility) {
+        boatCount++
+      }
+      
       if (index === 0) {
-        // 第一船：教練 + 抵達時間 + 下水時間（或彈簧床）
+        // 第一個預約：教練 + 抵達時間 + 下水時間（或彈簧床）
         const arrivalTime = getArrivalTimeNoColon(booking.start_at)
         message += `${coachNames}教練\n`
         message += `${arrivalTime}抵達\n`
@@ -258,7 +264,14 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
         }
         previousCoachNames = coachNames
       } else {
-        // 第二船之後：檢查是否同一個教練
+        // 第二個預約之後
+        // 如果當前是船（不是彈簧床）且船次 >= 2，空一行並標註船次
+        if (!isFacility && boatCount >= 2) {
+          const shipLabel = boatCount === 2 ? '第二船' : boatCount === 3 ? '第三船' : `第${boatCount}船`
+          message += `\n${shipLabel}\n`
+        }
+        
+        // 檢查是否同一個教練
         if (coachNames === previousCoachNames) {
           // 同一個教練：只顯示時間，不顯示教練名稱
           if (isFacility) {
@@ -268,7 +281,7 @@ export function TomorrowReminder({ user }: TomorrowReminderProps) {
           }
         } else {
           // 不同教練：顯示教練名稱 + 時間
-          message += `\n${coachNames}教練\n`
+          message += `${coachNames}教練\n`
           if (isFacility) {
             message += `${startTime}彈簧床\n`
           } else {
