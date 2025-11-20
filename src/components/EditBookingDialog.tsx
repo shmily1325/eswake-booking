@@ -355,13 +355,14 @@ export function EditBookingDialog({
         // 建立教練名稱映射
         const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
         
-        // 使用優化後的批量查詢
+        // 使用優化後的批量查詢，並排除當前預約（避免自己跟自己衝突）
         const conflictResult = await checkCoachesConflictBatch(
           selectedCoaches,
           startDate,
           startTime,
           durationMin,
-          coachesMap
+          coachesMap,
+          booking.id  // 排除當前正在編輯的預約
         )
         
         if (conflictResult.hasConflict) {
@@ -860,7 +861,8 @@ export function EditBookingDialog({
                 value={manualStudentName}
                 onChange={(e) => setManualStudentName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && manualStudentName.trim()) {
+                  // 檢查是否正在使用輸入法（避免中文輸入時 Enter 確認選字被誤觸發）
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing && manualStudentName.trim()) {
                     e.preventDefault()
                     setManualNames(prev => [...prev, manualStudentName.trim()])
                     setManualStudentName('')

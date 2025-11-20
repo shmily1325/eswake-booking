@@ -811,7 +811,8 @@ export function NewBookingDialog({
                 value={manualStudentName}
                 onChange={(e) => setManualStudentName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && manualStudentName.trim()) {
+                  // 檢查是否正在使用輸入法（避免中文輸入時 Enter 確認選字被誤觸發）
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing && manualStudentName.trim()) {
                     e.preventDefault()
                     setManualNames(prev => [...prev, manualStudentName.trim()])
                     setManualStudentName('')

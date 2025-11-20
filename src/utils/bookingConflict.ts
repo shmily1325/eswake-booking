@@ -250,6 +250,7 @@ export async function checkDriverConflict(
  * @param startTime 開始時間 "HH:MM"
  * @param durationMin 持續時間（分鐘）
  * @param coachesMap 教練 ID 到名稱的映射 Map<coachId, { name: string }>
+ * @param excludeBookingId 排除的預約 ID（編輯時使用，避免自己跟自己衝突）
  * @returns 衝突檢查結果，包含所有有衝突的教練資訊
  * 
  * @example
@@ -260,7 +261,8 @@ export async function checkDriverConflict(
  *   '2025-11-19',
  *   '14:00',
  *   60,
- *   coachesMap
+ *   coachesMap,
+ *   123 // 排除預約 ID 123（編輯現有預約時）
  * )
  * if (result.hasConflict) {
  *   console.log('有衝突的教練:', result.conflictCoaches)
@@ -272,7 +274,8 @@ export async function checkCoachesConflictBatch(
   dateStr: string,
   startTime: string,
   durationMin: number,
-  coachesMap: Map<string, { name: string }>
+  coachesMap: Map<string, { name: string }>,
+  excludeBookingId?: number
 ): Promise<{
   hasConflict: boolean
   conflictCoaches: Array<{ coachId: string; coachName: string; reason: string }>
@@ -354,6 +357,11 @@ export async function checkCoachesConflictBatch(
     
     // 檢查該教練的每個預約
     for (const booking of bookings) {
+      // 排除當前編輯的預約（避免自己跟自己衝突）
+      if (excludeBookingId && booking.id === excludeBookingId) {
+        continue
+      }
+      
       const existingTime = booking.start_at.substring(11, 16)
       const existingSlot = calculateTimeSlot(existingTime, booking.duration_min)
       

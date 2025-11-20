@@ -754,7 +754,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
                   boxSizing: 'border-box'
                 }}
                 onKeyPress={(e) => {
-                  if (e.key === 'Enter') handleAddCoach()
+                  // 檢查是否正在使用輸入法（避免中文輸入時 Enter 確認選字被誤觸發）
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddCoach()
                 }}
               />
             </div>
