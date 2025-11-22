@@ -290,11 +290,31 @@ export function CoachAdmin({ user }: { user: User | null }) {
 
   // 完成處理（標記為已處理，從待處理列表移除）
   const handleMarkAsComplete = async (report: PendingReport) => {
-    if (!confirm(`確定將「${report.participant_name}」標記為已完成？\n\n標記後此記錄將從待處理列表移除。`)) {
+    if (!report.member_id) {
+      alert('非會員記錄無法標記完成')
       return
     }
 
     try {
+      // 檢查是否有相關交易記錄（在預約當天的交易）
+      const bookingDate = report.bookings.start_at.substring(0, 10)
+      const { data: transactions, error: txError } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('member_id', report.member_id)
+        .eq('transaction_date', bookingDate)
+        .limit(1)
+
+      if (txError) throw txError
+
+      // 如果沒有交易記錄，給予警告
+      if (!transactions || transactions.length === 0) {
+        if (!confirm(`⚠️ 警告：此記錄尚未進行任何扣款操作！\n\n會員：${report.participant_name}\n日期：${bookingDate}\n\n確定要標記為已完成嗎？`)) {
+          return
+        }
+      }
+      // 有交易記錄，直接處理不確認
+
       const { error } = await supabase
         .from('booking_participants')
         .update({ 
@@ -317,10 +337,6 @@ export function CoachAdmin({ user }: { user: User | null }) {
 
   // 現金結清（不進入交易帳目）
   const handleCashSettlement = async (report: PendingReport) => {
-    if (!confirm(`確定將「${report.participant_name}」標記為現金結清？\n\n此操作不會記錄到交易帳目，僅標記為已處理。`)) {
-      return
-    }
-
     try {
       const { error } = await supabase
         .from('booking_participants')
@@ -820,30 +836,6 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     💳 處理扣款
                                   </button>
                                   <button
-                                    onClick={() => handleMarkAsComplete(report)}
-                                    style={{
-                                      padding: '8px 16px',
-                                      fontSize: '14px',
-                                      backgroundColor: '#17a2b8',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: '6px',
-                                      cursor: 'pointer',
-                                      fontWeight: '500',
-                                      transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.backgroundColor = '#138496'
-                                      e.currentTarget.style.transform = 'translateY(-1px)'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.backgroundColor = '#17a2b8'
-                                      e.currentTarget.style.transform = 'translateY(0)'
-                                    }}
-                                  >
-                                    ✅ 完成處理
-                                  </button>
-                                  <button
                                     onClick={() => handleCashSettlement(report)}
                                     style={{
                                       padding: '8px 16px',
@@ -866,6 +858,30 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     }}
                                   >
                                     💵 現金結清
+                                  </button>
+                                  <button
+                                    onClick={() => handleMarkAsComplete(report)}
+                                    style={{
+                                      padding: '8px 16px',
+                                      fontSize: '14px',
+                                      backgroundColor: '#17a2b8',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      fontWeight: '500',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#138496'
+                                      e.currentTarget.style.transform = 'translateY(-1px)'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#17a2b8'
+                                      e.currentTarget.style.transform = 'translateY(0)'
+                                    }}
+                                  >
+                                    ✅ 完成處理
                                   </button>
                                 </div>
                               </div>
@@ -1242,6 +1258,16 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     {' • '}{record.duration_min}分
                                     {' • '}{PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}
                                   </div>
+                                  {record.notes && (
+                                    <div style={{ 
+                                      color: record.notes.includes('[現金結清]') ? '#28a745' : '#999', 
+                                      fontSize: '12px',
+                                      marginTop: '4px',
+                                      fontWeight: record.notes.includes('[現金結清]') ? '600' : 'normal'
+                                    }}>
+                                      💵 {record.notes}
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -1370,6 +1396,16 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     {' • '}{record.duration_min}分
                                     {' • '}{PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}
                                   </div>
+                                  {record.notes && (
+                                    <div style={{ 
+                                      color: record.notes.includes('[現金結清]') ? '#28a745' : '#999', 
+                                      fontSize: '12px',
+                                      marginTop: '4px',
+                                      fontWeight: record.notes.includes('[現金結清]') ? '600' : 'normal'
+                                    }}>
+                                      💵 {record.notes}
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
