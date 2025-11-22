@@ -273,9 +273,26 @@ export function CoachAdmin({ user }: { user: User | null }) {
     }
   }
 
-  // 扣款完成
+  // 扣款完成（不標記為已處理，允許繼續扣款）
   const handleTransactionComplete = async () => {
     if (!processingReport) return
+
+    // 關閉對話框，但保持記錄在待處理列表
+    setTransactionDialogOpen(false)
+    setProcessingReport(null)
+    setProcessingMember(null)
+    
+    // 重新載入（記錄仍會在待處理列表中）
+    if (activeTab === 'pending') {
+      await Promise.all([loadPendingReports(), loadNonMemberReports()])
+    }
+  }
+
+  // 完成處理（標記為已處理，從待處理列表移除）
+  const handleMarkAsComplete = async (report: PendingReport) => {
+    if (!confirm(`確定將「${report.participant_name}」標記為已完成？\n\n標記後此記錄將從待處理列表移除。`)) {
+      return
+    }
 
     try {
       const { error } = await supabase
@@ -284,22 +301,17 @@ export function CoachAdmin({ user }: { user: User | null }) {
           status: 'processed',
           updated_at: getLocalTimestamp()
         })
-        .eq('id', processingReport.id)
+        .eq('id', report.id)
 
       if (error) throw error
-
-      alert('處理完成！')
-      setTransactionDialogOpen(false)
-      setProcessingReport(null)
-      setProcessingMember(null)
       
       // 重新載入
       if (activeTab === 'pending') {
         await Promise.all([loadPendingReports(), loadNonMemberReports()])
       }
     } catch (error) {
-      console.error('更新狀態失敗:', error)
-      alert('更新狀態失敗')
+      console.error('標記失敗:', error)
+      alert('標記失敗')
     }
   }
 
@@ -320,8 +332,6 @@ export function CoachAdmin({ user }: { user: User | null }) {
         .eq('id', report.id)
 
       if (error) throw error
-
-      alert('✅ 已標記為現金結清')
       
       // 重新載入
       if (activeTab === 'pending') {
@@ -553,7 +563,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       <PageHeader 
         user={user!} 
-        title="💼 回報管理中心"
+        title="💼 回報管理"
         showBaoLink={true}
         extraLinks={[
           { label: '← 預約回報', link: '/coach-report' }
@@ -573,7 +583,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
           marginBottom: '24px',
           color: '#333'
         }}>
-          💼 回報管理中心
+          💼 回報管理
         </h1>
 
         {/* Tab 切換 */}
@@ -798,7 +808,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     </div>
                                   )}
                                 </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                   <button
                                     onClick={() => handleProcessTransaction(report)}
                                     style={{
@@ -807,7 +817,31 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                       fontSize: '14px'
                                     }}
                                   >
-                                    處理扣款
+                                    💳 處理扣款
+                                  </button>
+                                  <button
+                                    onClick={() => handleMarkAsComplete(report)}
+                                    style={{
+                                      padding: '8px 16px',
+                                      fontSize: '14px',
+                                      backgroundColor: '#17a2b8',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      fontWeight: '500',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#138496'
+                                      e.currentTarget.style.transform = 'translateY(-1px)'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#17a2b8'
+                                      e.currentTarget.style.transform = 'translateY(0)'
+                                    }}
+                                  >
+                                    ✅ 完成處理
                                   </button>
                                   <button
                                     onClick={() => handleCashSettlement(report)}
@@ -831,7 +865,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                       e.currentTarget.style.transform = 'translateY(0)'
                                     }}
                                   >
-                                    現金結清
+                                    💵 現金結清
                                   </button>
                                 </div>
                               </div>

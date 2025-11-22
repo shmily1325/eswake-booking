@@ -35,7 +35,7 @@ export function BaoHub({ user }: BaoHubProps) {
           link: '/coach-report'
         },
         {
-          title: '回報管理中心',
+          title: '回報管理',
           icon: '💼',
           link: '/coach-admin'
         }
