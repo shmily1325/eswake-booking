@@ -704,13 +704,10 @@ export function CoachReport({ user }: CoachReportProps) {
       '預約人',
       '時長(分)',
       '教練',
+      '回報教練',
+      '參與者',
       '駕駛',
-      '駕駛時長(分)',
-      '參與者姓名',
-      '參與者時長(分)',
-      '付款方式',
-      '課程類型',
-      '回報狀態',
+      '駕駛時長',
       '備註'
     ]
 
@@ -753,34 +750,58 @@ export function CoachReport({ user }: CoachReportProps) {
             })
             driverDuration = details.join('、')
           } else {
-            // 只有一個人回報，只顯示時長
-            const durations = Array.from(validDriverReports.values())
-            driverDuration = durations.join('、')
+            // 只有一個人回報，顯示名字和時長
+            const firstEntry = Array.from(validDriverReports.entries())[0]
+            const coachId = firstEntry[0]
+            const duration = firstEntry[1]
+            const coachName = booking.coaches?.find(c => c.id === coachId)?.name ||
+                            booking.drivers?.find(d => d.id === coachId)?.name ||
+                            '未知'
+            driverDuration = `${coachName} ${duration}分`
           }
         }
       }
 
       // 如果有參與者記錄，每個參與者一行
       if (booking.participants && booking.participants.length > 0) {
-        booking.participants.forEach(p => {
+        booking.participants.forEach((p, index) => {
           const paymentMethodLabel = PAYMENT_METHODS.find(pm => pm.value === p.payment_method)?.label || p.payment_method
           const lessonTypeLabel = LESSON_TYPES.find(lt => lt.value === p.lesson_type)?.label || p.lesson_type
           
-          rows.push([
-            startTime,
-            boatName,
-            contactName,
-            durationMin,
-            coachNames,
-            driverNames,
-            driverDuration.toString(),
-            p.participant_name,
-            p.duration_min.toString(),
-            paymentMethodLabel,
-            lessonTypeLabel,
-            '已回報',
-            notes
-          ])
+          // 組合參與者資訊：姓名(時長、付款方式、課程類型)
+          const participantInfo = `${p.participant_name}(${p.duration_min}分、${paymentMethodLabel}、${lessonTypeLabel})`
+          
+          // 獲取回報教練名字
+          const reportCoach = (p as any).coaches?.name || '未知'
+          
+          // 第一個參與者顯示完整資訊，後續參與者只顯示參與者資訊
+          if (index === 0) {
+            rows.push([
+              startTime,
+              boatName,
+              contactName,
+              durationMin,
+              coachNames,
+              reportCoach,
+              participantInfo,
+              driverNames,
+              driverDuration,
+              notes
+            ])
+          } else {
+            rows.push([
+              '',  // 空白日期
+              '',  // 空白船隻
+              '',  // 空白預約人
+              '',  // 空白時長
+              '',  // 空白教練
+              reportCoach,  // 回報教練
+              participantInfo,
+              '',  // 空白駕駛
+              '',  // 空白駕駛時長
+              ''   // 空白備註
+            ])
+          }
         })
       } else {
         // 沒有參與者記錄（未回報或只有駕駛回報）
@@ -798,13 +819,10 @@ export function CoachReport({ user }: CoachReportProps) {
           contactName,
           durationMin,
           coachNames,
-          driverNames,
-          driverDuration.toString(),
-          '-',
-          '-',
-          '-',
-          '-',
+          '-',  // 無回報教練
           reportStatus,
+          driverNames,
+          driverDuration,
           notes
         ])
       }
