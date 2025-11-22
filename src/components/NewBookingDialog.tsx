@@ -460,7 +460,7 @@ export function NewBookingDialog({
           continue
         }
 
-        // 插入教練關聯
+        // 插入教練關聯（有教練記錄 = 指定教練）
         if (selectedCoaches.length > 0 && insertedBooking) {
           const bookingCoachesToInsert = selectedCoaches.map(coachId => ({
             booking_id: insertedBooking.id,

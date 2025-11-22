@@ -219,7 +219,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .in('booking_id', bookingIds),
       supabase
         .from('booking_participants')
-        .select('booking_id, participant_name, duration_min, is_designated')
+        .select('booking_id, participant_name, duration_min, lesson_type')
         .in('booking_id', bookingIds),
       supabase
         .from('bookings')
@@ -252,10 +252,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!participantsByBooking[p.booking_id]) {
         participantsByBooking[p.booking_id] = [];
       }
+      // 使用 lesson_type 判斷是否為指定課
+      const isDesignated = p.lesson_type === 'designated_paid' || p.lesson_type === 'designated_free';
       participantsByBooking[p.booking_id].push({
         name: p.participant_name,
         duration: p.duration_min,
-        designated: p.is_designated
+        designated: isDesignated
       });
     }
     

@@ -191,6 +191,7 @@ export function DayView({ user }: DayViewProps) {
     const bookingIds = bookingsData.map(b => b.id)
 
     // 優化：並行查詢教練和駕駛，只查詢必要欄位
+    // 註：有 booking_coaches 記錄 = 指定教練
     const [coachesResult, driversResult] = await Promise.all([
       supabase
         .from('booking_coaches')

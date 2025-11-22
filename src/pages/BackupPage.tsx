@@ -51,10 +51,10 @@ export function BackupPage({ user }: BackupPageProps) {
         .from('booking_coaches')
           .select('booking_id, coaches:coach_id(name)')
           .in('booking_id', bookingIds),
-        supabase
-          .from('booking_participants')
-          .select('booking_id, participant_name, duration_min, is_designated')
-          .in('booking_id', bookingIds),
+      supabase
+        .from('booking_participants')
+        .select('booking_id, participant_name, duration_min, lesson_type')
+        .in('booking_id', bookingIds),
         supabase
           .from('bookings')
           .select('id, driver_coach_id')
@@ -79,10 +79,12 @@ export function BackupPage({ user }: BackupPageProps) {
         if (!participantsByBooking[p.booking_id]) {
           participantsByBooking[p.booking_id] = []
         }
+        // 使用 lesson_type 判斷是否為指定課
+        const isDesignated = p.lesson_type === 'designated_paid' || p.lesson_type === 'designated_free'
         participantsByBooking[p.booking_id].push({
           name: p.participant_name,
           duration: p.duration_min,
-          designated: p.is_designated
+          designated: isDesignated
         })
       }
       
@@ -323,7 +325,7 @@ export function BackupPage({ user }: BackupPageProps) {
           .in('booking_id', bookingIds),
         supabase
           .from('booking_participants')
-          .select('booking_id, participant_name, duration_min, is_designated')
+          .select('booking_id, participant_name, duration_min, lesson_type')
           .in('booking_id', bookingIds)
       ])
 
@@ -400,6 +402,9 @@ export function BackupPage({ user }: BackupPageProps) {
           })
         } else {
           participants.forEach(p => {
+            // 使用 lesson_type 判斷是否為指定課
+            const isDesignated = p.lesson_type === 'designated_paid' || p.lesson_type === 'designated_free'
+            
             coachRecords[coachName].records.push({
               date: bookingInfoMap[item.booking_id]?.date || '',
               startTime: bookingInfoMap[item.booking_id]?.startTime || '',
@@ -407,12 +412,12 @@ export function BackupPage({ user }: BackupPageProps) {
               boatName: bookingInfoMap[item.booking_id]?.boatName || '未指定',
               participantName: p.participant_name,
               duration: p.duration_min,
-              isDesignated: p.is_designated,
+              isDesignated: isDesignated,
               hasReport: true
             })
             
             coachRecords[coachName].totalMinutes += p.duration_min
-            if (p.is_designated) {
+            if (isDesignated) {
               coachRecords[coachName].designatedMinutes += p.duration_min
             } else {
               coachRecords[coachName].normalMinutes += p.duration_min
