@@ -719,13 +719,14 @@ export function CoachReport({ user }: CoachReportProps) {
       const boatName = booking.boats?.name || ''
       const contactName = booking.contact_name || ''
       const durationMin = booking.duration_min.toString()
-      const coachNames = (booking.coaches || []).map(c => c.name).join('、') || '無'
-      const driverNames = (booking.drivers || []).map(d => d.name).join('、') || '無'
+      const coachNames = (booking.coaches || []).map(c => c.name).join('、') || ''
       const notes = (booking.notes || '').replace(/[\n\r]/g, ' ') // 移除換行符
       
       // 獲取所有駕駛的回報時長（只顯示應該回報駕駛的人）
       const driverReports = driverReportsMap.get(booking.id)
-      let driverDuration = '-'
+      let reportedDriverName = ''
+      let reportedDriverDuration = ''
+      
       if (driverReports && driverReports.size > 0) {
         // 過濾掉不該有的駕駛回報（例如教練在有明確駕駛員後不該回報駕駛）
         const validDriverReports = new Map<string, number>()
@@ -740,24 +741,28 @@ export function CoachReport({ user }: CoachReportProps) {
         if (validDriverReports.size > 0) {
           // 如果有多個人回報駕駛時長，顯示每個人的名字和時長
           if (validDriverReports.size > 1) {
-            const details: string[] = []
+            const driverNames: string[] = []
+            const durations: string[] = []
             validDriverReports.forEach((duration, coachId) => {
               // 從教練或駕駛列表中查找名字
               const coachName = booking.coaches?.find(c => c.id === coachId)?.name ||
                               booking.drivers?.find(d => d.id === coachId)?.name ||
                               '未知'
-              details.push(`${coachName} ${duration}分`)
+              driverNames.push(coachName)
+              durations.push(`${duration}分`)
             })
-            driverDuration = details.join('、')
+            reportedDriverName = driverNames.join('、')
+            reportedDriverDuration = durations.join('、')
           } else {
-            // 只有一個人回報，顯示名字和時長
+            // 只有一個人回報，分別顯示名字和時長
             const firstEntry = Array.from(validDriverReports.entries())[0]
             const coachId = firstEntry[0]
             const duration = firstEntry[1]
             const coachName = booking.coaches?.find(c => c.id === coachId)?.name ||
                             booking.drivers?.find(d => d.id === coachId)?.name ||
                             '未知'
-            driverDuration = `${coachName} ${duration}分`
+            reportedDriverName = coachName
+            reportedDriverDuration = `${duration}分`
           }
         }
       }
@@ -784,8 +789,8 @@ export function CoachReport({ user }: CoachReportProps) {
               coachNames,
               reportCoach,
               participantInfo,
-              driverNames,
-              driverDuration,
+              reportedDriverName,
+              reportedDriverDuration,
               notes
             ])
           } else {
@@ -819,10 +824,10 @@ export function CoachReport({ user }: CoachReportProps) {
           contactName,
           durationMin,
           coachNames,
-          '-',  // 無回報教練
+          '',  // 無回報教練，留空
           reportStatus,
-          driverNames,
-          driverDuration,
+          reportedDriverName,
+          reportedDriverDuration,
           notes
         ])
       }
@@ -1103,38 +1108,6 @@ export function CoachReport({ user }: CoachReportProps) {
               </div>
             </div>
 
-            {/* 匯出按鈕 */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              marginBottom: '24px'
-            }}>
-              <button
-                onClick={exportToCSV}
-                style={{
-                  padding: '12px 24px',
-                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.4)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.3)'
-                }}
-              >
-                匯出回報記錄
-              </button>
-            </div>
           </>
         )}
 
@@ -1275,6 +1248,46 @@ export function CoachReport({ user }: CoachReportProps) {
               ))}
             </div>
           </div>
+
+          {/* 匯出按鈕 - 在按日期查看模式顯示 */}
+          {viewMode === 'date' && (
+            <div style={{
+              marginTop: '16px',
+              paddingTop: '16px',
+              borderTop: '1px solid #e0e0e0',
+              display: 'flex',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={exportToCSV}
+                style={{
+                  padding: '10px 20px',
+                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(76, 175, 80, 0.4)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(76, 175, 80, 0.3)'
+                }}
+              >
+                📊 匯出回報記錄
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 預約列表 */}
