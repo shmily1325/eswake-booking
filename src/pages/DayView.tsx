@@ -153,7 +153,7 @@ export function DayView({ user }: DayViewProps) {
           console.error('Error fetching boats:', boatsResult.error)
         } else {
           const sortedBoats = (boatsResult.data || []).sort((a, b) => {
-            const order = ['G23', 'G21', '黑豹', '粉紅', '彈簧床']
+            const order = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床']
             return order.indexOf(a.name) - order.indexOf(b.name)
           })
           setBoats(sortedBoats)
