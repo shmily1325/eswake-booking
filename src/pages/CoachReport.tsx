@@ -777,7 +777,7 @@ export function CoachReport({ user }: CoachReportProps) {
           const participantInfo = `${p.participant_name}(${p.duration_min}分、${paymentMethodLabel}、${lessonTypeLabel})`
           
           // 獲取回報教練名字
-          const reportCoach = (p as any).coaches?.name || '未知'
+          const reportCoach = (p as any).report_coach?.name || '未知'
           
           // 第一個參與者顯示完整資訊，後續參與者只顯示參與者資訊
           if (index === 0) {
