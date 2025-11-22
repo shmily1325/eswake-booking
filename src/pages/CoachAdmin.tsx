@@ -114,6 +114,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
             boats(name, color)
           ),
           coaches:coach_id(id, name),
+          members:member_id(id, name, nickname),
           old_participant:replaces_id(*)
         `)
         .eq('status', 'pending')
@@ -824,6 +825,23 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                 <div style={{ flex: 1, minWidth: '200px' }}>
                                   <div style={{ fontWeight: '600', marginBottom: '4px' }}>
                                     {report.participant_name}
+                                    {/* 顯示原始非會員名字（從 notes 提取） */}
+                                    {report.notes && report.notes.includes('非會員：') && (() => {
+                                      const match = report.notes.match(/非會員：([^\s]+)/)
+                                      if (match && match[1]) {
+                                        return (
+                                          <span style={{ 
+                                            marginLeft: '8px',
+                                            color: '#ff9800',
+                                            fontSize: '14px',
+                                            fontWeight: 'normal'
+                                          }}>
+                                            (非會員：{match[1]})
+                                          </span>
+                                        )
+                                      }
+                                      return null
+                                    })()}
                                     {report.replaces_id && (
                                       <span style={{
                                         marginLeft: '8px',
