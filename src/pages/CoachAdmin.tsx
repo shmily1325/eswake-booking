@@ -68,11 +68,10 @@ export function CoachAdmin({ user }: { user: User | null }) {
   // Tab 管理
   const [activeTab, setActiveTab] = useState<TabType>('pending')
   const [selectedDate, setSelectedDate] = useState(() => {
-    // 默認為本月 (YYYY-MM 格式)
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    // 默認為今天 (YYYY-MM-DD 格式)
+    return getLocalDateString()
   })
-  const [pendingViewMode, setPendingViewMode] = useState<'date' | 'all'>('all') // 默認：查看全部
+  const [pendingViewMode, setPendingViewMode] = useState<'date' | 'all'>('date') // 默認：按日期查看（今天）
   const [loading, setLoading] = useState(false)
 
   // Tab 1: 待處理記錄 (合併會員 + 非會員)
@@ -701,39 +700,44 @@ export function CoachAdmin({ user }: { user: User | null }) {
               marginBottom: '24px'
             }}>
               {/* 查看模式切換 */}
-              <div style={{ marginBottom: pendingViewMode === 'date' ? '16px' : 0 }}>
+              <div style={{ marginBottom: '16px' }}>
                 <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>查看模式</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => setPendingViewMode('date')}
+                    onClick={() => {
+                      setPendingViewMode('date')
+                      setSelectedDate(getLocalDateString())
+                    }}
                     style={{
                       flex: isMobile ? 1 : 'none',
-                      padding: '10px 20px',
-                      background: pendingViewMode === 'date' ? '#2196f3' : '#fff',
-                      color: pendingViewMode === 'date' ? 'white' : '#666',
-                      border: `2px solid ${pendingViewMode === 'date' ? '#2196f3' : '#e0e0e0'}`,
+                      padding: isMobile ? '12px 20px' : '14px 28px',
+                      background: pendingViewMode === 'date' ? '#4caf50' : '#e8f5e9',
+                      color: pendingViewMode === 'date' ? '#fff' : '#2e7d32',
+                      border: `3px solid ${pendingViewMode === 'date' ? '#4caf50' : '#81c784'}`,
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s'
+                      fontSize: '15px',
+                      fontWeight: '700',
+                      transition: 'all 0.2s',
+                      boxShadow: pendingViewMode === 'date' ? '0 2px 8px rgba(76,175,80,0.3)' : 'none'
                     }}
                   >
-                    📅 按日期查看
+                    🗓️ 今天
                   </button>
                   <button
                     onClick={() => setPendingViewMode('all')}
                     style={{
                       flex: isMobile ? 1 : 'none',
                       padding: '10px 20px',
-                      background: pendingViewMode === 'all' ? '#ff9800' : '#fff',
-                      color: pendingViewMode === 'all' ? 'white' : '#666',
-                      border: `2px solid ${pendingViewMode === 'all' ? '#ff9800' : '#e0e0e0'}`,
+                      background: pendingViewMode === 'all' ? '#ff9800' : '#fff3e0',
+                      color: pendingViewMode === 'all' ? '#fff' : '#e65100',
+                      border: `2px solid ${pendingViewMode === 'all' ? '#ff9800' : '#ffb74d'}`,
                       borderRadius: '8px',
                       cursor: 'pointer',
                       fontSize: '14px',
                       fontWeight: '600',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      boxShadow: pendingViewMode === 'all' ? '0 2px 8px rgba(255,152,0,0.3)' : 'none'
                     }}
                   >
                     📋 查看全部
@@ -743,15 +747,19 @@ export function CoachAdmin({ user }: { user: User | null }) {
 
               {/* 日期選擇（僅在按日期查看時顯示） */}
               {pendingViewMode === 'date' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <label style={{ ...getLabelStyle(isMobile) }}>
-                    日期
+                <div>
+                  <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>
+                    選擇日期
                   </label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    style={getInputStyle(isMobile)}
+                    style={{
+                      ...getInputStyle(isMobile),
+                      fontSize: '15px',
+                      fontWeight: '500'
+                    }}
                   />
                 </div>
               )}
@@ -1038,7 +1046,33 @@ export function CoachAdmin({ user }: { user: User | null }) {
                 </label>
                 
                 {/* 快捷按鈕 */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setSelectedDate(getLocalDateString())}
+                    style={{
+                      flex: isMobile ? 1 : 'none',
+                      padding: isMobile ? '12px 20px' : '14px 28px',
+                      background: selectedDate.length === 10 && selectedDate === getLocalDateString() 
+                        ? '#4caf50' 
+                        : '#e8f5e9',
+                      color: selectedDate.length === 10 && selectedDate === getLocalDateString() 
+                        ? '#fff' 
+                        : '#2e7d32',
+                      border: `3px solid ${selectedDate.length === 10 && selectedDate === getLocalDateString() 
+                        ? '#4caf50' 
+                        : '#81c784'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '15px',
+                      fontWeight: '700',
+                      transition: 'all 0.2s',
+                      boxShadow: selectedDate.length === 10 && selectedDate === getLocalDateString() 
+                        ? '0 2px 8px rgba(76,175,80,0.3)' 
+                        : 'none'
+                    }}
+                  >
+                    🗓️ 今天
+                  </button>
                   <button
                     onClick={() => {
                       const today = new Date()
@@ -1047,64 +1081,20 @@ export function CoachAdmin({ user }: { user: User | null }) {
                       setSelectedDate(`${year}-${month}`)
                     }}
                     style={{
-                      padding: '8px 16px',
-                      background: '#e3f2fd',
-                      color: '#1976d2',
-                      border: '2px solid #90caf9',
-                      borderRadius: '6px',
+                      flex: isMobile ? 1 : 'none',
+                      padding: '10px 20px',
+                      background: selectedDate.length === 7 ? '#2196f3' : '#e3f2fd',
+                      color: selectedDate.length === 7 ? '#fff' : '#1976d2',
+                      border: `2px solid ${selectedDate.length === 7 ? '#2196f3' : '#90caf9'}`,
+                      borderRadius: '8px',
                       cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '600'
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
                     }}
                   >
                     📅 本月
                   </button>
-                  <button
-                    onClick={() => {
-                      const today = new Date()
-                      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-                      const year = lastMonth.getFullYear()
-                      const month = String(lastMonth.getMonth() + 1).padStart(2, '0')
-                      setSelectedDate(`${year}-${month}`)
-                    }}
-                    style={{
-                      padding: '8px 16px',
-                      background: '#fff3e0',
-                      color: '#e65100',
-                      border: '2px solid #ffb74d',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '600'
-                    }}
-                  >
-                    📆 上月
-                  </button>
-                  <button
-                    onClick={() => setSelectedDate(getLocalDateString())}
-                    style={{
-                      padding: '8px 16px',
-                      background: '#e8f5e9',
-                      color: '#2e7d32',
-                      border: '2px solid #81c784',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '600'
-                    }}
-                  >
-                    🗓️ 今天
-                  </button>
-                </div>
-                
-                <input
-                  type="month"
-                  value={selectedDate.substring(0, 7)}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  style={getInputStyle(isMobile)}
-                />
-                <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                  顯示整個月的已結案記錄
                 </div>
               </div>
               
@@ -1126,7 +1116,8 @@ export function CoachAdmin({ user }: { user: User | null }) {
                       cursor: 'pointer',
                       fontSize: '14px',
                       fontWeight: '600',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      boxShadow: completedViewMode === 'booking' ? '0 2px 8px rgba(33,150,243,0.3)' : 'none'
                     }}
                   >
                     📋 按預約查看
@@ -1143,7 +1134,8 @@ export function CoachAdmin({ user }: { user: User | null }) {
                       cursor: 'pointer',
                       fontSize: '14px',
                       fontWeight: '600',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      boxShadow: completedViewMode === 'coach' ? '0 2px 8px rgba(33,150,243,0.3)' : 'none'
                     }}
                   >
                     👤 按教練統計
@@ -1166,7 +1158,9 @@ export function CoachAdmin({ user }: { user: User | null }) {
                     borderRadius: '8px',
                     marginBottom: '24px'
                   }}>
-                    <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#666' }}>📊 當日總計</h3>
+                    <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#666' }}>
+                      📊 {selectedDate.length === 10 ? '當日總計' : '當月總計'}
+                    </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                       <div>
                         <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>總教學時數</div>
@@ -1380,48 +1374,47 @@ export function CoachAdmin({ user }: { user: User | null }) {
                         {stat.teachingRecords.length > 0 && (
                           <div style={{ marginBottom: '16px' }}>
                             <h4 style={{ 
-                              margin: '0 0 12px 0', 
-                              fontSize: '15px', 
+                              margin: '0 0 8px 0', 
+                              fontSize: '14px', 
                               color: '#4caf50',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '8px'
+                              gap: '6px'
                             }}>
-                              🎓 教學明細
+                              🎓 教學明細 ({stat.teachingRecords.length}筆)
                             </h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               {stat.teachingRecords.map((record: any) => (
                                 <div
                                   key={record.id}
                                   style={{
-                                    padding: '10px',
-                                    background: '#f1f8e9',
-                                    borderRadius: '6px',
-                                    fontSize: '13px'
+                                    padding: '8px 10px',
+                                    background: '#f8f9fa',
+                                    borderRadius: '4px',
+                                    fontSize: '13px',
+                                    lineHeight: '1.5',
+                                    color: '#333'
                                   }}
                                 >
-                                  <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)} | {record.bookings.boats?.name}
-                                  </div>
-                                  <div style={{ color: '#666', marginBottom: '4px' }}>
-                                    預約人：{record.bookings.contact_name || '未命名'}
-                                  </div>
-                                  <div style={{ color: '#666' }}>
-                                    學員：{record.members?.nickname || record.members?.name || record.participant_name}
-                                    {!record.member_id && <span style={{ color: '#ff9800' }}> (非會員)</span>}
-                                    {' • '}{record.duration_min}分
-                                    {' • '}{LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}
-                                    {' • '}{PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}
-                                  </div>
+                                  <span style={{ fontWeight: '500' }}>
+                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)}
+                                  </span>
+                                  <span style={{ color: '#666' }}> {record.bookings.boats?.name}</span>
+                                  <span style={{ color: '#666' }}> • </span>
+                                  <span>{record.members?.nickname || record.members?.name || record.participant_name}</span>
+                                  {!record.member_id && <span style={{ color: '#ff9800' }}> (非會員)</span>}
+                                  <span style={{ color: '#666' }}> {record.duration_min}分</span>
+                                  <span style={{ color: '#666' }}> • {LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}</span>
+                                  <span style={{ color: '#666' }}> • {PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}</span>
                                   {record.notes && (
-                                    <div style={{ 
-                                      color: record.notes.includes('[現金結清]') ? '#28a745' : '#999', 
+                                    <span style={{ 
+                                      color: record.notes.includes('現金結清') ? '#28a745' : '#999',
                                       fontSize: '12px',
-                                      marginTop: '4px',
-                                      fontWeight: record.notes.includes('[現金結清]') ? '600' : 'normal'
+                                      marginLeft: '6px',
+                                      fontWeight: record.notes.includes('現金結清') ? '600' : 'normal'
                                     }}>
-                                      💵 {record.notes}
-                                    </div>
+                                      ({record.notes})
+                                    </span>
                                   )}
                                 </div>
                               ))}
@@ -1433,35 +1426,33 @@ export function CoachAdmin({ user }: { user: User | null }) {
                         {stat.drivingRecords.length > 0 && (
                           <div>
                             <h4 style={{ 
-                              margin: '0 0 12px 0', 
-                              fontSize: '15px', 
+                              margin: '0 0 8px 0', 
+                              fontSize: '14px', 
                               color: '#2196f3',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '8px'
+                              gap: '6px'
                             }}>
-                              🚤 駕駛明細
+                              🚤 駕駛明細 ({stat.drivingRecords.length}筆)
                             </h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               {stat.drivingRecords.map((record: any) => (
                                 <div
                                   key={record.id}
                                   style={{
-                                    padding: '10px',
-                                    background: '#e3f2fd',
-                                    borderRadius: '6px',
-                                    fontSize: '13px'
+                                    padding: '8px 10px',
+                                    background: '#f8f9fa',
+                                    borderRadius: '4px',
+                                    fontSize: '13px',
+                                    lineHeight: '1.5',
+                                    color: '#333'
                                   }}
                                 >
-                                  <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)} | {record.bookings.boats?.name}
-                                  </div>
-                                  <div style={{ color: '#666', marginBottom: '4px' }}>
-                                    預約人：{record.bookings.contact_name || '未命名'}
-                                  </div>
-                                  <div style={{ color: '#666' }}>
-                                    駕駛時數：{record.driver_duration_min}分
-                                  </div>
+                                  <span style={{ fontWeight: '500' }}>
+                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)}
+                                  </span>
+                                  <span style={{ color: '#666' }}> {record.bookings.boats?.name}</span>
+                                  <span style={{ color: '#666' }}> • {record.driver_duration_min}分</span>
                                 </div>
                               ))}
                             </div>
