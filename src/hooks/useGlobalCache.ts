@@ -100,12 +100,18 @@ export function useBoatsCache() {
 
       if (fetchError) throw fetchError
 
+      // 自定義排序順序
+      const order = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床']
+      const sortedBoats = (data || []).sort((a, b) => {
+        return order.indexOf(a.name) - order.indexOf(b.name)
+      })
+
       cache.boats = {
-        data: data || [],
+        data: sortedBoats,
         timestamp: now
       }
       
-      setBoats(data || [])
+      setBoats(sortedBoats)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : '載入船隻列表失敗')

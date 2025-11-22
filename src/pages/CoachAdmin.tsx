@@ -31,6 +31,7 @@ interface PendingReport {
   payment_method: string
   status: string
   replaces_id: number | null
+  notes?: string | null
   bookings: {
     id: number
     start_at: string
@@ -299,6 +300,36 @@ export function CoachAdmin({ user }: { user: User | null }) {
     } catch (error) {
       console.error('更新狀態失敗:', error)
       alert('更新狀態失敗')
+    }
+  }
+
+  // 現金結清（不進入交易帳目）
+  const handleCashSettlement = async (report: PendingReport) => {
+    if (!confirm(`確定將「${report.participant_name}」標記為現金結清？\n\n此操作不會記錄到交易帳目，僅標記為已處理。`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('booking_participants')
+        .update({ 
+          status: 'processed',
+          notes: report.notes ? `${report.notes} [現金結清]` : '[現金結清]',
+          updated_at: getLocalTimestamp()
+        })
+        .eq('id', report.id)
+
+      if (error) throw error
+
+      alert('✅ 已標記為現金結清')
+      
+      // 重新載入
+      if (activeTab === 'pending') {
+        await Promise.all([loadPendingReports(), loadNonMemberReports()])
+      }
+    } catch (error) {
+      console.error('標記失敗:', error)
+      alert('標記失敗')
     }
   }
 
@@ -767,16 +798,42 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     </div>
                                   )}
                                 </div>
-                                <button
-                                  onClick={() => handleProcessTransaction(report)}
-                                  style={{
-                                    ...getButtonStyle('primary'),
-                                    padding: '8px 16px',
-                                    fontSize: '14px'
-                                  }}
-                                >
-                                  處理扣款
-                                </button>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button
+                                    onClick={() => handleProcessTransaction(report)}
+                                    style={{
+                                      ...getButtonStyle('primary'),
+                                      padding: '8px 16px',
+                                      fontSize: '14px'
+                                    }}
+                                  >
+                                    處理扣款
+                                  </button>
+                                  <button
+                                    onClick={() => handleCashSettlement(report)}
+                                    style={{
+                                      padding: '8px 16px',
+                                      fontSize: '14px',
+                                      backgroundColor: '#28a745',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      fontWeight: '500',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#218838'
+                                      e.currentTarget.style.transform = 'translateY(-1px)'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#28a745'
+                                      e.currentTarget.style.transform = 'translateY(0)'
+                                    }}
+                                  >
+                                    現金結清
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>

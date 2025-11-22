@@ -117,7 +117,12 @@ export function CoachDailyView({ user }: CoachDailyViewProps) {
       .order('id')
     
     if (data) {
-      setBoats(data)
+      // 自定義排序順序
+      const order = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床']
+      const sortedBoats = data.sort((a, b) => {
+        return order.indexOf(a.name) - order.indexOf(b.name)
+      })
+      setBoats(sortedBoats)
     }
   }
 
