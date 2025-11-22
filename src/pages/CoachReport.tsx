@@ -778,8 +778,8 @@ export function CoachReport({ user }: CoachReportProps) {
           
           // 獲取回報教練名字
           console.log('🔍 參與者資料:', p)
-          console.log('🔍 report_coach:', (p as any).report_coach)
-          const reportCoach = (p as any).report_coach?.name || '未知'
+          console.log('🔍 reporting_coach:', (p as any).reporting_coach)
+          const reportCoach = (p as any).reporting_coach?.name || '未知'
           
           // 第一個參與者顯示完整資訊，後續參與者只顯示參與者資訊
           if (index === 0) {
