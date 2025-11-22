@@ -1303,7 +1303,8 @@ export function DayView({ user }: DayViewProps) {
                     zIndex: 10,
                     backgroundColor: 'white',
                     padding: isMobile ? '4px 2px' : '6px 8px',
-                    borderBottom: showPracticeLine ? '3px solid #ffc107' : '1px solid #e9ecef',
+                    borderTop: showPracticeLine ? '3px solid #ffc107' : 'none',
+                    borderBottom: '1px solid #e9ecef',
                     fontSize: isMobile ? '10px' : '13px',
                     fontWeight: '500',
                     textAlign: 'center',
@@ -1467,6 +1468,7 @@ export function DayView({ user }: DayViewProps) {
                           key={boat.id}
                           style={{
                             padding: isMobile ? '4px 4px' : '6px 8px',
+                            borderTop: showPracticeLine ? '3px solid #ffc107' : 'none',
                             borderBottom: '1px solid #e9ecef',
                             borderRight: '1px solid #e9ecef',
                             backgroundColor: 'transparent',
@@ -1485,6 +1487,7 @@ export function DayView({ user }: DayViewProps) {
                           onClick={() => handleCellClick(boat.id, timeSlot)}
                           style={{
                             padding: isMobile ? '4px 4px' : '6px 8px',
+                            borderTop: showPracticeLine ? '3px solid #ffc107' : 'none',
                             borderBottom: '1px solid #e9ecef',
                             borderRight: '1px solid #e9ecef',
                             cursor: 'pointer',
