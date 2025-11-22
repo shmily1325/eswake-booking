@@ -211,6 +211,8 @@ export function CoachReport({ user }: CoachReportProps) {
     const boatName = booking.boats?.name || ''
     const isFacilityBooking = isFacility(boatName)
     
+    // 重要：只有在「當前」沒有駕駛員的情況下，教練才能作為隱性駕駛
+    // 如果已經指定了駕駛員，教練就不能回報駕駛時長
     const isImplicitDriver = isCoach && hasNoDriver && !isFacilityBooking
     
     const needsCoachReport = isCoach
@@ -375,6 +377,32 @@ export function CoachReport({ user }: CoachReportProps) {
 
   const submitDriverReport = async () => {
     if (!reportingBookingId || !reportingCoachId) return
+
+    const booking = bookings.find(b => b.id === reportingBookingId)
+    if (!booking) return
+    
+    // 檢查當前角色是否應該回報駕駛
+    const reportType = getReportType(booking, reportingCoachId)
+    const shouldReportDriver = reportType === 'driver' || reportType === 'both'
+    
+    if (!shouldReportDriver) {
+      // 如果不應該回報駕駛（例如預約現在有明確的駕駛員了），刪除舊的駕駛回報記錄
+      console.log('清除不該有的駕駛回報記錄:', {
+        booking_id: reportingBookingId,
+        coach_id: reportingCoachId
+      })
+      
+      const { error: deleteError } = await supabase
+        .from('coach_reports')
+        .delete()
+        .eq('booking_id', reportingBookingId)
+        .eq('coach_id', reportingCoachId)
+      
+      if (deleteError) {
+        console.error('刪除駕駛回報失敗:', deleteError)
+      }
+      return
+    }
 
     console.log('提交駕駛回報:', {
       booking_id: reportingBookingId,
@@ -620,8 +648,11 @@ export function CoachReport({ user }: CoachReportProps) {
     const bookingIds = allBookings.map(b => b.id)
     const { data: allCoachReports } = await supabase
       .from('coach_reports')
-      .select('booking_id, coach_id, driver_duration_min')
+      .select('booking_id, coach_id, driver_duration_min, coaches:coach_id(name)')
       .in('booking_id', bookingIds)
+
+    // 🔍 調試：顯示所有駕駛回報記錄
+    console.log('📊 所有駕駛回報記錄:', allCoachReports)
 
     // 建立駕駛回報查找映射
     const driverReportsMap = new Map<number, Map<string, number>>()
@@ -663,12 +694,38 @@ export function CoachReport({ user }: CoachReportProps) {
       const driverNames = (booking.drivers || []).map(d => d.name).join('、') || '無'
       const notes = (booking.notes || '').replace(/[\n\r]/g, ' ') // 移除換行符
       
-      // 獲取所有駕駛的回報時長
+      // 獲取所有駕駛的回報時長（只顯示應該回報駕駛的人）
       const driverReports = driverReportsMap.get(booking.id)
       let driverDuration = '-'
       if (driverReports && driverReports.size > 0) {
-        const durations = Array.from(driverReports.values())
-        driverDuration = durations.join('、')
+        // 過濾掉不該有的駕駛回報（例如教練在有明確駕駛員後不該回報駕駛）
+        const validDriverReports = new Map<string, number>()
+        driverReports.forEach((duration, coachId) => {
+          const reportType = getReportType(booking, coachId)
+          const shouldReportDriver = reportType === 'driver' || reportType === 'both'
+          if (shouldReportDriver) {
+            validDriverReports.set(coachId, duration)
+          }
+        })
+        
+        if (validDriverReports.size > 0) {
+          // 如果有多個人回報駕駛時長，顯示每個人的名字和時長
+          if (validDriverReports.size > 1) {
+            const details: string[] = []
+            validDriverReports.forEach((duration, coachId) => {
+              // 從教練或駕駛列表中查找名字
+              const coachName = booking.coaches?.find(c => c.id === coachId)?.name ||
+                              booking.drivers?.find(d => d.id === coachId)?.name ||
+                              '未知'
+              details.push(`${coachName} ${duration}分`)
+            })
+            driverDuration = details.join('、')
+          } else {
+            // 只有一個人回報，只顯示時長
+            const durations = Array.from(validDriverReports.values())
+            driverDuration = durations.join('、')
+          }
+        }
       }
 
       // 如果有參與者記錄，每個參與者一行
@@ -888,6 +945,24 @@ export function CoachReport({ user }: CoachReportProps) {
           borderBottom: '2px solid #e0e0e0'
         }}>
             <button
+              onClick={() => setViewMode('date')}
+              style={{
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '14px 16px' : '14px 32px',
+              background: viewMode === 'date' ? 'white' : 'transparent',
+              color: viewMode === 'date' ? '#2196f3' : '#999',
+              border: 'none',
+              borderBottom: viewMode === 'date' ? '3px solid #2196f3' : '3px solid transparent',
+                cursor: 'pointer',
+              fontSize: isMobile ? '15px' : '16px',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              marginBottom: '-2px'
+              }}
+            >
+            📅 按日期查看
+            </button>
+            <button
               onClick={() => setViewMode('unreported')}
               style={{
               flex: isMobile ? 1 : 'none',
@@ -920,24 +995,6 @@ export function CoachReport({ user }: CoachReportProps) {
                 {bookings.length}
               </span>
             )}
-            </button>
-            <button
-              onClick={() => setViewMode('date')}
-              style={{
-              flex: isMobile ? 1 : 'none',
-              padding: isMobile ? '14px 16px' : '14px 32px',
-              background: viewMode === 'date' ? 'white' : 'transparent',
-              color: viewMode === 'date' ? '#2196f3' : '#999',
-              border: 'none',
-              borderBottom: viewMode === 'date' ? '3px solid #2196f3' : '3px solid transparent',
-                cursor: 'pointer',
-              fontSize: isMobile ? '15px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              marginBottom: '-2px'
-              }}
-            >
-            📅 按日期查看
             </button>
           </div>
 
