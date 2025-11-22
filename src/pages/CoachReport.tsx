@@ -434,6 +434,15 @@ export function CoachReport({ user }: CoachReportProps) {
     }
 
     try {
+      // 檢查是否有空的參與者
+      const emptyParticipants = participants.filter(p => !p.participant_name.trim())
+      if (emptyParticipants.length > 0) {
+        const confirmMsg = `⚠️ 提醒\n\n有 ${emptyParticipants.length} 個空的參與者未填寫姓名，將不會被提交。\n\n確定要繼續提交嗎？`
+        if (!confirm(confirmMsg)) {
+          return
+        }
+      }
+      
       // 允許單個教練不回報參與者（其他教練可能已經回報了）
       // 只過濾掉空名字的參與者，不強制要求至少一個
       const validParticipants = participants.filter(p => p.participant_name.trim())

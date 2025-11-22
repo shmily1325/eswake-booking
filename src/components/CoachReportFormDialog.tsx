@@ -152,16 +152,49 @@ export function CoachReportFormDialog({
           {/* 参与者回报 */}
           {(reportType === 'coach' || reportType === 'both') && (
             <div>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>
-                🎓 參與者回報
-              </h3>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '12px'
+              }}>
+                <h3 style={{ margin: '0', fontSize: '16px' }}>
+                  🎓 參與者回報
+                </h3>
+                <button
+                  onClick={onParticipantAdd}
+                  style={{
+                    padding: '8px 16px',
+                    background: 'white',
+                    color: '#2196f3',
+                    border: '1px solid #2196f3',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#e3f2fd'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white'
+                  }}
+                >
+                  ➕ 新增參與者
+                </button>
+              </div>
+              
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
+                可搜尋會員或直接輸入客人姓名
+              </div>
 
               {/* 已添加的参与者列表 */}
               {participants.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-                    已添加的參與者：
-                  </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {participants.map((participant, index) => (
                       <ParticipantFormItem
@@ -184,29 +217,6 @@ export function CoachReportFormDialog({
                   </div>
                 </div>
               )}
-
-              {/* 添加参与者区域 */}
-              <div
-                style={{
-                  padding: '16px',
-                  background: '#f8f9fa',
-                  borderRadius: '8px',
-                  border: '2px dashed #ddd'
-                }}
-              >
-                <button
-                  onClick={onParticipantAdd}
-                  style={{
-                    ...getButtonStyle('primary'),
-                    width: '100%'
-                  }}
-                >
-                  ➕ 新增參與者
-                </button>
-                <div style={{ fontSize: '12px', color: '#999', marginTop: '8px', textAlign: 'center' }}>
-                  可搜尋會員或直接輸入客人姓名
-                </div>
-              </div>
             </div>
           )}
         </div>

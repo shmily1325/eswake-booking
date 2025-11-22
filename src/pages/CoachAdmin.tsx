@@ -1414,12 +1414,11 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                   }}
                                 >
                                   <span style={{ fontWeight: '600', color: '#333' }}>
-                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)}
+                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)} {record.bookings.boats?.name}
                                   </span>
-                                  <span style={{ fontWeight: '600', color: '#333' }}> {record.bookings.boats?.name} • </span>
-                                  <span style={{ fontWeight: '600', color: '#333' }}>{record.members?.nickname || record.members?.name || record.participant_name}</span>
-                                  {!record.member_id && <span style={{ color: '#ff9800', fontWeight: '600' }}> (非會員)</span>}
-                                  <span style={{ fontWeight: '600', color: '#333' }}> {record.duration_min}分</span>
+                                  <span style={{ fontWeight: 'normal', color: '#666' }}> • {record.members?.nickname || record.members?.name || record.participant_name}</span>
+                                  {!record.member_id && <span style={{ color: '#ff9800', fontWeight: 'normal' }}> (非會員)</span>}
+                                  <span style={{ fontWeight: 'normal', color: '#666' }}> {record.duration_min}分</span>
                                   <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}> • {LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}</span>
                                   <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}> • {PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}</span>
                                   {record.notes && (
@@ -1465,10 +1464,9 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                   }}
                                 >
                                   <span style={{ fontWeight: '600', color: '#333' }}>
-                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)}
+                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)} {record.bookings.boats?.name}
                                   </span>
-                                  <span style={{ fontWeight: '600', color: '#333' }}> {record.bookings.boats?.name} • </span>
-                                  <span style={{ fontWeight: '600', color: '#333' }}>{record.driver_duration_min}分</span>
+                                  <span style={{ fontWeight: 'normal', color: '#666' }}> • {record.driver_duration_min}分</span>
                                 </div>
                               ))}
                             </div>
