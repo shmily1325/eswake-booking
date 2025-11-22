@@ -369,8 +369,16 @@ export function CoachAdmin({ user }: { user: User | null }) {
         current_status: report.status,
         current_member_id: report.member_id,
         new_member_id: member.id,
-        new_member_name: member.nickname || member.name
+        new_member_name: member.nickname || member.name,
+        original_name: report.participant_name
       })
+
+      // 保留原始非會員名字到備註
+      const originalName = report.participant_name
+      const notePrefix = `非會員：${originalName}`
+      const newNotes = report.notes 
+        ? `${notePrefix} ${report.notes}` 
+        : notePrefix
 
       const { data, error } = await supabase
         .from('booking_participants')
@@ -378,6 +386,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
           member_id: member.id,
           participant_name: member.nickname || member.name,
           status: 'pending',
+          notes: newNotes,
           updated_at: getLocalTimestamp()
         })
         .eq('id', report.id)
@@ -398,7 +407,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
       // 重新載入資料
       await Promise.all([loadPendingReports(), loadNonMemberReports()])
       
-      alert(`✅ 已成功關聯到會員：${member.nickname || member.name}\n\n記錄已移至「會員待扣款」區域，請查看上方列表。`)
+      alert(`✅ 已成功關聯到會員：${member.nickname || member.name}\n\n原名「${originalName}」已記錄在備註中\n記錄已移至「會員待扣款」區域，請查看上方列表。`)
     } catch (error) {
       console.error('關聯會員失敗:', error)
       alert(`❌ 關聯會員失敗：${error instanceof Error ? error.message : '未知錯誤'}`)
@@ -1603,7 +1612,11 @@ export function CoachAdmin({ user }: { user: User | null }) {
             setProcessingMember(null)
           }}
           onSuccess={handleTransactionComplete}
-          defaultDescription={`${processingReport.bookings?.boats?.name} ${processingReport.duration_min}分 ${processingReport.coaches?.name}教練`}
+          defaultDescription={
+            processingReport.notes 
+              ? `${processingReport.bookings?.boats?.name} ${processingReport.duration_min}分 ${processingReport.coaches?.name}教練 (${processingReport.notes})`
+              : `${processingReport.bookings?.boats?.name} ${processingReport.duration_min}分 ${processingReport.coaches?.name}教練`
+          }
           defaultTransactionDate={processingReport.bookings?.start_at?.substring(0, 10)}
         />
       )}
