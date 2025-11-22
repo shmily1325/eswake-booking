@@ -710,14 +710,14 @@ export function CoachAdmin({ user }: { user: User | null }) {
                     }}
                     style={{
                       flex: isMobile ? 1 : 'none',
-                      padding: isMobile ? '12px 20px' : '14px 28px',
+                      padding: '10px 20px',
                       background: pendingViewMode === 'date' ? '#4caf50' : '#e8f5e9',
                       color: pendingViewMode === 'date' ? '#fff' : '#2e7d32',
-                      border: `3px solid ${pendingViewMode === 'date' ? '#4caf50' : '#81c784'}`,
+                      border: `2px solid ${pendingViewMode === 'date' ? '#4caf50' : '#81c784'}`,
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      fontSize: '15px',
-                      fontWeight: '700',
+                      fontSize: '14px',
+                      fontWeight: '600',
                       transition: 'all 0.2s',
                       boxShadow: pendingViewMode === 'date' ? '0 2px 8px rgba(76,175,80,0.3)' : 'none'
                     }}
@@ -1051,20 +1051,20 @@ export function CoachAdmin({ user }: { user: User | null }) {
                     onClick={() => setSelectedDate(getLocalDateString())}
                     style={{
                       flex: isMobile ? 1 : 'none',
-                      padding: isMobile ? '12px 20px' : '14px 28px',
+                      padding: '10px 20px',
                       background: selectedDate.length === 10 && selectedDate === getLocalDateString() 
                         ? '#4caf50' 
                         : '#e8f5e9',
                       color: selectedDate.length === 10 && selectedDate === getLocalDateString() 
                         ? '#fff' 
                         : '#2e7d32',
-                      border: `3px solid ${selectedDate.length === 10 && selectedDate === getLocalDateString() 
+                      border: `2px solid ${selectedDate.length === 10 && selectedDate === getLocalDateString() 
                         ? '#4caf50' 
                         : '#81c784'}`,
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      fontSize: '15px',
-                      fontWeight: '700',
+                      fontSize: '14px',
+                      fontWeight: '600',
                       transition: 'all 0.2s',
                       boxShadow: selectedDate.length === 10 && selectedDate === getLocalDateString() 
                         ? '0 2px 8px rgba(76,175,80,0.3)' 
@@ -1396,16 +1396,15 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     color: '#333'
                                   }}
                                 >
-                                  <span style={{ fontWeight: '500' }}>
+                                  <span style={{ color: '#999', fontSize: '12px' }}>
                                     {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)}
                                   </span>
-                                  <span style={{ color: '#666' }}> {record.bookings.boats?.name}</span>
-                                  <span style={{ color: '#666' }}> • </span>
-                                  <span>{record.members?.nickname || record.members?.name || record.participant_name}</span>
-                                  {!record.member_id && <span style={{ color: '#ff9800' }}> (非會員)</span>}
-                                  <span style={{ color: '#666' }}> {record.duration_min}分</span>
-                                  <span style={{ color: '#666' }}> • {LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}</span>
-                                  <span style={{ color: '#666' }}> • {PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}</span>
+                                  <span style={{ color: '#999', fontSize: '12px' }}> {record.bookings.boats?.name} • </span>
+                                  <span style={{ fontWeight: '600' }}>{record.members?.nickname || record.members?.name || record.participant_name}</span>
+                                  {!record.member_id && <span style={{ color: '#ff9800', fontWeight: '600' }}> (非會員)</span>}
+                                  <span style={{ fontWeight: '600', color: '#333' }}> {record.duration_min}分</span>
+                                  <span style={{ color: '#999', fontSize: '12px' }}> • {LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}</span>
+                                  <span style={{ color: '#999', fontSize: '12px' }}> • {PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}</span>
                                   {record.notes && (
                                     <span style={{ 
                                       color: record.notes.includes('現金結清') ? '#28a745' : '#999',
@@ -1448,11 +1447,11 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     color: '#333'
                                   }}
                                 >
-                                  <span style={{ fontWeight: '500' }}>
+                                  <span style={{ color: '#999', fontSize: '12px' }}>
                                     {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)}
                                   </span>
-                                  <span style={{ color: '#666' }}> {record.bookings.boats?.name}</span>
-                                  <span style={{ color: '#666' }}> • {record.driver_duration_min}分</span>
+                                  <span style={{ color: '#999', fontSize: '12px' }}> {record.bookings.boats?.name} • </span>
+                                  <span style={{ fontWeight: '600', color: '#333' }}>{record.driver_duration_min}分</span>
                                 </div>
                               ))}
                             </div>

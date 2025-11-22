@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { extractDate, extractTime } from '../utils/formatters'
+import { extractDate, extractTime, getLocalDateString } from '../utils/formatters'
 
 interface CoachStats {
   coachId: string
@@ -35,10 +35,7 @@ interface StatisticsTabProps {
 }
 
 export function StatisticsTab({ isMobile }: StatisticsTabProps) {
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const today = new Date()
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
-  })
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString()) // 默认今天
   const [selectedCoachId, setSelectedCoachId] = useState<string>('all')
   const [loading, setLoading] = useState(false)
   const [allCoachStats, setAllCoachStats] = useState<CoachStats[]>([]) // 完整列表
@@ -47,17 +44,27 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
 
   useEffect(() => {
     loadPastData()
-  }, [selectedMonth, selectedCoachId])
+  }, [selectedDate, selectedCoachId])
 
   const loadPastData = async () => {
-    if (!selectedMonth) return
+    if (!selectedDate) return
     
     setLoading(true)
     try {
-      const [year, month] = selectedMonth.split('-')
-      const startDate = `${year}-${month}-01`
-      const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
-      const endDateStr = `${year}-${month}-${String(endDate).padStart(2, '0')}`
+      let startDate: string
+      let endDateStr: string
+      
+      if (selectedDate.length === 10) {
+        // 日期格式 YYYY-MM-DD
+        startDate = selectedDate
+        endDateStr = selectedDate
+      } else {
+        // 月份格式 YYYY-MM
+        const [year, month] = selectedDate.split('-')
+        startDate = `${year}-${month}-01`
+        const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
+        endDateStr = `${year}-${month}-${String(endDate).padStart(2, '0')}`
+      }
 
       // 1. 載入教學記錄
       const { data: teachingData, error: teachingError } = await supabase
@@ -237,78 +244,108 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
         marginBottom: '24px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
       }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-          gap: '20px'
-        }}>
-          {/* 月份選擇 */}
-          <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '10px', 
-              fontWeight: '600', 
-              fontSize: '15px', 
-              color: '#333' 
-            }}>
-              📅 查詢月份
-            </label>
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+        {/* 查詢期間 */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: '8px', 
+            fontWeight: '600', 
+            fontSize: '15px', 
+            color: '#333' 
+          }}>
+            查詢期間
+          </label>
+          
+          {/* 快捷按鈕 */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            <button
+              onClick={() => setSelectedDate(getLocalDateString())}
               style={{
-                width: '100%',
-                padding: '14px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '10px',
-                fontSize: '15px',
-                fontWeight: '500',
-                transition: 'border-color 0.2s',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#90caf9'}
-              onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-            />
-          </div>
-
-          {/* 教練篩選 */}
-          <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '10px', 
-              fontWeight: '600', 
-              fontSize: '15px', 
-              color: '#333' 
-            }}>
-              🎓 篩選教練
-            </label>
-            <select
-              value={selectedCoachId}
-              onChange={(e) => setSelectedCoachId(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '14px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '10px',
-                fontSize: '15px',
-                fontWeight: '500',
+                flex: isMobile ? 1 : 'none',
+                padding: '10px 20px',
+                background: selectedDate.length === 10 && selectedDate === getLocalDateString() 
+                  ? '#4caf50' 
+                  : '#e8f5e9',
+                color: selectedDate.length === 10 && selectedDate === getLocalDateString() 
+                  ? '#fff' 
+                  : '#2e7d32',
+                border: `2px solid ${selectedDate.length === 10 && selectedDate === getLocalDateString() 
+                  ? '#4caf50' 
+                  : '#81c784'}`,
+                borderRadius: '8px',
                 cursor: 'pointer',
-                outline: 'none',
-                background: 'white',
-                transition: 'border-color 0.2s'
+                fontSize: '14px',
+                fontWeight: '600',
+                transition: 'all 0.2s',
+                boxShadow: selectedDate.length === 10 && selectedDate === getLocalDateString() 
+                  ? '0 2px 8px rgba(76,175,80,0.3)' 
+                  : 'none'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#90caf9'}
-              onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
             >
-              <option value="all">全部教練</option>
-              {allCoachStats.map(stat => (
-                <option key={stat.coachId} value={stat.coachId}>
-                  {stat.coachName}
-                </option>
-              ))}
-            </select>
+              🗓️ 今天
+            </button>
+            <button
+              onClick={() => {
+                const today = new Date()
+                const year = today.getFullYear()
+                const month = String(today.getMonth() + 1).padStart(2, '0')
+                setSelectedDate(`${year}-${month}`)
+              }}
+              style={{
+                flex: isMobile ? 1 : 'none',
+                padding: '10px 20px',
+                background: selectedDate.length === 7 ? '#2196f3' : '#e3f2fd',
+                color: selectedDate.length === 7 ? '#fff' : '#1976d2',
+                border: `2px solid ${selectedDate.length === 7 ? '#2196f3' : '#90caf9'}`,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                transition: 'all 0.2s',
+                boxShadow: selectedDate.length === 7 ? '0 2px 8px rgba(33,150,243,0.3)' : 'none'
+              }}
+            >
+              📅 本月
+            </button>
           </div>
+        </div>
+
+        {/* 教練篩選 */}
+        <div>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: '8px', 
+            fontWeight: '600', 
+            fontSize: '15px', 
+            color: '#333' 
+          }}>
+            篩選教練
+          </label>
+          <select
+            value={selectedCoachId}
+            onChange={(e) => setSelectedCoachId(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              border: '2px solid #e0e0e0',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              outline: 'none',
+              background: 'white',
+              transition: 'border-color 0.2s'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#90caf9'}
+            onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+          >
+            <option value="all">👥 全部教練</option>
+            {allCoachStats.map(stat => (
+              <option key={stat.coachId} value={stat.coachId}>
+                {stat.coachName}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -318,7 +355,7 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
         </div>
       ) : coachStats.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-          本月無記錄
+          {selectedDate.length === 10 ? '當日無記錄' : '當月無記錄'}
         </div>
       ) : (
         <>
