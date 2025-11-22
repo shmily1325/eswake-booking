@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { useResponsive } from '../hooks/useResponsive'
+import { getLocalDateString } from '../utils/date'
 
 interface AuditLogEntry {
   id: number
@@ -159,10 +160,10 @@ export function AuditLog({ user }: AuditLogProps) {
   const [startDate, setStartDate] = useState(() => {
     const date = new Date()
     date.setDate(date.getDate() - 7)
-    return date.toISOString().split('T')[0]
+    return getLocalDateString(date)
   })
   const [endDate, setEndDate] = useState(() => {
-    return new Date().toISOString().split('T')[0]
+    return getLocalDateString()
   })
   
   // 新增：操作者篩選
@@ -297,7 +298,7 @@ export function AuditLog({ user }: AuditLogProps) {
   }
 
   const setQuickDateRange = (range: 'today' | '7days' | '30days' | 'all') => {
-    const end = new Date().toISOString().split('T')[0]
+    const end = getLocalDateString()
     setEndDate(end)
     
     const start = new Date()
@@ -307,15 +308,15 @@ export function AuditLog({ user }: AuditLogProps) {
         break
       case '7days':
         start.setDate(start.getDate() - 7)
-        setStartDate(start.toISOString().split('T')[0])
+        setStartDate(getLocalDateString(start))
         break
       case '30days':
         start.setDate(start.getDate() - 30)
-        setStartDate(start.toISOString().split('T')[0])
+        setStartDate(getLocalDateString(start))
         break
       case 'all':
         start.setDate(start.getDate() - 90)
-        setStartDate(start.toISOString().split('T')[0])
+        setStartDate(getLocalDateString(start))
         break
     }
   }

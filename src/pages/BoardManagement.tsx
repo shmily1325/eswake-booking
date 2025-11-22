@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
+import { getLocalDateString } from '../utils/date'
 
 interface BoardSlot {
   id?: number
@@ -100,7 +101,7 @@ export function BoardManagement({ user }: BoardManagementProps) {
       const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
-      link.download = `置板資料_${new Date().toISOString().split('T')[0]}.csv`
+      link.download = `置板資料_${getLocalDateString()}.csv`
       link.click()
     } catch (error) {
       console.error('導出失敗:', error)

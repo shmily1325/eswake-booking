@@ -1,6 +1,14 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
+// 時區處理：獲取本地日期字串（避免 UTC 時區問題）
+function getLocalDateString(date: Date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // Daily reminder function
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -20,10 +28,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ message: 'LINE reminder disabled' });
     }
 
-    // Get tomorrow's date
+    // Get tomorrow's date (使用本地時間避免 UTC 時區問題)
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const tomorrowStr = getLocalDateString(tomorrow);
 
     // Query bookings for tomorrow with booking_members
     const { data: bookings } = await supabase

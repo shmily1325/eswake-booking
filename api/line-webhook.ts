@@ -1,6 +1,17 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
+// 時區處理：獲取本地時間戳（避免 UTC 時區問題）
+function getLocalTimestamp(date: Date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+}
+
 // LINE webhook handler for member binding
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -33,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .upsert({
             line_user_id: lineUserId,
             status: 'pending',
-            created_at: new Date().toISOString()
+            created_at: getLocalTimestamp()
           }, {
             onConflict: 'line_user_id',
             ignoreDuplicates: false
@@ -64,8 +75,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 member_id: member.id,
                 phone: member.phone,
                 status: 'active',
-                completed_at: new Date().toISOString(),
-                created_at: new Date().toISOString()
+                completed_at: getLocalTimestamp(),
+                created_at: getLocalTimestamp()
               }, {
                 onConflict: 'line_user_id'
               });

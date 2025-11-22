@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { extractDate, extractTime } from '../utils/formatters'
+import { getLocalDateString } from '../utils/date'
 
 interface BackupPageProps {
   user: User
@@ -168,7 +169,7 @@ export function BackupPage({ user }: BackupPageProps) {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `預約備份_${new Date().toISOString().split('T')[0]}.csv`
+      link.download = `預約備份_${getLocalDateString()}.csv`
       link.click()
       URL.revokeObjectURL(url)
     } catch (error) {
@@ -271,7 +272,7 @@ export function BackupPage({ user }: BackupPageProps) {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `會員時數統計_${new Date().toISOString().split('T')[0]}.csv`
+      link.download = `會員時數統計_${getLocalDateString()}.csv`
       link.click()
       URL.revokeObjectURL(url)
     } catch (error) {
@@ -439,7 +440,7 @@ export function BackupPage({ user }: BackupPageProps) {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `教練時數統計_${new Date().toISOString().split('T')[0]}.csv`
+      link.download = `教練時數統計_${getLocalDateString()}.csv`
       link.click()
       URL.revokeObjectURL(url)
     } catch (error) {

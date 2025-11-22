@@ -8,7 +8,7 @@ import { filterMembers, composeFinalStudentName, toggleSelection } from '../util
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { useResponsive } from '../hooks/useResponsive'
 import { isFacility } from '../utils/facility'
-import { getLocalTimestamp } from '../utils/date'
+import { getLocalTimestamp, getLocalDateString } from '../utils/date'
 
 interface Coach {
   id: string
@@ -109,8 +109,20 @@ export function EditBookingDialog({
         if (booking.start_at) {
           const datetime = booking.start_at.substring(0, 16) // 取前16個字符 "2025-10-30T17:00"
           const [dateStr, timeStr] = datetime.split('T')
-          setStartDate(dateStr)
-          setStartTime(timeStr)
+          // 驗證日期格式（必須是 yyyy-MM-dd）
+          if (dateStr && dateStr.length === 10 && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            setStartDate(dateStr)
+          } else {
+            console.error('Invalid date format:', dateStr, '- 使用當前日期')
+            // 降級：使用當前本地日期（避免時區問題）
+            setStartDate(getLocalDateString())
+          }
+          // 驗證時間格式
+          if (timeStr && timeStr.length === 5 && timeStr.match(/^\d{2}:\d{2}$/)) {
+            setStartTime(timeStr)
+          } else {
+            setStartTime('00:00')
+          }
         }
         
         // 獲取教練列表
@@ -281,6 +293,149 @@ export function EditBookingDialog({
       // Combine date and time into ISO format（TEXT 格式，不含時區）
       const newStartAt = `${startDate}T${startTime}:00`
       
+      // 🔍 檢查是否有回報記錄和排班資訊，並判斷是否需要清除
+      // 註：不論是否指定教練，都可能有排班資訊（駕駛分配）
+      // 優化：使用 JOIN 一次查詢參與者和交易數量
+      const [participantsResult, reportsResult, driversResult] = await Promise.all([
+        supabase
+          .from('booking_participants')
+          .select(`
+            id, 
+            coach_id, 
+            participant_name,
+            coaches:coach_id(name),
+            transactions(count)
+          `)
+          .eq('booking_id', booking.id)
+          .eq('is_deleted', false),
+        supabase
+          .from('coach_reports')
+          .select('id, coach_id, coaches:coach_id(name)')
+          .eq('booking_id', booking.id),
+        supabase
+          .from('booking_drivers')
+          .select('driver_id, coaches:driver_id(name)')
+          .eq('booking_id', booking.id)
+      ])
+
+      const hasParticipants = (participantsResult.data || []).length > 0
+      const hasDriverReports = (reportsResult.data || []).length > 0
+      const hasReports = hasParticipants || hasDriverReports
+      const hasDriverAssignments = (driversResult.data || []).length > 0
+
+      // 判斷是否修改了關鍵字段
+      const oldCoachIds = new Set((booking.coaches || []).map(c => c.id))
+      const newCoachIds = new Set(selectedCoaches)
+      const coachesChanged = oldCoachIds.size !== newCoachIds.size || 
+        [...oldCoachIds].some(id => !newCoachIds.has(id)) ||
+        [...newCoachIds].some(id => !oldCoachIds.has(id))
+      
+      // 使用共用函數決定最終的學生名字（會員 + 手動輸入）
+      const finalStudentName = composeFinalStudentName(members, selectedMemberIds, manualNames)
+      const contactNameChanged = booking.contact_name !== finalStudentName
+      
+      const boatChanged = booking.boat_id !== selectedBoatId
+      const timeChanged = booking.start_at !== newStartAt
+      const driverRequirementChanged = booking.requires_driver !== requiresDriver && !requiresDriver && hasDriverReports
+
+      const needsClearReports = hasReports && (coachesChanged || contactNameChanged || boatChanged || timeChanged || driverRequirementChanged)
+      const shouldClearDriverAssignments = hasDriverAssignments && (coachesChanged || contactNameChanged || boatChanged || timeChanged)
+      
+      const needsWarning = needsClearReports || shouldClearDriverAssignments
+
+      if (needsWarning) {
+        // 從已查詢的數據中提取有交易記錄的參與者（優化：無需額外查詢）
+        const participantsWithTransactions = hasParticipants 
+          ? participantsResult.data!.filter((p: any) => {
+              const txCount = p.transactions?.[0]?.count || 0
+              return txCount > 0
+            })
+          : []
+        
+        // 組合警告訊息
+        const reportDetails: string[] = []
+        const assignmentDetails: string[] = []
+        const changedFields: string[] = []
+        
+        if (hasParticipants) {
+          const coachNames = [...new Set(participantsResult.data!.map((p: any) => p.coaches?.name).filter(Boolean))].join('、')
+          reportDetails.push(`• 參與者記錄 ${participantsResult.data!.length} 筆（${coachNames}）`)
+        }
+        if (hasDriverReports) {
+          const coachNames = [...new Set(reportsResult.data!.map((r: any) => r.coaches?.name).filter(Boolean))].join('、')
+          reportDetails.push(`• 駕駛回報 ${reportsResult.data!.length} 筆（${coachNames}）`)
+        }
+        
+        if (participantsWithTransactions.length > 0) {
+          const names = participantsWithTransactions.map((p: any) => p.participant_name).join('、')
+          reportDetails.push(`⚠️ 有交易記錄：${names}`)
+        }
+        
+        if (hasDriverAssignments) {
+          const driverNames = [...new Set(driversResult.data!.map((d: any) => d.coaches?.name).filter(Boolean))].join('、')
+          assignmentDetails.push(`• 排班資訊 ${driversResult.data!.length} 位（${driverNames}）`)
+        }
+
+        if (coachesChanged) changedFields.push('教練')
+        if (contactNameChanged) changedFields.push('預約人')
+        if (boatChanged) changedFields.push('船隻')
+        if (timeChanged) changedFields.push('時間')
+        if (driverRequirementChanged) changedFields.push('取消駕駛需求')
+
+        let confirmMessage = ''
+        
+        if (needsClearReports && shouldClearDriverAssignments) {
+          confirmMessage = `⚠️ 此預約已有回報記錄和排班資訊：\n${reportDetails.join('\n')}\n${assignmentDetails.join('\n')}\n\n您修改了：${changedFields.join('、')}\n\n修改將會：\n1. 清除所有回報記錄（教練需重新回報）\n2. 清空排班資訊（需重新排班）\n`
+        } else if (needsClearReports) {
+          confirmMessage = `⚠️ 此預約已有回報記錄：\n${reportDetails.join('\n')}\n\n您修改了：${changedFields.join('、')}\n\n修改將會清除所有回報記錄！\n教練需要重新回報。\n`
+        } else if (shouldClearDriverAssignments) {
+          confirmMessage = `⚠️ 此預約已有排班資訊：\n${assignmentDetails.join('\n')}\n\n您修改了：${changedFields.join('、')}\n\n修改將會清空排班資訊！\n需重新排班。\n`
+        }
+        
+        if (participantsWithTransactions.length > 0) {
+          confirmMessage += `\n⚠️ 重要提醒：\n其中 ${participantsWithTransactions.length} 位參與者已有交易記錄。\n回報記錄會被刪除，但交易記錄不會變動。\n請記得到「會員交易」檢查並處理！\n`
+        }
+        
+        confirmMessage += `\n確定要修改嗎？`
+        
+        if (!confirm(confirmMessage)) {
+          setLoading(false)
+          return
+        }
+
+        // 清除回報記錄（全部硬刪除）
+        const deletePromises = []
+        
+        if (hasParticipants) {
+          deletePromises.push(
+            supabase
+              .from('booking_participants')
+              .delete()
+              .eq('booking_id', booking.id)
+              .eq('is_deleted', false)
+          )
+        }
+
+        if (hasDriverReports) {
+          deletePromises.push(
+            supabase
+              .from('coach_reports')
+              .delete()
+              .eq('booking_id', booking.id)
+          )
+        }
+        
+        const results = await Promise.all(deletePromises)
+        const hasError = results.some(r => r.error)
+        
+        if (hasError) {
+          console.error('清除回報記錄失敗:', results.filter(r => r.error))
+          setError('清除回報記錄失敗')
+          setLoading(false)
+          return
+        }
+      }
+      
       // 檢查船衝突（需要至少15分鐘間隔）
       // TEXT 格式查詢，直接字符串比較
       const { data: existingBookings, error: checkError} = await supabase
@@ -376,9 +531,6 @@ export function EditBookingDialog({
         }
       }
 
-      // 使用共用函數決定最終的學生名字（會員 + 手動輸入）
-      const finalStudentName = composeFinalStudentName(members, selectedMemberIds, manualNames)
-
       // 更新預約
       const { error: updateError } = await supabase
         .from('bookings')
@@ -447,8 +599,10 @@ export function EditBookingDialog({
         }
       }
 
-      // 如果取消勾選「需要駕駛」，清空 booking_drivers
-      if (!requiresDriver) {
+      // 如果修改了關鍵字段（時間/船只/預約人/教練），清空駕駛分配，需要重新排班
+      const shouldClearDrivers = coachesChanged || contactNameChanged || boatChanged || timeChanged
+      
+      if (shouldClearDrivers || !requiresDriver) {
         await supabase
           .from('booking_drivers')
           .delete()
@@ -549,11 +703,15 @@ export function EditBookingDialog({
     setLoading(true)
     
     try {
-      // 檢查是否已有回報記錄
+      // 檢查是否已有回報記錄和交易記錄（優化：使用 JOIN 一次查詢）
       const [participantsResult, reportsResult] = await Promise.all([
         supabase
           .from('booking_participants')
-          .select('id', { count: 'exact', head: true })
+          .select(`
+            id,
+            participant_name,
+            transactions(count)
+          `)
           .eq('booking_id', booking.id)
           .eq('is_deleted', false),
         supabase
@@ -562,18 +720,34 @@ export function EditBookingDialog({
           .eq('booking_id', booking.id)
       ])
 
-      const hasParticipants = (participantsResult.count || 0) > 0
+      const hasParticipants = (participantsResult.data || []).length > 0
       const hasDriverReports = (reportsResult.count || 0) > 0
       const hasReports = hasParticipants || hasDriverReports
+      
+      // 檢查有交易記錄的參與者
+      const participantsWithTransactions = hasParticipants
+        ? participantsResult.data!.filter((p: any) => {
+            const txCount = p.transactions?.[0]?.count || 0
+            return txCount > 0
+          })
+        : []
 
       // 根據是否有回報給予不同的提示
       let confirmMessage = '確定要刪除這個預約嗎？'
-      if (hasReports) {
-        const reportTypes = []
-        if (hasParticipants) reportTypes.push(`參與者記錄 ${participantsResult.count} 筆`)
-        if (hasDriverReports) reportTypes.push(`駕駛回報 ${reportsResult.count} 筆`)
+      if (hasReports || participantsWithTransactions.length > 0) {
+        const warnings = []
         
-        confirmMessage = `⚠️ 此預約已有回報記錄：\n${reportTypes.join('、')}\n\n刪除預約將會同時刪除所有回報記錄！\n\n確定要刪除嗎？`
+        if (hasParticipants) warnings.push(`參與者記錄 ${participantsResult.data!.length} 筆`)
+        if (hasDriverReports) warnings.push(`駕駛回報 ${reportsResult.count} 筆`)
+        
+        confirmMessage = `⚠️ 此預約已有回報記錄：\n${warnings.join('、')}\n\n刪除預約將會同時刪除所有回報記錄！\n`
+        
+        if (participantsWithTransactions.length > 0) {
+          const names = participantsWithTransactions.map((p: any) => p.participant_name).join('、')
+          confirmMessage += `\n⚠️ 重要提醒：\n其中 ${participantsWithTransactions.length} 位參與者（${names}）已有交易記錄。\n回報記錄會被刪除，但交易記錄不會變動。\n請記得到「會員交易」檢查並處理！\n`
+        }
+        
+        confirmMessage += `\n確定要刪除嗎？`
       }
 
       if (!confirm(confirmMessage)) {

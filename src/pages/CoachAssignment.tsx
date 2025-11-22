@@ -59,7 +59,11 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
   
   // 從 URL 參數獲取日期，如果沒有則使用明天
   const dateFromUrl = searchParams.get('date') || getTomorrowDate()
-  const [selectedDate, setSelectedDate] = useState<string>(dateFromUrl)
+  // 驗證日期格式（必須是 yyyy-MM-dd）
+  const validatedDate = (dateFromUrl && dateFromUrl.match(/^\d{4}-\d{2}-\d{2}$/)) 
+    ? dateFromUrl 
+    : getTomorrowDate()
+  const [selectedDate, setSelectedDate] = useState<string>(validatedDate)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(false)
@@ -748,6 +752,117 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
         return
       }
 
+      // 🔍 檢查變動的預約是否有回報記錄
+      const [participantsCheck, reportsCheck] = await Promise.all([
+        supabase
+          .from('booking_participants')
+          .select('id, booking_id, coach_id, participant_name, member_id, coaches:coach_id(name)')
+          .in('booking_id', changedBookingIds)
+          .eq('is_deleted', false),
+        supabase
+          .from('coach_reports')
+          .select('booking_id, coach_id, coaches:coach_id(name)')
+          .in('booking_id', changedBookingIds)
+      ])
+
+      // 檢查哪些參與者有交易記錄
+      let participantsWithTransactions: any[] = []
+      if (participantsCheck.data && participantsCheck.data.length > 0) {
+        const participantIds = participantsCheck.data.map((p: any) => p.id)
+        const { data: transactionsData } = await supabase
+          .from('transactions')
+          .select('id, participant_id, amount, description')
+          .in('participant_id', participantIds)
+        
+        const participantIdsWithTransactions = new Set(
+          transactionsData?.map((t: any) => t.participant_id) || []
+        )
+        
+        participantsWithTransactions = participantsCheck.data.filter((p: any) => 
+          participantIdsWithTransactions.has(p.id)
+        )
+      }
+
+      const bookingsWithReports = new Map<number, { participants: any[], reports: any[], participantsWithTx: any[] }>()
+      
+      participantsCheck.data?.forEach((p: any) => {
+        if (!bookingsWithReports.has(p.booking_id)) {
+          bookingsWithReports.set(p.booking_id, { participants: [], reports: [], participantsWithTx: [] })
+        }
+        bookingsWithReports.get(p.booking_id)!.participants.push(p)
+        
+        // 標記有交易的參與者
+        if (participantsWithTransactions.some((pwt: any) => pwt.id === p.id)) {
+          bookingsWithReports.get(p.booking_id)!.participantsWithTx.push(p)
+        }
+      })
+      
+      reportsCheck.data?.forEach((r: any) => {
+        if (!bookingsWithReports.has(r.booking_id)) {
+          bookingsWithReports.set(r.booking_id, { participants: [], reports: [], participantsWithTx: [] })
+        }
+        bookingsWithReports.get(r.booking_id)!.reports.push(r)
+      })
+
+      // 如果有回報記錄，警告使用者
+      if (bookingsWithReports.size > 0) {
+        const affectedBookings: string[] = []
+        let totalTransactionCount = 0
+        
+        bookingsWithReports.forEach((data, bookingId) => {
+          const booking = bookings.find(b => b.id === bookingId)
+          if (!booking) return
+          
+          const timeStr = formatTimeRange(booking.start_at, booking.duration_min, booking.boats?.name)
+          const contactName = getDisplayContactName(booking)
+          
+          const details: string[] = []
+          if (data.participants.length > 0) {
+            const coachNames = [...new Set(data.participants.map((p: any) => p.coaches?.name).filter(Boolean))].join('、')
+            details.push(`參與者 ${data.participants.length} 筆（${coachNames}）`)
+          }
+          if (data.reports.length > 0) {
+            const coachNames = [...new Set(data.reports.map((r: any) => r.coaches?.name).filter(Boolean))].join('、')
+            details.push(`駕駛回報 ${data.reports.length} 筆（${coachNames}）`)
+          }
+          if (data.participantsWithTx.length > 0) {
+            const names = data.participantsWithTx.map((p: any) => p.participant_name).join('、')
+            details.push(`⚠️ 有交易記錄：${names}`)
+            totalTransactionCount += data.participantsWithTx.length
+          }
+          
+          affectedBookings.push(`• ${timeStr} ${contactName}\n  ${details.join('\n  ')}`)
+        })
+
+        let confirmMessage = `⚠️ 以下 ${bookingsWithReports.size} 筆預約已有回報記錄：\n\n${affectedBookings.join('\n\n')}\n\n修改排班將會清除這些回報記錄！\n教練需要重新回報。\n`
+        
+        if (totalTransactionCount > 0) {
+          confirmMessage += `\n⚠️ 重要提醒：\n其中 ${totalTransactionCount} 位參與者已有交易記錄。\n回報記錄會被標記刪除，但交易記錄不會變動。\n請記得到「會員交易」檢查並處理！\n`
+        }
+        
+        confirmMessage += `\n確定要繼續嗎？`
+        
+        if (!confirm(confirmMessage)) {
+          setSaving(false)
+          return
+        }
+
+        // 清除回報記錄（全部硬刪除）
+        await Promise.all([
+          // 刪除所有參與者記錄
+          supabase
+            .from('booking_participants')
+            .delete()
+            .in('booking_id', Array.from(bookingsWithReports.keys()))
+            .eq('is_deleted', false),
+          // 刪除駕駛回報
+          supabase
+            .from('coach_reports')
+            .delete()
+            .in('booking_id', Array.from(bookingsWithReports.keys()))
+        ])
+      }
+
       // 批量刪除有變動預約的舊分配
       await Promise.all([
         supabase.from('booking_coaches').delete().in('booking_id', changedBookingIds),
@@ -868,7 +983,13 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               <input
                 type="date"
                 value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                onChange={(e) => {
+                  const newDate = e.target.value
+                  // 驗證日期格式（必須是 yyyy-MM-dd）
+                  if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    setSelectedDate(newDate)
+                  }
+                }}
                 style={{
                   ...getInputStyle(isMobile),
                   minWidth: isMobile ? '100%' : '200px'

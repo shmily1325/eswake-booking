@@ -2,6 +2,30 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
 
+// 時區處理：獲取本地日期和時間字串（避免 UTC 時區問題）
+function getLocalDateString(date: Date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getLocalTimeString(date: Date = new Date()): string {
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${hours}${minutes}`
+}
+
+function getLocalTimestamp(date: Date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+}
+
 interface BackupRequest {
   startDate?: string;
   endDate?: string;
@@ -114,7 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }) => {
       try {
         await ensureLogSheet();
-        const timestamp = new Date().toISOString();
+        const timestamp = getLocalTimestamp();
         await sheets.spreadsheets.values.append({
           spreadsheetId,
           range: `'${logSheetTitle}'!A1`,
@@ -342,8 +366,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     logStep('7.1 工作表資料生成完成', { rowCount: sheetRows.length });
 
-    const dateStr = new Date().toISOString().split('T')[0];
-    const timeStr = new Date().toISOString().split('T')[1].substring(0, 5).replace(':', '');
+    const now = new Date();
+    const dateStr = getLocalDateString(now);
+    const timeStr = getLocalTimeString(now);
     const prefix = manualFlag ? '手動備份' : '自動備份';
     let sheetTitle = `${prefix}_${dateStr}_${timeStr}`;
     logStep('9. 建立工作表', { sheetTitle });
