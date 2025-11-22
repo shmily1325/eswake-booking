@@ -54,6 +54,12 @@ const PAYMENT_METHODS = [
   { value: 'voucher', label: '票券' }
 ]
 
+const LESSON_TYPES = [
+  { value: 'undesignated', label: '不指定' },
+  { value: 'designated_paid', label: '指定（需收費）' },
+  { value: 'designated_free', label: '指定（不需收費）' }
+]
+
 // ============ Main Component ============
 
 export function CoachAdmin({ user }: { user: User | null }) {
@@ -1265,6 +1271,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     學員：{record.members?.nickname || record.members?.name || record.participant_name}
                                     {!record.member_id && <span style={{ color: '#ff9800' }}> (非會員)</span>}
                                     {' • '}{record.duration_min}分
+                                    {' • '}{LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}
                                     {' • '}{PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}
                                   </div>
                                   {record.notes && (
@@ -1403,6 +1410,7 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     學員：{record.members?.nickname || record.members?.name || record.participant_name}
                                     {!record.member_id && <span style={{ color: '#ff9800' }}> (非會員)</span>}
                                     {' • '}{record.duration_min}分
+                                    {' • '}{LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}
                                     {' • '}{PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}
                                   </div>
                                   {record.notes && (
