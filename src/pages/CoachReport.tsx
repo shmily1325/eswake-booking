@@ -776,10 +776,13 @@ export function CoachReport({ user }: CoachReportProps) {
           // 組合參與者資訊：姓名(時長、付款方式、課程類型)
           const participantInfo = `${p.participant_name}(${p.duration_min}分、${paymentMethodLabel}、${lessonTypeLabel})`
           
-          // 獲取回報教練名字
-          console.log('🔍 參與者資料:', p)
-          console.log('🔍 reporting_coach:', (p as any).reporting_coach)
-          const reportCoach = (p as any).reporting_coach?.name || '未知'
+          // 獲取回報教練名字 - 從 booking.coaches 或 booking.drivers 中找
+          let reportCoach = ''
+          if (p.coach_id) {
+            const coach = booking.coaches?.find(c => c.id === p.coach_id) || 
+                         booking.drivers?.find(d => d.id === p.coach_id)
+            reportCoach = coach?.name || ''
+          }
           
           // 第一個參與者顯示完整資訊，後續參與者只顯示參與者資訊
           if (index === 0) {
