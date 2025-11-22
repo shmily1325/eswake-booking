@@ -713,7 +713,6 @@ export function DayView({ user }: DayViewProps) {
         })
         const topCoaches = Array.from(coachStats.entries())
           .sort((a, b) => b[1].count - a[1].count)
-          .slice(0, 5)
         
         // 駕駛使用統計（筆數 + 總時長）- 排除彈簧床
         const driverStats = new Map<string, { count: number, totalMinutes: number }>()
@@ -731,7 +730,6 @@ export function DayView({ user }: DayViewProps) {
         })
         const topDrivers = Array.from(driverStats.entries())
           .sort((a, b) => b[1].count - a[1].count)
-          .slice(0, 5)
         
         // 船隻使用統計（筆數 + 總時長）
         const boatStats = new Map<string, { count: number, totalMinutes: number }>()
