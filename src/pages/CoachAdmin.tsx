@@ -1096,6 +1096,23 @@ export function CoachAdmin({ user }: { user: User | null }) {
                     📅 本月
                   </button>
                 </div>
+
+                {/* 日期選擇器 */}
+                <div style={{ marginTop: '12px' }}>
+                  <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>
+                    或選擇其他日期
+                  </label>
+                  <input
+                    type="date"
+                    value={selectedDate.length === 10 ? selectedDate : ''}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    style={{
+                      ...getInputStyle(isMobile),
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                  />
+                </div>
               </div>
               
               {/* 查看模式切換 */}
@@ -1396,15 +1413,15 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     color: '#333'
                                   }}
                                 >
-                                  <span style={{ color: '#999', fontSize: '12px' }}>
+                                  <span style={{ fontWeight: '600', color: '#333' }}>
                                     {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)}
                                   </span>
-                                  <span style={{ color: '#999', fontSize: '12px' }}> {record.bookings.boats?.name} • </span>
-                                  <span style={{ fontWeight: '600' }}>{record.members?.nickname || record.members?.name || record.participant_name}</span>
+                                  <span style={{ fontWeight: '600', color: '#333' }}> {record.bookings.boats?.name} • </span>
+                                  <span style={{ fontWeight: '600', color: '#333' }}>{record.members?.nickname || record.members?.name || record.participant_name}</span>
                                   {!record.member_id && <span style={{ color: '#ff9800', fontWeight: '600' }}> (非會員)</span>}
                                   <span style={{ fontWeight: '600', color: '#333' }}> {record.duration_min}分</span>
-                                  <span style={{ color: '#999', fontSize: '12px' }}> • {LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}</span>
-                                  <span style={{ color: '#999', fontSize: '12px' }}> • {PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}</span>
+                                  <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}> • {LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}</span>
+                                  <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}> • {PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}</span>
                                   {record.notes && (
                                     <span style={{ 
                                       color: record.notes.includes('現金結清') ? '#28a745' : '#999',
@@ -1447,10 +1464,10 @@ export function CoachAdmin({ user }: { user: User | null }) {
                                     color: '#333'
                                   }}
                                 >
-                                  <span style={{ color: '#999', fontSize: '12px' }}>
+                                  <span style={{ fontWeight: '600', color: '#333' }}>
                                     {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)}
                                   </span>
-                                  <span style={{ color: '#999', fontSize: '12px' }}> {record.bookings.boats?.name} • </span>
+                                  <span style={{ fontWeight: '600', color: '#333' }}> {record.bookings.boats?.name} • </span>
                                   <span style={{ fontWeight: '600', color: '#333' }}>{record.driver_duration_min}分</span>
                                 </div>
                               ))}

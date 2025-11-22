@@ -81,8 +81,8 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
         .eq('status', 'processed')
         .eq('is_teaching', true)
         .eq('is_deleted', false)
-        .gte('bookings.start_at', `${startDate} 00:00:00`)
-        .lte('bookings.start_at', `${endDateStr} 23:59:59`)
+        .gte('bookings.start_at', `${startDate}T00:00:00`)
+        .lte('bookings.start_at', `${endDateStr}T23:59:59`)
 
       if (teachingError) throw teachingError
 
@@ -97,8 +97,8 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
           ),
           coaches:coach_id(id, name)
         `)
-        .gte('bookings.start_at', `${startDate} 00:00:00`)
-        .lte('bookings.start_at', `${endDateStr} 23:59:59`)
+        .gte('bookings.start_at', `${startDate}T00:00:00`)
+        .lte('bookings.start_at', `${endDateStr}T23:59:59`)
 
       if (drivingError) throw drivingError
 
