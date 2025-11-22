@@ -339,7 +339,7 @@ export async function fetchBookingRelations(
         .select(`
           *,
           members(name, nickname),
-          reporting_coach:coach_id(id, name)
+          reporting_coach:coaches!coach_id(id, name)
         `)
         .eq('is_deleted', false)
         .in('booking_id', bookingIds),
