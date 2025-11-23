@@ -1,25 +1,14 @@
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
-import { PageHeader } from '../components/PageHeader'
-import { Footer } from '../components/Footer'
-import { TransactionDialog } from '../components/TransactionDialog'
-import { useResponsive } from '../hooks/useResponsive'
+import { supabase } from '../../lib/supabase'
+import { PageHeader } from '../../components/PageHeader'
+import { Footer } from '../../components/Footer'
+import { TransactionDialog } from '../../components/TransactionDialog'
+import { useResponsive } from '../../hooks/useResponsive'
+import type { Member } from '../../types/booking'
 
-interface Member {
-  id: string
-  name: string
-  nickname: string | null
-  phone: string | null
-  balance: number
-  vip_voucher_amount: number  // VIP 票券（金額）
-  designated_lesson_minutes: number  // 指定課時數
-  boat_voucher_g23_minutes: number  // G23船券（時數）
-  boat_voucher_g21_panther_minutes: number  // G21/黑豹共通船券（時數）
-  gift_boat_hours: number  // 贈送大船時數
-  membership_type: string
-  status: string
-}
+// Member interface removed as it is now imported from types/booking
+
 
 interface MemberTransactionProps {
   user: User
@@ -49,7 +38,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, name, nickname, phone, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours, membership_type, status')
+        .select('*')
         .eq('status', 'active')
         .order('name')
 
@@ -75,7 +64,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
     } else {
       const lowerSearch = searchTerm.toLowerCase()
       const filtered = members.filter(m =>
-        m.name.toLowerCase().includes(lowerSearch) ||
+        (m.name || '').toLowerCase().includes(lowerSearch) ||
         m.nickname?.toLowerCase().includes(lowerSearch) ||
         m.phone?.includes(searchTerm)
       )
@@ -138,11 +127,11 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
       const link = document.createElement('a')
       const url = URL.createObjectURL(blob)
       link.setAttribute('href', url)
-      
+
       const today = new Date()
       const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
       link.setAttribute('download', `會員儲值資料_${dateStr}.csv`)
-      
+
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
@@ -169,7 +158,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
     try {
       const text = await importFile.text()
       const Papa = await import('papaparse')
-      
+
       Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
@@ -614,17 +603,17 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                         gap: '10px',
                         flexWrap: 'wrap'
                       }}>
-                        <h3 style={{ 
-                          margin: 0, 
-                          fontSize: isMobile ? '16px' : '18px', 
+                        <h3 style={{
+                          margin: 0,
+                          fontSize: isMobile ? '16px' : '18px',
                           fontWeight: 'bold',
                           color: '#333'
                         }}>
                           {member.nickname || member.name}
                         </h3>
                         {member.nickname && (
-                          <span style={{ 
-                            fontSize: '13px', 
+                          <span style={{
+                            fontSize: '13px',
                             color: '#999'
                           }}>
                             ({member.name})
@@ -644,61 +633,61 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                 </div>
 
                 {/* 儲值數據區 */}
-                <div style={{ 
+                <div style={{
                   background: '#fff',
                   padding: isMobile ? '8px' : '10px 12px',
                   borderRadius: '6px',
                   border: '1px solid #e0e0e0'
                 }}>
-                    <div style={{ 
-                      display: 'grid',
-                      gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-                      gap: isMobile ? '8px' : '10px',
-                      textAlign: 'center'
-                    }}>
-                      <div>
-                        <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💰 儲值餘額</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                          ${(member.balance || 0).toLocaleString()}
-                        </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                    gap: isMobile ? '8px' : '10px',
+                    textAlign: 'center'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💰 儲值餘額</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                        ${(member.balance || 0).toLocaleString()}
                       </div>
+                    </div>
 
-                      <div>
-                        <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💎 VIP票券</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                          ${(member.vip_voucher_amount || 0).toLocaleString()}
-                        </div>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💎 VIP票券</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                        ${(member.vip_voucher_amount || 0).toLocaleString()}
                       </div>
-                      
-                      <div>
-                        <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>📚 指定課</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                          {(member.designated_lesson_minutes || 0).toLocaleString()}分
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🚤 G23船券</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                          {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>⛵ G21/黑豹</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                          {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
-                        </div>
-                      </div>
+                    </div>
 
-                      <div>
-                        <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                          {(member.gift_boat_hours || 0).toLocaleString()}分
-                        </div>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>📚 指定課</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                        {(member.designated_lesson_minutes || 0).toLocaleString()}分
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🚤 G23船券</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                        {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>⛵ G21/黑豹</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                        {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                        {(member.gift_boat_hours || 0).toLocaleString()}分
                       </div>
                     </div>
                   </div>
+                </div>
               </div>
             ))}
           </div>
@@ -966,7 +955,7 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
                   border: '1px solid #dee2e6',
                   marginBottom: '8px',
                 }}>
-{`姓名,暱稱,儲值,VIP票券,指定課時數,G23船券,G21/黑豹船券,贈送大船時數,狀態
+                  {`姓名,暱稱,儲值,VIP票券,指定課時數,G23船券,G21/黑豹船券,贈送大船時數,狀態
 林敏,Ming,5000,2000,120,180,240,60,啟用
 賴奕茵,Ingrid,3000,0,60,0,120,0,啟用`}
                 </code>

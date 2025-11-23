@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { useNavigate } from 'react-router-dom'
-import { AddMemberDialog } from '../components/AddMemberDialog'
-import { MemberDetailDialog } from '../components/MemberDetailDialog'
-import { PageHeader } from '../components/PageHeader'
-import { Footer } from '../components/Footer'
-import { useResponsive } from '../hooks/useResponsive'
+import { AddMemberDialog } from '../../components/AddMemberDialog'
+import { MemberDetailDialog } from '../../components/MemberDetailDialog'
+import { PageHeader } from '../../components/PageHeader'
+import { Footer } from '../../components/Footer'
+import { useResponsive } from '../../hooks/useResponsive'
 
 interface Member {
   id: string

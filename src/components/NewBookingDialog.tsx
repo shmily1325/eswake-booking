@@ -6,9 +6,10 @@ import { getDisplayContactName } from '../utils/bookingFormat'
 import { isFacility } from '../utils/facility'
 import { checkCoachesConflictBatch } from '../utils/bookingConflict'
 import { filterMembers, composeFinalStudentName, toggleSelection } from '../utils/memberUtils'
-import { 
+import { checkBoatUnavailable } from '../utils/availability'
+import {
   EARLY_BOOKING_HOUR_LIMIT,
-  MEMBER_SEARCH_DEBOUNCE_MS 
+  MEMBER_SEARCH_DEBOUNCE_MS
 } from '../constants/booking'
 import { useResponsive } from '../hooks/useResponsive'
 
@@ -47,13 +48,13 @@ export function NewBookingDialog({
   defaultStartTime,
   user,
 }: NewBookingDialogProps) {
-  
+
   const { isMobile } = useResponsive()
   const [boats, setBoats] = useState<Boat[]>([])
   const [selectedBoatId, setSelectedBoatId] = useState(defaultBoatId)
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
-  
+
   // 會員搜尋相關（支援多會員）
   const [members, setMembers] = useState<Member[]>([])
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
@@ -61,7 +62,7 @@ export function NewBookingDialog({
   const [showMemberDropdown, setShowMemberDropdown] = useState(false)
   const [manualStudentName, setManualStudentName] = useState('') // 手動輸入框的暫存值
   const [manualNames, setManualNames] = useState<string[]>([]) // 已新增的非會員名字陣列
-  
+
   const [startDate, setStartDate] = useState('')
   const [startTime, setStartTime] = useState('00:00')
   const [durationMin, setDurationMin] = useState(60)
@@ -80,17 +81,17 @@ export function NewBookingDialog({
   // 使用 useMemo 優化性能
   const selectedCoachesSet = useMemo(() => new Set(selectedCoaches), [selectedCoaches])
   const activityTypesSet = useMemo(() => new Set(activityTypes), [activityTypes])
-  
+
   // 計算選中的船隻和是否為設施
   const selectedBoat = useMemo(() => boats.find(b => b.id === selectedBoatId), [boats, selectedBoatId])
   const isSelectedBoatFacility = useMemo(() => isFacility(selectedBoat?.name), [selectedBoat])
-  
+
   // 判斷是否可以勾選「需要駕駛」：必須有教練且不是彈簧床
   const canRequireDriver = selectedCoaches.length > 0 && !isSelectedBoatFacility
-  
+
   // 會員搜尋防抖動
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  
+
   // 自動取消「需要駕駛」當條件不符時
   useEffect(() => {
     if (!canRequireDriver && requiresDriver) {
@@ -103,7 +104,7 @@ export function NewBookingDialog({
       fetchBoats()
       fetchMembers()
       setSelectedBoatId(defaultBoatId)
-      
+
       // 純字符串解析（避免 new Date() 的時區問題）
       let dateStr = ''
       if (defaultStartTime) {
@@ -123,7 +124,7 @@ export function NewBookingDialog({
         setStartDate(dateStr)
         setStartTime(timeStr)
       }
-      
+
       // 獲取教練列表
       fetchCoaches()
     }
@@ -141,7 +142,7 @@ export function NewBookingDialog({
       .from('boats')
       .select('id, name, color')
       .order('id')
-    
+
     if (error) {
       console.error('Error fetching boats:', error)
     } else {
@@ -151,7 +152,7 @@ export function NewBookingDialog({
 
   const fetchCoaches = async () => {
     setLoadingCoaches(true)
-    
+
     try {
       // 只查詢啟用狀態的教練，不過濾休假狀態
       const { data: coachesData, error: coachesError } = await supabase
@@ -159,16 +160,16 @@ export function NewBookingDialog({
         .select('id, name')
         .eq('status', 'active')
         .order('name')
-      
+
       if (coachesError) {
         console.error('Error fetching coaches:', coachesError)
         setLoadingCoaches(false)
         return
       }
-      
+
       // 調試輸出
       console.log('👨‍🏫 可用教練（不卡休假）:', coachesData?.length, coachesData?.map(c => c.name))
-      
+
       setCoaches(coachesData || [])
     } catch (error) {
       console.error('Error in fetchCoaches:', error)
@@ -183,7 +184,7 @@ export function NewBookingDialog({
       .select('id, name, nickname, phone')
       .eq('status', 'active')
       .order('name')
-    
+
     if (error) {
       console.error('Error fetching members:', error)
     } else {
@@ -193,7 +194,7 @@ export function NewBookingDialog({
 
   // 過濾會員列表
   // 使用共用函數過濾會員列表
-  const filteredMembers = useMemo(() => 
+  const filteredMembers = useMemo(() =>
     filterMembers(members, memberSearchTerm, 10),
     [members, memberSearchTerm]
   )
@@ -214,14 +215,14 @@ export function NewBookingDialog({
     const [year, month, day] = startDate.split('-').map(Number)
     const [hour, minute] = startTime.split(':').map(Number)
     const baseDateTime = new Date(year, month - 1, day, hour, minute, 0)
-    
+
     if (!isRepeat) {
       return [baseDateTime]
     }
 
     const dates: Date[] = []
     const currentDate = new Date(baseDateTime)
-    
+
     if (repeatEndDate) {
       // 使用結束日期
       const [endYear, endMonth, endDay] = repeatEndDate.split('-').map(Number)
@@ -274,7 +275,7 @@ export function NewBookingDialog({
 
     try {
       const datesToCreate = generateRepeatDates()
-      
+
       if (datesToCreate.length === 0) {
         setError('沒有可創建的預約日期')
         setLoading(false)
@@ -306,23 +307,23 @@ export function NewBookingDialog({
         const dateStr = `${year}-${month}-${day}`
         const timeStr = `${hours}:${minutes}`
         const displayDate = `${dateStr} ${timeStr}`
-        
+
         // 手動構建 ISO 字符串（TEXT 格式，不含時區）
         const newStartAt = `${dateStr}T${timeStr}:00`
-        
+
         let hasConflict = false
         let conflictReason = ''
-        
+
         // 檢查是否為設施（不需要接船時間）
         const selectedBoat = boats.find(b => b.id === selectedBoatId)
         const isSelectedBoatFacility = isFacility(selectedBoat?.name)
-        
+
         // 計算新預約的時間（分鐘數，用於所有衝突檢查）
         const [newHour, newMinute] = timeStr.split(':').map(Number)
         const newStartMinutes = newHour * 60 + newMinute
         const newEndMinutes = newStartMinutes + durationMin
         const newCleanupEndMinutes = isSelectedBoatFacility ? newEndMinutes : newEndMinutes + 15 // 設施不需要接船時間
-      
+
         // 檢查船衝突（需要至少15分鐘間隔）
         // TEXT 格式查詢，直接字符串比較
         const { data: existingBookings, error: checkError } = await supabase
@@ -331,64 +332,78 @@ export function NewBookingDialog({
           .eq('boat_id', selectedBoatId)
           .gte('start_at', `${dateStr}T00:00:00`)
           .lte('start_at', `${dateStr}T23:59:59`)
-      
+
         if (checkError) {
           hasConflict = true
           conflictReason = '檢查衝突時發生錯誤'
         } else {
-          // 純字符串比較（避免時區問題）
-          
-          for (const existing of existingBookings || []) {
-            // 直接從資料庫取前16個字符
-            const existingDatetime = existing.start_at.substring(0, 16)
-            const [, existingTime] = existingDatetime.split('T')
-            const [existingHour, existingMinute] = existingTime.split(':').map(Number)
-            
-            const existingStartMinutes = existingHour * 60 + existingMinute
-            const existingEndMinutes = existingStartMinutes + existing.duration_min
-            
-            // 檢查現有預約是否也是設施
-            const existingBoatName = (existing as any).boats?.name
-            const isExistingFacility = isFacility(existingBoatName)
-            const existingCleanupEndMinutes = isExistingFacility ? existingEndMinutes : existingEndMinutes + 15
-            
-            // 檢查新預約是否在現有預約的接船時間內開始（設施不需要接船時間）
-            if (!isExistingFacility && newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
-              hasConflict = true
-              const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
-              const displayName = getDisplayContactName(existing)
-              conflictReason = `與 ${displayName} 的預約衝突：${displayName} 在 ${existingEndTime} 結束，需要15分鐘接船時間。您的預約 ${timeStr} 太接近了。`
-              break
-            }
-            
-            // 檢查新預約結束時間是否會影響現有預約（設施不需要接船時間）
-            if (!isSelectedBoatFacility && existingStartMinutes >= newEndMinutes && existingStartMinutes < newCleanupEndMinutes) {
-              hasConflict = true
-              const newEndTime = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
-              const displayName = getDisplayContactName(existing)
-              conflictReason = `與 ${displayName} 的預約衝突：您的預約 ${newEndTime} 結束，${displayName} ${existingTime} 開始，需要15分鐘接船時間。`
-              break
-            }
-            
-            // 檢查時間重疊
-            if (!(newEndMinutes <= existingStartMinutes || newStartMinutes >= existingEndMinutes)) {
-              hasConflict = true
-              const newEnd = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
-              const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
-              const displayName = getDisplayContactName(existing)
-              conflictReason = `與 ${displayName} 的預約時間重疊：您的時間 ${timeStr}-${newEnd}，${displayName} 的時間 ${existingTime}-${existingEndTime}`
-              break
+          // 0. 檢查船隻是否維修/停用
+          const availability = await checkBoatUnavailable(
+            selectedBoatId,
+            dateStr,
+            timeStr,
+            undefined,
+            durationMin
+          )
+
+          if (availability.isUnavailable) {
+            hasConflict = true
+            conflictReason = `船隻不可用：${availability.reason || '維修保養中'}`
+          } else {
+            // 純字符串比較（避免時區問題）
+
+            for (const existing of existingBookings || []) {
+              // 直接從資料庫取前16個字符
+              const existingDatetime = existing.start_at.substring(0, 16)
+              const [, existingTime] = existingDatetime.split('T')
+              const [existingHour, existingMinute] = existingTime.split(':').map(Number)
+
+              const existingStartMinutes = existingHour * 60 + existingMinute
+              const existingEndMinutes = existingStartMinutes + existing.duration_min
+
+              // 檢查現有預約是否也是設施
+              const existingBoatName = (existing as any).boats?.name
+              const isExistingFacility = isFacility(existingBoatName)
+              const existingCleanupEndMinutes = isExistingFacility ? existingEndMinutes : existingEndMinutes + 15
+
+              // 檢查新預約是否在現有預約的接船時間內開始（設施不需要接船時間）
+              if (!isExistingFacility && newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
+                hasConflict = true
+                const existingEndTime = `${Math.floor(existingEndMinutes / 60).toString().padStart(2, '0')}:${(existingEndMinutes % 60).toString().padStart(2, '0')}`
+                const displayName = getDisplayContactName(existing)
+                conflictReason = `與 ${displayName} 的預約衝突：${displayName} 在 ${existingEndTime} 結束，需要15分鐘接船時間。您的預約 ${timeStr} 太接近了。`
+                break
+              }
+
+              // 檢查新預約結束時間是否會影響現有預約（設施不需要接船時間）
+              if (!isSelectedBoatFacility && existingStartMinutes >= newEndMinutes && existingStartMinutes < newCleanupEndMinutes) {
+                hasConflict = true
+                const newEndTime = `${Math.floor(newEndMinutes / 60).toString().padStart(2, '0')}:${(newEndMinutes % 60).toString().padStart(2, '0')}`
+                const displayName = getDisplayContactName(existing)
+                conflictReason = `與 ${displayName} 的預約衝突：您的預約 ${newEndTime} 結束，${displayName} ${existingTime} 開始，需要15分鐘接船時間。`
+                break
+              }
+
+              // 檢查時間重疊
+              if (!(newEndMinutes <= existingStartMinutes || newStartMinutes >= existingEndMinutes)) {
+                hasConflict = true
+                const newEnd = `${Math.floor(newEndMinutes / 60).toString().padStart(2, '0')}:${(newEndMinutes % 60).toString().padStart(2, '0')}`
+                const existingEndTime = `${Math.floor(existingEndMinutes / 60).toString().padStart(2, '0')}:${(existingEndMinutes % 60).toString().padStart(2, '0')}`
+                const displayName = getDisplayContactName(existing)
+                conflictReason = `與 ${displayName} 的預約時間重疊：您的時間 ${timeStr}-${newEnd}，${displayName} 的時間 ${existingTime}-${existingEndTime}`
+                break
+              }
             }
           }
         }
-        
+
         // ✅ 優化：使用批量檢查教練衝突（避免 N+1 查詢）
         if (!hasConflict && selectedCoaches.length > 0) {
           console.log(`🔍 開始批量檢查 ${selectedCoaches.length} 位教練的衝突...`)
-          
+
           // 建立教練名稱映射
           const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
-          
+
           // 使用優化後的批量查詢
           const conflictResult = await checkCoachesConflictBatch(
             selectedCoaches,
@@ -397,7 +412,7 @@ export function NewBookingDialog({
             durationMin,
             coachesMap
           )
-          
+
           if (conflictResult.hasConflict) {
             hasConflict = true
             // 組合所有衝突訊息
@@ -410,13 +425,13 @@ export function NewBookingDialog({
             console.log('✅ 所有教練無衝突')
           }
         }
-        
+
         // 如果有衝突，跳過這個日期
         if (hasConflict) {
           results.skipped.push({ date: displayDate, reason: conflictReason })
           continue
         }
-      
+
         // 使用共用函數決定最終的學生名字（會員 + 非會員）
         const finalStudentName = composeFinalStudentName(members, selectedMemberIds, manualNames)
 
@@ -494,7 +509,7 @@ export function NewBookingDialog({
             const minute = String(now.getMinutes()).padStart(2, '0')
             const second = String(now.getSeconds()).padStart(2, '0')
             const createdAt = `${year}-${month}-${day}T${hour}:${minute}:${second}`
-            
+
             return {
               booking_id: insertedBooking.id,
               member_id: memberId,
@@ -542,7 +557,7 @@ export function NewBookingDialog({
         setLoading(false)
         return
       }
-      
+
       // 如果有跳過的，顯示詳細報告
       if (results.skipped.length > 0) {
         let message = `✅ 成功創建 ${results.success.length} 個預約\n⚠️ 跳過 ${results.skipped.length} 個衝突:\n\n`
@@ -631,20 +646,20 @@ export function NewBookingDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px' }}>新增預約</h2>
-        
+
         <form onSubmit={handleSubmit}>
           {/* 預約人選擇（會員搜尋或手動輸入） */}
           <div style={{ marginBottom: '18px', position: 'relative' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '6px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '6px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '500',
             }}>
               預約人 {selectedMemberIds.length > 0 && <span style={{ color: '#4caf50', fontSize: '13px' }}>（已選 {selectedMemberIds.length} 位）</span>}
             </label>
-            
+
             {/* 已選會員和手動輸入標籤 */}
             {(selectedMemberIds.length > 0 || manualNames.length > 0) && (
               <div style={{ marginBottom: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -681,7 +696,7 @@ export function NewBookingDialog({
                     </span>
                   ) : null
                 })}
-                
+
                 {/* 非會員標籤（白底虛線邊框） */}
                 {manualNames.map((name, index) => (
                   <span key={index} style={{
@@ -714,7 +729,7 @@ export function NewBookingDialog({
                 ))}
               </div>
             )}
-            
+
             {/* 搜尋會員 */}
             <input
               type="text"
@@ -722,12 +737,12 @@ export function NewBookingDialog({
               onChange={(e) => {
                 const value = e.target.value
                 setMemberSearchTerm(value)
-                
+
                 // 防抖動：避免每次輸入都觸發搜尋
                 if (searchTimeoutRef.current) {
                   clearTimeout(searchTimeoutRef.current)
                 }
-                
+
                 searchTimeoutRef.current = setTimeout(() => {
                   setShowMemberDropdown(value.trim().length > 0)
                 }, MEMBER_SEARCH_DEBOUNCE_MS)
@@ -748,7 +763,7 @@ export function NewBookingDialog({
                 touchAction: 'manipulation',
               }}
             />
-            
+
             {/* 會員下拉選單 */}
             {showMemberDropdown && filteredMembers.length > 0 && (
               <div style={{
@@ -803,7 +818,7 @@ export function NewBookingDialog({
                 })}
               </div>
             )}
-            
+
             {/* 或手動輸入（非會員） */}
             <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'stretch' }}>
               <input
@@ -854,7 +869,7 @@ export function NewBookingDialog({
                 +
               </button>
             </div>
-            
+
             {/* 清除所有會員選擇 */}
             {selectedMemberIds.length > 0 && (
               <button
@@ -881,9 +896,9 @@ export function NewBookingDialog({
 
           {/* 船隻選擇 - 大按鈕 */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '10px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '10px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '600',
@@ -896,48 +911,48 @@ export function NewBookingDialog({
               gap: '10px',
             }}>
               {boats.map(boat => {
-                  const isSelected = selectedBoatId === boat.id
-                  return (
-                    <button
-                      key={boat.id}
-                      type="button"
-                      onClick={() => setSelectedBoatId(boat.id)}
-                      style={{
-                        padding: '14px 8px',
-                        border: isSelected ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                        borderRadius: '8px',
-                        background: isSelected ? '#dbeafe' : 'white',
-                        color: '#333',
-                        fontSize: '15px',
-                        fontWeight: isSelected ? '600' : '500',
-                        cursor: 'pointer',
-                      }}
-                      onTouchStart={(e) => {
-                        e.currentTarget.style.background = isSelected ? '#dbeafe' : '#fafafa'
-                      }}
-                      onTouchEnd={(e) => {
-                        e.currentTarget.style.background = isSelected ? '#dbeafe' : 'white'
-                      }}
-                    >
-                      {boat.name}
-                    </button>
-                  )
-                })}
+                const isSelected = selectedBoatId === boat.id
+                return (
+                  <button
+                    key={boat.id}
+                    type="button"
+                    onClick={() => setSelectedBoatId(boat.id)}
+                    style={{
+                      padding: '14px 8px',
+                      border: isSelected ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      background: isSelected ? '#dbeafe' : 'white',
+                      color: '#333',
+                      fontSize: '15px',
+                      fontWeight: isSelected ? '600' : '500',
+                      cursor: 'pointer',
+                    }}
+                    onTouchStart={(e) => {
+                      e.currentTarget.style.background = isSelected ? '#dbeafe' : '#fafafa'
+                    }}
+                    onTouchEnd={(e) => {
+                      e.currentTarget.style.background = isSelected ? '#dbeafe' : 'white'
+                    }}
+                  >
+                    {boat.name}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
           {/* 教練選擇 - 大按鈕 */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '10px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '10px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '600',
             }}>
               教練（可複選）
             </label>
-            
+
             {/* 已選教練顯示 */}
             {selectedCoaches.length > 0 && (
               <div style={{
@@ -1007,7 +1022,7 @@ export function NewBookingDialog({
                 </button>
               </div>
             )}
-            
+
             {loadingCoaches ? (
               <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
                 載入教練列表中...
@@ -1042,7 +1057,7 @@ export function NewBookingDialog({
                 >
                   不指定教練
                 </button>
-                
+
                 {/* 教練列表 */}
                 {coaches.map((coach) => {
                   const isSelected = selectedCoachesSet.has(coach.id)
@@ -1094,9 +1109,9 @@ export function NewBookingDialog({
                 checked={requiresDriver}
                 onChange={(e) => setRequiresDriver(e.target.checked)}
                 disabled={!canRequireDriver}
-                style={{ 
-                  marginRight: '10px', 
-                  width: '18px', 
+                style={{
+                  marginRight: '10px',
+                  width: '18px',
                   height: '18px',
                   cursor: canRequireDriver ? 'pointer' : 'not-allowed',
                 }}
@@ -1119,9 +1134,9 @@ export function NewBookingDialog({
           </div>
 
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '6px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '6px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '500',
@@ -1146,9 +1161,9 @@ export function NewBookingDialog({
           </div>
 
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '6px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '6px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '500',
@@ -1211,16 +1226,16 @@ export function NewBookingDialog({
 
           {/* 時長選擇 - 常用按鈕 + 自訂輸入 */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '10px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '10px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '600',
             }}>
               時長（分鐘）
             </label>
-            
+
             {/* 常用時長按鈕 */}
             <div style={{
               display: 'grid',
@@ -1261,7 +1276,7 @@ export function NewBookingDialog({
                 )
               })}
             </div>
-            
+
             {/* 自訂時長輸入 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>自訂：</span>
@@ -1295,9 +1310,9 @@ export function NewBookingDialog({
 
           {/* 活動類型選擇 - 大按鈕 */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '10px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '10px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '600',
@@ -1357,9 +1372,9 @@ export function NewBookingDialog({
           </div>
 
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '6px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '6px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '500',
@@ -1485,9 +1500,9 @@ export function NewBookingDialog({
             </div>
           )}
 
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
+          <div style={{
+            display: 'flex',
+            gap: '12px',
             marginTop: '20px',
             paddingBottom: 'calc(20px + env(safe-area-inset-bottom))'
           }}>

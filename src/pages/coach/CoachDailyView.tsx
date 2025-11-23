@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
-import { PageHeader } from '../components/PageHeader'
-import { Footer } from '../components/Footer'
-import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString } from '../utils/date'
-import { getBookingCardStyle, bookingCardContentStyles } from '../styles/designSystem'
-import { getDisplayContactName } from '../utils/bookingFormat'
+import { supabase } from '../../lib/supabase'
+import { PageHeader } from '../../components/PageHeader'
+import { Footer } from '../../components/Footer'
+import { useResponsive } from '../../hooks/useResponsive'
+import { getLocalDateString } from '../../utils/date'
+import { getBookingCardStyle, bookingCardContentStyles } from '../../styles/designSystem'
+import { getDisplayContactName } from '../../utils/bookingFormat'
 
 interface CoachDailyViewProps {
   user: User

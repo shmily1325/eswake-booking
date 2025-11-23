@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
-import { PageHeader } from '../components/PageHeader'
-import { Footer } from '../components/Footer'
-import { extractDate, extractTime } from '../utils/formatters'
-import { getLocalDateString } from '../utils/date'
+import { supabase } from '../../lib/supabase'
+import { PageHeader } from '../../components/PageHeader'
+import { Footer } from '../../components/Footer'
+import { extractDate, extractTime } from '../../utils/formatters'
+import { getLocalDateString } from '../../utils/date'
 
 interface BackupPageProps {
   user: User

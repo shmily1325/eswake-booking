@@ -1,0 +1,146 @@
+﻿src/components/DailyAnnouncement.tsx(61,51): error TS2345: Argument of type '{ content: string; created_at: string | null; created_by: string | null; display_date: string; id: number; updated_at: string | null; }[]' is not assignable to parameter of type 'SetStateAction<Announcement[]>'.
+  Type '{ content: string; created_at: string | null; created_by: string | null; display_date: string; id: number; updated_at: string | null; }[]' is not assignable to type 'Announcement[]'.
+    Type '{ content: string; created_at: string | null; created_by: string | null; display_date: string; id: number; updated_at: string | null; }' is not assignable to type 'Announcement'.
+      Types of property 'id' are incompatible.
+        Type 'number' is not assignable to type 'string'.
+src/components/MemberDetailDialog.tsx(122,17): error TS2345: Argument of type '{ partner: { id: string; name: string; nickname: string | null; } | null; balance: number | null; birthday: string | null; board_expiry_date: string | null; board_slot_number: string | null; ... 20 more ...; vip_voucher_amount: number | null; }' is not assignable to parameter of type 'SetStateAction<Member | null>'.
+  Type '{ partner: { id: string; name: string; nickname: string | null; } | null; balance: number | null; birthday: string | null; board_expiry_date: string | null; board_slot_number: string | null; ... 20 more ...; vip_voucher_amount: number | null; }' is not assignable to type 'Member'.
+    Types of property 'balance' are incompatible.
+      Type 'number | null' is not assignable to type 'number'.
+        Type 'null' is not assignable to type 'number'.
+src/components/MemberDetailDialog.tsx(125,23): error TS2345: Argument of type '{ created_at: string | null; expires_at: string | null; id: number; member_id: string; notes: string | null; slot_number: number; status: string | null; updated_at: string | null; }[]' is not assignable to parameter of type 'SetStateAction<BoardStorage[]>'.
+  Type '{ created_at: string | null; expires_at: string | null; id: number; member_id: string; notes: string | null; slot_number: number; status: string | null; updated_at: string | null; }[]' is not assignable to type 'BoardStorage[]'.
+    Type '{ created_at: string | null; expires_at: string | null; id: number; member_id: string; notes: string | null; slot_number: number; status: string | null; updated_at: string | null; }' is not assignable to type 'BoardStorage'.
+      Types of property 'status' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/components/MemberDetailDialog.tsx(151,23): error TS2345: Argument of type '{ adjust_type: string | null; amount: number | null; balance_after: number | null; boat_voucher_g21_panther_minutes_after: number | null; boat_voucher_g23_minutes_after: number | null; ... 15 more ...; vip_voucher_amount_after: number | null; }[]' is not assignable to parameter of type 'SetStateAction<Transaction[]>'.
+  Type '{ adjust_type: string | null; amount: number | null; balance_after: number | null; boat_voucher_g21_panther_minutes_after: number | null; boat_voucher_g23_minutes_after: number | null; ... 15 more ...; vip_voucher_amount_after: number | null; }[]' is not assignable to type 'Transaction[]'.
+    Type '{ adjust_type: string | null; amount: number | null; balance_after: number | null; boat_voucher_g21_panther_minutes_after: number | null; boat_voucher_g23_minutes_after: number | null; ... 15 more ...; vip_voucher_amount_after: number | null; }' is not assignable to type 'Transaction'.
+      Types of property 'created_at' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/components/MemberDetailDialog.tsx(596,11): error TS2739: Type 'Member' is missing the following properties from type '{ balance: number | null; birthday: string | null; board_expiry_date: string | null; board_slot_number: string | null; boat_voucher_g21_minutes: number | null; boat_voucher_g21_panther_minutes: number | null; ... 18 more ...; vip_voucher_amount: number | null; }': boat_voucher_g21_minutes, free_hours, free_hours_notes, free_hours_used, updated_at
+src/components/TransactionDialog.tsx(124,23): error TS2345: Argument of type '{ adjust_type: string | null; amount: number | null; balance_after: number | null; boat_voucher_g21_panther_minutes_after: number | null; boat_voucher_g23_minutes_after: number | null; ... 15 more ...; vip_voucher_amount_after: number | null; }[]' is not assignable to parameter of type 'SetStateAction<Transaction[]>'.
+  Type '{ adjust_type: string | null; amount: number | null; balance_after: number | null; boat_voucher_g21_panther_minutes_after: number | null; boat_voucher_g23_minutes_after: number | null; ... 15 more ...; vip_voucher_amount_after: number | null; }[]' is not assignable to type 'Transaction[]'.
+    Type '{ adjust_type: string | null; amount: number | null; balance_after: number | null; boat_voucher_g21_panther_minutes_after: number | null; boat_voucher_g23_minutes_after: number | null; ... 15 more ...; vip_voucher_amount_after: number | null; }' is not assignable to type 'Transaction'.
+      Types of property 'created_at' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/components/TransactionDialog.tsx(186,29): error TS18047: 'member.balance' is possibly 'null'.
+src/components/TransactionDialog.tsx(190,40): error TS18047: 'member.vip_voucher_amount' is possibly 'null'.
+src/components/TransactionDialog.tsx(194,47): error TS18047: 'member.designated_lesson_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(198,46): error TS18047: 'member.boat_voucher_g23_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(202,54): error TS18047: 'member.boat_voucher_g21_panther_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(206,37): error TS18047: 'member.gift_boat_hours' is possibly 'null'.
+src/components/TransactionDialog.tsx(215,31): error TS18047: 'member.balance' is possibly 'null'.
+src/components/TransactionDialog.tsx(220,42): error TS18047: 'member.vip_voucher_amount' is possibly 'null'.
+src/components/TransactionDialog.tsx(225,49): error TS18047: 'member.designated_lesson_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(230,48): error TS18047: 'member.boat_voucher_g23_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(235,56): error TS18047: 'member.boat_voucher_g21_panther_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(240,39): error TS18047: 'member.gift_boat_hours' is possibly 'null'.
+src/components/TransactionDialog.tsx(302,29): error TS18047: 'member.balance' is possibly 'null'.
+src/components/TransactionDialog.tsx(305,40): error TS18047: 'member.vip_voucher_amount' is possibly 'null'.
+src/components/TransactionDialog.tsx(308,47): error TS18047: 'member.designated_lesson_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(311,46): error TS18047: 'member.boat_voucher_g23_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(314,54): error TS18047: 'member.boat_voucher_g21_panther_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(317,37): error TS18047: 'member.gift_boat_hours' is possibly 'null'.
+src/components/TransactionDialog.tsx(407,40): error TS2322: Type 'number | null' is not assignable to type 'number'.
+  Type 'null' is not assignable to type 'number'.
+src/components/TransactionDialog.tsx(408,49): error TS2322: Type 'number | null' is not assignable to type 'number'.
+  Type 'null' is not assignable to type 'number'.
+src/components/TransactionDialog.tsx(409,55): error TS2322: Type 'number | null' is not assignable to type 'number'.
+  Type 'null' is not assignable to type 'number'.
+src/components/TransactionDialog.tsx(410,54): error TS2322: Type 'number | null' is not assignable to type 'number'.
+  Type 'null' is not assignable to type 'number'.
+src/components/TransactionDialog.tsx(411,62): error TS2322: Type 'number | null' is not assignable to type 'number'.
+  Type 'null' is not assignable to type 'number'.
+src/components/TransactionDialog.tsx(412,53): error TS2322: Type 'number | null' is not assignable to type 'number'.
+  Type 'null' is not assignable to type 'number'.
+src/components/TransactionDialog.tsx(532,29): error TS18047: 'member.balance' is possibly 'null'.
+src/components/TransactionDialog.tsx(536,40): error TS18047: 'member.vip_voucher_amount' is possibly 'null'.
+src/components/TransactionDialog.tsx(540,47): error TS18047: 'member.designated_lesson_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(544,46): error TS18047: 'member.boat_voucher_g23_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(548,54): error TS18047: 'member.boat_voucher_g21_panther_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(552,37): error TS18047: 'member.gift_boat_hours' is possibly 'null'.
+src/components/TransactionDialog.tsx(722,72): error TS18047: 'member.balance' is possibly 'null'.
+src/components/TransactionDialog.tsx(726,72): error TS18047: 'member.vip_voucher_amount' is possibly 'null'.
+src/components/TransactionDialog.tsx(730,71): error TS18047: 'member.designated_lesson_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(734,71): error TS18047: 'member.boat_voucher_g23_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(738,71): error TS18047: 'member.boat_voucher_g21_panther_minutes' is possibly 'null'.
+src/components/TransactionDialog.tsx(742,71): error TS18047: 'member.gift_boat_hours' is possibly 'null'.
+src/pages/admin/AnnouncementManagement.tsx(56,34): error TS2345: Argument of type '{ content: string; created_at: string | null; created_by: string | null; display_date: string; id: number; updated_at: string | null; }[]' is not assignable to parameter of type 'SetStateAction<Announcement[]>'.
+  Type '{ content: string; created_at: string | null; created_by: string | null; display_date: string; id: number; updated_at: string | null; }[]' is not assignable to type 'Announcement[]'.
+    Type '{ content: string; created_at: string | null; created_by: string | null; display_date: string; id: number; updated_at: string | null; }' is not assignable to type 'Announcement'.
+      Types of property 'id' are incompatible.
+        Type 'number' is not assignable to type 'string'.
+src/pages/admin/AnnouncementManagement.tsx(102,19): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/pages/admin/AnnouncementManagement.tsx(121,19): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/pages/admin/AuditLog.tsx(247,17): error TS2345: Argument of type '{ action: string; changes: Json; created_at: string | null; details: string | null; id: number; record_id: string | null; start_time: string | null; table_name: string | null; user_email: string | null; user_id: string | null; }[]' is not assignable to parameter of type 'SetStateAction<AuditLogEntry[]>'.
+  Type '{ action: string; changes: Json; created_at: string | null; details: string | null; id: number; record_id: string | null; start_time: string | null; table_name: string | null; user_email: string | null; user_id: string | null; }[]' is not assignable to type 'AuditLogEntry[]'.
+    Type '{ action: string; changes: Json; created_at: string | null; details: string | null; id: number; record_id: string | null; start_time: string | null; table_name: string | null; user_email: string | null; user_id: string | null; }' is not assignable to type 'AuditLogEntry'.
+      Types of property 'user_email' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/pages/admin/BackupPage.tsx(92,59): error TS2339: Property 'driver_coach_id' does not exist on type 'SelectQueryError<"column 'driver_coach_id' does not exist on 'bookings'.">'.
+src/pages/admin/BackupPage.tsx(92,87): error TS2339: Property 'driver_coach_id' does not exist on type 'SelectQueryError<"column 'driver_coach_id' does not exist on 'bookings'.">'.
+src/pages/admin/BackupPage.tsx(106,15): error TS2339: Property 'driver_coach_id' does not exist on type 'SelectQueryError<"column 'driver_coach_id' does not exist on 'bookings'.">'.
+src/pages/admin/BackupPage.tsx(107,29): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'driver_coach_id' does not exist on 'bookings'.">'.
+src/pages/admin/BackupPage.tsx(107,49): error TS2339: Property 'driver_coach_id' does not exist on type 'SelectQueryError<"column 'driver_coach_id' does not exist on 'bookings'.">'.
+src/pages/admin/BackupPage.tsx(148,34): error TS2538: Type 'null' cannot be used as an index type.
+src/pages/admin/BoatManagement.tsx(138,33): error TS18047: 'user' is possibly 'null'.
+src/pages/admin/LineSettings.tsx(65,40): error TS2339: Property 'line_user_id' does not exist on type 'SelectQueryError<"column 'line_user_id' does not exist on 'members'.">'.
+src/pages/admin/PermissionManagement.tsx(73,23): error TS2345: Argument of type '{ created_at: string | null; created_by: string | null; email: string; id: string; notes: string | null; }[]' is not assignable to parameter of type 'SetStateAction<AllowedUser[]>'.
+  Type '{ created_at: string | null; created_by: string | null; email: string; id: string; notes: string | null; }[]' is not assignable to type 'AllowedUser[]'.
+    Type '{ created_at: string | null; created_by: string | null; email: string; id: string; notes: string | null; }' is not assignable to type 'AllowedUser'.
+      Types of property 'created_at' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/pages/admin/PermissionManagement.tsx(74,21): error TS2345: Argument of type '{ created_at: string | null; created_by: string | null; email: string; id: string; notes: string | null; }[]' is not assignable to parameter of type 'SetStateAction<AdminUser[]>'.
+  Type '{ created_at: string | null; created_by: string | null; email: string; id: string; notes: string | null; }[]' is not assignable to type 'AdminUser[]'.
+    Type '{ created_at: string | null; created_by: string | null; email: string; id: string; notes: string | null; }' is not assignable to type 'AdminUser'.
+      Types of property 'created_at' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/pages/admin/StaffManagement.tsx(71,18): error TS2345: Argument of type '{ created_at: string | null; id: string; name: string; notes: string | null; status: string | null; updated_at: string | null; }[]' is not assignable to parameter of type 'SetStateAction<Coach[]>'.
+  Type '{ created_at: string | null; id: string; name: string; notes: string | null; status: string | null; updated_at: string | null; }[]' is not assignable to type 'Coach[]'.
+    Type '{ created_at: string | null; id: string; name: string; notes: string | null; status: string | null; updated_at: string | null; }' is not assignable to type 'Coach'.
+      Types of property 'status' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/pages/coach/CoachAdmin.tsx(137,25): error TS2345: Argument of type '{ booking_id: number; coach_id: string | null; created_at: string | null; deleted_at: string | null; duration_min: number; id: number; is_deleted: boolean | null; is_teaching: boolean | null; ... 14 more ...; old_participant: SelectQueryError<...>; }[]' is not assignable to parameter of type 'SetStateAction<PendingReport[]>'.
+  Type '{ booking_id: number; coach_id: string | null; created_at: string | null; deleted_at: string | null; duration_min: number; id: number; is_deleted: boolean | null; is_teaching: boolean | null; ... 14 more ...; old_participant: SelectQueryError<...>; }[]' is not assignable to type 'PendingReport[]'.
+    Type '{ booking_id: number; coach_id: string | null; created_at: string | null; deleted_at: string | null; duration_min: number; id: number; is_deleted: boolean | null; is_teaching: boolean | null; ... 14 more ...; old_participant: SelectQueryError<...>; }' is not assignable to type 'PendingReport'.
+      Types of property 'coach_id' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/pages/coach/CoachAdmin.tsx(177,27): error TS2345: Argument of type '{ booking_id: number; coach_id: string | null; created_at: string | null; deleted_at: string | null; duration_min: number; id: number; is_deleted: boolean | null; is_teaching: boolean | null; ... 13 more ...; old_participant: SelectQueryError<...>; }[]' is not assignable to parameter of type 'SetStateAction<PendingReport[]>'.
+  Type '{ booking_id: number; coach_id: string | null; created_at: string | null; deleted_at: string | null; duration_min: number; id: number; is_deleted: boolean | null; is_teaching: boolean | null; ... 13 more ...; old_participant: SelectQueryError<...>; }[]' is not assignable to type 'PendingReport[]'.
+    Type '{ booking_id: number; coach_id: string | null; created_at: string | null; deleted_at: string | null; duration_min: number; id: number; is_deleted: boolean | null; is_teaching: boolean | null; ... 13 more ...; old_participant: SelectQueryError<...>; }' is not assignable to type 'PendingReport'.
+      Types of property 'coach_id' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/pages/coach/CoachReport.tsx(510,59): error TS2339: Property 'participant_id' does not exist on type 'SelectQueryError<"column 'participant_id' does not exist on 'transactions'.">'.
+src/pages/coach/CoachReport.tsx(513,80): error TS2339: Property 'amount' does not exist on type 'SelectQueryError<"column 'participant_id' does not exist on 'transactions'.">'.
+src/pages/DayView.tsx(157,36): error TS2339: Property 'name' does not exist on type '{ color: string; created_at: string | null; id: number; is_active: boolean | null; name: string; updated_at: string | null; } | { id: number; boat_id: number; contact_name: string; member_id: string | null; ... 8 more ...; booking_members: { ...; }[]; }'.
+  Property 'name' does not exist on type '{ id: number; boat_id: number; contact_name: string; member_id: string | null; start_at: string; duration_min: number; activity_types: string[] | null; notes: string | null; requires_driver: boolean | null; status: string | null; schedule_notes: string | null; boats: { ...; }; booking_members: { ...; }[]; }'.
+src/pages/DayView.tsx(157,60): error TS2339: Property 'name' does not exist on type '{ color: string; created_at: string | null; id: number; is_active: boolean | null; name: string; updated_at: string | null; } | { id: number; boat_id: number; contact_name: string; member_id: string | null; ... 8 more ...; booking_members: { ...; }[]; }'.
+  Property 'name' does not exist on type '{ id: number; boat_id: number; contact_name: string; member_id: string | null; start_at: string; duration_min: number; activity_types: string[] | null; notes: string | null; requires_driver: boolean | null; status: string | null; schedule_notes: string | null; boats: { ...; }; booking_members: { ...; }[]; }'.
+src/pages/DayView.tsx(159,20): error TS2345: Argument of type '{ color: string; created_at: string | null; id: number; is_active: boolean | null; name: string; updated_at: string | null; }[] | { id: number; boat_id: number; contact_name: string; member_id: string | null; ... 8 more ...; booking_members: { ...; }[]; }[]' is not assignable to parameter of type 'SetStateAction<Boat[]>'.
+  Type '{ id: number; boat_id: number; contact_name: string; member_id: string | null; start_at: string; duration_min: number; activity_types: string[] | null; notes: string | null; requires_driver: boolean | null; status: string | null; schedule_notes: string | null; boats: { ...; }; booking_members: { ...; }[]; }[]' is not assignable to type 'SetStateAction<Boat[]>'.
+    Type '{ id: number; boat_id: number; contact_name: string; member_id: string | null; start_at: string; duration_min: number; activity_types: string[] | null; notes: string | null; requires_driver: boolean | null; status: string | null; schedule_notes: string | null; boats: { ...; }; booking_members: { ...; }[]; }[]' is not assignable to type 'Boat[]'.
+      Type '{ id: number; boat_id: number; contact_name: string; member_id: string | null; start_at: string; duration_min: number; activity_types: string[] | null; notes: string | null; requires_driver: boolean | null; status: string | null; schedule_notes: string | null; boats: { ...; }; booking_members: { ...; }[]; }' is missing the following properties from type 'Boat': name, color
+src/pages/LiffMyBookings.tsx(127,19): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/pages/member/MemberImport.tsx(365,25): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/pages/member/MemberImport.tsx(542,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/pages/member/MemberImport.tsx(550,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/pages/member/MemberImport.tsx(558,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/pages/member/MemberImport.tsx(566,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/pages/member/MemberImport.tsx(574,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/pages/member/MemberImport.tsx(582,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/pages/TomorrowReminder.tsx(189,19): error TS2345: Argument of type '{ activity_types: string[] | null; boat_id: number; contact_name: string; contact_phone: string | null; created_at: string | null; created_by: string | null; duration_min: number; id: number; ... 7 more ...; boats: { ...; }; }[]' is not assignable to parameter of type 'SetStateAction<Booking[]>'.
+  Type '{ activity_types: string[] | null; boat_id: number; contact_name: string; contact_phone: string | null; created_at: string | null; created_by: string | null; duration_min: number; id: number; ... 7 more ...; boats: { ...; }; }[]' is not assignable to type 'Booking[]'.
+    Type '{ activity_types: string[] | null; boat_id: number; contact_name: string; contact_phone: string | null; created_at: string | null; created_by: string | null; duration_min: number; id: number; ... 7 more ...; boats: { ...; }; }' is not assignable to type 'Booking'.
+      Types of property 'id' are incompatible.
+        Type 'number' is not assignable to type 'string'.

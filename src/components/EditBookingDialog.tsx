@@ -5,6 +5,7 @@ import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
 import { getDisplayContactName } from '../utils/bookingFormat'
 import { checkCoachesConflictBatch } from '../utils/bookingConflict'
 import { filterMembers, composeFinalStudentName, toggleSelection } from '../utils/memberUtils'
+import { checkBoatUnavailable } from '../utils/availability'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { useResponsive } from '../hooks/useResponsive'
 import { isFacility } from '../utils/facility'
@@ -63,7 +64,7 @@ export function EditBookingDialog({
   const [selectedBoatId, setSelectedBoatId] = useState<number>(0)
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
-  
+
   // 會員搜尋相關（支援多會員）
   const [members, setMembers] = useState<Member[]>([])
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
@@ -84,14 +85,14 @@ export function EditBookingDialog({
   // 使用 useMemo 優化性能
   const selectedCoachesSet = useMemo(() => new Set(selectedCoaches), [selectedCoaches])
   const activityTypesSet = useMemo(() => new Set(activityTypes), [activityTypes])
-  
+
   // 計算選中的船隻和是否為設施
   const selectedBoat = useMemo(() => boats.find(b => b.id === selectedBoatId), [boats, selectedBoatId])
   const isSelectedBoatFacility = useMemo(() => isFacility(selectedBoat?.name), [selectedBoat])
-  
+
   // 判斷是否可以勾選「需要駕駛」：必須有教練且不是彈簧床
   const canRequireDriver = selectedCoaches.length > 0 && !isSelectedBoatFacility
-  
+
   // 自動取消「需要駕駛」當條件不符時
   useEffect(() => {
     if (!canRequireDriver && requiresDriver) {
@@ -103,7 +104,7 @@ export function EditBookingDialog({
     if (isOpen) {
       fetchBoats()
       fetchMembers()
-      
+
       if (booking) {
         // 先解析並設置日期時間
         if (booking.start_at) {
@@ -124,43 +125,43 @@ export function EditBookingDialog({
             setStartTime('00:00')
           }
         }
-        
+
         // 獲取教練列表
         fetchCoaches()
-        
+
         // 設置船只選擇
         setSelectedBoatId(booking.boat_id)
-        
+
         // 設置教練選擇
         if (booking.coaches && booking.coaches.length > 0) {
           setSelectedCoaches(booking.coaches.map(c => c.id))
         } else {
           setSelectedCoaches([])
         }
-        
+
         // 從 booking_members 表加載已選會員
         const loadBookingMembers = async () => {
           const { data: bookingMembersData } = await supabase
             .from('booking_members')
             .select('member_id, members:member_id(name, nickname)')
             .eq('booking_id', booking.id)
-          
+
           if (bookingMembersData && bookingMembersData.length > 0) {
             const memberIds = bookingMembersData.map(bm => bm.member_id)
             setSelectedMemberIds(memberIds)
-            
+
             // 從 contact_name 中提取非會員名字
             // 使用暱稱優先，如果沒有暱稱則使用真實姓名
             const memberDisplayNames = bookingMembersData
               .map((bm: any) => bm.members?.nickname || bm.members?.name)
               .filter(Boolean)
-            
+
             // contact_name 可能是 "會員1, 會員2, 非會員1, 非會員2"
             // 需要移除會員的顯示名字（暱稱或姓名），剩下的就是手動輸入的非會員
             const allNames = booking.contact_name.split(',').map(n => n.trim())
             const extractedManualNames = allNames.filter(name => !memberDisplayNames.includes(name))
             setManualNames(extractedManualNames)
-            
+
             // 不自動設置搜尋框
             setMemberSearchTerm('')
           } else {
@@ -171,9 +172,9 @@ export function EditBookingDialog({
             setManualNames(names)
           }
         }
-        
+
         loadBookingMembers()
-        
+
         setDurationMin(booking.duration_min)
         setActivityTypes(booking.activity_types || [])
         setNotes(booking.notes || '')
@@ -196,18 +197,18 @@ export function EditBookingDialog({
       .from('boats')
       .select('id, name, color')
       .order('id')
-    
+
     if (error) {
       console.error('Error fetching boats:', error)
       return
     }
-    
+
     setBoats(data || [])
   }
 
   const fetchCoaches = async () => {
     setLoadingCoaches(true)
-    
+
     try {
       // 只查詢啟用狀態的教練，不過濾休假狀態
       const { data: coachesData, error: coachesError } = await supabase
@@ -215,16 +216,16 @@ export function EditBookingDialog({
         .select('id, name')
         .eq('status', 'active')
         .order('name')
-      
+
       if (coachesError) {
         console.error('Error fetching coaches:', coachesError)
         setLoadingCoaches(false)
         return
       }
-      
+
       // 調試輸出
       console.log('👨‍🏫 編輯預約 - 可用教練（不卡休假）:', coachesData?.length, coachesData?.map(c => c.name))
-      
+
       setCoaches(coachesData || [])
     } catch (error) {
       console.error('Error in fetchCoaches:', error)
@@ -239,7 +240,7 @@ export function EditBookingDialog({
       .select('id, name, nickname, phone')
       .eq('status', 'active')
       .order('name')
-    
+
     if (error) {
       console.error('Error fetching members:', error)
     } else {
@@ -248,7 +249,7 @@ export function EditBookingDialog({
   }
 
   // 使用共用函數過濾會員列表
-  const filteredMembers = useMemo(() => 
+  const filteredMembers = useMemo(() =>
     filterMembers(members, memberSearchTerm, 10),
     [members, memberSearchTerm]
   )
@@ -292,7 +293,7 @@ export function EditBookingDialog({
     try {
       // Combine date and time into ISO format（TEXT 格式，不含時區）
       const newStartAt = `${startDate}T${startTime}:00`
-      
+
       // 🔍 檢查是否有回報記錄和排班資訊，並判斷是否需要清除
       // 註：不論是否指定教練，都可能有排班資訊（駕駛分配）
       // 優化：使用 JOIN 一次查詢參與者和交易數量
@@ -326,37 +327,37 @@ export function EditBookingDialog({
       // 判斷是否修改了關鍵字段
       const oldCoachIds = new Set((booking.coaches || []).map(c => c.id))
       const newCoachIds = new Set(selectedCoaches)
-      const coachesChanged = oldCoachIds.size !== newCoachIds.size || 
+      const coachesChanged = oldCoachIds.size !== newCoachIds.size ||
         [...oldCoachIds].some(id => !newCoachIds.has(id)) ||
         [...newCoachIds].some(id => !oldCoachIds.has(id))
-      
+
       // 使用共用函數決定最終的學生名字（會員 + 手動輸入）
       const finalStudentName = composeFinalStudentName(members, selectedMemberIds, manualNames)
       const contactNameChanged = booking.contact_name !== finalStudentName
-      
+
       const boatChanged = booking.boat_id !== selectedBoatId
       const timeChanged = booking.start_at !== newStartAt
       const driverRequirementChanged = booking.requires_driver !== requiresDriver && !requiresDriver && hasDriverReports
 
       const needsClearReports = hasReports && (coachesChanged || contactNameChanged || boatChanged || timeChanged || driverRequirementChanged)
       const shouldClearDriverAssignments = hasDriverAssignments && (coachesChanged || contactNameChanged || boatChanged || timeChanged)
-      
+
       const needsWarning = needsClearReports || shouldClearDriverAssignments
 
       if (needsWarning) {
         // 從已查詢的數據中提取有交易記錄的參與者（優化：無需額外查詢）
-        const participantsWithTransactions = hasParticipants 
+        const participantsWithTransactions = hasParticipants
           ? participantsResult.data!.filter((p: any) => {
-              const txCount = p.transactions?.[0]?.count || 0
-              return txCount > 0
-            })
+            const txCount = p.transactions?.[0]?.count || 0
+            return txCount > 0
+          })
           : []
-        
+
         // 組合警告訊息
         const reportDetails: string[] = []
         const assignmentDetails: string[] = []
         const changedFields: string[] = []
-        
+
         if (hasParticipants) {
           const coachNames = [...new Set(participantsResult.data!.map((p: any) => p.coaches?.name).filter(Boolean))].join('、')
           reportDetails.push(`• 參與者記錄 ${participantsResult.data!.length} 筆（${coachNames}）`)
@@ -365,12 +366,12 @@ export function EditBookingDialog({
           const coachNames = [...new Set(reportsResult.data!.map((r: any) => r.coaches?.name).filter(Boolean))].join('、')
           reportDetails.push(`• 駕駛回報 ${reportsResult.data!.length} 筆（${coachNames}）`)
         }
-        
+
         if (participantsWithTransactions.length > 0) {
           const names = participantsWithTransactions.map((p: any) => p.participant_name).join('、')
           reportDetails.push(`⚠️ 有交易記錄：${names}`)
         }
-        
+
         if (hasDriverAssignments) {
           const driverNames = [...new Set(driversResult.data!.map((d: any) => d.coaches?.name).filter(Boolean))].join('、')
           assignmentDetails.push(`• 排班資訊 ${driversResult.data!.length} 位（${driverNames}）`)
@@ -383,7 +384,7 @@ export function EditBookingDialog({
         if (driverRequirementChanged) changedFields.push('取消駕駛需求')
 
         let confirmMessage = ''
-        
+
         if (needsClearReports && shouldClearDriverAssignments) {
           confirmMessage = `⚠️ 此預約已有回報記錄和排班資訊：\n${reportDetails.join('\n')}\n${assignmentDetails.join('\n')}\n\n您修改了：${changedFields.join('、')}\n\n修改將會：\n1. 清除所有回報記錄（教練需重新回報）\n2. 清空排班資訊（需重新排班）\n`
         } else if (needsClearReports) {
@@ -391,13 +392,13 @@ export function EditBookingDialog({
         } else if (shouldClearDriverAssignments) {
           confirmMessage = `⚠️ 此預約已有排班資訊：\n${assignmentDetails.join('\n')}\n\n您修改了：${changedFields.join('、')}\n\n修改將會清空排班資訊！\n需重新排班。\n`
         }
-        
+
         if (participantsWithTransactions.length > 0) {
           confirmMessage += `\n⚠️ 重要提醒：\n其中 ${participantsWithTransactions.length} 位參與者已有交易記錄。\n回報記錄會被刪除，但交易記錄不會變動。\n請記得到「會員交易」檢查並處理！\n`
         }
-        
+
         confirmMessage += `\n確定要修改嗎？`
-        
+
         if (!confirm(confirmMessage)) {
           setLoading(false)
           return
@@ -405,7 +406,7 @@ export function EditBookingDialog({
 
         // 清除回報記錄（全部硬刪除）
         const deletePromises = []
-        
+
         if (hasParticipants) {
           deletePromises.push(
             supabase
@@ -424,10 +425,10 @@ export function EditBookingDialog({
               .eq('booking_id', booking.id)
           )
         }
-        
+
         const results = await Promise.all(deletePromises)
         const hasError = results.some(r => r.error)
-        
+
         if (hasError) {
           console.error('清除回報記錄失敗:', results.filter(r => r.error))
           setError('清除回報記錄失敗')
@@ -435,22 +436,37 @@ export function EditBookingDialog({
           return
         }
       }
-      
+
       // 檢查船衝突（需要至少15分鐘間隔）
       // TEXT 格式查詢，直接字符串比較
-      const { data: existingBookings, error: checkError} = await supabase
+      const { data: existingBookings, error: checkError } = await supabase
         .from('bookings')
         .select('id, start_at, duration_min, contact_name, booking_members(member_id, members:member_id(id, name, nickname))')
         .eq('boat_id', selectedBoatId)
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${startDate}T23:59:59`)
-      
+
       if (checkError) {
         setError('檢查衝突時發生錯誤')
         setLoading(false)
         return
       }
-      
+
+      // 0. 檢查船隻是否維修/停用
+      const availability = await checkBoatUnavailable(
+        selectedBoatId,
+        startDate,
+        startTime,
+        undefined,
+        durationMin
+      )
+
+      if (availability.isUnavailable) {
+        setError(`船隻不可用：${availability.reason || '維修保養中'}`)
+        setLoading(false)
+        return
+      }
+
       // 純字符串比較（避免時區問題）
       const [newHour, newMinute] = startTime.split(':').map(Number)
       const newStartMinutes = newHour * 60 + newMinute
@@ -458,58 +474,58 @@ export function EditBookingDialog({
       // 加上整理船時間（彈簧床除外）
       const newCleanupTime = isSelectedBoatFacility ? 0 : 15
       const newCleanupEndMinutes = newEndMinutes + newCleanupTime
-      
+
       // 排除當前編輯的預約
       for (const existing of existingBookings || []) {
         if (existing.id === booking.id) {
           continue
         }
-        
+
         // 直接從資料庫取前16個字符
         const existingDatetime = existing.start_at.substring(0, 16)
         const [, existingTimeStr] = existingDatetime.split('T')
         const [existingHour, existingMinute] = existingTimeStr.split(':').map(Number)
-        
+
         const existingStartMinutes = existingHour * 60 + existingMinute
         const existingEndMinutes = existingStartMinutes + existing.duration_min
         // 加上整理船時間（彈簧床除外）
         const existingCleanupTime = isSelectedBoatFacility ? 0 : 15
         const existingCleanupEndMinutes = existingEndMinutes + existingCleanupTime
-        
+
         // 檢查新預約是否在現有預約的接船時間內開始
         if (newStartMinutes >= existingEndMinutes && newStartMinutes < existingCleanupEndMinutes) {
-          const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
+          const existingEndTime = `${Math.floor(existingEndMinutes / 60).toString().padStart(2, '0')}:${(existingEndMinutes % 60).toString().padStart(2, '0')}`
           const displayName = getDisplayContactName(existing)
           setError(`與 ${displayName} 的預約衝突：${displayName} 在 ${existingEndTime} 結束，需要15分鐘接船時間。您的預約 ${startTime} 太接近了。`)
           setLoading(false)
           return
         }
-        
+
         // 檢查新預約結束時間是否會影響現有預約
         if (existingStartMinutes >= newEndMinutes && existingStartMinutes < newCleanupEndMinutes) {
-          const newEndTime = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
+          const newEndTime = `${Math.floor(newEndMinutes / 60).toString().padStart(2, '0')}:${(newEndMinutes % 60).toString().padStart(2, '0')}`
           const displayName = getDisplayContactName(existing)
           setError(`與 ${displayName} 的預約衝突：您的預約 ${newEndTime} 結束，${displayName} ${existingTimeStr} 開始，需要15分鐘接船時間。`)
           setLoading(false)
           return
         }
-        
+
         // 檢查時間重疊
         if (!(newEndMinutes <= existingStartMinutes || newStartMinutes >= existingEndMinutes)) {
-          const newEnd = `${Math.floor(newEndMinutes/60).toString().padStart(2,'0')}:${(newEndMinutes%60).toString().padStart(2,'0')}`
-          const existingEndTime = `${Math.floor(existingEndMinutes/60).toString().padStart(2,'0')}:${(existingEndMinutes%60).toString().padStart(2,'0')}`
+          const newEnd = `${Math.floor(newEndMinutes / 60).toString().padStart(2, '0')}:${(newEndMinutes % 60).toString().padStart(2, '0')}`
+          const existingEndTime = `${Math.floor(existingEndMinutes / 60).toString().padStart(2, '0')}:${(existingEndMinutes % 60).toString().padStart(2, '0')}`
           const displayName = getDisplayContactName(existing)
           setError(`與 ${displayName} 的預約時間重疊：您的時間 ${startTime}-${newEnd}，${displayName} 的時間 ${existingTimeStr}-${existingEndTime}`)
           setLoading(false)
           return
         }
       }
-      
+
       // ✅ 優化：使用批量檢查教練衝突（避免 N+1 查詢）
       if (selectedCoaches.length > 0) {
         // 建立教練名稱映射
         const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
-        
+
         // 使用優化後的批量查詢，並排除當前預約（避免自己跟自己衝突）
         const conflictResult = await checkCoachesConflictBatch(
           selectedCoaches,
@@ -519,7 +535,7 @@ export function EditBookingDialog({
           coachesMap,
           booking.id  // 排除當前正在編輯的預約
         )
-        
+
         if (conflictResult.hasConflict) {
           // 組合所有衝突訊息
           const conflictMessages = conflictResult.conflictCoaches
@@ -582,18 +598,18 @@ export function EditBookingDialog({
         .from('booking_members')
         .delete()
         .eq('booking_id', booking.id)
-      
+
       // 插入新的
       if (selectedMemberIds.length > 0) {
         const bookingMembersToInsert = selectedMemberIds.map(memberId => ({
           booking_id: booking.id,
           member_id: memberId
         }))
-        
+
         const { error: membersInsertError } = await supabase
           .from('booking_members')
           .insert(bookingMembersToInsert)
-        
+
         if (membersInsertError) {
           console.error('插入會員關聯失敗:', membersInsertError)
         }
@@ -601,7 +617,7 @@ export function EditBookingDialog({
 
       // 如果修改了關鍵字段（時間/船只/預約人/教練），清空駕駛分配，需要重新排班
       const shouldClearDrivers = coachesChanged || contactNameChanged || boatChanged || timeChanged
-      
+
       if (shouldClearDrivers || !requiresDriver) {
         await supabase
           .from('booking_drivers')
@@ -611,19 +627,19 @@ export function EditBookingDialog({
 
       // 計算變更內容
       const changes: string[] = []
-      
+
       // 檢查預約人變更
       if (booking.contact_name !== finalStudentName) {
         changes.push(`預約人: ${booking.contact_name} → ${finalStudentName}`)
       }
-      
+
       // 檢查船只變更
       if (booking.boat_id !== selectedBoatId) {
         const oldBoatName = booking.boats?.name || '未知'
         const newBoatName = boats.find(b => b.id === selectedBoatId)?.name || '未知'
         changes.push(`船只: ${oldBoatName} → ${newBoatName}`)
       }
-      
+
       // 檢查教練變更
       const oldCoachNames = booking.coaches && booking.coaches.length > 0
         ? booking.coaches.map(c => c.name).join(' / ')
@@ -634,12 +650,12 @@ export function EditBookingDialog({
       if (oldCoachNames !== newCoachNames) {
         changes.push(`教練: ${oldCoachNames} → ${newCoachNames}`)
       }
-      
+
       // 檢查需要駕駛變更
       if (booking.requires_driver !== requiresDriver) {
         changes.push(`需要駕駛: ${booking.requires_driver ? '是' : '否'} → ${requiresDriver ? '是' : '否'}`)
       }
-      
+
       // 檢查時間變更
       if (booking.start_at !== newStartAt) {
         const oldDatetime = booking.start_at.substring(0, 16)
@@ -648,19 +664,19 @@ export function EditBookingDialog({
         const [newDate, newTime] = newDatetime.split('T')
         changes.push(`時間: ${oldDate} ${oldTime} → ${newDate} ${newTime}`)
       }
-      
+
       // 檢查時長變更
       if (booking.duration_min !== durationMin) {
         changes.push(`時長: ${booking.duration_min}分 → ${durationMin}分`)
       }
-      
+
       // 檢查活動類型變更
       const oldActivities = (booking.activity_types || []).sort().join('+')
       const newActivities = activityTypes.sort().join('+')
       if (oldActivities !== newActivities) {
         changes.push(`活動類型: ${oldActivities || '無'} → ${newActivities || '無'}`)
       }
-      
+
       // 檢查備註變更
       const oldNotes = booking.notes || ''
       const newNotes = notes || ''
@@ -701,7 +717,7 @@ export function EditBookingDialog({
 
   const handleDelete = async () => {
     setLoading(true)
-    
+
     try {
       // 檢查是否已有回報記錄和交易記錄（優化：使用 JOIN 一次查詢）
       const [participantsResult, reportsResult] = await Promise.all([
@@ -723,30 +739,30 @@ export function EditBookingDialog({
       const hasParticipants = (participantsResult.data || []).length > 0
       const hasDriverReports = (reportsResult.count || 0) > 0
       const hasReports = hasParticipants || hasDriverReports
-      
+
       // 檢查有交易記錄的參與者
       const participantsWithTransactions = hasParticipants
         ? participantsResult.data!.filter((p: any) => {
-            const txCount = p.transactions?.[0]?.count || 0
-            return txCount > 0
-          })
+          const txCount = p.transactions?.[0]?.count || 0
+          return txCount > 0
+        })
         : []
 
       // 根據是否有回報給予不同的提示
       let confirmMessage = '確定要刪除這個預約嗎？'
       if (hasReports || participantsWithTransactions.length > 0) {
         const warnings = []
-        
+
         if (hasParticipants) warnings.push(`參與者記錄 ${participantsResult.data!.length} 筆`)
         if (hasDriverReports) warnings.push(`駕駛回報 ${reportsResult.count} 筆`)
-        
+
         confirmMessage = `⚠️ 此預約已有回報記錄：\n${warnings.join('、')}\n\n刪除預約將會同時刪除所有回報記錄！\n`
-        
+
         if (participantsWithTransactions.length > 0) {
           const names = participantsWithTransactions.map((p: any) => p.participant_name).join('、')
           confirmMessage += `\n⚠️ 重要提醒：\n其中 ${participantsWithTransactions.length} 位參與者（${names}）已有交易記錄。\n回報記錄會被刪除，但交易記錄不會變動。\n請記得到「會員交易」檢查並處理！\n`
         }
-        
+
         confirmMessage += `\n確定要刪除嗎？`
       }
 
@@ -838,16 +854,16 @@ export function EditBookingDialog({
         <form onSubmit={handleUpdate}>
           {/* 預約人選擇（支援多會員選擇或手動輸入） */}
           <div style={{ marginBottom: '18px', position: 'relative' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '6px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '6px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '500',
             }}>
               預約人 {selectedMemberIds.length > 0 && <span style={{ color: '#4caf50', fontSize: '13px' }}>（已選 {selectedMemberIds.length} 位會員）</span>}
             </label>
-            
+
             {/* 已選會員和手動輸入標籤 */}
             {(selectedMemberIds.length > 0 || manualNames.length > 0) && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
@@ -891,7 +907,7 @@ export function EditBookingDialog({
                     </span>
                   )
                 })}
-                
+
                 {/* 非會員標籤（橘色邊框） */}
                 {manualNames.map((name, index) => (
                   <span
@@ -927,7 +943,7 @@ export function EditBookingDialog({
                     </button>
                   </span>
                 ))}
-                
+
                 {/* 清除全部按鈕 */}
                 <button
                   type="button"
@@ -951,7 +967,7 @@ export function EditBookingDialog({
                 </button>
               </div>
             )}
-            
+
             {/* 搜尋會員 */}
             <input
               type="text"
@@ -972,7 +988,7 @@ export function EditBookingDialog({
                 touchAction: 'manipulation',
               }}
             />
-            
+
             {/* 會員下拉選單 */}
             {showMemberDropdown && filteredMembers.length > 0 && (
               <div style={{
@@ -1027,7 +1043,7 @@ export function EditBookingDialog({
                 })}
               </div>
             )}
-            
+
             {/* 或手動輸入 */}
             <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'stretch' }}>
               <input
@@ -1082,9 +1098,9 @@ export function EditBookingDialog({
 
           {/* 船隻選擇 - 大按鈕 */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '10px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '10px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '600',
@@ -1129,16 +1145,16 @@ export function EditBookingDialog({
 
           {/* 教練選擇 - 大按鈕 */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '10px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '10px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '600',
             }}>
               教練（可複選）
             </label>
-            
+
             {/* 已選教練顯示 */}
             {selectedCoaches.length > 0 && (
               <div style={{
@@ -1208,7 +1224,7 @@ export function EditBookingDialog({
                 </button>
               </div>
             )}
-            
+
             {loadingCoaches ? (
               <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
                 載入教練列表中...
@@ -1247,7 +1263,7 @@ export function EditBookingDialog({
                 >
                   不指定教練
                 </button>
-                
+
                 {/* 教練列表 */}
                 {coaches.map((coach) => {
                   const isSelected = selectedCoachesSet.has(coach.id)
@@ -1308,9 +1324,9 @@ export function EditBookingDialog({
                 checked={requiresDriver}
                 onChange={(e) => setRequiresDriver(e.target.checked)}
                 disabled={!canRequireDriver}
-                style={{ 
-                  marginRight: '10px', 
-                  width: '18px', 
+                style={{
+                  marginRight: '10px',
+                  width: '18px',
                   height: '18px',
                   cursor: canRequireDriver ? 'pointer' : 'not-allowed',
                 }}
@@ -1333,9 +1349,9 @@ export function EditBookingDialog({
           </div>
 
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '6px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '6px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '500',
@@ -1360,9 +1376,9 @@ export function EditBookingDialog({
           </div>
 
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '6px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '6px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '500',
@@ -1425,16 +1441,16 @@ export function EditBookingDialog({
 
           {/* 時長選擇 - 常用按鈕 + 自訂輸入 */}
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '10px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '10px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '600',
             }}>
               時長（分鐘）
             </label>
-            
+
             {/* 常用時長按鈕 */}
             <div style={{
               display: 'grid',
@@ -1475,7 +1491,7 @@ export function EditBookingDialog({
                 )
               })}
             </div>
-            
+
             {/* 自訂時長輸入 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>自訂：</span>
@@ -1508,9 +1524,9 @@ export function EditBookingDialog({
           </div>
 
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '500',
@@ -1564,9 +1580,9 @@ export function EditBookingDialog({
           </div>
 
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '6px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '6px',
               color: '#000',
               fontSize: '15px',
               fontWeight: '500',
@@ -1612,9 +1628,9 @@ export function EditBookingDialog({
             </div>
           )}
 
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
+          <div style={{
+            display: 'flex',
+            gap: '12px',
             marginTop: '20px',
             position: 'relative',
             zIndex: 10,

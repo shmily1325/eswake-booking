@@ -1,31 +1,31 @@
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
-import { PageHeader } from '../components/PageHeader'
-import { Footer } from '../components/Footer'
-import { CoachReportFormDialog } from '../components/CoachReportFormDialog'
-import { useResponsive } from '../hooks/useResponsive'
-import { useMemberSearch } from '../hooks/useMemberSearch'
-import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
-import { isFacility } from '../utils/facility'
-import { getLocalDateString, getLocalTimestamp } from '../utils/date'
-import { extractDate, extractTime } from '../utils/formatters'
+import { supabase } from '../../lib/supabase'
+import { PageHeader } from '../../components/PageHeader'
+import { Footer } from '../../components/Footer'
+import { CoachReportFormDialog } from '../../components/CoachReportFormDialog'
+import { useResponsive } from '../../hooks/useResponsive'
+import { useMemberSearch } from '../../hooks/useMemberSearch'
+import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
+import { isFacility } from '../../utils/facility'
+import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
+import { extractDate, extractTime } from '../../utils/formatters'
 import {
   calculateIsTeaching,
   calculateParticipantStatus
-} from '../utils/participantValidation'
+} from '../../utils/participantValidation'
 import {
   assembleBookingsWithRelations,
   extractAvailableCoaches,
   filterBookingsByCoach,
   filterUnreportedBookings,
   fetchBookingRelations
-} from '../utils/bookingDataHelpers'
+} from '../../utils/bookingDataHelpers'
 import type {
   Coach,
   Booking,
   Participant
-} from '../types/booking'
+} from '../../types/booking'
 
 interface MemberSearchResult {
   id: string

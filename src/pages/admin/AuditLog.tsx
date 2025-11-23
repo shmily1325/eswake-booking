@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
-import { PageHeader } from '../components/PageHeader'
-import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString } from '../utils/date'
+import { supabase } from '../../lib/supabase'
+import { PageHeader } from '../../components/PageHeader'
+import { useResponsive } from '../../hooks/useResponsive'
+import { getLocalDateString } from '../../utils/date'
 
 interface AuditLogEntry {
   id: number

@@ -7,10 +7,10 @@ export interface Coach {
   name: string
 }
 
-export interface Boat {
-  id: number
-  name: string
-  color: string
+export type Boat = Database['public']['Tables']['boats']['Row']
+export type BoatUnavailableDate = Database['public']['Tables']['boat_unavailable_dates']['Row'] & {
+  start_time?: string | null
+  end_time?: string | null
 }
 
 export interface Booking {
@@ -54,18 +54,9 @@ export interface Participant {
   is_teaching?: boolean
 }
 
-export interface Member {
-  id: string
-  name: string
-  nickname: string | null
-  phone: string | null
-  balance: number
-  vip_voucher_amount: number
-  designated_lesson_minutes: number
-  boat_voucher_g23_minutes: number
-  boat_voucher_g21_panther_minutes: number
-  gift_boat_hours: number
-}
+import type { Database } from './supabase'
+
+export type Member = Database['public']['Tables']['members']['Row']
 
 export type PaymentMethod = 'cash' | 'transfer' | 'balance' | 'voucher'
 export type LessonType = 'undesignated' | 'designated_paid' | 'designated_free'

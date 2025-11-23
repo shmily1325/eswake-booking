@@ -21,76 +21,81 @@ export function BaoHub({ user }: BaoHubProps) {
       disabled?: boolean
     }>
   }> = [
-    {
-      section: '📋 預約相關',
-      items: [
-        {
-          title: '排班',
-          icon: '📅',
-          link: '/coach-assignment'
-        },
-        {
-          title: '預約回報',
-          icon: '📝',
-          link: '/coach-report'
-        },
-        {
-          title: '回報管理',
-          icon: '💼',
-          link: '/coach-admin'
-        }
-      ]
-    },
-    {
-      section: '👥 會員相關',
-      items: [
-        {
-          title: '會員管理',
-          icon: '👥',
-          link: '/members'
-        },
-        {
-          title: '會員儲值',
-          icon: '💰',
-          link: '/member-transaction'
-        },
-        {
-          title: '置板管理',
-          icon: '🏄',
-          link: '/boards'
-        }
-      ]
-    },
-    {
-      section: '🔧 系統工具',
-      items: [
-        {
-          title: '公告',
-          icon: '📢',
-          link: '/announcements'
-        },
-        {
-          title: '人員管理',
-          icon: '🎓',
-          link: '/staff'
-        },
-        {
-          title: '匯出',
-          icon: '💾',
-          link: '/backup'
-        },
-        {
-          title: 'LINE 提醒設置',
-          icon: '📱',
-          link: '/line-settings',
-          disabled: true
-        }
-      ]
-    }
-  ]
+      {
+        section: '📋 預約相關',
+        items: [
+          {
+            title: '排班',
+            icon: '📅',
+            link: '/coach-assignment'
+          },
+          {
+            title: '預約回報',
+            icon: '📝',
+            link: '/coach-report'
+          },
+          {
+            title: '回報管理',
+            icon: '💼',
+            link: '/coach-admin'
+          }
+        ]
+      },
+      {
+        section: '👥 會員相關',
+        items: [
+          {
+            title: '會員管理',
+            icon: '👥',
+            link: '/members'
+          },
+          {
+            title: '會員儲值',
+            icon: '💰',
+            link: '/member-transaction'
+          },
+          {
+            title: '置板管理',
+            icon: '🏄',
+            link: '/boards'
+          }
+        ]
+      },
+      {
+        section: '🔧 系統工具',
+        items: [
+          {
+            title: '公告',
+            icon: '📢',
+            link: '/announcements'
+          },
+          {
+            title: '人員管理',
+            icon: '🎓',
+            link: '/staff'
+          },
+          {
+            title: '匯出',
+            icon: '💾',
+            link: '/backup'
+          },
+          {
+            title: '船隻管理',
+            icon: '🚤',
+            link: '/boats'
+          },
+          {
+            title: 'LINE 提醒設置',
+            icon: '📱',
+            link: '/line-settings',
+            disabled: true
+          }
+        ]
+      }
+    ]
 
   return (
-    <div style={{ 
+    <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)',
       padding: '40px 20px',
@@ -99,8 +104,8 @@ export function BaoHub({ user }: BaoHubProps) {
       alignItems: 'center',
       justifyContent: 'center'
     }}>
-      <div style={{ 
-        maxWidth: '600px', 
+      <div style={{
+        maxWidth: '600px',
         width: '100%',
         margin: '0 auto'
       }}>
@@ -115,7 +120,7 @@ export function BaoHub({ user }: BaoHubProps) {
           }}>
             🔧
           </div>
-          <h1 style={{ 
+          <h1 style={{
             margin: '0 0 10px 0',
             fontSize: isMobile ? '32px' : '42px',
             fontWeight: '800',
@@ -219,7 +224,7 @@ export function BaoHub({ user }: BaoHubProps) {
                     }}>
                       即將推出
                     </div>
-                    <div style={{ 
+                    <div style={{
                       fontSize: isMobile ? '36px' : '42px',
                       marginBottom: isMobile ? '8px' : '12px'
                     }}>
@@ -254,7 +259,7 @@ export function BaoHub({ user }: BaoHubProps) {
                       gap: isMobile ? '8px' : '12px'
                     }}
                   >
-                    <div style={{ 
+                    <div style={{
                       fontSize: isMobile ? '36px' : '42px',
                       marginBottom: '5px'
                     }}>

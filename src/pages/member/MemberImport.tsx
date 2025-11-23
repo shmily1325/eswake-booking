@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import Papa from 'papaparse'
-import { supabase } from '../lib/supabase'
-import { PageHeader } from '../components/PageHeader'
-import { Footer } from '../components/Footer'
-import { useResponsive } from '../hooks/useResponsive'
-import { designSystem, getButtonStyle, getCardStyle, getTextStyle } from '../styles/designSystem'
-import { getLocalTimestamp } from '../utils/date'
+import { supabase } from '../../lib/supabase'
+import { PageHeader } from '../../components/PageHeader'
+import { Footer } from '../../components/Footer'
+import { useResponsive } from '../../hooks/useResponsive'
+import { designSystem, getButtonStyle, getCardStyle, getTextStyle } from '../../styles/designSystem'
+import { getLocalTimestamp } from '../../utils/date'
 
 interface MemberImportProps {
   user: User

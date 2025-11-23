@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import type { User } from '@supabase/supabase-js'
-import { PageHeader } from '../components/PageHeader'
-import { Footer } from '../components/Footer'
-import { useResponsive } from '../hooks/useResponsive'
-import { designSystem, getButtonStyle, getCardStyle, getTextStyle } from '../styles/designSystem'
-import { useRequireAdmin, clearPermissionCache, SUPER_ADMINS } from '../utils/auth'
+import { PageHeader } from '../../components/PageHeader'
+import { Footer } from '../../components/Footer'
+import { useResponsive } from '../../hooks/useResponsive'
+import { designSystem, getButtonStyle, getCardStyle, getTextStyle } from '../../styles/designSystem'
+import { useRequireAdmin, clearPermissionCache, SUPER_ADMINS } from '../../utils/auth'
 
 interface PermissionManagementProps {
   user: User

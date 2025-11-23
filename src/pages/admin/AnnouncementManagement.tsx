@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import type { User } from '@supabase/supabase-js'
-import { PageHeader } from '../components/PageHeader'
-import { Footer } from '../components/Footer'
-import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString } from '../utils/date'
+import { PageHeader } from '../../components/PageHeader'
+import { Footer } from '../../components/Footer'
+import { useResponsive } from '../../hooks/useResponsive'
+import { getLocalDateString } from '../../utils/date'
 
 interface Announcement {
   id: string
