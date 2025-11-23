@@ -6,7 +6,7 @@ import { Footer } from '../../components/Footer'
 import { CoachReportFormDialog } from '../../components/CoachReportFormDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
-import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
+import { getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
 import { Button } from '../../components/ui'
 import { isFacility } from '../../utils/facility'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
@@ -1263,34 +1263,17 @@ export function CoachReport({ user }: CoachReportProps) {
               display: 'flex',
               justifyContent: 'flex-end'
             }}>
-              <button
+              <Button
+                variant="success"
+                size="medium"
                 onClick={exportToCSV}
+                icon={<span>📊</span>}
                 style={{
-                  padding: '10px 20px',
                   background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-1px)'
-                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(76, 175, 80, 0.4)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(76, 175, 80, 0.3)'
                 }}
               >
-                📊 匯出回報記錄
-              </button>
+                匯出回報記錄
+              </Button>
             </div>
           )}
         </div>
@@ -1368,14 +1351,15 @@ export function CoachReport({ user }: CoachReportProps) {
                                 <span style={{ fontWeight: '500' }}>
                                   {coach.name}
                                 </span>
-                              <button
+                              <Button
+                                variant="primary"
+                                size="small"
                                 onClick={() => startReportWithCoach(booking, coach.id)}
-                                style={getButtonStyle('primary')}
                               >
                                 {reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
                                   ? '修改回報'
                                   : '回報'}
-                              </button>
+                              </Button>
                             </div>
                           )
                         })}
@@ -1409,12 +1393,13 @@ export function CoachReport({ user }: CoachReportProps) {
                                 <span style={{ fontWeight: '500' }}>
                                   {driver.name}
                                 </span>
-                              <button
+                              <Button
+                                variant="primary"
+                                size="small"
                                 onClick={() => startReportWithCoach(booking, driver.id)}
-                                style={getButtonStyle('primary')}
                               >
                                 {reportStatus.hasDriverReport ? '修改回報' : '回報'}
-                              </button>
+                              </Button>
                             </div>
                           )
                         })}

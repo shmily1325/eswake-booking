@@ -1,5 +1,5 @@
 import React from 'react'
-import { getCardStyle, getCardVariant } from '../../styles/designSystem'
+import { getCardVariant } from '../../styles/designSystem'
 import { useResponsive } from '../../hooks/useResponsive'
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {

@@ -8,11 +8,11 @@ interface Member {
   nickname: string | null
   birthday: string | null
   phone: string | null
-  membership_type: string
+  membership_type: string | null
   membership_start_date: string | null
   membership_end_date: string | null
   membership_partner_id: string | null
-  gift_boat_hours: number
+  gift_boat_hours: number | null
   notes: string | null
   partner?: { id: string, name: string, nickname: string | null } | null
 }

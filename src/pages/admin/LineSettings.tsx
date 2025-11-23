@@ -56,13 +56,14 @@ export function LineSettings({ user }: LineSettingsProps) {
     try {
       const { data: members } = await supabase
         .from('members')
-        .select('id, line_user_id')
+        .select('id')
         .eq('status', 'active')
 
       if (members) {
+        // TODO: LINE 綁定功能需要額外的資料表，目前暫時顯示為 0
         setBindingStats({
           total: members.length,
-          bound: members.filter(m => m.line_user_id).length
+          bound: 0 // line_user_id 欄位不在 members 表中
         })
       }
     } catch (error) {

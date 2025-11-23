@@ -7,11 +7,11 @@ import { getLocalDateString } from '../../utils/date'
 
 interface AuditLogEntry {
   id: number
-  user_email: string
-  action: string // 'create', 'update', 'delete'
-  table_name: string
-  details: string
-  created_at: string
+  user_email: string | null
+  action: string
+  table_name: string | null
+  details: string | null
+  created_at: string | null
 }
 
 interface ParsedDetails {
@@ -175,7 +175,7 @@ export function AuditLog({ user }: AuditLogProps) {
 
   // 計算所有操作者
   const operators = useMemo(() => {
-    const uniqueOperators = [...new Set(logs.map(log => log.user_email))]
+    const uniqueOperators = [...new Set(logs.map(log => log.user_email).filter(Boolean))] as string[]
     return uniqueOperators.sort()
   }, [logs])
 
@@ -192,8 +192,8 @@ export function AuditLog({ user }: AuditLogProps) {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(log => 
-        log.details.toLowerCase().includes(query) ||
-        log.user_email.toLowerCase().includes(query)
+        (log.details && log.details.toLowerCase().includes(query)) ||
+        (log.user_email && log.user_email.toLowerCase().includes(query))
       )
     }
     
@@ -205,6 +205,7 @@ export function AuditLog({ user }: AuditLogProps) {
     const groups: Record<string, AuditLogEntry[]> = {}
     
     displayedLogs.forEach(log => {
+      if (!log.created_at) return
       const date = log.created_at.split('T')[0]
       if (!groups[date]) groups[date] = []
       groups[date].push(log)
@@ -480,7 +481,7 @@ export function AuditLog({ user }: AuditLogProps) {
           >
             <option value="all">👤 全部操作者</option>
             {operators.map(email => (
-              <option key={email} value={email}>{email.split('@')[0]}</option>
+              <option key={email || 'unknown'} value={email || ''}>{email ? email.split('@')[0] : '未知'}</option>
             ))}
           </select>
         </div>
@@ -587,7 +588,7 @@ export function AuditLog({ user }: AuditLogProps) {
               {/* 該日期的所有記錄 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {logsInDate.map((log) => {
-                  const parsed = parseDetails(log.details)
+                  const parsed = parseDetails(log.details || '')
                   
                   return (
                     <div
@@ -618,11 +619,11 @@ export function AuditLog({ user }: AuditLogProps) {
                             fontWeight: '600',
                             color: getOperationColor(log.action),
                           }}>
-                            {getOperationText(log.action, log.table_name)}
+                            {getOperationText(log.action, log.table_name || '')}
                           </span>
                         </div>
                         <div style={{ fontSize: '13px', color: '#666' }}>
-                          {formatDateTime(log.created_at)}
+                          {log.created_at ? formatDateTime(log.created_at) : '-'}
                         </div>
                       </div>
 
@@ -720,7 +721,7 @@ export function AuditLog({ user }: AuditLogProps) {
                       <div style={{ marginBottom: '8px', fontSize: '14px' }}>
                         <strong>操作者：</strong>
                         <span style={{ color: '#666' }}>
-                          {highlightText(log.user_email, searchQuery)}
+                          {highlightText(log.user_email || '未知', searchQuery)}
                         </span>
                       </div>
 
@@ -735,7 +736,7 @@ export function AuditLog({ user }: AuditLogProps) {
                         whiteSpace: 'pre-wrap',
                         lineHeight: '1.6'
                       }}>
-                        {highlightText(log.details, searchQuery)}
+                        {highlightText(log.details || '', searchQuery)}
                       </div>
                     </div>
                   )

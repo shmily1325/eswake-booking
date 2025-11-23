@@ -358,7 +358,7 @@ export function MemberImport({ user }: MemberImportProps) {
 
         // 對於雙人會員，同步更新配對會員的到期日
         for (const update of partnerUpdates) {
-          if (update.end_date) {
+          if (update.end_date && update.partner_id) {
             await supabase
               .from('members')
               .update({ membership_end_date: update.end_date })
@@ -539,7 +539,7 @@ export function MemberImport({ user }: MemberImportProps) {
       const { error: announcementError } = await supabase
         .from('daily_announcements')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .neq('id', 0)
 
       if (announcementError) throw announcementError
 
@@ -547,7 +547,7 @@ export function MemberImport({ user }: MemberImportProps) {
       const { error: timeOffError } = await supabase
         .from('coach_time_off')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .neq('id', 0)
 
       if (timeOffError) throw timeOffError
 
@@ -555,7 +555,7 @@ export function MemberImport({ user }: MemberImportProps) {
       const { error: boardError } = await supabase
         .from('board_storage')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .neq('id', 0)
 
       if (boardError) throw boardError
 
@@ -563,7 +563,7 @@ export function MemberImport({ user }: MemberImportProps) {
       const { error: transactionsError } = await supabase
         .from('transactions')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .neq('id', 0)
 
       if (transactionsError) throw transactionsError
 
@@ -571,7 +571,7 @@ export function MemberImport({ user }: MemberImportProps) {
       const { error: participantsError } = await supabase
         .from('booking_participants')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .neq('id', 0)
 
       if (participantsError) throw participantsError
 
@@ -579,7 +579,7 @@ export function MemberImport({ user }: MemberImportProps) {
       const { error: bookingsError } = await supabase
         .from('bookings')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .neq('id', 0)
 
       if (bookingsError) throw bookingsError
 

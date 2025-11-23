@@ -15,20 +15,20 @@ interface TransactionDialogProps {
 
 interface Transaction {
   id: number
-  created_at: string
+  created_at: string | null
   transaction_date: string
   category: string
-  adjust_type: string
+  adjust_type: string | null
   amount: number | null
   minutes: number | null
   description: string
   notes: string | null
-  balance_after: number
-  vip_voucher_amount_after: number
-  designated_lesson_minutes_after: number
-  boat_voucher_g23_minutes_after: number
-  boat_voucher_g21_panther_minutes_after: number
-  gift_boat_hours_after: number
+  balance_after: number | null
+  vip_voucher_amount_after: number | null
+  designated_lesson_minutes_after: number | null
+  boat_voucher_g23_minutes_after: number | null
+  boat_voucher_g21_panther_minutes_after: number | null
+  gift_boat_hours_after: number | null
 }
 
 // 六個項目的配置
@@ -138,7 +138,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     setEditValue(tx.amount ? tx.amount.toString() : tx.minutes ? tx.minutes.toString() : '')
     setEditDescription(tx.description)
     setEditNotes(tx.notes || '')
-    setEditTransactionDate(tx.transaction_date || tx.created_at.substring(0, 10))
+    setEditTransactionDate(tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : ''))
   }
 
   const handleSaveEdit = async () => {
@@ -386,12 +386,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         if (txList.length > 0) {
           // 有交易：期末值取最後一筆交易的 after 值
           const lastTx = txList[0] // transactions 已經按時間倒序排列
-          if (cat.value === 'balance') endValue = lastTx.balance_after
-          else if (cat.value === 'vip_voucher') endValue = lastTx.vip_voucher_amount_after
-          else if (cat.value === 'designated_lesson') endValue = lastTx.designated_lesson_minutes_after
-          else if (cat.value === 'boat_voucher_g23') endValue = lastTx.boat_voucher_g23_minutes_after
-          else if (cat.value === 'boat_voucher_g21_panther') endValue = lastTx.boat_voucher_g21_panther_minutes_after
-          else if (cat.value === 'gift_boat_hours') endValue = lastTx.gift_boat_hours_after
+          if (cat.value === 'balance') endValue = lastTx.balance_after ?? 0
+          else if (cat.value === 'vip_voucher') endValue = lastTx.vip_voucher_amount_after ?? 0
+          else if (cat.value === 'designated_lesson') endValue = lastTx.designated_lesson_minutes_after ?? 0
+          else if (cat.value === 'boat_voucher_g23') endValue = lastTx.boat_voucher_g23_minutes_after ?? 0
+          else if (cat.value === 'boat_voucher_g21_panther') endValue = lastTx.boat_voucher_g21_panther_minutes_after ?? 0
+          else if (cat.value === 'gift_boat_hours') endValue = lastTx.gift_boat_hours_after ?? 0
           
           // 計算本月增加和減少
           txList.forEach(tx => {
@@ -435,7 +435,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           // 明細行（按時間正序）
           const sortedTxList = [...txList].reverse()
           sortedTxList.forEach(tx => {
-            const date = tx.transaction_date || tx.created_at.substring(0, 10)
+            const date = tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : '')
             // 轉換日期格式為 MM/DD/YYYY
             const [year, month, day] = date.split('-')
             const formattedDate = `${month}/${day}/${year}`
@@ -1073,13 +1073,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                         <div onClick={(e) => e.stopPropagation()}>
                           <div style={{ marginBottom: '12px' }}>
                             <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
-                              記帳時間：{new Date(tx.created_at).toLocaleString('zh-TW', {
+                              記帳時間：{tx.created_at ? new Date(tx.created_at).toLocaleString('zh-TW', {
                                 year: 'numeric',
                                 month: '2-digit',
                                 day: '2-digit',
                                 hour: '2-digit',
                                 minute: '2-digit',
-                              })}
+                              }) : '-'}
                             </div>
                             
                             {/* 項目 */}
@@ -1268,7 +1268,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                 {tx.description}
                               </div>
                               <div style={{ fontSize: '12px', color: '#999' }}>
-                                {tx.transaction_date || tx.created_at.substring(0, 10)}
+                                {tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : '-')}
                               </div>
                             </div>
                             <div style={{

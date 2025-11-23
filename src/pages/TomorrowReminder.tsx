@@ -12,7 +12,7 @@ interface TomorrowReminderProps {
 }
 
 interface Booking {
-  id: string
+  id: number
   boat_id: number
   contact_name: string
   start_at: string

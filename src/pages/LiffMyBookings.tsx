@@ -4,7 +4,7 @@ import liff from '@line/liff'
 import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 
 interface Booking {
-  id: string
+  id: number
   start_at: string
   duration_min: number
   boats: { name: string; color: string } | null
@@ -119,7 +119,7 @@ export function LiffMyBookings() {
     }
   }
 
-  const handleCancelBooking = async (bookingId: string) => {
+  const handleCancelBooking = async (bookingId: number) => {
     try {
       const { error } = await supabase
         .from('bookings')

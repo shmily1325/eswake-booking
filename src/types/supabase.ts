@@ -148,11 +148,13 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           end_date: string
+          end_time: string | null
           id: number
           is_active: boolean | null
           notes: string | null
           reason: string
           start_date: string
+          start_time: string | null
           updated_at: string | null
         }
         Insert: {
@@ -160,11 +162,13 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           end_date: string
+          end_time?: string | null
           id?: number
           is_active?: boolean | null
           notes?: string | null
           reason: string
           start_date: string
+          start_time?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -172,11 +176,13 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           end_date?: string
+          end_time?: string | null
           id?: number
           is_active?: boolean | null
           notes?: string | null
           reason?: string
           start_date?: string
+          start_time?: string | null
           updated_at?: string | null
         }
         Relationships: [

@@ -10,21 +10,26 @@ interface Member {
   nickname: string | null
   birthday: string | null
   phone: string | null
-  balance: number
-  vip_voucher_amount: number
-  designated_lesson_minutes: number
-  boat_voucher_g23_minutes: number
-  boat_voucher_g21_panther_minutes: number
-  gift_boat_hours: number
+  balance: number | null
+  vip_voucher_amount: number | null
+  designated_lesson_minutes: number | null
+  boat_voucher_g23_minutes: number | null
+  boat_voucher_g21_panther_minutes: number | null
+  boat_voucher_g21_minutes: number | null
+  gift_boat_hours: number | null
+  free_hours: number | null
+  free_hours_notes: string | null
+  free_hours_used: number | null
   membership_end_date: string | null
   membership_start_date: string | null
-  membership_type: string
+  membership_type: string | null
   membership_partner_id: string | null
   board_slot_number: string | null
   board_expiry_date: string | null
   notes: string | null
-  status: string
-  created_at: string
+  status: string | null
+  created_at: string | null
+  updated_at: string | null
   partner?: { id: string, name: string, nickname: string | null } | null
 }
 
@@ -33,7 +38,7 @@ interface BoardStorage {
   slot_number: number
   expires_at: string | null
   notes: string | null
-  status: string
+  status: string | null
 }
 
 interface Transaction {
@@ -43,7 +48,7 @@ interface Transaction {
   amount: number | null
   minutes: number | null
   description: string
-  created_at: string
+  created_at: string | null
 }
 
 interface MemberDetailDialogProps {
@@ -340,7 +345,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         <InfoRow label="暱稱" value={member.nickname || '-'} />
                         <InfoRow label="生日" value={member.birthday || '-'} />
                         <InfoRow label="電話" value={member.phone || '-'} />
-                        <InfoRow label="會籍類型" value={getMembershipTypeLabel(member.membership_type)} />
+                        <InfoRow label="會籍類型" value={getMembershipTypeLabel(member.membership_type || 'personal')} />
                         {member.notes && <InfoRow label="備註" value={member.notes} />}
                       </div>
                     </div>
@@ -354,12 +359,12 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         padding: '15px',
                         border: '1px solid #e0e0e0'
                       }}>
-                        <InfoRow label="💵 儲值" value={`$${member.balance.toFixed(0)}`} />
-                        <InfoRow label="🎁 VIP 票券" value={`$${member.vip_voucher_amount.toFixed(0)}`} />
-                        <InfoRow label="🚤 G23 船券" value={`${member.boat_voucher_g23_minutes} 分鐘`} />
-                        <InfoRow label="⛵ G21/黑豹共通船券" value={`${member.boat_voucher_g21_panther_minutes} 分鐘`} />
-                        <InfoRow label="⏱️ 贈送大船時數" value={`${member.gift_boat_hours} 分鐘`} />
-                        <InfoRow label="📚 指定課時數" value={`${member.designated_lesson_minutes} 分鐘`} />
+                        <InfoRow label="💵 儲值" value={`$${(member.balance ?? 0).toFixed(0)}`} />
+                        <InfoRow label="🎁 VIP 票券" value={`$${(member.vip_voucher_amount ?? 0).toFixed(0)}`} />
+                        <InfoRow label="🚤 G23 船券" value={`${member.boat_voucher_g23_minutes ?? 0} 分鐘`} />
+                        <InfoRow label="⛵ G21/黑豹共通船券" value={`${member.boat_voucher_g21_panther_minutes ?? 0} 分鐘`} />
+                        <InfoRow label="⏱️ 贈送大船時數" value={`${member.gift_boat_hours ?? 0} 分鐘`} />
+                        <InfoRow label="📚 指定課時數" value={`${member.designated_lesson_minutes ?? 0} 分鐘`} />
                       </div>
                     </div>
 
@@ -487,12 +492,12 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                                      transaction.transaction_type === 'refund' ? '↩️ 退款' : '🔧 調整'}
                                   </span>
                                   <span style={{ color: '#666', fontSize: '12px' }}>
-                                    {new Date(transaction.created_at).toLocaleString('zh-TW', { 
+                                    {transaction.created_at ? new Date(transaction.created_at).toLocaleString('zh-TW', { 
                                       month: '2-digit', 
                                       day: '2-digit', 
                                       hour: '2-digit', 
                                       minute: '2-digit' 
-                                    })}
+                                    }) : '-'}
                                   </span>
                                 </div>
                                 <div style={{ color: '#666', fontSize: '12px' }}>
@@ -842,7 +847,7 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
           {transaction.description}
         </div>
         <div style={{ fontSize: '13px', color: '#999' }}>
-          {new Date(transaction.created_at).toLocaleString('zh-TW')}
+          {transaction.created_at ? new Date(transaction.created_at).toLocaleString('zh-TW') : '-'}
         </div>
       </div>
       <div style={{ textAlign: 'right' }}>

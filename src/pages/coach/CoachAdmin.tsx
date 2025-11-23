@@ -24,12 +24,12 @@ interface MemberSearchResult {
 interface PendingReport {
   id: number
   booking_id: number
-  coach_id: string
+  coach_id: string | null
   member_id: string | null
   participant_name: string
   duration_min: number
   payment_method: string
-  status: string
+  status: string | null
   replaces_id: number | null
   notes?: string | null
   bookings: {
