@@ -7,9 +7,11 @@ import { CoachReportFormDialog } from '../../components/CoachReportFormDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
+import { Button } from '../../components/ui'
 import { isFacility } from '../../utils/facility'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
+import { handleError } from '../../utils/errorHandler'
 import {
   calculateIsTeaching,
   calculateParticipantStatus
@@ -502,12 +504,12 @@ export function CoachReport({ user }: CoachReportProps) {
           try {
             const { data: transactionsData } = await supabase
               .from('transactions')
-              .select('id, participant_id, amount, description')
-              .in('participant_id', participantsToDelete.map(p => p.id))
+              .select('id, booking_participant_id, amount, description')
+              .in('booking_participant_id', participantsToDelete.map(p => p.id))
             
             if (transactionsData && transactionsData.length > 0) {
               const names = participantsToDelete
-                .filter(p => transactionsData.some(t => t.participant_id === p.id))
+                .filter(p => transactionsData.some(t => t.booking_participant_id === p.id))
                 .map(p => p.participant_name)
                 .join('、')
               const totalAmount = transactionsData.reduce((sum, t) => sum + (t.amount || 0), 0)
@@ -597,10 +599,8 @@ export function CoachReport({ user }: CoachReportProps) {
           throw new Error(`插入新記錄失敗: ${insertError.message}`)
         }
       }
-    } catch (error: any) {
-      console.error('提交教練回報失敗:', error)
-      const errorMsg = error.message || '未知錯誤'
-      alert(`提交失敗：${errorMsg}\n\n請打開瀏覽器控制台 (F12) 查看詳細錯誤`)
+    } catch (error) {
+      handleError(error, '提交教練回報')
       throw error
     }
   }

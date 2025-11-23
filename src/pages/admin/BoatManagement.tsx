@@ -5,6 +5,9 @@ import { PageHeader } from '../../components/PageHeader'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import type { Boat, BoatUnavailableDate } from '../../types/booking'
+import { handleError } from '../../utils/errorHandler'
+import { Button, Badge } from '../../components/ui'
+import { designSystem } from '../../styles/designSystem'
 
 interface BoatManagementProps {
     user: User | null
@@ -77,9 +80,8 @@ export function BoatManagement({ user }: BoatManagementProps) {
             setNewBoatColor('#1976d2')
             setAddDialogOpen(false)
             loadData()
-        } catch (error: any) {
-            console.error('新增失敗:', error)
-            alert('新增失敗: ' + error.message)
+        } catch (error) {
+            handleError(error, '新增船隻')
         } finally {
             setAddLoading(false)
         }
@@ -95,9 +97,8 @@ export function BoatManagement({ user }: BoatManagementProps) {
             if (error) throw error
 
             loadData()
-        } catch (error: any) {
-            console.error('更新失敗:', error)
-            alert('更新失敗: ' + error.message)
+        } catch (error) {
+            handleError(error, '更新狀態')
         }
     }
 
@@ -135,7 +136,7 @@ export function BoatManagement({ user }: BoatManagementProps) {
                     start_time: startTime || null,
                     end_time: endTime || null,
                     reason: reason || '維修保養',
-                    created_by: user.id,
+                    created_by: user?.id || null,
                     created_at: getLocalTimestamp()
                 }])
 
@@ -149,9 +150,8 @@ export function BoatManagement({ user }: BoatManagementProps) {
             setEndTime('')
             setReason('')
             loadData()
-        } catch (error: any) {
-            console.error('設定失敗:', error)
-            alert('設定失敗: ' + error.message)
+        } catch (error) {
+            handleError(error, '設定維修/停用')
         } finally {
             setUnavailableLoading(false)
         }
@@ -169,9 +169,8 @@ export function BoatManagement({ user }: BoatManagementProps) {
             if (error) throw error
 
             loadData()
-        } catch (error: any) {
-            console.error('刪除失敗:', error)
-            alert('刪除失敗: ' + error.message)
+        } catch (error) {
+            handleError(error, '刪除記錄')
         }
     }
 
@@ -221,27 +220,14 @@ export function BoatManagement({ user }: BoatManagementProps) {
                         🚤 船隻管理
                     </h1>
 
-                    <button
+                    <Button
+                        variant="outline"
+                        size="medium"
                         onClick={() => setAddDialogOpen(true)}
-                        style={{
-                            padding: isMobile ? '12px 20px' : '12px 24px',
-                            background: 'white',
-                            color: '#666',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: isMobile ? '14px' : '15px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px'
-                        }}
+                        icon={<span>➕</span>}
                     >
-                        <span>➕</span>
-                        <span>新增船隻</span>
-                    </button>
+                        新增船隻
+                    </Button>
                 </div>
 
                 {/* 說明提示 */}
@@ -311,38 +297,23 @@ export function BoatManagement({ user }: BoatManagementProps) {
                                         }}>
                                             {boat.name}
                                             {!isActive && (
-                                                <span style={{
-                                                    padding: '4px 12px',
-                                                    borderRadius: '20px',
-                                                    fontSize: '12px',
-                                                    fontWeight: '600',
-                                                    background: '#ffebee',
-                                                    color: '#c62828'
-                                                }}>
+                                                <Badge variant="danger" size="small">
                                                     已停用
-                                                </span>
+                                                </Badge>
                                             )}
                                         </h3>
                                     </div>
 
                                     {/* 操作按鈕 */}
                                     <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button
+                                        <Button
+                                            variant={isActive ? 'danger' : 'success'}
+                                            size="small"
                                             onClick={() => handleToggleStatus(boat)}
-                                            style={{
-                                                padding: '6px 14px',
-                                                background: isActive ? '#fff' : '#4caf50',
-                                                color: isActive ? '#f44336' : '#fff',
-                                                border: isActive ? '1px solid #f44336' : 'none',
-                                                borderRadius: '6px',
-                                                fontSize: '14px',
-                                                fontWeight: '600',
-                                                cursor: 'pointer',
-                                                whiteSpace: 'nowrap'
-                                            }}
+                                            style={isActive ? { background: '#fff', color: designSystem.colors.danger, border: `1px solid ${designSystem.colors.danger}` } : {}}
                                         >
                                             {isActive ? '停用' : '啟用'}
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
 
@@ -399,44 +370,33 @@ export function BoatManagement({ user }: BoatManagementProps) {
                                                         {record.reason}
                                                     </span>
                                                 </span>
-                                                <button
+                                                <Button
+                                                    variant="danger"
+                                                    size="small"
                                                     onClick={() => handleDeleteUnavailable(record)}
-                                                    style={{
-                                                        padding: '4px 10px',
-                                                        background: '#ef5350',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '4px',
-                                                        fontSize: '12px',
-                                                        cursor: 'pointer',
-                                                        alignSelf: isMobile ? 'flex-start' : 'center'
-                                                    }}
+                                                    style={{ alignSelf: isMobile ? 'flex-start' : 'center' }}
                                                 >
                                                     刪除
-                                                </button>
+                                                </Button>
                                             </div>
                                         ))}
                                     </div>
                                 )}
 
                                 {/* 設定維修按鈕 */}
-                                <button
+                                <Button
+                                    variant="outline"
+                                    size="medium"
                                     onClick={() => openUnavailableDialog(boat)}
+                                    fullWidth
                                     style={{
-                                        width: '100%',
-                                        padding: isMobile ? '12px' : '14px',
                                         background: '#f3e5f5',
                                         color: '#7b1fa2',
                                         border: '2px solid #e1bee7',
-                                        borderRadius: '10px',
-                                        fontSize: isMobile ? '14px' : '15px',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
                                     }}
                                 >
                                     設定維修/停用
-                                </button>
+                                </Button>
                             </div>
                         )
                     })}
@@ -475,8 +435,8 @@ export function BoatManagement({ user }: BoatManagementProps) {
                             />
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
-                            <button onClick={() => setAddDialogOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #ddd', background: 'white' }}>取消</button>
-                            <button onClick={handleAddBoat} disabled={addLoading} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', background: '#2196f3', color: 'white' }}>確定</button>
+                            <Button variant="outline" onClick={() => setAddDialogOpen(false)} style={{ flex: 1 }}>取消</Button>
+                            <Button variant="info" onClick={handleAddBoat} disabled={addLoading} style={{ flex: 1 }}>確定</Button>
                         </div>
                     </div>
                 </div>
@@ -547,8 +507,8 @@ export function BoatManagement({ user }: BoatManagementProps) {
                             />
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
-                            <button onClick={() => setUnavailableDialogOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #ddd', background: 'white' }}>取消</button>
-                            <button onClick={handleAddUnavailable} disabled={unavailableLoading} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', background: '#e65100', color: 'white' }}>確定</button>
+                            <Button variant="outline" onClick={() => setUnavailableDialogOpen(false)} style={{ flex: 1 }}>取消</Button>
+                            <Button variant="warning" onClick={handleAddUnavailable} disabled={unavailableLoading} style={{ flex: 1, background: '#e65100' }}>確定</Button>
                         </div>
                     </div>
                 </div>

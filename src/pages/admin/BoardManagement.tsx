@@ -5,16 +5,18 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString } from '../../utils/date'
+import type { MemberBasic, ImportRecord, BoardExportData } from '../../types/common'
+import { Button } from '../../components/ui'
 
 interface BoardSlot {
   id?: number
   slot_number: number
   member_id?: string
   member_name?: string
-  member_nickname?: string
+  member_nickname?: string | null
   expires_at?: string | null
   notes?: string | null
-  status?: string
+  status?: string | null
 }
 
 interface BoardManagementProps {
@@ -44,8 +46,8 @@ export function BoardManagement({ user }: BoardManagementProps) {
   // 新增置板相關狀態
   const [isAddingBoard, setIsAddingBoard] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
-  const [searchResults, setSearchResults] = useState<any[]>([])
-  const [selectedMember, setSelectedMember] = useState<any>(null)
+  const [searchResults, setSearchResults] = useState<MemberBasic[]>([])
+  const [selectedMember, setSelectedMember] = useState<MemberBasic | null>(null)
   const [newBoardForm, setNewBoardForm] = useState({
     expires_at: '',
     notes: ''
@@ -81,7 +83,7 @@ export function BoardManagement({ user }: BoardManagementProps) {
       }
 
       const headers = ['姓名', '暱稱', '格位號碼', '到期日', '備註']
-      const rows = allBoards.map((board: any) => [
+      const rows = (allBoards as BoardExportData[]).map((board) => [
         board.members?.name || '',
         board.members?.nickname || '',
         board.slot_number,
@@ -138,8 +140,8 @@ export function BoardManagement({ user }: BoardManagementProps) {
           return headerMap[header] || header
         },
         complete: async (results) => {
-          const records = (results.data as any[])
-            .filter((row: any) => row.name && row.name.trim() && row.slot_number)
+          const records = (results.data as ImportRecord[])
+            .filter((row) => row.name && row.name.trim() && row.slot_number)
 
           if (records.length === 0) {
             setImportError('未找到有效的置板資料')
@@ -166,7 +168,9 @@ export function BoardManagement({ user }: BoardManagementProps) {
                 continue
               }
 
-              const slotNumber = parseInt(record.slot_number)
+              const slotNumber = typeof record.slot_number === 'string' 
+                ? parseInt(record.slot_number) 
+                : record.slot_number
               if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 145) {
                 errors.push(`格位號碼「${record.slot_number}」無效（需為 1-145）`)
                 errorCount++
@@ -214,7 +218,7 @@ export function BoardManagement({ user }: BoardManagementProps) {
               }
 
               successCount++
-            } catch (err: any) {
+            } catch (err) {
               errors.push(`處理失敗：${record.name} - 格位 ${record.slot_number}`)
               errorCount++
             }
@@ -234,13 +238,13 @@ export function BoardManagement({ user }: BoardManagementProps) {
 
           setImporting(false)
         },
-        error: (error: any) => {
+        error: (error: Error) => {
           setImportError('CSV 解析失敗：' + error.message)
           setImporting(false)
         }
       })
-    } catch (error: any) {
-      setImportError('導入失敗：' + error.message)
+    } catch (error) {
+      setImportError('導入失敗：' + (error as Error).message)
       setImporting(false)
     }
   }
@@ -268,7 +272,7 @@ export function BoardManagement({ user }: BoardManagementProps) {
 
       if (error) throw error
 
-      const slots: BoardSlot[] = (data || []).map((item: any) => ({
+      const slots: BoardSlot[] = (data || []).map((item) => ({
         id: item.id,
         slot_number: item.slot_number,
         member_id: item.member_id,
@@ -597,51 +601,25 @@ export function BoardManagement({ user }: BoardManagementProps) {
         marginBottom: isMobile ? '16px' : '20px',
         flexWrap: 'wrap',
       }}>
-        <button
+        <Button
+          variant="outline"
+          size="medium"
           onClick={() => setShowImportDialog(true)}
-          style={{
-            flex: isMobile ? '1 1 100%' : '0 0 auto',
-            padding: isMobile ? '12px 16px' : '10px 20px',
-            background: 'white',
-            color: '#666',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '15px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
+          icon={<span>📥</span>}
+          style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
         >
-          <span>📥</span>
-          <span>匯入</span>
-        </button>
+          匯入
+        </Button>
 
-        <button
+        <Button
+          variant="outline"
+          size="medium"
           onClick={handleExportBoards}
-          style={{
-            flex: isMobile ? '1 1 100%' : '0 0 auto',
-            padding: isMobile ? '12px 16px' : '10px 20px',
-            background: 'white',
-            color: '#666',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '15px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
+          icon={<span>📤</span>}
+          style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
         >
-          <span>📤</span>
-          <span>匯出</span>
-        </button>
+          匯出
+        </Button>
       </div>
 
       {/* 統計資訊 */}

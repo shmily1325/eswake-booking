@@ -5,6 +5,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { extractDate, extractTime } from '../../utils/formatters'
 import { getLocalDateString } from '../../utils/date'
+import { Button, Card } from '../../components/ui'
 
 interface BackupPageProps {
   user: User
@@ -48,7 +49,7 @@ export function BackupPage({ user }: BackupPageProps) {
       const bookingIds = bookings.map(b => b.id)
       
       // 並行查詢教練和參與者資料
-      const [coachesResult, participantsResult, driversResult] = await Promise.all([
+      const [coachesResult, participantsResult] = await Promise.all([
         supabase
         .from('booking_coaches')
           .select('booking_id, coaches:coach_id(name)')
@@ -56,12 +57,7 @@ export function BackupPage({ user }: BackupPageProps) {
       supabase
         .from('booking_participants')
         .select('booking_id, participant_name, duration_min, lesson_type')
-        .in('booking_id', bookingIds),
-        supabase
-          .from('bookings')
-          .select('id, driver_coach_id')
-          .in('id', bookingIds)
-          .not('driver_coach_id', 'is', null)
+        .in('booking_id', bookingIds)
       ])
 
       const coachesByBooking: { [key: number]: string[] } = {}
@@ -90,23 +86,20 @@ export function BackupPage({ user }: BackupPageProps) {
         })
       }
       
-      // 查詢駕駛名稱
-      const driverIds = driversResult.data?.filter(b => b.driver_coach_id).map(b => b.driver_coach_id) || []
-      const driversById: { [key: string]: string } = {}
-      if (driverIds.length > 0) {
-        const { data: driversData } = await supabase
-          .from('coaches')
-          .select('id, name')
-          .in('id', driverIds)
-        driversData?.forEach(d => {
-          driversById[d.id] = d.name
-        })
-      }
+      // 查詢駕駛資訊（從 booking_drivers 表）
+      const { data: bookingDrivers } = await supabase
+        .from('booking_drivers')
+        .select(`
+          booking_id,
+          driver_id,
+          coaches:driver_id (id, name)
+        `)
       
       const driverByBooking: { [key: number]: string } = {}
-      driversResult.data?.forEach(b => {
-        if (b.driver_coach_id) {
-          driverByBooking[b.id] = driversById[b.driver_coach_id] || ''
+      bookingDrivers?.forEach(bd => {
+        if (bd.coaches) {
+          const coach = bd.coaches as unknown as { id: string; name: string }
+          driverByBooking[bd.booking_id] = coach.name
         }
       })
 
@@ -147,7 +140,7 @@ export function BackupPage({ user }: BackupPageProps) {
           'Confirmed': '已確認',
           'Cancelled': '已取消'
         }
-        const status = statusMap[booking.status] || booking.status
+        const status = statusMap[booking.status || ''] || booking.status || ''
 
         if (participants.length > 0) {
           // 每個參與者一行
@@ -229,7 +222,7 @@ export function BackupPage({ user }: BackupPageProps) {
         }
       } = {}
 
-      participants.forEach((p: any) => {
+      participants.forEach((p) => {
         const memberName = p.participant_name
         const booking = p.bookings
         const bookingDate = extractDate(booking.start_at).replace(/-/g, '/')
@@ -374,7 +367,7 @@ export function BackupPage({ user }: BackupPageProps) {
         }
       } = {}
 
-      coachesResult.data?.forEach((item: any) => {
+      coachesResult.data?.forEach((item) => {
         const coachName = item.coaches?.name
         if (!coachName) return
 
@@ -494,9 +487,9 @@ export function BackupPage({ user }: BackupPageProps) {
       URL.revokeObjectURL(url)
 
       alert('✅ 完整數據庫備份成功！\n\n文件已下載，請保存到 WD MY BOOK 硬盤。')
-    } catch (error: any) {
+    } catch (error) {
       console.error('Full backup error:', error)
-      alert(`❌ 備份失敗：${error.message}`)
+      alert(`❌ 備份失敗：${(error as Error).message}`)
     } finally {
       setFullBackupLoading(false)
     }
@@ -529,9 +522,9 @@ export function BackupPage({ user }: BackupPageProps) {
       URL.revokeObjectURL(url)
 
       alert('✅ 可查詢備份成功！\n\n文件已下載，可用查詢工具打開。\n\n查詢工具：/backup-query-tool.html')
-    } catch (error: any) {
+    } catch (error) {
       console.error('Queryable backup error:', error)
-      alert(`❌ 備份失敗：${error.message}`)
+      alert(`❌ 備份失敗：${(error as Error).message}`)
     } finally {
       setQueryableBackupLoading(false)
     }
@@ -589,16 +582,18 @@ export function BackupPage({ user }: BackupPageProps) {
       } else {
         alert(`✅ ${result.message}${execTime}`)
       }
-    } catch (error: any) {
+    } catch (error) {
       const elapsed = Date.now() - startTime
       console.error('Backup error:', error, { elapsed: `${elapsed}ms` })
       
       let errorMessage = '備份失敗'
       
-      if (error.name === 'AbortError') {
-        errorMessage = '❌ 備份超時（超過60秒）\n\n可能原因：\n1. 數據量太大\n2. Google Sheets API 響應慢\n3. 網絡連接問題\n\n請檢查 Vercel 函數日誌以獲取詳細信息'
-      } else if (error.message) {
-        errorMessage = `❌ ${error.message}`
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = '❌ 備份超時（超過60秒）\n\n可能原因：\n1. 數據量太大\n2. Google Sheets API 響應慢\n3. 網絡連接問題\n\n請檢查 Vercel 函數日誌以獲取詳細信息'
+        } else if (error.message) {
+          errorMessage = `❌ ${error.message}`
+        }
       } else {
         errorMessage = '❌ 備份失敗，請檢查環境變數設定'
       }

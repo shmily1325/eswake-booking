@@ -5,6 +5,8 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
+import { handleError } from '../../utils/errorHandler'
+import { Button, Badge } from '../../components/ui'
 
 interface StaffManagementProps {
   user: User
@@ -13,9 +15,9 @@ interface StaffManagementProps {
 interface Coach {
   id: string
   name: string
-  status: string
+  status: string | null
   notes: string | null
-  created_at: string
+  created_at: string | null
 }
 
 interface TimeOff {
@@ -99,9 +101,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
       setNewCoachName('')
       setAddDialogOpen(false)
       loadData()
-    } catch (error: any) {
-      console.error('新增失敗:', error)
-      alert('新增失敗: ' + error.message)
+    } catch (error) {
+      handleError(error, '新增教練')
     } finally {
       setAddLoading(false)
     }
@@ -119,9 +120,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
       if (error) throw error
 
       loadData()
-    } catch (error: any) {
-      console.error('更新失敗:', error)
-      alert('更新失敗: ' + error.message)
+    } catch (error) {
+      handleError(error, '更新狀態')
     }
   }
 
@@ -135,9 +135,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
       if (error) throw error
 
       loadData()
-    } catch (error: any) {
-      console.error('隱藏失敗:', error)
-      alert('隱藏失敗: ' + error.message)
+    } catch (error) {
+      handleError(error, '隱藏教練')
     }
   }
 
@@ -151,9 +150,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
       if (error) throw error
 
       loadData()
-    } catch (error: any) {
-      console.error('恢復失敗:', error)
-      alert('恢復失敗: ' + error.message)
+    } catch (error) {
+      handleError(error, '恢復教練')
     }
   }
 
@@ -189,9 +187,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
       setTimeOffEndDate('')
       setTimeOffReason('')
       loadData()
-    } catch (error: any) {
-      console.error('設定失敗:', error)
-      alert('設定失敗: ' + error.message)
+    } catch (error) {
+      handleError(error, '設定休假')
     } finally {
       setTimeOffLoading(false)
     }
@@ -209,9 +206,8 @@ export function StaffManagement({ user }: StaffManagementProps) {
       if (error) throw error
 
       loadData()
-    } catch (error: any) {
-      console.error('刪除失敗:', error)
-      alert('刪除失敗: ' + error.message)
+    } catch (error) {
+      handleError(error, '刪除休假記錄')
     }
   }
 
@@ -259,35 +255,14 @@ export function StaffManagement({ user }: StaffManagementProps) {
             🎓 人員管理
           </h1>
           
-          <button
+          <Button
+            variant="outline"
+            size="medium"
             onClick={() => setAddDialogOpen(true)}
-            style={{
-              padding: isMobile ? '12px 20px' : '12px 24px',
-              background: 'white',
-              color: '#666',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: isMobile ? '14px' : '15px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f5f5f5'
-              e.currentTarget.style.borderColor = '#ccc'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white'
-              e.currentTarget.style.borderColor = '#e0e0e0'
-            }}
+            icon={<span>➕</span>}
           >
-            <span>➕</span>
-            <span>新增教練</span>
-          </button>
+            新增教練
+          </Button>
         </div>
 
         {/* 說明提示 */}
@@ -496,16 +471,13 @@ export function StaffManagement({ user }: StaffManagementProps) {
                       gap: '10px'
                     }}>
                       {coach.name}
-                      <span style={{
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        background: statusBg,
-                        color: statusColor
-                      }}>
+                      <Badge
+                        variant={isArchived ? 'default' : (isActive ? 'success' : 'warning')}
+                        size="small"
+                        style={{ background: statusBg, color: statusColor }}
+                      >
                         {statusText}
-                      </span>
+                      </Badge>
                     </h3>
                   </div>
                   
@@ -761,41 +733,25 @@ export function StaffManagement({ user }: StaffManagementProps) {
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button
+              <Button
+                variant="outline"
                 onClick={() => {
                   setAddDialogOpen(false)
                   setNewCoachName('')
                 }}
                 disabled={addLoading}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  background: 'white',
-                  cursor: addLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '15px'
-                }}
+                style={{ flex: 1 }}
               >
                 取消
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 onClick={handleAddCoach}
                 disabled={addLoading}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: addLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  cursor: addLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '15px',
-                  fontWeight: 'bold'
-                }}
+                style={{ flex: 1, background: addLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
               >
                 {addLoading ? '新增中...' : '確定'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -893,41 +849,25 @@ export function StaffManagement({ user }: StaffManagementProps) {
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button
+              <Button
+                variant="outline"
                 onClick={() => {
                   setTimeOffDialogOpen(false)
                   setSelectedCoach(null)
                 }}
                 disabled={timeOffLoading}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  background: 'white',
-                  cursor: timeOffLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '15px'
-                }}
+                style={{ flex: 1 }}
               >
                 取消
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 onClick={handleAddTimeOff}
                 disabled={timeOffLoading}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: timeOffLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  cursor: timeOffLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '15px',
-                  fontWeight: 'bold'
-                }}
+                style={{ flex: 1, background: timeOffLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
               >
                 {timeOffLoading ? '設定中...' : '確定'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

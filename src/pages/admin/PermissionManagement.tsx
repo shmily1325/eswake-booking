@@ -4,8 +4,9 @@ import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { designSystem, getButtonStyle, getCardStyle, getTextStyle } from '../../styles/designSystem'
+import { designSystem, getInputStyle, getTextStyle } from '../../styles/designSystem'
 import { useRequireAdmin, clearPermissionCache, SUPER_ADMINS } from '../../utils/auth'
+import { Button, Card, Badge } from '../../components/ui'
 
 interface PermissionManagementProps {
   user: User
@@ -14,7 +15,7 @@ interface PermissionManagementProps {
 interface AllowedUser {
   id: string
   email: string
-  created_at: string
+  created_at: string | null
   created_by: string | null
   notes: string | null
 }
@@ -22,7 +23,7 @@ interface AllowedUser {
 interface AdminUser {
   id: string
   email: string
-  created_at: string
+  created_at: string | null
   created_by: string | null
   notes: string | null
 }
@@ -75,8 +76,8 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
       
       // 清除權限緩存，強制重新載入
       clearPermissionCache()
-    } catch (err: any) {
-      setError('載入失敗: ' + err.message)
+    } catch (err) {
+      setError('載入失敗: ' + (err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -116,8 +117,8 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
       setSuccess(`✅ 已將 ${newEmail} 加入白名單`)
       setNewEmail('')
       loadData()
-    } catch (err: any) {
-      setError('新增失敗: ' + err.message)
+    } catch (err) {
+      setError('新增失敗: ' + (err as Error).message)
     } finally {
       setAddingUser(false)
     }
@@ -143,8 +144,8 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
 
       setSuccess(`✅ 已將 ${email} 從白名單移除`)
       loadData()
-    } catch (err: any) {
-      setError('刪除失敗: ' + err.message)
+    } catch (err) {
+      setError('刪除失敗: ' + (err as Error).message)
     }
   }
 
@@ -195,8 +196,8 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
       setSuccess(`✅ 已將 ${newAdminEmail} 加入管理員`)
       setNewAdminEmail('')
       loadData()
-    } catch (err: any) {
-      setError('新增失敗: ' + err.message)
+    } catch (err) {
+      setError('新增失敗: ' + (err as Error).message)
     } finally {
       setAddingAdmin(false)
     }
@@ -222,8 +223,8 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
 
       setSuccess(`✅ 已將 ${email} 從管理員移除`)
       loadData()
-    } catch (err: any) {
-      setError('刪除失敗: ' + err.message)
+    } catch (err) {
+      setError('刪除失敗: ' + (err as Error).message)
     }
   }
 
@@ -252,32 +253,34 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
 
         {/* 錯誤訊息 */}
         {error && (
-          <div style={{
-            ...getCardStyle(isMobile),
-            background: '#ffebee',
-            color: designSystem.colors.danger,
-            borderLeft: `4px solid ${designSystem.colors.danger}`,
-            marginBottom: designSystem.spacing.lg
-          }}>
+          <Card
+            variant="default"
+            style={{
+              background: '#ffebee',
+              color: designSystem.colors.danger,
+              borderLeft: `4px solid ${designSystem.colors.danger}`,
+            }}
+          >
             ❌ {error}
-          </div>
+          </Card>
         )}
 
         {/* 成功訊息 */}
         {success && (
-          <div style={{
-            ...getCardStyle(isMobile),
-            background: '#e8f5e9',
-            color: designSystem.colors.success,
-            borderLeft: `4px solid ${designSystem.colors.success}`,
-            marginBottom: designSystem.spacing.lg
-          }}>
+          <Card
+            variant="default"
+            style={{
+              background: '#e8f5e9',
+              color: designSystem.colors.success,
+              borderLeft: `4px solid ${designSystem.colors.success}`,
+            }}
+          >
             {success}
-          </div>
+          </Card>
         )}
 
         {/* 管理員列表 */}
-        <div style={{ ...getCardStyle(isMobile), marginBottom: designSystem.spacing.xl }}>
+        <Card style={{ marginBottom: designSystem.spacing.xl }}>
           <h2 style={{ ...getTextStyle('h2', isMobile), marginBottom: designSystem.spacing.md }}>
             👑 管理員列表
           </h2>
@@ -298,11 +301,8 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
               onChange={(e) => setNewAdminEmail(e.target.value)}
               placeholder="輸入 Email 新增管理員"
               style={{
+                ...getInputStyle(isMobile),
                 flex: 1,
-                padding: designSystem.spacing.md,
-                border: `2px solid ${designSystem.colors.border}`,
-                borderRadius: designSystem.borderRadius.md,
-                fontSize: getTextStyle('body', isMobile).fontSize
               }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
@@ -310,16 +310,14 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
                 }
               }}
             />
-            <button
+            <Button
+              variant="primary"
+              size="medium"
               onClick={handleAddAdmin}
               disabled={addingAdmin}
-              style={{
-                ...getButtonStyle('primary', 'medium', isMobile),
-                opacity: addingAdmin ? 0.5 : 1
-              }}
             >
               {addingAdmin ? '新增中...' : '➕ 新增'}
-            </button>
+            </Button>
           </div>
 
           {/* 管理員列表 */}
@@ -345,41 +343,40 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
                     <div style={{ ...getTextStyle('body', isMobile), fontWeight: '600' }}>
                       {admin.email}
                       {isSuperAdmin && (
-                        <span style={{
-                          marginLeft: designSystem.spacing.sm,
-                          padding: '2px 8px',
-                          background: '#ffd700',
-                          color: '#000',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
+                        <Badge
+                          variant="warning"
+                          size="small"
+                          style={{
+                            marginLeft: designSystem.spacing.sm,
+                            background: '#ffd700',
+                            color: '#000',
+                          }}
+                        >
                           超級管理員
-                        </span>
+                        </Badge>
                       )}
                     </div>
                     <div style={{ ...getTextStyle('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
-                      加入時間：{new Date(admin.created_at).toLocaleDateString('zh-TW')}
+                      加入時間：{admin.created_at ? new Date(admin.created_at).toLocaleDateString('zh-TW') : '-'}
                     </div>
                   </div>
                   {!isSuperAdmin && (
-                    <button
+                    <Button
+                      variant="danger"
+                      size="small"
                       onClick={() => handleRemoveAdmin(admin.id, admin.email)}
-                      style={{
-                        ...getButtonStyle('danger', 'small', isMobile)
-                      }}
                     >
                       移除
-                    </button>
+                    </Button>
                   )}
                 </div>
               )
             })}
           </div>
-        </div>
+        </Card>
 
         {/* 白名單列表 */}
-        <div style={{ ...getCardStyle(isMobile) }}>
+        <Card>
           <h2 style={{ ...getTextStyle('h2', isMobile), marginBottom: designSystem.spacing.md }}>
             📋 登入白名單
           </h2>
@@ -400,11 +397,8 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="輸入 Email 加入白名單"
               style={{
+                ...getInputStyle(isMobile),
                 flex: 1,
-                padding: designSystem.spacing.md,
-                border: `2px solid ${designSystem.colors.border}`,
-                borderRadius: designSystem.borderRadius.md,
-                fontSize: getTextStyle('body', isMobile).fontSize
               }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
@@ -412,16 +406,14 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
                 }
               }}
             />
-            <button
+            <Button
+              variant="primary"
+              size="medium"
               onClick={handleAddAllowedUser}
               disabled={addingUser}
-              style={{
-                ...getButtonStyle('primary', 'medium', isMobile),
-                opacity: addingUser ? 0.5 : 1
-              }}
             >
               {addingUser ? '新增中...' : '➕ 新增'}
-            </button>
+            </Button>
           </div>
 
           {/* 白名單列表 */}
@@ -449,38 +441,33 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
                     <div style={{ ...getTextStyle('body', isMobile), fontWeight: '600' }}>
                       {allowedUser.email}
                       {isAdmin && (
-                        <span style={{
-                          marginLeft: designSystem.spacing.sm,
-                          padding: '2px 8px',
-                          background: '#e3f2fd',
-                          color: designSystem.colors.info,
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
+                        <Badge
+                          variant="info"
+                          size="small"
+                          style={{ marginLeft: designSystem.spacing.sm }}
+                        >
                           管理員
-                        </span>
+                        </Badge>
                       )}
                     </div>
                     <div style={{ ...getTextStyle('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
-                      加入時間：{new Date(allowedUser.created_at).toLocaleDateString('zh-TW')}
+                      加入時間：{allowedUser.created_at ? new Date(allowedUser.created_at).toLocaleDateString('zh-TW') : '-'}
                     </div>
                   </div>
                   {!isSuperAdmin && (
-                    <button
+                    <Button
+                      variant="danger"
+                      size="small"
                       onClick={() => handleRemoveAllowedUser(allowedUser.id, allowedUser.email)}
-                      style={{
-                        ...getButtonStyle('danger', 'small', isMobile)
-                      }}
                     >
                       移除
-                    </button>
+                    </Button>
                   )}
                 </div>
               )
             })}
           </div>
-        </div>
+        </Card>
       </div>
 
       <Footer />

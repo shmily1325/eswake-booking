@@ -6,6 +6,8 @@ import { Footer } from '../../components/Footer'
 import { TransactionDialog } from '../../components/TransactionDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import type { Member } from '../../types/booking'
+import { handleError } from '../../utils/errorHandler'
+import { Button } from '../../components/ui'
 
 // Member interface removed as it is now imported from types/booking
 
@@ -344,10 +346,8 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
       setShowExportDialog(false)
       setExportStartDate('')
       setExportEndDate('')
-    } catch (error: any) {
-      console.error('匯出失敗:', error)
-      const errorMessage = error?.message || '未知錯誤'
-      alert(`匯出失敗: ${errorMessage}\n\n請檢查瀏覽器控制台 (F12) 查看詳細錯誤訊息`)
+    } catch (error) {
+      handleError(error, '匯出交易記錄')
     } finally {
       setExporting(false)
     }
@@ -368,51 +368,25 @@ export function MemberTransaction({ user }: MemberTransactionProps) {
         marginBottom: isMobile ? '16px' : '20px',
         flexWrap: 'wrap',
       }}>
-        <button
+        <Button
+          variant="outline"
+          size="medium"
           onClick={() => setShowFinanceImport(true)}
-          style={{
-            flex: isMobile ? '1 1 100%' : '0 0 auto',
-            padding: isMobile ? '12px 16px' : '10px 20px',
-            background: 'white',
-            color: '#666',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '15px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
+          icon={<span>📥</span>}
+          style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
         >
-          <span>📥</span>
-          <span>匯入</span>
-        </button>
+          匯入
+        </Button>
 
-        <button
+        <Button
+          variant="outline"
+          size="medium"
           onClick={handleExportFinance}
-          style={{
-            flex: isMobile ? '1 1 100%' : '0 0 auto',
-            padding: isMobile ? '12px 16px' : '10px 20px',
-            background: 'white',
-            color: '#666',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '15px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
+          icon={<span>📤</span>}
+          style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
         >
-          <span>📤</span>
-          <span>匯出</span>
-        </button>
+          匯出
+        </Button>
 
         <button
           onClick={() => setShowExportDialog(true)}

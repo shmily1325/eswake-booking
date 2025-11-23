@@ -3,17 +3,13 @@
 
 interface DesignSystem {
   fontSize: {
-    // 超大標題
     display: { mobile: string; desktop: string }
-    // 標題
     h1: { mobile: string; desktop: string }
     h2: { mobile: string; desktop: string }
     h3: { mobile: string; desktop: string }
-    // 內文
     body: { mobile: string; desktop: string }
     bodyLarge: { mobile: string; desktop: string }
     bodySmall: { mobile: string; desktop: string }
-    // 其他
     caption: { mobile: string; desktop: string }
     button: { mobile: string; desktop: string }
   }
@@ -23,11 +19,14 @@ interface DesignSystem {
     md: string
     lg: string
     xl: string
+    xxl: string
   }
   borderRadius: {
     sm: string
     md: string
     lg: string
+    xl: string
+    full: string
   }
   colors: {
     primary: string
@@ -48,27 +47,37 @@ interface DesignSystem {
     }
     border: string
   }
+  shadows: {
+    none: string
+    sm: string
+    md: string
+    lg: string
+    xl: string
+    hover: string
+  }
+  transitions: {
+    fast: string
+    normal: string
+    slow: string
+  }
+  zIndex: {
+    dropdown: number
+    modal: number
+    tooltip: number
+    notification: number
+  }
 }
 
 export const designSystem: DesignSystem = {
   fontSize: {
-    // 超大標題（首頁專用）
     display: { mobile: '32px', desktop: '42px' },
-    // 頁面主標題
     h1: { mobile: '18px', desktop: '20px' },
-    // 區塊標題
     h2: { mobile: '16px', desktop: '18px' },
-    // 小標題
     h3: { mobile: '14px', desktop: '16px' },
-    // 正常內文
     body: { mobile: '14px', desktop: '15px' },
-    // 大內文（強調）
     bodyLarge: { mobile: '16px', desktop: '18px' },
-    // 小內文
     bodySmall: { mobile: '12px', desktop: '13px' },
-    // 說明文字
     caption: { mobile: '11px', desktop: '12px' },
-    // 按鈕文字
     button: { mobile: '13px', desktop: '14px' },
   },
   spacing: {
@@ -77,11 +86,14 @@ export const designSystem: DesignSystem = {
     md: '12px',
     lg: '16px',
     xl: '20px',
+    xxl: '24px',
   },
   borderRadius: {
     sm: '4px',
     md: '6px',
     lg: '8px',
+    xl: '12px',
+    full: '9999px',
   },
   colors: {
     primary: '#4a90e2',
@@ -102,6 +114,25 @@ export const designSystem: DesignSystem = {
     },
     border: '#e0e0e0',
   },
+  shadows: {
+    none: 'none',
+    sm: '0 1px 2px rgba(0,0,0,0.05)',
+    md: '0 2px 4px rgba(0,0,0,0.08)',
+    lg: '0 2px 8px rgba(0,0,0,0.08)',
+    xl: '0 4px 12px rgba(0,0,0,0.12)',
+    hover: '0 4px 12px rgba(0,0,0,0.15)',
+  },
+  transitions: {
+    fast: '0.1s ease',
+    normal: '0.2s ease',
+    slow: '0.3s ease',
+  },
+  zIndex: {
+    dropdown: 1000,
+    modal: 2000,
+    tooltip: 3000,
+    notification: 4000,
+  },
 }
 
 // 按鈕樣式生成器
@@ -115,7 +146,7 @@ export const getButtonStyle = (
     borderRadius: designSystem.borderRadius.md,
     cursor: 'pointer',
     fontWeight: '500',
-    transition: 'all 0.2s',
+    transition: designSystem.transitions.normal,
     whiteSpace: 'nowrap',
     display: 'inline-flex',
     alignItems: 'center',
@@ -123,7 +154,6 @@ export const getButtonStyle = (
     gap: designSystem.spacing.sm,
   }
 
-  // 尺寸
   const sizeStyles = {
     small: {
       padding: isMobile ? '6px 10px' : '6px 12px',
@@ -139,14 +169,13 @@ export const getButtonStyle = (
     },
   }
 
-  // 顏色變體
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: {
-      background: designSystem.colors.secondary, // 使用深灰色统一风格
+      background: designSystem.colors.secondary,
       color: 'white',
     },
     secondary: {
-      background: '#f5f5f5', // 浅灰色背景，明显区分未选中状态
+      background: '#f5f5f5',
       color: designSystem.colors.text.secondary,
       border: '1px solid #e0e0e0',
     },
@@ -190,9 +219,35 @@ export const getCardStyle = (isMobile: boolean = false): React.CSSProperties => 
   background: designSystem.colors.background.card,
   borderRadius: designSystem.borderRadius.lg,
   padding: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+  boxShadow: designSystem.shadows.lg,
   marginBottom: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
 })
+
+// 卡片變體
+export const getCardVariant = (
+  variant: 'default' | 'highlighted' | 'warning' | 'success',
+  isMobile: boolean = false
+): React.CSSProperties => {
+  const base = getCardStyle(isMobile)
+  
+  const variants = {
+    default: {},
+    highlighted: {
+      border: `2px solid ${designSystem.colors.primary}`,
+      boxShadow: '0 4px 12px rgba(74, 144, 226, 0.15)',
+    },
+    warning: {
+      border: `2px solid ${designSystem.colors.warning}`,
+      background: '#fff3e0',
+    },
+    success: {
+      border: `2px solid ${designSystem.colors.success}`,
+      background: '#e8f5e9',
+    },
+  }
+  
+  return { ...base, ...variants[variant] }
+}
 
 // 輸入框樣式
 export const getInputStyle = (isMobile: boolean = false): React.CSSProperties => ({
@@ -202,7 +257,7 @@ export const getInputStyle = (isMobile: boolean = false): React.CSSProperties =>
   border: `1px solid ${designSystem.colors.border}`,
   borderRadius: designSystem.borderRadius.md,
   outline: 'none',
-  transition: 'border-color 0.2s',
+  transition: designSystem.transitions.normal,
 })
 
 // 標籤樣式
@@ -224,6 +279,47 @@ export const getTextStyle = (
   margin: 0,
 })
 
+// 表單組樣式
+export const getFormGroupStyle = (isMobile: boolean = false): React.CSSProperties => ({
+  marginBottom: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+})
+
+// 空狀態樣式
+export const getEmptyStateStyle = (isMobile: boolean = false): React.CSSProperties => ({
+  textAlign: 'center',
+  padding: isMobile ? '40px 20px' : '60px 40px',
+  color: designSystem.colors.text.secondary,
+  fontSize: designSystem.fontSize.body[isMobile ? 'mobile' : 'desktop'],
+})
+
+// Badge 樣式
+export const getBadgeStyle = (
+  variant: 'success' | 'warning' | 'danger' | 'info' | 'default',
+  size: 'small' | 'medium' = 'medium'
+): React.CSSProperties => {
+  const colors = {
+    success: { bg: '#e8f5e9', color: '#2e7d32' },
+    warning: { bg: '#fff3e0', color: '#e65100' },
+    danger: { bg: '#ffebee', color: '#c62828' },
+    info: { bg: '#e3f2fd', color: '#1565c0' },
+    default: { bg: '#f5f5f5', color: '#666' },
+  }
+  
+  const sizes = {
+    small: { padding: '2px 8px', fontSize: '11px' },
+    medium: { padding: '4px 12px', fontSize: '12px' },
+  }
+  
+  return {
+    display: 'inline-block',
+    borderRadius: designSystem.borderRadius.full,
+    fontWeight: '600',
+    background: colors[variant].bg,
+    color: colors[variant].color,
+    ...sizes[size],
+  }
+}
+
 // 預約卡片樣式生成器
 export const getBookingCardStyle = (
   boatColor: string,
@@ -236,14 +332,13 @@ export const getBookingCardStyle = (
   verticalAlign: 'top',
   position: 'relative',
   borderRadius: isMobile ? '8px' : '10px',
-  boxShadow: '0 3px 10px rgba(0,0,0,0.1)',
+  boxShadow: designSystem.shadows.lg,
   cursor: isClickable ? 'pointer' : 'default',
-  transition: isClickable ? 'all 0.2s' : 'none',
+  transition: isClickable ? designSystem.transitions.normal : 'none',
 })
 
 // 預約卡片內容樣式
 export const bookingCardContentStyles = {
-  // 時間範圍
   timeRange: (isMobile: boolean): React.CSSProperties => ({
     fontSize: isMobile ? '12px' : '14px',
     fontWeight: '600',
@@ -253,7 +348,6 @@ export const bookingCardContentStyles = {
     lineHeight: '1.3',
   }),
   
-  // 時長說明
   duration: (isMobile: boolean): React.CSSProperties => ({
     fontSize: isMobile ? '11px' : '12px',
     color: '#666',
@@ -261,7 +355,6 @@ export const bookingCardContentStyles = {
     textAlign: 'center',
   }),
   
-  // 聯絡人姓名
   contactName: (isMobile: boolean): React.CSSProperties => ({
     fontSize: isMobile ? '14px' : '16px',
     fontWeight: '700',
@@ -270,7 +363,6 @@ export const bookingCardContentStyles = {
     color: '#1a1a1a',
   }),
   
-  // 註解
   notes: (isMobile: boolean): React.CSSProperties => ({
     fontSize: isMobile ? '11px' : '12px',
     color: '#666',
@@ -279,7 +371,6 @@ export const bookingCardContentStyles = {
     fontStyle: 'italic',
   }),
   
-  // 排班註解
   scheduleNotes: (isMobile: boolean): React.CSSProperties => ({
     fontSize: isMobile ? '11px' : '12px',
     color: '#e65100',
@@ -288,7 +379,6 @@ export const bookingCardContentStyles = {
     fontWeight: '500',
   }),
   
-  // 教練姓名
   coachName: (boatColor: string, isMobile: boolean): React.CSSProperties => ({
     fontSize: isMobile ? '11px' : '12px',
     color: boatColor,
@@ -296,4 +386,3 @@ export const bookingCardContentStyles = {
     textAlign: 'center',
   }),
 }
-

@@ -5,12 +5,14 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString } from '../../utils/date'
+import { useAsyncOperation } from '../../hooks/useAsyncOperation'
+import { validateRequired } from '../../utils/errorHandler'
 
 interface Announcement {
-  id: string
+  id: number
   content: string
   display_date: string
-  created_at: string
+  created_at: string | null
 }
 
 interface AnnouncementManagementProps {
@@ -21,11 +23,13 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
   const { isMobile } = useResponsive()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [newContent, setNewContent] = useState('')
   const [newDisplayDate, setNewDisplayDate] = useState(getLocalDateString())
   const [editContent, setEditContent] = useState('')
   const [editDisplayDate, setEditDisplayDate] = useState('')
+  
+  const { execute: executeAsync } = useAsyncOperation()
   
   // 月份篩選（格式：YYYY-MM）
   const today = new Date()
@@ -62,71 +66,80 @@ export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
   }
 
   const handleAdd = async () => {
-    if (!newContent.trim()) {
-      alert('請輸入交辦事項內容')
+    const validation = validateRequired(newContent, '交辦事項內容')
+    if (!validation.valid) {
+      alert(validation.error)
       return
     }
 
-    try {
-      const { error } = await supabase
-        .from('daily_announcements')
-        .insert({
-          content: newContent.trim(),
-          display_date: newDisplayDate,
-          created_by: user.id
-        })
+    await executeAsync(
+      async () => {
+        const { error } = await supabase
+          .from('daily_announcements')
+          .insert({
+            content: newContent.trim(),
+            display_date: newDisplayDate,
+            created_by: user.id
+          })
 
-      if (error) {
-        console.error('新增失敗:', error)
-        alert(`❌ 新增失敗：${error.message}`)
-        return
+        if (error) throw error
+      },
+      {
+        successMessage: '新增成功',
+        errorContext: '新增交辦事項',
+        onComplete: () => {
+          setNewContent('')
+          setNewDisplayDate(getLocalDateString())
+          loadAnnouncements()
+        }
       }
-
-      setNewContent('')
-      setNewDisplayDate(getLocalDateString())
-      loadAnnouncements()
-    } catch (error: any) {
-      console.error('新增失敗:', error)
-      alert(`❌ 新增失敗：${error.message || '請重試'}`)
-    }
+    )
   }
 
-  const handleEdit = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('daily_announcements')
-        .update({
-          content: editContent.trim(),
-          display_date: editDisplayDate
-        })
-        .eq('id', id)
+  const handleEdit = async (id: number) => {
+    await executeAsync(
+      async () => {
+        const { error } = await supabase
+          .from('daily_announcements')
+          .update({
+            content: editContent.trim(),
+            display_date: editDisplayDate
+          })
+          .eq('id', id)
 
-      if (error) throw error
-
-      setEditingId(null)
-      loadAnnouncements()
-    } catch (error) {
-      console.error('更新失敗:', error)
-      alert('❌ 更新失敗，請重試')
-    }
+        if (error) throw error
+      },
+      {
+        successMessage: '更新成功',
+        errorContext: '更新交辦事項',
+        onComplete: () => {
+          setEditingId(null)
+          loadAnnouncements()
+        }
+      }
+    )
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (!confirm('確定要刪除這個交辦事項嗎？')) return
 
-    try {
-      const { error } = await supabase
-        .from('daily_announcements')
-        .delete()
-        .eq('id', id)
+    await executeAsync(
+      async () => {
+        const { error } = await supabase
+          .from('daily_announcements')
+          .delete()
+          .eq('id', id)
 
-      if (error) throw error
-
-      loadAnnouncements()
-    } catch (error) {
-      console.error('刪除失敗:', error)
-      alert('❌ 刪除失敗，請重試')
-    }
+        if (error) throw error
+      },
+      {
+        successMessage: '刪除成功',
+        errorContext: '刪除交辦事項',
+        onComplete: () => {
+          loadAnnouncements()
+        }
+      }
+    )
   }
 
   const startEdit = (announcement: Announcement) => {

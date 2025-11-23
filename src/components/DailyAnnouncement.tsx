@@ -4,7 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
 
 interface Announcement {
-  id: string
+  id: number
   content: string
 }
 

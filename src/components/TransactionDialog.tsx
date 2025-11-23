@@ -183,27 +183,27 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       // 根據舊的category還原
       switch (editingTransaction.category) {
         case 'balance':
-          updates.balance = member.balance - oldDelta + delta
+          updates.balance = (member.balance ?? 0) - oldDelta + delta
           afterValues.balance_after = updates.balance
           break
         case 'vip_voucher':
-          updates.vip_voucher_amount = member.vip_voucher_amount - oldDelta + delta
+          updates.vip_voucher_amount = (member.vip_voucher_amount ?? 0) - oldDelta + delta
           afterValues.vip_voucher_amount_after = updates.vip_voucher_amount
           break
         case 'designated_lesson':
-          updates.designated_lesson_minutes = member.designated_lesson_minutes - oldDelta + delta
+          updates.designated_lesson_minutes = (member.designated_lesson_minutes ?? 0) - oldDelta + delta
           afterValues.designated_lesson_minutes_after = updates.designated_lesson_minutes
           break
         case 'boat_voucher_g23':
-          updates.boat_voucher_g23_minutes = member.boat_voucher_g23_minutes - oldDelta + delta
+          updates.boat_voucher_g23_minutes = (member.boat_voucher_g23_minutes ?? 0) - oldDelta + delta
           afterValues.boat_voucher_g23_minutes_after = updates.boat_voucher_g23_minutes
           break
         case 'boat_voucher_g21_panther':
-          updates.boat_voucher_g21_panther_minutes = member.boat_voucher_g21_panther_minutes - oldDelta + delta
+          updates.boat_voucher_g21_panther_minutes = (member.boat_voucher_g21_panther_minutes ?? 0) - oldDelta + delta
           afterValues.boat_voucher_g21_panther_minutes_after = updates.boat_voucher_g21_panther_minutes
           break
         case 'gift_boat_hours':
-          updates.gift_boat_hours = member.gift_boat_hours - oldDelta + delta
+          updates.gift_boat_hours = (member.gift_boat_hours ?? 0) - oldDelta + delta
           afterValues.gift_boat_hours_after = updates.gift_boat_hours
           break
       }
@@ -212,32 +212,32 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       if (editCategory !== editingTransaction.category) {
         switch (editCategory) {
           case 'balance':
-            updates.balance = member.balance - oldDelta
+            updates.balance = (member.balance ?? 0) - oldDelta
             afterValues.balance_after = updates.balance + delta
             updates.balance = afterValues.balance_after
             break
           case 'vip_voucher':
-            updates.vip_voucher_amount = member.vip_voucher_amount - oldDelta
+            updates.vip_voucher_amount = (member.vip_voucher_amount ?? 0) - oldDelta
             afterValues.vip_voucher_amount_after = updates.vip_voucher_amount + delta
             updates.vip_voucher_amount = afterValues.vip_voucher_amount_after
             break
           case 'designated_lesson':
-            updates.designated_lesson_minutes = member.designated_lesson_minutes - oldDelta
+            updates.designated_lesson_minutes = (member.designated_lesson_minutes ?? 0) - oldDelta
             afterValues.designated_lesson_minutes_after = updates.designated_lesson_minutes + delta
             updates.designated_lesson_minutes = afterValues.designated_lesson_minutes_after
             break
           case 'boat_voucher_g23':
-            updates.boat_voucher_g23_minutes = member.boat_voucher_g23_minutes - oldDelta
+            updates.boat_voucher_g23_minutes = (member.boat_voucher_g23_minutes ?? 0) - oldDelta
             afterValues.boat_voucher_g23_minutes_after = updates.boat_voucher_g23_minutes + delta
             updates.boat_voucher_g23_minutes = afterValues.boat_voucher_g23_minutes_after
             break
           case 'boat_voucher_g21_panther':
-            updates.boat_voucher_g21_panther_minutes = member.boat_voucher_g21_panther_minutes - oldDelta
+            updates.boat_voucher_g21_panther_minutes = (member.boat_voucher_g21_panther_minutes ?? 0) - oldDelta
             afterValues.boat_voucher_g21_panther_minutes_after = updates.boat_voucher_g21_panther_minutes + delta
             updates.boat_voucher_g21_panther_minutes = afterValues.boat_voucher_g21_panther_minutes_after
             break
           case 'gift_boat_hours':
-            updates.gift_boat_hours = member.gift_boat_hours - oldDelta
+            updates.gift_boat_hours = (member.gift_boat_hours ?? 0) - oldDelta
             afterValues.gift_boat_hours_after = updates.gift_boat_hours + delta
             updates.gift_boat_hours = afterValues.gift_boat_hours_after
             break
@@ -299,22 +299,22 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       
       switch (tx.category) {
         case 'balance':
-          updates.balance = member.balance + delta
+          updates.balance = (member.balance ?? 0) + delta
           break
         case 'vip_voucher':
-          updates.vip_voucher_amount = member.vip_voucher_amount + delta
+          updates.vip_voucher_amount = (member.vip_voucher_amount ?? 0) + delta
           break
         case 'designated_lesson':
-          updates.designated_lesson_minutes = member.designated_lesson_minutes + delta
+          updates.designated_lesson_minutes = (member.designated_lesson_minutes ?? 0) + delta
           break
         case 'boat_voucher_g23':
-          updates.boat_voucher_g23_minutes = member.boat_voucher_g23_minutes + delta
+          updates.boat_voucher_g23_minutes = (member.boat_voucher_g23_minutes ?? 0) + delta
           break
         case 'boat_voucher_g21_panther':
-          updates.boat_voucher_g21_panther_minutes = member.boat_voucher_g21_panther_minutes + delta
+          updates.boat_voucher_g21_panther_minutes = (member.boat_voucher_g21_panther_minutes ?? 0) + delta
           break
         case 'gift_boat_hours':
-          updates.gift_boat_hours = member.gift_boat_hours + delta
+          updates.gift_boat_hours = (member.gift_boat_hours ?? 0) + delta
           break
       }
 
@@ -404,12 +404,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           })
         } else {
           // 沒有交易：期末值=當前會員餘額
-          if (cat.value === 'balance') endValue = member.balance
-          else if (cat.value === 'vip_voucher') endValue = member.vip_voucher_amount
-          else if (cat.value === 'designated_lesson') endValue = member.designated_lesson_minutes
-          else if (cat.value === 'boat_voucher_g23') endValue = member.boat_voucher_g23_minutes
-          else if (cat.value === 'boat_voucher_g21_panther') endValue = member.boat_voucher_g21_panther_minutes
-          else if (cat.value === 'gift_boat_hours') endValue = member.gift_boat_hours
+          if (cat.value === 'balance') endValue = member.balance ?? 0
+          else if (cat.value === 'vip_voucher') endValue = member.vip_voucher_amount ?? 0
+          else if (cat.value === 'designated_lesson') endValue = member.designated_lesson_minutes ?? 0
+          else if (cat.value === 'boat_voucher_g23') endValue = member.boat_voucher_g23_minutes ?? 0
+          else if (cat.value === 'boat_voucher_g21_panther') endValue = member.boat_voucher_g21_panther_minutes ?? 0
+          else if (cat.value === 'gift_boat_hours') endValue = member.gift_boat_hours ?? 0
         }
         
         // 計算期初值
@@ -519,37 +519,37 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       const delta = adjustType === 'increase' ? numValue : -numValue
       let updates: any = {}
       let afterValues: any = {
-        balance_after: member.balance,
-        vip_voucher_amount_after: member.vip_voucher_amount,
-        designated_lesson_minutes_after: member.designated_lesson_minutes,
-        boat_voucher_g23_minutes_after: member.boat_voucher_g23_minutes,
-        boat_voucher_g21_panther_minutes_after: member.boat_voucher_g21_panther_minutes,
-        gift_boat_hours_after: member.gift_boat_hours,
+        balance_after: member.balance ?? 0,
+        vip_voucher_amount_after: member.vip_voucher_amount ?? 0,
+        designated_lesson_minutes_after: member.designated_lesson_minutes ?? 0,
+        boat_voucher_g23_minutes_after: member.boat_voucher_g23_minutes ?? 0,
+        boat_voucher_g21_panther_minutes_after: member.boat_voucher_g21_panther_minutes ?? 0,
+        gift_boat_hours_after: member.gift_boat_hours ?? 0,
       }
 
       switch (category) {
         case 'balance':
-          updates.balance = member.balance + delta
+          updates.balance = (member.balance ?? 0) + delta
           afterValues.balance_after = updates.balance
           break
         case 'vip_voucher':
-          updates.vip_voucher_amount = member.vip_voucher_amount + delta
+          updates.vip_voucher_amount = (member.vip_voucher_amount ?? 0) + delta
           afterValues.vip_voucher_amount_after = updates.vip_voucher_amount
           break
         case 'designated_lesson':
-          updates.designated_lesson_minutes = member.designated_lesson_minutes + delta
+          updates.designated_lesson_minutes = (member.designated_lesson_minutes ?? 0) + delta
           afterValues.designated_lesson_minutes_after = updates.designated_lesson_minutes
           break
         case 'boat_voucher_g23':
-          updates.boat_voucher_g23_minutes = member.boat_voucher_g23_minutes + delta
+          updates.boat_voucher_g23_minutes = (member.boat_voucher_g23_minutes ?? 0) + delta
           afterValues.boat_voucher_g23_minutes_after = updates.boat_voucher_g23_minutes
           break
         case 'boat_voucher_g21_panther':
-          updates.boat_voucher_g21_panther_minutes = member.boat_voucher_g21_panther_minutes + delta
+          updates.boat_voucher_g21_panther_minutes = (member.boat_voucher_g21_panther_minutes ?? 0) + delta
           afterValues.boat_voucher_g21_panther_minutes_after = updates.boat_voucher_g21_panther_minutes
           break
         case 'gift_boat_hours':
-          updates.gift_boat_hours = member.gift_boat_hours + delta
+          updates.gift_boat_hours = (member.gift_boat_hours ?? 0) + delta
           afterValues.gift_boat_hours_after = updates.gift_boat_hours
           break
       }
@@ -719,27 +719,27 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               }}>
                 <div>
                   <div style={{ color: '#999', marginBottom: '4px' }}>💰 儲值</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>${member.balance.toLocaleString()}</div>
+                  <div style={{ fontWeight: 'bold', color: '#333' }}>${(member.balance ?? 0).toLocaleString()}</div>
                 </div>
                 <div>
                   <div style={{ color: '#999', marginBottom: '4px' }}>💎 VIP票券</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>${member.vip_voucher_amount.toLocaleString()}</div>
+                  <div style={{ fontWeight: 'bold', color: '#333' }}>${(member.vip_voucher_amount ?? 0).toLocaleString()}</div>
                 </div>
                 <div>
                   <div style={{ color: '#999', marginBottom: '4px' }}>📚 指定課</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>{member.designated_lesson_minutes.toLocaleString()}分</div>
+                  <div style={{ fontWeight: 'bold', color: '#333' }}>{(member.designated_lesson_minutes ?? 0).toLocaleString()}分</div>
                 </div>
                 <div>
                   <div style={{ color: '#999', marginBottom: '4px' }}>🚤 G23船券</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>{member.boat_voucher_g23_minutes.toLocaleString()}分</div>
+                  <div style={{ fontWeight: 'bold', color: '#333' }}>{(member.boat_voucher_g23_minutes ?? 0).toLocaleString()}分</div>
                 </div>
                 <div>
                   <div style={{ color: '#999', marginBottom: '4px' }}>⛵ G21/黑豹船券</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>{member.boat_voucher_g21_panther_minutes.toLocaleString()}分</div>
+                  <div style={{ fontWeight: 'bold', color: '#333' }}>{(member.boat_voucher_g21_panther_minutes ?? 0).toLocaleString()}分</div>
                 </div>
                 <div>
                   <div style={{ color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>{member.gift_boat_hours.toLocaleString()}分</div>
+                  <div style={{ fontWeight: 'bold', color: '#333' }}>{(member.gift_boat_hours ?? 0).toLocaleString()}分</div>
                 </div>
               </div>
             </div>
