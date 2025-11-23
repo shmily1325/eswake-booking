@@ -13,6 +13,8 @@ interface BackupPageProps {
 export function BackupPage({ user }: BackupPageProps) {
   const [loading, setLoading] = useState(false)
   const [backupLoading, setBackupLoading] = useState(false)
+  const [fullBackupLoading, setFullBackupLoading] = useState(false)
+  const [queryableBackupLoading, setQueryableBackupLoading] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [exportType, setExportType] = useState<'bookings' | 'member_hours' | 'coach_hours'>('bookings')
@@ -466,6 +468,75 @@ export function BackupPage({ user }: BackupPageProps) {
     }
   }
 
+  const backupFullDatabase = async () => {
+    setFullBackupLoading(true)
+    try {
+      const response = await fetch('/api/backup-full-database', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || '備份失敗')
+      }
+
+      // 下载 SQL 文件
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+      link.download = `eswake_backup_${timestamp}.sql`
+      link.click()
+      URL.revokeObjectURL(url)
+
+      alert('✅ 完整數據庫備份成功！\n\n文件已下載，請保存到 WD MY BOOK 硬盤。')
+    } catch (error: any) {
+      console.error('Full backup error:', error)
+      alert(`❌ 備份失敗：${error.message}`)
+    } finally {
+      setFullBackupLoading(false)
+    }
+  }
+
+  const backupQueryable = async () => {
+    setQueryableBackupLoading(true)
+    try {
+      const response = await fetch('/api/backup-queryable', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || '備份失敗')
+      }
+
+      // 下载 JSON 文件
+      const data = await response.json()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+      link.download = `eswake_queryable_backup_${timestamp}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+
+      alert('✅ 可查詢備份成功！\n\n文件已下載，可用查詢工具打開。\n\n查詢工具：/backup-query-tool.html')
+    } catch (error: any) {
+      console.error('Queryable backup error:', error)
+      alert(`❌ 備份失敗：${error.message}`)
+    } finally {
+      setQueryableBackupLoading(false)
+    }
+  }
+
   const backupToGoogleSheets = async () => {
     setBackupLoading(true)
     const startTime = Date.now()
@@ -730,21 +801,22 @@ export function BackupPage({ user }: BackupPageProps) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
             <button
               onClick={handleExport}
-              disabled={loading || backupLoading}
+              disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading}
               style={{
                 flex: 1,
+                minWidth: '200px',
                 padding: '16px',
                 fontSize: '16px',
                 fontWeight: '600',
-                background: loading || backupLoading ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                background: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '10px',
-                cursor: loading || backupLoading ? 'not-allowed' : 'pointer',
-                boxShadow: loading || backupLoading ? 'none' : '0 4px 12px rgba(40, 167, 69, 0.3)',
+                cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'not-allowed' : 'pointer',
+                boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'none' : '0 4px 12px rgba(40, 167, 69, 0.3)',
                 transition: 'all 0.2s'
               }}
             >
@@ -752,23 +824,86 @@ export function BackupPage({ user }: BackupPageProps) {
             </button>
             <button
               onClick={backupToGoogleSheets}
-              disabled={loading || backupLoading}
+              disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading}
               style={{
                 flex: 1,
+                minWidth: '200px',
                 padding: '16px',
                 fontSize: '16px',
                 fontWeight: '600',
-                background: loading || backupLoading ? '#ccc' : 'linear-gradient(135deg, #4285f4 0%, #34a853 100%)',
+                background: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? '#ccc' : 'linear-gradient(135deg, #4285f4 0%, #34a853 100%)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '10px',
-                cursor: loading || backupLoading ? 'not-allowed' : 'pointer',
-                boxShadow: loading || backupLoading ? 'none' : '0 4px 12px rgba(66, 133, 244, 0.3)',
+                cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'not-allowed' : 'pointer',
+                boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'none' : '0 4px 12px rgba(66, 133, 244, 0.3)',
                 transition: 'all 0.2s'
               }}
             >
               {backupLoading ? '⏳ 備份中...' : '☁️ 備份到 Google Sheets'}
             </button>
+          </div>
+
+          {/* 完整备份和可查询备份 */}
+          <div style={{
+            marginTop: '20px',
+            padding: '20px',
+            backgroundColor: '#e7f3ff',
+            borderRadius: '8px',
+            border: '1px solid #b3d9ff'
+          }}>
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#004085' }}>
+              🛡️ 灾难恢复备份（推荐）
+            </h3>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
+              在网页和数据库挂掉时，可以使用这些备份文件查询预约和财务数据
+            </p>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                onClick={backupFullDatabase}
+                disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading}
+                style={{
+                  flex: 1,
+                  minWidth: '200px',
+                  padding: '16px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  background: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? '#ccc' : 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'none' : '0 4px 12px rgba(220, 53, 69, 0.3)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {fullBackupLoading ? '⏳ 備份中...' : '💾 完整數據庫備份 (SQL)'}
+              </button>
+              <button
+                onClick={backupQueryable}
+                disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading}
+                style={{
+                  flex: 1,
+                  minWidth: '200px',
+                  padding: '16px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  background: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? '#ccc' : 'linear-gradient(135deg, #fd7e14 0%, #e55a00 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'none' : '0 4px 12px rgba(253, 126, 20, 0.3)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {queryableBackupLoading ? '⏳ 備份中...' : '🔍 可查詢備份 (JSON)'}
+              </button>
+            </div>
+            <div style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>
+              <div>💡 <strong>完整数据库备份</strong>：包含所有表和数据，可直接导入恢复</div>
+              <div style={{ marginTop: '5px' }}>💡 <strong>可查询备份</strong>：轻量级，可用查询工具打开（<a href="/backup-query-tool.html" target="_blank" style={{ color: '#0066cc' }}>打开查询工具</a>）</div>
+            </div>
           </div>
 
           <div style={{
@@ -790,6 +925,7 @@ export function BackupPage({ user }: BackupPageProps) {
               <li>所有時間已格式化為易讀格式（YYYY/MM/DD HH:mm）</li>
               <li>系統會每天自動備份到 Google Sheets（根據 vercel.json 中的 cron 設定）</li>
               <li>也可以手動點擊「備份到 Google Sheets」按鈕立即備份</li>
+              <li><strong>建議：</strong>每週備份一次完整數據庫，每天備份一次可查詢備份到 WD MY BOOK 硬盤</li>
             </ul>
           </div>
         </div>
