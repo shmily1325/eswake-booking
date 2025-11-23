@@ -107,7 +107,8 @@ export function DayView({ user }: DayViewProps) {
       const { data: boatsData, error: boatsError } = await supabase
         .from('boats')
         .select('*')
-        .order('display_order')
+        .eq('is_active', true)
+        .order('id')
 
       if (boatsError) {
         console.error('Error fetching boats:', boatsError)
@@ -116,7 +117,12 @@ export function DayView({ user }: DayViewProps) {
       }
 
       if (isInitialLoad) {
-        setBoats(boatsData || [])
+        // 自定義排序順序 (與 CoachDailyView 一致)
+        const order = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床']
+        const sortedBoats = (boatsData || []).sort((a, b) => {
+          return order.indexOf(a.name) - order.indexOf(b.name)
+        })
+        setBoats(sortedBoats)
       }
 
       // Fetch bookings for the selected date
