@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESWake 备份查询工具</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .section h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 20px;
+    }
+
+    .file-input-wrapper {
+      margin-bottom: 20px;
+    }
+
+    .file-input {
+      padding: 12px;
+      border: 2px dashed #667eea;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .file-input:hover {
+      background: #f0f4ff;
+      border-color: #5568d3;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .query-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #333;
+      font-size: 14px;
+    }
+
+    input, select {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .results {
+      margin-top: 20px;
+    }
+
+    .results h3 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .result-count {
+      color: #666;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    th {
+      background: #667eea;
+      color: white;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #eee;
+      font-size: 13px;
+    }
+
+    tr:hover {
+      background: #f5f5f5;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .export-btn {
+      margin-top: 15px;
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+
+    .quick-query {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .quick-query button {
+      font-size: 14px;
+      padding: 10px 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 ESWake 备份查询工具</h1>
+    <p class="subtitle">离线查询备份数据 - 无需网络连接</p>
+
+    <div class="section">
+      <h2>📁 加载备份文件</h2>
+      <div class="file-input-wrapper">
+        <label class="file-input" for="backupFile">
+          <div>📂 点击选择备份 JSON 文件</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">
+            选择 eswake_queryable_backup_*.json 文件
+          </div>
+        </label>
+        <input type="file" id="backupFile" accept=".json">
+      </div>
+      <div id="fileStatus"></div>
+    </div>
+
+    <div class="section" id="querySection" style="display: none;">
+      <h2>🔎 查询数据</h2>
+      
+      <div class="quick-query">
+        <button onclick="queryAllBookings()">查看所有预约</button>
+        <button onclick="queryAllMembers()">查看所有会员</button>
+        <button onclick="queryAllTransactions()">查看所有交易</button>
+        <button onclick="queryTodayBookings()">今日预约</button>
+      </div>
+
+      <div class="query-form">
+        <div class="form-group">
+          <label>查询类型</label>
+          <select id="queryType">
+            <option value="bookings">预约记录</option>
+            <option value="members">会员信息</option>
+            <option value="transactions">交易记录</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>搜索关键词</label>
+          <input type="text" id="searchKeyword" placeholder="输入姓名、电话等">
+        </div>
+      </div>
+
+      <div class="query-form">
+        <div class="form-group">
+          <label>开始日期</label>
+          <input type="date" id="startDate">
+        </div>
+        <div class="form-group">
+          <label>结束日期</label>
+          <input type="date" id="endDate">
+        </div>
+      </div>
+
+      <button onclick="executeQuery()">🔍 执行查询</button>
+      <button class="export-btn" onclick="exportResults()" id="exportBtn" style="display: none;">📥 导出为 CSV</button>
+    </div>
+
+    <div class="section" id="resultsSection" style="display: none;">
+      <div class="results">
+        <h3>查询结果</h3>
+        <div class="result-count" id="resultCount"></div>
+        <div id="resultsTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let backupData = null;
+    let currentResults = [];
+
+    document.getElementById('backupFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          backupData = JSON.parse(e.target.result);
+          document.getElementById('fileStatus').innerHTML = 
+            `<div class="status success">✅ 备份文件加载成功！<br>
+            备份时间: ${backupData.metadata.backupTime}<br>
+            数据表: ${backupData.metadata.tables.join(', ')}<br>
+            总记录数: ${Object.values(backupData.metadata.stats).reduce((a, b) => a + b, 0)}</div>`;
+          document.getElementById('querySection').style.display = 'block';
+        } catch (error) {
+          document.getElementById('fileStatus').innerHTML = 
+            `<div class="status error">❌ 文件格式错误: ${error.message}</div>`;
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function queryAllBookings() {
+      if (!backupData) return;
+      currentResults = backupData.data.bookings || [];
+      displayResults(currentResults, 'bookings');
+    }
+
+    function queryAllMembers() {
+      if (!backupData) return;
+      currentResults = backupData.data.members || [];
+      displayResults(currentResults, 'members');
+    }
+
+    function queryAllTransactions() {
+      if (!backupData) return;
+      currentResults = backupData.data.transactions || [];
+      displayResults(currentResults, 'transactions');
+    }
+
+    function queryTodayBookings() {
+      if (!backupData) return;
+      const today = new Date().toISOString().split('T')[0];
+      currentResults = (backupData.data.bookings || []).filter(b => 
+        b.start_at && b.start_at.startsWith(today)
+      );
+      displayResults(currentResults, 'bookings');
+    }
+
+    function executeQuery() {
+      if (!backupData) return;
+
+      const queryType = document.getElementById('queryType').value;
+      const keyword = document.getElementById('searchKeyword').value.toLowerCase();
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+
+      let results = backupData.data[queryType] || [];
+
+      // 关键词搜索
+      if (keyword) {
+        results = results.filter(item => {
+          return Object.values(item).some(val => 
+            String(val).toLowerCase().includes(keyword)
+          );
+        });
+      }
+
+      // 日期范围筛选（针对预约）
+      if (queryType === 'bookings' && (startDate || endDate)) {
+        results = results.filter(item => {
+          if (!item.start_at) return false;
+          const itemDate = item.start_at.split('T')[0];
+          if (startDate && itemDate < startDate) return false;
+          if (endDate && itemDate > endDate) return false;
+          return true;
+        });
+      }
+
+      // 日期范围筛选（针对交易）
+      if (queryType === 'transactions' && (startDate || endDate)) {
+        results = results.filter(item => {
+          if (!item.created_at) return false;
+          const itemDate = item.created_at.split('T')[0];
+          if (startDate && itemDate < startDate) return false;
+          if (endDate && itemDate > endDate) return false;
+          return true;
+        });
+      }
+
+      currentResults = results;
+      displayResults(results, queryType);
+    }
+
+    function displayResults(results, type) {
+      const resultsSection = document.getElementById('resultsSection');
+      const resultCount = document.getElementById('resultCount');
+      const resultsTable = document.getElementById('resultsTable');
+      const exportBtn = document.getElementById('exportBtn');
+
+      resultsSection.style.display = 'block';
+      resultCount.textContent = `找到 ${results.length} 条记录`;
+
+      if (results.length === 0) {
+        resultsTable.innerHTML = '<div class="no-data">没有找到匹配的记录</div>';
+        exportBtn.style.display = 'none';
+        return;
+      }
+
+      // 生成表格
+      const keys = Object.keys(results[0]);
+      let html = '<table><thead><tr>';
+      keys.forEach(key => {
+        html += `<th>${key}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+
+      results.forEach(item => {
+        html += '<tr>';
+        keys.forEach(key => {
+          const value = item[key];
+          let displayValue = value;
+          if (value === null || value === undefined) displayValue = '';
+          else if (Array.isArray(value)) displayValue = value.join(', ');
+          else if (typeof value === 'object') displayValue = JSON.stringify(value);
+          html += `<td>${displayValue}</td>`;
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      resultsTable.innerHTML = html;
+      exportBtn.style.display = 'inline-block';
+    }
+
+    function exportResults() {
+      if (currentResults.length === 0) return;
+
+      const keys = Object.keys(currentResults[0]);
+      let csv = keys.join(',') + '\n';
+
+      currentResults.forEach(item => {
+        const row = keys.map(key => {
+          const value = item[key];
+          if (value === null || value === undefined) return '';
+          if (Array.isArray(value)) return JSON.stringify(value);
+          if (typeof value === 'object') return JSON.stringify(value);
+          const str = String(value);
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        });
+        csv += row.join(',') + '\n';
+      });
+
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `eswake_query_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
+
