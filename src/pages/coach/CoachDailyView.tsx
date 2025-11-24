@@ -152,11 +152,7 @@ export function CoachDailyView() {
           duration_min,
           status,
           schedule_notes,
-          notes,
-          boats:boat_id(id, name, color),
-          coaches:booking_coaches(coach_id, coaches:coaches(id, name)),
-          drivers:booking_drivers(driver_id, coaches:coaches(id, name)),
-          booking_members(member_id, members:member_id(id, name, nickname))
+          notes
         `)
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
@@ -165,12 +161,60 @@ export function CoachDailyView() {
 
       if (error) throw error
 
-      // 轉換資料格式
+      // 手动获取关联数据
+      const bookingIds = (data || []).map(b => b.id)
+      
+      // 获取 boats
+      const { data: boatsData } = await supabase
+        .from('boats')
+        .select('id, name, color')
+      
+      // 获取 coaches
+      const { data: coachesData } = await supabase
+        .from('booking_coaches')
+        .select('booking_id, coach_id, coaches:coach_id(id, name)')
+        .in('booking_id', bookingIds)
+      
+      // 获取 drivers
+      const { data: driversData } = await supabase
+        .from('booking_drivers')
+        .select('booking_id, driver_id, coaches:driver_id(id, name)')
+        .in('booking_id', bookingIds)
+      
+      // 获取 members
+      const { data: membersData } = await supabase
+        .from('booking_members')
+        .select('booking_id, member_id, members:member_id(id, name, nickname)')
+        .in('booking_id', bookingIds)
+      
+      // 构建 maps
+      const boatsMap = new Map((boatsData || []).map(b => [b.id, b]))
+      const coachesMap = new Map<number, any[]>()
+      const driversMap = new Map<number, any[]>()
+      const membersMap = new Map<number, any[]>()
+      
+      for (const item of (coachesData || [])) {
+        if (!coachesMap.has(item.booking_id)) coachesMap.set(item.booking_id, [])
+        if (item.coaches) coachesMap.get(item.booking_id)!.push(item.coaches)
+      }
+      
+      for (const item of (driversData || [])) {
+        if (!driversMap.has(item.booking_id)) driversMap.set(item.booking_id, [])
+        if (item.coaches) driversMap.get(item.booking_id)!.push(item.coaches)
+      }
+      
+      for (const item of (membersData || [])) {
+        if (!membersMap.has(item.booking_id)) membersMap.set(item.booking_id, [])
+        if (item.members) membersMap.get(item.booking_id)!.push({ member_id: item.member_id, members: item.members })
+      }
+      
+      // 组装数据
       const formattedData = (data || []).map((booking: any) => ({
         ...booking,
-        boats: booking.boats,
-        coaches: booking.coaches?.map((bc: any) => bc.coaches).filter(Boolean) || [],
-        drivers: booking.drivers?.map((bd: any) => bd.coaches).filter(Boolean) || []
+        boats: boatsMap.get(booking.boat_id) || null,
+        coaches: coachesMap.get(booking.id) || [],
+        drivers: driversMap.get(booking.id) || [],
+        booking_members: membersMap.get(booking.id) || []
       }))
 
       setBookings(formattedData)

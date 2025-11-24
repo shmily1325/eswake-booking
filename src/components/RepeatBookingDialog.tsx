@@ -211,7 +211,7 @@ export function RepeatBookingDialog({
         const { data: newBooking, error: insertError } = await supabase
           .from('bookings')
           .insert([bookingToInsert])
-          .select()
+          .select('id')
           .single()
 
         if (insertError || !newBooking) {
