@@ -7,6 +7,8 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
 import type { Booking } from '../types/booking'
 
+import { BookingDetails } from './booking/BookingDetails'
+
 interface EditBookingDialogProps {
   isOpen: boolean
   onClose: () => void
@@ -43,6 +45,7 @@ export function EditBookingDialog({
     activityTypes,
     notes,
     requiresDriver,
+    filledBy,
     error,
     loading,
     loadingCoaches,
@@ -68,6 +71,7 @@ export function EditBookingDialog({
     setDurationMin,
     setNotes,
     setRequiresDriver,
+    setFilledBy,
     setError,
     setLoading,
 
@@ -85,8 +89,12 @@ export function EditBookingDialog({
   useEffect(() => {
     if (isOpen) {
       fetchAllData()
+      // 編輯時，將填表人更新為當前使用者（作為最後修改人）
+      if (user?.email) {
+        setFilledBy(user.email)
+      }
     }
-  }, [isOpen])
+  }, [isOpen, user, setFilledBy])
 
   if (!isOpen) return null
 
@@ -126,6 +134,7 @@ export function EditBookingDialog({
           duration_min: durationMin,
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
+          filled_by: filledBy,
           requires_driver: requiresDriver,
           updated_at: getLocalTimestamp(),
         })
@@ -1089,90 +1098,14 @@ export function EditBookingDialog({
             </div>
           </div>
 
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '500',
-            }}>
-              活動類型（可複選）
-            </label>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '10px 16px',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                backgroundColor: activityTypesSet.has('WB') ? '#e3f2fd' : 'white',
-                transition: 'all 0.2s',
-                flex: '1',
-                minWidth: '120px',
-                justifyContent: 'center',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={activityTypesSet.has('WB')}
-                  onChange={() => toggleActivityType('WB')}
-                  style={{ marginRight: '8px', width: '16px', height: '16px' }}
-                />
-                <span style={{ fontSize: '15px' }}>WB</span>
-              </label>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '10px 16px',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                backgroundColor: activityTypesSet.has('WS') ? '#e3f2fd' : 'white',
-                transition: 'all 0.2s',
-                flex: '1',
-                minWidth: '120px',
-                justifyContent: 'center',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={activityTypesSet.has('WS')}
-                  onChange={() => toggleActivityType('WS')}
-                  style={{ marginRight: '8px', width: '16px', height: '16px' }}
-                />
-                <span style={{ fontSize: '15px' }}>WS</span>
-              </label>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '6px',
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '500',
-            }}>
-              註解（選填）
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="例如：初學者、特殊需求..."
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                boxSizing: 'border-box',
-                fontSize: '15px',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                touchAction: 'manipulation',
-              }}
-            />
-          </div>
+          <BookingDetails
+            activityTypesSet={activityTypesSet}
+            toggleActivityType={toggleActivityType}
+            notes={notes}
+            setNotes={setNotes}
+            filledBy={filledBy}
+            setFilledBy={setFilledBy}
+          />
 
           {/* 錯誤訊息 */}
           {error && (

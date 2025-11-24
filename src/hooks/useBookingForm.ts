@@ -39,6 +39,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
     const [activityTypes, setActivityTypes] = useState<string[]>(initialBooking?.activity_types || [])
     const [notes, setNotes] = useState(initialBooking?.notes || '')
     const [requiresDriver, setRequiresDriver] = useState(initialBooking?.requires_driver || false)
+    const [filledBy, setFilledBy] = useState(initialBooking?.filled_by || '')
 
     // Status
     const [error, setError] = useState('')
@@ -75,6 +76,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
             setNotes(initialBooking.notes || '')
             setRequiresDriver(initialBooking.requires_driver || false)
             setActivityTypes(initialBooking.activity_types || [])
+            setFilledBy(initialBooking.filled_by || '')
 
             const datetime = initialBooking.start_at.substring(0, 16)
             const [date, time] = datetime.split('T')
@@ -213,6 +215,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         setActivityTypes([])
         setNotes('')
         setRequiresDriver(false)
+        setFilledBy('')
         setError('')
 
         // Reset time to defaults if needed, or keep current
@@ -239,6 +242,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         activityTypes,
         notes,
         requiresDriver,
+        filledBy,
         error,
         loading,
         loadingCoaches,
@@ -266,6 +270,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         setActivityTypes,
         setNotes,
         setRequiresDriver,
+        setFilledBy,
         setError,
         setLoading,
 
