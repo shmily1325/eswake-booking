@@ -26,6 +26,9 @@ export function CoachSelector({
     canRequireDriver,
     isSelectedBoatFacility,
 }: CoachSelectorProps) {
+    const safeCoaches = coaches || []
+    const safeSelectedCoaches = selectedCoaches || []
+    
     return (
         <>
             <div style={{ marginBottom: '18px' }}>
@@ -40,7 +43,7 @@ export function CoachSelector({
                 </label>
 
                 {/* 已選教練顯示 */}
-                {selectedCoaches.length > 0 && (
+                {safeSelectedCoaches.length > 0 && (
                     <div style={{
                         marginBottom: '12px',
                         padding: '12px 14px',
@@ -68,8 +71,8 @@ export function CoachSelector({
                                 gap: '8px',
                                 flex: 1,
                             }}>
-                                {selectedCoaches.map(coachId => {
-                                    const coach = coaches.find(c => c.id === coachId)
+                                {safeSelectedCoaches.map(coachId => {
+                                    const coach = safeCoaches.find(c => c.id === coachId)
                                     return coach ? (
                                         <span
                                             key={coachId}
@@ -125,27 +128,27 @@ export function CoachSelector({
                             onClick={() => setSelectedCoaches([])}
                             style={{
                                 padding: '14px 10px',
-                                border: selectedCoaches.length === 0 ? '2px solid #3b82f6' : '1px solid #e0e0e0',
+                                border: safeSelectedCoaches.length === 0 ? '2px solid #3b82f6' : '1px solid #e0e0e0',
                                 borderRadius: '8px',
-                                background: selectedCoaches.length === 0 ? '#dbeafe' : 'white',
+                                background: safeSelectedCoaches.length === 0 ? '#dbeafe' : 'white',
                                 color: '#333',
                                 fontSize: '15px',
-                                fontWeight: selectedCoaches.length === 0 ? '600' : '500',
+                                fontWeight: safeSelectedCoaches.length === 0 ? '600' : '500',
                                 cursor: 'pointer',
                                 gridColumn: '1 / -1',
                             }}
                             onTouchStart={(e) => {
-                                e.currentTarget.style.background = selectedCoaches.length === 0 ? '#dbeafe' : '#fafafa'
+                                e.currentTarget.style.background = safeSelectedCoaches.length === 0 ? '#dbeafe' : '#fafafa'
                             }}
                             onTouchEnd={(e) => {
-                                e.currentTarget.style.background = selectedCoaches.length === 0 ? '#dbeafe' : 'white'
+                                e.currentTarget.style.background = safeSelectedCoaches.length === 0 ? '#dbeafe' : 'white'
                             }}
                         >
                             不指定教練
                         </button>
 
                         {/* 教練列表 */}
-                        {coaches.map((coach) => {
+                        {safeCoaches.map((coach) => {
                             const isSelected = selectedCoachesSet.has(coach.id)
                             return (
                                 <button

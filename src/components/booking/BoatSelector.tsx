@@ -7,6 +7,8 @@ interface BoatSelectorProps {
 }
 
 export function BoatSelector({ boats, selectedBoatId, onSelect }: BoatSelectorProps) {
+    const safeBoats = boats || []
+    
     return (
         <div style={{ marginBottom: '18px' }}>
             <label style={{
@@ -23,7 +25,7 @@ export function BoatSelector({ boats, selectedBoatId, onSelect }: BoatSelectorPr
                 gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '10px',
             }}>
-                {boats.map(boat => {
+                {safeBoats.map(boat => {
                     const isSelected = selectedBoatId === boat.id
                     return (
                         <button
