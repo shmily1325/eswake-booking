@@ -42,21 +42,68 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [memberData, setMemberData] = useState<any>(null)
+  const [isCashSettlement, setIsCashSettlement] = useState(false)
   
-  // 根據船隻自動判斷預設類別
+  // 根據教練回報的付款方式和船隻判斷預設類別
   const getDefaultCategory = (): DeductionCategory => {
+    const paymentMethod = report.payment_method
     const boatName = report.bookings.boats?.name || ''
     
+    // 現金/匯款 -> 不需要扣款，標記為現金結清
+    if (paymentMethod === 'cash' || paymentMethod === 'transfer') {
+      setIsCashSettlement(true)
+      return 'balance' // 不會用到，只是佔位
+    }
+    
+    // 票券 -> 根據船隻判斷
+    if (paymentMethod === 'voucher') {
+      if (boatName.includes('G23') || boatName.includes('23')) {
+        return 'boat_voucher_g23'
+      } else if (boatName.includes('G21') || boatName.includes('21') || boatName.includes('黑豹')) {
+        return 'boat_voucher_g21_panther'
+      }
+      return 'boat_voucher_g23' // 預設
+    }
+    
+    // 扣儲值 -> 顯示常用金額
+    if (paymentMethod === 'balance') {
+      return 'balance'
+    }
+    
+    // 預設：根據船隻判斷
     if (boatName.includes('G23') || boatName.includes('23')) {
       return 'boat_voucher_g23'
     } else if (boatName.includes('G21') || boatName.includes('21') || boatName.includes('黑豹')) {
       return 'boat_voucher_g21_panther'
-    } else if (boatName.includes('粉紅') || boatName.includes('200')) {
-      return 'balance'
     }
     
-    // 預設：G23船券
-    return 'boat_voucher_g23'
+    return 'balance'
+  }
+  
+  // 根據船隻和時間取得常用金額
+  const getCommonAmounts = (): number[] => {
+    const boatName = report.bookings.boats?.name || ''
+    const duration = report.duration_min
+    
+    // G23 / G21 黑豹
+    if (boatName.includes('G23') || boatName.includes('23') || 
+        boatName.includes('G21') || boatName.includes('21') || boatName.includes('黑豹')) {
+      if (duration <= 30) return [500, 800, 1000]
+      if (duration <= 60) return [1000, 1500, 2000]
+      if (duration <= 90) return [1500, 2000, 2500]
+      return [2000, 2500, 3000]
+    }
+    
+    // 粉紅 200
+    if (boatName.includes('粉紅') || boatName.includes('200')) {
+      if (duration <= 30) return [300, 500, 800]
+      if (duration <= 60) return [500, 800, 1000]
+      if (duration <= 90) return [800, 1000, 1500]
+      return [1000, 1500, 2000]
+    }
+    
+    // 預設
+    return [500, 1000, 1500, 2000]
   }
   
   const defaultCategory = getDefaultCategory()
@@ -66,7 +113,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
       id: '1',
       category: defaultCategory,
       minutes: defaultCategory === 'balance' ? undefined : report.duration_min,
-      amount: defaultCategory === 'balance' ? 1000 : undefined
+      amount: defaultCategory === 'balance' ? getCommonAmounts()[1] : undefined
     }
   ])
 
@@ -128,6 +175,32 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     setItems(items.map(item => 
       item.id === id ? { ...item, ...updates } : item
     ))
+  }
+
+  // 現金/匯款結清
+  const handleCashSettlement = async () => {
+    setLoading(true)
+    try {
+      const paymentLabel = report.payment_method === 'cash' ? '現金' : '匯款'
+      
+      const { error } = await supabase
+        .from('booking_participants')
+        .update({ 
+          status: 'processed',
+          notes: report.notes ? `${report.notes} [${paymentLabel}結清]` : `[${paymentLabel}結清]`
+        })
+        .eq('id', report.id)
+
+      if (error) throw error
+      
+      alert(`${paymentLabel}結清完成`)
+      onComplete()
+    } catch (error) {
+      console.error('結清失敗:', error)
+      alert('結清失敗')
+    } finally {
+      setLoading(false)
+    }
   }
 
   // 確認扣款
@@ -274,75 +347,119 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
       {/* 展開內容 */}
       {isExpanded && (
         <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
-          <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>
-            扣款項目：
-          </div>
-
-          {/* 扣款明細列表 */}
-          {items.map((item, index) => (
-            <DeductionItemRow
-              key={item.id}
-              index={index + 1}
-              item={item}
-              memberData={memberData}
-              defaultMinutes={report.duration_min}
-              onUpdate={(updates) => updateItem(item.id, updates)}
-              onRemove={() => removeItem(item.id)}
-              canRemove={items.length > 1}
-            />
-          ))}
-
-          {/* 操作按鈕 */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
-            marginTop: '16px',
-            paddingTop: '16px',
-            borderTop: '1px solid #e0e0e0'
-          }}>
-            <button
-              onClick={addItem}
-              style={{
-                flex: 1,
-                padding: '10px',
-                background: 'white',
-                border: '2px dashed #4a90e2',
-                borderRadius: '8px',
-                color: '#4a90e2',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              ➕ 新增項目
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={loading || !report.member_id}
-              style={{
-                flex: 1,
-                padding: '10px',
-                background: report.member_id ? '#4CAF50' : '#ccc',
-                border: 'none',
-                borderRadius: '8px',
-                color: 'white',
-                fontWeight: '600',
-                cursor: report.member_id ? 'pointer' : 'not-allowed',
-                opacity: loading ? 0.6 : 1
-              }}
-            >
-              {loading ? '處理中...' : '✅ 確認扣款'}
-            </button>
-          </div>
-
-          {!report.member_id && (
-            <div style={{ 
-              marginTop: '8px', 
-              fontSize: '14px', 
-              color: '#f44336',
-              textAlign: 'center'
-            }}>
-              ⚠️ 非會員無法扣款
+          {/* 現金/匯款結清 */}
+          {isCashSettlement ? (
+            <div>
+              <div style={{ 
+                padding: '20px',
+                background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                borderRadius: '12px',
+                border: '2px solid #bae6fd',
+                textAlign: 'center',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: '#0369a1', marginBottom: '8px' }}>
+                  💵 {report.payment_method === 'cash' ? '現金' : '匯款'}結清
+                </div>
+                <div style={{ fontSize: '14px', color: '#075985' }}>
+                  此筆記錄為現金/匯款付款，無需扣款操作
+                </div>
+              </div>
+              
+              <button
+                onClick={handleCashSettlement}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontWeight: '600',
+                  fontSize: '15px',
+                  cursor: 'pointer',
+                  opacity: loading ? 0.6 : 1,
+                  boxShadow: '0 2px 8px rgba(14,165,233,0.3)'
+                }}
+              >
+                {loading ? '處理中...' : '✅ 確認結清'}
+              </button>
             </div>
+          ) : (
+            <>
+              <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>
+                扣款項目：
+              </div>
+
+              {/* 扣款明細列表 */}
+              {items.map((item, index) => (
+                <DeductionItemRow
+                  key={item.id}
+                  index={index + 1}
+                  item={item}
+                  memberData={memberData}
+                  defaultMinutes={report.duration_min}
+                  commonAmounts={getCommonAmounts()}
+                  onUpdate={(updates) => updateItem(item.id, updates)}
+                  onRemove={() => removeItem(item.id)}
+                  canRemove={items.length > 1}
+                />
+              ))}
+
+              {/* 操作按鈕 */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '1px solid #e0e0e0'
+              }}>
+                <button
+                  onClick={addItem}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    background: 'white',
+                    border: '2px dashed #4a90e2',
+                    borderRadius: '8px',
+                    color: '#4a90e2',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ➕ 新增項目
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={loading || !report.member_id}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    background: report.member_id ? '#4CAF50' : '#ccc',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontWeight: '600',
+                    cursor: report.member_id ? 'pointer' : 'not-allowed',
+                    opacity: loading ? 0.6 : 1
+                  }}
+                >
+                  {loading ? '處理中...' : '✅ 確認扣款'}
+                </button>
+              </div>
+
+              {!report.member_id && (
+                <div style={{ 
+                  marginTop: '8px', 
+                  fontSize: '14px', 
+                  color: '#f44336',
+                  textAlign: 'center'
+                }}>
+                  ⚠️ 非會員無法扣款
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -356,6 +473,7 @@ interface DeductionItemRowProps {
   item: DeductionItem
   memberData: any
   defaultMinutes: number
+  commonAmounts: number[]
   onUpdate: (updates: Partial<DeductionItem>) => void
   onRemove: () => void
   canRemove: boolean
@@ -366,6 +484,7 @@ function DeductionItemRow({
   item, 
   memberData,
   defaultMinutes,
+  commonAmounts,
   onUpdate, 
   onRemove,
   canRemove 
@@ -518,7 +637,7 @@ function DeductionItemRow({
               扣款金額：
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {[500, 1000, 1500, 2000].map(amount => (
+              {commonAmounts.map(amount => (
                 <button
                   key={amount}
                   onClick={() => onUpdate({ amount })}
@@ -580,7 +699,7 @@ function DeductionItemRow({
               扣款時數：
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {[30, 60, 90, 120].map(minutes => (
+              {[20, 30, 40, 60, 90].map(minutes => (
                 <button
                   key={minutes}
                   onClick={() => onUpdate({ minutes })}
