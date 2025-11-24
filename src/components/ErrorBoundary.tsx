@@ -1,188 +1,118 @@
-import { Component, type ReactNode } from 'react'
+import { Component } from 'react'
+import type { ErrorInfo, ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
+  fallback?: ReactNode
 }
 
 interface State {
   hasError: boolean
   error: Error | null
+  errorInfo: ErrorInfo | null
 }
 
-/**
- * 全局錯誤邊界
- * 
- * 捕獲子組件中的錯誤，防止整個應用白屏
- * 提供友好的錯誤提示和恢復選項
- */
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = {
+  public state: State = {
     hasError: false,
-    error: null
+    error: null,
+    errorInfo: null
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return {
-      hasError: true,
-      error
-    }
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error, errorInfo: null }
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
-    // 在生產環境，這裡可以發送錯誤到監控服務
-    console.error('應用錯誤:', error, errorInfo)
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[ErrorBoundary] Caught error:', {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack
+    })
+
+    this.setState({
+      error,
+      errorInfo
+    })
   }
 
-  handleReload = () => {
-    window.location.reload()
-  }
-
-  handleGoHome = () => {
-    window.location.href = '/'
-  }
-
-  render() {
+  public render() {
     if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback
+      }
+
       return (
-        <div
-          style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#f7fafc',
-            padding: '20px'
-          }}
-        >
-          <div
+        <div style={{
+          padding: '40px',
+          maxWidth: '800px',
+          margin: '0 auto',
+          fontFamily: 'monospace'
+        }}>
+          <h1 style={{ color: '#e53e3e' }}>⚠️ 發生錯誤</h1>
+          
+          <div style={{
+            background: '#fff5f5',
+            border: '2px solid #feb2b2',
+            borderRadius: '8px',
+            padding: '20px',
+            marginTop: '20px'
+          }}>
+            <h2 style={{ marginTop: 0 }}>錯誤訊息：</h2>
+            <pre style={{ 
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              color: '#c53030'
+            }}>
+              {this.state.error?.message}
+            </pre>
+
+            <h3>Stack Trace:</h3>
+            <pre style={{ 
+              whiteSpace: 'pre-wrap',
+              fontSize: '12px',
+              background: '#fff',
+              padding: '10px',
+              borderRadius: '4px',
+              overflow: 'auto',
+              maxHeight: '300px'
+            }}>
+              {this.state.error?.stack}
+            </pre>
+
+            {this.state.errorInfo && (
+              <>
+                <h3>Component Stack:</h3>
+                <pre style={{ 
+                  whiteSpace: 'pre-wrap',
+                  fontSize: '12px',
+                  background: '#fff',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  overflow: 'auto',
+                  maxHeight: '200px'
+                }}>
+                  {this.state.errorInfo.componentStack}
+                </pre>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={() => window.location.reload()}
             style={{
-              background: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-              border: '1px solid #e2e8f0',
-              padding: '48px',
-              maxWidth: '500px',
-              width: '100%',
-              textAlign: 'center'
+              marginTop: '20px',
+              padding: '12px 24px',
+              background: '#3182ce',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '16px'
             }}
           >
-            <div
-              style={{
-                fontSize: '64px',
-                marginBottom: '16px'
-              }}
-            >
-              😰
-            </div>
-            
-            <h1
-              style={{
-                fontSize: '24px',
-                fontWeight: '600',
-                color: '#333',
-                marginBottom: '12px'
-              }}
-            >
-              系統發生錯誤
-            </h1>
-            
-            <p
-              style={{
-                fontSize: '16px',
-                color: '#666',
-                marginBottom: '8px'
-              }}
-            >
-              很抱歉，系統遇到了一個問題
-            </p>
-            
-            <p
-              style={{
-                fontSize: '14px',
-                color: '#999',
-                marginBottom: '24px'
-              }}
-            >
-              請聯絡管理員
-            </p>
-
-            {import.meta.env.DEV && this.state.error && (
-              <div
-                style={{
-                  background: '#f5f5f5',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  marginBottom: '24px',
-                  textAlign: 'left',
-                  fontSize: '14px',
-                  color: '#d32f2f',
-                  fontFamily: 'monospace',
-                  wordBreak: 'break-word',
-                  maxHeight: '200px',
-                  overflow: 'auto'
-                }}
-              >
-                {this.state.error.message}
-              </div>
-            )}
-
-            <div
-              style={{
-                display: 'flex',
-                gap: '12px',
-                justifyContent: 'center'
-              }}
-            >
-              <button
-                onClick={this.handleReload}
-                style={{
-                  padding: '12px 24px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: 'white',
-                  background: '#4299e1',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = '#3182ce'
-                  e.currentTarget.style.transform = 'translateY(-1px)'
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = '#4299e1'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                }}
-              >
-                重新整理
-              </button>
-
-              <button
-                onClick={this.handleGoHome}
-                style={{
-                  padding: '12px 24px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#4299e1',
-                  background: 'white',
-                  border: '2px solid #4299e1',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = '#ebf8ff'
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = 'white'
-                }}
-              >
-                返回首頁
-              </button>
-            </div>
-          </div>
+            重新載入頁面
+          </button>
         </div>
       )
     }
@@ -190,4 +120,3 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children
   }
 }
-

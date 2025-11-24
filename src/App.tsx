@@ -2,6 +2,10 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
+import { setupGlobalErrorHandler } from './utils/debugHelpers'
+
+// 啟用全局錯誤捕獲
+setupGlobalErrorHandler()
 import { LoginPage } from './components/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { DayView } from './pages/DayView'

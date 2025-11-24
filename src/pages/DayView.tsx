@@ -15,6 +15,8 @@ import { useToast, ToastContainer } from '../components/ui'
 import { TodayOverview } from '../components/TodayOverview'
 import { DayViewMobileHeader } from '../components/DayViewMobileHeader'
 import { VirtualizedBookingList } from '../components/VirtualizedBookingList'
+import { ErrorBoundary } from '../components/ErrorBoundary'
+import { inspectData, safeMapArray, tryCatch } from '../utils/debugHelpers'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
 
@@ -417,6 +419,7 @@ export function DayView() {
   }
 
   return (
+    <ErrorBoundary>
     <div style={{
       padding: isMobile ? '12px' : '20px',
       minHeight: '100vh',
@@ -932,7 +935,28 @@ export function DayView() {
                                     textAlign: 'center',
                                     fontWeight: '500',
                                   }}>
-                                    🎓 {booking.coaches.filter(c => c && c.name).map(c => c.name).join('/')}
+                                    🎓 {tryCatch(
+                                      () => {
+                                        inspectData(booking.coaches, `Booking ${booking.id} coaches`)
+                                        return safeMapArray(
+                                          booking.coaches,
+                                          (c, idx) => {
+                                            if (!c) {
+                                              console.warn(`Coach at index ${idx} is null for booking ${booking.id}`)
+                                              return ''
+                                            }
+                                            if (!c.name) {
+                                              console.warn(`Coach at index ${idx} has no name for booking ${booking.id}:`, c)
+                                              return ''
+                                            }
+                                            return c.name
+                                          },
+                                          `Booking ${booking.id} coaches map`
+                                        ).filter(Boolean).join('/')
+                                      },
+                                      `Coaches render for booking ${booking.id}`,
+                                      '教練資料異常'
+                                    )}
                                   </div>
                                 )}
 
@@ -944,7 +968,28 @@ export function DayView() {
                                     textAlign: 'center',
                                     fontWeight: '500',
                                   }}>
-                                    🚤 {booking.drivers.filter(d => d && d.name).map(d => d.name).join('/')}
+                                    🚤 {tryCatch(
+                                      () => {
+                                        inspectData(booking.drivers, `Booking ${booking.id} drivers`)
+                                        return safeMapArray(
+                                          booking.drivers,
+                                          (d, idx) => {
+                                            if (!d) {
+                                              console.warn(`Driver at index ${idx} is null for booking ${booking.id}`)
+                                              return ''
+                                            }
+                                            if (!d.name) {
+                                              console.warn(`Driver at index ${idx} has no name for booking ${booking.id}:`, d)
+                                              return ''
+                                            }
+                                            return d.name
+                                          },
+                                          `Booking ${booking.id} drivers map`
+                                        ).filter(Boolean).join('/')
+                                      },
+                                      `Drivers render for booking ${booking.id}`,
+                                      '駕駛資料異常'
+                                    )}
                                   </div>
                                 )}
                               </td>
@@ -1115,5 +1160,6 @@ export function DayView() {
       <Footer />
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div >
+    </ErrorBoundary>
   )
 }
