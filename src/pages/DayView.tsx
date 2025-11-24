@@ -141,7 +141,10 @@ export function DayView() {
       return
     }
 
-    const bookingIds = bookingsData.map(b => b.id)
+    // 過濾掉 null/undefined 的 booking，並提取 ID
+    const bookingIds = bookingsData
+      .filter(b => b && b.id)
+      .map(b => b.id)
 
     // 優化：並行查詢教練和駕駛,只查詢必要欄位
     // 註：有 booking_coaches 記錄 = 指定教練
@@ -171,8 +174,10 @@ export function DayView() {
     const coachData = coachesResult.data || []
     for (let i = 0; i < coachData.length; i++) {
       const item = coachData[i]
+      // 安全檢查：確保 item 和 coaches 都不是 null
+      if (!item || !item.booking_id) continue
       const coach = (item as any).coaches
-      if (coach) {
+      if (coach && coach.id) {
         const coaches = coachesByBooking.get(item.booking_id)
         if (coaches) {
           coaches.push(coach)
@@ -186,8 +191,10 @@ export function DayView() {
     const driverData = driversResult.data || []
     for (let i = 0; i < driverData.length; i++) {
       const item = driverData[i]
+      // 安全檢查：確保 item 和 coaches 都不是 null
+      if (!item || !item.booking_id) continue
       const driver = (item as any).coaches
-      if (driver) {
+      if (driver && driver.id) {
         const drivers = driversByBooking.get(item.booking_id)
         if (drivers) {
           drivers.push(driver)
@@ -197,12 +204,14 @@ export function DayView() {
       }
     }
 
-    // 組裝資料（避免不必要的陣列操作）
-    const bookingsWithCoaches = bookingsData.map(booking => ({
-      ...booking,
-      coaches: coachesByBooking.get(booking.id) || [],
-      drivers: driversByBooking.get(booking.id) || []
-    }))
+    // 組裝資料（避免不必要的陣列操作，並過濾 null）
+    const bookingsWithCoaches = bookingsData
+      .filter(booking => booking && booking.id)  // 確保 booking 不是 null
+      .map(booking => ({
+        ...booking,
+        coaches: coachesByBooking.get(booking.id) || [],
+        drivers: driversByBooking.get(booking.id) || []
+      }))
 
     setBookings(bookingsWithCoaches)
   }
