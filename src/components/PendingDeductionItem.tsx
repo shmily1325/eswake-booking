@@ -18,6 +18,7 @@ interface DeductionItem {
   amount?: number  // 金額（儲值用）
   minutes?: number // 時數（其他類別用）
   planName?: string // 方案名稱
+  description?: string // 說明（可編輯）
   notes?: string // 註解（手動輸入）
 }
 
@@ -164,9 +165,15 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   
   // 取得預設金額（如果有的話）
   const getDefaultAmount = (): number | undefined => {
-    if (defaultCategory !== 'balance') return undefined
-    const amounts = getCommonAmounts()
-    return amounts.length > 0 ? amounts[0] : undefined
+    if (defaultCategory === 'balance') {
+      const amounts = getCommonAmounts()
+      return amounts.length > 0 ? amounts[0] : undefined
+    }
+    if (defaultCategory === 'vip_voucher') {
+      const amounts = getVipVoucherAmounts()
+      return amounts.length > 0 ? amounts[0] : undefined
+    }
+    return undefined
   }
 
   // 生成說明
@@ -191,8 +198,9 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     {
       id: '1',
       category: defaultCategory,
-      minutes: defaultCategory === 'balance' ? undefined : report.duration_min,
-      amount: getDefaultAmount()
+      minutes: defaultCategory === 'balance' || defaultCategory === 'vip_voucher' ? undefined : report.duration_min,
+      amount: getDefaultAmount(),
+      description: generateDescription()
     }
   ])
 
@@ -235,8 +243,9 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     setItems([...items, {
       id: Date.now().toString(),
       category: defaultCat,
-      minutes: defaultCat === 'balance' ? undefined : report.duration_min,
-      amount: defaultCat === 'balance' ? getDefaultAmount() : undefined
+      minutes: defaultCat === 'balance' || defaultCat === 'vip_voucher' ? undefined : report.duration_min,
+      amount: getDefaultAmount(),
+      description: generateDescription()
     }])
   }
 
@@ -296,9 +305,6 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
 
     setLoading(true)
     try {
-      // 使用生成的說明
-      const description = generateDescription()
-
       // 處理每筆扣款
       for (const item of items) {
         const updates: any = {}
@@ -307,7 +313,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
           booking_participant_id: report.id,
           transaction_type: 'consume',
           category: item.category,
-          description: description,
+          description: item.description || generateDescription(),
           transaction_date: new Date().toISOString().split('T')[0],
           operator_id: (await supabase.auth.getUser()).data.user?.id
         }
@@ -503,6 +509,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                   onUpdate={(updates) => updateItem(item.id, updates)}
                   onRemove={() => removeItem(item.id)}
                   canRemove={items.length > 1}
+                  totalItems={items.length}
                 />
               ))}
 
@@ -577,6 +584,7 @@ interface DeductionItemRowProps {
   onUpdate: (updates: Partial<DeductionItem>) => void
   onRemove: () => void
   canRemove: boolean
+  totalItems: number
 }
 
 function DeductionItemRow({ 
@@ -589,7 +597,8 @@ function DeductionItemRow({
   defaultDescription,
   onUpdate, 
   onRemove,
-  canRemove 
+  canRemove,
+  totalItems
 }: DeductionItemRowProps) {
   const categories = [
     { value: 'boat_voucher_g23', label: '🚤 G23船券', emoji: '🚤' },
@@ -636,13 +645,37 @@ function DeductionItemRow({
 
   return (
     <div style={{
-      background: 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
+      background: index % 2 === 0 ? 'linear-gradient(to bottom, #f8fcff, #f0f8ff)' : 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
       borderRadius: '12px',
       padding: '16px',
       marginBottom: '12px',
-      border: '1px solid #e0e0e0',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+      border: index % 2 === 0 ? '2px solid #bae6fd' : '2px solid #e0e0e0',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      position: 'relative'
     }}>
+      {/* 項目編號（僅多項時顯示） */}
+      {totalItems > 1 && (
+        <div style={{
+          position: 'absolute',
+          top: '16px',
+          right: '16px',
+          background: index % 2 === 0 ? '#0ea5e9' : '#94a3b8',
+          color: 'white',
+          width: '28px',
+          height: '28px',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '13px',
+          fontWeight: '700',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+          zIndex: 1
+        }}>
+          {index}
+        </div>
+      )}
+      
       {/* 標題欄 */}
       <div style={{ 
         display: 'flex', 
@@ -658,13 +691,6 @@ function DeductionItemRow({
           gap: '8px'
         }}>
           <span style={{ fontSize: '24px' }}>{currentCategory?.emoji}</span>
-          <span style={{ 
-            fontSize: '15px', 
-            fontWeight: '600',
-            color: '#2c3e50'
-          }}>
-            明細 {index}
-          </span>
         </div>
         {canRemove && (
           <button
@@ -891,7 +917,7 @@ function DeductionItemRow({
         </div>
       )}
 
-      {/* 說明（自動生成，只讀） */}
+      {/* 說明（可編輯） */}
       <div style={{ marginBottom: '14px' }}>
         <div style={{ 
           fontSize: '13px', 
@@ -901,16 +927,26 @@ function DeductionItemRow({
         }}>
           說明：
         </div>
-        <div style={{
-          padding: '10px 12px',
-          background: '#f8f9fa',
-          border: '2px solid #e9ecef',
-          borderRadius: '8px',
-          fontSize: '14px',
-          color: '#495057'
-        }}>
-          {defaultDescription}
-        </div>
+        <textarea
+          value={item.description || defaultDescription}
+          onChange={(e) => onUpdate({ description: e.target.value })}
+          placeholder="輸入說明..."
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            background: 'white',
+            border: '2px solid #e9ecef',
+            borderRadius: '8px',
+            fontSize: '14px',
+            color: '#495057',
+            minHeight: '60px',
+            resize: 'vertical',
+            fontFamily: 'inherit',
+            boxSizing: 'border-box'
+          }}
+          onFocus={(e) => e.currentTarget.style.borderColor = '#4a90e2'}
+          onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
+        />
       </div>
 
       {/* 註解（可編輯） */}
