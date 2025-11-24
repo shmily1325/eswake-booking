@@ -68,11 +68,20 @@ export function getDisplayContactName(booking: any): string {
   // 如果有關聯的會員，優先顯示暱稱
   if (booking.booking_members && booking.booking_members.length > 0) {
     const memberDisplayNames = booking.booking_members
-      .map((bm: any) => bm.members?.nickname || bm.members?.name)
+      .map((bm: any) => {
+        // 安全檢查：確保 members 不是 null
+        if (!bm.members) return null
+        return bm.members.nickname || bm.members.name
+      })
       .filter(Boolean) as string[]
 
     // 如果有重複的暱稱，只顯示一個
     const uniqueNames = Array.from(new Set(memberDisplayNames))
+
+    // 如果沒有任何有效的會員名稱，回退到 contact_name
+    if (uniqueNames.length === 0) {
+      return booking.contact_name || '未命名'
+    }
 
     // 如果只有會員，且數量吻合 contact_name 中的名字數量，直接返回
     // 否則，可能還包含非會員名字，直接用 contact_name

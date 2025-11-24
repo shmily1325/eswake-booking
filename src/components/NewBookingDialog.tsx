@@ -106,8 +106,8 @@ export function NewBookingDialog({
   useEffect(() => {
     if (!isOpen || !startDate || !startTime || !selectedBoatId) {
       setConflictStatus(null)
-      return
-    }
+        return
+      }
 
     const check = async () => {
       setConflictStatus('checking')
@@ -115,7 +115,7 @@ export function NewBookingDialog({
       if (result.hasConflict) {
         setConflictStatus('conflict')
         setConflictMessage(result.reason || '此時段已被預約')
-      } else {
+    } else {
         setConflictStatus('available')
         setConflictMessage('✅ 此時段可預約')
       }
@@ -166,111 +166,111 @@ export function NewBookingDialog({
       const [hour, minute] = startTime.split(':').map(Number)
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
       const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-      const newStartAt = `${dateStr}T${timeStr}:00`
+        const newStartAt = `${dateStr}T${timeStr}:00`
 
       // 最終衝突檢查
       const conflictResult = await performConflictCheck()
-      if (conflictResult.hasConflict) {
+          if (conflictResult.hasConflict) {
         setError(conflictResult.reason || '此時段已被預約')
         setLoading(false)
         return
       }
 
-      // 創建預約
-      const bookingToInsert = {
-        boat_id: selectedBoatId,
-        member_id: selectedMemberIds[0] || null,  // 主要會員 ID（向下相容）
-        contact_name: finalStudentName,           // 聯絡人姓名
+        // 創建預約
+        const bookingToInsert = {
+          boat_id: selectedBoatId,
+          member_id: selectedMemberIds[0] || null,  // 主要會員 ID（向下相容）
+          contact_name: finalStudentName,           // 聯絡人姓名
         contact_phone: null,
-        start_at: newStartAt,
-        duration_min: durationMin,
-        activity_types: activityTypes.length > 0 ? activityTypes : null,
-        notes: notes || null,
+          start_at: newStartAt,
+          duration_min: durationMin,
+          activity_types: activityTypes.length > 0 ? activityTypes : null,
+          notes: notes || null,
         requires_driver: requiresDriver,
         filled_by: filledBy,                      // 新增填表人欄位
-        status: 'confirmed',
-        created_by: user.id,
-        created_at: (() => {
-          const now = new Date()
-          const year = now.getFullYear()
-          const month = String(now.getMonth() + 1).padStart(2, '0')
-          const day = String(now.getDate()).padStart(2, '0')
-          const hour = String(now.getHours()).padStart(2, '0')
-          const minute = String(now.getMinutes()).padStart(2, '0')
-          const second = String(now.getSeconds()).padStart(2, '0')
-          return `${year}-${month}-${day}T${hour}:${minute}:${second}`
-        })(),
-      }
+          status: 'confirmed',
+          created_by: user.id,
+          created_at: (() => {
+            const now = new Date()
+            const year = now.getFullYear()
+            const month = String(now.getMonth() + 1).padStart(2, '0')
+            const day = String(now.getDate()).padStart(2, '0')
+            const hour = String(now.getHours()).padStart(2, '0')
+            const minute = String(now.getMinutes()).padStart(2, '0')
+            const second = String(now.getSeconds()).padStart(2, '0')
+            return `${year}-${month}-${day}T${hour}:${minute}:${second}`
+          })(),
+        }
 
-      const { data: insertedBooking, error: insertError } = await supabase
-        .from('bookings')
-        .insert([bookingToInsert])
-        .select('id')
-        .single()
+        const { data: insertedBooking, error: insertError } = await supabase
+          .from('bookings')
+          .insert([bookingToInsert])
+          .select('id')
+          .single()
 
-      if (insertError) {
+        if (insertError) {
         throw new Error(insertError.message || '插入失敗')
       }
 
       // 插入教練關聯
-      if (selectedCoaches.length > 0 && insertedBooking) {
-        const bookingCoachesToInsert = selectedCoaches.map(coachId => ({
-          booking_id: insertedBooking.id,
-          coach_id: coachId,
-        }))
+        if (selectedCoaches.length > 0 && insertedBooking) {
+          const bookingCoachesToInsert = selectedCoaches.map(coachId => ({
+            booking_id: insertedBooking.id,
+            coach_id: coachId,
+          }))
 
-        const { error: coachInsertError } = await supabase
-          .from('booking_coaches')
-          .insert(bookingCoachesToInsert)
+          const { error: coachInsertError } = await supabase
+            .from('booking_coaches')
+            .insert(bookingCoachesToInsert)
 
-        if (coachInsertError) {
-          // 如果插入教練關聯失敗，刪除剛剛創建的預約
-          await supabase.from('bookings').delete().eq('id', insertedBooking.id)
+          if (coachInsertError) {
+            // 如果插入教練關聯失敗，刪除剛剛創建的預約
+            await supabase.from('bookings').delete().eq('id', insertedBooking.id)
           throw new Error('插入教練關聯失敗')
         }
       }
 
       // 插入會員關聯
-      if (selectedMemberIds.length > 0 && insertedBooking) {
-        const bookingMembersToInsert = selectedMemberIds.map(memberId => {
-          const now = new Date()
-          const year = now.getFullYear()
-          const month = String(now.getMonth() + 1).padStart(2, '0')
-          const day = String(now.getDate()).padStart(2, '0')
-          const hour = String(now.getHours()).padStart(2, '0')
-          const minute = String(now.getMinutes()).padStart(2, '0')
-          const second = String(now.getSeconds()).padStart(2, '0')
-          const createdAt = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+        if (selectedMemberIds.length > 0 && insertedBooking) {
+          const bookingMembersToInsert = selectedMemberIds.map(memberId => {
+            const now = new Date()
+            const year = now.getFullYear()
+            const month = String(now.getMonth() + 1).padStart(2, '0')
+            const day = String(now.getDate()).padStart(2, '0')
+            const hour = String(now.getHours()).padStart(2, '0')
+            const minute = String(now.getMinutes()).padStart(2, '0')
+            const second = String(now.getSeconds()).padStart(2, '0')
+            const createdAt = `${year}-${month}-${day}T${hour}:${minute}:${second}`
 
-          return {
-            booking_id: insertedBooking.id,
-            member_id: memberId,
-            created_at: createdAt
+            return {
+              booking_id: insertedBooking.id,
+              member_id: memberId,
+              created_at: createdAt
+            }
+          })
+
+          const { error: memberInsertError } = await supabase
+            .from('booking_members')
+            .insert(bookingMembersToInsert)
+
+          if (memberInsertError) {
+            console.error('插入會員關聯失敗:', memberInsertError)
           }
-        })
-
-        const { error: memberInsertError } = await supabase
-          .from('booking_members')
-          .insert(bookingMembersToInsert)
-
-        if (memberInsertError) {
-          console.error('插入會員關聯失敗:', memberInsertError)
         }
-      }
 
       // 記錄到審計日誌
-      const coachNames = selectedCoaches.length > 0
-        ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
-        : []
+        const coachNames = selectedCoaches.length > 0
+          ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
+          : []
 
-      await logBookingCreation({
-        userEmail: user.email || '',
-        studentName: finalStudentName,
-        boatName,
-        startTime: newStartAt,
-        durationMin,
-        coachNames
-      })
+        await logBookingCreation({
+          userEmail: user.email || '',
+          studentName: finalStudentName,
+          boatName,
+          startTime: newStartAt,
+          durationMin,
+          coachNames
+        })
 
       // Success
       resetForm()
@@ -379,18 +379,18 @@ export function NewBookingDialog({
             <div style={{
               marginBottom: '18px',
               padding: '10px',
-              borderRadius: '8px',
+                      borderRadius: '8px',
               backgroundColor: conflictStatus === 'conflict' ? '#ffebee' : '#e8f5e9',
               color: conflictStatus === 'conflict' ? '#c62828' : '#2e7d32',
               border: `1px solid ${conflictStatus === 'conflict' ? '#ef9a9a' : '#a5d6a7'}`,
-              fontSize: '14px',
+                      fontSize: '14px',
               fontWeight: '500',
               display: 'flex',
               alignItems: 'center',
               gap: '8px'
             }}>
               {conflictStatus === 'checking' ? '檢查中...' : conflictMessage}
-            </div>
+                </div>
           )}
 
           {/* 5. 活動類型與註解 */}
