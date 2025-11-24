@@ -76,7 +76,7 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
             boats(name)
           ),
           coaches:coach_id(id, name),
-          members(name, nickname)
+          members:member_id(name, nickname)
         `)
         .eq('status', 'processed')
         .eq('is_teaching', true)

@@ -101,7 +101,7 @@ export function MemberManagement() {
       // 獲取所有有到期日的置板
       supabase
         .from('board_storage')
-        .select('slot_number, members(name, nickname), expires_at')
+        .select('slot_number, members:member_id(name, nickname), expires_at')
         .eq('status', 'active')
         .not('expires_at', 'is', null)
         .order('expires_at', { ascending: true })

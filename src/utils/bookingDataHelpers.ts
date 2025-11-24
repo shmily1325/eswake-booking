@@ -359,14 +359,14 @@ export async function fetchBookingRelations(
         .from('booking_participants')
         .select(`
           *,
-          members(name, nickname),
+          members:member_id(name, nickname),
           reporting_coach:coaches!coach_id(id, name)
         `)
         .eq('is_deleted', false)
         .in('booking_id', bookingIds),
       supabase
         .from('booking_members')
-        .select('booking_id, member_id, members(name, nickname)')
+        .select('booking_id, member_id, members:member_id(name, nickname)')
         .in('booking_id', bookingIds)
     ])
 
