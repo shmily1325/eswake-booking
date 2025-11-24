@@ -205,12 +205,12 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                         lineHeight: '1.4',
                                                     }}>
                                                         {booking.coaches && booking.coaches.length > 0 && (
-                                                            <span>🎓 {booking.coaches.map(c => c.name).join('/')}</span>
+                                                            <span>🎓 {booking.coaches.filter(c => c && c.name).map(c => c.name).join('/')}</span>
                                                         )}
                                                         {booking.drivers && booking.drivers.length > 0 && (
                                                             <>
                                                                 {booking.coaches && booking.coaches.length > 0 && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
-                                                                <span>🚤 {booking.drivers.map(d => d.name).join('/')}</span>
+                                                                <span>🚤 {booking.drivers.filter(d => d && d.name).map(d => d.name).join('/')}</span>
                                                             </>
                                                         )}
                                                         {booking.requires_driver && (!booking.drivers || booking.drivers.length === 0) && (

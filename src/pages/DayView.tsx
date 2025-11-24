@@ -380,7 +380,8 @@ export function DayView() {
   }, [bookings, dateParam, boats])
 
   const displayBoats = useMemo(() => {
-    return boats
+    // 過濾掉可能的 null/undefined，確保渲染安全
+    return boats.filter(boat => boat && boat.id && boat.name)
   }, [boats])
 
 
@@ -931,7 +932,7 @@ export function DayView() {
                                     textAlign: 'center',
                                     fontWeight: '500',
                                   }}>
-                                    🎓 {booking.coaches.map(c => c.name).join('/')}
+                                    🎓 {booking.coaches.filter(c => c && c.name).map(c => c.name).join('/')}
                                   </div>
                                 )}
 
@@ -943,7 +944,7 @@ export function DayView() {
                                     textAlign: 'center',
                                     fontWeight: '500',
                                   }}>
-                                    🚤 {booking.drivers.map(d => d.name).join('/')}
+                                    🚤 {booking.drivers.filter(d => d && d.name).map(d => d.name).join('/')}
                                   </div>
                                 )}
                               </td>

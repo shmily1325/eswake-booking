@@ -21,7 +21,7 @@ export function formatBookingForLine(booking: BookingFormatData): string {
 
   // 組合一行：日期 時間 時長 船 教練 活動類型
   const coaches = booking.coaches && booking.coaches.length > 0
-    ? booking.coaches.map(c => c.name).join('/')
+    ? booking.coaches.filter(c => c && c.name).map(c => c.name).join('/')
     : '不指定'
 
   const activities = booking.activity_types && booking.activity_types.length > 0
