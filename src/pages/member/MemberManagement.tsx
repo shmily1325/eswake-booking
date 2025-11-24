@@ -7,6 +7,7 @@ import { MemberDetailDialog } from '../../components/MemberDetailDialog'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
+import { useToast, ToastContainer } from '../../components/ui'
 
 interface Member {
   id: string
@@ -36,6 +37,7 @@ interface Member {
 
 export function MemberManagement() {
   const user = useAuthUser()
+  const toast = useToast()
   const { isMobile } = useResponsive()
   const navigate = useNavigate()
   const [members, setMembers] = useState<Member[]>([])
@@ -230,7 +232,7 @@ export function MemberManagement() {
       setMembers(membersWithBoards)
     } catch (error) {
       console.error('載入會員失敗:', error)
-      alert('載入會員失敗')
+      toast.error('載入會員失敗')
     } finally {
       setLoading(false)
     }
@@ -247,7 +249,7 @@ export function MemberManagement() {
       await loadMembers()
     } catch (err: any) {
       console.error('隱藏會員失敗:', err)
-      alert('隱藏會員失敗')
+      toast.error('隱藏會員失敗')
     }
   }
 
@@ -262,7 +264,7 @@ export function MemberManagement() {
       await loadMembers()
     } catch (err: any) {
       console.error('恢復會員失敗:', err)
-      alert('恢復會員失敗')
+      toast.error('恢復會員失敗')
     }
   }
 
@@ -283,7 +285,7 @@ export function MemberManagement() {
 
       if (error) throw error
       if (!allMembers || allMembers.length === 0) {
-        alert('沒有會員資料可以導出')
+        toast.warning('沒有會員資料可以導出')
         return
       }
 
@@ -368,10 +370,10 @@ export function MemberManagement() {
       link.click()
       document.body.removeChild(link)
 
-      alert(`✅ 成功導出 ${allMembers.length} 位會員資料`)
+      toast.success(`成功導出 ${allMembers.length} 位會員資料`)
     } catch (err: any) {
       console.error('導出失敗:', err)
-      alert('導出失敗: ' + err.message)
+      toast.error('導出失敗: ' + err.message)
     }
   }
 
@@ -1143,7 +1145,8 @@ export function MemberManagement() {
         }}
         onUpdate={loadMembers}
       />
-
+      
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }

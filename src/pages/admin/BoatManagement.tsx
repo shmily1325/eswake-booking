@@ -5,12 +5,12 @@ import { PageHeader } from '../../components/PageHeader'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import type { Boat, BoatUnavailableDate } from '../../types/booking'
-import { handleError } from '../../utils/errorHandler'
-import { Button, Badge } from '../../components/ui'
+import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
 import { designSystem } from '../../styles/designSystem'
 
 export function BoatManagement() {
     const user = useAuthUser()
+    const toast = useToast()
     const [loading, setLoading] = useState(true)
     const [boats, setBoats] = useState<Boat[]>([])
     const [unavailableDates, setUnavailableDates] = useState<BoatUnavailableDate[]>([])
@@ -56,7 +56,7 @@ export function BoatManagement() {
 
     const handleAddBoat = async () => {
         if (!newBoatName.trim()) {
-            alert('請輸入船隻名稱')
+            toast.warning('請輸入船隻名稱')
             return
         }
 
@@ -73,12 +73,13 @@ export function BoatManagement() {
 
             if (error) throw error
 
+            toast.success('船隻新增成功！')
             setNewBoatName('')
             setNewBoatColor('#1976d2')
             setAddDialogOpen(false)
             loadData()
         } catch (error) {
-            handleError(error, '新增船隻')
+            toast.error('新增船隻失敗：' + (error as Error).message)
         } finally {
             setAddLoading(false)
         }
@@ -93,32 +94,33 @@ export function BoatManagement() {
 
             if (error) throw error
 
+            toast.success(boat.is_active ? '船隻已停用' : '船隻已啟用')
             loadData()
         } catch (error) {
-            handleError(error, '更新狀態')
+            toast.error('更新狀態失敗：' + (error as Error).message)
         }
     }
 
     const handleAddUnavailable = async () => {
         if (!selectedBoat) return
         if (!startDate || !endDate) {
-            alert('請選擇日期')
+            toast.warning('請選擇日期')
             return
         }
 
         if (endDate < startDate) {
-            alert('結束日期不能早於開始日期')
+            toast.warning('結束日期不能早於開始日期')
             return
         }
 
         // 如果有填時間，必須兩個都填
         if ((startTime && !endTime) || (!startTime && endTime)) {
-            alert('請完整填寫開始與結束時間，或兩者皆留空(代表全天)')
+            toast.warning('請完整填寫開始與結束時間，或兩者皆留空(代表全天)')
             return
         }
 
         if (startTime && endTime && startDate === endDate && endTime <= startTime) {
-            alert('結束時間必須晚於開始時間')
+            toast.warning('結束時間必須晚於開始時間')
             return
         }
 
@@ -146,9 +148,10 @@ export function BoatManagement() {
             setStartTime('')
             setEndTime('')
             setReason('')
+            toast.success('維修/停用時段已設定')
             loadData()
         } catch (error) {
-            handleError(error, '設定維修/停用')
+            toast.error('設定維修/停用失敗：' + (error as Error).message)
         } finally {
             setUnavailableLoading(false)
         }
@@ -165,9 +168,10 @@ export function BoatManagement() {
 
             if (error) throw error
 
+            toast.success('記錄已刪除')
             loadData()
         } catch (error) {
-            handleError(error, '刪除記錄')
+            toast.error('刪除記錄失敗：' + (error as Error).message)
         }
     }
 
@@ -578,6 +582,8 @@ export function BoatManagement() {
                     </div>
                 </div>
             )}
+            
+            <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
         </div>
     )
 }

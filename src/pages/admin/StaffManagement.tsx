@@ -5,8 +5,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
-import { handleError } from '../../utils/errorHandler'
-import { Button, Badge } from '../../components/ui'
+import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
 
 interface Coach {
   id: string
@@ -27,6 +26,7 @@ interface TimeOff {
 
 export function StaffManagement() {
   const user = useAuthUser()
+  const toast = useToast()
   const { isMobile } = useResponsive()
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [timeOffs, setTimeOffs] = useState<TimeOff[]>([])
@@ -71,7 +71,7 @@ export function StaffManagement() {
       setTimeOffs(timeOffsResult.data || [])
     } catch (error) {
       console.error('載入資料失敗:', error)
-      alert('載入資料失敗')
+      toast.error('載入資料失敗')
     } finally {
       setLoading(false)
     }
@@ -79,7 +79,7 @@ export function StaffManagement() {
 
   const handleAddCoach = async () => {
     if (!newCoachName.trim()) {
-      alert('請輸入教練名稱')
+      toast.warning('請輸入教練名稱')
       return
     }
 
@@ -97,9 +97,10 @@ export function StaffManagement() {
 
       setNewCoachName('')
       setAddDialogOpen(false)
+      toast.success('教練新增成功')
       loadData()
     } catch (error) {
-      handleError(error, '新增教練')
+      toast.error('新增教練失敗：' + (error as Error).message)
     } finally {
       setAddLoading(false)
     }
@@ -116,9 +117,10 @@ export function StaffManagement() {
 
       if (error) throw error
 
+      toast.success('狀態更新成功')
       loadData()
     } catch (error) {
-      handleError(error, '更新狀態')
+      toast.error('更新狀態失敗：' + (error as Error).message)
     }
   }
 
@@ -131,9 +133,10 @@ export function StaffManagement() {
 
       if (error) throw error
 
+      toast.success('教練已隱藏')
       loadData()
     } catch (error) {
-      handleError(error, '隱藏教練')
+      toast.error('隱藏教練失敗：' + (error as Error).message)
     }
   }
 
@@ -146,9 +149,10 @@ export function StaffManagement() {
 
       if (error) throw error
 
+      toast.success('教練已恢復')
       loadData()
     } catch (error) {
-      handleError(error, '恢復教練')
+      toast.error('恢復教練失敗：' + (error as Error).message)
     }
   }
 
@@ -183,9 +187,10 @@ export function StaffManagement() {
       setTimeOffStartDate('')
       setTimeOffEndDate('')
       setTimeOffReason('')
+      toast.success('休假設定成功')
       loadData()
     } catch (error) {
-      handleError(error, '設定休假')
+      toast.error('設定休假失敗：' + (error as Error).message)
     } finally {
       setTimeOffLoading(false)
     }
@@ -202,9 +207,10 @@ export function StaffManagement() {
 
       if (error) throw error
 
+      toast.success('休假記錄已刪除')
       loadData()
     } catch (error) {
-      handleError(error, '刪除休假記錄')
+      toast.error('刪除休假記錄失敗：' + (error as Error).message)
     }
   }
 
@@ -871,6 +877,7 @@ export function StaffManagement() {
       )}
 
       <Footer />
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }

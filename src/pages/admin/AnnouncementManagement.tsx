@@ -17,6 +17,7 @@ interface Announcement {
 
 export function AnnouncementManagement() {
   const user = useAuthUser()
+  const toast = useToast()
   const { isMobile } = useResponsive()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(false)
@@ -65,7 +66,7 @@ export function AnnouncementManagement() {
   const handleAdd = async () => {
     const validation = validateRequired(newContent, '交辦事項內容')
     if (!validation.valid) {
-      alert(validation.error)
+      toast.warning(validation.error || '請填寫交辦事項內容')
       return
     }
 
@@ -428,6 +429,7 @@ export function AnnouncementManagement() {
         {/* Footer */}
         <Footer />
       </div>
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }

@@ -1,0 +1,307 @@
+import { describe, it, expect } from 'vitest'
+import {
+  formatBookingForLine,
+  formatSingleBookingWithName,
+  formatBookingsForLine,
+  getDisplayContactName
+} from '../bookingFormat'
+
+describe('bookingFormat.ts - 預約格式化工具', () => {
+  describe('formatBookingForLine', () => {
+    it('應該格式化基本預約資訊', () => {
+      const booking = {
+        start_at: '2025-11-24T10:30:00',
+        duration_min: 60,
+        contact_name: '王小明',
+        boats: { name: 'G23' },
+        coaches: [{ name: 'ED' }],
+        activity_types: ['SUP']
+      }
+
+      const result = formatBookingForLine(booking)
+      expect(result).toBe('11/24 10:30 60分 G23 ED SUP')
+    })
+
+    it('應該處理多個教練', () => {
+      const booking = {
+        start_at: '2025-11-24T14:00:00',
+        duration_min: 90,
+        boats: { name: 'G23' },
+        coaches: [{ name: 'ED' }, { name: 'John' }]
+      }
+
+      const result = formatBookingForLine(booking)
+      expect(result).toBe('11/24 14:00 90分 G23 ED/John')
+    })
+
+    it('應該處理多個活動類型', () => {
+      const booking = {
+        start_at: '2025-11-24T09:00:00',
+        duration_min: 60,
+        boats: { name: 'G23' },
+        coaches: [{ name: 'ED' }],
+        activity_types: ['SUP', 'Wakeboard']
+      }
+
+      const result = formatBookingForLine(booking)
+      expect(result).toBe('11/24 09:00 60分 G23 ED SUP+Wakeboard')
+    })
+
+    it('沒有教練時應該顯示「不指定」', () => {
+      const booking = {
+        start_at: '2025-11-24T10:00:00',
+        duration_min: 60,
+        boats: { name: 'G23' },
+        coaches: []
+      }
+
+      const result = formatBookingForLine(booking)
+      expect(result).toBe('11/24 10:00 60分 G23 不指定')
+    })
+
+    it('沒有活動類型時不應該顯示活動類型', () => {
+      const booking = {
+        start_at: '2025-11-24T10:00:00',
+        duration_min: 60,
+        boats: { name: 'G23' },
+        coaches: [{ name: 'ED' }],
+        activity_types: []
+      }
+
+      const result = formatBookingForLine(booking)
+      expect(result).toBe('11/24 10:00 60分 G23 ED')
+    })
+
+    it('沒有船隻資訊時應該顯示「?」', () => {
+      const booking = {
+        start_at: '2025-11-24T10:00:00',
+        duration_min: 60,
+        boats: null,
+        coaches: [{ name: 'ED' }]
+      }
+
+      const result = formatBookingForLine(booking)
+      expect(result).toBe('11/24 10:00 60分 ? ED')
+    })
+
+    it('應該正確補零月份和日期', () => {
+      const booking = {
+        start_at: '2025-01-05T09:05:00',
+        duration_min: 60,
+        boats: { name: 'G23' },
+        coaches: [{ name: 'ED' }]
+      }
+
+      const result = formatBookingForLine(booking)
+      expect(result).toBe('01/05 09:05 60分 G23 ED')
+    })
+  })
+
+  describe('formatSingleBookingWithName', () => {
+    it('應該包含人名和預約資訊', () => {
+      const booking = {
+        start_at: '2025-11-24T10:30:00',
+        duration_min: 60,
+        contact_name: '王小明',
+        boats: { name: 'G23' },
+        coaches: [{ name: 'ED' }],
+        activity_types: ['SUP']
+      }
+
+      const result = formatSingleBookingWithName(booking)
+      expect(result).toBe('王小明的預約\n11/24 10:30 60分 G23 ED SUP')
+    })
+
+    it('沒有聯絡人名稱時應該顯示「客人」', () => {
+      const booking = {
+        start_at: '2025-11-24T10:30:00',
+        duration_min: 60,
+        boats: { name: 'G23' },
+        coaches: [{ name: 'ED' }]
+      }
+
+      const result = formatSingleBookingWithName(booking)
+      expect(result).toBe('客人的預約\n11/24 10:30 60分 G23 ED')
+    })
+  })
+
+  describe('formatBookingsForLine', () => {
+    it('應該格式化多個預約', () => {
+      const bookings = [
+        {
+          start_at: '2025-11-24T10:00:00',
+          duration_min: 60,
+          boats: { name: 'G23' },
+          coaches: [{ name: 'ED' }]
+        },
+        {
+          start_at: '2025-11-24T11:30:00',
+          duration_min: 90,
+          boats: { name: 'G24' },
+          coaches: [{ name: 'John' }]
+        }
+      ]
+
+      const result = formatBookingsForLine(bookings, '今日預約')
+      expect(result).toBe('今日預約\n11/24 10:00 60分 G23 ED\n11/24 11:30 90分 G24 John')
+    })
+
+    it('空列表應該返回空字串', () => {
+      const result = formatBookingsForLine([], '今日預約')
+      expect(result).toBe('')
+    })
+
+    it('應該包含自訂標題', () => {
+      const bookings = [
+        {
+          start_at: '2025-11-24T10:00:00',
+          duration_min: 60,
+          boats: { name: 'G23' },
+          coaches: [{ name: 'ED' }]
+        }
+      ]
+
+      const result = formatBookingsForLine(bookings, '明日預約提醒')
+      expect(result).toBe('明日預約提醒\n11/24 10:00 60分 G23 ED')
+    })
+  })
+
+  describe('getDisplayContactName', () => {
+    it('有會員且有暱稱時應該顯示暱稱', () => {
+      const booking = {
+        contact_name: '王小明',
+        booking_members: [
+          {
+            members: {
+              name: '王小明',
+              nickname: 'Jerry'
+            }
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('Jerry')
+    })
+
+    it('有會員但沒有暱稱時應該顯示姓名', () => {
+      const booking = {
+        contact_name: '王小明',
+        booking_members: [
+          {
+            members: {
+              name: '王小明',
+              nickname: null
+            }
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('王小明')
+    })
+
+    it('多個會員且暱稱不同時應該用逗號分隔', () => {
+      const booking = {
+        contact_name: '王小明, 李大華',
+        booking_members: [
+          {
+            members: {
+              name: '王小明',
+              nickname: 'Jerry'
+            }
+          },
+          {
+            members: {
+              name: '李大華',
+              nickname: 'David'
+            }
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('Jerry, David')
+    })
+
+    it('多個會員且暱稱相同時應該只顯示一個', () => {
+      const booking = {
+        contact_name: '王小明, 王大明',
+        booking_members: [
+          {
+            members: {
+              name: '王小明',
+              nickname: 'Jerry'
+            }
+          },
+          {
+            members: {
+              name: '王大明',
+              nickname: 'Jerry'
+            }
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('Jerry')
+    })
+
+    it('沒有會員資料時應該使用 contact_name', () => {
+      const booking = {
+        contact_name: '非會員客人',
+        booking_members: []
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('非會員客人')
+    })
+
+    it('沒有任何名稱時應該返回「未命名」', () => {
+      const booking = {
+        booking_members: []
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('未命名')
+    })
+
+    it('會員資料中有 null 或 undefined 時應該過濾掉', () => {
+      const booking = {
+        contact_name: '王小明',
+        booking_members: [
+          {
+            members: null
+          },
+          {
+            members: {
+              name: '王小明',
+              nickname: 'Jerry'
+            }
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('Jerry')
+    })
+
+    it('混合會員和非會員時應該顯示第一個會員的暱稱', () => {
+      const booking = {
+        contact_name: '王小明, 張三',
+        booking_members: [
+          {
+            members: {
+              name: '王小明',
+              nickname: 'Jerry'
+            }
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('Jerry')
+    })
+  })
+})
+
