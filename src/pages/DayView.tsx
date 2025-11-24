@@ -748,7 +748,12 @@ export function DayView() {
                     }}>
                       時間
                     </th>
-                    {displayBoats.map(boat => (
+                    {displayBoats.map(boat => {
+                      if (!boat || !boat.id) {
+                        console.error('[DayView Timeline] Null boat in displayBoats:', boat)
+                        return null
+                      }
+                      return (
                       <th
                         key={boat.id}
                         style={{
@@ -777,7 +782,8 @@ export function DayView() {
                           {bookings.filter(b => b.boat_id === boat.id).length}筆
                         </div>
                       </th>
-                    ))}
+                      )
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -816,6 +822,11 @@ export function DayView() {
                           )}
                         </td>
                         {displayBoats.map(boat => {
+                          if (!boat || !boat.id) {
+                            console.error('[DayView Timeline Cell] Null boat:', boat)
+                            return <td key={`null-${timeSlot}`}>Error</td>
+                          }
+                          
                           const booking = getBookingForCell(boat.id, timeSlot)
                           const isStart = isBookingStart(boat.id, timeSlot)
                           const isCleanup = isCleanupTime(boat.id, timeSlot)
