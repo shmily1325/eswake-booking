@@ -45,16 +45,17 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [memberData, setMemberData] = useState<any>(null)
-  const [isCashSettlement, setIsCashSettlement] = useState(false)
+  
+  // 判斷是否為現金/匯款結清
+  const isCashSettlement = report.payment_method === 'cash' || report.payment_method === 'transfer'
   
   // 根據教練回報的付款方式和船隻判斷預設類別
   const getDefaultCategory = (): DeductionCategory => {
     const paymentMethod = report.payment_method
     const boatName = report.bookings.boats?.name || ''
     
-    // 現金/匯款 -> 不需要扣款，標記為現金結清
-    if (paymentMethod === 'cash' || paymentMethod === 'transfer') {
-      setIsCashSettlement(true)
+    // 現金/匯款 -> 不需要扣款
+    if (isCashSettlement) {
       return 'balance' // 不會用到，只是佔位
     }
     
