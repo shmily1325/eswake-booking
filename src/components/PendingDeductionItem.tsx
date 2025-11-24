@@ -555,14 +555,15 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                   color: '#f44336',
                   textAlign: 'center'
                 }}>
-              ⚠️ 非會員無法扣款
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
+                  ⚠️ 非會員無法扣款
+                </div>
+              )}
+            </>
+          </div>
+        )}
+      </div>
+    )
+  }
 
 // 單個扣款明細項目
 interface DeductionItemRowProps {
