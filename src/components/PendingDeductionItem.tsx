@@ -28,6 +28,7 @@ interface Props {
     duration_min: number
     payment_method: string
     member_id: string | null
+    notes?: string | null
     bookings: {
       start_at: string
       contact_name: string
@@ -85,9 +86,19 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     const boatName = report.bookings.boats?.name || ''
     const duration = report.duration_min
     
-    // G23 / G21 黑豹
-    if (boatName.includes('G23') || boatName.includes('23') || 
-        boatName.includes('G21') || boatName.includes('21') || boatName.includes('黑豹')) {
+    // G21 黑豹 VIP 票券價格
+    if (boatName.includes('G21') || boatName.includes('21') || boatName.includes('黑豹')) {
+      if (duration === 20) return [1667]
+      if (duration === 30) return [2500]
+      if (duration === 40) return [3333]
+      if (duration === 60) return [5000]
+      if (duration === 90) return [7500]
+      // 其他時間自己填
+      return []
+    }
+    
+    // G23
+    if (boatName.includes('G23') || boatName.includes('23')) {
       if (duration <= 30) return [500, 800, 1000]
       if (duration <= 60) return [1000, 1500, 2000]
       if (duration <= 90) return [1500, 2000, 2500]
