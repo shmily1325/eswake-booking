@@ -26,7 +26,6 @@ import { AnnouncementManagement } from './pages/admin/AnnouncementManagement'
 import { LineSettings } from './pages/admin/LineSettings'
 import { CoachDailyView } from './pages/coach/CoachDailyView'
 import { PermissionManagement } from './pages/admin/PermissionManagement'
-import { VersionHistory } from './pages/admin/VersionHistory'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { LiffMyBookings } from './pages/LiffMyBookings'
 
@@ -80,7 +79,6 @@ function AppContent() {
           <Route path="/coach-daily" element={<CoachDailyView />} />
           <Route path="/permissions" element={<PermissionManagement />} />
           <Route path="/boats" element={<BoatManagement />} />
-          <Route path="/version-history" element={<VersionHistory />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
         </Routes>
       </BrowserRouter>

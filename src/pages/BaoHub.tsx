@@ -88,16 +88,6 @@ export function BaoHub() {
             disabled: true
           }
         ]
-      },
-      {
-        section: '📋 關於系統',
-        items: [
-          {
-            title: '版本控管',
-            icon: '📋',
-            link: '/version-history'
-          }
-        ]
       }
     ]
 

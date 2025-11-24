@@ -11,6 +11,8 @@ import { Footer } from '../components/Footer'
 import { getButtonStyle } from '../styles/designSystem'
 import { formatSingleBookingWithName, getDisplayContactName } from '../utils/bookingFormat'
 import { useToast, ToastContainer } from '../components/ui'
+import { TodayOverview } from '../components/TodayOverview'
+import { DayViewMobileHeader } from '../components/DayViewMobileHeader'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
 
@@ -19,8 +21,8 @@ interface DayViewBooking extends BaseBooking {
   coaches?: Coach[]
   drivers?: Coach[]
   booking_members: { member_id: string; members: { id: string; name: string; nickname: string | null } | null }[]
-  activity_types?: string[]
-  schedule_notes?: string | null
+  // activity_types inherited from BaseBooking
+  // schedule_notes inherited from BaseBooking
 }
 
 // Alias for internal use to match component state
@@ -223,10 +225,54 @@ export function DayView() {
     setBookings(bookingsWithCoaches)
   }
 
+
+
   const timeToMinutes = (timeStr: string): number => {
     const [hour, minute] = timeStr.split(':').map(Number)
     return hour * 60 + minute
   }
+
+  // 優化：預先計算預約和清理時間的 Map，實現 O(1) 查找
+  const { bookingMap, cleanupMap } = useMemo(() => {
+    const bMap = new Map<string, Booking>()
+    const cMap = new Map<string, boolean>()
+
+    bookings.forEach(booking => {
+      const bookingDatetime = booking.start_at.substring(0, 16)
+      const [bookingDate, bookingTime] = bookingDatetime.split('T')
+
+      if (bookingDate !== dateParam) return
+
+      const startMinutes = timeToMinutes(bookingTime)
+      const endMinutes = startMinutes + booking.duration_min
+
+      // 填入預約時段
+      for (let m = startMinutes; m < endMinutes; m += 15) {
+        const hour = Math.floor(m / 60)
+        const minute = m % 60
+        const timeSlot = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+        const key = `${booking.boat_id}-${timeSlot}`
+        // 如果同一個時段有多個預約（衝突），後面的會覆蓋前面的
+        // 但 UI 上只能顯示一個，這通常是可以接受的，或者應該顯示衝突警告
+        bMap.set(key, booking)
+      }
+
+      // 填入清理時段
+      const boat = boats.find(b => b.id === booking.boat_id)
+      if (boat && boat.name !== '彈簧床') {
+        const cleanupEndMinutes = endMinutes + 15
+        for (let m = endMinutes; m < cleanupEndMinutes; m += 15) {
+          const hour = Math.floor(m / 60)
+          const minute = m % 60
+          const timeSlot = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+          const key = `${booking.boat_id}-${timeSlot}`
+          cMap.set(key, true)
+        }
+      }
+    })
+
+    return { bookingMap: bMap, cleanupMap: cMap }
+  }, [bookings, dateParam, boats])
 
   const handleCellClick = (_boatId: number, _timeSlot: string, booking?: Booking) => {
     if (booking) {
@@ -245,39 +291,15 @@ export function DayView() {
   }
 
   const getBookingForCell = (boatId: number, timeSlot: string): Booking | null => {
-    const cellMinutes = timeToMinutes(timeSlot)
-
-    for (const booking of bookings) {
-      if (booking.boat_id !== boatId) continue
-
-      const bookingDatetime = booking.start_at.substring(0, 16)
-      const [bookingDate, bookingTime] = bookingDatetime.split('T')
-
-      if (bookingDate !== dateParam) continue
-
-      const bookingStartMinutes = timeToMinutes(bookingTime)
-      const bookingEndMinutes = bookingStartMinutes + booking.duration_min
-
-      if (cellMinutes >= bookingStartMinutes && cellMinutes < bookingEndMinutes) {
-        return booking
-      }
-    }
-    return null
+    return bookingMap.get(`${boatId}-${timeSlot}`) || null
   }
 
   const isBookingStart = (boatId: number, timeSlot: string): boolean => {
-    const cellDatetime = `${dateParam}T${timeSlot}`
+    const booking = bookingMap.get(`${boatId}-${timeSlot}`)
+    if (!booking) return false
 
-    for (const booking of bookings) {
-      if (booking.boat_id !== boatId) continue
-
-      const bookingDatetime = booking.start_at.substring(0, 16)
-
-      if (cellDatetime === bookingDatetime) {
-        return true
-      }
-    }
-    return false
+    const bookingTime = booking.start_at.substring(11, 16)
+    return bookingTime === timeSlot
   }
 
   /**
@@ -292,28 +314,7 @@ export function DayView() {
    * @returns 是否為清理時間
    */
   const isCleanupTime = (boatId: number, timeSlot: string): boolean => {
-    const boat = boats.find(b => b.id === boatId)
-    if (boat && boat.name === '彈簧床') return false
-
-    const cellMinutes = timeToMinutes(timeSlot)
-
-    for (const booking of bookings) {
-      if (booking.boat_id !== boatId) continue
-
-      const bookingDatetime = booking.start_at.substring(0, 16)
-      const [bookingDate, bookingTime] = bookingDatetime.split('T')
-
-      if (bookingDate !== dateParam) continue
-
-      const bookingStartMinutes = timeToMinutes(bookingTime)
-      const bookingEndMinutes = bookingStartMinutes + booking.duration_min
-      const cleanupEndMinutes = bookingEndMinutes + 15
-
-      if (cellMinutes >= bookingEndMinutes && cellMinutes < cleanupEndMinutes) {
-        return true
-      }
-    }
-    return false
+    return cleanupMap.get(`${boatId}-${timeSlot}`) || false
   }
 
   const filteredTimeSlots = useMemo(() => {
@@ -436,125 +437,15 @@ export function DayView() {
 
       {/* 手機版：兩行佈局 */}
       {isMobile ? (
-        <div style={{ marginBottom: '16px' }}>
-          {/* 第一行：日期選擇 */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            marginBottom: '8px',
-          }}>
-            <button
-              onClick={() => changeDate(-1)}
-              style={{
-                ...getButtonStyle('outline', 'medium', true),
-                padding: '8px 12px',
-                fontSize: '16px',
-              }}
-            >
-              ←
-            </button>
-            <input
-              type="date"
-              value={dateParam}
-              onChange={handleDateInputChange}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #dee2e6',
-                fontSize: '14px',
-                flex: '1',
-              }}
-            />
-            <button
-              onClick={() => changeDate(1)}
-              style={{
-                ...getButtonStyle('outline', 'medium', true),
-                padding: '8px 12px',
-                fontSize: '16px',
-              }}
-            >
-              →
-            </button>
-            <button
-              onClick={goToToday}
-              style={{
-                ...getButtonStyle('secondary', 'medium', true),
-                padding: '8px 12px',
-                minWidth: '70px',
-              }}
-            >
-              今天
-            </button>
-          </div>
-
-          {/* 第二行：視圖切換 + 排班管理 */}
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-          }}>
-            <div style={{
-              display: 'flex',
-              background: '#f0f0f0',
-              borderRadius: '8px',
-              padding: '4px',
-              flex: 1,
-            }}>
-              <button
-                onClick={() => setViewMode('list')}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  background: viewMode === 'list' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: viewMode === 'list' ? '600' : '400',
-                  fontSize: '14px',
-                  color: viewMode === 'list' ? '#5a5a5a' : '#666',
-                  transition: 'all 0.2s',
-                  boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                📋 列表
-              </button>
-              <button
-                onClick={() => setViewMode('timeline')}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  background: viewMode === 'timeline' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: viewMode === 'timeline' ? '600' : '400',
-                  fontSize: '14px',
-                  color: viewMode === 'timeline' ? '#5a5a5a' : '#666',
-                  transition: 'all 0.2s',
-                  boxShadow: viewMode === 'timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                📅 時間軸
-              </button>
-            </div>
-
-            <Link
-              to={`/coach-assignment?date=${dateParam}`}
-              style={{
-                ...getButtonStyle('secondary', 'medium', true),
-                textDecoration: 'none',
-                padding: '10px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                whiteSpace: 'nowrap',
-                minWidth: '70px',
-              }}
-            >
-              排班
-            </Link>
-          </div>
-        </div>
+        <DayViewMobileHeader
+          date={dateParam}
+          onDateChange={handleDateInputChange}
+          onPrevDate={() => changeDate(-1)}
+          onNextDate={() => changeDate(1)}
+          onGoToToday={goToToday}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
       ) : (
         /* 桌面版：單行佈局 */
         <div style={{
@@ -665,139 +556,9 @@ export function DayView() {
       )}
 
       {/* 今日總覽卡片 - 僅電腦版顯示 */}
-      {!isMobile && !loading && bookings.length > 0 && (() => {
-        // 統計數據
-        const totalBookings = bookings.length
-
-        // 教練使用統計（筆數 + 總時長）
-        const coachStats = new Map<string, { count: number, totalMinutes: number }>()
-        bookings.forEach(booking => {
-          booking.coaches?.forEach(coach => {
-            const current = coachStats.get(coach.name) || { count: 0, totalMinutes: 0 }
-            coachStats.set(coach.name, {
-              count: current.count + 1,
-              totalMinutes: current.totalMinutes + booking.duration_min
-            })
-          })
-        })
-        const topCoaches = Array.from(coachStats.entries())
-          .sort((a, b) => b[1].count - a[1].count)
-
-        // 駕駛使用統計（筆數 + 總時長）- 排除彈簧床
-        const driverStats = new Map<string, { count: number, totalMinutes: number }>()
-        bookings.forEach(booking => {
-          // 彈簧床不需要駕駛，不計入駕駛統計
-          if (booking.boats?.name === '彈簧床') return
-
-          booking.drivers?.forEach(driver => {
-            const current = driverStats.get(driver.name) || { count: 0, totalMinutes: 0 }
-            driverStats.set(driver.name, {
-              count: current.count + 1,
-              totalMinutes: current.totalMinutes + booking.duration_min
-            })
-          })
-        })
-        const topDrivers = Array.from(driverStats.entries())
-          .sort((a, b) => b[1].count - a[1].count)
-
-        // 船隻使用統計（筆數 + 總時長）
-        const boatStats = new Map<string, { count: number, totalMinutes: number }>()
-        bookings.forEach(booking => {
-          if (booking.boats?.name) {
-            const current = boatStats.get(booking.boats.name) || { count: 0, totalMinutes: 0 }
-            boatStats.set(booking.boats.name, {
-              count: current.count + 1,
-              totalMinutes: current.totalMinutes + booking.duration_min
-            })
-          }
-        })
-        const topBoats = Array.from(boatStats.entries())
-          .sort((a, b) => b[1].count - a[1].count)
-
-        return (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: isMobile ? '12px' : '16px 20px',
-            marginBottom: '16px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          }}>
-            <div style={{
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '700',
-              color: '#2c3e50',
-              marginBottom: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}>
-              📊 今日總覽
-            </div>
-
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: isMobile ? '12px' : '16px',
-            }}>
-              {/* 總預約數 */}
-              <div style={{
-                padding: '12px',
-                backgroundColor: '#f0f9ff',
-                borderRadius: '8px',
-                border: '1px solid #bae6fd',
-              }}>
-                <div style={{ fontSize: '12px', color: '#0369a1', marginBottom: '4px' }}>總預約數</div>
-                <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: '700', color: '#0c4a6e' }}>
-                  {totalBookings} 筆
-                </div>
-              </div>
-
-              {/* 教練使用 */}
-              <div style={{
-                padding: '12px',
-                backgroundColor: '#f0fdf4',
-                borderRadius: '8px',
-                border: '1px solid #bbf7d0',
-              }}>
-                <div style={{ fontSize: '12px', color: '#15803d', marginBottom: '4px' }}>教練</div>
-                <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#166534', lineHeight: '1.6' }}>
-                  {topCoaches.length > 0
-                    ? topCoaches.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')
-                    : '無'}
-                </div>
-              </div>
-
-              {/* 駕駛使用 */}
-              <div style={{
-                padding: '12px',
-                backgroundColor: '#eff6ff',
-                borderRadius: '8px',
-                border: '1px solid #bfdbfe',
-              }}>
-                <div style={{ fontSize: '12px', color: '#1e40af', marginBottom: '4px' }}>駕駛</div>
-                <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#1e3a8a', lineHeight: '1.6' }}>
-                  {topDrivers.length > 0
-                    ? topDrivers.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')
-                    : '無'}
-                </div>
-              </div>
-
-              {/* 船隻使用 */}
-              <div style={{
-                padding: '12px',
-                backgroundColor: '#fef3c7',
-                borderRadius: '8px',
-                border: '1px solid #fde68a',
-              }}>
-                <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '4px' }}>船</div>
-                <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#78350f', lineHeight: '1.6' }}>
-                  {topBoats.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')}
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      {!isMobile && !loading && bookings.length > 0 && (
+        <TodayOverview bookings={bookings} isMobile={isMobile} />
+      )}
 
       {viewMode === 'list' && (
         <div style={{

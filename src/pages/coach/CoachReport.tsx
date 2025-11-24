@@ -27,6 +27,7 @@ import type {
   Booking,
   Participant
 } from '../../types/booking'
+import type { Database } from '../../types/supabase'
 
 interface MemberSearchResult {
   id: string
@@ -97,7 +98,7 @@ export function CoachReport() {
   const loadCoaches = async () => {
     const { data, error } = await supabase
       .from('coaches')
-      .select('id, name, status')
+      .select('id, name, status, notes, created_at, updated_at')
       .neq('status', 'archived')
       .order('name')
     
@@ -257,7 +258,7 @@ export function CoachReport() {
     setReportingCoachName(coachName)
     
     if (booking.coach_report) {
-      setDriverDuration(booking.coach_report.driver_duration_min)
+      setDriverDuration(booking.coach_report.driver_duration_min || 0)
     } else {
       setDriverDuration(booking.duration_min)
     }
@@ -272,6 +273,15 @@ export function CoachReport() {
 
   const loadBookingMembers = async (bookingId: number, defaultDuration: number) => {
     try {
+      type BookingMemberWithMember = {
+        member_id: string
+        members: {
+          id: string
+          name: string
+          nickname: string | null
+        } | null
+      }
+
       const { data: bookingMembersData } = await supabase
         .from('booking_members')
         .select('member_id, members(id, name, nickname)')
@@ -295,23 +305,38 @@ export function CoachReport() {
         })
       }
 
-      const availableMembers = (bookingMembersData || []).filter(
-        (bm: any) => !reportedMemberIds.has(bm.member_id)
+      const availableMembers = (bookingMembersData as BookingMemberWithMember[] || []).filter(
+        (bm) => !reportedMemberIds.has(bm.member_id)
       )
 
       const participants: Participant[] = []
       const addedMemberIds = new Set<string>()
       
-      availableMembers.forEach((bm: any) => {
+      availableMembers.forEach((bm) => {
         const member = bm.members
+        if (!member) return // 跳过没有会员信息的记录
+        
         addedMemberIds.add(bm.member_id)
         participants.push({
+          id: 0,
+          booking_id: bookingId,
+          coach_id: reportingCoachId,
           member_id: bm.member_id,
           participant_name: member.nickname || member.name,
           duration_min: defaultDuration,
           payment_method: 'cash',
           lesson_type: 'undesignated',  // 默认不指定
-          status: 'pending'
+          status: 'pending',
+          created_at: null,
+          updated_at: null,
+          deleted_at: null,
+          is_deleted: null,
+          is_teaching: null,
+          notes: null,
+          replaced_by_id: null,
+          replaces_id: null,
+          reported_at: null,
+          transaction_id: null
         })
       })
 
@@ -326,12 +351,25 @@ export function CoachReport() {
             
             if (!isExistingMember) {
               participants.push({
+                id: 0,
+                booking_id: bookingId,
+                coach_id: reportingCoachId,
                 member_id: null,
                 participant_name: contactName,
                 duration_min: defaultDuration,
                 payment_method: 'cash',
                 lesson_type: 'undesignated',  // 默认不指定
-                status: 'not_applicable'
+                status: 'not_applicable',
+                created_at: null,
+                updated_at: null,
+                deleted_at: null,
+                is_deleted: null,
+                is_teaching: null,
+                notes: null,
+                replaced_by_id: null,
+                replaces_id: null,
+                reported_at: null,
+                transaction_id: null
               })
             }
           }
@@ -340,12 +378,25 @@ export function CoachReport() {
 
       if (participants.length === 0) {
         participants.push({
+          id: 0,
+          booking_id: bookingId,
+          coach_id: reportingCoachId,
           member_id: null,
           participant_name: '',
           duration_min: defaultDuration,
           payment_method: 'cash',
           lesson_type: 'undesignated',  // 默认不指定
-          status: 'pending'
+          status: 'pending',
+          created_at: null,
+          updated_at: null,
+          deleted_at: null,
+          is_deleted: null,
+          is_teaching: null,
+          notes: null,
+          replaced_by_id: null,
+          replaces_id: null,
+          reported_at: null,
+          transaction_id: null
         })
       }
 
@@ -525,12 +576,15 @@ export function CoachReport() {
       }
 
       // 步驟 3 & 4: 更新現有記錄 + 插入新記錄
-      const participantsToUpdate: any[] = []
-      const participantsToInsert: any[] = []
+      type ParticipantUpdate = Database['public']['Tables']['booking_participants']['Update'] & { id: number }
+      type ParticipantInsert = Database['public']['Tables']['booking_participants']['Insert']
+      
+      const participantsToUpdate: ParticipantUpdate[] = []
+      const participantsToInsert: ParticipantInsert[] = []
 
-      validParticipants.forEach((p: any) => {
+      validParticipants.forEach((p: Participant) => {
         // 使用工具函数计算 is_teaching 和 status
-        const isTeaching = calculateIsTeaching(p.lesson_type)
+        const isTeaching = calculateIsTeaching(p.lesson_type || 'undesignated')
         const status = calculateParticipantStatus(p.member_id)
         
         console.log(`參與者 ${p.participant_name}:`, {
@@ -608,12 +662,25 @@ export function CoachReport() {
     setParticipants([
       ...participants,
       {
+        id: 0,
+        booking_id: reportingBookingId || 0,
+        coach_id: reportingCoachId,
         member_id: null,
         participant_name: '',
         duration_min: booking?.duration_min || 60,
         payment_method: 'cash',  // 默認現金
         lesson_type: 'undesignated',
-        status: 'not_applicable'  // 默認非會員
+        status: 'not_applicable',  // 默認非會員
+        created_at: null,
+        updated_at: null,
+        deleted_at: null,
+        is_deleted: null,
+        is_teaching: null,
+        notes: null,
+        replaced_by_id: null,
+        replaces_id: null,
+        reported_at: null,
+        transaction_id: null
       }
     ])
   }

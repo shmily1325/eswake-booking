@@ -64,11 +64,25 @@ export function assembleBookingsWithRelations(
   return bookings.map(booking => {
     const bookingCoaches = (relations.coaches || [])
       .filter(bc => bc.booking_id === booking.id)
-      .map(bc => ({ id: bc.coach_id, name: bc.coaches?.name || '' }))
+      .map(bc => ({ 
+        id: bc.coach_id, 
+        name: bc.coaches?.name || '',
+        status: bc.coaches?.status || null,
+        notes: bc.coaches?.notes || null,
+        created_at: bc.coaches?.created_at || null,
+        updated_at: bc.coaches?.updated_at || null
+      }))
 
     const bookingDrivers = (relations.drivers || [])
       .filter(bd => bd.booking_id === booking.id)
-      .map(bd => ({ id: bd.driver_id, name: bd.coaches?.name || '' }))
+      .map(bd => ({ 
+        id: bd.driver_id, 
+        name: bd.coaches?.name || '',
+        status: bd.coaches?.status || null,
+        notes: bd.coaches?.notes || null,
+        created_at: bd.coaches?.created_at || null,
+        updated_at: bd.coaches?.updated_at || null
+      }))
 
     const coachReport = (relations.reports || []).find(
       r => r.booking_id === booking.id
@@ -85,6 +99,7 @@ export function assembleBookingsWithRelations(
 
         return {
           id: p.id,
+          booking_id: p.booking_id,
           coach_id: p.coach_id,
           member_id: p.member_id,
           participant_name: displayName,
@@ -94,8 +109,14 @@ export function assembleBookingsWithRelations(
           notes: p.notes,
           status: p.status,
           is_deleted: p.is_deleted,
+          is_teaching: p.is_teaching,
           transaction_id: p.transaction_id,
-          replaces_id: p.replaces_id
+          replaces_id: p.replaces_id,
+          replaced_by_id: p.replaced_by_id,
+          created_at: p.created_at,
+          updated_at: p.updated_at,
+          deleted_at: p.deleted_at,
+          reported_at: p.reported_at
         }
       })
 
