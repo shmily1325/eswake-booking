@@ -215,7 +215,7 @@ export async function checkCoachConflict(
  * @param driverId 駕駛 ID
  * @param dateStr 日期字串 "YYYY-MM-DD"
  * @param startTime 開始時間 "HH:MM"
- * @param durationMin 持續時間（分鐘）
+ * @param durationMin 持續時間(分鐘)
  * @returns 衝突檢查結果
  */
 export async function checkDriverConflict(
@@ -226,11 +226,23 @@ export async function checkDriverConflict(
 ): Promise<ConflictResult> {
   const newSlot = calculateTimeSlot(startTime, durationMin)
 
-  // 查詢駕駛的所有預約
+  // 查詢駕駛的所有預約(從 booking_drivers 表)
+  const { data: driverBookings } = await supabase
+    .from('booking_drivers')
+    .select('booking_id')
+    .eq('driver_id', driverId)
+
+  if (!driverBookings || driverBookings.length === 0) {
+    return { hasConflict: false, reason: '' }
+  }
+
+  const bookingIds = driverBookings.map(b => b.booking_id)
+
+  // 查詢這些預約的詳細資訊
   const { data: bookings, error } = await supabase
     .from('bookings')
     .select('id, start_at, duration_min, contact_name')
-    .eq('driver_coach_id', driverId)
+    .in('id', bookingIds)
     .gte('start_at', `${dateStr}T00:00:00`)
     .lte('start_at', `${dateStr}T23:59:59`)
 
