@@ -726,11 +726,31 @@ function DeductionItemRow({
           onChange={(e) => {
             const newCategory = e.target.value as DeductionCategory
             const updates: Partial<DeductionItem> = { category: newCategory }
+            const duration = report.duration_min
             
-            if (newCategory === 'balance' || newCategory === 'vip_voucher') {
-              // 金額類別
+            if (newCategory === 'balance') {
+              // 扣儲值：根據教練回報的分鐘數自動選中對應金額
               updates.minutes = undefined
-              updates.amount = undefined // 讓用戶自己選或填
+              if (boatName.includes('G23')) {
+                const map: Record<number, number> = { 30: 5400, 40: 7200, 60: 10800, 90: 16200 }
+                updates.amount = map[duration]
+              } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
+                const map: Record<number, number> = { 20: 2000, 30: 3000, 40: 4000, 60: 6000, 90: 9000 }
+                updates.amount = map[duration]
+              } else if (boatName.includes('粉紅') || boatName.includes('200')) {
+                const map: Record<number, number> = { 20: 1200, 30: 1800, 40: 2400, 60: 3600, 90: 5400 }
+                updates.amount = map[duration]
+              }
+            } else if (newCategory === 'vip_voucher') {
+              // VIP票券：根據教練回報的分鐘數自動選中對應金額
+              updates.minutes = undefined
+              if (boatName.includes('G23')) {
+                const map: Record<number, number> = { 30: 4250, 40: 5667, 60: 8500, 90: 12750 }
+                updates.amount = map[duration]
+              } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
+                const map: Record<number, number> = { 20: 1667, 30: 2500, 40: 3333, 60: 5000, 90: 7500 }
+                updates.amount = map[duration]
+              }
             } else {
               // 時數類別
               updates.minutes = defaultMinutes
@@ -868,14 +888,14 @@ function DeductionItemRow({
                   </div>
                   <input
                     type="number"
-                    placeholder="自訂金額"
+                    placeholder="自訂"
                     value={item.amount && !commonAmounts.concat(vipVoucherAmounts).includes(item.amount) ? item.amount : ''}
                     onChange={(e) => onUpdate({ amount: parseInt(e.target.value) || 0 })}
                     style={{
                       padding: '10px 12px 10px 38px',
                       border: '3px dashed #f59e0b',
                       borderRadius: '8px',
-                      width: '130px',
+                      width: '100px',
                       fontSize: '14px',
                       fontWeight: '700',
                       background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
@@ -940,24 +960,49 @@ function DeductionItemRow({
                   {minutes}分
                 </button>
               ))}
-              <input
-                type="number"
-                placeholder="自訂"
-                value={item.minutes || ''}
-                onChange={(e) => onUpdate({ minutes: parseInt(e.target.value) || 0 })}
-                style={{
-                  padding: '10px 12px',
-                  border: '2px solid #94a3b8',
-                  borderRadius: '8px',
-                  width: '80px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  textAlign: 'center',
-                  background: 'white'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#94a3b8'}
-              />
+              <div style={{ 
+                position: 'relative',
+                display: 'inline-block'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  left: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: '16px',
+                  pointerEvents: 'none',
+                  zIndex: 1
+                }}>
+                  ✏️
+                </div>
+                <input
+                  type="number"
+                  placeholder="自訂"
+                  value={item.minutes || ''}
+                  onChange={(e) => onUpdate({ minutes: parseInt(e.target.value) || 0 })}
+                  style={{
+                    padding: '10px 12px 10px 38px',
+                    border: '3px dashed #f59e0b',
+                    borderRadius: '8px',
+                    width: '100px',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                    color: '#92400e',
+                    boxShadow: '0 0 0 3px rgba(245,158,11,0.1)'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#f59e0b'
+                    e.currentTarget.style.background = '#fff'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.3), 0 4px 12px rgba(245,158,11,0.2)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#f59e0b'
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.1)'
+                  }}
+                />
+              </div>
             </div>
           </div>
         )}
