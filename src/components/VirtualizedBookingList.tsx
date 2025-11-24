@@ -14,7 +14,7 @@ interface FixedSizeListProps {
     width: number | string
     // react-window expects itemData to always be an object; keep it optional for typing
     itemData?: Record<string, unknown>
-    children: React.ComponentType<{ index: number; style: React.CSSProperties }>
+    children: React.ComponentType<{ index: number; style: React.CSSProperties; data?: any }>
 }
 
 type ReactWindowModule = {
@@ -44,7 +44,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
         const map = new Map<number, Booking[]>()
         const safeBoats = boats || []
         const safeBookings = bookings || []
-        
+
         safeBoats.forEach(boat => {
             const boatBookings = safeBookings
                 .filter(b => b.boat_id === boat.id)
@@ -55,11 +55,11 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
     }, [boats, bookings])
 
     // 渲染單個船隻的預約行
-    const BoatRow = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+    const BoatRow = React.memo(({ index, style, data: _data }: { index: number; style: React.CSSProperties; data?: any }) => {
         const safeBoats = boats || []
         const boat = safeBoats[index]
         if (!boat) return null
-        
+
         const boatBookings = boatBookingsMap.get(boat.id) || []
 
         return (
@@ -175,7 +175,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                 </div>
             </div>
         )
-    }
+    })
 
     // 計算每行高度
     const itemSize = isMobile ? 140 : 160
@@ -192,19 +192,36 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
             border: '1px solid #e9ecef'
         }}>
             <AutoSizer>
-                {({ height, width }: { height: number; width: number }) => (
-                    <List
-                        height={height}
-                        itemCount={safeBoats.length}
-                        itemSize={itemSize}
-                        width={width}
-                        // react-window v2 會對 itemData 呼叫 Object.values，因此不能傳 undefined
-                        // 確保傳入的對象不是 null/undefined
-                        itemData={{ boatsLength: safeBoats.length || 0 }}
-                    >
-                        {BoatRow}
-                    </List>
-                )}
+                {({ height, width }: { height: number; width: number }) => {
+                    // 防禦性檢查：確保 height 和 width 有效
+                    if (!height || !width || safeBoats.length === 0) {
+                        return (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '100%',
+                                color: '#999'
+                            }}>
+                                {safeBoats.length === 0 ? '沒有可用的船隻' : '載入中...'}
+                            </div>
+                        )
+                    }
+
+                    return (
+                        <List
+                            height={height}
+                            itemCount={safeBoats.length}
+                            itemSize={itemSize}
+                            width={width}
+                            // react-window v2 會對 itemData 呼叫 Object.values，因此不能傳 undefined
+                            // 確保傳入的對象不是 null/undefined
+                            itemData={{ boatsLength: safeBoats.length || 0 }}
+                        >
+                            {BoatRow}
+                        </List>
+                    )
+                }}
             </AutoSizer>
         </div>
     )
