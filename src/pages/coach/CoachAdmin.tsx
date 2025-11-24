@@ -5,6 +5,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { TransactionDialog } from '../../components/TransactionDialog'
 import { StatisticsTab } from '../../components/StatisticsTab'
+import { PendingDeductionItem } from '../../components/PendingDeductionItem'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
@@ -773,8 +774,8 @@ export function CoachAdmin() {
               </div>
             ) : (
               <>
-                {/* 會員待扣款 */}
-                {Object.keys(groupedPendingReports).length > 0 && (
+                {/* 會員待扣款 - 新版展開式介面 */}
+                {pendingReports.length > 0 && (
                   <>
                     <h2 style={{ 
                       fontSize: isMobile ? '18px' : '20px',
@@ -782,154 +783,18 @@ export function CoachAdmin() {
                       marginBottom: '16px',
                       color: '#333'
                     }}>
-                      會員待扣款 ({pendingReports.length})
+                      待處理扣款 ({pendingReports.length})
                     </h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
-                      {Object.values(groupedPendingReports).map(({ booking, reports }) => (
-                        <div 
-                          key={booking.id}
-                          style={{
-                            ...getCardStyle(isMobile),
-                            borderLeft: '4px solid #2196f3'
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
+                      {pendingReports.map(report => (
+                        <PendingDeductionItem
+                          key={report.id}
+                          report={report}
+                          onComplete={() => {
+                            loadPendingReports()
+                            loadNonMemberReports()
                           }}
-                        >
-                          {/* 預約資訊 */}
-                          <div style={{ 
-                            marginBottom: '16px', 
-                            paddingBottom: '12px', 
-                            borderBottom: '1px solid #e0e0e0' 
-                          }}>
-                            <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '4px' }}>
-                              {extractDate(booking.start_at)} {extractTime(booking.start_at)} | {booking.boats?.name} ({booking.duration_min}分)
-                            </div>
-                            <div style={{ color: '#666', fontSize: '14px' }}>
-                              預約人：{booking.contact_name}
-                            </div>
-                          </div>
-
-                          {/* 參與者列表 */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {reports.map(report => (
-                              <div
-                                key={report.id}
-                                style={{
-                                  padding: '12px',
-                                  background: '#f8f9fa',
-                                  borderRadius: '8px',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  gap: '12px',
-                                  flexWrap: isMobile ? 'wrap' : 'nowrap'
-                                }}
-                              >
-                                <div style={{ flex: 1, minWidth: '200px' }}>
-                                  <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                    {report.participant_name}
-                                    {/* 顯示原始非會員名字（從 notes 提取） */}
-                                    {report.notes && report.notes.includes('非會員：') && (() => {
-                                      const match = report.notes.match(/非會員：([^\s]+)/)
-                                      if (match && match[1]) {
-                                        return (
-                                          <span style={{ 
-                                            marginLeft: '8px',
-                                            color: '#ff9800',
-                                            fontSize: '14px',
-                                            fontWeight: 'normal'
-                                          }}>
-                                            (非會員：{match[1]})
-                                          </span>
-                                        )
-                                      }
-                                      return null
-                                    })()}
-                                    {report.replaces_id && (
-                                      <span style={{
-                                        marginLeft: '8px',
-                                        padding: '2px 8px',
-                                        background: '#ff9800',
-                                        color: 'white',
-                                        borderRadius: '4px',
-                                        fontSize: '12px'
-                                      }}>
-                                        🔄 修改
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div style={{ color: '#666', fontSize: '14px' }}>
-                                    {report.duration_min}分 • {PAYMENT_METHODS.find(m => m.value === report.payment_method)?.label}
-                                    {report.coaches && ` • ${report.coaches.name}`}
-                                  </div>
-                                  {report.old_participant && (
-                                    <div style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
-                                      原：{report.old_participant.duration_min}分 • {PAYMENT_METHODS.find(m => m.value === report.old_participant.payment_method)?.label}
-                                    </div>
-                                  )}
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                  <button
-                                    onClick={() => handleProcessTransaction(report)}
-                                    style={{
-                                      ...getButtonStyle('primary'),
-                                      padding: '8px 16px',
-                                      fontSize: '14px'
-                                    }}
-                                  >
-                                    💳 處理扣款
-                                  </button>
-                                  <button
-                                    onClick={() => handleCashSettlement(report)}
-                                    style={{
-                                      padding: '8px 16px',
-                                      fontSize: '14px',
-                                      backgroundColor: '#28a745',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: '6px',
-                                      cursor: 'pointer',
-                                      fontWeight: '500',
-                                      transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.backgroundColor = '#218838'
-                                      e.currentTarget.style.transform = 'translateY(-1px)'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.backgroundColor = '#28a745'
-                                      e.currentTarget.style.transform = 'translateY(0)'
-                                    }}
-                                  >
-                                    💵 現金結清
-                                  </button>
-                                  <button
-                                    onClick={() => handleMarkAsComplete(report)}
-                                    style={{
-                                      padding: '8px 16px',
-                                      fontSize: '14px',
-                                      backgroundColor: '#17a2b8',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: '6px',
-                                      cursor: 'pointer',
-                                      fontWeight: '500',
-                                      transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.backgroundColor = '#138496'
-                                      e.currentTarget.style.transform = 'translateY(-1px)'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.backgroundColor = '#17a2b8'
-                                      e.currentTarget.style.transform = 'translateY(0)'
-                                    }}
-                                  >
-                                    ✅ 完成處理
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        />
                       ))}
                     </div>
                   </>
