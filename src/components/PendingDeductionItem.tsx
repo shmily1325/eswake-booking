@@ -726,7 +726,7 @@ function DeductionItemRow({
           onChange={(e) => {
             const newCategory = e.target.value as DeductionCategory
             const updates: Partial<DeductionItem> = { category: newCategory }
-            const duration = report.duration_min
+            const duration = defaultMinutes
             
             if (newCategory === 'balance') {
               // 扣儲值：根據教練回報的分鐘數自動選中對應金額
