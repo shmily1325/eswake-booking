@@ -1,7 +1,6 @@
 import React from 'react'
 import type { Booking, Boat } from '../types/booking'
-import { getBookingCardStyle, bookingCardContentStyles, getStatusBadgeStyle } from '../styles/designSystem'
-import { formatTimeRange, getDisplayContactName } from '../utils/bookingFormat'
+import { getDisplayContactName } from '../utils/bookingFormat'
 
 interface VirtualizedBookingListProps {
     boats: Boat[]
