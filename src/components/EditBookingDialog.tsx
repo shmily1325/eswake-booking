@@ -109,7 +109,7 @@ export function EditBookingDialog({
 
   // 即時衝突檢查 Effect
   useEffect(() => {
-    if (!isOpen || !startDate || !startTime || !selectedBoatId) {
+    if (!isOpen || !startDate || !startTime || !selectedBoatId || !booking || !booking.id) {
       setConflictStatus(null)
       return
     }
@@ -128,13 +128,24 @@ export function EditBookingDialog({
 
     const timer = setTimeout(check, 500) // Debounce
     return () => clearTimeout(timer)
-  }, [isOpen, startDate, startTime, durationMin, selectedBoatId, selectedCoaches, performConflictCheck, booking.id])
+  }, [isOpen, startDate, startTime, durationMin, selectedBoatId, selectedCoaches, performConflictCheck, booking?.id])
 
   if (!isOpen) return null
+
+  // 如果 booking 或 booking.id 不存在，不渲染內容
+  if (!booking || !booking.id) {
+    return null
+  }
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    // 安全檢查：確保 booking 和 booking.id 存在
+    if (!booking || !booking.id) {
+      setError('預約資料不完整，無法更新')
+      return
+    }
 
     // 檢查早場預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
@@ -339,6 +350,12 @@ export function EditBookingDialog({
   }
 
   const handleDelete = async () => {
+    // 安全檢查：確保 booking 和 booking.id 存在
+    if (!booking || !booking.id) {
+      setError('預約資料不完整，無法刪除')
+      return
+    }
+
     setLoading(true)
 
     try {
