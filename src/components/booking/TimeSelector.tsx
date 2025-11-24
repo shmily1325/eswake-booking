@@ -1,5 +1,3 @@
-import React from 'react'
-
 interface TimeSelectorProps {
     startDate: string
     setStartDate: (date: string) => void

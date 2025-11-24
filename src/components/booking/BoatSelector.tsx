@@ -1,4 +1,3 @@
-import React from 'react'
 import type { Boat } from '../../types/booking'
 
 interface BoatSelectorProps {
