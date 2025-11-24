@@ -99,89 +99,143 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                             </div>
                         </div>
 
-                        {/* 右側預約列表 */}
+                        {/* 右側預約列表 - 垂直排列 */}
                         <div style={{
                             flex: 1,
-                            display: 'flex',
-                            gap: isMobile ? '8px' : '12px',
-                            padding: isMobile ? '8px' : '12px',
-                            overflowX: 'auto',
-                            alignItems: 'center',
-                            background: 'white'
+                            backgroundColor: 'white',
+                            minHeight: isMobile ? '80px' : '100px',
                         }}>
                             {boatBookings.length === 0 ? (
                                 <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    height: '100%',
                                     color: '#999',
                                     fontSize: isMobile ? '13px' : '14px',
                                     fontStyle: 'italic',
                                 }}>
-                                    無預約
+                                    今日無預約
                                 </div>
                             ) : (
-                                boatBookings.map(booking => {
-                                    const boatColor = boat.color || '#4a90e2'
-                                    const cardStyle = getBookingCardStyle(boatColor, isMobile, true)
-                                    const statusBadgeStyle = getStatusBadgeStyle(booking.status as any)
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                }}>
+                                    {boatBookings.map((booking, bookingIndex) => {
+                                        // 計算時間
+                                        const startDatetime = booking.start_at.substring(0, 16)
+                                        const [, startTimeStr] = startDatetime.split('T')
+                                        const [startHour, startMinute] = startTimeStr.split(':').map(Number)
+                                        const endMinutes = startHour * 60 + startMinute + booking.duration_min
+                                        const endHour = Math.floor(endMinutes / 60)
+                                        const endMin = endMinutes % 60
+                                        const endTimeStr = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`
 
-                                    return (
-                                        <div
-                                            key={booking.id}
-                                            onClick={() => onBookingClick(booking.boat_id, booking.start_at.substring(11, 16), booking)}
-                                            style={{
-                                                ...cardStyle,
-                                                minWidth: isMobile ? '200px' : '280px',
-                                                padding: isMobile ? '10px' : '12px',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s',
-                                                flexShrink: 0,
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.transform = 'translateY(-2px)'
-                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.transform = 'translateY(0)'
-                                                e.currentTarget.style.boxShadow = cardStyle.boxShadow || ''
-                                            }}
-                                        >
-                                            {/* 時間標籤 */}
-                                            <div style={{
-                                                ...statusBadgeStyle,
-                                                fontSize: isMobile ? '11px' : '12px',
-                                                padding: '4px 8px',
-                                                marginBottom: '8px',
-                                                display: 'inline-block',
-                                            }}>
-                                                {formatTimeRange(booking.start_at, booking.duration_min)}
-                                            </div>
-
-                                            {/* 預約人 */}
-                                            <div style={{
-                                                ...bookingCardContentStyles.contactName(isMobile),
-                                            }}>
-                                                {getDisplayContactName(booking)}
-                                            </div>
-
-                                            {/* 教練 */}
-                                            {booking.coaches && booking.coaches.length > 0 && (
+                                        return (
+                                            <div
+                                                key={booking.id}
+                                                style={{
+                                                    padding: isMobile ? '12px' : '14px 16px',
+                                                    borderBottom: bookingIndex < boatBookings.length - 1 ? '1px solid #f0f0f0' : 'none',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    display: 'flex',
+                                                    gap: isMobile ? '10px' : '14px',
+                                                    alignItems: 'center',
+                                                    backgroundColor: 'white',
+                                                }}
+                                                onClick={() => onBookingClick(booking.boat_id, booking.start_at.substring(11, 16), booking)}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = '#f8f9fa'
+                                                    e.currentTarget.style.transform = 'translateX(4px)'
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'white'
+                                                    e.currentTarget.style.transform = 'translateX(0)'
+                                                }}
+                                            >
+                                                {/* 時間區塊 */}
                                                 <div style={{
-                                                    ...bookingCardContentStyles.coachName(boatColor, isMobile),
+                                                    minWidth: isMobile ? '70px' : '85px',
+                                                    padding: isMobile ? '6px 8px' : '8px 10px',
+                                                    backgroundColor: '#5a5a5a',
+                                                    color: 'white',
+                                                    borderRadius: '6px',
+                                                    fontSize: isMobile ? '12px' : '13px',
+                                                    fontWeight: '600',
+                                                    textAlign: 'center',
+                                                    lineHeight: '1.3',
+                                                    flexShrink: 0,
                                                 }}>
-                                                    教練: {booking.coaches.map(c => c.name).join(', ')}
+                                                    <div>{startTimeStr}</div>
+                                                    <div style={{ fontSize: '10px', opacity: 0.7, margin: '2px 0' }}>↓</div>
+                                                    <div>{endTimeStr}</div>
+                                                    <div style={{
+                                                        fontSize: '10px',
+                                                        marginTop: '3px',
+                                                        opacity: 0.7,
+                                                        backgroundColor: 'rgba(255,255,255,0.15)',
+                                                        borderRadius: '4px',
+                                                        padding: '2px',
+                                                    }}>
+                                                        {booking.duration_min}分
+                                                    </div>
                                                 </div>
-                                            )}
 
-                                            {/* 駕駛 */}
-                                            {booking.drivers && booking.drivers.length > 0 && (
-                                                <div style={{
-                                                    ...bookingCardContentStyles.coachName(boatColor, isMobile),
-                                                }}>
-                                                    駕駛: {booking.drivers.map(d => d.name).join(', ')}
+                                                {/* 預約內容 */}
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    {/* 第一行：預約人 */}
+                                                    <div style={{
+                                                        fontSize: isMobile ? '14px' : '16px',
+                                                        fontWeight: '700',
+                                                        color: '#2c3e50',
+                                                        marginBottom: '4px',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                    }}>
+                                                        {getDisplayContactName(booking)}
+                                                    </div>
+
+                                                    {/* 第二行：教練 + 駕駛 + 活動類型 */}
+                                                    <div style={{
+                                                        fontSize: isMobile ? '12px' : '13px',
+                                                        color: '#7f8c8d',
+                                                        lineHeight: '1.4',
+                                                    }}>
+                                                        {booking.coaches && booking.coaches.length > 0 && (
+                                                            <span>🎓 {booking.coaches.map(c => c.name).join('/')}</span>
+                                                        )}
+                                                        {booking.drivers && booking.drivers.length > 0 && (
+                                                            <>
+                                                                {booking.coaches && booking.coaches.length > 0 && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
+                                                                <span>🚤 {booking.drivers.map(d => d.name).join('/')}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+
+                                                    {/* 第三行：備註 / 排班備註 */}
+                                                    {(booking.notes || booking.schedule_notes) && (
+                                                        <div style={{
+                                                            fontSize: isMobile ? '11px' : '12px',
+                                                            color: '#999',
+                                                            lineHeight: '1.4',
+                                                        }}>
+                                                            {booking.notes && (
+                                                                <span style={{ fontStyle: 'italic' }}>💬 {booking.notes}</span>
+                                                            )}
+                                                            {booking.notes && booking.schedule_notes && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
+                                                            {booking.schedule_notes && (
+                                                                <span>📝 {booking.schedule_notes}</span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    )
-                                })
+                                            </div>
+                                        )
+                                    })}
+                                </div>
                             )}
                         </div>
                     </div>

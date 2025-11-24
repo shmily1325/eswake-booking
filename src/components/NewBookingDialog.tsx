@@ -314,14 +314,45 @@ export function NewBookingDialog({
 
         <form onSubmit={handleSubmit}>
 
-          {/* 1. 船隻選擇 */}
+          {/* 1. 預約人選擇 */}
+          <MemberSelector
+            members={members}
+            selectedMemberIds={selectedMemberIds}
+            setSelectedMemberIds={setSelectedMemberIds}
+            memberSearchTerm={memberSearchTerm}
+            setMemberSearchTerm={setMemberSearchTerm}
+            showMemberDropdown={showMemberDropdown}
+            setShowMemberDropdown={setShowMemberDropdown}
+            filteredMembers={filteredMembers}
+            handleMemberSearch={handleMemberSearch}
+            manualStudentName={manualStudentName}
+            setManualStudentName={setManualStudentName}
+            manualNames={manualNames}
+            setManualNames={setManualNames}
+          />
+
+          {/* 2. 船隻選擇 */}
           <BoatSelector
             boats={boats}
             selectedBoatId={selectedBoatId}
             onSelect={setSelectedBoatId}
           />
 
-          {/* 2. 時間選擇 */}
+          {/* 3. 教練選擇（含需要駕駛） */}
+          <CoachSelector
+            coaches={coaches}
+            selectedCoaches={selectedCoaches}
+            selectedCoachesSet={selectedCoachesSet}
+            setSelectedCoaches={setSelectedCoaches}
+            toggleCoach={toggleCoach}
+            loadingCoaches={loadingCoaches}
+            requiresDriver={requiresDriver}
+            setRequiresDriver={setRequiresDriver}
+            canRequireDriver={canRequireDriver}
+            isSelectedBoatFacility={isSelectedBoatFacility}
+          />
+
+          {/* 4. 時間選擇（開始日期+開始時間+時長） */}
           <TimeSelector
             startDate={startDate}
             setStartDate={setStartDate}
@@ -350,40 +381,7 @@ export function NewBookingDialog({
             </div>
           )}
 
-          <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '20px 0' }} />
-
-          {/* 3. 會員選擇 */}
-          <MemberSelector
-            members={members}
-            selectedMemberIds={selectedMemberIds}
-            setSelectedMemberIds={setSelectedMemberIds}
-            memberSearchTerm={memberSearchTerm}
-            setMemberSearchTerm={setMemberSearchTerm}
-            showMemberDropdown={showMemberDropdown}
-            setShowMemberDropdown={setShowMemberDropdown}
-            filteredMembers={filteredMembers}
-            handleMemberSearch={handleMemberSearch}
-            manualStudentName={manualStudentName}
-            setManualStudentName={setManualStudentName}
-            manualNames={manualNames}
-            setManualNames={setManualNames}
-          />
-
-          {/* 4. 教練選擇 */}
-          <CoachSelector
-            coaches={coaches}
-            selectedCoaches={selectedCoaches}
-            selectedCoachesSet={selectedCoachesSet}
-            setSelectedCoaches={setSelectedCoaches}
-            toggleCoach={toggleCoach}
-            loadingCoaches={loadingCoaches}
-            requiresDriver={requiresDriver}
-            setRequiresDriver={setRequiresDriver}
-            canRequireDriver={canRequireDriver}
-            isSelectedBoatFacility={isSelectedBoatFacility}
-          />
-
-          {/* 5. 其他詳情 (含填表人) */}
+          {/* 5. 活動類型與註解 */}
           <BookingDetails
             activityTypesSet={activityTypesSet}
             toggleActivityType={toggleActivityType}
