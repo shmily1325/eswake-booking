@@ -68,8 +68,22 @@ describe('bookingDataHelpers.ts - 預約資料輔助函數', () => {
       const result = assembleBookingsWithRelations(bookings as any, relations as any)
 
       expect(result).toHaveLength(1)
-      expect(result[0].coaches).toEqual([{ id: 'coach-1', name: 'Jerry' }])
-      expect(result[0].drivers).toEqual([{ id: 'driver-1', name: 'David' }])
+      expect(result[0].coaches).toEqual([{ 
+        id: 'coach-1', 
+        name: 'Jerry',
+        status: null,
+        notes: null,
+        created_at: null,
+        updated_at: null
+      }])
+      expect(result[0].drivers).toEqual([{ 
+        id: 'driver-1', 
+        name: 'David',
+        status: null,
+        notes: null,
+        created_at: null,
+        updated_at: null
+      }])
       expect(result[0].coach_report).toEqual(relations.reports[0])
       expect(result[0].participants).toHaveLength(1)
       expect(result[0].contact_name).toBe('David')

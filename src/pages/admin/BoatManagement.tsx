@@ -391,9 +391,9 @@ export function BoatManagement() {
                                     onClick={() => openUnavailableDialog(boat)}
                                     fullWidth
                                     style={{
-                                        background: '#f3e5f5',
-                                        color: '#7b1fa2',
-                                        border: '2px solid #e1bee7',
+                                        background: '#e3f2fd',
+                                        color: '#1565c0',
+                                        border: '2px solid #bbdefb',
                                     }}
                                 >
                                     設定維修/停用
