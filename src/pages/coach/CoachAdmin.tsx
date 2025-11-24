@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
@@ -62,7 +62,8 @@ const LESSON_TYPES = [
 
 // ============ Main Component ============
 
-export function CoachAdmin({ user }: { user: User | null }) {
+export function CoachAdmin() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   
   // Tab 管理

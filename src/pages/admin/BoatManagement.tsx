@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../../components/PageHeader'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
@@ -9,11 +9,8 @@ import { handleError } from '../../utils/errorHandler'
 import { Button, Badge } from '../../components/ui'
 import { designSystem } from '../../styles/designSystem'
 
-interface BoatManagementProps {
-    user: User | null
-}
-
-export function BoatManagement({ user }: BoatManagementProps) {
+export function BoatManagement() {
+    const user = useAuthUser()
     const [loading, setLoading] = useState(true)
     const [boats, setBoats] = useState<Boat[]>([])
     const [unavailableDates, setUnavailableDates] = useState<BoatUnavailableDate[]>([])
@@ -310,7 +307,7 @@ export function BoatManagement({ user }: BoatManagementProps) {
                                             variant={isActive ? 'danger' : 'success'}
                                             size="small"
                                             onClick={() => handleToggleStatus(boat)}
-                                            style={isActive ? { background: '#fff', color: designSystem.colors.danger, border: `1px solid ${designSystem.colors.danger}` } : {}}
+                                            style={isActive ? { background: '#fff', color: designSystem.colors.danger[500], border: `1px solid ${designSystem.colors.danger[500]}` } : {}}
                                         >
                                             {isActive ? '停用' : '啟用'}
                                         </Button>
@@ -436,7 +433,7 @@ export function BoatManagement({ user }: BoatManagementProps) {
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <Button variant="outline" onClick={() => setAddDialogOpen(false)} style={{ flex: 1 }}>取消</Button>
-                            <Button variant="info" onClick={handleAddBoat} disabled={addLoading} style={{ flex: 1 }}>確定</Button>
+                            <Button variant="primary" onClick={handleAddBoat} disabled={addLoading} style={{ flex: 1 }}>確定</Button>
                         </div>
                     </div>
                 </div>
@@ -476,21 +473,89 @@ export function BoatManagement({ user }: BoatManagementProps) {
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                             <div style={{ flex: 1 }}>
                                 <label style={{ display: 'block', marginBottom: '5px' }}>開始時間 (選填)</label>
-                                <input
-                                    type="time"
-                                    value={startTime}
-                                    onChange={(e) => setStartTime(e.target.value)}
-                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
-                                />
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                    <select
+                                        value={startTime ? startTime.split(':')[0] : ''}
+                                        onChange={(e) => {
+                                            const hour = e.target.value
+                                            if (!hour) {
+                                                setStartTime('')
+                                            } else {
+                                                const minute = startTime ? startTime.split(':')[1] : '00'
+                                                setStartTime(`${hour}:${minute}`)
+                                            }
+                                        }}
+                                        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
+                                    >
+                                        <option value="">--</option>
+                                        {Array.from({ length: 24 }, (_, i) => {
+                                            const hour = String(i).padStart(2, '0')
+                                            return <option key={hour} value={hour}>{hour}</option>
+                                        })}
+                                    </select>
+                                    <select
+                                        value={startTime ? startTime.split(':')[1] : ''}
+                                        onChange={(e) => {
+                                            const minute = e.target.value
+                                            if (!minute) {
+                                                setStartTime('')
+                                            } else {
+                                                const hour = startTime ? startTime.split(':')[0] : '08'
+                                                setStartTime(`${hour}:${minute}`)
+                                            }
+                                        }}
+                                        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
+                                    >
+                                        <option value="">--</option>
+                                        <option value="00">00</option>
+                                        <option value="15">15</option>
+                                        <option value="30">30</option>
+                                        <option value="45">45</option>
+                                    </select>
+                                </div>
                             </div>
                             <div style={{ flex: 1 }}>
                                 <label style={{ display: 'block', marginBottom: '5px' }}>結束時間 (選填)</label>
-                                <input
-                                    type="time"
-                                    value={endTime}
-                                    onChange={(e) => setEndTime(e.target.value)}
-                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
-                                />
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                    <select
+                                        value={endTime ? endTime.split(':')[0] : ''}
+                                        onChange={(e) => {
+                                            const hour = e.target.value
+                                            if (!hour) {
+                                                setEndTime('')
+                                            } else {
+                                                const minute = endTime ? endTime.split(':')[1] : '00'
+                                                setEndTime(`${hour}:${minute}`)
+                                            }
+                                        }}
+                                        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
+                                    >
+                                        <option value="">--</option>
+                                        {Array.from({ length: 24 }, (_, i) => {
+                                            const hour = String(i).padStart(2, '0')
+                                            return <option key={hour} value={hour}>{hour}</option>
+                                        })}
+                                    </select>
+                                    <select
+                                        value={endTime ? endTime.split(':')[1] : ''}
+                                        onChange={(e) => {
+                                            const minute = e.target.value
+                                            if (!minute) {
+                                                setEndTime('')
+                                            } else {
+                                                const hour = endTime ? endTime.split(':')[0] : '08'
+                                                setEndTime(`${hour}:${minute}`)
+                                            }
+                                        }}
+                                        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
+                                    >
+                                        <option value="">--</option>
+                                        <option value="00">00</option>
+                                        <option value="15">15</option>
+                                        <option value="30">30</option>
+                                        <option value="45">45</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div style={{ fontSize: '12px', color: '#666', marginBottom: '15px' }}>

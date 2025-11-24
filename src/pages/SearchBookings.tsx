@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { useResponsive } from '../hooks/useResponsive'
@@ -30,11 +30,11 @@ interface Member {
 }
 
 interface SearchBookingsProps {
-  user: User
   isEmbedded?: boolean
 }
 
-export function SearchBookings({ user, isEmbedded = false }: SearchBookingsProps) {
+export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [searchName, setSearchName] = useState('')
   const [bookings, setBookings] = useState<Booking[]>([])

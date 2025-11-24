@@ -1,16 +1,13 @@
 import { Link } from 'react-router-dom'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../contexts/AuthContext'
 import { UserMenu } from '../components/UserMenu'
 import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
 import { isAdmin } from '../utils/auth'
 
-interface HomePageProps {
-  user: User
-}
-
-export function HomePage({ user }: HomePageProps) {
+export function HomePage() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   
   // Detect V2 environment

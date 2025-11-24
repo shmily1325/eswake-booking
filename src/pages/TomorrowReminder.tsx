@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../contexts/AuthContext'
 import { UserMenu } from '../components/UserMenu'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
 import { Footer } from '../components/Footer'
-
-interface TomorrowReminderProps {
-  user: User
-}
 
 interface Booking {
   id: number
@@ -23,7 +19,8 @@ interface Booking {
   coaches?: { id: string; name: string }[]
 }
 
-export function TomorrowReminder({ user }: TomorrowReminderProps) {
+export function TomorrowReminder() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   
   const getDefaultDate = () => {

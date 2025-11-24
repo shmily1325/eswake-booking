@@ -1,13 +1,10 @@
 import { Link } from 'react-router-dom'
-import type { User } from '@supabase/supabase-js'
+import { useAuth } from '../contexts/AuthContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
 
-interface UnauthorizedPageProps {
-  user: User | null
-}
-
-export function UnauthorizedPage({ user }: UnauthorizedPageProps) {
+export function UnauthorizedPage() {
+  const { user } = useAuth()
   const { isMobile } = useResponsive()
 
   return (
@@ -105,7 +102,7 @@ export function UnauthorizedPage({ user }: UnauthorizedPageProps) {
         <div style={{
           marginTop: designSystem.spacing.xl,
           paddingTop: designSystem.spacing.lg,
-          borderTop: `1px solid ${designSystem.colors.border}`,
+          borderTop: `1px solid ${designSystem.colors.border.main}`,
           fontSize: '14px',
           color: designSystem.colors.text.secondary
         }}>

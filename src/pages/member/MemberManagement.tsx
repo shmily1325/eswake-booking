@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import type { User } from '@supabase/supabase-js'
 import { useNavigate } from 'react-router-dom'
 import { AddMemberDialog } from '../../components/AddMemberDialog'
 import { MemberDetailDialog } from '../../components/MemberDetailDialog'
@@ -34,11 +34,8 @@ interface Member {
   partner?: Member | null  // 配對會員資料
 }
 
-interface MemberManagementProps {
-  user: User
-}
-
-export function MemberManagement({ user }: MemberManagementProps) {
+export function MemberManagement() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   const navigate = useNavigate()
   const [members, setMembers] = useState<Member[]>([])

@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalTimestamp } from '../../utils/date'
 
-interface LineSettingsProps {
-  user: User
-}
-
-export function LineSettings({ user }: LineSettingsProps) {
+export function LineSettings() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

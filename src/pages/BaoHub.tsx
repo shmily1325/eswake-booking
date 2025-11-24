@@ -1,14 +1,11 @@
 import { Link } from 'react-router-dom'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../contexts/AuthContext'
 import { UserMenu } from '../components/UserMenu'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 
-interface BaoHubProps {
-  user: User
-}
-
-export function BaoHub({ user }: BaoHubProps) {
+export function BaoHub() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
 
   const baoFeatures: Array<{
@@ -89,6 +86,16 @@ export function BaoHub({ user }: BaoHubProps) {
             icon: '📱',
             link: '/line-settings',
             disabled: true
+          }
+        ]
+      },
+      {
+        section: '📋 關於系統',
+        items: [
+          {
+            title: '版本控管',
+            icon: '📋',
+            link: '/version-history'
           }
         ]
       }

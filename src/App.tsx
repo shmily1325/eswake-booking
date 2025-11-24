@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import type { User } from '@supabase/supabase-js'
-import { supabase } from './lib/supabase'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
+import { LoginPage } from './components/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { DayView } from './pages/DayView'
 import { SearchPage } from './pages/SearchPage'
@@ -27,15 +26,69 @@ import { AnnouncementManagement } from './pages/admin/AnnouncementManagement'
 import { LineSettings } from './pages/admin/LineSettings'
 import { CoachDailyView } from './pages/coach/CoachDailyView'
 import { PermissionManagement } from './pages/admin/PermissionManagement'
+import { VersionHistory } from './pages/admin/VersionHistory'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { LiffMyBookings } from './pages/LiffMyBookings'
-import { LoginPage } from './components/LoginPage'
 
-function App() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+function AppContent() {
+  const { user, loading } = useAuth()
   const isOnline = useOnlineStatus()
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-lg text-gray-600">
+        載入中...
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <LoginPage />
+  }
+
+  return (
+    <ErrorBoundary>
+      {/* 離線狀態提示 */}
+      {!isOnline && (
+        <div className="fixed top-0 left-0 right-0 bg-orange-500 text-white py-3 px-5 text-center z-[9999] text-base font-semibold shadow-md">
+          ⚠️ 網路連線已中斷，請檢查您的網路設定
+        </div>
+      )}
+
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/day" element={<DayView />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/search-bookings" element={<SearchBookings />} />
+          {/* <Route path="/coach-check" element={<CoachCheck />} /> */}
+          <Route path="/coach-report" element={<CoachReport />} />
+          <Route path="/coach-admin" element={<CoachAdmin />} />
+          <Route path="/coach-assignment" element={<CoachAssignment />} />
+          <Route path="/member-import" element={<MemberImport />} />
+          <Route path="/audit-log" element={<AuditLog />} />
+          <Route path="/tomorrow" element={<TomorrowReminder />} />
+          <Route path="/backup" element={<BackupPage />} />
+          <Route path="/quick-transaction" element={<QuickTransaction />} />
+          <Route path="/member-transaction" element={<MemberTransaction />} />
+          <Route path="/bao" element={<BaoHub />} />
+          <Route path="/members" element={<MemberManagement />} />
+          <Route path="/boards" element={<BoardManagement />} />
+          <Route path="/staff" element={<StaffManagement />} />
+          <Route path="/announcements" element={<AnnouncementManagement />} />
+          <Route path="/line-settings" element={<LineSettings />} />
+          <Route path="/coach-daily" element={<CoachDailyView />} />
+          <Route path="/permissions" element={<PermissionManagement />} />
+          <Route path="/boats" element={<BoatManagement />} />
+          <Route path="/version-history" element={<VersionHistory />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
+  )
+}
+
+function App() {
   // LIFF 頁面不需要系統登入驗證
   if (window.location.pathname === '/liff') {
     return (
@@ -49,93 +102,10 @@ function App() {
     )
   }
 
-  useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '18px',
-        color: '#666',
-      }}>
-        載入中...
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <LoginPage onLoginSuccess={setUser} />
-  }
-
   return (
-    <ErrorBoundary>
-      {/* 離線狀態提示 */}
-      {!isOnline && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            background: '#ff9800',
-            color: 'white',
-            padding: '12px 20px',
-            textAlign: 'center',
-            zIndex: 9999,
-            fontSize: '16px',
-            fontWeight: '600',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-          }}
-        >
-          ⚠️ 網路連線已中斷，請檢查您的網路設定
-        </div>
-      )}
-
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<HomePage user={user} />} />
-          <Route path="/day" element={<DayView user={user} />} />
-          <Route path="/search" element={<SearchPage user={user} />} />
-          <Route path="/search-bookings" element={<SearchBookings user={user} />} />
-          {/* <Route path="/coach-check" element={<CoachCheck user={user} />} /> */}
-          <Route path="/coach-report" element={<CoachReport user={user} />} />
-          <Route path="/coach-admin" element={<CoachAdmin user={user} />} />
-          <Route path="/coach-assignment" element={<CoachAssignment user={user} />} />
-          <Route path="/member-import" element={<MemberImport user={user} />} />
-          <Route path="/audit-log" element={<AuditLog user={user} />} />
-          <Route path="/tomorrow" element={<TomorrowReminder user={user} />} />
-          <Route path="/backup" element={<BackupPage user={user} />} />
-          <Route path="/quick-transaction" element={<QuickTransaction user={user} />} />
-          <Route path="/member-transaction" element={<MemberTransaction user={user} />} />
-          <Route path="/bao" element={<BaoHub user={user} />} />
-          <Route path="/members" element={<MemberManagement user={user} />} />
-          <Route path="/boards" element={<BoardManagement user={user} />} />
-          <Route path="/staff" element={<StaffManagement user={user} />} />
-          <Route path="/announcements" element={<AnnouncementManagement user={user} />} />
-          <Route path="/line-settings" element={<LineSettings user={user} />} />
-          <Route path="/coach-daily" element={<CoachDailyView user={user} />} />
-          <Route path="/permissions" element={<PermissionManagement user={user} />} />
-          <Route path="/boats" element={<BoatManagement user={user} />} />
-          <Route path="/unauthorized" element={<UnauthorizedPage user={user} />} />
-        </Routes>
-      </BrowserRouter>
-    </ErrorBoundary>
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }
 

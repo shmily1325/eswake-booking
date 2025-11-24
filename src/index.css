@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', 
     'Segoe UI', 'Roboto', 'Noto Sans TC', 'Helvetica Neue', Arial, sans-serif;
@@ -78,4 +82,14 @@ textarea {
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+}
+
+/* Spinner animation for loading states */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

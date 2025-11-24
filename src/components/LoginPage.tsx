@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
-interface LoginPageProps {
-  onLoginSuccess: (user: User) => void
-}
-
-export function LoginPage({ onLoginSuccess }: LoginPageProps) {
+export function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [isInLineApp, setIsInLineApp] = useState(false)
@@ -17,24 +12,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     const isLine = /Line/i.test(userAgent)
     setIsInLineApp(isLine)
   }, [])
-
-  useEffect(() => {
-    // Check if user is already logged in
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        onLoginSuccess(user)
-      }
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        onLoginSuccess(session.user)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [onLoginSuccess])
 
   const handleGoogleLogin = async () => {
     setLoading(true)
@@ -54,84 +31,30 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#f5f5f5',
-      padding: '20px',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-5 relative overflow-hidden">
       {/* 浮水印背景 */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '100px',
-        padding: '50px',
-        pointerEvents: 'none',
-        opacity: 0.06,
-        userSelect: 'none',
-      }}>
+      <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-[100px] p-12 pointer-events-none opacity-[0.06] select-none">
         {Array.from({ length: 12 }).map((_, i) => (
           <img
             key={i}
             src="/logo black.png"
             alt="ESWake"
-            style={{
-              width: '200px',
-              height: 'auto',
-              transform: 'rotate(-25deg)',
-            }}
+            className="w-[200px] h-auto -rotate-[25deg]"
           />
         ))}
       </div>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '40px',
-        borderRadius: '12px',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-        maxWidth: '400px',
-        width: '100%',
-        textAlign: 'center',
-      }}>
-        <h1 style={{ 
-          marginTop: 0, 
-          marginBottom: '10px',
-          color: '#000',
-          fontSize: '28px',
-        }}>
+      
+      <div className="bg-white p-10 rounded-xl shadow-md max-w-md w-full text-center relative z-10">
+        <h1 className="mt-0 mb-2.5 text-black text-[28px] font-bold">
           ESWake Booking System
         </h1>
-        <p style={{ 
-          color: '#666', 
-          marginBottom: '30px',
-          fontSize: '14px',
-        }}>
+        <p className="text-gray-600 mb-8 text-sm">
           請使用 Google 帳號登入
         </p>
 
         {isInLineApp && (
-          <div style={{
-            padding: '16px',
-            backgroundColor: '#fff3cd',
-            color: '#856404',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            fontSize: '14px',
-            lineHeight: '1.6',
-            textAlign: 'left',
-            border: '1px solid #ffeaa7',
-          }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+          <div className="p-4 bg-[#fff3cd] text-[#856404] rounded-lg mb-5 text-sm leading-relaxed text-left border border-[#ffeaa7]">
+            <div className="font-bold mb-2">
               ⚠️ 在 LINE 中無法登入
             </div>
             <div>
@@ -141,14 +64,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         )}
 
         {error && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#fee',
-            color: '#c00',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            fontSize: '14px',
-          }}>
+          <div className="p-3 bg-red-50 text-red-700 rounded-lg mb-5 text-sm">
             {error}
           </div>
         )}
@@ -156,31 +72,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
-          style={{
-            width: '100%',
-            padding: '14px',
-            borderRadius: '8px',
-            border: '1px solid #ddd',
-            backgroundColor: 'white',
-            color: '#000',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px',
-            transition: 'all 0.2s',
-            opacity: loading ? 0.6 : 1,
-          }}
-          onMouseEnter={(e) => {
-            if (!loading) {
-              e.currentTarget.style.backgroundColor = '#f8f9fa'
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white'
-          }}
+          className={`
+            w-full py-3.5 px-4 rounded-lg border border-gray-300 bg-white text-black 
+            text-base font-medium flex items-center justify-center gap-2.5 
+            transition-all duration-200
+            ${loading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gray-50 active:scale-[0.98]'}
+          `}
         >
           <svg width="20" height="20" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -191,11 +88,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           {loading ? '登入中...' : '使用 Google 登入'}
         </button>
 
-        <p style={{
-          marginTop: '20px',
-          fontSize: '12px',
-          color: '#999',
-        }}>
+        <p className="mt-5 text-xs text-gray-400">
           登入即表示您同意我們的服務條款
         </p>
       </div>

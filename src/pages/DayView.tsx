@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { NewBookingDialog } from '../components/NewBookingDialog'
 import { EditBookingDialog } from '../components/EditBookingDialog'
@@ -41,11 +41,8 @@ const generateTimeSlots = () => {
 
 const TIME_SLOTS = generateTimeSlots()
 
-interface DayViewProps {
-  user: User
-}
-
-export function DayView({ user }: DayViewProps) {
+export function DayView() {
+  const user = useAuthUser()
   const [searchParams, setSearchParams] = useSearchParams()
   const dateParam = searchParams.get('date') || getLocalDateString()
   const { isMobile } = useResponsive()

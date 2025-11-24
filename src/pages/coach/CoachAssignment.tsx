@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
@@ -35,10 +35,6 @@ interface Booking {
   booking_members?: { member_id: string; members?: { id: string; name: string; nickname?: string | null } | null }[]
 }
 
-interface CoachAssignmentProps {
-  user: User
-}
-
 // 輔助函數：獲取明天的日期
 function getTomorrowDate() {
   const tomorrow = new Date()
@@ -49,7 +45,8 @@ function getTomorrowDate() {
   return `${year}-${month}-${day}`
 }
 
-export function CoachAssignment({ user }: CoachAssignmentProps) {
+export function CoachAssignment() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -1026,7 +1023,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               marginTop: designSystem.spacing.md,
               padding: designSystem.spacing.md,
               background: '#e8f5e9',
-              color: designSystem.colors.success,
+              color: designSystem.colors.success[500],
               borderRadius: designSystem.borderRadius.sm,
               fontWeight: '600',
               fontSize: isMobile ? '14px' : '15px'
@@ -1040,7 +1037,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
               marginTop: designSystem.spacing.md,
               padding: designSystem.spacing.md,
               background: '#ffebee',
-              color: designSystem.colors.danger,
+              color: designSystem.colors.danger[500],
               borderRadius: designSystem.borderRadius.sm,
               fontWeight: '600',
               fontSize: isMobile ? '14px' : '15px'
@@ -1348,7 +1345,7 @@ export function CoachAssignment({ user }: CoachAssignmentProps) {
                       fontSize: isMobile ? '16px' : '18px',
                       fontWeight: '600',
                       color: designSystem.colors.text.primary,
-                      borderBottom: `2px solid ${coach.isOnTimeOff ? '#bdbdbd' : designSystem.colors.primary}`,
+                      borderBottom: `2px solid ${coach.isOnTimeOff ? '#bdbdbd' : designSystem.colors.primary[500]}`,
                       paddingBottom: '8px',
                       padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
                       flexShrink: 0,

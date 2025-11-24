@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -19,10 +19,6 @@ interface BoardSlot {
   status?: string | null
 }
 
-interface BoardManagementProps {
-  user: User
-}
-
 // 置板區配置
 const BOARD_SECTIONS = [
   { name: '第1排', start: 1, end: 30 },
@@ -32,7 +28,8 @@ const BOARD_SECTIONS = [
   { name: '第5排', start: 135, end: 145, upperOnly: true },
 ]
 
-export function BoardManagement({ user }: BoardManagementProps) {
+export function BoardManagement() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [boardSlots, setBoardSlots] = useState<BoardSlot[]>([])
   const [loading, setLoading] = useState(true)

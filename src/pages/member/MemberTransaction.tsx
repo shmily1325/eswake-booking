@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
@@ -11,12 +11,8 @@ import { Button } from '../../components/ui'
 
 // Member interface removed as it is now imported from types/booking
 
-
-interface MemberTransactionProps {
-  user: User
-}
-
-export function MemberTransaction({ user }: MemberTransactionProps) {
+export function MemberTransaction() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [members, setMembers] = useState<Member[]>([])
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([])

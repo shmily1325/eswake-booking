@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
@@ -8,10 +8,6 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString } from '../../utils/date'
 import { getBookingCardStyle, bookingCardContentStyles } from '../../styles/designSystem'
 import { getDisplayContactName } from '../../utils/bookingFormat'
-
-interface CoachDailyViewProps {
-  user: User
-}
 
 interface Boat {
   id: number
@@ -62,7 +58,8 @@ const generateTimeSlots = () => {
 
 const TIME_SLOTS = generateTimeSlots()
 
-export function CoachDailyView({ user }: CoachDailyViewProps) {
+export function CoachDailyView() {
+  const user = useAuthUser()
   const [searchParams, setSearchParams] = useSearchParams()
   const dateParam = searchParams.get('date') || getLocalDateString()
   const { isMobile } = useResponsive()

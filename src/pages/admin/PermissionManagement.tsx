@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { designSystem, getInputStyle, getTextStyle } from '../../styles/designSystem'
 import { useRequireAdmin, clearPermissionCache, SUPER_ADMINS } from '../../utils/auth'
 import { Button, Card, Badge } from '../../components/ui'
-
-interface PermissionManagementProps {
-  user: User
-}
 
 interface AllowedUser {
   id: string
@@ -34,7 +30,8 @@ const HIDDEN_ADMINS = [
   'minlin1325@gmail.com'
 ]
 
-export function PermissionManagement({ user }: PermissionManagementProps) {
+export function PermissionManagement() {
+  const user = useAuthUser()
   useRequireAdmin(user) // 只有管理員可以進入
   const { isMobile } = useResponsive()
   
@@ -257,8 +254,8 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
             variant="default"
             style={{
               background: '#ffebee',
-              color: designSystem.colors.danger,
-              borderLeft: `4px solid ${designSystem.colors.danger}`,
+              color: designSystem.colors.danger[500],
+              borderLeft: `4px solid ${designSystem.colors.danger[500]}`,
             }}
           >
             ❌ {error}
@@ -271,8 +268,8 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
             variant="default"
             style={{
               background: '#e8f5e9',
-              color: designSystem.colors.success,
-              borderLeft: `4px solid ${designSystem.colors.success}`,
+              color: designSystem.colors.success[500],
+              borderLeft: `4px solid ${designSystem.colors.success[500]}`,
             }}
           >
             {success}
@@ -333,7 +330,7 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
                     alignItems: 'center',
                     padding: designSystem.spacing.md,
                     background: designSystem.colors.background.card,
-                    border: `1px solid ${designSystem.colors.border}`,
+                    border: `1px solid ${designSystem.colors.border.main}`,
                     borderRadius: designSystem.borderRadius.md,
                     flexWrap: 'wrap',
                     gap: designSystem.spacing.sm
@@ -431,7 +428,7 @@ export function PermissionManagement({ user }: PermissionManagementProps) {
                     alignItems: 'center',
                     padding: designSystem.spacing.md,
                     background: designSystem.colors.background.card,
-                    border: `1px solid ${designSystem.colors.border}`,
+                    border: `1px solid ${designSystem.colors.border.main}`,
                     borderRadius: designSystem.borderRadius.md,
                     flexWrap: 'wrap',
                     gap: designSystem.spacing.sm

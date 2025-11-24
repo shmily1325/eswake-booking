@@ -1,13 +1,10 @@
 import { Link } from 'react-router-dom'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../contexts/AuthContext'
 import { UserMenu } from '../components/UserMenu'
 import { SearchBookings } from './SearchBookings'
 
-interface SearchPageProps {
-  user: User
-}
-
-export function SearchPage({ user }: SearchPageProps) {
+export function SearchPage() {
+  const user = useAuthUser()
   return (
     <div style={{
       minHeight: '100vh',
@@ -60,7 +57,7 @@ export function SearchPage({ user }: SearchPageProps) {
 
         {/* Content */}
         <div>
-          <SearchBookings user={user} isEmbedded={true} />
+          <SearchBookings isEmbedded={true} />
         </div>
       </div>
     </div>

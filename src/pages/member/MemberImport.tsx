@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../../contexts/AuthContext'
 import Papa from 'papaparse'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -7,10 +7,6 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { designSystem, getButtonStyle, getCardStyle, getTextStyle } from '../../styles/designSystem'
 import { getLocalTimestamp } from '../../utils/date'
-
-interface MemberImportProps {
-  user: User
-}
 
 interface ParsedMember {
   name: string
@@ -25,7 +21,8 @@ interface ParsedMember {
   status?: string
 }
 
-export function MemberImport({ user }: MemberImportProps) {
+export function MemberImport() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [file, setFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
@@ -632,12 +629,12 @@ export function MemberImport({ user }: MemberImportProps) {
         </div>
 
         {/* 說明 */}
-        <div style={{ 
+        <div         style={{
           ...getCardStyle(isMobile),
           background: '#e3f2fd',
-          borderLeft: `4px solid ${designSystem.colors.info}`
+          borderLeft: `4px solid ${designSystem.colors.info[500]}`
         }}>
-          <h2 style={{ ...getTextStyle('h3', isMobile), marginBottom: designSystem.spacing.sm, color: designSystem.colors.info }}>
+          <h2 style={{ ...getTextStyle('h3', isMobile), marginBottom: designSystem.spacing.sm, color: designSystem.colors.info[500] }}>
             📋 CSV 格式說明
           </h2>
           <div style={{ ...getTextStyle('bodySmall', isMobile), color: designSystem.colors.text.secondary, lineHeight: '1.8' }}>
@@ -712,7 +709,7 @@ export function MemberImport({ user }: MemberImportProps) {
             style={{
               width: '100%',
               padding: designSystem.spacing.md,
-              border: `2px dashed ${designSystem.colors.border}`,
+              border: `2px dashed ${designSystem.colors.border.main}`,
               borderRadius: designSystem.borderRadius.md,
               cursor: 'pointer',
               fontSize: getTextStyle('body', isMobile).fontSize
@@ -721,7 +718,7 @@ export function MemberImport({ user }: MemberImportProps) {
           {file && (
             <div style={{ 
               marginTop: designSystem.spacing.sm, 
-              color: designSystem.colors.success,
+              color: designSystem.colors.success[500],
               fontSize: getTextStyle('bodySmall', isMobile).fontSize
             }}>
               ✓ 已選擇: {file.name}
@@ -731,11 +728,11 @@ export function MemberImport({ user }: MemberImportProps) {
 
         {/* 錯誤訊息 */}
         {error && (
-          <div style={{
+          <div           style={{
             ...getCardStyle(isMobile),
             background: '#ffebee',
-            color: designSystem.colors.danger,
-            borderLeft: `4px solid ${designSystem.colors.danger}`
+            color: designSystem.colors.danger[500],
+            borderLeft: `4px solid ${designSystem.colors.danger[500]}`
           }}>
             ❌ {error}
           </div>
@@ -743,11 +740,11 @@ export function MemberImport({ user }: MemberImportProps) {
 
         {/* 成功訊息 */}
         {success && (
-          <div style={{
+          <div           style={{
             ...getCardStyle(isMobile),
             background: '#e8f5e9',
-            color: designSystem.colors.success,
-            borderLeft: `4px solid ${designSystem.colors.success}`
+            color: designSystem.colors.success[500],
+            borderLeft: `4px solid ${designSystem.colors.success[500]}`
           }}>
             {success}
           </div>
@@ -766,7 +763,7 @@ export function MemberImport({ user }: MemberImportProps) {
                 maxHeight: '400px',
                 overflowY: 'auto',
                 overflowX: 'auto',
-                border: `1px solid ${designSystem.colors.border}`,
+                border: `1px solid ${designSystem.colors.border.main}`,
                 borderRadius: designSystem.borderRadius.md
               }}>
                 <table style={{
@@ -776,15 +773,15 @@ export function MemberImport({ user }: MemberImportProps) {
                 }}>
                   <thead>
                     <tr style={{ background: designSystem.colors.background.hover }}>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>#</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>姓名</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>暱稱</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>會籍類型</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>會員開始</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>會員截止</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>生日</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>電話</th>
-                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border}`, whiteSpace: 'nowrap' }}>備註</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.main}`, whiteSpace: 'nowrap' }}>#</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.main}`, whiteSpace: 'nowrap' }}>姓名</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.main}`, whiteSpace: 'nowrap' }}>暱稱</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.main}`, whiteSpace: 'nowrap' }}>會籍類型</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.main}`, whiteSpace: 'nowrap' }}>會員開始</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.main}`, whiteSpace: 'nowrap' }}>會員截止</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.main}`, whiteSpace: 'nowrap' }}>生日</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.main}`, whiteSpace: 'nowrap' }}>電話</th>
+                      <th style={{ padding: designSystem.spacing.sm, textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.main}`, whiteSpace: 'nowrap' }}>備註</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -792,7 +789,7 @@ export function MemberImport({ user }: MemberImportProps) {
                       // 格式化會籍類型顯示
                       let membershipTypeDisplay = '會員'
                       let membershipTypeColor = '#e3f2fd'
-                      let membershipTypeTextColor = designSystem.colors.info
+                      let membershipTypeTextColor = designSystem.colors.info[500]
                       
                       if (member.membership_type) {
                         const type = member.membership_type.trim()
@@ -857,7 +854,7 @@ export function MemberImport({ user }: MemberImportProps) {
                   // 格式化會籍類型顯示
                   let membershipTypeDisplay = '會員'
                   let membershipTypeColor = '#e3f2fd'
-                  let membershipTypeTextColor = designSystem.colors.info
+                  let membershipTypeTextColor = designSystem.colors.info[500]
                   
                   if (member.membership_type) {
                     const type = member.membership_type.trim()
@@ -876,7 +873,7 @@ export function MemberImport({ user }: MemberImportProps) {
                     <div key={index} style={{
                       padding: designSystem.spacing.md,
                       background: designSystem.colors.background.card,
-                      border: `1px solid ${designSystem.colors.border}`,
+                      border: `1px solid ${designSystem.colors.border.main}`,
                       borderRadius: designSystem.borderRadius.md
                     }}>
                       <div style={{ 
@@ -885,7 +882,7 @@ export function MemberImport({ user }: MemberImportProps) {
                         alignItems: 'center',
                         marginBottom: designSystem.spacing.sm,
                         paddingBottom: designSystem.spacing.sm,
-                        borderBottom: `1px solid ${designSystem.colors.border}`
+                        borderBottom: `1px solid ${designSystem.colors.border.main}`
                       }}>
                         <span style={{ ...getTextStyle('bodyLarge', isMobile), fontWeight: 'bold' }}>
                           #{index + 1} {member.name}
@@ -962,13 +959,13 @@ export function MemberImport({ user }: MemberImportProps) {
         )}
 
         {/* 危險操作區 */}
-        <div style={{ 
+        <div         style={{
           ...getCardStyle(isMobile),
           background: '#ffebee',
-          borderLeft: `4px solid ${designSystem.colors.danger}`,
+          borderLeft: `4px solid ${designSystem.colors.danger[500]}`,
           marginTop: isMobile ? designSystem.spacing.xl : '40px'
         }}>
-          <h3 style={{ ...getTextStyle('h3', isMobile), margin: 0, marginBottom: designSystem.spacing.md, color: designSystem.colors.danger }}>
+          <h3 style={{ ...getTextStyle('h3', isMobile), margin: 0, marginBottom: designSystem.spacing.md, color: designSystem.colors.danger[500] }}>
             ⚠️ 危險操作
           </h3>
           
@@ -1059,7 +1056,7 @@ export function MemberImport({ user }: MemberImportProps) {
             width: '100%',
             padding: designSystem.spacing.xl
           }}>
-            <h2 style={{ ...getTextStyle('h2', isMobile), margin: 0, marginBottom: designSystem.spacing.md, color: designSystem.colors.danger }}>
+            <h2 style={{ ...getTextStyle('h2', isMobile), margin: 0, marginBottom: designSystem.spacing.md, color: designSystem.colors.danger[500] }}>
               🗑️ 確認刪除無資料會員
             </h2>
             <p style={{ ...getTextStyle('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: designSystem.spacing.xl, lineHeight: '1.6' }}>
@@ -1068,7 +1065,7 @@ export function MemberImport({ user }: MemberImportProps) {
               • <strong>保留</strong>有任何記錄的會員<br/>
               • <strong>保留</strong>所有相關記錄<br/>
               <br/>
-              <span style={{ color: designSystem.colors.danger }}>此操作<strong>無法復原</strong>，請確認是否繼續？</span>
+              <span style={{ color: designSystem.colors.danger[500] }}>此操作<strong>無法復原</strong>，請確認是否繼續？</span>
             </p>
             <div style={{ display: 'flex', gap: designSystem.spacing.md }}>
               <button

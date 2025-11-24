@@ -6,7 +6,7 @@ import { designSystem, getTextStyle } from '../styles/designSystem'
 
 interface PageHeaderProps {
   title: string
-  user: User
+  user: User | null
   showBaoLink?: boolean
   showHomeLink?: boolean
   breadcrumbs?: Array<{ label: string; link: string }>
@@ -100,7 +100,7 @@ export function PageHeader({ title, user, showBaoLink = false, showHomeLink = tr
               ← HOME
             </Link>
           )}
-          <UserMenu user={user} />
+          {user && <UserMenu user={user} />}
         </div>
       </div>
     </div>

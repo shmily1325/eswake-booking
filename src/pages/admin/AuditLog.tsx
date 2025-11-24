@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -21,10 +21,6 @@ interface ParsedDetails {
   time?: string
   duration?: string
   rawText: string
-}
-
-interface AuditLogProps {
-  user: User
 }
 
 /**
@@ -147,7 +143,8 @@ function formatDateHeader(dateStr: string): string {
   }
 }
 
-export function AuditLog({ user }: AuditLogProps) {
+export function AuditLog() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   
   // 原有 state

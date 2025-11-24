@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
@@ -7,11 +7,8 @@ import { extractDate, extractTime } from '../../utils/formatters'
 import { getLocalDateString } from '../../utils/date'
 // import { Button, Card } from '../../components/ui' // TODO: 未來可使用
 
-interface BackupPageProps {
-  user: User
-}
-
-export function BackupPage({ user }: BackupPageProps) {
+export function BackupPage() {
+  const user = useAuthUser()
   const [loading, setLoading] = useState(false)
   const [backupLoading, setBackupLoading] = useState(false)
   const [fullBackupLoading, setFullBackupLoading] = useState(false)

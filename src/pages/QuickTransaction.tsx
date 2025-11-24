@@ -1,13 +1,10 @@
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 
-interface QuickTransactionProps {
-  user: User
-}
-
-export function QuickTransaction({ user }: QuickTransactionProps) {
+export function QuickTransaction() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
 
   return (

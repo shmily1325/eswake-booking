@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -15,11 +15,8 @@ interface Announcement {
   created_at: string | null
 }
 
-interface AnnouncementManagementProps {
-  user: User
-}
-
-export function AnnouncementManagement({ user }: AnnouncementManagementProps) {
+export function AnnouncementManagement() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(false)

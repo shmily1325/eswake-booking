@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import type { User } from '@supabase/supabase-js'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { handleError } from '../../utils/errorHandler'
 import { Button, Badge } from '../../components/ui'
-
-interface StaffManagementProps {
-  user: User
-}
 
 interface Coach {
   id: string
@@ -29,7 +25,8 @@ interface TimeOff {
   notes: string | null
 }
 
-export function StaffManagement({ user }: StaffManagementProps) {
+export function StaffManagement() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [timeOffs, setTimeOffs] = useState<TimeOff[]>([])

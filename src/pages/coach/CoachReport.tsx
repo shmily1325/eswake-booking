@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { User } from '@supabase/supabase-js'
+import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
@@ -36,10 +36,6 @@ interface MemberSearchResult {
   phone: string | null
 }
 
-interface CoachReportProps {
-  user: User
-}
-
 const PAYMENT_METHODS = [
   { value: 'cash', label: '現金' },
   { value: 'transfer', label: '匯款' },
@@ -53,7 +49,8 @@ const LESSON_TYPES = [
   { value: 'designated_free', label: '指定（不需收費）' }
 ]
 
-export function CoachReport({ user }: CoachReportProps) {
+export function CoachReport() {
+  const user = useAuthUser()
   const { isMobile } = useResponsive()
   
   // 日期和教練篩選
