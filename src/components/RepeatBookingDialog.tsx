@@ -88,7 +88,6 @@ export function RepeatBookingDialog({
     toggleCoach,
     toggleActivityType,
     handleMemberSearch,
-    performConflictCheck,
     resetForm
   } = useBookingForm({
     defaultBoatId,
@@ -241,13 +240,17 @@ export function RepeatBookingDialog({
         }
 
         // 記錄審計日誌
-        await logBookingCreation(
-          newBooking.id,
-          user.id,
+        const coachNames = selectedCoaches.length > 0
+          ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
+          : []
+        await logBookingCreation({
+          userEmail: user.email || '',
+          studentName: finalStudentName,
           boatName,
-          finalStudentName,
-          `Created via repeat booking (${displayDate})`
-        )
+          startTime: newStartAt,
+          durationMin,
+          coachNames
+        })
 
         results.success.push(displayDate)
       }
@@ -346,7 +349,7 @@ export function RepeatBookingDialog({
           <BoatSelector
             boats={boats}
             selectedBoatId={selectedBoatId}
-            setSelectedBoatId={setSelectedBoatId}
+            onSelect={setSelectedBoatId}
           />
 
           {/* 教練選擇 */}
@@ -356,50 +359,12 @@ export function RepeatBookingDialog({
             selectedCoachesSet={selectedCoachesSet}
             setSelectedCoaches={setSelectedCoaches}
             toggleCoach={toggleCoach}
-            loading={loading}
+            loadingCoaches={loading}
+            requiresDriver={requiresDriver}
+            setRequiresDriver={setRequiresDriver}
+            canRequireDriver={canRequireDriver}
+            isSelectedBoatFacility={isSelectedBoatFacility}
           />
-
-          {/* 需要駕駛 */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              cursor: canRequireDriver ? 'pointer' : 'not-allowed',
-              padding: '12px',
-              backgroundColor: requiresDriver ? '#dbeafe' : (canRequireDriver ? '#f8f9fa' : '#f5f5f5'),
-              borderRadius: '8px',
-              border: requiresDriver ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-              transition: 'all 0.2s',
-              opacity: canRequireDriver ? 1 : 0.6,
-            }}>
-              <input
-                type="checkbox"
-                checked={requiresDriver}
-                onChange={(e) => setRequiresDriver(e.target.checked)}
-                disabled={!canRequireDriver}
-                style={{
-                  marginRight: '10px',
-                  width: '18px',
-                  height: '18px',
-                  cursor: canRequireDriver ? 'pointer' : 'not-allowed',
-                }}
-              />
-              <div style={{ flex: 1 }}>
-                <span style={{
-                  fontSize: '15px',
-                  fontWeight: '500',
-                  color: requiresDriver ? '#3b82f6' : (canRequireDriver ? '#333' : '#999'),
-                }}>
-                  🚤 需要駕駛（勾選後在排班時必須指定駕駛）
-                </span>
-                {!canRequireDriver && (
-                  <div style={{ fontSize: '12px', color: '#f59e0b', marginTop: '4px' }}>
-                    {isSelectedBoatFacility ? '⚠️ 彈簧床不需要駕駛' : '⚠️ 未指定教練不能選駕駛'}
-                  </div>
-                )}
-              </div>
-            </label>
-          </div>
 
           {/* 時間選擇 */}
           <TimeSelector
