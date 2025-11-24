@@ -302,6 +302,106 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       const result = getDisplayContactName(booking)
       expect(result).toBe('Jerry')
     })
+
+    it('所有會員都是 null 時應該回退到 contact_name', () => {
+      const booking = {
+        contact_name: '非會員客人',
+        booking_members: [
+          {
+            members: null
+          },
+          {
+            members: null
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('非會員客人')
+    })
+
+    it('所有會員都是 null 且沒有 contact_name 時應該返回「未命名」', () => {
+      const booking = {
+        booking_members: [
+          {
+            members: null
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('未命名')
+    })
+
+    it('booking_members 存在但會員被刪除（members 為 null）應該使用 contact_name', () => {
+      const booking = {
+        contact_name: '張三',
+        booking_members: [
+          {
+            member_id: 'deleted-member-id',
+            members: null  // 會員已被刪除，資料庫 LEFT JOIN 返回 null
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('張三')
+    })
+
+    it('部分會員被刪除時應該只顯示存在的會員', () => {
+      const booking = {
+        contact_name: '王小明, 已刪除會員',
+        booking_members: [
+          {
+            member_id: 'valid-member-id',
+            members: {
+              name: '王小明',
+              nickname: 'Jerry'
+            }
+          },
+          {
+            member_id: 'deleted-member-id',
+            members: null  // 會員已被刪除
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('Jerry')
+    })
+
+    it('會員名稱為空字串時應該過濾掉', () => {
+      const booking = {
+        contact_name: '有效客人',
+        booking_members: [
+          {
+            members: {
+              name: '',
+              nickname: null
+            }
+          },
+          {
+            members: {
+              name: '有效客人',
+              nickname: 'Valid'
+            }
+          }
+        ]
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('Valid')
+    })
+
+    it('booking_members 為 undefined 時應該使用 contact_name', () => {
+      const booking = {
+        contact_name: '非會員客人'
+        // booking_members 完全不存在
+      }
+
+      const result = getDisplayContactName(booking)
+      expect(result).toBe('非會員客人')
+    })
   })
 })
 

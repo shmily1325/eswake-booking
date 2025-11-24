@@ -1,6 +1,7 @@
 import React from 'react'
 import type { Booking, Boat } from '../types/booking'
 import { getDisplayContactName } from '../utils/bookingFormat'
+import { validateBoats, validateBookings } from '../utils/safetyHelpers'
 
 interface VirtualizedBookingListProps {
     boats: Boat[]
@@ -10,24 +11,24 @@ interface VirtualizedBookingListProps {
 }
 
 export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingClick }: VirtualizedBookingListProps) {
+    // 驗證並過濾資料，確保沒有 null/undefined
+    const validBoats = React.useMemo(() => validateBoats(boats), [boats])
+    const validBookings = React.useMemo(() => validateBookings(bookings), [bookings])
+
     // 預先處理數據：將預約按船隻分組並排序
     const boatBookingsMap = React.useMemo(() => {
         const map = new Map<number, Booking[]>()
-        const safeBoats = boats || []
-        const safeBookings = bookings || []
 
-        safeBoats.forEach(boat => {
-            const boatBookings = safeBookings
+        validBoats.forEach(boat => {
+            const boatBookings = validBookings
                 .filter(b => b.boat_id === boat.id)
                 .sort((a, b) => a.start_at.localeCompare(b.start_at))
             map.set(boat.id, boatBookings)
         })
         return map
-    }, [boats, bookings])
+    }, [validBoats, validBookings])
 
-    const safeBoats = boats || []
-
-    if (safeBoats.length === 0) {
+    if (validBoats.length === 0) {
         return (
             <div style={{
                 display: 'flex',
@@ -52,7 +53,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             border: '1px solid #e9ecef'
         }}>
-            {safeBoats.map((boat) => {
+            {validBoats.map((boat) => {
                 const boatBookings = boatBookingsMap.get(boat.id) || []
 
                 return (
@@ -122,7 +123,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                     flexDirection: 'column',
                                 }}>
                                     {boatBookings.map((booking, bookingIndex) => {
-                                        // 計算時間
+                                        // 計算時間（validateBookings 已確保資料完整）
                                         const startDatetime = booking.start_at.substring(0, 16)
                                         const [, startTimeStr] = startDatetime.split('T')
                                         const [startHour, startMinute] = startTimeStr.split(':').map(Number)
