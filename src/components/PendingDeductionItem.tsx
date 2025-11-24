@@ -1,18 +1,26 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-// 扣款明細類型
-type DeductionCategory = 'balance' | 'boat_voucher_g23' | 'boat_voucher_g21_panther' | 'designated_lesson' | 'plan' | 'gift_boat_hours'
+// 扣款類別
+type DeductionCategory = 
+  | 'balance' 
+  | 'boat_voucher_g23' 
+  | 'boat_voucher_g21_panther' 
+  | 'designated_lesson' 
+  | 'plan' 
+  | 'gift_boat_hours'
 
-interface DeductionDetail {
-  id: string // 臨時ID，用於前端管理
+// 扣款明細
+interface DeductionItem {
+  id: string
   category: DeductionCategory
-  amount?: number // 金額（儲值用）
+  amount?: number  // 金額（儲值用）
   minutes?: number // 時數（其他類別用）
   planName?: string // 方案名稱
 }
 
-interface PendingDeductionItemProps {
+// 組件 Props
+interface Props {
   report: {
     id: number
     booking_id: number
@@ -30,62 +38,73 @@ interface PendingDeductionItemProps {
   onComplete: () => void
 }
 
-export function PendingDeductionItem({ report, onComplete }: PendingDeductionItemProps) {
+export function PendingDeductionItem({ report, onComplete }: Props) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [deductions, setDeductions] = useState<DeductionDetail[]>([
-    {
-      id: '1',
-      category: 'boat_voucher_g23', // 預設船券
-      minutes: report.duration_min, // 來自教練回報
-    }
-  ])
   const [loading, setLoading] = useState(false)
   const [memberData, setMemberData] = useState<any>(null)
+  const [items, setItems] = useState<DeductionItem[]>([
+    {
+      id: '1',
+      category: 'boat_voucher_g23',
+      minutes: report.duration_min
+    }
+  ])
 
   // 載入會員資料
   const loadMemberData = async () => {
     if (!report.member_id || memberData) return
     
-    const { data } = await supabase
-      .from('members')
-      .select('*')
-      .eq('id', report.member_id)
-      .single()
-    
-    if (data) setMemberData(data)
+    try {
+      const { data } = await supabase
+        .from('members')
+        .select('*')
+        .eq('id', report.member_id)
+        .single()
+      
+      if (data) setMemberData(data)
+    } catch (error) {
+      console.error('載入會員資料失敗:', error)
+    }
   }
 
-  // 展開時載入會員資料
+  // 展開/收起
   const handleToggle = () => {
-    if (!isExpanded) {
+    if (!isExpanded && !memberData) {
       loadMemberData()
     }
     setIsExpanded(!isExpanded)
   }
 
+  // 格式化時間
+  const formatTime = (datetime: string) => {
+    const date = new Date(datetime)
+    const hours = date.getHours().toString().padStart(2, '0')
+    const mins = date.getMinutes().toString().padStart(2, '0')
+    return `${hours}:${mins}`
+  }
+
   // 新增扣款項目
-  const addDeduction = () => {
-    const newDeduction: DeductionDetail = {
+  const addItem = () => {
+    setItems([...items, {
       id: Date.now().toString(),
       category: 'boat_voucher_g23',
-      minutes: report.duration_min,
-    }
-    setDeductions([...deductions, newDeduction])
+      minutes: report.duration_min
+    }])
   }
 
   // 刪除扣款項目
-  const removeDeduction = (id: string) => {
-    if (deductions.length === 1) {
+  const removeItem = (id: string) => {
+    if (items.length === 1) {
       alert('至少需要一個扣款項目')
       return
     }
-    setDeductions(deductions.filter(d => d.id !== id))
+    setItems(items.filter(item => item.id !== id))
   }
 
   // 更新扣款項目
-  const updateDeduction = (id: string, updates: Partial<DeductionDetail>) => {
-    setDeductions(deductions.map(d => 
-      d.id === id ? { ...d, ...updates } : d
+  const updateItem = (id: string, updates: Partial<DeductionItem>) => {
+    setItems(items.map(item => 
+      item.id === id ? { ...item, ...updates } : item
     ))
   }
 
@@ -93,6 +112,11 @@ export function PendingDeductionItem({ report, onComplete }: PendingDeductionIte
   const handleConfirm = async () => {
     if (!report.member_id) {
       alert('非會員無法扣款')
+      return
+    }
+
+    if (!memberData) {
+      alert('會員資料未載入')
       return
     }
 
@@ -105,37 +129,38 @@ export function PendingDeductionItem({ report, onComplete }: PendingDeductionIte
       const description = `${boatName} ${report.duration_min}分 ${coachName}教課 (${contactName})`
 
       // 處理每筆扣款
-      for (const deduction of deductions) {
-        // 根據類別更新會員餘額
-        const updates: any = {}
-        const transactionData: any = {
+      for (const item of items) {
+        const updates: Record<string, any> = {}
+        const transactionData: Record<string, any> = {
           member_id: report.member_id,
           booking_participant_id: report.id,
           transaction_type: 'consume',
-          category: deduction.category,
-          description,
+          category: item.category,
+          description: description,
           transaction_date: new Date().toISOString().split('T')[0],
           operator_id: (await supabase.auth.getUser()).data.user?.id
         }
 
-        if (deduction.category === 'balance') {
-          // 扣儲值（金額）
-          const newBalance = (memberData.balance || 0) - (deduction.amount || 0)
+        // 根據類別處理
+        if (item.category === 'balance') {
+          // 扣儲值金額
+          const newBalance = (memberData.balance || 0) - (item.amount || 0)
           updates.balance = newBalance
-          transactionData.amount = -(deduction.amount || 0)
+          transactionData.amount = -(item.amount || 0)
           transactionData.balance_after = newBalance
         } else {
           // 扣時數
-          const minutesField = getCategoryField(deduction.category)
-          const newMinutes = (memberData[minutesField] || 0) - (deduction.minutes || 0)
-          updates[minutesField] = newMinutes
-          transactionData.minutes = -(deduction.minutes || 0)
-          transactionData[`${minutesField}_after`] = newMinutes
+          const field = getCategoryField(item.category)
+          const current = memberData[field] || 0
+          const newValue = current - (item.minutes || 0)
+          updates[field] = newValue
+          transactionData.minutes = -(item.minutes || 0)
+          transactionData[`${field}_after`] = newValue
         }
 
         // 如果是方案，記錄方案名稱
-        if (deduction.category === 'plan' && deduction.planName) {
-          transactionData.notes = deduction.planName
+        if (item.category === 'plan' && item.planName) {
+          transactionData.notes = item.planName
         }
 
         // 更新會員餘額
@@ -174,22 +199,13 @@ export function PendingDeductionItem({ report, onComplete }: PendingDeductionIte
 
   // 取得類別對應的欄位名稱
   const getCategoryField = (category: DeductionCategory): string => {
-    switch (category) {
-      case 'boat_voucher_g23': return 'boat_voucher_g23_minutes'
-      case 'boat_voucher_g21_panther': return 'boat_voucher_g21_panther_minutes'
-      case 'designated_lesson': return 'designated_lesson_minutes'
-      case 'gift_boat_hours': return 'gift_boat_hours'
-      default: return ''
+    const fieldMap: Record<string, string> = {
+      'boat_voucher_g23': 'boat_voucher_g23_minutes',
+      'boat_voucher_g21_panther': 'boat_voucher_g21_panther_minutes',
+      'designated_lesson': 'designated_lesson_minutes',
+      'gift_boat_hours': 'gift_boat_hours'
     }
-  }
-
-  // 格式化時間
-  const formatTime = (datetime: string) => {
-    return new Date(datetime).toLocaleTimeString('zh-TW', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    })
+    return fieldMap[category] || ''
   }
 
   return (
@@ -217,7 +233,7 @@ export function PendingDeductionItem({ report, onComplete }: PendingDeductionIte
             {isExpanded ? '▼' : '▶'} {report.participant_name}
           </div>
           <div style={{ fontSize: '14px', color: '#666' }}>
-            {report.bookings.boats?.name} • {formatTime(report.bookings.start_at)} • {report.coaches?.name} ({report.duration_min}分)
+            {report.bookings.boats?.name || '未知'} • {formatTime(report.bookings.start_at)} • {report.coaches?.name || '未知'} ({report.duration_min}分)
           </div>
         </div>
         {!isExpanded && (
@@ -241,16 +257,16 @@ export function PendingDeductionItem({ report, onComplete }: PendingDeductionIte
           </div>
 
           {/* 扣款明細列表 */}
-          {deductions.map((deduction, index) => (
-            <DeductionDetailItem
-              key={deduction.id}
+          {items.map((item, index) => (
+            <DeductionItemRow
+              key={item.id}
               index={index + 1}
-              deduction={deduction}
+              item={item}
               memberData={memberData}
               defaultMinutes={report.duration_min}
-              onUpdate={(updates) => updateDeduction(deduction.id, updates)}
-              onRemove={() => removeDeduction(deduction.id)}
-              canRemove={deductions.length > 1}
+              onUpdate={(updates) => updateItem(item.id, updates)}
+              onRemove={() => removeItem(item.id)}
+              canRemove={items.length > 1}
             />
           ))}
 
@@ -263,7 +279,7 @@ export function PendingDeductionItem({ report, onComplete }: PendingDeductionIte
             borderTop: '1px solid #e0e0e0'
           }}>
             <button
-              onClick={addDeduction}
+              onClick={addItem}
               style={{
                 flex: 1,
                 padding: '10px',
@@ -288,7 +304,8 @@ export function PendingDeductionItem({ report, onComplete }: PendingDeductionIte
                 borderRadius: '8px',
                 color: 'white',
                 fontWeight: '600',
-                cursor: report.member_id ? 'pointer' : 'not-allowed'
+                cursor: report.member_id ? 'pointer' : 'not-allowed',
+                opacity: loading ? 0.6 : 1
               }}
             >
               {loading ? '處理中...' : '✅ 確認扣款'}
@@ -312,36 +329,36 @@ export function PendingDeductionItem({ report, onComplete }: PendingDeductionIte
 }
 
 // 單個扣款明細項目
-interface DeductionDetailItemProps {
+interface DeductionItemRowProps {
   index: number
-  deduction: DeductionDetail
+  item: DeductionItem
   memberData: any
   defaultMinutes: number
-  onUpdate: (updates: Partial<DeductionDetail>) => void
+  onUpdate: (updates: Partial<DeductionItem>) => void
   onRemove: () => void
   canRemove: boolean
 }
 
-function DeductionDetailItem({ 
+function DeductionItemRow({ 
   index, 
-  deduction, 
+  item, 
   memberData,
   defaultMinutes,
   onUpdate, 
   onRemove,
   canRemove 
-}: DeductionDetailItemProps) {
+}: DeductionItemRowProps) {
   const categories = [
-    { value: 'boat_voucher_g23', label: '🚤 G23船券', unit: '分' },
-    { value: 'boat_voucher_g21_panther', label: '🚤 G21/黑豹券', unit: '分' },
-    { value: 'designated_lesson', label: '🎓 指定課時數', unit: '分' },
-    { value: 'balance', label: '💰 儲值', unit: '元' },
-    { value: 'plan', label: '⭐ 方案', unit: '分' },
-    { value: 'gift_boat_hours', label: '🎁 贈送時數', unit: '分' },
+    { value: 'boat_voucher_g23', label: '🚤 G23船券' },
+    { value: 'boat_voucher_g21_panther', label: '🚤 G21/黑豹券' },
+    { value: 'designated_lesson', label: '🎓 指定課時數' },
+    { value: 'balance', label: '💰 儲值' },
+    { value: 'plan', label: '⭐ 方案' },
+    { value: 'gift_boat_hours', label: '🎁 贈送時數' },
   ]
 
-  const isBalance = deduction.category === 'balance'
-  const isPlan = deduction.category === 'plan'
+  const isBalance = item.category === 'balance'
+  const isPlan = item.category === 'plan'
 
   // 計算餘額
   const calculateBalance = () => {
@@ -349,27 +366,23 @@ function DeductionDetailItem({
     
     if (isBalance) {
       const before = memberData.balance || 0
-      const after = before - (deduction.amount || 0)
+      const after = before - (item.amount || 0)
       return { before, after }
     } else {
-      const field = getCategoryField(deduction.category)
+      const fieldMap: Record<string, string> = {
+        'boat_voucher_g23': 'boat_voucher_g23_minutes',
+        'boat_voucher_g21_panther': 'boat_voucher_g21_panther_minutes',
+        'designated_lesson': 'designated_lesson_minutes',
+        'gift_boat_hours': 'gift_boat_hours'
+      }
+      const field = fieldMap[item.category] || ''
       const before = memberData[field] || 0
-      const after = before - (deduction.minutes || 0)
+      const after = before - (item.minutes || 0)
       return { before, after }
     }
   }
 
   const balance = calculateBalance()
-
-  const getCategoryField = (category: DeductionCategory): string => {
-    switch (category) {
-      case 'boat_voucher_g23': return 'boat_voucher_g23_minutes'
-      case 'boat_voucher_g21_panther': return 'boat_voucher_g21_panther_minutes'
-      case 'designated_lesson': return 'designated_lesson_minutes'
-      case 'gift_boat_hours': return 'gift_boat_hours'
-      default: return ''
-    }
-  }
 
   return (
     <div style={{
@@ -379,7 +392,7 @@ function DeductionDetailItem({
       marginBottom: '12px',
       border: '1px solid #e0e0e0'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <div style={{ fontSize: '14px', fontWeight: '600' }}>明細 {index}</div>
         {canRemove && (
           <button
@@ -402,12 +415,11 @@ function DeductionDetailItem({
       {/* 類別選擇 */}
       <div style={{ marginBottom: '12px' }}>
         <select
-          value={deduction.category}
+          value={item.category}
           onChange={(e) => {
             const newCategory = e.target.value as DeductionCategory
-            const updates: Partial<DeductionDetail> = { category: newCategory }
+            const updates: Partial<DeductionItem> = { category: newCategory }
             
-            // 切換類別時重置值
             if (newCategory === 'balance') {
               updates.amount = 1000
               updates.minutes = undefined
@@ -435,7 +447,6 @@ function DeductionDetailItem({
       {/* 金額/時數選擇 */}
       <div style={{ marginBottom: '12px' }}>
         {isBalance ? (
-          // 儲值：金額按鈕
           <div>
             <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>扣款金額：</div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -445,8 +456,8 @@ function DeductionDetailItem({
                   onClick={() => onUpdate({ amount })}
                   style={{
                     padding: '8px 16px',
-                    background: deduction.amount === amount ? '#4a90e2' : 'white',
-                    color: deduction.amount === amount ? 'white' : '#333',
+                    background: item.amount === amount ? '#4a90e2' : 'white',
+                    color: item.amount === amount ? 'white' : '#333',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
                     cursor: 'pointer',
@@ -459,7 +470,7 @@ function DeductionDetailItem({
               <input
                 type="number"
                 placeholder="自訂"
-                value={deduction.amount || ''}
+                value={item.amount || ''}
                 onChange={(e) => onUpdate({ amount: parseInt(e.target.value) || 0 })}
                 style={{
                   padding: '8px',
@@ -471,7 +482,6 @@ function DeductionDetailItem({
             </div>
           </div>
         ) : (
-          // 其他：時數按鈕
           <div>
             <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>扣款時數：</div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -481,8 +491,8 @@ function DeductionDetailItem({
                   onClick={() => onUpdate({ minutes })}
                   style={{
                     padding: '8px 16px',
-                    background: deduction.minutes === minutes ? '#4a90e2' : 'white',
-                    color: deduction.minutes === minutes ? 'white' : '#333',
+                    background: item.minutes === minutes ? '#4a90e2' : 'white',
+                    color: item.minutes === minutes ? 'white' : '#333',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
                     cursor: 'pointer',
@@ -495,7 +505,7 @@ function DeductionDetailItem({
               <input
                 type="number"
                 placeholder="自訂"
-                value={deduction.minutes || ''}
+                value={item.minutes || ''}
                 onChange={(e) => onUpdate({ minutes: parseInt(e.target.value) || 0 })}
                 style={{
                   padding: '8px',
@@ -516,7 +526,7 @@ function DeductionDetailItem({
           <input
             type="text"
             placeholder="例：9999暢滑方案"
-            value={deduction.planName || ''}
+            value={item.planName || ''}
             onChange={(e) => onUpdate({ planName: e.target.value })}
             style={{
               width: '100%',
