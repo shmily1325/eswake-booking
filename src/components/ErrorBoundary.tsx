@@ -50,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: '#f7fafc',
             padding: '20px'
           }}
         >
@@ -58,8 +58,9 @@ export class ErrorBoundary extends Component<Props, State> {
             style={{
               background: 'white',
               borderRadius: '16px',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-              padding: '40px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+              border: '1px solid #e2e8f0',
+              padding: '48px',
               maxWidth: '500px',
               width: '100%',
               textAlign: 'center'
@@ -68,10 +69,10 @@ export class ErrorBoundary extends Component<Props, State> {
             <div
               style={{
                 fontSize: '64px',
-                marginBottom: '20px'
+                marginBottom: '16px'
               }}
             >
-              😢
+              😰
             </div>
             
             <h1
@@ -130,17 +131,19 @@ export class ErrorBoundary extends Component<Props, State> {
                   fontSize: '16px',
                   fontWeight: '600',
                   color: 'white',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: '#4299e1',
                   border: 'none',
                   borderRadius: '8px',
                   cursor: 'pointer',
-                  transition: 'transform 0.2s',
+                  transition: 'all 0.2s',
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.05)'
+                  e.currentTarget.style.background = '#3182ce'
+                  e.currentTarget.style.transform = 'translateY(-1px)'
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.background = '#4299e1'
+                  e.currentTarget.style.transform = 'translateY(0)'
                 }}
               >
                 重新整理
@@ -152,18 +155,18 @@ export class ErrorBoundary extends Component<Props, State> {
                   padding: '12px 24px',
                   fontSize: '16px',
                   fontWeight: '600',
-                  color: '#667eea',
+                  color: '#4299e1',
                   background: 'white',
-                  border: '2px solid #667eea',
+                  border: '2px solid #4299e1',
                   borderRadius: '8px',
                   cursor: 'pointer',
-                  transition: 'transform 0.2s',
+                  transition: 'all 0.2s',
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.05)'
+                  e.currentTarget.style.background = '#ebf8ff'
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.background = 'white'
                 }}
               >
                 返回首頁

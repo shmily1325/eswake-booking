@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBookingConflict } from './useBookingConflict'
 import { filterMembers, composeFinalStudentName, toggleSelection } from '../utils/memberUtils'
@@ -189,7 +189,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         }, MEMBER_SEARCH_DEBOUNCE_MS)
     }
 
-    const performConflictCheck = async (excludeBookingId?: number) => {
+    const performConflictCheck = useCallback(async (excludeBookingId?: number) => {
         const boatName = selectedBoat?.name || '未知船隻'
         const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
 
@@ -203,7 +203,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
             coachesMap,
             excludeBookingId
         })
-    }
+    }, [selectedBoat, coaches, checkConflict, selectedBoatId, startDate, startTime, durationMin, selectedCoaches])
 
     const resetForm = () => {
         setSelectedCoaches([])

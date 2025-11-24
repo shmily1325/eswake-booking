@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
@@ -98,12 +98,8 @@ export function NewBookingDialog({
   useEffect(() => {
     if (isOpen) {
       fetchAllData()
-      // 自動填入填表人（如果尚未填寫）
-      if (!filledBy && user?.email) {
-        setFilledBy(user.email)
-      }
     }
-  }, [isOpen, user, filledBy, setFilledBy])
+  }, [isOpen, fetchAllData])
 
   // 即時衝突檢查 Effect
   useEffect(() => {
