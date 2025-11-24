@@ -90,10 +90,20 @@ export class ErrorBoundary extends Component<Props, State> {
               style={{
                 fontSize: '16px',
                 color: '#666',
-                marginBottom: '24px'
+                marginBottom: '8px'
               }}
             >
               很抱歉，系統遇到了一個問題
+            </p>
+            
+            <p
+              style={{
+                fontSize: '14px',
+                color: '#999',
+                marginBottom: '24px'
+              }}
+            >
+              請聯絡管理員
             </p>
 
             {import.meta.env.DEV && this.state.error && (
