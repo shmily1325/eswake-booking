@@ -5,10 +5,11 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { extractDate, extractTime } from '../../utils/formatters'
 import { getLocalDateString } from '../../utils/date'
-// import { Button, Card } from '../../components/ui' // TODO: 未來可使用
+import { useToast, ToastContainer } from '../../components/ui'
 
 export function BackupPage() {
   const user = useAuthUser()
+  const toast = useToast()
   const [loading, setLoading] = useState(false)
   const [backupLoading, setBackupLoading] = useState(false)
   const [fullBackupLoading, setFullBackupLoading] = useState(false)
@@ -168,7 +169,7 @@ export function BackupPage() {
       URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Export error:', error)
-      alert('❌ 導出失敗，請重試')
+      toast.error('導出失敗，請重試')
     } finally {
       setLoading(false)
     }
@@ -271,7 +272,7 @@ export function BackupPage() {
       URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Export error:', error)
-      alert('❌ 導出失敗，請重試')
+      toast.error('導出失敗，請重試')
     } finally {
       setLoading(false)
     }
@@ -442,7 +443,7 @@ export function BackupPage() {
       URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Export error:', error)
-      alert('❌ 導出失敗，請重試')
+      toast.error('導出失敗，請重試')
     } finally {
       setLoading(false)
     }
@@ -483,10 +484,10 @@ export function BackupPage() {
       link.click()
       URL.revokeObjectURL(url)
 
-      alert('✅ 完整數據庫備份成功！\n\n文件已下載，請保存到 WD MY BOOK 硬盤。')
+      toast.success('完整數據庫備份成功！文件已下載，請保存到 WD MY BOOK 硬盤。')
     } catch (error) {
       console.error('Full backup error:', error)
-      alert(`❌ 備份失敗：${(error as Error).message}`)
+      toast.error(`備份失敗：${(error as Error).message}`)
     } finally {
       setFullBackupLoading(false)
     }
@@ -518,10 +519,10 @@ export function BackupPage() {
       link.click()
       URL.revokeObjectURL(url)
 
-      alert('✅ 可查詢備份成功！\n\n文件已下載，可用查詢工具打開。\n\n查詢工具：/backup-query-tool.html')
+      toast.success('可查詢備份成功！文件已下載，可用查詢工具打開：/backup-query-tool.html')
     } catch (error) {
       console.error('Queryable backup error:', error)
-      alert(`❌ 備份失敗：${(error as Error).message}`)
+      toast.error(`備份失敗：${(error as Error).message}`)
     } finally {
       setQueryableBackupLoading(false)
     }
@@ -566,18 +567,15 @@ export function BackupPage() {
         throw new Error(`${errorMsg}${details}${step}${execTime}`)
       }
 
-      const execTime = result.executionTime ? `\n\n執行時間: ${result.executionTime}ms` : ''
+      const execTime = result.executionTime ? ` (執行時間: ${result.executionTime}ms)` : ''
       
       if (result.sheetUrl) {
-        alert(
-          `✅ ${result.message}${execTime}\n\n` +
-          `工作表名稱: ${result.sheetTitle}\n` +
-          `備份筆數: ${result.bookingsCount} 筆\n\n` +
-          `點擊確定後將在新視窗開啟 Google Sheets`
+        toast.success(
+          `${result.message}${execTime} - 工作表: ${result.sheetTitle}, 備份筆數: ${result.bookingsCount} 筆。將在新視窗開啟 Google Sheets`
         )
         window.open(result.sheetUrl, '_blank')
       } else {
-        alert(`✅ ${result.message}${execTime}`)
+        toast.success(`${result.message}${execTime}`)
       }
     } catch (error) {
       const elapsed = Date.now() - startTime
@@ -595,13 +593,10 @@ export function BackupPage() {
         errorMessage = '❌ 備份失敗，請檢查環境變數設定'
       }
       
-      errorMessage += `\n\n執行時間: ${elapsed}ms`
-      errorMessage += '\n\n💡 調試提示：'
-      errorMessage += '\n1. 打開瀏覽器開發者工具 (F12) → Console 查看詳細錯誤'
-      errorMessage += '\n2. 檢查 Vercel Dashboard → Functions → backup-to-drive 的日誌'
-      errorMessage += '\n3. 確認所有 Google Sheets / Supabase 環境變數已正確設定'
+      errorMessage += ` (執行時間: ${elapsed}ms)`
+      errorMessage += ' 💡 調試提示：打開開發者工具 (F12) 查看詳細錯誤，或檢查 Vercel 函數日誌'
       
-      alert(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setBackupLoading(false)
     }
@@ -922,8 +917,9 @@ export function BackupPage() {
           </div>
         </div>
       </div>
-      
+
       <Footer />
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }

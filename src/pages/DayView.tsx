@@ -10,6 +10,7 @@ import { getLocalDateString } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { getButtonStyle } from '../styles/designSystem'
 import { formatSingleBookingWithName, getDisplayContactName } from '../utils/bookingFormat'
+import { useToast, ToastContainer } from '../components/ui'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
 
@@ -43,6 +44,7 @@ const TIME_SLOTS = generateTimeSlots()
 
 export function DayView() {
   const user = useAuthUser()
+  const toast = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const dateParam = searchParams.get('date') || getLocalDateString()
   const { isMobile } = useResponsive()
@@ -84,10 +86,11 @@ export function DayView() {
     try {
       await navigator.clipboard.writeText(message)
       setCopySuccess(booking.id)
+      toast.success('已複製到剪貼簿')
       setTimeout(() => setCopySuccess(null), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
-      alert('複製失敗')
+      toast.error('複製失敗')
     }
   }
 
@@ -1577,6 +1580,7 @@ export function DayView() {
       />
 
       <Footer />
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }

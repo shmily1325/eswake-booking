@@ -10,6 +10,7 @@ import { useRequireAdmin, isAdmin } from '../../utils/auth'
 import { isFacility } from '../../utils/facility'
 import { logCoachAssignment } from '../../utils/auditLog'
 import { getDisplayContactName } from '../../utils/bookingFormat'
+import { useToast, ToastContainer } from '../../components/ui'
 
 interface Coach {
   id: string
@@ -47,6 +48,7 @@ function getTomorrowDate() {
 
 export function CoachAssignment() {
   const user = useAuthUser()
+  const toast = useToast()
   const { isMobile } = useResponsive()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -1615,11 +1617,11 @@ export function CoachAssignment() {
                                         onClick={(e) => {
                                           e.stopPropagation()
                                           if (isCoachInThisBooking) {
-                                            alert('⚠️ 教練不能同時是駕駛，請選擇其他人')
+                                            toast.warning('教練不能同時是駕駛，請選擇其他人')
                                             return
                                           }
                                           if (isOnTimeOff && !isSelected) {
-                                            alert('⚠️ 該教練今日休假')
+                                            toast.warning('該教練今日休假')
                                             return
                                           }
                                           if (isUnavailable) {
@@ -1702,6 +1704,7 @@ export function CoachAssignment() {
       </div>
 
       <Footer />
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }

@@ -6,7 +6,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString } from '../../utils/date'
 import type { MemberBasic, ImportRecord, BoardExportData } from '../../types/common'
-import { Button } from '../../components/ui'
+import { Button, useToast, ToastContainer } from '../../components/ui'
 
 interface BoardSlot {
   id?: number
@@ -30,6 +30,7 @@ const BOARD_SECTIONS = [
 
 export function BoardManagement() {
   const user = useAuthUser()
+  const toast = useToast()
   const { isMobile } = useResponsive()
   const [boardSlots, setBoardSlots] = useState<BoardSlot[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,7 +76,7 @@ export function BoardManagement() {
 
       if (error) throw error
       if (!allBoards || allBoards.length === 0) {
-        alert('沒有置板資料可以導出')
+        toast.warning('沒有置板資料可以導出')
         return
       }
 
@@ -104,7 +105,7 @@ export function BoardManagement() {
       link.click()
     } catch (error) {
       console.error('導出失敗:', error)
-      alert('導出失敗')
+      toast.error('導出失敗')
     }
   }
 
@@ -283,7 +284,7 @@ export function BoardManagement() {
       setBoardSlots(slots)
     } catch (error) {
       console.error('載入置板資料失敗:', error)
-      alert('載入置板資料失敗')
+      toast.error('載入置板資料失敗')
     } finally {
       setLoading(false)
     }
@@ -323,7 +324,7 @@ export function BoardManagement() {
       loadBoardData()
     } catch (error) {
       console.error('更新失敗:', error)
-      alert('更新失敗')
+      toast.error('更新失敗')
     }
   }
 
@@ -345,7 +346,7 @@ export function BoardManagement() {
       loadBoardData()
     } catch (error) {
       console.error('刪除失敗:', error)
-      alert('刪除失敗')
+      toast.error('刪除失敗')
     }
   }
 
@@ -399,7 +400,7 @@ export function BoardManagement() {
       loadBoardData()
     } catch (error) {
       console.error('新增置板失敗:', error)
-      alert('新增置板失敗')
+      toast.error('新增置板失敗')
     }
   }
 
@@ -1301,6 +1302,7 @@ export function BoardManagement() {
 
       {/* Footer */}
       <Footer />
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }

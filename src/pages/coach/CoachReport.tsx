@@ -7,11 +7,10 @@ import { CoachReportFormDialog } from '../../components/CoachReportFormDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
-import { Button } from '../../components/ui'
+import { Button, useToast, ToastContainer } from '../../components/ui'
 import { isFacility } from '../../utils/facility'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
-import { handleError } from '../../utils/errorHandler'
 import {
   calculateIsTeaching,
   calculateParticipantStatus
@@ -51,6 +50,7 @@ const LESSON_TYPES = [
 
 export function CoachReport() {
   const user = useAuthUser()
+  const toast = useToast()
   const { isMobile } = useResponsive()
   
   // 日期和教練篩選
@@ -365,7 +365,7 @@ export function CoachReport() {
         await submitCoachReport()
       }
       
-      alert('回報成功！')
+      toast.success('回報成功！')
       setReportingBookingId(null)
       loadBookings()
     } catch (error) {
@@ -428,7 +428,7 @@ export function CoachReport() {
 
   const submitCoachReport = async () => {
     if (!reportingBookingId || !reportingCoachId) {
-      alert('缺少必要資訊')
+      toast.warning('缺少必要資訊')
       return
     }
 
@@ -458,7 +458,7 @@ export function CoachReport() {
       
       if (memberStatusWithoutId.length > 0) {
         const names = memberStatusWithoutId.map(p => p.participant_name || '(未填寫)').join('、')
-        alert(`以下參與者標記為會員但尚未選擇：${names}\n\n請點擊該參與者從會員列表選擇，或刪除後改用「新增客人」`)
+        toast.warning(`以下參與者標記為會員但尚未選擇：${names}。請點擊該參與者從會員列表選擇，或刪除後改用「新增客人」`)
         return
       }
       
@@ -597,7 +597,7 @@ export function CoachReport() {
         }
       }
     } catch (error) {
-      handleError(error, '提交教練回報')
+      console.error('提交教練回報失敗:', error)
       throw error
     }
   }
@@ -1438,6 +1438,7 @@ export function CoachReport() {
       />
 
       <Footer />
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }
