@@ -284,7 +284,7 @@ export function CoachReport() {
 
       const { data: bookingMembersData } = await supabase
         .from('booking_members')
-        .select('member_id, members(id, name, nickname)')
+        .select('member_id, members:member_id(id, name, nickname)')
         .eq('booking_id', bookingId)
 
       const { data: reportedParticipants } = await supabase

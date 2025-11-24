@@ -207,7 +207,7 @@ export function CoachAdmin() {
             boats(name, color)
           ),
           coaches:coach_id(id, name),
-          members(id, name, nickname)
+          members:member_id(id, name, nickname)
         `)
         .eq('status', 'processed')
         .eq('is_deleted', false)

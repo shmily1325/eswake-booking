@@ -118,7 +118,7 @@ export function DayView() {
         .select(`
           *,
           boats:boat_id(id, name, color),
-          booking_members(member_id, members(id, name, nickname))
+          booking_members(member_id, members:member_id(id, name, nickname))
         `)
         .gte('start_at', `${dateParam}T00:00:00`)
         .lt('start_at', `${dateParam}T23:59:59`)

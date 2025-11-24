@@ -101,7 +101,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       // 1.1 從 booking_members 查詢會員名稱
       const memberQuery = supabase
         .from('booking_members')
-        .select('booking_id, members!inner(name)')
+        .select('booking_id, members:member_id!inner(name)')
         .ilike('members.name', `%${searchName.trim()}%`)
       
       // 1.2 從 bookings 表查詢 contact_name（備選方案）
@@ -135,7 +135,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       // 步驟 2: 查詢這些預約的詳細資訊
       let query = supabase
         .from('bookings')
-        .select('*, boats:boat_id (name, color), booking_members(member_id, members(id, name, nickname))')
+        .select('*, boats:boat_id(name, color), booking_members(member_id, members:member_id(id, name, nickname))')
         .in('id', Array.from(bookingIds))
       
       // 固定為未來預約
