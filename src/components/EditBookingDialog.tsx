@@ -5,6 +5,7 @@ import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
 import { getLocalTimestamp } from '../utils/date'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
+import { useBookingConflict } from '../hooks/useBookingConflict'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import type { Booking } from '../types/booking'
 
@@ -26,6 +27,12 @@ export function EditBookingDialog({
   user,
 }: EditBookingDialogProps) {
   const { isMobile } = useResponsive()
+
+  // 複製功能狀態
+  const [showCopyDialog, setShowCopyDialog] = useState(false)
+  const [copyToDate, setCopyToDate] = useState('')
+  const [copyLoading, setCopyLoading] = useState(false)
+  const [copyError, setCopyError] = useState('')
 
   // 使用 useBookingForm Hook
   const {
@@ -86,6 +93,9 @@ export function EditBookingDialog({
   } = useBookingForm({
     initialBooking: booking
   })
+
+  // 複製功能專用的衝突檢查
+  const { checkConflict: checkConflictForCopy } = useBookingConflict()
 
   // 即時衝突檢查狀態
   const [conflictStatus, setConflictStatus] = useState<'checking' | 'available' | 'conflict' | null>(null)
@@ -420,6 +430,121 @@ export function EditBookingDialog({
       resetForm()
       setError('')
       onClose()
+    }
+  }
+
+  // 處理複製預約
+  const handleCopy = async () => {
+    if (!copyToDate) {
+      setCopyError('請選擇複製到的日期')
+      return
+    }
+
+    setCopyLoading(true)
+    setCopyError('')
+
+    try {
+      // 組合新的日期和時間
+      const newStartAt = `${copyToDate}T${startTime}:00`
+
+      // 使用專用的衝突檢查，直接傳遞 copyToDate（不依賴狀態更新）
+      const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
+      const selectedBoat = boats.find(b => b.id === selectedBoatId)
+      
+      const conflictResult = await checkConflictForCopy({
+        boatId: selectedBoatId,
+        boatName: selectedBoat?.name,
+        date: copyToDate, // 直接使用 copyToDate，不是 startDate
+        startTime,
+        durationMin,
+        coachIds: selectedCoaches,
+        coachesMap,
+        excludeBookingId: undefined // 複製是新建預約，不排除任何 ID
+      })
+
+      if (conflictResult.hasConflict) {
+        setCopyError(conflictResult.reason)
+        setCopyLoading(false)
+        return
+      }
+
+      // 獲取船名稱（用於審計日誌）
+      const { data: boatData } = await supabase
+        .from('boats')
+        .select('name')
+        .eq('id', selectedBoatId)
+        .single()
+      const boatName = boatData?.name || '未知船隻'
+
+      // 創建新預約
+      const bookingToInsert = {
+        boat_id: selectedBoatId,
+        member_id: selectedMemberIds.length > 0 ? selectedMemberIds[0] : null,
+        contact_name: finalStudentName,
+        contact_phone: null,
+        start_at: newStartAt,
+        duration_min: durationMin,
+        activity_types: activityTypes.length > 0 ? activityTypes : null,
+        notes: notes || null,
+        requires_driver: requiresDriver,
+        filled_by: filledBy,
+        status: 'confirmed',
+        created_by: user.id,
+        created_at: getLocalTimestamp(),
+      }
+
+      const { data: newBooking, error: insertError } = await supabase
+        .from('bookings')
+        .insert([bookingToInsert])
+        .select()
+        .single()
+
+      if (insertError || !newBooking) {
+        setCopyError(insertError?.message || '複製失敗')
+        setCopyLoading(false)
+        return
+      }
+
+      // 插入教練關聯
+      if (selectedCoaches.length > 0) {
+        const bookingCoachesToInsert = selectedCoaches.map(coachId => ({
+          booking_id: newBooking.id,
+          coach_id: coachId,
+        }))
+
+        await supabase
+          .from('booking_coaches')
+          .insert(bookingCoachesToInsert)
+      }
+
+      // 插入多會員關聯
+      if (selectedMemberIds.length > 0) {
+        const bookingMembersToInsert = selectedMemberIds.map(memberId => ({
+          booking_id: newBooking.id,
+          member_id: memberId,
+        }))
+
+        await supabase
+          .from('booking_members')
+          .insert(bookingMembersToInsert)
+      }
+
+      // 記錄審計日誌
+      await supabase.from('audit_log').insert([{
+        action: 'booking_create',
+        user_email: user.email || '',
+        details: `複製預約：${boatName} - ${finalStudentName}（${newStartAt}）`
+      }])
+
+      // Success
+      setCopyLoading(false)
+      setShowCopyDialog(false)
+      setCopyToDate('')
+      alert(`✅ 預約已複製到 ${copyToDate} ${startTime}`)
+      onSuccess()
+    } catch (err: any) {
+      setCopyError(err.message || '複製失敗')
+      setCopyLoading(false)
     }
   }
 
@@ -1181,6 +1306,7 @@ export function EditBookingDialog({
             marginTop: '20px',
             position: 'relative',
             zIndex: 10,
+            flexWrap: 'wrap',
           }}>
             <button
               type="button"
@@ -1223,6 +1349,7 @@ export function EditBookingDialog({
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.5 : 1,
                 touchAction: 'manipulation',
+                minWidth: '80px',
               }}
             >
               取消
@@ -1241,6 +1368,7 @@ export function EditBookingDialog({
                 fontWeight: '500',
                 cursor: (loading || conflictStatus === 'conflict') ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
+                minWidth: '80px',
               }}
             >
               {loading ? '處理中...' : '確認更新'}
@@ -1250,6 +1378,164 @@ export function EditBookingDialog({
       </div>
       {isMobile && (
         <div style={{ height: '20px' }} />
+      )}
+
+      {/* 複製預約對話框 */}
+      {showCopyDialog && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: '16px',
+          }}
+          onClick={() => {
+            if (!copyLoading) {
+              setShowCopyDialog(false)
+              setCopyError('')
+            }
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '24px',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '400px',
+              color: '#000',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{
+              marginTop: 0,
+              marginBottom: '20px',
+              fontSize: '20px',
+              fontWeight: 'bold',
+            }}>
+              📋 複製預約到其他日期
+            </h3>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                fontSize: '14px',
+                lineHeight: '1.6',
+              }}>
+                <div><strong>預約人：</strong>{finalStudentName}</div>
+                <div><strong>船隻：</strong>{boats.find(b => b.id === selectedBoatId)?.name}</div>
+                <div><strong>教練：</strong>{selectedCoaches.length > 0 
+                  ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name).join('、')
+                  : '未指定'}</div>
+                <div><strong>時間：</strong>{startTime}</div>
+                <div><strong>時長：</strong>{durationMin} 分鐘</div>
+              </div>
+
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '15px',
+                fontWeight: '600',
+              }}>
+                複製到日期 <span style={{ color: 'red' }}>*</span>
+              </label>
+              <input
+                type="date"
+                value={copyToDate}
+                onChange={(e) => setCopyToDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '2px solid #ff9800',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                }}
+              />
+              <div style={{
+                fontSize: '13px',
+                color: '#666',
+                marginTop: '8px',
+              }}>
+                💡 時間保持為 {startTime}，會自動檢查該時段是否衝突
+              </div>
+            </div>
+
+            {copyError && (
+              <div style={{
+                padding: '12px 14px',
+                backgroundColor: '#ffebee',
+                border: '1px solid #ef5350',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                color: '#c62828',
+                fontSize: '14px',
+                fontWeight: '500',
+                whiteSpace: 'pre-line',
+              }}>
+                ⚠️ {copyError}
+              </div>
+            )}
+
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!copyLoading) {
+                    setShowCopyDialog(false)
+                    setCopyError('')
+                  }
+                }}
+                disabled={copyLoading}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ccc',
+                  backgroundColor: 'white',
+                  color: '#333',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: copyLoading ? 'not-allowed' : 'pointer',
+                  opacity: copyLoading ? 0.5 : 1,
+                }}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleCopy}
+                disabled={copyLoading || !copyToDate}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: (copyLoading || !copyToDate) ? '#ccc' : 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                  color: 'white',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: (copyLoading || !copyToDate) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {copyLoading ? '複製中...' : '確認複製'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

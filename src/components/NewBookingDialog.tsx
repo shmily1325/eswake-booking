@@ -137,6 +137,12 @@ export function NewBookingDialog({
       return
     }
 
+    // 檢查至少要有會員或手動輸入姓名
+    if (selectedMemberIds.length === 0 && manualNames.length === 0) {
+      setError('請選擇會員或輸入非會員姓名')
+      return
+    }
+
     // 檢查早場預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
     if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {

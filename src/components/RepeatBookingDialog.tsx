@@ -57,6 +57,7 @@ export function RepeatBookingDialog({
     filledBy,
     error,
     loading,
+    loadingCoaches,
 
     // Derived
     selectedCoachesSet,
@@ -134,6 +135,12 @@ export function RepeatBookingDialog({
 
     if (!filledBy.trim()) {
       setError('請填寫填表人姓名')
+      return
+    }
+
+    // 檢查至少要有會員或手動輸入姓名
+    if (selectedMemberIds.length === 0 && manualNames.length === 0) {
+      setError('請選擇會員或輸入非會員姓名')
       return
     }
 
@@ -359,7 +366,7 @@ export function RepeatBookingDialog({
             selectedCoachesSet={selectedCoachesSet}
             setSelectedCoaches={setSelectedCoaches}
             toggleCoach={toggleCoach}
-            loadingCoaches={loading}
+            loadingCoaches={loadingCoaches}
             requiresDriver={requiresDriver}
             setRequiresDriver={setRequiresDriver}
             canRequireDriver={canRequireDriver}
