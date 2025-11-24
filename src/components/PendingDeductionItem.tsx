@@ -441,47 +441,50 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
       {/* 展開內容 */}
       {isExpanded && (
         <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
-          {/* 現金/匯款結清 */}
-          {isCashSettlement ? (
-            <div>
-              <div style={{ 
-                padding: '20px',
-                background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                borderRadius: '12px',
-                border: '2px solid #bae6fd',
-                textAlign: 'center',
-                marginBottom: '16px'
-              }}>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: '#0369a1', marginBottom: '8px' }}>
+          {/* 現金/匯款提示（可選） */}
+          {isCashSettlement && (
+            <div style={{ 
+              padding: '16px',
+              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+              borderRadius: '12px',
+              border: '2px solid #bae6fd',
+              marginBottom: '16px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: '600', color: '#0369a1', marginBottom: '4px' }}>
                   💵 {report.payment_method === 'cash' ? '現金' : '匯款'}結清
                 </div>
-                <div style={{ fontSize: '14px', color: '#075985' }}>
-                  此筆記錄為現金/匯款付款，無需扣款操作
+                <div style={{ fontSize: '13px', color: '#075985' }}>
+                  此筆記錄為現金/匯款付款
                 </div>
               </div>
-              
               <button
                 onClick={handleCashSettlement}
                 disabled={loading}
                 style={{
-                  width: '100%',
-                  padding: '12px',
+                  padding: '10px 20px',
                   background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
                   border: 'none',
                   borderRadius: '8px',
                   color: 'white',
                   fontWeight: '600',
-                  fontSize: '15px',
+                  fontSize: '14px',
                   cursor: 'pointer',
                   opacity: loading ? 0.6 : 1,
-                  boxShadow: '0 2px 8px rgba(14,165,233,0.3)'
+                  boxShadow: '0 2px 8px rgba(14,165,233,0.3)',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {loading ? '處理中...' : '✅ 確認結清'}
               </button>
             </div>
-          ) : (
-            <>
+          )}
+
+          {/* 扣款介面（始終顯示，可選擇） */}
+          <>
               <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>
                 扣款項目：
               </div>
@@ -552,10 +555,8 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                   color: '#f44336',
                   textAlign: 'center'
                 }}>
-                  ⚠️ 非會員無法扣款
-                </div>
-              )}
-            </>
+              ⚠️ 非會員無法扣款
+            </div>
           )}
         </div>
       )}
