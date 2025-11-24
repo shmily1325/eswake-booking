@@ -22,10 +22,10 @@ describe('errorHandler.ts - 錯誤處理工具', () => {
     consoleErrorMock = vi.fn()
     confirmMock = vi.fn()
     
-    global.alert = alertMock
-    global.console.log = consoleLogMock
-    global.console.error = consoleErrorMock
-    global.confirm = confirmMock
+    global.alert = alertMock as any
+    global.console.log = consoleLogMock as any
+    global.console.error = consoleErrorMock as any
+    global.confirm = confirmMock as any
   })
 
   afterEach(() => {

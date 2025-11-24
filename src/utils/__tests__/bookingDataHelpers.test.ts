@@ -167,7 +167,7 @@ describe('bookingDataHelpers.ts - 預約資料輔助函數', () => {
 
       const result = assembleBookingsWithRelations(bookings as any, relations as any)
 
-      expect(result[0].participants[0].participant_name).toBe('暱稱')
+      expect(result[0]?.participants?.[0]?.participant_name).toBe('暱稱')
     })
 
     it('bookings 不是陣列時應該拋出錯誤', () => {
