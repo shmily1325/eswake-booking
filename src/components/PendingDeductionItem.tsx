@@ -130,8 +130,8 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
 
       // 處理每筆扣款
       for (const item of items) {
-        const updates: Record<string, any> = {}
-        const transactionData: Record<string, any> = {
+        const updates: any = {}
+        const transactionData: any = {
           member_id: report.member_id,
           booking_participant_id: report.id,
           transaction_type: 'consume',
