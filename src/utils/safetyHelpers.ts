@@ -47,24 +47,47 @@ export function safeMap<T, U>(
  * 驗證 Booking 資料的完整性
  */
 export function validateBooking(booking: any): booking is Booking {
-  return (
+  const isValid = (
     booking != null &&
     typeof booking.id === 'number' &&
     typeof booking.boat_id === 'number' &&
     typeof booking.start_at === 'string' &&
     typeof booking.duration_min === 'number'
   )
+  
+  if (!isValid) {
+    console.warn('[validateBooking] Invalid booking:', {
+      booking,
+      hasId: booking?.id !== undefined,
+      hasBoatId: booking?.boat_id !== undefined,
+      hasStartAt: booking?.start_at !== undefined,
+      hasDuration: booking?.duration_min !== undefined
+    })
+  }
+  
+  return isValid
 }
 
 /**
  * 驗證 Boat 資料的完整性
  */
 export function validateBoat(boat: any): boat is Boat {
-  return (
+  const isValid = (
     boat != null &&
     typeof boat.id === 'number' &&
     typeof boat.name === 'string'
   )
+  
+  if (!isValid) {
+    console.warn('[validateBoat] Invalid boat:', {
+      boat,
+      hasId: boat?.id !== undefined,
+      hasName: boat?.name !== undefined,
+      type: typeof boat
+    })
+  }
+  
+  return isValid
 }
 
 /**
