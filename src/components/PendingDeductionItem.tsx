@@ -42,11 +42,31 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [memberData, setMemberData] = useState<any>(null)
+  
+  // 根據船隻自動判斷預設類別
+  const getDefaultCategory = (): DeductionCategory => {
+    const boatName = report.bookings.boats?.name || ''
+    
+    if (boatName.includes('G23') || boatName.includes('23')) {
+      return 'boat_voucher_g23'
+    } else if (boatName.includes('G21') || boatName.includes('21') || boatName.includes('黑豹')) {
+      return 'boat_voucher_g21_panther'
+    } else if (boatName.includes('粉紅') || boatName.includes('200')) {
+      return 'balance'
+    }
+    
+    // 預設：G23船券
+    return 'boat_voucher_g23'
+  }
+  
+  const defaultCategory = getDefaultCategory()
+  
   const [items, setItems] = useState<DeductionItem[]>([
     {
       id: '1',
-      category: 'boat_voucher_g23',
-      minutes: report.duration_min
+      category: defaultCategory,
+      minutes: defaultCategory === 'balance' ? undefined : report.duration_min,
+      amount: defaultCategory === 'balance' ? 1000 : undefined
     }
   ])
 
@@ -83,12 +103,14 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     return `${hours}:${mins}`
   }
 
-  // 新增扣款項目
+  // 新增扣款項目（使用相同的預設類別）
   const addItem = () => {
+    const defaultCat = getDefaultCategory()
     setItems([...items, {
       id: Date.now().toString(),
-      category: 'boat_voucher_g23',
-      minutes: report.duration_min
+      category: defaultCat,
+      minutes: defaultCat === 'balance' ? undefined : report.duration_min,
+      amount: defaultCat === 'balance' ? 1000 : undefined
     }])
   }
 
@@ -349,16 +371,17 @@ function DeductionItemRow({
   canRemove 
 }: DeductionItemRowProps) {
   const categories = [
-    { value: 'boat_voucher_g23', label: '🚤 G23船券' },
-    { value: 'boat_voucher_g21_panther', label: '🚤 G21/黑豹券' },
-    { value: 'designated_lesson', label: '🎓 指定課時數' },
-    { value: 'balance', label: '💰 儲值' },
-    { value: 'plan', label: '⭐ 方案' },
-    { value: 'gift_boat_hours', label: '🎁 贈送時數' },
+    { value: 'boat_voucher_g23', label: '🚤 G23船券', emoji: '🚤' },
+    { value: 'boat_voucher_g21_panther', label: '🚤 G21/黑豹券', emoji: '🚤' },
+    { value: 'designated_lesson', label: '🎓 指定課時數', emoji: '🎓' },
+    { value: 'balance', label: '💰 儲值', emoji: '💰' },
+    { value: 'plan', label: '⭐ 方案', emoji: '⭐' },
+    { value: 'gift_boat_hours', label: '🎁 贈送時數', emoji: '🎁' },
   ]
 
   const isBalance = item.category === 'balance'
   const isPlan = item.category === 'plan'
+  const currentCategory = categories.find(c => c.value === item.category)
 
   // 計算餘額
   const calculateBalance = () => {
@@ -386,34 +409,66 @@ function DeductionItemRow({
 
   return (
     <div style={{
-      background: '#f9f9f9',
-      borderRadius: '8px',
-      padding: '12px',
+      background: 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
+      borderRadius: '12px',
+      padding: '16px',
       marginBottom: '12px',
-      border: '1px solid #e0e0e0'
+      border: '1px solid #e0e0e0',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <div style={{ fontSize: '14px', fontWeight: '600' }}>明細 {index}</div>
+      {/* 標題欄 */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '14px',
+        paddingBottom: '12px',
+        borderBottom: '2px solid #e8f4f8'
+      }}>
+        <div style={{ 
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '24px' }}>{currentCategory?.emoji}</span>
+          <span style={{ 
+            fontSize: '15px', 
+            fontWeight: '600',
+            color: '#2c3e50'
+          }}>
+            明細 {index}
+          </span>
+        </div>
         {canRemove && (
           <button
             onClick={onRemove}
             style={{
-              padding: '4px 8px',
-              background: '#f44336',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '12px',
-              cursor: 'pointer'
+              padding: '6px 12px',
+              background: '#fff',
+              color: '#e74c3c',
+              border: '1px solid #e74c3c',
+              borderRadius: '6px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              fontWeight: '500',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#e74c3c'
+              e.currentTarget.style.color = 'white'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#fff'
+              e.currentTarget.style.color = '#e74c3c'
             }}
           >
-            🗑 刪除
+            刪除
           </button>
         )}
       </div>
 
       {/* 類別選擇 */}
-      <div style={{ marginBottom: '12px' }}>
+      <div style={{ marginBottom: '14px' }}>
         <select
           value={item.category}
           onChange={(e) => {
@@ -432,11 +487,17 @@ function DeductionItemRow({
           }}
           style={{
             width: '100%',
-            padding: '8px',
-            borderRadius: '6px',
-            border: '1px solid #ddd',
-            fontSize: '14px'
+            padding: '10px 12px',
+            borderRadius: '8px',
+            border: '2px solid #e0e0e0',
+            fontSize: '15px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            background: 'white',
+            transition: 'all 0.2s'
           }}
+          onFocus={(e) => e.currentTarget.style.borderColor = '#4a90e2'}
+          onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
         >
           {categories.map(cat => (
             <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -445,23 +506,45 @@ function DeductionItemRow({
       </div>
 
       {/* 金額/時數選擇 */}
-      <div style={{ marginBottom: '12px' }}>
+      <div style={{ marginBottom: '14px' }}>
         {isBalance ? (
           <div>
-            <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>扣款金額：</div>
+            <div style={{ 
+              fontSize: '13px', 
+              color: '#7f8c8d', 
+              marginBottom: '8px',
+              fontWeight: '500'
+            }}>
+              扣款金額：
+            </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {[500, 1000, 1500, 2000].map(amount => (
                 <button
                   key={amount}
                   onClick={() => onUpdate({ amount })}
                   style={{
-                    padding: '8px 16px',
-                    background: item.amount === amount ? '#4a90e2' : 'white',
-                    color: item.amount === amount ? 'white' : '#333',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
+                    padding: '10px 18px',
+                    background: item.amount === amount ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
+                    color: item.amount === amount ? 'white' : '#2c3e50',
+                    border: item.amount === amount ? 'none' : '2px solid #e0e0e0',
+                    borderRadius: '8px',
                     cursor: 'pointer',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    boxShadow: item.amount === amount ? '0 2px 8px rgba(102,126,234,0.3)' : 'none',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (item.amount !== amount) {
+                      e.currentTarget.style.borderColor = '#667eea'
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (item.amount !== amount) {
+                      e.currentTarget.style.borderColor = '#e0e0e0'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }
                   }}
                 >
                   ${amount}
@@ -473,30 +556,57 @@ function DeductionItemRow({
                 value={item.amount || ''}
                 onChange={(e) => onUpdate({ amount: parseInt(e.target.value) || 0 })}
                 style={{
-                  padding: '8px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  width: '80px'
+                  padding: '10px 12px',
+                  border: '2px solid #94a3b8',
+                  borderRadius: '8px',
+                  width: '100px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: 'white'
                 }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#94a3b8'}
               />
             </div>
           </div>
         ) : (
           <div>
-            <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>扣款時數：</div>
+            <div style={{ 
+              fontSize: '13px', 
+              color: '#7f8c8d', 
+              marginBottom: '8px',
+              fontWeight: '500'
+            }}>
+              扣款時數：
+            </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {[30, 60, 90, 120].map(minutes => (
                 <button
                   key={minutes}
                   onClick={() => onUpdate({ minutes })}
                   style={{
-                    padding: '8px 16px',
-                    background: item.minutes === minutes ? '#4a90e2' : 'white',
-                    color: item.minutes === minutes ? 'white' : '#333',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
+                    padding: '10px 18px',
+                    background: item.minutes === minutes ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
+                    color: item.minutes === minutes ? 'white' : '#2c3e50',
+                    border: item.minutes === minutes ? 'none' : '2px solid #e0e0e0',
+                    borderRadius: '8px',
                     cursor: 'pointer',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    boxShadow: item.minutes === minutes ? '0 2px 8px rgba(102,126,234,0.3)' : 'none',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (item.minutes !== minutes) {
+                      e.currentTarget.style.borderColor = '#667eea'
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (item.minutes !== minutes) {
+                      e.currentTarget.style.borderColor = '#e0e0e0'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }
                   }}
                 >
                   {minutes}分
@@ -508,11 +618,17 @@ function DeductionItemRow({
                 value={item.minutes || ''}
                 onChange={(e) => onUpdate({ minutes: parseInt(e.target.value) || 0 })}
                 style={{
-                  padding: '8px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  width: '80px'
+                  padding: '10px 12px',
+                  border: '2px solid #94a3b8',
+                  borderRadius: '8px',
+                  width: '80px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  textAlign: 'center',
+                  background: 'white'
                 }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#94a3b8'}
               />
             </div>
           </div>
@@ -521,8 +637,15 @@ function DeductionItemRow({
 
       {/* 方案名稱 */}
       {isPlan && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>方案名稱：</div>
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ 
+            fontSize: '13px', 
+            color: '#7f8c8d', 
+            marginBottom: '8px',
+            fontWeight: '500'
+          }}>
+            方案名稱：
+          </div>
           <input
             type="text"
             placeholder="例：9999暢滑方案"
@@ -530,9 +653,9 @@ function DeductionItemRow({
             onChange={(e) => onUpdate({ planName: e.target.value })}
             style={{
               width: '100%',
-              padding: '8px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
+              padding: '10px 12px',
+              border: '2px solid #e0e0e0',
+              borderRadius: '8px',
               fontSize: '14px'
             }}
           />
@@ -542,25 +665,38 @@ function DeductionItemRow({
       {/* 餘額顯示 */}
       {memberData && (
         <div style={{
-          padding: '8px',
-          background: balance.after < 0 ? '#ffebee' : '#e8f5e9',
-          borderRadius: '6px',
-          fontSize: '13px',
+          padding: '12px 16px',
+          background: balance.after < 0 ? 
+            'linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%)' : 
+            'linear-gradient(135deg, #f0fff4 0%, #e6f7ed 100%)',
+          borderRadius: '8px',
+          fontSize: '14px',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          fontWeight: '500',
+          border: balance.after < 0 ? '1px solid #fecaca' : '1px solid #bbf7d0'
         }}>
-          <span>餘額：</span>
-          <span>
-            {isBalance ? `$${balance.before}` : `${balance.before}分`}
-            <span style={{ margin: '0 8px' }}>→</span>
+          <span style={{ color: '#64748b' }}>餘額：</span>
+          <div>
+            <span style={{ color: '#475569' }}>
+              {isBalance ? `$${balance.before}` : `${balance.before}分`}
+            </span>
             <span style={{ 
-              fontWeight: '600',
-              color: balance.after < 0 ? '#f44336' : '#4CAF50'
+              margin: '0 10px',
+              color: '#94a3b8',
+              fontSize: '16px'
+            }}>
+              →
+            </span>
+            <span style={{ 
+              fontWeight: '700',
+              fontSize: '16px',
+              color: balance.after < 0 ? '#dc2626' : '#16a34a'
             }}>
               {isBalance ? `$${balance.after}` : `${balance.after}分`}
             </span>
-          </span>
+          </div>
         </div>
       )}
     </div>
