@@ -16,6 +16,9 @@ export function TodayOverview({ bookings, isMobile }: TodayOverviewProps) {
         const coachStats = new Map<string, { count: number, totalMinutes: number }>()
         safeBookings.forEach(booking => {
             booking.coaches?.forEach(coach => {
+                // 安全檢查：確保 coach 不是 null 且有 name
+                if (!coach || !coach.name) return
+                
                 const current = coachStats.get(coach.name) || { count: 0, totalMinutes: 0 }
                 coachStats.set(coach.name, {
                     count: current.count + 1,
@@ -33,6 +36,9 @@ export function TodayOverview({ bookings, isMobile }: TodayOverviewProps) {
             if (booking.boats?.name === '彈簧床') return
 
             booking.drivers?.forEach(driver => {
+                // 安全檢查：確保 driver 不是 null 且有 name
+                if (!driver || !driver.name) return
+                
                 const current = driverStats.get(driver.name) || { count: 0, totalMinutes: 0 }
                 driverStats.set(driver.name, {
                     count: current.count + 1,

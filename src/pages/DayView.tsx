@@ -130,7 +130,7 @@ export function DayView() {
 
       console.log('[DayView] Raw bookings data:', bookingsData)
       console.log('[DayView] Bookings count:', bookingsData?.length || 0)
-      
+
       // 驗證資料完整性
       if (bookingsData) {
         bookingsData.forEach((booking, idx) => {
@@ -153,7 +153,7 @@ export function DayView() {
 
   const fetchBookingsWithCoaches = async (bookingsData: any[]) => {
     console.log('[fetchBookingsWithCoaches] Input length:', bookingsData.length)
-    
+
     if (bookingsData.length === 0) {
       setBookings([])
       return
@@ -171,9 +171,9 @@ export function DayView() {
       }
       return true
     })
-    
+
     console.log('[fetchBookingsWithCoaches] Valid bookings:', validBookings.length)
-    
+
     const bookingIds = validBookings.map(b => b.id)
 
     // 優化：並行查詢教練和駕駛,只查詢必要欄位
@@ -284,7 +284,8 @@ export function DayView() {
 
       // 填入清理時段
       const boat = boats.find(b => b.id === booking.boat_id)
-      if (boat && boat.name !== '彈簧床') {
+      // 添加 null 檢查,防止 boat 為 undefined
+      if (boat && boat.name && boat.name !== '彈簧床') {
         const cleanupEndMinutes = endMinutes + 15
         for (let m = endMinutes; m < cleanupEndMinutes; m += 15) {
           const hour = Math.floor(m / 60)
@@ -359,7 +360,8 @@ export function DayView() {
 
           // 計算結束時間（包含清理時間）
           const boat = boats.find(b => b.id === booking.boat_id)
-          const cleanupTime = boat?.name === '彈簧床' ? 0 : 15 // 彈簧床不需要清理時間
+          // 添加 null 檢查,如果找不到船隻則使用預設清理時間
+          const cleanupTime = (boat && boat.name === '彈簧床') ? 0 : 15 // 彈簧床不需要清理時間
           const startMinutes = timeToMinutes(bookingTime)
           const endMinutes = startMinutes + booking.duration_min + cleanupTime
           const endHour = Math.ceil(endMinutes / 60)
@@ -1017,10 +1019,10 @@ export function DayView() {
                   color: '#6c757d',
                   lineHeight: '1.8',
                 }}>
-                <div>• 船跟船間隔至少 15 分鐘，彈簧床不需要點選時間</div>
-                <div>• 教練可用時間計算包含接船時間</div>
-                <div>• 08:00 前的預約必須指定教練</div>
-                <div>• 需先指定教練才能勾選需要駕駛，彈簧床不需要駕駛</div>
+                  <div>• 船跟船間隔至少 15 分鐘，彈簧床不需要點選時間</div>
+                  <div>• 教練可用時間計算包含接船時間</div>
+                  <div>• 08:00 前的預約必須指定教練</div>
+                  <div>• 需先指定教練才能勾選需要駕駛，彈簧床不需要駕駛</div>
                 </div>
               </div>
 
