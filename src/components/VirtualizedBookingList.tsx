@@ -2,6 +2,7 @@ import React from 'react'
 import type { Booking, Boat } from '../types/booking'
 import { getDisplayContactName } from '../utils/bookingFormat'
 import { validateBoats, validateBookings } from '../utils/safetyHelpers'
+import { wrapWithErrorReport } from '../utils/errorReporter'
 
 interface VirtualizedBookingListProps {
     boats: Boat[]
@@ -209,7 +210,14 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                         textOverflow: 'ellipsis',
                                                         whiteSpace: 'nowrap',
                                                     }}>
-                                                        {getDisplayContactName(booking)}
+                                                        {wrapWithErrorReport(
+                                                            () => getDisplayContactName(booking),
+                                                            {
+                                                                component: 'VirtualizedBookingList',
+                                                                operation: 'getDisplayContactName',
+                                                                data: { bookingId: booking?.id, booking }
+                                                            }
+                                                        ) || '未命名'}
                                                     </div>
 
                                                     {/* 第二行：教練 + 駕駛 + 活動類型 */}

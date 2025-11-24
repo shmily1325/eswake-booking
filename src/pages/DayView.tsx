@@ -239,12 +239,35 @@ export function DayView() {
     // 組裝資料（避免不必要的陣列操作，並過濾 null）
     const bookingsWithCoaches = bookingsData
       .filter(booking => booking && booking.id)  // 確保 booking 不是 null
-      .map(booking => ({
-        ...booking,
-        coaches: coachesByBooking.get(booking.id) || [],
-        drivers: driversByBooking.get(booking.id) || []
-      }))
+      .map(booking => {
+        const coaches = coachesByBooking.get(booking.id) || []
+        const drivers = driversByBooking.get(booking.id) || []
+        
+        // 深度清理：確保 coaches 和 drivers 陣列中沒有 null
+        const cleanCoaches = coaches.filter((c): c is Coach => {
+          if (!c || !c.id || !c.name) {
+            console.warn(`[fetchBookingsWithCoaches] Removing invalid coach from booking ${booking.id}:`, c)
+            return false
+          }
+          return true
+        })
+        
+        const cleanDrivers = drivers.filter((d): d is Coach => {
+          if (!d || !d.id || !d.name) {
+            console.warn(`[fetchBookingsWithCoaches] Removing invalid driver from booking ${booking.id}:`, d)
+            return false
+          }
+          return true
+        })
+        
+        return {
+          ...booking,
+          coaches: cleanCoaches,
+          drivers: cleanDrivers
+        }
+      })
 
+    console.log('[fetchBookingsWithCoaches] Final bookings with clean data:', bookingsWithCoaches.length)
     setBookings(bookingsWithCoaches)
   }
 
@@ -748,7 +771,12 @@ export function DayView() {
                     }}>
                       時間
                     </th>
-                    {displayBoats.map(boat => (
+                    {displayBoats.map(boat => {
+                      if (!boat || !boat.id) {
+                        console.error('[DayView Timeline] Null boat in displayBoats:', boat)
+                        return null
+                      }
+                      return (
                       <th
                         key={boat.id}
                         style={{
@@ -777,7 +805,8 @@ export function DayView() {
                           {bookings.filter(b => b.boat_id === boat.id).length}筆
                         </div>
                       </th>
-                    ))}
+                      )
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -816,6 +845,11 @@ export function DayView() {
                           )}
                         </td>
                         {displayBoats.map(boat => {
+                          if (!boat || !boat.id) {
+                            console.error('[DayView Timeline Cell] Null boat:', boat)
+                            return <td key={`null-${timeSlot}`}>Error</td>
+                          }
+                          
                           const booking = getBookingForCell(boat.id, timeSlot)
                           const isStart = isBookingStart(boat.id, timeSlot)
                           const isCleanup = isCleanupTime(boat.id, timeSlot)
