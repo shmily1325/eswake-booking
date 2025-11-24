@@ -106,6 +106,7 @@ export function DayView() {
         const sortedBoats = (boatsData || []).sort((a, b) => {
           return order.indexOf(a.name) - order.indexOf(b.name)
         })
+        console.log('[DayView] Boats loaded:', sortedBoats.length)
         setBoats(sortedBoats)
       }
 
@@ -127,24 +128,53 @@ export function DayView() {
         return
       }
 
+      console.log('[DayView] Raw bookings data:', bookingsData)
+      console.log('[DayView] Bookings count:', bookingsData?.length || 0)
+      
+      // 驗證資料完整性
+      if (bookingsData) {
+        bookingsData.forEach((booking, idx) => {
+          if (!booking) {
+            console.error(`[DayView] Booking at index ${idx} is null/undefined`)
+          } else if (!booking.id) {
+            console.error(`[DayView] Booking at index ${idx} has no id:`, booking)
+          }
+        })
+      }
+
       await fetchBookingsWithCoaches(bookingsData || [])
     } catch (error) {
       console.error('Error in fetchData:', error)
+      toast.error('載入資料時發生錯誤：' + (error as Error).message)
     } finally {
       setLoading(false)
     }
   }
 
   const fetchBookingsWithCoaches = async (bookingsData: any[]) => {
+    console.log('[fetchBookingsWithCoaches] Input length:', bookingsData.length)
+    
     if (bookingsData.length === 0) {
       setBookings([])
       return
     }
 
     // 過濾掉 null/undefined 的 booking，並提取 ID
-    const bookingIds = bookingsData
-      .filter(b => b && b.id)
-      .map(b => b.id)
+    const validBookings = bookingsData.filter(b => {
+      if (!b) {
+        console.warn('[fetchBookingsWithCoaches] Found null booking')
+        return false
+      }
+      if (!b.id) {
+        console.warn('[fetchBookingsWithCoaches] Booking without id:', b)
+        return false
+      }
+      return true
+    })
+    
+    console.log('[fetchBookingsWithCoaches] Valid bookings:', validBookings.length)
+    
+    const bookingIds = validBookings.map(b => b.id)
 
     // 優化：並行查詢教練和駕駛,只查詢必要欄位
     // 註：有 booking_coaches 記錄 = 指定教練
