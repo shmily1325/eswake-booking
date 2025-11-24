@@ -3,7 +3,6 @@ import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
-import { TransactionDialog } from '../../components/TransactionDialog'
 import { StatisticsTab } from '../../components/StatisticsTab'
 import { PendingDeductionItem } from '../../components/PendingDeductionItem'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -11,7 +10,6 @@ import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
-import type { Member } from '../../types/booking'
 
 // ============ Types ============
 
@@ -79,11 +77,6 @@ export function CoachAdmin() {
   // Tab 1: 待處理記錄 (合併會員 + 非會員)
   const [pendingReports, setPendingReports] = useState<PendingReport[]>([]) // status = 'pending'
   const [nonMemberReports, setNonMemberReports] = useState<PendingReport[]>([]) // status = 'not_applicable'
-  
-  // 處理扣款
-  const [processingReport, setProcessingReport] = useState<PendingReport | null>(null)
-  const [processingMember, setProcessingMember] = useState<Member | null>(null)
-  const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
   
   // 關聯會員
   const [linkingReport, setLinkingReport] = useState<PendingReport | null>(null)
@@ -252,120 +245,7 @@ export function CoachAdmin() {
 
   // ============ 處理函數 ============
 
-  // 處理會員扣款
-  const handleProcessTransaction = async (report: PendingReport) => {
-    if (!report.member_id) {
-      alert('非會員無法處理扣款')
-      return
-    }
-
-    try {
-      const { data: memberData, error } = await supabase
-        .from('members')
-        .select('*')
-        .eq('id', report.member_id)
-        .single()
-
-      if (error) throw error
-      if (!memberData) {
-        alert('找不到會員資料')
-        return
-      }
-
-      setProcessingReport(report)
-      setProcessingMember(memberData)
-      setTransactionDialogOpen(true)
-    } catch (error) {
-      console.error('載入會員資料失敗:', error)
-      alert('載入會員資料失敗')
-    }
-  }
-
-  // 扣款完成（不標記為已處理，允許繼續扣款）
-  const handleTransactionComplete = async () => {
-    if (!processingReport) return
-
-    // 關閉對話框，但保持記錄在待處理列表
-    setTransactionDialogOpen(false)
-    setProcessingReport(null)
-    setProcessingMember(null)
-    
-    // 重新載入（記錄仍會在待處理列表中）
-    if (activeTab === 'pending') {
-      await Promise.all([loadPendingReports(), loadNonMemberReports()])
-    }
-  }
-
-  // 完成處理（標記為已處理，從待處理列表移除）
-  const handleMarkAsComplete = async (report: PendingReport) => {
-    if (!report.member_id) {
-      alert('非會員記錄無法標記完成')
-      return
-    }
-
-    try {
-      // 檢查是否有相關交易記錄（在預約當天的交易）
-      const bookingDate = report.bookings.start_at.substring(0, 10)
-      const { data: transactions, error: txError } = await supabase
-        .from('transactions')
-        .select('id')
-        .eq('member_id', report.member_id)
-        .eq('transaction_date', bookingDate)
-        .limit(1)
-
-      if (txError) throw txError
-
-      // 如果沒有交易記錄，給予警告
-      if (!transactions || transactions.length === 0) {
-        if (!confirm(`⚠️ 警告：此記錄尚未進行任何扣款操作！\n\n會員：${report.participant_name}\n日期：${bookingDate}\n\n確定要標記為已完成嗎？`)) {
-          return
-        }
-      }
-      // 有交易記錄，直接處理不確認
-
-      const { error } = await supabase
-        .from('booking_participants')
-        .update({ 
-          status: 'processed',
-          updated_at: getLocalTimestamp()
-        })
-        .eq('id', report.id)
-
-      if (error) throw error
-      
-      // 重新載入
-      if (activeTab === 'pending') {
-        await Promise.all([loadPendingReports(), loadNonMemberReports()])
-      }
-    } catch (error) {
-      console.error('標記失敗:', error)
-      alert('標記失敗')
-    }
-  }
-
-  // 現金結清（不進入交易帳目）
-  const handleCashSettlement = async (report: PendingReport) => {
-    try {
-      const { error } = await supabase
-        .from('booking_participants')
-        .update({ 
-          status: 'processed',
-          notes: report.notes ? `${report.notes} [現金結清]` : '[現金結清]',
-          updated_at: getLocalTimestamp()
-        })
-        .eq('id', report.id)
-
-      if (error) throw error
-      
-      // 重新載入
-      if (activeTab === 'pending') {
-        await Promise.all([loadPendingReports(), loadNonMemberReports()])
-      }
-    } catch (error) {
-      console.error('標記失敗:', error)
-      alert('標記失敗')
-    }
-  }
+  // 舊版扣款函數已移除，功能已整合到 PendingDeductionItem 組件中
 
   // 關聯會員
   const handleLinkMember = async (report: PendingReport, member: MemberSearchResult) => {
@@ -1498,25 +1378,7 @@ export function CoachAdmin() {
         </div>
       )}
 
-      {/* TransactionDialog */}
-      {transactionDialogOpen && processingMember && processingReport && (
-        <TransactionDialog
-          open={transactionDialogOpen}
-          member={processingMember}
-          onClose={() => {
-            setTransactionDialogOpen(false)
-            setProcessingReport(null)
-            setProcessingMember(null)
-          }}
-          onSuccess={handleTransactionComplete}
-          defaultDescription={
-            processingReport.notes 
-              ? `${processingReport.bookings?.boats?.name} ${processingReport.duration_min}分 ${processingReport.coaches?.name}教練 (${processingReport.notes})`
-              : `${processingReport.bookings?.boats?.name} ${processingReport.duration_min}分 ${processingReport.coaches?.name}教練`
-          }
-          defaultTransactionDate={processingReport.bookings?.start_at?.substring(0, 10)}
-        />
-      )}
+      {/* 舊版 TransactionDialog 已移除，扣款功能已整合到 PendingDeductionItem 組件中 */}
     </div>
   )
 }

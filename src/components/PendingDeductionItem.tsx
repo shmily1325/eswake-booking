@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Database } from '../types/supabase'
 
 // 扣款明細類型
 type DeductionCategory = 'balance' | 'boat_voucher_g23' | 'boat_voucher_g21_panther' | 'designated_lesson' | 'package' | 'gift_boat_hours'
@@ -341,7 +340,6 @@ function DeductionDetailItem({
     { value: 'gift_boat_hours', label: '🎁 贈送時數', unit: '分' },
   ]
 
-  const currentCategory = categories.find(c => c.value === deduction.category)
   const isBalance = deduction.category === 'balance'
   const isPackage = deduction.category === 'package'
 
