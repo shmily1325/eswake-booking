@@ -12,6 +12,8 @@ interface FixedSizeListProps {
     itemCount: number
     itemSize: number
     width: number | string
+    // react-window expects itemData to always be an object; keep it optional for typing
+    itemData?: Record<string, unknown>
     children: React.ComponentType<{ index: number; style: React.CSSProperties }>
 }
 
@@ -189,6 +191,8 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                         itemCount={boats.length}
                         itemSize={itemSize}
                         width={width}
+                        // react-window v2 會對 itemData 呼叫 Object.values，因此不能傳 undefined
+                        itemData={{ boatsLength: boats.length }}
                     >
                         {BoatRow}
                     </List>
