@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { NewBookingDialog } from '../components/NewBookingDialog'
+import { RepeatBookingDialog } from '../components/RepeatBookingDialog'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { UserMenu } from '../components/UserMenu'
 import { useResponsive } from '../hooks/useResponsive'
@@ -57,6 +58,7 @@ export function DayView() {
   const [loading, setLoading] = useState(true)
 
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [repeatDialogOpen, setRepeatDialogOpen] = useState(false)
   const [selectedBoatId, setSelectedBoatId] = useState<number>(0)
   const [selectedTime, setSelectedTime] = useState('')
 
@@ -556,6 +558,8 @@ export function DayView() {
             <div style={{
               padding: '16px',
               borderBottom: '1px solid #e9ecef',
+              display: 'flex',
+              gap: '8px',
             }}>
               <button
                 onClick={() => {
@@ -567,9 +571,9 @@ export function DayView() {
                   setDialogOpen(true)
                 }}
                 style={{
+                  flex: 1,
                   padding: '14px 20px',
                   borderTop: '2px dashed #ddd',
-                  width: '100%',
                   backgroundColor: 'transparent',
                   border: 'none',
                   color: '#007bff',
@@ -587,6 +591,36 @@ export function DayView() {
               >
                 + 新增預約
               </button>
+              <button
+                onClick={() => {
+                  setSelectedBoatId(0)
+                  const now = new Date()
+                  const currentHour = String(now.getHours()).padStart(2, '0')
+                  const currentMinute = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, '0')
+                  setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
+                  setRepeatDialogOpen(true)
+                }}
+                style={{
+                  flex: 1,
+                  padding: '14px 20px',
+                  borderTop: '2px dashed #ffc107',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#f57c00',
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fff3cd'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                🔁 重複預約
+              </button>
             </div>
           </div>
 
@@ -596,6 +630,37 @@ export function DayView() {
             isMobile={isMobile}
             onBookingClick={handleCellClick}
           />
+
+          {/* 預約規則說明 */}
+          <div style={{
+            padding: isMobile ? '16px' : '20px',
+            backgroundColor: '#f8f9fa',
+            borderTop: '1px solid #e9ecef',
+            borderRadius: '0 0 8px 8px',
+            textAlign: 'center',
+            marginTop: '16px',
+          }}>
+            <div style={{
+              fontWeight: '600',
+              marginBottom: '12px',
+              color: '#495057',
+              fontSize: isMobile ? '13px' : '14px'
+            }}>
+              📋 預約規則
+            </div>
+            <div style={{
+              display: 'inline-block',
+              textAlign: 'left',
+              fontSize: isMobile ? '12px' : '13px',
+              color: '#6c757d',
+              lineHeight: '1.8',
+            }}>
+              <div>• 船跟船間隔至少 15 分鐘，彈簧床不需要點選時間</div>
+              <div>• 教練可用時間計算包含接船時間</div>
+              <div>• 08:00 前的預約必須指定教練</div>
+              <div>• 需先指定教練才能勾選需要駕駛，彈簧床不需要駕駛</div>
+            </div>
+          </div>
         </>
       )}
 
@@ -891,7 +956,7 @@ export function DayView() {
                 </tbody>
               </table>
 
-              {/* 預約規則說明 - 條列式置中 */}
+              {/* 預約規則說明 */}
               <div style={{
                 padding: isMobile ? '16px' : '20px',
                 backgroundColor: '#f8f9fa',
@@ -913,10 +978,10 @@ export function DayView() {
                   color: '#6c757d',
                   lineHeight: '1.8',
                 }}>
-                  <div>• 接船時間：船跟船之間至少 15 分鐘，彈簧床無需接船時間</div>
-                  <div>• 教練時間：教練會被卡在船上，計算教練可用時間時含接船時間</div>
-                  <div>• 早晨預約：08:00 前的預約必須指定教練</div>
-                  <div>• 指定駕駛：須先有教練，彈簧床無需駕駛</div>
+                <div>• 船跟船間隔至少 15 分鐘，彈簧床不需要點選時間</div>
+                <div>• 教練可用時間計算包含接船時間</div>
+                <div>• 08:00 前的預約必須指定教練</div>
+                <div>• 需先指定教練才能勾選需要駕駛，彈簧床不需要駕駛</div>
                 </div>
               </div>
 
@@ -979,6 +1044,15 @@ export function DayView() {
       <NewBookingDialog
         isOpen={dialogOpen}
         onClose={() => setDialogOpen(false)}
+        onSuccess={fetchData}
+        defaultBoatId={selectedBoatId}
+        defaultStartTime={selectedTime}
+        user={user}
+      />
+
+      <RepeatBookingDialog
+        isOpen={repeatDialogOpen}
+        onClose={() => setRepeatDialogOpen(false)}
         onSuccess={fetchData}
         defaultBoatId={selectedBoatId}
         defaultStartTime={selectedTime}

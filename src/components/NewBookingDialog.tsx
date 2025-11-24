@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
+import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { BoatSelector } from './booking/BoatSelector'
 import { TimeSelector } from './booking/TimeSelector'
 import { MemberSelector } from './booking/MemberSelector'
@@ -99,8 +100,7 @@ export function NewBookingDialog({
     if (isOpen) {
       fetchAllData()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen])
+  }, [isOpen, fetchAllData])
 
   // 即時衝突檢查 Effect
   useEffect(() => {
@@ -123,8 +123,7 @@ export function NewBookingDialog({
 
     const timer = setTimeout(check, 500) // Debounce
     return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, startDate, startTime, durationMin, selectedBoatId, selectedCoaches])
+  }, [isOpen, startDate, startTime, durationMin, selectedBoatId, selectedCoaches, performConflictCheck])
 
 
   if (!isOpen) return null
@@ -135,6 +134,13 @@ export function NewBookingDialog({
 
     if (!filledBy.trim()) {
       setError('請填寫填表人姓名')
+      return
+    }
+
+    // 檢查早場預約必須指定教練
+    const [hour] = startTime.split(':').map(Number)
+    if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
+      setError(`${EARLY_BOOKING_HOUR_LIMIT}:00 之前的預約必須指定教練`)
       return
     }
 

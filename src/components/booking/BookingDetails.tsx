@@ -32,7 +32,7 @@ export function BookingDetails({
                     type="text"
                     value={filledBy}
                     onChange={(e) => setFilledBy(e.target.value)}
-                    placeholder="請輸入您的姓名或 Email"
+                    placeholder="請輸入您的姓名"
                     style={{
                         width: '100%',
                         padding: '12px',

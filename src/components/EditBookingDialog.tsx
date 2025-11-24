@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
 import { getLocalTimestamp } from '../utils/date'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
+import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import type { Booking } from '../types/booking'
 
 import { BookingDetails } from './booking/BookingDetails'
@@ -86,11 +87,38 @@ export function EditBookingDialog({
     initialBooking: booking
   })
 
+  // 即時衝突檢查狀態
+  const [conflictStatus, setConflictStatus] = useState<'checking' | 'available' | 'conflict' | null>(null)
+  const [conflictMessage, setConflictMessage] = useState('')
+
   useEffect(() => {
     if (isOpen) {
       fetchAllData()
     }
   }, [isOpen, fetchAllData])
+
+  // 即時衝突檢查 Effect
+  useEffect(() => {
+    if (!isOpen || !startDate || !startTime || !selectedBoatId) {
+      setConflictStatus(null)
+      return
+    }
+
+    const check = async () => {
+      setConflictStatus('checking')
+      const result = await performConflictCheck(booking.id)
+      if (result.hasConflict) {
+        setConflictStatus('conflict')
+        setConflictMessage(result.reason || '此時段已被預約')
+      } else {
+        setConflictStatus('available')
+        setConflictMessage('✅ 此時段可預約')
+      }
+    }
+
+    const timer = setTimeout(check, 500) // Debounce
+    return () => clearTimeout(timer)
+  }, [isOpen, startDate, startTime, durationMin, selectedBoatId, selectedCoaches, performConflictCheck, booking.id])
 
   if (!isOpen) return null
 
@@ -98,7 +126,12 @@ export function EditBookingDialog({
     e.preventDefault()
     setError('')
 
-    // ... validation logic ...
+    // 檢查早場預約必須指定教練
+    const [hour] = startTime.split(':').map(Number)
+    if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
+      setError(`${EARLY_BOOKING_HOUR_LIMIT}:00 之前的預約必須指定教練`)
+      return
+    }
 
     setLoading(true)
 
@@ -1103,6 +1136,25 @@ export function EditBookingDialog({
             setFilledBy={setFilledBy}
           />
 
+          {/* 即時衝突回饋 */}
+          {conflictStatus && (
+            <div style={{
+              marginTop: '18px',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              backgroundColor: conflictStatus === 'conflict' ? '#ffebee' : '#e8f5e9',
+              color: conflictStatus === 'conflict' ? '#c62828' : '#2e7d32',
+              border: `1px solid ${conflictStatus === 'conflict' ? '#ef9a9a' : '#a5d6a7'}`,
+              fontSize: '14px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}>
+              {conflictStatus === 'checking' ? '檢查中...' : conflictMessage}
+            </div>
+          )}
+
           {/* 錯誤訊息 */}
           {error && (
             <div style={{
@@ -1177,17 +1229,17 @@ export function EditBookingDialog({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || conflictStatus === 'conflict'}
               style={{
                 flex: 1,
                 padding: '14px',
                 borderRadius: '8px',
                 border: 'none',
-                background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+                background: (loading || conflictStatus === 'conflict') ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
                 color: 'white',
                 fontSize: '16px',
                 fontWeight: '500',
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: (loading || conflictStatus === 'conflict') ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
               }}
             >

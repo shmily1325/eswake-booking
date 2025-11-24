@@ -46,6 +46,9 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
     const [loading, setLoading] = useState(false)
     const [loadingCoaches, setLoadingCoaches] = useState(false)
 
+    // Initialization tracking
+    const isInitializedRef = useRef(false)
+
     // Search Debounce
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -118,14 +121,24 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
                 setStartTime(timeStr)
             }
         }
+
+        // Mark as initialized (synchronously after state updates)
+        // Use a microtask to ensure state updates are queued first
+        Promise.resolve().then(() => {
+            isInitializedRef.current = true
+        })
     }, [initialBooking, defaultDate, defaultBoatId])
 
-    // Auto-disable requiresDriver if conditions not met
+    // Auto-disable requiresDriver if conditions not met (but not during initialization or data loading)
     useEffect(() => {
-        if (!canRequireDriver && requiresDriver) {
+        // Only auto-disable if:
+        // 1. Already initialized
+        // 2. Not currently loading coaches (to avoid race condition during data fetch)
+        // 3. Conditions not met
+        if (!canRequireDriver && requiresDriver && isInitializedRef.current && !loadingCoaches) {
             setRequiresDriver(false)
         }
-    }, [canRequireDriver, requiresDriver])
+    }, [canRequireDriver, requiresDriver, loadingCoaches])
 
     // Cleanup timer on unmount
     useEffect(() => {
