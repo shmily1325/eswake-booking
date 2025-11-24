@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 // 扣款明細類型
-type DeductionCategory = 'balance' | 'boat_voucher_g23' | 'boat_voucher_g21_panther' | 'designated_lesson' | 'package' | 'gift_boat_hours'
+type DeductionCategory = 'balance' | 'boat_voucher_g23' | 'boat_voucher_g21_panther' | 'designated_lesson' | 'plan' | 'gift_boat_hours'
 
 interface DeductionDetail {
   id: string // 臨時ID，用於前端管理
   category: DeductionCategory
   amount?: number // 金額（儲值用）
   minutes?: number // 時數（其他類別用）
-  packageName?: string // 方案名稱
+  planName?: string // 方案名稱
 }
 
 interface PendingDeductionItemProps {
@@ -134,8 +134,8 @@ export function PendingDeductionItem({ report, onComplete }: PendingDeductionIte
         }
 
         // 如果是方案，記錄方案名稱
-        if (deduction.category === 'package' && deduction.packageName) {
-          transactionData.notes = deduction.packageName
+        if (deduction.category === 'plan' && deduction.planName) {
+          transactionData.notes = deduction.planName
         }
 
         // 更新會員餘額
@@ -336,12 +336,12 @@ function DeductionDetailItem({
     { value: 'boat_voucher_g21_panther', label: '🚤 G21/黑豹券', unit: '分' },
     { value: 'designated_lesson', label: '🎓 指定課時數', unit: '分' },
     { value: 'balance', label: '💰 儲值', unit: '元' },
-    { value: 'package', label: '⭐ 方案', unit: '分' },
+    { value: 'plan', label: '⭐ 方案', unit: '分' },
     { value: 'gift_boat_hours', label: '🎁 贈送時數', unit: '分' },
   ]
 
   const isBalance = deduction.category === 'balance'
-  const isPackage = deduction.category === 'package'
+  const isPlan = deduction.category === 'plan'
 
   // 計算餘額
   const calculateBalance = () => {
@@ -510,14 +510,14 @@ function DeductionDetailItem({
       </div>
 
       {/* 方案名稱 */}
-      {isPackage && (
+      {isPlan && (
         <div style={{ marginBottom: '12px' }}>
           <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>方案名稱：</div>
           <input
             type="text"
             placeholder="例：9999暢滑方案"
-            value={deduction.packageName || ''}
-            onChange={(e) => onUpdate({ packageName: e.target.value })}
+            value={deduction.planName || ''}
+            onChange={(e) => onUpdate({ planName: e.target.value })}
             style={{
               width: '100%',
               padding: '8px',
