@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
@@ -466,4 +466,3 @@ export function NewBookingDialog({
     </div>
   )
 }
-

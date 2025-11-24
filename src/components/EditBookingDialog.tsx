@@ -89,12 +89,8 @@ export function EditBookingDialog({
   useEffect(() => {
     if (isOpen) {
       fetchAllData()
-      // 編輯時，將填表人更新為當前使用者（作為最後修改人）
-      if (user?.email) {
-        setFilledBy(user.email)
-      }
     }
-  }, [isOpen, user, setFilledBy])
+  }, [isOpen, fetchAllData])
 
   if (!isOpen) return null
 

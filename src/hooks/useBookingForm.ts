@@ -129,11 +129,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
 
     // --- Actions ---
 
-    const fetchAllData = async () => {
-        await Promise.all([fetchBoats(), fetchCoaches(), fetchMembers()])
-    }
-
-    const fetchBoats = async () => {
+    const fetchBoats = useCallback(async () => {
         const { data, error } = await supabase
             .from('boats')
             .select('id, name, color')
@@ -141,9 +137,9 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
 
         if (error) console.error('Error fetching boats:', error)
         else setBoats(data || [])
-    }
+    }, [])
 
-    const fetchCoaches = async () => {
+    const fetchCoaches = useCallback(async () => {
         setLoadingCoaches(true)
         try {
             const { data, error } = await supabase
@@ -159,9 +155,9 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         } finally {
             setLoadingCoaches(false)
         }
-    }
+    }, [])
 
-    const fetchMembers = async () => {
+    const fetchMembers = useCallback(async () => {
         const { data, error } = await supabase
             .from('members')
             .select('id, name, nickname, phone')
@@ -170,7 +166,11 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
 
         if (error) console.error('Error fetching members:', error)
         else setMembers(data || [])
-    }
+    }, [])
+
+    const fetchAllData = useCallback(async () => {
+        await Promise.all([fetchBoats(), fetchCoaches(), fetchMembers()])
+    }, [fetchBoats, fetchCoaches, fetchMembers])
 
     const toggleCoach = (coachId: string) => {
         setSelectedCoaches(prev => toggleSelection(prev, coachId))
