@@ -60,9 +60,9 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     
     // 票券 -> 根據船隻判斷
     if (paymentMethod === 'voucher') {
-      if (boatName.includes('G23') || boatName.includes('23')) {
+      if (boatName.includes('G23')) {
         return 'boat_voucher_g23'
-      } else if (boatName.includes('G21') || boatName.includes('21') || boatName.includes('黑豹')) {
+      } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
         return 'boat_voucher_g21_panther'
       }
       return 'boat_voucher_g23' // 預設
@@ -74,9 +74,9 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     }
     
     // 預設：根據船隻判斷
-    if (boatName.includes('G23') || boatName.includes('23')) {
+    if (boatName.includes('G23')) {
       return 'boat_voucher_g23'
-    } else if (boatName.includes('G21') || boatName.includes('21') || boatName.includes('黑豹')) {
+    } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
       return 'boat_voucher_g21_panther'
     }
     
@@ -89,7 +89,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     const duration = report.duration_min
     
     // G23（最少30分鐘）
-    if (boatName.includes('G23') || boatName.includes('23')) {
+    if (boatName.includes('G23')) {
       if (duration === 30) return [5400]
       if (duration === 40) return [7200]
       if (duration === 60) return [10800]
@@ -98,8 +98,8 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
       return []
     }
     
-    // G21/黑豹（不用特別搜尋21）
-    if (boatName.includes('黑豹')) {
+    // G21/黑豹
+    if (boatName.includes('G21') || boatName.includes('黑豹')) {
       if (duration === 20) return [2000]
       if (duration === 30) return [3000]
       if (duration === 40) return [4000]
@@ -130,7 +130,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     const duration = report.duration_min
     
     // G23（最少30分鐘）
-    if (boatName.includes('G23') || boatName.includes('23')) {
+    if (boatName.includes('G23')) {
       if (duration === 30) return [4250]
       if (duration === 40) return [5667]
       if (duration === 60) return [8500]
@@ -140,7 +140,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     }
     
     // G21/黑豹
-    if (boatName.includes('黑豹')) {
+    if (boatName.includes('G21') || boatName.includes('黑豹')) {
       if (duration === 20) return [1667]
       if (duration === 30) return [2500]
       if (duration === 40) return [3333]
@@ -312,7 +312,12 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
         }
 
         // 根據類別處理
-        if (item.category === 'balance') {
+        if (item.category === 'plan') {
+          // 方案：不扣任何餘額，只記錄使用
+          transactionData.amount = 0
+          transactionData.minutes = 0
+          // 不更新會員餘額
+        } else if (item.category === 'balance') {
           // 扣儲值金額
           const newBalance = (memberData.balance || 0) - (item.amount || 0)
           updates.balance = newBalance
@@ -334,21 +339,25 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
           transactionData[`${field}_after`] = newValue
         }
 
-        // 記錄註解
-        if (item.notes) {
+        // 記錄註解和方案名稱
+        if (item.category === 'plan') {
+          // 方案：強制記錄方案名稱
+          const planNote = item.planName || '未填寫方案名稱'
+          transactionData.notes = item.notes ? `${planNote} - ${item.notes}` : planNote
+        } else if (item.notes) {
+          // 其他類別：記錄註解
           transactionData.notes = item.notes
-        } else if (item.category === 'plan' && item.planName) {
-          // 如果是方案且沒有自訂註解，使用方案名稱
-          transactionData.notes = item.planName
         }
 
-        // 更新會員餘額
-        const { error: updateError } = await supabase
-          .from('members')
-          .update(updates)
-          .eq('id', report.member_id)
+        // 更新會員餘額（方案不更新）
+        if (item.category !== 'plan' && Object.keys(updates).length > 0) {
+          const { error: updateError } = await supabase
+            .from('members')
+            .update(updates)
+            .eq('id', report.member_id)
 
-        if (updateError) throw updateError
+          if (updateError) throw updateError
+        }
 
         // 記錄交易
         const { error: transactionError } = await supabase
