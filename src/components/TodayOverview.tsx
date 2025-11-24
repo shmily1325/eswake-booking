@@ -8,12 +8,13 @@ interface TodayOverviewProps {
 
 export function TodayOverview({ bookings, isMobile }: TodayOverviewProps) {
     const stats = useMemo(() => {
+        const safeBookings = bookings || []
         // 統計數據
-        const totalBookings = bookings.length
+        const totalBookings = safeBookings.length
 
         // 教練使用統計（筆數 + 總時長）
         const coachStats = new Map<string, { count: number, totalMinutes: number }>()
-        bookings.forEach(booking => {
+        safeBookings.forEach(booking => {
             booking.coaches?.forEach(coach => {
                 const current = coachStats.get(coach.name) || { count: 0, totalMinutes: 0 }
                 coachStats.set(coach.name, {
@@ -27,7 +28,7 @@ export function TodayOverview({ bookings, isMobile }: TodayOverviewProps) {
 
         // 駕駛使用統計（筆數 + 總時長）- 排除彈簧床
         const driverStats = new Map<string, { count: number, totalMinutes: number }>()
-        bookings.forEach(booking => {
+        safeBookings.forEach(booking => {
             // 彈簧床不需要駕駛，不計入駕駛統計
             if (booking.boats?.name === '彈簧床') return
 
@@ -44,7 +45,7 @@ export function TodayOverview({ bookings, isMobile }: TodayOverviewProps) {
 
         // 船隻使用統計（筆數 + 總時長）
         const boatStats = new Map<string, { count: number, totalMinutes: number }>()
-        bookings.forEach(booking => {
+        safeBookings.forEach(booking => {
             if (booking.boats?.name) {
                 const current = boatStats.get(booking.boats.name) || { count: 0, totalMinutes: 0 }
                 boatStats.set(booking.boats.name, {
