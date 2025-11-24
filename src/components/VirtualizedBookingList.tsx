@@ -212,6 +212,27 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                                 <span>🚤 {booking.drivers.map(d => d.name).join('/')}</span>
                                                             </>
                                                         )}
+                                                        {booking.requires_driver && (!booking.drivers || booking.drivers.length === 0) && (
+                                                            <>
+                                                                {booking.coaches && booking.coaches.length > 0 && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
+                                                                <span style={{ color: '#f59e0b' }}>🚤 需要駕駛</span>
+                                                            </>
+                                                        )}
+                                                        {booking.activity_types && booking.activity_types.length > 0 && (
+                                                            <>
+                                                                {((booking.coaches && booking.coaches.length > 0) || (booking.drivers && booking.drivers.length > 0) || booking.requires_driver) && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
+                                                                <span style={{ 
+                                                                    backgroundColor: '#dbeafe', 
+                                                                    color: '#1e40af',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    fontSize: isMobile ? '11px' : '12px',
+                                                                    fontWeight: '600',
+                                                                }}>
+                                                                    {booking.activity_types.join('+')}
+                                                                </span>
+                                                            </>
+                                                        )}
                                                     </div>
 
                                                     {/* 第三行：備註 / 排班備註 */}
