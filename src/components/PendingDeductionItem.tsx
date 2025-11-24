@@ -9,6 +9,7 @@ type DeductionCategory =
   | 'designated_lesson' 
   | 'plan' 
   | 'gift_boat_hours'
+  | 'vip_voucher'
 
 // 扣款明細
 interface DeductionItem {
@@ -17,6 +18,7 @@ interface DeductionItem {
   amount?: number  // 金額（儲值用）
   minutes?: number // 時數（其他類別用）
   planName?: string // 方案名稱
+  notes?: string // 註解（手動輸入）
 }
 
 // 組件 Props
@@ -81,13 +83,64 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     return 'balance'
   }
   
-  // 根據船隻和時間取得常用金額
+  // 根據船隻和時間取得常用金額（扣儲值用）
   const getCommonAmounts = (): number[] => {
     const boatName = report.bookings.boats?.name || ''
     const duration = report.duration_min
     
-    // G21 黑豹 VIP 票券價格
-    if (boatName.includes('G21') || boatName.includes('21') || boatName.includes('黑豹')) {
+    // G23（最少30分鐘）
+    if (boatName.includes('G23') || boatName.includes('23')) {
+      if (duration === 30) return [5400]
+      if (duration === 40) return [7200]
+      if (duration === 60) return [10800]
+      if (duration === 90) return [16200]
+      // 其他時間自己填
+      return []
+    }
+    
+    // G21/黑豹（不用特別搜尋21）
+    if (boatName.includes('黑豹')) {
+      if (duration === 20) return [2000]
+      if (duration === 30) return [3000]
+      if (duration === 40) return [4000]
+      if (duration === 60) return [6000]
+      if (duration === 90) return [9000]
+      // 其他時間自己填
+      return []
+    }
+    
+    // 粉紅/200
+    if (boatName.includes('粉紅') || boatName.includes('200')) {
+      if (duration === 20) return [1200]
+      if (duration === 30) return [1800]
+      if (duration === 40) return [2400]
+      if (duration === 60) return [3600]
+      if (duration === 90) return [5400]
+      // 其他時間自己填
+      return []
+    }
+    
+    // 預設（未知船隻）
+    return []
+  }
+
+  // 根據船隻和時間取得 VIP 票券金額
+  const getVipVoucherAmounts = (): number[] => {
+    const boatName = report.bookings.boats?.name || ''
+    const duration = report.duration_min
+    
+    // G23（最少30分鐘）
+    if (boatName.includes('G23') || boatName.includes('23')) {
+      if (duration === 30) return [4250]
+      if (duration === 40) return [5667]
+      if (duration === 60) return [8500]
+      if (duration === 90) return [12750]
+      // 其他時間自己填
+      return []
+    }
+    
+    // G21/黑豹
+    if (boatName.includes('黑豹')) {
       if (duration === 20) return [1667]
       if (duration === 30) return [2500]
       if (duration === 40) return [3333]
@@ -97,34 +150,48 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
       return []
     }
     
-    // G23
-    if (boatName.includes('G23') || boatName.includes('23')) {
-      if (duration <= 30) return [500, 800, 1000]
-      if (duration <= 60) return [1000, 1500, 2000]
-      if (duration <= 90) return [1500, 2000, 2500]
-      return [2000, 2500, 3000]
-    }
-    
-    // 粉紅 200
+    // 粉紅/200：沒有預設金額，只能自己填
     if (boatName.includes('粉紅') || boatName.includes('200')) {
-      if (duration <= 30) return [300, 500, 800]
-      if (duration <= 60) return [500, 800, 1000]
-      if (duration <= 90) return [800, 1000, 1500]
-      return [1000, 1500, 2000]
+      return []
     }
     
     // 預設
-    return [500, 1000, 1500, 2000]
+    return []
   }
   
   const defaultCategory = getDefaultCategory()
+  
+  // 取得預設金額（如果有的話）
+  const getDefaultAmount = (): number | undefined => {
+    if (defaultCategory !== 'balance') return undefined
+    const amounts = getCommonAmounts()
+    return amounts.length > 0 ? amounts[0] : undefined
+  }
+
+  // 生成說明
+  const generateDescription = (): string => {
+    const boatName = report.bookings.boats?.name || '未知'
+    const coachName = report.coaches?.name || '未知'
+    const duration = report.duration_min
+    
+    // 檢查 notes 中是否有非會員資訊
+    let participantName = report.participant_name
+    if (report.notes && report.notes.includes('非會員：')) {
+      const match = report.notes.match(/非會員：([^\s]+)/)
+      if (match && match[1]) {
+        participantName = `${report.participant_name} (非會員：${match[1]})`
+      }
+    }
+    
+    return `${boatName} ${duration}分 ${coachName}教課 (${participantName})`
+  }
   
   const [items, setItems] = useState<DeductionItem[]>([
     {
       id: '1',
       category: defaultCategory,
       minutes: defaultCategory === 'balance' ? undefined : report.duration_min,
-      amount: defaultCategory === 'balance' ? getCommonAmounts()[1] : undefined
+      amount: getDefaultAmount()
     }
   ])
 
@@ -168,7 +235,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
       id: Date.now().toString(),
       category: defaultCat,
       minutes: defaultCat === 'balance' ? undefined : report.duration_min,
-      amount: defaultCat === 'balance' ? 1000 : undefined
+      amount: defaultCat === 'balance' ? getDefaultAmount() : undefined
     }])
   }
 
@@ -228,11 +295,8 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
 
     setLoading(true)
     try {
-      // 生成說明
-      const boatName = report.bookings.boats?.name || '未知'
-      const coachName = report.coaches?.name || '未知'
-      const contactName = report.bookings.contact_name
-      const description = `${boatName} ${report.duration_min}分 ${coachName}教課 (${contactName})`
+      // 使用生成的說明
+      const description = generateDescription()
 
       // 處理每筆扣款
       for (const item of items) {
@@ -254,6 +318,12 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
           updates.balance = newBalance
           transactionData.amount = -(item.amount || 0)
           transactionData.balance_after = newBalance
+        } else if (item.category === 'vip_voucher') {
+          // 扣VIP票券金額
+          const newAmount = (memberData.vip_voucher_amount || 0) - (item.amount || 0)
+          updates.vip_voucher_amount = newAmount
+          transactionData.amount = -(item.amount || 0)
+          transactionData.vip_voucher_amount_after = newAmount
         } else {
           // 扣時數
           const field = getCategoryField(item.category)
@@ -264,8 +334,11 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
           transactionData[`${field}_after`] = newValue
         }
 
-        // 如果是方案，記錄方案名稱
-        if (item.category === 'plan' && item.planName) {
+        // 記錄註解
+        if (item.notes) {
+          transactionData.notes = item.notes
+        } else if (item.category === 'plan' && item.planName) {
+          // 如果是方案且沒有自訂註解，使用方案名稱
           transactionData.notes = item.planName
         }
 
@@ -412,6 +485,8 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                   memberData={memberData}
                   defaultMinutes={report.duration_min}
                   commonAmounts={getCommonAmounts()}
+                  vipVoucherAmounts={getVipVoucherAmounts()}
+                  defaultDescription={generateDescription()}
                   onUpdate={(updates) => updateItem(item.id, updates)}
                   onRemove={() => removeItem(item.id)}
                   canRemove={items.length > 1}
@@ -485,6 +560,8 @@ interface DeductionItemRowProps {
   memberData: any
   defaultMinutes: number
   commonAmounts: number[]
+  vipVoucherAmounts: number[]
+  defaultDescription: string
   onUpdate: (updates: Partial<DeductionItem>) => void
   onRemove: () => void
   canRemove: boolean
@@ -496,6 +573,8 @@ function DeductionItemRow({
   memberData,
   defaultMinutes,
   commonAmounts,
+  vipVoucherAmounts,
+  defaultDescription,
   onUpdate, 
   onRemove,
   canRemove 
@@ -505,11 +584,13 @@ function DeductionItemRow({
     { value: 'boat_voucher_g21_panther', label: '🚤 G21/黑豹券', emoji: '🚤' },
     { value: 'designated_lesson', label: '🎓 指定課時數', emoji: '🎓' },
     { value: 'balance', label: '💰 儲值', emoji: '💰' },
+    { value: 'vip_voucher', label: '💎 VIP票券', emoji: '💎' },
     { value: 'plan', label: '⭐ 方案', emoji: '⭐' },
     { value: 'gift_boat_hours', label: '🎁 贈送時數', emoji: '🎁' },
   ]
 
   const isBalance = item.category === 'balance'
+  const isVipVoucher = item.category === 'vip_voucher'
   const isPlan = item.category === 'plan'
   const currentCategory = categories.find(c => c.value === item.category)
 
@@ -519,6 +600,10 @@ function DeductionItemRow({
     
     if (isBalance) {
       const before = memberData.balance || 0
+      const after = before - (item.amount || 0)
+      return { before, after }
+    } else if (isVipVoucher) {
+      const before = memberData.vip_voucher_amount || 0
       const after = before - (item.amount || 0)
       return { before, after }
     } else {
@@ -605,10 +690,12 @@ function DeductionItemRow({
             const newCategory = e.target.value as DeductionCategory
             const updates: Partial<DeductionItem> = { category: newCategory }
             
-            if (newCategory === 'balance') {
-              updates.amount = 1000
+            if (newCategory === 'balance' || newCategory === 'vip_voucher') {
+              // 金額類別
               updates.minutes = undefined
+              updates.amount = undefined // 讓用戶自己選或填
             } else {
+              // 時數類別
               updates.minutes = defaultMinutes
               updates.amount = undefined
             }
@@ -637,7 +724,7 @@ function DeductionItemRow({
 
       {/* 金額/時數選擇 */}
       <div style={{ marginBottom: '14px' }}>
-        {isBalance ? (
+        {isBalance || isVipVoucher ? (
           <div>
             <div style={{ 
               fontSize: '13px', 
@@ -648,7 +735,7 @@ function DeductionItemRow({
               扣款金額：
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {commonAmounts.map(amount => (
+              {(isVipVoucher ? vipVoucherAmounts : commonAmounts).map(amount => (
                 <button
                   key={amount}
                   onClick={() => onUpdate({ amount })}
@@ -792,6 +879,55 @@ function DeductionItemRow({
         </div>
       )}
 
+      {/* 說明（自動生成，只讀） */}
+      <div style={{ marginBottom: '14px' }}>
+        <div style={{ 
+          fontSize: '13px', 
+          color: '#7f8c8d', 
+          marginBottom: '8px',
+          fontWeight: '500'
+        }}>
+          說明：
+        </div>
+        <div style={{
+          padding: '10px 12px',
+          background: '#f8f9fa',
+          border: '2px solid #e9ecef',
+          borderRadius: '8px',
+          fontSize: '14px',
+          color: '#495057'
+        }}>
+          {defaultDescription}
+        </div>
+      </div>
+
+      {/* 註解（可編輯） */}
+      <div style={{ marginBottom: '14px' }}>
+        <div style={{ 
+          fontSize: '13px', 
+          color: '#7f8c8d', 
+          marginBottom: '8px',
+          fontWeight: '500'
+        }}>
+          註解：
+        </div>
+        <input
+          type="text"
+          placeholder="選填，可用於補充說明..."
+          value={item.notes || ''}
+          onChange={(e) => onUpdate({ notes: e.target.value })}
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            border: '2px solid #e0e0e0',
+            borderRadius: '8px',
+            fontSize: '14px'
+          }}
+          onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+          onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+        />
+      </div>
+
       {/* 餘額顯示 */}
       {memberData && (
         <div style={{
@@ -810,7 +946,7 @@ function DeductionItemRow({
           <span style={{ color: '#64748b' }}>餘額：</span>
           <div>
             <span style={{ color: '#475569' }}>
-              {isBalance ? `$${balance.before}` : `${balance.before}分`}
+              {(isBalance || isVipVoucher) ? `$${balance.before}` : `${balance.before}分`}
             </span>
             <span style={{ 
               margin: '0 10px',
@@ -824,7 +960,7 @@ function DeductionItemRow({
               fontSize: '16px',
               color: balance.after < 0 ? '#dc2626' : '#16a34a'
             }}>
-              {isBalance ? `$${balance.after}` : `${balance.after}分`}
+              {(isBalance || isVipVoucher) ? `$${balance.after}` : `${balance.after}分`}
             </span>
           </div>
         </div>
