@@ -37,13 +37,14 @@ export function minutesToTime(minutes: number): string {
  * 計算時間槽（包含清理時間）
  * @param startTime 開始時間 "HH:MM"
  * @param durationMin 持續時間（分鐘）
+ * @param cleanupMinutes 清理時間（分鐘），預設 15
  * @returns 時間槽物件
  */
-export function calculateTimeSlot(startTime: string, durationMin: number): TimeSlot {
+export function calculateTimeSlot(startTime: string, durationMin: number, cleanupMinutes: number = 15): TimeSlot {
   const startMinutes = timeToMinutes(startTime)
   const endMinutes = startMinutes + durationMin
-  const cleanupEndMinutes = endMinutes + 15 // 15分鐘接船時間
-  
+  const cleanupEndMinutes = endMinutes + cleanupMinutes
+
   return {
     startMinutes,
     endMinutes,
@@ -62,17 +63,17 @@ export function checkTimeSlotConflict(slot1: TimeSlot, slot2: TimeSlot): boolean
   if (slot1.startMinutes >= slot2.endMinutes && slot1.startMinutes < slot2.cleanupEndMinutes) {
     return true
   }
-  
+
   // 檢查新預約結束時間是否會影響現有預約
   if (slot2.startMinutes >= slot1.endMinutes && slot2.startMinutes < slot1.cleanupEndMinutes) {
     return true
   }
-  
+
   // 檢查時間重疊
   if (!(slot1.endMinutes <= slot2.startMinutes || slot1.startMinutes >= slot2.endMinutes)) {
     return true
   }
-  
+
   return false
 }
 
@@ -82,59 +83,71 @@ export function checkTimeSlotConflict(slot1: TimeSlot, slot2: TimeSlot): boolean
  * @param dateStr 日期字串 "YYYY-MM-DD"
  * @param startTime 開始時間 "HH:MM"
  * @param durationMin 持續時間（分鐘）
+ * @param isFacility 是否為設施（不需要清理時間）
+ * @param excludeBookingId 排除的預約 ID（編輯時使用）
  * @returns 衝突檢查結果
  */
 export async function checkBoatConflict(
   boatId: number,
   dateStr: string,
   startTime: string,
-  durationMin: number
+  durationMin: number,
+  isFacility: boolean = false,
+  excludeBookingId?: number
 ): Promise<ConflictResult> {
-  const newSlot = calculateTimeSlot(startTime, durationMin)
-  
+  const cleanupMinutes = isFacility ? 0 : 15
+  const newSlot = calculateTimeSlot(startTime, durationMin, cleanupMinutes)
+
   // 查詢當天該船的所有預約
   const { data: existingBookings, error } = await supabase
     .from('bookings')
-    .select('id, start_at, duration_min, contact_name')
+    .select('id, start_at, duration_min, contact_name, boats:boat_id(name)')
     .eq('boat_id', boatId)
     .gte('start_at', `${dateStr}T00:00:00`)
     .lte('start_at', `${dateStr}T23:59:59`)
-  
+
   if (error) {
     return {
       hasConflict: true,
       reason: '檢查衝突時發生錯誤'
     }
   }
-  
+
   // 檢查每個現有預約
   for (const existing of existingBookings || []) {
+    if (excludeBookingId && existing.id === excludeBookingId) continue
+
     const existingTime = existing.start_at.substring(11, 16) // 取 "HH:MM"
-    const existingSlot = calculateTimeSlot(existingTime, existing.duration_min)
-    
+
+    // 檢查現有預約是否為設施（雖然通常同一艘船屬性相同，但為了保險起見或未來擴充）
+    // 這裡假設同一艘船的屬性是固定的，所以直接用傳入的 isFacility 判斷現有預約的清理時間
+    // 但嚴謹來說，應該檢查 existing.boats.name 是否在設施列表中
+    // 為了簡化，我們假設同一 ID 的船屬性一致
+    const existingSlot = calculateTimeSlot(existingTime, existing.duration_min, cleanupMinutes)
+
     if (checkTimeSlotConflict(newSlot, existingSlot)) {
       // 判斷具體衝突類型並生成訊息
       if (newSlot.startMinutes >= existingSlot.endMinutes && newSlot.startMinutes < existingSlot.cleanupEndMinutes) {
         return {
           hasConflict: true,
-          reason: `與 ${existing.contact_name} 的預約衝突：${existing.contact_name} 在 ${minutesToTime(existingSlot.endMinutes)} 結束，需要15分鐘接船時間。您的預約 ${startTime} 太接近了。`
+          reason: `與 ${existing.contact_name} 的預約衝突：${existing.contact_name} 在 ${minutesToTime(existingSlot.endMinutes)} 結束，需要${cleanupMinutes}分鐘接船時間。您的預約 ${startTime} 太接近了。`
         }
       }
-      
+
       if (existingSlot.startMinutes >= newSlot.endMinutes && existingSlot.startMinutes < newSlot.cleanupEndMinutes) {
         return {
           hasConflict: true,
-          reason: `與 ${existing.contact_name} 的預約衝突：您的預約 ${minutesToTime(newSlot.endMinutes)} 結束，${existing.contact_name} ${existingTime} 開始，需要15分鐘接船時間。`
+          reason: `與 ${existing.contact_name} 的預約衝突：您的預約 ${minutesToTime(newSlot.endMinutes)} 結束，${existing.contact_name} ${existingTime} 開始，需要${cleanupMinutes}分鐘接船時間。`
         }
       }
-      
+
       return {
         hasConflict: true,
         reason: `與 ${existing.contact_name} 的預約時間重疊：您的時間 ${startTime}-${minutesToTime(newSlot.endMinutes)}，${existing.contact_name} 的時間 ${existingTime}-${minutesToTime(existingSlot.endMinutes)}`
       }
     }
   }
-  
+
   return {
     hasConflict: false,
     reason: ''
@@ -156,19 +169,19 @@ export async function checkCoachConflict(
   durationMin: number
 ): Promise<ConflictResult> {
   const newSlot = calculateTimeSlot(startTime, durationMin)
-  
+
   // 查詢教練的所有預約（作為教練）
   const { data: coachBookings } = await supabase
     .from('booking_coaches')
     .select('booking_id')
     .eq('coach_id', coachId)
-  
+
   if (!coachBookings || coachBookings.length === 0) {
     return { hasConflict: false, reason: '' }
   }
-  
+
   const bookingIds = coachBookings.map(b => b.booking_id)
-  
+
   // 查詢這些預約的詳細資訊
   const { data: bookings, error } = await supabase
     .from('bookings')
@@ -176,16 +189,16 @@ export async function checkCoachConflict(
     .in('id', bookingIds)
     .gte('start_at', `${dateStr}T00:00:00`)
     .lte('start_at', `${dateStr}T23:59:59`)
-  
+
   if (error || !bookings) {
     return { hasConflict: false, reason: '' }
   }
-  
+
   // 檢查每個預約
   for (const booking of bookings) {
     const existingTime = booking.start_at.substring(11, 16)
     const existingSlot = calculateTimeSlot(existingTime, booking.duration_min)
-    
+
     if (checkTimeSlotConflict(newSlot, existingSlot)) {
       return {
         hasConflict: true,
@@ -193,7 +206,7 @@ export async function checkCoachConflict(
       }
     }
   }
-  
+
   return { hasConflict: false, reason: '' }
 }
 
@@ -212,7 +225,7 @@ export async function checkDriverConflict(
   durationMin: number
 ): Promise<ConflictResult> {
   const newSlot = calculateTimeSlot(startTime, durationMin)
-  
+
   // 查詢駕駛的所有預約
   const { data: bookings, error } = await supabase
     .from('bookings')
@@ -220,16 +233,16 @@ export async function checkDriverConflict(
     .eq('driver_coach_id', driverId)
     .gte('start_at', `${dateStr}T00:00:00`)
     .lte('start_at', `${dateStr}T23:59:59`)
-  
+
   if (error || !bookings) {
     return { hasConflict: false, reason: '' }
   }
-  
+
   // 檢查每個預約
   for (const booking of bookings) {
     const existingTime = booking.start_at.substring(11, 16)
     const existingSlot = calculateTimeSlot(existingTime, booking.duration_min)
-    
+
     if (checkTimeSlotConflict(newSlot, existingSlot)) {
       return {
         hasConflict: true,
@@ -237,7 +250,7 @@ export async function checkDriverConflict(
       }
     }
   }
-  
+
   return { hasConflict: false, reason: '' }
 }
 
@@ -286,7 +299,7 @@ export async function checkCoachesConflictBatch(
   }
 
   const newSlot = calculateTimeSlot(startTime, durationMin)
-  
+
   // ✅ 優化：一次性查詢所有教練的預約（使用 JOIN）
   // 查詢教練預約（作為教練）
   const { data: coachBookingsData, error: coachError } = await supabase
@@ -332,7 +345,7 @@ export async function checkCoachesConflictBatch(
     duration_min: number
     contact_name: string
   }>>()
-  
+
   // 處理教練預約
   coachBookingsData?.forEach((item: any) => {
     const coachId = item.coach_id
@@ -340,7 +353,7 @@ export async function checkCoachesConflictBatch(
     bookings.push(item.bookings)
     coachBookingsMap.set(coachId, bookings)
   })
-  
+
   // 處理駕駛預約
   driverBookingsData?.forEach((item: any) => {
     const driverId = item.driver_id
@@ -351,24 +364,24 @@ export async function checkCoachesConflictBatch(
 
   // 檢查每位教練是否有衝突
   const conflictCoaches: Array<{ coachId: string; coachName: string; reason: string }> = []
-  
+
   for (const coachId of coachIds) {
     const bookings = coachBookingsMap.get(coachId) || []
-    
+
     // 檢查該教練的每個預約
     for (const booking of bookings) {
       // 排除當前編輯的預約（避免自己跟自己衝突）
       if (excludeBookingId && booking.id === excludeBookingId) {
         continue
       }
-      
+
       const existingTime = booking.start_at.substring(11, 16)
       const existingSlot = calculateTimeSlot(existingTime, booking.duration_min)
-      
+
       if (checkTimeSlotConflict(newSlot, existingSlot)) {
         const coachInfo = coachesMap.get(coachId)
         const coachName = coachInfo?.name || '未知教練'
-        
+
         conflictCoaches.push({
           coachId,
           coachName,
