@@ -293,17 +293,18 @@ export function CoachDailyView() {
     })
   }
 
-  // 過濾時間槽：只顯示有預約的時間範圍（最少顯示 08:00-18:00）
+  // 過濾時間槽：只顯示有預約的時間範圍（最少顯示 04:30-18:00）
   const filteredTimeSlots = useMemo(() => {
-    // 設定最小顯示範圍：08:00-18:00
-    const minStartMinutes = 8 * 60  // 08:00
-    const minEndMinutes = 18 * 60   // 18:00
+    // 設定最小顯示範圍：04:30-18:00
+    const minStartMinutes = 4 * 60 + 30  // 04:30
+    const minEndMinutes = 18 * 60        // 18:00
 
     if (filteredBookings.length === 0) {
-      // 沒有預約時，顯示 08:00-18:00
+      // 沒有預約時，顯示 04:30-18:00
       return TIME_SLOTS.filter(slot => {
-        const [hour] = slot.split(':').map(Number)
-        return hour >= 8 && hour < 18
+        const [hour, minute] = slot.split(':').map(Number)
+        const slotMinutes = hour * 60 + minute
+        return slotMinutes >= minStartMinutes && slotMinutes <= minEndMinutes
       })
     }
 
@@ -326,7 +327,7 @@ export function CoachDailyView() {
     earliestMinutes = Math.max(0, earliestMinutes - 30)
     latestMinutes = Math.min(24 * 60, latestMinutes + 30)
 
-    // 確保至少顯示 08:00-18:00
+    // 確保至少顯示 04:30-18:00
     earliestMinutes = Math.min(earliestMinutes, minStartMinutes)
     latestMinutes = Math.max(latestMinutes, minEndMinutes)
 

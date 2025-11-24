@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
@@ -101,10 +101,10 @@ export function RepeatBookingDialog({
     }
   }, [isOpen, fetchAllData])
 
-  if (!isOpen) return null
-
-  // 生成重複日期列表
-  const generateRepeatDates = (): Date[] => {
+  // 生成重複日期列表 - 使用 useCallback 確保穩定性
+  const generateRepeatDates = useCallback((): Date[] => {
+    if (!startDate || !startTime) return []
+    
     const [year, month, day] = startDate.split('-').map(Number)
     const [hour, minute] = startTime.split(':').map(Number)
     const baseDateTime = new Date(year, month - 1, day, hour, minute, 0)
@@ -127,7 +127,9 @@ export function RepeatBookingDialog({
     }
 
     return dates
-  }
+  }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate])
+
+  if (!isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -293,13 +295,12 @@ export function RepeatBookingDialog({
   }
 
   const previewDates = useMemo(() => {
-    if (!startDate || !startTime) return []
     try {
       return generateRepeatDates().slice(0, 5) // 只預覽前5個
     } catch {
       return []
     }
-  }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate])
+  }, [generateRepeatDates])
 
   return (
     <div
