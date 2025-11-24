@@ -208,6 +208,7 @@ export function DayView() {
   // 當組件掛載或日期參數改變時，載入資料
   useEffect(() => {
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateParam])
 
   const timeToMinutes = (timeStr: string): number => {
