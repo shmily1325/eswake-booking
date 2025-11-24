@@ -66,7 +66,8 @@ export function useCoachesCache() {
 
   useEffect(() => {
     fetchCoaches()
-  }, [fetchCoaches])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return { coaches, loading, error, refresh: () => fetchCoaches(true) }
 }
@@ -122,7 +123,8 @@ export function useBoatsCache() {
 
   useEffect(() => {
     fetchBoats()
-  }, [fetchBoats])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return { boats, loading, error, refresh: () => fetchBoats(true) }
 }

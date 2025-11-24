@@ -114,7 +114,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     setBoardSlots([...boardSlots, { slot_number: '', expires_at: '' }])
   }
 
-  // 删除置板格位
+  // 刪除置板格位
   const handleRemoveBoardSlot = async (index: number) => {
     const slot = boardSlots[index]
     if (slot.id) {
@@ -125,11 +125,11 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         .eq('id', slot.id)
       
       if (error) {
-        alert('删除失败：' + error.message)
+        alert('刪除失敗：' + error.message)
         return
       }
     }
-    // 从列表中移除
+    // 從列表中移除
     setBoardSlots(boardSlots.filter((_, i) => i !== index))
   }
 

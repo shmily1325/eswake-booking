@@ -104,6 +104,7 @@ export function CoachDailyView() {
       supabase.removeChannel(channel)
       clearInterval(timeInterval)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateParam])
 
   const loadBoats = async () => {

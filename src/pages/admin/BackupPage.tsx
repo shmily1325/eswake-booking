@@ -611,7 +611,7 @@ export function BackupPage() {
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <PageHeader title="💾 匯出" user={user} showBaoLink={true} />
 
-        {/* 备份选项 */}
+        {/* 備份選項 */}
         <div style={{
           background: 'white',
           borderRadius: '12px',
@@ -831,7 +831,7 @@ export function BackupPage() {
             </button>
           </div>
 
-          {/* 完整备份和可查询备份 */}
+          {/* 完整備份和可查詢備份 */}
           <div style={{
             marginTop: '20px',
             padding: '20px',
@@ -840,10 +840,10 @@ export function BackupPage() {
             border: '1px solid #b3d9ff'
           }}>
             <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#004085' }}>
-              🛡️ 灾难恢复备份（推荐）
+              🛡️ 災難恢復備份（推薦）
             </h3>
             <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
-              在网页和数据库挂掉时，可以使用这些备份文件查询预约和财务数据
+              在網頁和數據庫掛掉時，可以使用這些備份文件查詢預約和財務數據
             </p>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button
@@ -888,8 +888,8 @@ export function BackupPage() {
               </button>
             </div>
             <div style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>
-              <div>💡 <strong>完整数据库备份</strong>：包含所有表和数据，可直接导入恢复</div>
-              <div style={{ marginTop: '5px' }}>💡 <strong>可查询备份</strong>：轻量级，可用查询工具打开（<a href="/backup-query-tool.html" target="_blank" style={{ color: '#0066cc' }}>打开查询工具</a>）</div>
+              <div>💡 <strong>完整數據庫備份</strong>：包含所有表和數據，可直接導入恢復</div>
+              <div style={{ marginTop: '5px' }}>💡 <strong>可查詢備份</strong>：輕量級，可用查詢工具打開（<a href="/backup-query-tool.html" target="_blank" style={{ color: '#0066cc' }}>打開查詢工具</a>）</div>
             </div>
           </div>
 

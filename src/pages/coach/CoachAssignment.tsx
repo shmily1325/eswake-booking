@@ -209,6 +209,7 @@ export function CoachAssignment() {
   useEffect(() => {
     loadCoaches()
     loadBookings()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate])
 
   const updateAssignment = (bookingId: number, field: 'coachIds' | 'driverIds' | 'notes' | 'requiresDriver', value: any) => {

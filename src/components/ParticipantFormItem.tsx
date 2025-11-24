@@ -46,7 +46,7 @@ export function ParticipantFormItem({
         position: 'relative'
       }}
     >
-      {/* 删除按钮 */}
+      {/* 刪除按鈕 */}
       {showRemoveButton && (
         <button
           onClick={() => onRemove(index)}
@@ -67,7 +67,7 @@ export function ParticipantFormItem({
         </button>
       )}
 
-      {/* 会员状态标签 + 清除按钮 */}
+      {/* 會員狀態標籤 + 清除按鈕 */}
       <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         {participant.member_id ? (
           <>
@@ -118,7 +118,7 @@ export function ParticipantFormItem({
         )}
       </div>
 
-      {/* 姓名输入 + 会员搜索 */}
+      {/* 姓名輸入 + 會員搜尋 */}
       <div style={{ marginBottom: '12px', position: 'relative' }}>
         <label style={{ ...getLabelStyle(isMobile) }}>姓名</label>
         <input

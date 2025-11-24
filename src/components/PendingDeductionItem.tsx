@@ -314,6 +314,16 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
 
     setLoading(true)
     try {
+      // 追蹤累積的餘額變化（用於多筆扣款）
+      const cumulativeBalances = {
+        balance: memberData.balance || 0,
+        vip_voucher_amount: memberData.vip_voucher_amount || 0,
+        boat_voucher_g23_min: memberData.boat_voucher_g23_min || 0,
+        boat_voucher_g21_panther_min: memberData.boat_voucher_g21_panther_min || 0,
+        designated_lesson_min: memberData.designated_lesson_min || 0,
+        gift_boat_hours_min: memberData.gift_boat_hours_min || 0
+      }
+      
       // 處理每筆扣款
       for (const item of items) {
         const updates: any = {}
@@ -334,22 +344,25 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
           transactionData.minutes = 0
           // 不更新會員餘額
         } else if (item.category === 'balance') {
-          // 扣儲值金額
-          const newBalance = (memberData.balance || 0) - (item.amount || 0)
+          // 扣儲值金額（使用累積餘額）
+          const newBalance = cumulativeBalances.balance - (item.amount || 0)
+          cumulativeBalances.balance = newBalance
           updates.balance = newBalance
           transactionData.amount = -(item.amount || 0)
           transactionData.balance_after = newBalance
         } else if (item.category === 'vip_voucher') {
-          // 扣VIP票券金額
-          const newAmount = (memberData.vip_voucher_amount || 0) - (item.amount || 0)
+          // 扣VIP票券金額（使用累積餘額）
+          const newAmount = cumulativeBalances.vip_voucher_amount - (item.amount || 0)
+          cumulativeBalances.vip_voucher_amount = newAmount
           updates.vip_voucher_amount = newAmount
           transactionData.amount = -(item.amount || 0)
           transactionData.vip_voucher_amount_after = newAmount
         } else {
-          // 扣時數
-          const field = getCategoryField(item.category)
-          const current = memberData[field] || 0
+          // 扣時數（使用累積餘額）
+          const field = getCategoryField(item.category) as keyof typeof cumulativeBalances
+          const current = cumulativeBalances[field]
           const newValue = current - (item.minutes || 0)
+          cumulativeBalances[field] = newValue
           updates[field] = newValue
           transactionData.minutes = -(item.minutes || 0)
           transactionData[`${field}_after`] = newValue

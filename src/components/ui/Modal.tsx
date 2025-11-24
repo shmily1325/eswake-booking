@@ -231,7 +231,7 @@ export const Modal: React.FC<ModalProps> = ({
   )
 }
 
-// 预设的确认对话框
+// 預設的確認對話框
 interface ConfirmModalProps {
   isOpen: boolean
   onClose: () => void
