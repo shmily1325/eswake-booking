@@ -88,38 +88,20 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   // 根據船隻和時間取得常用金額（扣儲值用）
   const getCommonAmounts = (): number[] => {
     const boatName = report.bookings.boats?.name || ''
-    const duration = report.duration_min
     
     // G23（最少30分鐘）
     if (boatName.includes('G23')) {
-      if (duration === 30) return [5400]
-      if (duration === 40) return [7200]
-      if (duration === 60) return [10800]
-      if (duration === 90) return [16200]
-      // 其他時間自己填
-      return []
+      return [5400, 7200, 10800, 16200] // 30, 40, 60, 90分
     }
     
     // G21/黑豹
     if (boatName.includes('G21') || boatName.includes('黑豹')) {
-      if (duration === 20) return [2000]
-      if (duration === 30) return [3000]
-      if (duration === 40) return [4000]
-      if (duration === 60) return [6000]
-      if (duration === 90) return [9000]
-      // 其他時間自己填
-      return []
+      return [2000, 3000, 4000, 6000, 9000] // 20, 30, 40, 60, 90分
     }
     
     // 粉紅/200
     if (boatName.includes('粉紅') || boatName.includes('200')) {
-      if (duration === 20) return [1200]
-      if (duration === 30) return [1800]
-      if (duration === 40) return [2400]
-      if (duration === 60) return [3600]
-      if (duration === 90) return [5400]
-      // 其他時間自己填
-      return []
+      return [1200, 1800, 2400, 3600, 5400] // 20, 30, 40, 60, 90分
     }
     
     // 預設（未知船隻）
@@ -129,27 +111,15 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   // 根據船隻和時間取得 VIP 票券金額
   const getVipVoucherAmounts = (): number[] => {
     const boatName = report.bookings.boats?.name || ''
-    const duration = report.duration_min
     
     // G23（最少30分鐘）
     if (boatName.includes('G23')) {
-      if (duration === 30) return [4250]
-      if (duration === 40) return [5667]
-      if (duration === 60) return [8500]
-      if (duration === 90) return [12750]
-      // 其他時間自己填
-      return []
+      return [4250, 5667, 8500, 12750] // 30, 40, 60, 90分
     }
     
     // G21/黑豹
     if (boatName.includes('G21') || boatName.includes('黑豹')) {
-      if (duration === 20) return [1667]
-      if (duration === 30) return [2500]
-      if (duration === 40) return [3333]
-      if (duration === 60) return [5000]
-      if (duration === 90) return [7500]
-      // 其他時間自己填
-      return []
+      return [1667, 2500, 3333, 5000, 7500] // 20, 30, 40, 60, 90分
     }
     
     // 粉紅/200：沒有預設金額，只能自己填
@@ -163,16 +133,55 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   
   const defaultCategory = getDefaultCategory()
   
-  // 取得預設金額（如果有的話）
+  // 取得預設金額（根據時長選擇對應的金額）
   const getDefaultAmount = (): number | undefined => {
+    const boatName = report.bookings.boats?.name || ''
+    const duration = report.duration_min
+    
     if (defaultCategory === 'balance') {
-      const amounts = getCommonAmounts()
-      return amounts.length > 0 ? amounts[0] : undefined
+      // G23
+      if (boatName.includes('G23')) {
+        if (duration === 30) return 5400
+        if (duration === 40) return 7200
+        if (duration === 60) return 10800
+        if (duration === 90) return 16200
+      }
+      // G21/黑豹
+      if (boatName.includes('G21') || boatName.includes('黑豹')) {
+        if (duration === 20) return 2000
+        if (duration === 30) return 3000
+        if (duration === 40) return 4000
+        if (duration === 60) return 6000
+        if (duration === 90) return 9000
+      }
+      // 粉紅/200
+      if (boatName.includes('粉紅') || boatName.includes('200')) {
+        if (duration === 20) return 1200
+        if (duration === 30) return 1800
+        if (duration === 40) return 2400
+        if (duration === 60) return 3600
+        if (duration === 90) return 5400
+      }
     }
+    
     if (defaultCategory === 'vip_voucher') {
-      const amounts = getVipVoucherAmounts()
-      return amounts.length > 0 ? amounts[0] : undefined
+      // G23
+      if (boatName.includes('G23')) {
+        if (duration === 30) return 4250
+        if (duration === 40) return 5667
+        if (duration === 60) return 8500
+        if (duration === 90) return 12750
+      }
+      // G21/黑豹
+      if (boatName.includes('G21') || boatName.includes('黑豹')) {
+        if (duration === 20) return 1667
+        if (duration === 30) return 2500
+        if (duration === 40) return 3333
+        if (duration === 60) return 5000
+        if (duration === 90) return 7500
+      }
     }
+    
     return undefined
   }
 
@@ -506,6 +515,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                   commonAmounts={getCommonAmounts()}
                   vipVoucherAmounts={getVipVoucherAmounts()}
                   defaultDescription={generateDescription()}
+                  boatName={report.bookings.boats?.name || ''}
                   onUpdate={(updates) => updateItem(item.id, updates)}
                   onRemove={() => removeItem(item.id)}
                   canRemove={items.length > 1}
@@ -581,6 +591,7 @@ interface DeductionItemRowProps {
   commonAmounts: number[]
   vipVoucherAmounts: number[]
   defaultDescription: string
+  boatName: string
   onUpdate: (updates: Partial<DeductionItem>) => void
   onRemove: () => void
   canRemove: boolean
@@ -595,6 +606,7 @@ function DeductionItemRow({
   commonAmounts,
   vipVoucherAmounts,
   defaultDescription,
+  boatName,
   onUpdate, 
   onRemove,
   canRemove,
@@ -653,44 +665,31 @@ function DeductionItemRow({
       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
       position: 'relative'
     }}>
-      {/* 項目編號（僅多項時顯示） */}
-      {totalItems > 1 && (
-        <div style={{
-          position: 'absolute',
-          top: '16px',
-          right: '16px',
-          background: index % 2 === 0 ? '#0ea5e9' : '#94a3b8',
-          color: 'white',
-          width: '28px',
-          height: '28px',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '13px',
-          fontWeight: '700',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-          zIndex: 1
-        }}>
-          {index}
-        </div>
-      )}
-      
-      {/* 標題欄 */}
+      {/* 標題欄（簡化版） */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
         marginBottom: '14px',
-        paddingBottom: '12px',
-        borderBottom: '2px solid #e8f4f8'
+        paddingBottom: totalItems > 1 ? '12px' : '0',
+        borderBottom: totalItems > 1 ? '2px solid #e8f4f8' : 'none'
       }}>
         <div style={{ 
           display: 'flex',
           alignItems: 'center',
           gap: '8px'
         }}>
-          <span style={{ fontSize: '24px' }}>{currentCategory?.emoji}</span>
+          {totalItems > 1 && (
+            <span style={{ 
+              fontSize: '18px', 
+              fontWeight: '700',
+              color: index % 2 === 0 ? '#0ea5e9' : '#64748b',
+              minWidth: '28px'
+            }}>
+              {index}.
+            </span>
+          )}
+          <span style={{ fontSize: '20px' }}>{currentCategory?.emoji}</span>
         </div>
         {canRemove && (
           <button
@@ -772,56 +771,130 @@ function DeductionItemRow({
             }}>
               扣款金額：
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {(isVipVoucher ? vipVoucherAmounts : commonAmounts).map(amount => (
-                <button
-                  key={amount}
-                  onClick={() => onUpdate({ amount })}
-                  style={{
-                    padding: '10px 18px',
-                    background: item.amount === amount ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
-                    color: item.amount === amount ? 'white' : '#2c3e50',
-                    border: item.amount === amount ? 'none' : '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    boxShadow: item.amount === amount ? '0 2px 8px rgba(102,126,234,0.3)' : 'none',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (item.amount !== amount) {
-                      e.currentTarget.style.borderColor = '#667eea'
-                      e.currentTarget.style.transform = 'translateY(-1px)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (item.amount !== amount) {
-                      e.currentTarget.style.borderColor = '#e0e0e0'
-                      e.currentTarget.style.transform = 'translateY(0)'
-                    }
-                  }}
-                >
-                  ${amount}
-                </button>
-              ))}
-              <input
-                type="number"
-                placeholder="自訂"
-                value={item.amount || ''}
-                onChange={(e) => onUpdate({ amount: parseInt(e.target.value) || 0 })}
-                style={{
-                  padding: '10px 12px',
-                  border: '2px solid #94a3b8',
-                  borderRadius: '8px',
-                  width: '100px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  background: 'white'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#94a3b8'}
-              />
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              {(isVipVoucher ? vipVoucherAmounts : commonAmounts).map((amount) => {
+                // 計算對應的分鐘數
+                let minutes = 0
+                if (isBalance) {
+                  if (boatName.includes('G23')) {
+                    const map: Record<number, number> = { 5400: 30, 7200: 40, 10800: 60, 16200: 90 }
+                    minutes = map[amount] || 0
+                  } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
+                    const map: Record<number, number> = { 2000: 20, 3000: 30, 4000: 40, 6000: 60, 9000: 90 }
+                    minutes = map[amount] || 0
+                  } else if (boatName.includes('粉紅') || boatName.includes('200')) {
+                    const map: Record<number, number> = { 1200: 20, 1800: 30, 2400: 40, 3600: 60, 5400: 90 }
+                    minutes = map[amount] || 0
+                  }
+                } else if (isVipVoucher) {
+                  if (boatName.includes('G23')) {
+                    const map: Record<number, number> = { 4250: 30, 5667: 40, 8500: 60, 12750: 90 }
+                    minutes = map[amount] || 0
+                  } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
+                    const map: Record<number, number> = { 1667: 20, 2500: 30, 3333: 40, 5000: 60, 7500: 90 }
+                    minutes = map[amount] || 0
+                  }
+                }
+
+                return (
+                  <div key={amount} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {minutes > 0 && (
+                      <div style={{ 
+                        fontSize: '11px', 
+                        color: '#94a3b8',
+                        marginBottom: '4px',
+                        fontWeight: '500'
+                      }}>
+                        {minutes}分
+                      </div>
+                    )}
+                    <button
+                      onClick={() => onUpdate({ amount })}
+                      style={{
+                        padding: '10px 18px',
+                        background: item.amount === amount ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
+                        color: item.amount === amount ? 'white' : '#2c3e50',
+                        border: item.amount === amount ? 'none' : '2px solid #e0e0e0',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        boxShadow: item.amount === amount ? '0 2px 8px rgba(102,126,234,0.3)' : 'none',
+                        transition: 'all 0.2s',
+                        minWidth: '85px'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (item.amount !== amount) {
+                          e.currentTarget.style.borderColor = '#667eea'
+                          e.currentTarget.style.transform = 'translateY(-1px)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (item.amount !== amount) {
+                          e.currentTarget.style.borderColor = '#e0e0e0'
+                          e.currentTarget.style.transform = 'translateY(0)'
+                        }
+                      }}
+                    >
+                      ${amount}
+                    </button>
+                  </div>
+                )
+              })}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: 'transparent',
+                  marginBottom: '4px',
+                  fontWeight: '500',
+                  userSelect: 'none'
+                }}>
+                  .
+                </div>
+                <div style={{ 
+                  position: 'relative',
+                  display: 'inline-block'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    left: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    fontSize: '16px',
+                    pointerEvents: 'none',
+                    zIndex: 1
+                  }}>
+                    ✏️
+                  </div>
+                  <input
+                    type="number"
+                    placeholder="自訂金額"
+                    value={item.amount && !commonAmounts.concat(vipVoucherAmounts).includes(item.amount) ? item.amount : ''}
+                    onChange={(e) => onUpdate({ amount: parseInt(e.target.value) || 0 })}
+                    style={{
+                      padding: '10px 12px 10px 38px',
+                      border: '3px dashed #f59e0b',
+                      borderRadius: '8px',
+                      width: '130px',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                      color: '#92400e',
+                      boxShadow: '0 0 0 3px rgba(245,158,11,0.1)'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#f59e0b'
+                      e.currentTarget.style.background = '#fff'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.3), 0 4px 12px rgba(245,158,11,0.2)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#f59e0b'
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.1)'
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         ) : (
