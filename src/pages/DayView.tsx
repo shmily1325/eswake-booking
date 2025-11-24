@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -205,7 +205,10 @@ export function DayView() {
     setBookings(bookingsWithCoaches)
   }
 
-
+  // 當組件掛載或日期參數改變時，載入資料
+  useEffect(() => {
+    fetchData()
+  }, [dateParam])
 
   const timeToMinutes = (timeStr: string): number => {
     const [hour, minute] = timeStr.split(':').map(Number)
