@@ -18,16 +18,16 @@ export function formatBookingForLine(booking: BookingFormatData): string {
   const datetime = booking.start_at.substring(0, 16)
   const [dateStr, timeStr] = datetime.split('T')
   const [, month, day] = dateStr.split('-')
-  
+
   // 組合一行：日期 時間 時長 船 教練 活動類型
-  const coaches = booking.coaches && booking.coaches.length > 0 
+  const coaches = booking.coaches && booking.coaches.length > 0
     ? booking.coaches.map(c => c.name).join('/')
     : '不指定'
-  
+
   const activities = booking.activity_types && booking.activity_types.length > 0
     ? ` ${booking.activity_types.join('+')}`
     : ''
-  
+
   return `${month}/${day} ${timeStr} ${booking.duration_min}分 ${booking.boats?.name || '?'} ${coaches}${activities}`
 }
 
@@ -48,13 +48,13 @@ export function formatSingleBookingWithName(booking: BookingFormatData): string 
  */
 export function formatBookingsForLine(bookings: BookingFormatData[], title: string): string {
   if (bookings.length === 0) return ''
-  
+
   let message = `${title}\n`
-  
+
   bookings.forEach((booking) => {
     message += formatBookingForLine(booking) + '\n'
   })
-  
+
   return message.trim()
 }
 
@@ -70,26 +70,41 @@ export function getDisplayContactName(booking: any): string {
     const memberDisplayNames = booking.booking_members
       .map((bm: any) => bm.members?.nickname || bm.members?.name)
       .filter(Boolean) as string[]
-    
+
     // 如果有重複的暱稱，只顯示一個
     const uniqueNames = Array.from(new Set(memberDisplayNames))
-    
+
     // 如果只有會員，且數量吻合 contact_name 中的名字數量，直接返回
     // 否則，可能還包含非會員名字，直接用 contact_name
     const contactNameParts = booking.contact_name?.split(',').map((n: any) => n.trim()).filter(Boolean) || []
-    
+
     // 如果會員數量等於 contact_name 中的名字數量，說明都是會員
     if (uniqueNames.length === contactNameParts.length) {
       return uniqueNames.join(', ')
     }
-    
+
     // 否則，contact_name 中可能還有非會員，需要混合處理
     // 為了簡化，直接返回第一個會員的暱稱/姓名
     // 如果要完整顯示，會比較複雜（需要從 contact_name 中排除會員真實姓名，再加上暱稱）
     return uniqueNames[0] || booking.contact_name || '未命名'
   }
-  
+
   // 沒有關聯會員，直接使用 contact_name
   return booking.contact_name || '未命名'
 }
 
+
+/**
+ * 格式化時間範圍
+ * 範例：05:00 - 06:00
+ */
+export function formatTimeRange(startAt: string, durationMin: number): string {
+  const startTimeStr = startAt.substring(11, 16)
+  const [h, m] = startTimeStr.split(':').map(Number)
+  const endMinutes = h * 60 + m + durationMin
+  const endH = Math.floor(endMinutes / 60)
+  const endMin = endMinutes % 60
+  const endTimeStr = `${String(endH).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+
+  return `${startTimeStr} - ${endTimeStr}`
+}

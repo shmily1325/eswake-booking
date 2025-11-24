@@ -665,21 +665,21 @@ function DeductionItemRow({
       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
       position: 'relative'
     }}>
-      {/* 標題欄（簡化版） */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '14px',
-        paddingBottom: totalItems > 1 ? '12px' : '0',
-        borderBottom: totalItems > 1 ? '2px solid #e8f4f8' : 'none'
-      }}>
+      {/* 標題欄（僅多項時顯示） */}
+      {totalItems > 1 && (
         <div style={{ 
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '14px',
+          paddingBottom: '12px',
+          borderBottom: '2px solid #e8f4f8'
         }}>
-          {totalItems > 1 && (
+          <div style={{ 
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
             <span style={{ 
               fontSize: '18px', 
               fontWeight: '700',
@@ -688,36 +688,36 @@ function DeductionItemRow({
             }}>
               {index}.
             </span>
+            <span style={{ fontSize: '20px' }}>{currentCategory?.emoji}</span>
+          </div>
+          {canRemove && (
+            <button
+              onClick={onRemove}
+              style={{
+                padding: '6px 12px',
+                background: '#fff',
+                color: '#e74c3c',
+                border: '1px solid #e74c3c',
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#e74c3c'
+                e.currentTarget.style.color = 'white'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#fff'
+                e.currentTarget.style.color = '#e74c3c'
+              }}
+            >
+              刪除
+            </button>
           )}
-          <span style={{ fontSize: '20px' }}>{currentCategory?.emoji}</span>
         </div>
-        {canRemove && (
-          <button
-            onClick={onRemove}
-            style={{
-              padding: '6px 12px',
-              background: '#fff',
-              color: '#e74c3c',
-              border: '1px solid #e74c3c',
-              borderRadius: '6px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              fontWeight: '500',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#e74c3c'
-              e.currentTarget.style.color = 'white'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#fff'
-              e.currentTarget.style.color = '#e74c3c'
-            }}
-          >
-            刪除
-          </button>
-        )}
-      </div>
+      )}
 
       {/* 類別選擇 */}
       <div style={{ marginBottom: '14px' }}>
