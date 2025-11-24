@@ -8,6 +8,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useToast, ToastContainer } from '../../components/ui'
+import { getLocalDateString } from '../../utils/date'
 
 interface Member {
   id: string
@@ -50,26 +51,16 @@ export function MemberManagement() {
   const [expiringMemberships, setExpiringMemberships] = useState<any[]>([])
   const [expiringBoards, setExpiringBoards] = useState<any[]>([])
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 'all', 'general', 'dual', 'guest'
-  
-  // TODO: Will use user for creating/updating members and permission control
-  // Current user email will be logged for debugging
-  console.log('Current user:', user.email)
 
   useEffect(() => {
     loadMembers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showInactive])
 
   useEffect(() => {
     loadExpiringData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const getLocalDateString = () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
 
   // 格式化日期為 YYYY-MM-DD
   const formatDate = (dateStr: string) => {

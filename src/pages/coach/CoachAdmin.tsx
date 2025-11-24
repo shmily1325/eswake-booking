@@ -348,11 +348,11 @@ export function CoachAdmin() {
   // ============ 資料處理 ============
 
   // 按預約分組 (待處理)
-  const groupedPendingReports = pendingReports.reduce((acc, report) => {
-    const key = `${report.bookings.id}`
+  const groupedPendingReports = (pendingReports || []).reduce((acc, report) => {
+    const key = `${report.bookings?.id || 'unknown'}`
     if (!acc[key]) {
       acc[key] = {
-        booking: report.bookings,
+        booking: report.bookings || {},
         reports: []
       }
     }
@@ -361,11 +361,11 @@ export function CoachAdmin() {
   }, {} as Record<string, { booking: any; reports: PendingReport[] }>)
 
   // 按預約分組 (非會員)
-  const groupedNonMemberReports = nonMemberReports.reduce((acc, report) => {
-    const key = `${report.bookings.id}`
+  const groupedNonMemberReports = (nonMemberReports || []).reduce((acc, report) => {
+    const key = `${report.bookings?.id || 'unknown'}`
     if (!acc[key]) {
       acc[key] = {
-        booking: report.bookings,
+        booking: report.bookings || {},
         reports: []
       }
     }

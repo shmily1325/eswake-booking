@@ -127,6 +127,15 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         }
     }, [canRequireDriver, requiresDriver])
 
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current)
+            }
+        }
+    }, [])
+
     // --- Actions ---
 
     const fetchBoats = useCallback(async () => {

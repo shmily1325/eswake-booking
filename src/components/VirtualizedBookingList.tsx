@@ -42,8 +42,11 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
     // 預先處理數據：將預約按船隻分組並排序
     const boatBookingsMap = React.useMemo(() => {
         const map = new Map<number, Booking[]>()
-        boats.forEach(boat => {
-            const boatBookings = bookings
+        const safeBoats = boats || []
+        const safeBookings = bookings || []
+        
+        safeBoats.forEach(boat => {
+            const boatBookings = safeBookings
                 .filter(b => b.boat_id === boat.id)
                 .sort((a, b) => a.start_at.localeCompare(b.start_at))
             map.set(boat.id, boatBookings)
@@ -53,7 +56,10 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
 
     // 渲染單個船隻的預約行
     const BoatRow = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-        const boat = boats[index]
+        const safeBoats = boats || []
+        const boat = safeBoats[index]
+        if (!boat) return null
+        
         const boatBookings = boatBookingsMap.get(boat.id) || []
 
         return (
@@ -173,6 +179,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
 
     // 計算每行高度
     const itemSize = isMobile ? 140 : 160
+    const safeBoats = boats || []
 
     return (
         <div style={{
@@ -188,11 +195,12 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                 {({ height, width }: { height: number; width: number }) => (
                     <List
                         height={height}
-                        itemCount={boats.length}
+                        itemCount={safeBoats.length}
                         itemSize={itemSize}
                         width={width}
                         // react-window v2 會對 itemData 呼叫 Object.values，因此不能傳 undefined
-                        itemData={{ boatsLength: boats.length }}
+                        // 確保傳入的對象不是 null/undefined
+                        itemData={{ boatsLength: safeBoats.length || 0 }}
                     >
                         {BoatRow}
                     </List>
