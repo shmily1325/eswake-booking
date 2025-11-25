@@ -233,7 +233,8 @@ export function StaffManagement() {
 
   const openAccountDialog = (coach: Coach) => {
     setSelectedAccountCoach(coach)
-    setAccountEmail(coach.user_email || '')
+    // 清理可能存在的空白字符
+    setAccountEmail((coach.user_email || '').trim())
     setAccountDialogOpen(true)
   }
 
@@ -1123,9 +1124,9 @@ export function StaffManagement() {
                 登入帳號 Email
               </label>
               <input
-                type="email"
+                type="text"
                 value={accountEmail}
-                onChange={(e) => setAccountEmail(e.target.value)}
+                onChange={(e) => setAccountEmail(e.target.value.trim())}
                 placeholder="例如：coach@example.com"
                 style={{
                   width: '100%',
