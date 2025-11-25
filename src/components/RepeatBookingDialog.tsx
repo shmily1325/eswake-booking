@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
+import { useBookingConflict } from '../hooks/useBookingConflict'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { BoatSelector } from './booking/BoatSelector'
 import { TimeSelector } from './booking/TimeSelector'
@@ -11,6 +12,18 @@ import { MemberSelector } from './booking/MemberSelector'
 import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
 import { getLocalTimestamp } from '../utils/date'
+
+// 驗證所有導入的組件
+console.log('[RepeatBookingDialog] Imports check:', {
+  BoatSelector: typeof BoatSelector,
+  TimeSelector: typeof TimeSelector,
+  MemberSelector: typeof MemberSelector,
+  CoachSelector: typeof CoachSelector,
+  BookingDetails: typeof BookingDetails,
+  useResponsive: typeof useResponsive,
+  useBookingForm: typeof useBookingForm,
+  useBookingConflict: typeof useBookingConflict,
+})
 
 
 interface RepeatBookingDialogProps {
@@ -30,7 +43,13 @@ export function RepeatBookingDialog({
   defaultStartTime,
   user,
 }: RepeatBookingDialogProps) {
+  console.log('[RepeatBookingDialog] Component rendering, isOpen:', isOpen)
+  
   const { isMobile } = useResponsive()
+  console.log('[RepeatBookingDialog] useResponsive loaded, isMobile:', isMobile)
+  
+  const { checkConflict } = useBookingConflict()
+  console.log('[RepeatBookingDialog] useBookingConflict loaded')
 
   // 重複預約設定
   const [repeatMode, setRepeatMode] = useState<'count' | 'endDate'>('count')
@@ -95,9 +114,11 @@ export function RepeatBookingDialog({
     defaultBoatId,
     defaultDate: defaultStartTime
   })
+  console.log('[RepeatBookingDialog] useBookingForm loaded, boats:', boats?.length, 'coaches:', coaches?.length)
 
   useEffect(() => {
     if (isOpen) {
+      console.log('[RepeatBookingDialog] Dialog opened, fetching data...')
       fetchAllData()
     }
   }, [isOpen, fetchAllData])
@@ -130,7 +151,12 @@ export function RepeatBookingDialog({
     return dates
   }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate])
 
-  if (!isOpen) return null
+  if (!isOpen) {
+    console.log('[RepeatBookingDialog] Not open, returning null')
+    return null
+  }
+
+  console.log('[RepeatBookingDialog] Rendering dialog content...')
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -191,8 +217,26 @@ export function RepeatBookingDialog({
         const displayDate = `${dateStr} ${timeStr}`
         const newStartAt = `${dateStr}T${timeStr}:00`
 
-        // 這裡進行衝突檢查（簡化版，實際應該更完整）
-        // 為了簡化，這裡假設前端已經做了基本檢查
+        // 進行完整的衝突檢查（就像普通預約一樣）
+        const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
+        const conflictResult = await checkConflict({
+          boatId: selectedBoatId,
+          boatName,
+          date: dateStr,
+          startTime: timeStr,
+          durationMin,
+          coachIds: selectedCoaches,
+          coachesMap,
+          excludeBookingId: undefined
+        })
+
+        if (conflictResult.hasConflict) {
+          results.skipped.push({
+            date: displayDate,
+            reason: conflictResult.reason || '時間衝突'
+          })
+          continue
+        }
         
         // 創建預約
         const bookingToInsert = {
@@ -362,52 +406,72 @@ export function RepeatBookingDialog({
 
         <form onSubmit={handleSubmit}>
           {/* 會員選擇 */}
-          <MemberSelector
-            members={members}
-            selectedMemberIds={selectedMemberIds}
-            memberSearchTerm={memberSearchTerm}
-            showMemberDropdown={showMemberDropdown}
-            filteredMembers={filteredMembers}
-            manualStudentName={manualStudentName}
-            manualNames={manualNames}
-            setSelectedMemberIds={setSelectedMemberIds}
-            setMemberSearchTerm={setMemberSearchTerm}
-            setShowMemberDropdown={setShowMemberDropdown}
-            setManualStudentName={setManualStudentName}
-            setManualNames={setManualNames}
-            handleMemberSearch={handleMemberSearch}
-          />
+          {(() => {
+            console.log('[RepeatBookingDialog] Rendering MemberSelector')
+            return (
+              <MemberSelector
+                members={members}
+                selectedMemberIds={selectedMemberIds}
+                memberSearchTerm={memberSearchTerm}
+                showMemberDropdown={showMemberDropdown}
+                filteredMembers={filteredMembers}
+                manualStudentName={manualStudentName}
+                manualNames={manualNames}
+                setSelectedMemberIds={setSelectedMemberIds}
+                setMemberSearchTerm={setMemberSearchTerm}
+                setShowMemberDropdown={setShowMemberDropdown}
+                setManualStudentName={setManualStudentName}
+                setManualNames={setManualNames}
+                handleMemberSearch={handleMemberSearch}
+              />
+            )
+          })()}
 
           {/* 船隻選擇 */}
-          <BoatSelector
-            boats={boats}
-            selectedBoatId={selectedBoatId}
-            onSelect={setSelectedBoatId}
-          />
+          {(() => {
+            console.log('[RepeatBookingDialog] Rendering BoatSelector')
+            return (
+              <BoatSelector
+                boats={boats}
+                selectedBoatId={selectedBoatId}
+                onSelect={setSelectedBoatId}
+              />
+            )
+          })()}
 
           {/* 教練選擇 */}
-          <CoachSelector
-            coaches={coaches}
-            selectedCoaches={selectedCoaches}
-            selectedCoachesSet={selectedCoachesSet}
-            setSelectedCoaches={setSelectedCoaches}
-            toggleCoach={toggleCoach}
-            loadingCoaches={loadingCoaches}
-            requiresDriver={requiresDriver}
-            setRequiresDriver={setRequiresDriver}
-            canRequireDriver={canRequireDriver}
-            isSelectedBoatFacility={isSelectedBoatFacility}
-          />
+          {(() => {
+            console.log('[RepeatBookingDialog] Rendering CoachSelector')
+            return (
+              <CoachSelector
+                coaches={coaches}
+                selectedCoaches={selectedCoaches}
+                selectedCoachesSet={selectedCoachesSet}
+                setSelectedCoaches={setSelectedCoaches}
+                toggleCoach={toggleCoach}
+                loadingCoaches={loadingCoaches}
+                requiresDriver={requiresDriver}
+                setRequiresDriver={setRequiresDriver}
+                canRequireDriver={canRequireDriver}
+                isSelectedBoatFacility={isSelectedBoatFacility}
+              />
+            )
+          })()}
 
           {/* 時間選擇 */}
-          <TimeSelector
-            startDate={startDate}
-            startTime={startTime}
-            durationMin={durationMin}
-            setStartDate={setStartDate}
-            setStartTime={setStartTime}
-            setDurationMin={setDurationMin}
-          />
+          {(() => {
+            console.log('[RepeatBookingDialog] Rendering TimeSelector')
+            return (
+              <TimeSelector
+                startDate={startDate}
+                startTime={startTime}
+                durationMin={durationMin}
+                setStartDate={setStartDate}
+                setStartTime={setStartTime}
+                setDurationMin={setDurationMin}
+              />
+            )
+          })()}
 
           {/* 重複設定 */}
           <div style={{
@@ -523,14 +587,19 @@ export function RepeatBookingDialog({
           </div>
 
           {/* 活動類型和註解 */}
-          <BookingDetails
-            activityTypesSet={activityTypesSet}
-            toggleActivityType={toggleActivityType}
-            notes={notes}
-            setNotes={setNotes}
-            filledBy={filledBy}
-            setFilledBy={setFilledBy}
-          />
+          {(() => {
+            console.log('[RepeatBookingDialog] Rendering BookingDetails')
+            return (
+              <BookingDetails
+                activityTypesSet={activityTypesSet}
+                toggleActivityType={toggleActivityType}
+                notes={notes}
+                setNotes={setNotes}
+                filledBy={filledBy}
+                setFilledBy={setFilledBy}
+              />
+            )
+          })()}
 
           {/* 錯誤訊息 */}
           {error && (
