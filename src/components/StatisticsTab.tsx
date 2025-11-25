@@ -32,15 +32,30 @@ interface ParticipantInfo {
 
 interface StatisticsTabProps {
   isMobile: boolean
+  autoFilterCoachId?: string // 自动筛选特定教练（用于教练专用页面）
 }
 
-export function StatisticsTab({ isMobile }: StatisticsTabProps) {
-  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString()) // 默认今天
-  const [selectedCoachId, setSelectedCoachId] = useState<string>('all')
+export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProps) {
+  // 如果是教練專用模式，預設顯示本月；否則顯示今天
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (autoFilterCoachId) {
+      const now = new Date()
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    }
+    return getLocalDateString()
+  })
+  const [selectedCoachId, setSelectedCoachId] = useState<string>(autoFilterCoachId || 'all')
   const [loading, setLoading] = useState(false)
   const [allCoachStats, setAllCoachStats] = useState<CoachStats[]>([]) // 完整列表
   const [coachStats, setCoachStats] = useState<CoachStats[]>([]) // 顯示用的過濾列表
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null)
+
+  // 當 autoFilterCoachId 改變時，更新 selectedCoachId
+  useEffect(() => {
+    if (autoFilterCoachId) {
+      setSelectedCoachId(autoFilterCoachId)
+    }
+  }, [autoFilterCoachId])
 
   useEffect(() => {
     loadPastData()
@@ -310,43 +325,45 @@ export function StatisticsTab({ isMobile }: StatisticsTabProps) {
           </div>
         </div>
 
-        {/* 教練篩選 */}
-        <div>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
-            fontWeight: '600', 
-            fontSize: '15px', 
-            color: '#333' 
-          }}>
-            篩選教練
-          </label>
-          <select
-            value={selectedCoachId}
-            onChange={(e) => setSelectedCoachId(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              outline: 'none',
-              background: 'white',
-              transition: 'border-color 0.2s'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#90caf9'}
-            onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-          >
-            <option value="all">👥 全部教練</option>
-            {allCoachStats.map(stat => (
-              <option key={stat.coachId} value={stat.coachId}>
-                {stat.coachName}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* 教練篩選 - 只在非自動篩選模式下顯示 */}
+        {!autoFilterCoachId && (
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              fontWeight: '600', 
+              fontSize: '15px', 
+              color: '#333' 
+            }}>
+              篩選教練
+            </label>
+            <select
+              value={selectedCoachId}
+              onChange={(e) => setSelectedCoachId(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                outline: 'none',
+                background: 'white',
+                transition: 'border-color 0.2s'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#90caf9'}
+              onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+            >
+              <option value="all">👥 全部教練</option>
+              {allCoachStats.map(stat => (
+                <option key={stat.coachId} value={stat.coachId}>
+                  {stat.coachName}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {loading ? (

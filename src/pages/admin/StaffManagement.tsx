@@ -237,10 +237,11 @@ export function StaffManagement() {
     setAccountDialogOpen(true)
   }
 
-  const handleSetAccount = async () => {
+  const handleSetAccount = async (emailOverride?: string) => {
     if (!selectedAccountCoach) return
     
-    const email = accountEmail.trim()
+    // 使用參數覆蓋值（用於清除時），否則使用狀態值
+    const email = emailOverride !== undefined ? emailOverride : accountEmail.trim()
     
     // 驗證 email 格式
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1174,8 +1175,7 @@ export function StaffManagement() {
                 <button
                   onClick={() => {
                     if (confirm(`確定要清除 ${selectedAccountCoach.name} 的帳號配對嗎？`)) {
-                      setAccountEmail('')
-                      handleSetAccount()
+                      handleSetAccount('')  // 直接傳入空字串
                     }
                   }}
                   disabled={accountLoading}
