@@ -1278,7 +1278,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                               whiteSpace: 'nowrap',
                               marginLeft: '12px',
                             }}>
-                              {isIncrease ? '+' : '-'}{tx.amount ? `$${tx.amount.toLocaleString()}` : `${tx.minutes}分`}
+                              {isIncrease ? '+' : '-'}{tx.amount ? `$${Math.abs(tx.amount).toLocaleString()}` : `${Math.abs(tx.minutes || 0)}分`}
                             </div>
                           </div>
                           {tx.notes && (
