@@ -335,23 +335,21 @@ export function RepeatBookingDialog({
   }
   console.log('[RepeatBookingDialog] handleClose defined')
 
-  console.log('[RepeatBookingDialog] About to define previewDates')
+  console.log('[RepeatBookingDialog] About to compute preview dates')
   
-  // 简化的预览日期 - 直接调用 generateRepeatDates 并取前5个
-  const previewDates = useMemo(() => {
-    console.log('[RepeatBookingDialog] Computing previewDates')
-    try {
-      const allDates = generateRepeatDates()
-      const preview = allDates.slice(0, 5)
-      console.log('[RepeatBookingDialog] Preview dates computed:', preview.length)
-      return preview
-    } catch (error) {
-      console.error('[RepeatBookingDialog] Error in previewDates:', error)
-      return []
-    }
-  }, [generateRepeatDates])
+  // 預覽日期 - 取前5個
+  let previewDates: Date[] = []
+  try {
+    console.log('[RepeatBookingDialog] Calling generateRepeatDates for preview')
+    const allDates = generateRepeatDates()
+    previewDates = allDates.slice(0, 5)
+    console.log('[RepeatBookingDialog] Preview dates computed:', previewDates.length)
+  } catch (error) {
+    console.error('[RepeatBookingDialog] Error computing preview:', error)
+    previewDates = []
+  }
   
-  console.log('[RepeatBookingDialog] previewDates defined, length:', previewDates?.length || 0)
+  console.log('[RepeatBookingDialog] Preview ready, length:', previewDates.length)
 
   console.log('[RepeatBookingDialog] Before return statement')
   
