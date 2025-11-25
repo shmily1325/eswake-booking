@@ -85,6 +85,7 @@ export function checkTimeSlotConflict(slot1: TimeSlot, slot2: TimeSlot): boolean
  * @param durationMin 持續時間（分鐘）
  * @param isFacility 是否為設施（不需要清理時間）
  * @param excludeBookingId 排除的預約 ID（編輯時使用）
+ * @param boatName 船隻名稱（用於顯示更清楚的衝突訊息）
  * @returns 衝突檢查結果
  */
 export async function checkBoatConflict(
@@ -93,7 +94,8 @@ export async function checkBoatConflict(
   startTime: string,
   durationMin: number,
   isFacility: boolean = false,
-  excludeBookingId?: number
+  excludeBookingId?: number,
+  boatName?: string
 ): Promise<ConflictResult> {
   const cleanupMinutes = isFacility ? 0 : 15
   const newSlot = calculateTimeSlot(startTime, durationMin, cleanupMinutes)
@@ -113,6 +115,9 @@ export async function checkBoatConflict(
     }
   }
 
+  // 取得船隻名稱（優先使用傳入的，否則從查詢結果取得）
+  const displayBoatName = boatName || (existingBookings?.[0]?.boats as any)?.name || '船隻'
+
   // 檢查每個現有預約
   for (const existing of existingBookings || []) {
     if (excludeBookingId && existing.id === excludeBookingId) continue
@@ -130,20 +135,20 @@ export async function checkBoatConflict(
       if (newSlot.startMinutes >= existingSlot.endMinutes && newSlot.startMinutes < existingSlot.cleanupEndMinutes) {
         return {
           hasConflict: true,
-          reason: `與 ${existing.contact_name} 的預約衝突：${existing.contact_name} 在 ${minutesToTime(existingSlot.endMinutes)} 結束，需要${cleanupMinutes}分鐘接船時間。您的預約 ${startTime} 太接近了。`
+          reason: `${displayBoatName} 與 ${existing.contact_name} 的預約衝突：${existing.contact_name} 在 ${minutesToTime(existingSlot.endMinutes)} 結束，需要${cleanupMinutes}分鐘接船時間。您的預約 ${startTime} 太接近了。`
         }
       }
 
       if (existingSlot.startMinutes >= newSlot.endMinutes && existingSlot.startMinutes < newSlot.cleanupEndMinutes) {
         return {
           hasConflict: true,
-          reason: `與 ${existing.contact_name} 的預約衝突：您的預約 ${minutesToTime(newSlot.endMinutes)} 結束，${existing.contact_name} ${existingTime} 開始，需要${cleanupMinutes}分鐘接船時間。`
+          reason: `${displayBoatName} 與 ${existing.contact_name} 的預約衝突：您的預約 ${minutesToTime(newSlot.endMinutes)} 結束，${existing.contact_name} ${existingTime} 開始，需要${cleanupMinutes}分鐘接船時間。`
         }
       }
 
       return {
         hasConflict: true,
-        reason: `與 ${existing.contact_name} 的預約時間重疊：您的時間 ${startTime}-${minutesToTime(newSlot.endMinutes)}，${existing.contact_name} 的時間 ${existingTime}-${minutesToTime(existingSlot.endMinutes)}`
+        reason: `${displayBoatName} 與 ${existing.contact_name} 的預約時間重疊：您的時間 ${startTime}-${minutesToTime(newSlot.endMinutes)}，${existing.contact_name} 的時間 ${existingTime}-${minutesToTime(existingSlot.endMinutes)}`
       }
     }
   }

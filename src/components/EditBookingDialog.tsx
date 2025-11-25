@@ -34,6 +34,8 @@ export function EditBookingDialog({
   const [copyToTime, setCopyToTime] = useState('') // 新增：複製到的時間
   const [copyLoading, setCopyLoading] = useState(false)
   const [copyError, setCopyError] = useState('')
+  const [copyConflictChecking, setCopyConflictChecking] = useState(false)
+  const [copyConflictStatus, setCopyConflictStatus] = useState<'checking' | 'available' | 'conflict' | null>(null)
 
   // 使用 useBookingForm Hook
   const {
@@ -108,7 +110,7 @@ export function EditBookingDialog({
     }
   }, [isOpen, fetchAllData])
 
-  // 即時衝突檢查 Effect
+  // 即時衝突檢查 Effect（編輯預約用）
   useEffect(() => {
     if (!isOpen || !startDate || !startTime || !selectedBoatId || !booking || !booking.id) {
       setConflictStatus(null)
@@ -130,6 +132,52 @@ export function EditBookingDialog({
     const timer = setTimeout(check, 500) // Debounce
     return () => clearTimeout(timer)
   }, [isOpen, startDate, startTime, durationMin, selectedBoatId, selectedCoaches, performConflictCheck, booking?.id])
+
+  // 即時衝突檢查 Effect（複製預約用）
+  useEffect(() => {
+    if (!showCopyDialog || !copyToDate || !copyToTime) {
+      setCopyConflictStatus(null)
+      setCopyError('')
+      return
+    }
+
+    const checkCopyConflict = async () => {
+      setCopyConflictChecking(true)
+      setCopyConflictStatus('checking')
+      setCopyError('')
+
+      try {
+        const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
+        const selectedBoat = boats.find(b => b.id === selectedBoatId)
+        
+        const conflictResult = await checkConflictForCopy({
+          boatId: selectedBoatId,
+          boatName: selectedBoat?.name,
+          date: copyToDate,
+          startTime: copyToTime,
+          durationMin,
+          coachIds: selectedCoaches,
+          coachesMap,
+          excludeBookingId: undefined
+        })
+
+        if (conflictResult.hasConflict) {
+          setCopyConflictStatus('conflict')
+          setCopyError(conflictResult.reason)
+        } else {
+          setCopyConflictStatus('available')
+        }
+      } catch (err) {
+        setCopyConflictStatus('conflict')
+        setCopyError('檢查衝突時發生錯誤')
+      } finally {
+        setCopyConflictChecking(false)
+      }
+    }
+
+    const timer = setTimeout(checkCopyConflict, 500) // Debounce
+    return () => clearTimeout(timer)
+  }, [showCopyDialog, copyToDate, copyToTime, selectedBoatId, durationMin, selectedCoaches, boats, coaches, checkConflictForCopy])
 
   if (!isOpen) return null
 
@@ -564,6 +612,8 @@ export function EditBookingDialog({
       setShowCopyDialog(false)
       setCopyToDate('')
       setCopyToTime('')
+      setCopyError('')
+      setCopyConflictStatus(null)
       alert(`✅ 預約已複製到 ${copyToDate} ${copyToTime}`)
       onSuccess()
     } catch (err: any) {
@@ -1362,6 +1412,7 @@ export function EditBookingDialog({
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
+                setCopyToTime(startTime) // 預設使用原本的時間
                 setShowCopyDialog(true)
               }}
               disabled={loading}
@@ -1451,6 +1502,7 @@ export function EditBookingDialog({
               setCopyToDate('')
               setCopyToTime('')
               setCopyError('')
+              setCopyConflictStatus(null)
             }
           }}
         >
@@ -1511,30 +1563,115 @@ export function EditBookingDialog({
                   border: '2px solid #ff9800',
                   boxSizing: 'border-box',
                   fontSize: '16px',
+                  marginBottom: '16px',
                 }}
               />
-              <div style={{
-                fontSize: '13px',
-                color: '#666',
-                marginTop: '8px',
+
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '15px',
+                fontWeight: '600',
               }}>
-                💡 時間保持為 {startTime}，會自動檢查該時段是否衝突
+                複製到時間 <span style={{ color: 'red' }}>*</span>
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  value={copyToTime ? copyToTime.split(':')[0] : ''}
+                  onChange={(e) => {
+                    const hour = e.target.value
+                    const minute = copyToTime ? copyToTime.split(':')[1] : '00'
+                    setCopyToTime(`${hour}:${minute}`)
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '2px solid #ff9800',
+                    boxSizing: 'border-box',
+                    fontSize: '16px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="">時</option>
+                  {Array.from({ length: 24 }, (_, i) => {
+                    const hour = String(i).padStart(2, '0')
+                    return <option key={hour} value={hour}>{hour}</option>
+                  })}
+                </select>
+                <select
+                  value={copyToTime ? copyToTime.split(':')[1] : ''}
+                  onChange={(e) => {
+                    const hour = copyToTime ? copyToTime.split(':')[0] : '00'
+                    const minute = e.target.value
+                    setCopyToTime(`${hour}:${minute}`)
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '2px solid #ff9800',
+                    boxSizing: 'border-box',
+                    fontSize: '16px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="">分</option>
+                  <option value="00">00</option>
+                  <option value="15">15</option>
+                  <option value="30">30</option>
+                  <option value="45">45</option>
+                </select>
               </div>
             </div>
 
-            {copyError && (
-              <div style={{
-                padding: '12px 14px',
-                backgroundColor: '#ffebee',
-                border: '1px solid #ef5350',
-                borderRadius: '8px',
-                marginBottom: '16px',
-                color: '#c62828',
-                fontSize: '14px',
-                fontWeight: '500',
-                whiteSpace: 'pre-line',
-              }}>
-                ⚠️ {copyError}
+            {/* 即時衝突檢查狀態顯示 */}
+            {copyToDate && copyToTime && (
+              <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+                {copyConflictStatus === 'checking' && (
+                  <div style={{
+                    padding: '12px 14px',
+                    backgroundColor: '#fff3e0',
+                    border: '1px solid #ff9800',
+                    borderRadius: '8px',
+                    color: '#e65100',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                  }}>
+                    🔍 檢查中...
+                  </div>
+                )}
+                
+                {copyConflictStatus === 'available' && !copyError && (
+                  <div style={{
+                    padding: '12px 14px',
+                    backgroundColor: '#e8f5e9',
+                    border: '1px solid #4caf50',
+                    borderRadius: '8px',
+                    color: '#2e7d32',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                  }}>
+                    ✅ 此時段可預約
+                  </div>
+                )}
+                
+                {copyConflictStatus === 'conflict' && copyError && (
+                  <div style={{
+                    padding: '12px 14px',
+                    backgroundColor: '#ffebee',
+                    border: '1px solid #ef5350',
+                    borderRadius: '8px',
+                    color: '#c62828',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    whiteSpace: 'pre-line',
+                  }}>
+                    ⚠️ {copyError}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1550,6 +1687,7 @@ export function EditBookingDialog({
                     setCopyToDate('')
                     setCopyToTime('')
                     setCopyError('')
+                    setCopyConflictStatus(null)
                   }
                 }}
                 disabled={copyLoading}
@@ -1571,17 +1709,21 @@ export function EditBookingDialog({
               <button
                 type="button"
                 onClick={handleCopy}
-                disabled={copyLoading || !copyToDate || !copyToTime}
+                disabled={copyLoading || !copyToDate || !copyToTime || copyConflictStatus === 'checking' || copyConflictStatus === 'conflict'}
                 style={{
                   flex: 1,
                   padding: '12px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: (copyLoading || !copyToDate || !copyToTime) ? '#ccc' : 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                  background: (copyLoading || !copyToDate || !copyToTime || copyConflictStatus === 'checking' || copyConflictStatus === 'conflict') 
+                    ? '#ccc' 
+                    : 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
                   color: 'white',
                   fontSize: '16px',
                   fontWeight: '600',
-                  cursor: (copyLoading || !copyToDate || !copyToTime) ? 'not-allowed' : 'pointer',
+                  cursor: (copyLoading || !copyToDate || !copyToTime || copyConflictStatus === 'checking' || copyConflictStatus === 'conflict') 
+                    ? 'not-allowed' 
+                    : 'pointer',
                 }}
               >
                 {copyLoading ? '複製中...' : '確認複製'}

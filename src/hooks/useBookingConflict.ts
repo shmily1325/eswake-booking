@@ -46,22 +46,24 @@ export function useBookingConflict() {
                 durationMin
             )
 
-            if (availability.isUnavailable) {
-                const reason = `船隻不可用：${availability.reason || '維修保養中'}`
-                setError(reason)
-                return { hasConflict: true, reason }
-            }
+        if (availability.isUnavailable) {
+            const displayBoatName = boatName || '船隻'
+            const reason = `${displayBoatName} 不可用：${availability.reason || '維修保養中'}`
+            setError(reason)
+            return { hasConflict: true, reason }
+        }
 
-            // 2. 檢查船隻預約衝突
-            const isBoatFacility = isFacility(boatName)
-            const boatConflict = await checkBoatConflict(
-                boatId,
-                date,
-                startTime,
-                durationMin,
-                isBoatFacility,
-                excludeBookingId
-            )
+        // 2. 檢查船隻預約衝突
+        const isBoatFacility = isFacility(boatName)
+        const boatConflict = await checkBoatConflict(
+            boatId,
+            date,
+            startTime,
+            durationMin,
+            isBoatFacility,
+            excludeBookingId,
+            boatName
+        )
 
             if (boatConflict.hasConflict) {
                 setError(boatConflict.reason)
