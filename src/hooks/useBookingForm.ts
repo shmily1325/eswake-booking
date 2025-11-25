@@ -59,14 +59,20 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
     const selectedBoat = useMemo(() => boats.find(b => b.id === selectedBoatId), [boats, selectedBoatId])
     const isSelectedBoatFacility = useMemo(() => isFacility(selectedBoat?.name), [selectedBoat])
 
-    const canRequireDriver = selectedCoaches.length > 0 && !isSelectedBoatFacility
+    const canRequireDriver = useMemo(() => 
+        selectedCoaches.length > 0 && !isSelectedBoatFacility,
+        [selectedCoaches.length, isSelectedBoatFacility]
+    )
 
     const filteredMembers = useMemo(() =>
         filterMembers(members, memberSearchTerm, 10),
         [members, memberSearchTerm]
     )
 
-    const finalStudentName = composeFinalStudentName(members, selectedMemberIds, manualNames)
+    const finalStudentName = useMemo(() => 
+        composeFinalStudentName(members, selectedMemberIds, manualNames),
+        [members, selectedMemberIds, manualNames]
+    )
 
     // --- Effects ---
 
