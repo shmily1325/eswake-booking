@@ -85,7 +85,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
             setNotes(initialBooking.notes || '')
             setRequiresDriver(initialBooking.requires_driver || false)
             setActivityTypes(initialBooking.activity_types || [])
-            setFilledBy(initialBooking.filled_by || '')
+            // 編輯模式下清空填表人，讓編輯者重新填寫
+            setFilledBy('')
 
             const datetime = initialBooking.start_at.substring(0, 16)
             const [date, time] = datetime.split('T')

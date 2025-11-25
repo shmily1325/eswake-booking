@@ -72,14 +72,14 @@ export function BaoHub() {
             link: '/staff'
           },
           {
-            title: '匯出',
-            icon: '💾',
-            link: '/backup'
-          },
-          {
             title: '船隻管理',
             icon: '🚤',
             link: '/boats'
+          },
+          {
+            title: '匯出',
+            icon: '💾',
+            link: '/backup'
           },
           {
             title: 'LINE 提醒設置',
