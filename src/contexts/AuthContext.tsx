@@ -22,6 +22,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null)
       } else {
         setUser(session?.user ?? null)
+        if (import.meta.env.DEV && session) {
+          console.log('Session loaded:', {
+            user: session.user.email,
+            expires_at: new Date(session.expires_at! * 1000).toLocaleString(),
+            expires_in: Math.round((session.expires_at! * 1000 - Date.now()) / 1000 / 60) + ' minutes'
+          })
+        }
       }
       setLoading(false)
     })
@@ -29,7 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes with detailed event handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (import.meta.env.DEV) {
-        console.log('Auth state changed:', event) // Debug log (dev only)
+        console.log('Auth state changed:', event, session ? {
+          user: session.user.email,
+          expires_at: new Date(session.expires_at! * 1000).toLocaleString()
+        } : 'No session')
       }
       
       switch (event) {
@@ -39,15 +49,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           break
         case 'SIGNED_IN':
           setUser(session?.user ?? null)
+          if (import.meta.env.DEV) {
+            console.log('✅ User signed in successfully')
+          }
           break
         case 'SIGNED_OUT':
           setUser(null)
+          if (import.meta.env.DEV) {
+            console.log('👋 User signed out')
+          }
           break
         case 'TOKEN_REFRESHED':
           // Token 成功刷新
           setUser(session?.user ?? null)
           if (import.meta.env.DEV) {
-            console.log('Token refreshed successfully')
+            console.log('🔄 Token refreshed successfully')
           }
           break
         case 'USER_UPDATED':

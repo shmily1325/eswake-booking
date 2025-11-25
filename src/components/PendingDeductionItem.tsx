@@ -792,8 +792,8 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                 borderTop: '2px solid #e0e0e0',
                 zIndex: 10
               }}>
-                {/* 總覽卡片 */}
-                {(() => {
+                {/* 總覽卡片 - 已移除 */}
+                {/* {(() => {
                   // 計算所有扣款的累積影響
                   const deductionItems = items.filter(item => item.category !== 'direct_settlement')
                   
@@ -932,7 +932,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                       </div>
                     </div>
                   )
-                })()}
+                })()} */}
 
                 {/* 操作按鈕 */}
                 <div style={{ 
@@ -1021,13 +1021,13 @@ function DeductionItemRow({
   defaultDescription,
   boatName,
   coachPrice30min,
-  boatData,
+  boatData: _boatData,
   validationErrors,
   itemIndex,
   onUpdate, 
   onRemove,
   canRemove,
-  totalItems
+  totalItems: _totalItems
 }: DeductionItemRowProps) {
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [showNotes, setShowNotes] = useState(!!item.notes)
@@ -1086,12 +1086,12 @@ function DeductionItemRow({
 
   const balance = calculateBalance()
   
-  // 檢查價格設定
-  const isPriceNotSet = (isBalance || isVipVoucher) && (
-    (isBalance && !boatData?.balance_price_per_hour) ||
-    (isVipVoucher && !boatData?.vip_price_per_hour)
-  )
-  const isCoachPriceNotSet = (isDesignatedLesson || isDesignatedLessonFromBalance) && !coachPrice30min
+  // 檢查價格設定 - 暫時註解
+  // const isPriceNotSet = (isBalance || isVipVoucher) && (
+  //   (isBalance && !boatData?.balance_price_per_hour) ||
+  //   (isVipVoucher && !boatData?.vip_price_per_hour)
+  // )
+  // const isCoachPriceNotSet = (isDesignatedLesson || isDesignatedLessonFromBalance) && !coachPrice30min
 
   return (
     <div 
@@ -1106,59 +1106,66 @@ function DeductionItemRow({
         position: 'relative'
       }}
     >
-      {/* 標題欄（僅多項時顯示） */}
-      {totalItems > 1 && (
+      {/* 標題欄 */}
+      {/* {totalItems > 1 && ( */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          marginBottom: '14px',
-          paddingBottom: '12px',
-          borderBottom: '2px solid #e8f4f8'
+          marginBottom: '12px',
+          paddingBottom: '10px',
+          borderBottom: '1px solid #e8ecef'
         }}>
           <div style={{ 
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '10px'
           }}>
             <span style={{ 
-              fontSize: '18px', 
-              fontWeight: '700',
-              color: index % 2 === 0 ? '#0ea5e9' : '#64748b',
-              minWidth: '28px'
+              fontSize: '11px', 
+              fontWeight: '500',
+              color: '#9ca3af',
+              background: '#f3f4f6',
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
             }}>
-              {index}.
+              {index}
             </span>
-            <span style={{ fontSize: '20px' }}>{currentCategory?.emoji}</span>
+            <span style={{ fontSize: '16px' }}>{currentCategory?.emoji}</span>
           </div>
           {canRemove && (
             <button
               onClick={onRemove}
               style={{
-                padding: '6px 12px',
+                padding: '4px 10px',
                 background: '#fff',
-                color: '#e74c3c',
-                border: '1px solid #e74c3c',
+                color: '#ef4444',
+                border: '1px solid #fecaca',
                 borderRadius: '6px',
-                fontSize: '13px',
+                fontSize: '12px',
                 cursor: 'pointer',
                 fontWeight: '500',
                 transition: 'all 0.2s'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#e74c3c'
-                e.currentTarget.style.color = 'white'
+                e.currentTarget.style.background = '#fef2f2'
+                e.currentTarget.style.borderColor = '#ef4444'
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = '#fff'
-                e.currentTarget.style.color = '#e74c3c'
+                e.currentTarget.style.borderColor = '#fecaca'
               }}
             >
               刪除
             </button>
           )}
         </div>
-      )}
+      {/* )} */}
 
       {/* 類別選擇 */}
       <div style={{ marginBottom: '14px' }}>
@@ -1220,8 +1227,8 @@ function DeductionItemRow({
         </select>
       </div>
 
-      {/* 價格未設定警告 */}
-      {(isPriceNotSet || isCoachPriceNotSet) && (
+      {/* 價格未設定警告 - 暫時註解 */}
+      {/* {(isPriceNotSet || isCoachPriceNotSet) && (
         <div style={{
           marginBottom: '14px',
           padding: '12px 14px',
@@ -1252,7 +1259,7 @@ function DeductionItemRow({
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* 金額/時數選擇 */}
       <div style={{ marginBottom: '14px' }}>
