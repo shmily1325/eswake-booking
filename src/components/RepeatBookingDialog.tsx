@@ -157,6 +157,9 @@ export function RepeatBookingDialog({
   }
 
   console.log('[RepeatBookingDialog] Rendering dialog content...')
+  console.log('[RepeatBookingDialog] About to render JSX, isMobile:', isMobile)
+  console.log('[RepeatBookingDialog] boats:', boats)
+  console.log('[RepeatBookingDialog] coaches:', coaches)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -378,6 +381,24 @@ export function RepeatBookingDialog({
     }
   }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate])
 
+  console.log('[RepeatBookingDialog] Before return statement')
+  
+  try {
+    console.log('[RepeatBookingDialog] Creating JSX...')
+    return (
+      <div style={{ padding: '20px', background: 'white' }}>
+        <h1>Simple Test</h1>
+        <p>If you see this, the dialog works!</p>
+        <button onClick={onClose}>Close</button>
+      </div>
+    )
+  } catch (error) {
+    console.error('[RepeatBookingDialog] Error in return:', error)
+    return <div>Error rendering dialog</div>
+  }
+
+  // 旧代码暂时注释
+  /*
   return (
     <div
       style={{
@@ -645,5 +666,6 @@ export function RepeatBookingDialog({
       </div>
     </div>
   )
+  */
 }
 
