@@ -335,59 +335,23 @@ export function RepeatBookingDialog({
   }
   console.log('[RepeatBookingDialog] handleClose defined')
 
-  console.log('[RepeatBookingDialog] About to define previewDates useMemo, dependencies:', { startDate, startTime, repeatMode, repeatCount, repeatEndDate })
-  const previewDates = useMemo(() => {
-    console.log('[RepeatBookingDialog] Computing previewDates, startDate:', startDate, 'startTime:', startTime)
-    
-    if (!startDate || !startTime || startDate === '' || startTime === '') {
-      console.log('[RepeatBookingDialog] startDate or startTime is empty, returning []')
-      return []
-    }
-    
-    if (typeof startDate !== 'string' || typeof startTime !== 'string') {
-      console.error('[RepeatBookingDialog] startDate or startTime is not a string!', typeof startDate, typeof startTime)
-      return []
-    }
-    
-    try {
-      const [year, month, day] = startDate.split('-').map(Number)
-      const [hour, minute] = startTime.split(':').map(Number)
-      
-      if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
-        console.error('[RepeatBookingDialog] Invalid date/time parse:', { year, month, day, hour, minute })
-        return []
-      }
-      
-      console.log('[RepeatBookingDialog] Parsed date/time:', { year, month, day, hour, minute })
-      const baseDateTime = new Date(year, month - 1, day, hour, minute, 0)
-      
-      const dates: Date[] = []
-      const currentDate = new Date(baseDateTime)
-
-      if (repeatMode === 'endDate' && repeatEndDate) {
-        const [endYear, endMonth, endDay] = repeatEndDate.split('-').map(Number)
-        const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59)
-        while (currentDate <= endDate && dates.length < 5) {
-          dates.push(new Date(currentDate))
-          currentDate.setDate(currentDate.getDate() + 7)
-        }
-      } else {
-        const count = Math.min(5, repeatCount)
-        for (let i = 0; i < count; i++) {
-          dates.push(new Date(currentDate))
-          currentDate.setDate(currentDate.getDate() + 7)
-        }
-      }
-
-      console.log('[RepeatBookingDialog] Computed previewDates:', dates.length)
-      return dates
-    } catch (error) {
-      console.error('[RepeatBookingDialog] Error computing previewDates:', error)
-      return []
-    }
-  }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate])
+  console.log('[RepeatBookingDialog] About to define previewDates')
   
-  console.log('[RepeatBookingDialog] previewDates computed, length:', previewDates.length)
+  // 简化的预览日期 - 直接调用 generateRepeatDates 并取前5个
+  const previewDates = useMemo(() => {
+    console.log('[RepeatBookingDialog] Computing previewDates')
+    try {
+      const allDates = generateRepeatDates()
+      const preview = allDates.slice(0, 5)
+      console.log('[RepeatBookingDialog] Preview dates computed:', preview.length)
+      return preview
+    } catch (error) {
+      console.error('[RepeatBookingDialog] Error in previewDates:', error)
+      return []
+    }
+  }, [generateRepeatDates])
+  
+  console.log('[RepeatBookingDialog] previewDates defined, length:', previewDates?.length || 0)
 
   console.log('[RepeatBookingDialog] Before return statement')
   
