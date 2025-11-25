@@ -19,6 +19,7 @@ interface CoachReportFormDialogProps {
   filteredMembers: Member[]
   lessonTypes: Array<{ value: string; label: string }>
   paymentMethods: Array<{ value: string; label: string }>
+  isSubmitting?: boolean  // 新增：提交中狀態
   onDriverDurationChange: (value: number) => void
   onParticipantUpdate: (index: number, field: keyof Participant, value: any) => void
   onParticipantAdd: () => void
@@ -41,6 +42,7 @@ export function CoachReportFormDialog({
   filteredMembers,
   lessonTypes,
   paymentMethods,
+  isSubmitting = false,  // 新增：預設為 false
   onDriverDurationChange,
   onParticipantUpdate,
   onParticipantAdd,
@@ -235,21 +237,27 @@ export function CoachReportFormDialog({
         >
           <button
             onClick={onCancel}
+            disabled={isSubmitting}
             style={{
               ...getButtonStyle('secondary'),
-              flex: 1
+              flex: 1,
+              opacity: isSubmitting ? 0.6 : 1,
+              cursor: isSubmitting ? 'not-allowed' : 'pointer'
             }}
           >
             取消
           </button>
           <button
             onClick={onSubmit}
+            disabled={isSubmitting}
             style={{
               ...getButtonStyle('primary'),
-              flex: 2
+              flex: 2,
+              opacity: isSubmitting ? 0.7 : 1,
+              cursor: isSubmitting ? 'not-allowed' : 'pointer'
             }}
           >
-            提交回報
+            {isSubmitting ? '提交中...' : '提交回報'}
           </button>
         </div>
       </div>

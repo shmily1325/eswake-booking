@@ -332,9 +332,20 @@ describe('bookingConflict.ts - 預約衝突檢測', () => {
         contact_name: '李四'
       }
 
-      const mockFrom = vi.fn(() => ({
+      // Mock for booking_drivers query (first call)
+      const bookingDriversQuery = {
         select: vi.fn(() => ({
-          eq: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ 
+            data: [{ booking_id: 456 }], 
+            error: null 
+          }))
+        }))
+      }
+
+      // Mock for bookings query (second call)
+      const bookingsQuery = {
+        select: vi.fn(() => ({
+          in: vi.fn(() => ({
             gte: vi.fn(() => ({
               lte: vi.fn(() => Promise.resolve({ 
                 data: [mockBooking], 
@@ -343,8 +354,19 @@ describe('bookingConflict.ts - 預約衝突檢測', () => {
             }))
           }))
         }))
-      }))
-      vi.mocked(supabase.from).mockImplementation(mockFrom as any)
+      }
+
+      // Mock supabase.from to return different queries based on table name
+      let callCount = 0
+      vi.mocked(supabase.from).mockImplementation(((tableName: string) => {
+        callCount++
+        if (tableName === 'booking_drivers') {
+          return bookingDriversQuery
+        } else if (tableName === 'bookings') {
+          return bookingsQuery
+        }
+        return {} as any
+      }) as any)
 
       const result = await checkDriverConflict('driver-1', '2025-11-24', '10:00', 60)
       expect(result.hasConflict).toBe(true)

@@ -74,7 +74,9 @@ describe('bookingDataHelpers.ts - 預約資料輔助函數', () => {
         status: null,
         notes: null,
         created_at: null,
-        updated_at: null
+        updated_at: null,
+        designated_lesson_price_30min: null,
+        user_email: null
       }])
       expect(result[0].drivers).toEqual([{ 
         id: 'driver-1', 
@@ -82,7 +84,9 @@ describe('bookingDataHelpers.ts - 預約資料輔助函數', () => {
         status: null,
         notes: null,
         created_at: null,
-        updated_at: null
+        updated_at: null,
+        designated_lesson_price_30min: null,
+        user_email: null
       }])
       expect(result[0].coach_report).toEqual(relations.reports[0])
       expect(result[0].participants).toHaveLength(1)

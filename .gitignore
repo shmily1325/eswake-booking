@@ -30,3 +30,6 @@ dist-ssr
 # Temporary and backup files
 *.tmp
 *.backup.*
+
+# Test coverage
+coverage

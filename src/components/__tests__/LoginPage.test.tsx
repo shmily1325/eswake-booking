@@ -51,7 +51,12 @@ describe('LoginPage', () => {
       expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: `${window.location.origin}/`,
+          skipBrowserRedirect: false,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       })
     })

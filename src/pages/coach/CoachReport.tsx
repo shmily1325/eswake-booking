@@ -86,6 +86,9 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
     filteredMembers,
     handleSearchChange 
   } = useMemberSearch()
+  
+  // 提交狀態
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // 載入教練列表
   useEffect(() => {
@@ -456,6 +459,13 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
   }
 
   const submitReport = async () => {
+    // 防止重複提交
+    if (isSubmitting) {
+      console.log('⚠️ 正在提交中，請勿重複點擊')
+      return
+    }
+    
+    setIsSubmitting(true)
     try {
       if (reportType === 'driver' || reportType === 'both') {
         await submitDriverReport()
@@ -471,6 +481,8 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
     } catch (error) {
       // 錯誤已在子函數中處理，這裡不再重複顯示
       console.error('提交回報失敗:', error)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -1540,6 +1552,7 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
         filteredMembers={filteredMembers as any}
         lessonTypes={LESSON_TYPES}
         paymentMethods={PAYMENT_METHODS}
+        isSubmitting={isSubmitting}
         onDriverDurationChange={setDriverDuration}
         onParticipantUpdate={updateParticipant}
         onParticipantAdd={addParticipant}
