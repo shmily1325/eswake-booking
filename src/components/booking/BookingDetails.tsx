@@ -15,6 +15,7 @@ export function BookingDetails({
     filledBy,
     setFilledBy,
 }: BookingDetailsProps) {
+    console.log('[BookingDetails] Rendering')
     return (
         <>
             {/* 填表人 */}

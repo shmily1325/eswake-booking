@@ -7,6 +7,7 @@ interface BoatSelectorProps {
 }
 
 export function BoatSelector({ boats, selectedBoatId, onSelect }: BoatSelectorProps) {
+    console.log('[BoatSelector] Rendering, boats:', boats?.length)
     const safeBoats = boats || []
     
     return (

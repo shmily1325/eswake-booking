@@ -406,72 +406,52 @@ export function RepeatBookingDialog({
 
         <form onSubmit={handleSubmit}>
           {/* 會員選擇 */}
-          {(() => {
-            console.log('[RepeatBookingDialog] Rendering MemberSelector')
-            return (
-              <MemberSelector
-                members={members}
-                selectedMemberIds={selectedMemberIds}
-                memberSearchTerm={memberSearchTerm}
-                showMemberDropdown={showMemberDropdown}
-                filteredMembers={filteredMembers}
-                manualStudentName={manualStudentName}
-                manualNames={manualNames}
-                setSelectedMemberIds={setSelectedMemberIds}
-                setMemberSearchTerm={setMemberSearchTerm}
-                setShowMemberDropdown={setShowMemberDropdown}
-                setManualStudentName={setManualStudentName}
-                setManualNames={setManualNames}
-                handleMemberSearch={handleMemberSearch}
-              />
-            )
-          })()}
+          <MemberSelector
+            members={members}
+            selectedMemberIds={selectedMemberIds}
+            memberSearchTerm={memberSearchTerm}
+            showMemberDropdown={showMemberDropdown}
+            filteredMembers={filteredMembers}
+            manualStudentName={manualStudentName}
+            manualNames={manualNames}
+            setSelectedMemberIds={setSelectedMemberIds}
+            setMemberSearchTerm={setMemberSearchTerm}
+            setShowMemberDropdown={setShowMemberDropdown}
+            setManualStudentName={setManualStudentName}
+            setManualNames={setManualNames}
+            handleMemberSearch={handleMemberSearch}
+          />
 
           {/* 船隻選擇 */}
-          {(() => {
-            console.log('[RepeatBookingDialog] Rendering BoatSelector')
-            return (
-              <BoatSelector
-                boats={boats}
-                selectedBoatId={selectedBoatId}
-                onSelect={setSelectedBoatId}
-              />
-            )
-          })()}
+          <BoatSelector
+            boats={boats}
+            selectedBoatId={selectedBoatId}
+            onSelect={setSelectedBoatId}
+          />
 
           {/* 教練選擇 */}
-          {(() => {
-            console.log('[RepeatBookingDialog] Rendering CoachSelector')
-            return (
-              <CoachSelector
-                coaches={coaches}
-                selectedCoaches={selectedCoaches}
-                selectedCoachesSet={selectedCoachesSet}
-                setSelectedCoaches={setSelectedCoaches}
-                toggleCoach={toggleCoach}
-                loadingCoaches={loadingCoaches}
-                requiresDriver={requiresDriver}
-                setRequiresDriver={setRequiresDriver}
-                canRequireDriver={canRequireDriver}
-                isSelectedBoatFacility={isSelectedBoatFacility}
-              />
-            )
-          })()}
+          <CoachSelector
+            coaches={coaches}
+            selectedCoaches={selectedCoaches}
+            selectedCoachesSet={selectedCoachesSet}
+            setSelectedCoaches={setSelectedCoaches}
+            toggleCoach={toggleCoach}
+            loadingCoaches={loadingCoaches}
+            requiresDriver={requiresDriver}
+            setRequiresDriver={setRequiresDriver}
+            canRequireDriver={canRequireDriver}
+            isSelectedBoatFacility={isSelectedBoatFacility}
+          />
 
           {/* 時間選擇 */}
-          {(() => {
-            console.log('[RepeatBookingDialog] Rendering TimeSelector')
-            return (
-              <TimeSelector
-                startDate={startDate}
-                startTime={startTime}
-                durationMin={durationMin}
-                setStartDate={setStartDate}
-                setStartTime={setStartTime}
-                setDurationMin={setDurationMin}
-              />
-            )
-          })()}
+          <TimeSelector
+            startDate={startDate}
+            startTime={startTime}
+            durationMin={durationMin}
+            setStartDate={setStartDate}
+            setStartTime={setStartTime}
+            setDurationMin={setDurationMin}
+          />
 
           {/* 重複設定 */}
           <div style={{
@@ -587,19 +567,14 @@ export function RepeatBookingDialog({
           </div>
 
           {/* 活動類型和註解 */}
-          {(() => {
-            console.log('[RepeatBookingDialog] Rendering BookingDetails')
-            return (
-              <BookingDetails
-                activityTypesSet={activityTypesSet}
-                toggleActivityType={toggleActivityType}
-                notes={notes}
-                setNotes={setNotes}
-                filledBy={filledBy}
-                setFilledBy={setFilledBy}
-              />
-            )
-          })()}
+          <BookingDetails
+            activityTypesSet={activityTypesSet}
+            toggleActivityType={toggleActivityType}
+            notes={notes}
+            setNotes={setNotes}
+            filledBy={filledBy}
+            setFilledBy={setFilledBy}
+          />
 
           {/* 錯誤訊息 */}
           {error && (

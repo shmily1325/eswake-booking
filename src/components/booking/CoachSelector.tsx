@@ -26,6 +26,7 @@ export function CoachSelector({
     canRequireDriver,
     isSelectedBoatFacility,
 }: CoachSelectorProps) {
+    console.log('[CoachSelector] Rendering, coaches:', coaches?.length)
     const safeCoaches = coaches || []
     const safeSelectedCoaches = selectedCoaches || []
     
