@@ -340,11 +340,16 @@ export function RepeatBookingDialog({
   }
 
   const previewDates = useMemo(() => {
-    if (!startDate || !startTime) return []
+    console.log('[RepeatBookingDialog] Computing previewDates, startDate:', startDate, 'startTime:', startTime)
+    if (!startDate || !startTime) {
+      console.log('[RepeatBookingDialog] startDate or startTime is empty, returning []')
+      return []
+    }
     
     try {
       const [year, month, day] = startDate.split('-').map(Number)
       const [hour, minute] = startTime.split(':').map(Number)
+      console.log('[RepeatBookingDialog] Parsed date/time:', { year, month, day, hour, minute })
       const baseDateTime = new Date(year, month - 1, day, hour, minute, 0)
       
       const dates: Date[] = []
@@ -365,8 +370,10 @@ export function RepeatBookingDialog({
         }
       }
 
+      console.log('[RepeatBookingDialog] Computed previewDates:', dates.length)
       return dates
-    } catch {
+    } catch (error) {
+      console.error('[RepeatBookingDialog] Error computing previewDates:', error)
       return []
     }
   }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate])
@@ -404,7 +411,9 @@ export function RepeatBookingDialog({
           📅 重複預約
         </h2>
 
-        <form onSubmit={handleSubmit}>
+        <div>測試：對話框可以打開嗎？ boats: {boats?.length}, coaches: {coaches?.length}</div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'none' }}>
           {/* 會員選擇 */}
           <MemberSelector
             members={members}
