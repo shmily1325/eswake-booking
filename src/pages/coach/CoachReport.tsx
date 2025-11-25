@@ -115,7 +115,7 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
   const loadCoaches = async () => {
     const { data, error } = await supabase
       .from('coaches')
-      .select('id, name, status, notes, created_at, updated_at, user_email')
+      .select('id, name, status, notes, created_at, updated_at, user_email, designated_lesson_price_30min')
       .neq('status', 'archived')
       .order('name')
     
