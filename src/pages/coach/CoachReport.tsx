@@ -51,9 +51,10 @@ const LESSON_TYPES = [
 
 interface CoachReportProps {
   autoFilterByUser?: boolean // 是否自動根據登入用戶篩選教練
+  embedded?: boolean // 是否嵌入在其他頁面中（隱藏 PageHeader）
 }
 
-export function CoachReport({ autoFilterByUser = false }: CoachReportProps = {}) {
+export function CoachReport({ autoFilterByUser = false, embedded = false }: CoachReportProps = {}) {
   const user = useAuthUser()
   const toast = useToast()
   const { isMobile } = useResponsive()
@@ -219,22 +220,19 @@ export function CoachReport({ autoFilterByUser = false }: CoachReportProps = {})
         }
       } else {
         setAllBookings([])
-        setAvailableCoaches(coaches) // 未回報模式顯示所有教練
+        // 在自動篩選模式下，只顯示當前教練
+        if (autoFilterByUser && userCoachId) {
+          const currentCoach = coaches.find(c => c.id === userCoachId)
+          setAvailableCoaches(currentCoach ? [currentCoach] : [])
+        } else {
+          setAvailableCoaches(coaches) // 未回報模式顯示所有教練
+        }
       }
 
       // 使用輔助函數篩選預約
-      console.log('🔍 開始篩選預約')
-      console.log('   - autoFilterByUser:', autoFilterByUser)
-      console.log('   - selectedCoachId:', selectedCoachId)
-      console.log('   - 篩選前預約數量:', filteredBookings.length)
-      
-      filteredBookings = filterBookingsByCoach(filteredBookings, selectedCoachId)
-      
-      console.log('   - 篩選後預約數量:', filteredBookings.length)
-      if (filteredBookings.length > 0) {
-        console.log('   - 第一個預約的教練:', filteredBookings[0].coaches?.map((c: any) => c.name).join(', '))
-        console.log('   - 第一個預約的駕駛:', filteredBookings[0].drivers?.map((d: any) => d.name).join(', '))
-      }
+      // 在自動篩選模式下，強制使用 userCoachId
+      const coachIdToFilter = autoFilterByUser && userCoachId ? userCoachId : selectedCoachId
+      filteredBookings = filterBookingsByCoach(filteredBookings, coachIdToFilter)
 
       if (viewMode === 'unreported') {
         filteredBookings = filterUnreportedBookings(
@@ -1055,15 +1053,17 @@ export function CoachReport({ autoFilterByUser = false }: CoachReportProps = {})
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
-      <PageHeader 
-        user={user} 
-        title={autoFilterByUser ? "我的回報" : "預約回報"}
-        showBaoLink={!autoFilterByUser}
-        extraLinks={autoFilterByUser ? undefined : [
-          { label: '回報管理 →', link: '/coach-admin' }
-        ]}
-      />
+    <div style={{ minHeight: embedded ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+      {!embedded && (
+        <PageHeader 
+          user={user} 
+          title={autoFilterByUser ? "我的回報" : "預約回報"}
+          showBaoLink={!autoFilterByUser}
+          extraLinks={autoFilterByUser ? undefined : [
+            { label: '回報管理 →', link: '/coach-admin' }
+          ]}
+        />
+      )}
       
       <div style={{ 
         flex: 1, 
