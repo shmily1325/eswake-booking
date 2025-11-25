@@ -37,12 +37,12 @@ interface Booking {
 
 const generateTimeSlots = () => {
   const slots: string[] = []
-  slots.push('04:30')
   
-  let hour = 4
-  let minute = 45
+  // 從 00:00 開始生成，以支援所有可能的預約時間
+  let hour = 0
+  let minute = 0
   
-  while (hour < 22 || (hour === 22 && minute === 0)) {
+  while (hour < 24) {
     const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
     slots.push(timeSlot)
     
@@ -295,16 +295,16 @@ export function CoachDailyView() {
 
   // 過濾時間槽：只顯示有預約的時間範圍（最少顯示 04:30-18:00）
   const filteredTimeSlots = useMemo(() => {
-    // 設定最小顯示範圍：04:30-18:00
-    const minStartMinutes = 4 * 60 + 30  // 04:30
-    const minEndMinutes = 18 * 60        // 18:00
+    // 設定預設顯示範圍：04:30-18:00
+    const defaultStartMinutes = 4 * 60 + 30  // 04:30
+    const defaultEndMinutes = 18 * 60        // 18:00
 
     if (filteredBookings.length === 0) {
       // 沒有預約時，顯示 04:30-18:00
       return TIME_SLOTS.filter(slot => {
         const [hour, minute] = slot.split(':').map(Number)
         const slotMinutes = hour * 60 + minute
-        return slotMinutes >= minStartMinutes && slotMinutes <= minEndMinutes
+        return slotMinutes >= defaultStartMinutes && slotMinutes <= defaultEndMinutes
       })
     }
 
@@ -327,9 +327,9 @@ export function CoachDailyView() {
     earliestMinutes = Math.max(0, earliestMinutes - 30)
     latestMinutes = Math.min(24 * 60, latestMinutes + 30)
 
-    // 確保至少顯示 04:30-18:00
-    earliestMinutes = Math.min(earliestMinutes, minStartMinutes)
-    latestMinutes = Math.max(latestMinutes, minEndMinutes)
+    // 如果預約時間在預設範圍外，擴展顯示範圍；否則至少顯示 04:30-18:00
+    earliestMinutes = Math.min(earliestMinutes, defaultStartMinutes)
+    latestMinutes = Math.max(latestMinutes, defaultEndMinutes)
 
     return TIME_SLOTS.filter(slot => {
       const [hour, minute] = slot.split(':').map(Number)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
@@ -11,6 +11,7 @@ import { MemberSelector } from './booking/MemberSelector'
 import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
 import { getLocalTimestamp } from '../utils/date'
+
 
 interface RepeatBookingDialogProps {
   isOpen: boolean
@@ -131,7 +132,7 @@ export function RepeatBookingDialog({
 
   if (!isOpen) return null
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
 
@@ -295,12 +296,36 @@ export function RepeatBookingDialog({
   }
 
   const previewDates = useMemo(() => {
+    if (!startDate || !startTime) return []
+    
     try {
-      return generateRepeatDates().slice(0, 5) // 只預覽前5個
+      const [year, month, day] = startDate.split('-').map(Number)
+      const [hour, minute] = startTime.split(':').map(Number)
+      const baseDateTime = new Date(year, month - 1, day, hour, minute, 0)
+      
+      const dates: Date[] = []
+      const currentDate = new Date(baseDateTime)
+
+      if (repeatMode === 'endDate' && repeatEndDate) {
+        const [endYear, endMonth, endDay] = repeatEndDate.split('-').map(Number)
+        const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59)
+        while (currentDate <= endDate && dates.length < 5) {
+          dates.push(new Date(currentDate))
+          currentDate.setDate(currentDate.getDate() + 7)
+        }
+      } else {
+        const count = Math.min(5, repeatCount)
+        for (let i = 0; i < count; i++) {
+          dates.push(new Date(currentDate))
+          currentDate.setDate(currentDate.getDate() + 7)
+        }
+      }
+
+      return dates
     } catch {
       return []
     }
-  }, [generateRepeatDates])
+  }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate])
 
   return (
     <div
