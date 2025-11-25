@@ -242,12 +242,13 @@ export function StaffManagement() {
     if (!selectedAccountCoach) return
     
     // 使用參數覆蓋值（用於清除時），否則使用狀態值
-    const email = emailOverride !== undefined ? emailOverride : accountEmail.trim()
+    const email = emailOverride !== undefined ? emailOverride : (accountEmail || '').trim()
     
     // 調試：顯示 email 的詳細信息
+    console.log('accountEmail state:', accountEmail)
     console.log('Email to validate:', email)
-    console.log('Email length:', email.length)
-    console.log('Email charCodes:', Array.from(email).map(c => c.charCodeAt(0)))
+    console.log('Email length:', email?.length)
+    console.log('Email charCodes:', email ? Array.from(email).map(c => c.charCodeAt(0)) : [])
     
     // 驗證 email 格式
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -1135,7 +1136,7 @@ export function StaffManagement() {
               <input
                 type="text"
                 value={accountEmail}
-                onChange={(e) => setAccountEmail(e.target.value.trim())}
+                onChange={(e) => setAccountEmail(e.target.value)}
                 placeholder="例如：coach@example.com"
                 style={{
                   width: '100%',
