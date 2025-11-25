@@ -144,6 +144,7 @@ export function CoachReport({ autoFilterByUser = false }: CoachReportProps = {})
     if (data) {
       setUserCoachId(data.id)
       setSelectedCoachId(data.id) // 自動選擇該教練
+      console.log('✅ 自動篩選模式：已設定教練 ID =', data.id)
     } else {
       toast.error('您的帳號尚未配對教練，請聯繫管理員')
     }
@@ -212,8 +213,8 @@ export function CoachReport({ autoFilterByUser = false }: CoachReportProps = {})
         const availableCoachList = extractAvailableCoaches(bookingsWithRelations)
         setAvailableCoaches(availableCoachList)
         
-        // 如果當前選中的教練不在可用列表中，切換到"全部"
-        if (selectedCoachId !== 'all' && !availableCoachList.some(c => c.id === selectedCoachId)) {
+        // 如果當前選中的教練不在可用列表中，切換到"全部"（但在自動篩選模式下不切換）
+        if (!autoFilterByUser && selectedCoachId !== 'all' && !availableCoachList.some(c => c.id === selectedCoachId)) {
           setSelectedCoachId('all')
         }
       } else {
@@ -222,7 +223,18 @@ export function CoachReport({ autoFilterByUser = false }: CoachReportProps = {})
       }
 
       // 使用輔助函數篩選預約
+      console.log('🔍 開始篩選預約')
+      console.log('   - autoFilterByUser:', autoFilterByUser)
+      console.log('   - selectedCoachId:', selectedCoachId)
+      console.log('   - 篩選前預約數量:', filteredBookings.length)
+      
       filteredBookings = filterBookingsByCoach(filteredBookings, selectedCoachId)
+      
+      console.log('   - 篩選後預約數量:', filteredBookings.length)
+      if (filteredBookings.length > 0) {
+        console.log('   - 第一個預約的教練:', filteredBookings[0].coaches?.map((c: any) => c.name).join(', '))
+        console.log('   - 第一個預約的駕駛:', filteredBookings[0].drivers?.map((d: any) => d.name).join(', '))
+      }
 
       if (viewMode === 'unreported') {
         filteredBookings = filterUnreportedBookings(

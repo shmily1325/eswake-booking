@@ -13,6 +13,7 @@ import { SearchPage } from './pages/SearchPage'
 import { SearchBookings } from './pages/SearchBookings'
 // import { CoachCheck } from './pages/CoachCheck'
 import { CoachReport } from './pages/coach/CoachReport'
+import { MyReport } from './pages/coach/MyReport'
 import { CoachAdmin } from './pages/coach/CoachAdmin'
 import { CoachAssignment } from './pages/coach/CoachAssignment'
 import { MemberImport } from './pages/member/MemberImport'
@@ -66,7 +67,7 @@ function AppContent() {
           <Route path="/search-bookings" element={<SearchBookings />} />
           {/* <Route path="/coach-check" element={<CoachCheck />} /> */}
           <Route path="/coach-report" element={<CoachReport />} />
-          <Route path="/my-report" element={<CoachReport autoFilterByUser={true} />} />
+          <Route path="/my-report" element={<MyReport />} />
           <Route path="/coach-admin" element={<CoachAdmin />} />
           <Route path="/coach-assignment" element={<CoachAssignment />} />
           <Route path="/member-import" element={<MemberImport />} />
