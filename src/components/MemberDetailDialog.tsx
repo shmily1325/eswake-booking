@@ -49,6 +49,8 @@ interface Transaction {
   minutes: number | null
   description: string
   created_at: string | null
+  transaction_date?: string | null
+  notes?: string | null
 }
 
 interface MemberDetailDialogProps {
@@ -472,7 +474,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {transactions.slice(0, 20).map((transaction) => {
-                              const isIncrease = transaction.transaction_type === 'charge' || transaction.adjust_type === 'increase'
+                              const isIncrease = transaction.transaction_type === 'charge'
                               return (
                                 <div key={transaction.id} style={{
                                   padding: '10px',
