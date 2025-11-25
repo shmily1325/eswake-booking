@@ -13,18 +13,6 @@ import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
 import { getLocalTimestamp } from '../utils/date'
 
-// 驗證所有導入的組件
-console.log('[RepeatBookingDialog] Imports check:', {
-  BoatSelector: typeof BoatSelector,
-  TimeSelector: typeof TimeSelector,
-  MemberSelector: typeof MemberSelector,
-  CoachSelector: typeof CoachSelector,
-  BookingDetails: typeof BookingDetails,
-  useResponsive: typeof useResponsive,
-  useBookingForm: typeof useBookingForm,
-  useBookingConflict: typeof useBookingConflict,
-})
-
 
 interface RepeatBookingDialogProps {
   isOpen: boolean
@@ -344,14 +332,26 @@ export function RepeatBookingDialog({
 
   const previewDates = useMemo(() => {
     console.log('[RepeatBookingDialog] Computing previewDates, startDate:', startDate, 'startTime:', startTime)
-    if (!startDate || !startTime) {
+    
+    if (!startDate || !startTime || startDate === '' || startTime === '') {
       console.log('[RepeatBookingDialog] startDate or startTime is empty, returning []')
+      return []
+    }
+    
+    if (typeof startDate !== 'string' || typeof startTime !== 'string') {
+      console.error('[RepeatBookingDialog] startDate or startTime is not a string!', typeof startDate, typeof startTime)
       return []
     }
     
     try {
       const [year, month, day] = startDate.split('-').map(Number)
       const [hour, minute] = startTime.split(':').map(Number)
+      
+      if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+        console.error('[RepeatBookingDialog] Invalid date/time parse:', { year, month, day, hour, minute })
+        return []
+      }
+      
       console.log('[RepeatBookingDialog] Parsed date/time:', { year, month, day, hour, minute })
       const baseDateTime = new Date(year, month - 1, day, hour, minute, 0)
       
