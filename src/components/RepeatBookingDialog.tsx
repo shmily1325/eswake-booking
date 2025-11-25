@@ -383,22 +383,7 @@ export function RepeatBookingDialog({
 
   console.log('[RepeatBookingDialog] Before return statement')
   
-  try {
-    console.log('[RepeatBookingDialog] Creating JSX...')
-    return (
-      <div style={{ padding: '20px', background: 'white' }}>
-        <h1>Simple Test</h1>
-        <p>If you see this, the dialog works!</p>
-        <button onClick={onClose}>Close</button>
-      </div>
-    )
-  } catch (error) {
-    console.error('[RepeatBookingDialog] Error in return:', error)
-    return <div>Error rendering dialog</div>
-  }
-
-  // 旧代码暂时注释
-  /*
+  console.log('[RepeatBookingDialog] Creating JSX...')
   return (
     <div
       style={{
@@ -432,9 +417,7 @@ export function RepeatBookingDialog({
           📅 重複預約
         </h2>
 
-        <div>測試：對話框可以打開嗎？ boats: {boats?.length}, coaches: {coaches?.length}</div>
-
-        <form onSubmit={handleSubmit} style={{ display: 'none' }}>
+        <form onSubmit={handleSubmit}>
           {/* 會員選擇 */}
           <MemberSelector
             members={members}
@@ -666,6 +649,5 @@ export function RepeatBookingDialog({
       </div>
     </div>
   )
-  */
 }
 
