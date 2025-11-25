@@ -100,8 +100,12 @@ export function CoachReport({ autoFilterByUser = false }: CoachReportProps = {})
 
   // 載入預約列表
   useEffect(() => {
+    // 在自動篩選模式下，等待 userCoachId 載入完成後才載入預約
+    if (autoFilterByUser && !userCoachId) {
+      return
+    }
     loadBookings()
-  }, [selectedDate, selectedCoachId, viewMode])
+  }, [selectedDate, selectedCoachId, viewMode, autoFilterByUser, userCoachId])
 
   useEffect(() => {
     handleSearchChange(memberSearchTerm)
@@ -1356,19 +1360,6 @@ export function CoachReport({ autoFilterByUser = false }: CoachReportProps = {})
           )}
           
           {/* 自動篩選模式提示 */}
-          {autoFilterByUser && userCoachId && (
-            <div style={{
-              marginTop: viewMode === 'date' ? '16px' : 0,
-              padding: '12px 16px',
-              background: '#e3f2fd',
-              border: '1px solid #90caf9',
-              borderRadius: '8px',
-              fontSize: '14px',
-              color: '#1565c0'
-            }}>
-              🎯 顯示您的回報：{coaches.find(c => c.id === userCoachId)?.name || '載入中...'}
-            </div>
-          )}
 
           {/* 匯出按鈕 - 在按日期查看模式顯示 */}
           {viewMode === 'date' && (
