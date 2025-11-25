@@ -248,13 +248,12 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     
     // 如果是彈簧床 + 指定課需收費（非現金/匯款），只扣指定課，不扣船費
     if (isTrampoline && report.lesson_type === 'designated_paid') {
+      const designatedAmount = calculateDesignatedLessonAmount(report.duration_min)
       items.push({
         id: '1',
-        category: 'designated_lesson',
-        minutes: report.duration_min,
-        amount: calculateDesignatedLessonAmount(report.duration_min),
-        description: generateDescription(true),  // 加上【指定課】標注
-        notes: '指定課'
+        category: 'balance',  // 指定課需收費一律扣儲值
+        amount: designatedAmount,  // 如果教練有設定價格就帶入，沒有則為 undefined（顯示自訂框）
+        description: generateDescription(true)  // 加上【指定課】標注
       })
       return items
     }
@@ -268,15 +267,14 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
       description: generateDescription(false)
     })
     
-    // 如果是指定課需收費（非彈簧床、非現金/匯款），自動新增第二筆：指定課時數扣款
+    // 如果是指定課需收費（非彈簧床、非現金/匯款），自動新增第二筆：指定課扣款
     if (report.lesson_type === 'designated_paid') {
+      const designatedAmount = calculateDesignatedLessonAmount(report.duration_min)
       items.push({
         id: '2',
-        category: 'designated_lesson',
-        minutes: report.duration_min,
-        amount: calculateDesignatedLessonAmount(report.duration_min),  // 自動計算金額
-        description: generateDescription(true),  // 加上【指定課】標注
-        notes: '指定課'  // 自動填入註解
+        category: 'balance',  // 指定課需收費一律扣儲值
+        amount: designatedAmount,  // 如果教練有設定價格就帶入，沒有則為 undefined（顯示自訂框）
+        description: generateDescription(true)  // 加上【指定課】標注
       })
     }
     

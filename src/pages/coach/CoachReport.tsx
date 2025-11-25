@@ -576,7 +576,7 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
         throw new Error(`載入現有記錄失敗: ${fetchError.message}`)
       }
 
-      // 步驟 2: 硬刪除已移除的參與者（優化：延遲檢查交易）
+      // 步驟 2: 硬刪除已移除的參與者（先檢查交易記錄並警告）
       const oldParticipantIds = new Set<number>()
       validParticipants.forEach((p: any) => {
         if (p.id !== undefined) {
@@ -586,6 +586,28 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
       const participantsToDelete = (oldParticipants || []).filter(old => !oldParticipantIds.has(old.id))
 
       if (participantsToDelete.length > 0) {
+        // 先檢查是否有交易記錄
+        const { data: transactionsData } = await supabase
+          .from('transactions')
+          .select('id, booking_participant_id, amount, description')
+          .in('booking_participant_id', participantsToDelete.map(p => p.id))
+        
+        // 如果有交易記錄，警告用戶
+        if (transactionsData && transactionsData.length > 0) {
+          const names = participantsToDelete
+            .filter(p => transactionsData.some(t => t.booking_participant_id === p.id))
+            .map(p => p.participant_name)
+            .join('、')
+          const totalAmount = transactionsData.reduce((sum, t) => sum + (t.amount || 0), 0)
+          
+          const confirmMessage = `⚠️ 即將刪除的參與者中：\n\n${names}\n\n已有 ${transactionsData.length} 筆交易記錄（總額 ${totalAmount} 元）\n\n刪除回報記錄後，交易記錄不會變動。\n請記得到「會員交易」檢查並處理！\n\n確定要刪除這些回報記錄嗎？`
+          
+          if (!confirm(confirmMessage)) {
+            throw new Error('用戶取消操作')
+          }
+        }
+        
+        // 用戶確認後才刪除
         const { error: deleteError } = await supabase
           .from('booking_participants')
           .delete()
@@ -595,33 +617,6 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
           console.error('刪除記錄失敗:', deleteError)
           throw new Error(`刪除記錄失敗: ${deleteError.message}`)
         }
-        
-        // 非阻塞式：刪除後檢查交易並提醒（不影響使用者等待時間）
-        const checkTransactions = async () => {
-          try {
-            const { data: transactionsData } = await supabase
-              .from('transactions')
-              .select('id, booking_participant_id, amount, description')
-              .in('booking_participant_id', participantsToDelete.map(p => p.id))
-            
-            if (transactionsData && transactionsData.length > 0) {
-              const names = participantsToDelete
-                .filter(p => transactionsData.some(t => t.booking_participant_id === p.id))
-                .map(p => p.participant_name)
-                .join('、')
-              const totalAmount = transactionsData.reduce((sum, t) => sum + (t.amount || 0), 0)
-              
-              setTimeout(() => {
-                alert(`ℹ️ 提醒：剛才刪除的參與者中\n\n${names}\n\n有 ${transactionsData.length} 筆交易記錄（總額 ${totalAmount} 元）\n交易記錄未被刪除，請記得到「會員交易」檢查並處理。`)
-              }, 500)
-            }
-          } catch (error) {
-            console.error('檢查交易記錄失敗:', error)
-          }
-        }
-        
-        // 不等待，讓它在背景執行
-        checkTransactions()
       }
 
       // 步驟 3 & 4: 更新現有記錄 + 插入新記錄

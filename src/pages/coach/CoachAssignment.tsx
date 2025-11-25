@@ -837,7 +837,11 @@ export function CoachAssignment() {
         let confirmMessage = `⚠️ 以下 ${bookingsWithReports.size} 筆預約已有回報記錄：\n\n${affectedBookings.join('\n\n')}\n\n修改排班將會清除這些回報記錄！\n教練需要重新回報。\n`
         
         if (totalTransactionCount > 0) {
-          confirmMessage += `\n⚠️ 重要提醒：\n其中 ${totalTransactionCount} 位參與者已有交易記錄。\n回報記錄會被標記刪除，但交易記錄不會變動。\n請記得到「會員交易」檢查並處理！\n`
+          const namesWithTx = Array.from(bookingsWithReports.values())
+            .flatMap(data => data.participantsWithTx.map((p: any) => p.participant_name))
+            .filter((name, index, self) => self.indexOf(name) === index)
+            .join('、')
+          confirmMessage += `\n💰 ${namesWithTx} 的交易記錄受影響\n（交易記錄會保留，請到「會員交易」檢查並處理）\n`
         }
         
         confirmMessage += `\n確定要繼續嗎？`
