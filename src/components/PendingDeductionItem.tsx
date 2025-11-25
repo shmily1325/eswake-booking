@@ -294,14 +294,18 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
         const price = coachResult.data.designated_lesson_price_30min
         setCoachPrice30min(price)
         
-        // 更新第二筆扣款的金額（如果是指定課）
+        // 更新所有指定課扣款的金額（包括彈簧床指定課）
         if (report.lesson_type === 'designated_paid') {
           setItems(prevItems => 
-            prevItems.map(item => 
-              item.category === 'designated_lesson' 
-                ? { ...item, amount: Math.ceil(price * (item.minutes || report.duration_min) / 30) }
-                : item
-            )
+            prevItems.map(item => {
+              // 判斷是否為指定課扣款：category 是 designated_lesson 或 description 包含【指定課】
+              const isDesignatedLessonItem = item.category === 'designated_lesson' || 
+                                            (item.description?.includes('【指定課】') || false)
+              if (isDesignatedLessonItem) {
+                return { ...item, amount: Math.ceil(price * (item.minutes || report.duration_min) / 30) }
+              }
+              return item
+            })
           )
         }
       }
@@ -545,11 +549,49 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
+          <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px' }}>
             {isExpanded ? '▼' : '▶'} {report.participant_name}
           </div>
-          <div style={{ fontSize: '14px', color: '#666' }}>
-            {report.bookings.boats?.name || '未知'} • {formatTime(report.bookings.start_at)} • {report.coaches?.name || '未知'} ({report.duration_min}分)
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+            {(() => {
+              const [datePart] = report.bookings.start_at.split('T')
+              return datePart
+            })()} • {formatTime(report.bookings.start_at)} • {report.bookings.boats?.name || '未知'} • {report.coaches?.name || '未知'} ({report.duration_min}分)
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {/* 收款方式 */}
+            <span style={{
+              padding: '2px 8px',
+              background: report.payment_method === 'cash' ? '#fff3e0' : 
+                         report.payment_method === 'transfer' ? '#e3f2fd' :
+                         report.payment_method === 'voucher' ? '#f3e5f5' :
+                         '#e8f5e9',
+              color: report.payment_method === 'cash' ? '#e65100' :
+                     report.payment_method === 'transfer' ? '#1565c0' :
+                     report.payment_method === 'voucher' ? '#6a1b9a' :
+                     '#2e7d32',
+              fontSize: '11px',
+              borderRadius: '4px',
+              fontWeight: '500'
+            }}>
+              {report.payment_method === 'cash' ? '💵 現金' :
+               report.payment_method === 'transfer' ? '🏦 匯款' :
+               report.payment_method === 'voucher' ? '🎫 票券' :
+               '💰 扣儲值'}
+            </span>
+            {/* 教學方式 */}
+            {report.lesson_type && report.lesson_type !== 'undesignated' && (
+              <span style={{
+                padding: '2px 8px',
+                background: report.lesson_type === 'designated_paid' ? '#fff9e6' : '#e8f5e9',
+                color: report.lesson_type === 'designated_paid' ? '#f57c00' : '#388e3c',
+                fontSize: '11px',
+                borderRadius: '4px',
+                fontWeight: '500'
+              }}>
+                {report.lesson_type === 'designated_paid' ? '🎓 指定（需收費）' : '🎓 指定（不收費）'}
+              </span>
+            )}
           </div>
         </div>
         {!isExpanded && (
@@ -754,6 +796,8 @@ function DeductionItemRow({
   const isPlan = item.category === 'plan'
   const isDesignatedLesson = item.category === 'designated_lesson'
   const isDirectSettlement = item.category === 'direct_settlement'
+  // 判斷是否為指定課扣款（從儲值扣）：category 是 balance 且 description 包含【指定課】
+  const isDesignatedLessonFromBalance = isBalance && (item.description?.includes('【指定課】') || false)
   const currentCategory = categories.find(c => c.value === item.category)
   
   // 指定課的常用金額（根據教練價格計算，無條件進位）
@@ -918,21 +962,25 @@ function DeductionItemRow({
       <div style={{ marginBottom: '14px' }}>
         {isDirectSettlement ? (
           <div style={{
-            background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
-            padding: '20px',
-            borderRadius: '12px',
-            border: '2px solid #4caf50',
-            textAlign: 'center'
+            background: '#f1f8f4',
+            padding: '14px 18px',
+            borderRadius: '8px',
+            border: '1px solid #c8e6c9',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
           }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>✅</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#2e7d32', marginBottom: '4px' }}>
-              直接結清
-            </div>
-            <div style={{ fontSize: '13px', color: '#558b2f' }}>
-              不扣任何費用
+            <span style={{ fontSize: '18px' }}>✅</span>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#2e7d32' }}>
+                直接結清
+              </div>
+              <div style={{ fontSize: '12px', color: '#558b2f' }}>
+                不扣任何費用
+              </div>
             </div>
           </div>
-        ) : isBalance || isVipVoucher || (isDesignatedLesson && coachPrice30min) ? (
+        ) : isBalance || isVipVoucher || (isDesignatedLesson && coachPrice30min) || isDesignatedLessonFromBalance ? (
           <div>
             <div style={{ 
               fontSize: '13px', 
@@ -943,10 +991,10 @@ function DeductionItemRow({
               扣款金額：
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              {(isDesignatedLesson ? getDesignatedLessonAmounts() : (isVipVoucher ? vipVoucherAmounts : commonAmounts)).map((amount, idx) => {
+              {(isDesignatedLesson || isDesignatedLessonFromBalance ? getDesignatedLessonAmounts() : (isVipVoucher ? vipVoucherAmounts : commonAmounts)).map((amount, idx) => {
                 // 計算對應的分鐘數
                 let minutes = 0
-                if (isDesignatedLesson && coachPrice30min) {
+                if ((isDesignatedLesson || isDesignatedLessonFromBalance) && coachPrice30min) {
                   // 指定課：從索引推算分鐘數
                   const minutesOptions = [20, 30, 40, 60, 90]
                   minutes = minutesOptions[idx] || 0
