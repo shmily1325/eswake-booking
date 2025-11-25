@@ -234,7 +234,19 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     const boatName = report.bookings.boats?.name || ''
     const isTrampoline = boatName.includes('彈簧床')
     
-    // 如果是彈簧床 + 指定課，只扣指定課，不扣船費
+    // 🚫 如果是現金/匯款，不管是不是指定課，都不自動添加扣款項目（直接結清）
+    if (isCashSettlement) {
+      items.push({
+        id: '1',
+        category: defaultCategory,
+        minutes: undefined,
+        amount: undefined,
+        description: generateDescription(false)
+      })
+      return items
+    }
+    
+    // 如果是彈簧床 + 指定課需收費（非現金/匯款），只扣指定課，不扣船費
     if (isTrampoline && report.lesson_type === 'designated_paid') {
       items.push({
         id: '1',
@@ -256,7 +268,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
       description: generateDescription(false)
     })
     
-    // 如果是指定課需收費（非彈簧床），自動新增第二筆：指定課時數扣款
+    // 如果是指定課需收費（非彈簧床、非現金/匯款），自動新增第二筆：指定課時數扣款
     if (report.lesson_type === 'designated_paid') {
       items.push({
         id: '2',
