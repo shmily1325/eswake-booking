@@ -993,7 +993,7 @@ export function DayView() {
                                     </div>
                                   )}
 
-                                  {/* 第七行：駕駛（如果有另外指定駕駛就顯示） */}
+                                  {/* 第七行：駕駛資訊 */}
                                   {booking.drivers && booking.drivers.length > 0 && (
                                     <div style={{
                                       fontSize: isMobile ? '12px' : '13px',
@@ -1023,6 +1023,18 @@ export function DayView() {
                                         `Drivers render for booking ${booking.id}`,
                                         '駕駛資料異常'
                                       )}
+                                    </div>
+                                  )}
+
+                                  {/* 需要駕駛但未指定 */}
+                                  {booking.requires_driver && (!booking.drivers || booking.drivers.length === 0) && (
+                                    <div style={{
+                                      fontSize: isMobile ? '12px' : '13px',
+                                      color: '#f59e0b',
+                                      textAlign: 'center',
+                                      fontWeight: '500',
+                                    }}>
+                                      🚤 需要駕駛
                                     </div>
                                   )}
                                 </td>
