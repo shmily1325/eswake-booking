@@ -1180,7 +1180,7 @@ export function StaffManagement() {
               </Button>
               <Button
                 variant="primary"
-                onClick={handleSetAccount}
+                onClick={() => handleSetAccount()}
                 disabled={accountLoading}
                 style={{ flex: 1, background: accountLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
               >
