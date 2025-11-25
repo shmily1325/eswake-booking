@@ -131,6 +131,8 @@ export class ErrorBoundary extends Component<Props, State> {
               gap: '12px',
               justifyContent: 'center'
             }}>
+              <button
+                onClick={() => window.location.reload()}
                 style={{
                   flex: 1,
                   maxWidth: '200px',
