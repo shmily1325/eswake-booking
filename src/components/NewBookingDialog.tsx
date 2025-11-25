@@ -269,7 +269,8 @@ export function NewBookingDialog({
           boatName,
           startTime: newStartAt,
           durationMin,
-          coachNames
+          coachNames,
+          filledBy
         })
 
       // Success

@@ -8,6 +8,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // 自動刷新 token
+    autoRefreshToken: true,
+    // 持久化 session（使用 localStorage）
+    persistSession: true,
+    // 檢測 session 變化
+    detectSessionInUrl: true,
+    // Storage key（避免與其他應用衝突）
+    storageKey: 'eswake-booking-auth'
+  }
+})
 
 

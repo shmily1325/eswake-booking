@@ -12,6 +12,7 @@ interface CreateBookingLogParams {
   startTime: string
   durationMin: number
   coachNames: string[]
+  filledBy?: string
 }
 
 interface UpdateBookingLogParams {
@@ -19,6 +20,7 @@ interface UpdateBookingLogParams {
   studentName: string
   startTime: string  // 新增：預約的開始時間
   changes: string[]
+  filledBy?: string
 }
 
 interface DeleteBookingLogParams {
@@ -27,6 +29,7 @@ interface DeleteBookingLogParams {
   boatName: string
   startTime: string
   durationMin: number
+  filledBy?: string
 }
 
 /**
@@ -39,7 +42,8 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
     boatName,
     startTime,
     durationMin,
-    coachNames
+    coachNames,
+    filledBy
   } = params
 
   // 格式化時間：2025-11-09T23:15:00 → 11/09 23:15
@@ -48,11 +52,16 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
 
-  // 格式：11/20 14:45 60分 G23 小楊 小胖教練
+  // 格式：11/20 14:45 60分 G23 小楊 小胖教練 (填表人: xxx)
   let details = `${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
   
   if (coachNames.length > 0) {
     details += ` ${coachNames.map(name => `${name}教練`).join('、')}`
+  }
+  
+  // 加上填表人資訊
+  if (filledBy && filledBy.trim()) {
+    details += ` (填表人: ${filledBy})`
   }
   
   details = `新增預約：${details}`
@@ -85,7 +94,7 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
  * 記錄更新預約
  */
 export async function logBookingUpdate(params: UpdateBookingLogParams) {
-  const { userEmail, studentName, startTime, changes } = params
+  const { userEmail, studentName, startTime, changes, filledBy } = params
 
   // 格式化時間：2025-11-09T23:15:00 → 11/09 23:15
   const datetime = startTime.substring(0, 16)
@@ -93,8 +102,13 @@ export async function logBookingUpdate(params: UpdateBookingLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
 
-  // 格式：11/20 14:45 小楊，變更：...
-  const details = `修改預約：${formattedTime} ${studentName}，變更：${changes.join('、')}`
+  // 格式：11/20 14:45 小楊，變更：... (填表人: xxx)
+  let details = `修改預約：${formattedTime} ${studentName}，變更：${changes.join('、')}`
+  
+  // 加上填表人資訊
+  if (filledBy && filledBy.trim()) {
+    details += ` (填表人: ${filledBy})`
+  }
 
   // 非阻塞寫入
   void (async () => {
@@ -124,7 +138,7 @@ export async function logBookingUpdate(params: UpdateBookingLogParams) {
  * 記錄刪除預約
  */
 export async function logBookingDeletion(params: DeleteBookingLogParams) {
-  const { userEmail, studentName, boatName, startTime, durationMin } = params
+  const { userEmail, studentName, boatName, startTime, durationMin, filledBy } = params
 
   // 格式化時間顯示
   const datetime = startTime.substring(0, 16)
@@ -132,8 +146,13 @@ export async function logBookingDeletion(params: DeleteBookingLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
   
-  // 格式：11/20 14:45 60分 G23 小楊
-  const details = `刪除預約：${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
+  // 格式：11/20 14:45 60分 G23 小楊 (填表人: xxx)
+  let details = `刪除預約：${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
+  
+  // 加上填表人資訊
+  if (filledBy && filledBy.trim()) {
+    details += ` (填表人: ${filledBy})`
+  }
 
   // 非阻塞寫入
   void (async () => {

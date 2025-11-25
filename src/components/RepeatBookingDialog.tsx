@@ -279,7 +279,8 @@ export function RepeatBookingDialog({
           boatName,
           startTime: newStartAt,
           durationMin,
-          coachNames
+          coachNames,
+          filledBy
         })
 
         results.success.push(displayDate)

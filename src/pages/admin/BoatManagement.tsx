@@ -38,7 +38,7 @@ export function BoatManagement() {
             const { data: boatsData } = await supabase
                 .from('boats')
                 .select('*')
-                .order('created_at')
+                .order('id')
 
             const { data: unavailableData } = await supabase
                 .from('boat_unavailable_dates')
@@ -46,7 +46,14 @@ export function BoatManagement() {
                 .eq('is_active', true)
                 .gte('end_date', getLocalDateString())
 
-            if (boatsData) setBoats(boatsData)
+            if (boatsData) {
+                // 自定義排序順序（與 useGlobalCache 保持一致）
+                const order = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床']
+                const sortedBoats = boatsData.sort((a, b) => {
+                    return order.indexOf(a.name) - order.indexOf(b.name)
+                })
+                setBoats(sortedBoats)
+            }
             if (unavailableData) setUnavailableDates(unavailableData)
         } catch (error) {
             console.error('載入失敗:', error)

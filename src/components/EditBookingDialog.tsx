@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
+import { logBookingCreation, logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
 import { getLocalTimestamp } from '../utils/date'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
@@ -378,7 +378,8 @@ export function EditBookingDialog({
           userEmail: user.email || '',
           studentName: finalStudentName,
           startTime: newStartAt,  // 使用更新後的時間
-          changes
+          changes,
+          filledBy
         })
       }
 
@@ -474,7 +475,8 @@ export function EditBookingDialog({
         studentName: booking.contact_name,
         boatName: booking.boats?.name || '未知',
         startTime: booking.start_at,
-        durationMin: booking.duration_min
+        durationMin: booking.duration_min,
+        filledBy: booking.filled_by || undefined
       })
 
       // Success
@@ -597,11 +599,17 @@ export function EditBookingDialog({
       }
 
       // 記錄審計日誌
-      await supabase.from('audit_log').insert([{
-        action: 'booking_create',
-        user_email: user.email || '',
-        details: `複製預約：${boatName} - ${finalStudentName}（${newStartAt}）`
-      }])
+      await logBookingCreation({
+        userEmail: user.email || '',
+        studentName: finalStudentName,
+        boatName,
+        startTime: newStartAt,
+        durationMin,
+        coachNames: selectedCoaches.length > 0
+          ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
+          : [],
+        filledBy
+      })
 
       // Success
       setCopyLoading(false)
