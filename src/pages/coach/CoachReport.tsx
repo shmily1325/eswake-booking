@@ -49,7 +49,11 @@ const LESSON_TYPES = [
   { value: 'designated_free', label: '指定（不需收費）' }
 ]
 
-export function CoachReport() {
+interface CoachReportProps {
+  autoFilterByUser?: boolean // 是否自動根據登入用戶篩選教練
+}
+
+export function CoachReport({ autoFilterByUser = false }: CoachReportProps = {}) {
   const user = useAuthUser()
   const toast = useToast()
   const { isMobile } = useResponsive()
@@ -60,6 +64,7 @@ export function CoachReport() {
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [availableCoaches, setAvailableCoaches] = useState<Coach[]>([]) // 當天有預約的教練
   const [viewMode, setViewMode] = useState<'date' | 'unreported'>('date')
+  const [userCoachId, setUserCoachId] = useState<string | null>(null) // 登入用戶對應的教練 ID
   
   // 預約列表
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -86,6 +91,13 @@ export function CoachReport() {
     loadCoaches()
   }, [])
 
+  // 如果是自動篩選模式，載入用戶對應的教練 ID
+  useEffect(() => {
+    if (autoFilterByUser && user?.email) {
+      loadUserCoach()
+    }
+  }, [autoFilterByUser, user?.email])
+
   // 載入預約列表
   useEffect(() => {
     loadBookings()
@@ -98,7 +110,7 @@ export function CoachReport() {
   const loadCoaches = async () => {
     const { data, error } = await supabase
       .from('coaches')
-      .select('id, name, status, notes, created_at, updated_at')
+      .select('id, name, status, notes, created_at, updated_at, user_email')
       .neq('status', 'archived')
       .order('name')
     
@@ -108,6 +120,29 @@ export function CoachReport() {
     }
     
     setCoaches(data || [])
+  }
+
+  const loadUserCoach = async () => {
+    if (!user?.email) return
+
+    const { data, error } = await supabase
+      .from('coaches')
+      .select('id')
+      .eq('user_email', user.email)
+      .single()
+
+    if (error) {
+      console.error('查找用戶對應的教練失敗:', error)
+      toast.error('無法找到您對應的教練帳號，請聯繫管理員設定')
+      return
+    }
+
+    if (data) {
+      setUserCoachId(data.id)
+      setSelectedCoachId(data.id) // 自動選擇該教練
+    } else {
+      toast.error('您的帳號尚未配對教練，請聯繫管理員')
+    }
   }
 
   const loadBookings = async () => {
@@ -1007,9 +1042,9 @@ export function CoachReport() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       <PageHeader 
         user={user} 
-        title="預約回報"
-        showBaoLink={true}
-        extraLinks={[
+        title={autoFilterByUser ? "我的回報" : "預約回報"}
+        showBaoLink={!autoFilterByUser}
+        extraLinks={autoFilterByUser ? undefined : [
           { label: '回報管理 →', link: '/coach-admin' }
         ]}
       />
@@ -1277,34 +1312,17 @@ export function CoachReport() {
           )}
 
           {/* 教練選擇 - 按鈕組 */}
-          <div style={{ marginTop: viewMode === 'date' ? '16px' : 0 }}>
-            <label style={{ ...getLabelStyle(isMobile), marginBottom: '12px' }}>教練</label>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setSelectedCoachId('all')}
-                style={{
-                  padding: '10px 20px',
-                  background: selectedCoachId === 'all' ? '#2196f3' : 'white',
-                  color: selectedCoachId === 'all' ? 'white' : '#666',
-                  border: `2px solid ${selectedCoachId === 'all' ? '#2196f3' : '#e0e0e0'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  transition: 'all 0.2s'
-                }}
-              >
-                全部
-              </button>
-              {(viewMode === 'date' ? availableCoaches : coaches).map(coach => (
+          {!autoFilterByUser && (
+            <div style={{ marginTop: viewMode === 'date' ? '16px' : 0 }}>
+              <label style={{ ...getLabelStyle(isMobile), marginBottom: '12px' }}>教練</label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
-                  key={coach.id}
-                  onClick={() => setSelectedCoachId(coach.id)}
+                  onClick={() => setSelectedCoachId('all')}
                   style={{
                     padding: '10px 20px',
-                    background: selectedCoachId === coach.id ? '#2196f3' : 'white',
-                    color: selectedCoachId === coach.id ? 'white' : '#666',
-                    border: `2px solid ${selectedCoachId === coach.id ? '#2196f3' : '#e0e0e0'}`,
+                    background: selectedCoachId === 'all' ? '#2196f3' : 'white',
+                    color: selectedCoachId === 'all' ? 'white' : '#666',
+                    border: `2px solid ${selectedCoachId === 'all' ? '#2196f3' : '#e0e0e0'}`,
                     borderRadius: '8px',
                     cursor: 'pointer',
                     fontSize: '14px',
@@ -1312,11 +1330,45 @@ export function CoachReport() {
                     transition: 'all 0.2s'
                   }}
                 >
-                  {coach.name}
+                  全部
                 </button>
-              ))}
+                {(viewMode === 'date' ? availableCoaches : coaches).map(coach => (
+                  <button
+                    key={coach.id}
+                    onClick={() => setSelectedCoachId(coach.id)}
+                    style={{
+                      padding: '10px 20px',
+                      background: selectedCoachId === coach.id ? '#2196f3' : 'white',
+                      color: selectedCoachId === coach.id ? 'white' : '#666',
+                      border: `2px solid ${selectedCoachId === coach.id ? '#2196f3' : '#e0e0e0'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {coach.name}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+          
+          {/* 自動篩選模式提示 */}
+          {autoFilterByUser && userCoachId && (
+            <div style={{
+              marginTop: viewMode === 'date' ? '16px' : 0,
+              padding: '12px 16px',
+              background: '#e3f2fd',
+              border: '1px solid #90caf9',
+              borderRadius: '8px',
+              fontSize: '14px',
+              color: '#1565c0'
+            }}>
+              🎯 顯示您的回報：{coaches.find(c => c.id === userCoachId)?.name || '載入中...'}
+            </div>
+          )}
 
           {/* 匯出按鈕 - 在按日期查看模式顯示 */}
           {viewMode === 'date' && (

@@ -5,15 +5,42 @@ import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
 import { isAdmin } from '../utils/auth'
+import { supabase } from '../lib/supabase'
+import { useState, useEffect } from 'react'
 
 export function HomePage() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
+  const [isCoach, setIsCoach] = useState(false)
   
   // Detect V2 environment
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
   const isV2Environment = supabaseUrl.includes('v2') || supabaseUrl.includes('staging')
   const userIsAdmin = isAdmin(user)
+  
+  // 檢查用戶是否為教練
+  useEffect(() => {
+    const checkIfCoach = async () => {
+      if (!user?.email) {
+        setIsCoach(false)
+        return
+      }
+      
+      const { data, error } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('user_email', user.email)
+        .maybeSingle()
+      
+      if (!error && data) {
+        setIsCoach(true)
+      } else {
+        setIsCoach(false)
+      }
+    }
+    
+    checkIfCoach()
+  }, [user?.email])
   
   const menuItems: Array<{
     title: string
@@ -21,6 +48,7 @@ export function HomePage() {
     link: string
     subtitle?: string
     isAdmin?: boolean
+    isCoach?: boolean
   }> = [
     {
       title: '今日預約',
@@ -31,6 +59,12 @@ export function HomePage() {
       title: '預約表',
       icon: '📝',
       link: `/day?date=${getLocalDateString()}`
+    },
+    {
+      title: '教練回報',
+      icon: '✅',
+      link: '/my-report',
+      isCoach: true
     },
     {
       title: '預約查詢',
@@ -122,7 +156,11 @@ export function HomePage() {
           marginBottom: '30px'
         }}>
           {menuItems
-            .filter(item => !item.isAdmin || userIsAdmin)
+            .filter(item => {
+              if (item.isAdmin && !userIsAdmin) return false
+              if (item.isCoach && !isCoach) return false
+              return true
+            })
             .map((item, index) => (
             <Link
               key={index}
@@ -223,7 +261,7 @@ export function HomePage() {
           border: '2px solid rgba(255, 255, 255, 0.3)'
         }}>
           <span style={{ fontSize: '18px' }}>✨</span>
-          <span>V2 新版本</span>
+          <span>V3</span>
         </div>
       )}
     </div>

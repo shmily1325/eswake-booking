@@ -13,6 +13,7 @@ interface Coach {
   status: string | null
   notes: string | null
   created_at: string | null
+  user_email?: string | null
 }
 
 interface TimeOff {
@@ -32,6 +33,7 @@ export function StaffManagement() {
   const [timeOffs, setTimeOffs] = useState<TimeOff[]>([])
   const [loading, setLoading] = useState(true)
   const [showArchived, setShowArchived] = useState(false) // 是否顯示已歸檔
+  const [activeTab, setActiveTab] = useState<'coaches' | 'accounts'>('coaches') // Tab 切換
   
   // 新增教練
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -45,6 +47,12 @@ export function StaffManagement() {
   const [timeOffEndDate, setTimeOffEndDate] = useState('')
   const [timeOffReason, setTimeOffReason] = useState('')
   const [timeOffLoading, setTimeOffLoading] = useState(false)
+  
+  // 設定教練帳號
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false)
+  const [selectedAccountCoach, setSelectedAccountCoach] = useState<Coach | null>(null)
+  const [accountEmail, setAccountEmail] = useState('')
+  const [accountLoading, setAccountLoading] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -223,6 +231,51 @@ export function StaffManagement() {
     setTimeOffDialogOpen(true)
   }
 
+  const openAccountDialog = (coach: Coach) => {
+    setSelectedAccountCoach(coach)
+    setAccountEmail(coach.user_email || '')
+    setAccountDialogOpen(true)
+  }
+
+  const handleSetAccount = async () => {
+    if (!selectedAccountCoach) return
+    
+    const email = accountEmail.trim()
+    
+    // 驗證 email 格式
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error('請輸入有效的 email 格式')
+      return
+    }
+
+    setAccountLoading(true)
+    try {
+      const { error } = await supabase
+        .from('coaches')
+        .update({
+          user_email: email || null,
+          updated_at: getLocalTimestamp()
+        })
+        .eq('id', selectedAccountCoach.id)
+
+      if (error) throw error
+
+      toast.success(email ? `已設定 ${selectedAccountCoach.name} 的帳號` : `已清除 ${selectedAccountCoach.name} 的帳號`)
+      setAccountDialogOpen(false)
+      setSelectedAccountCoach(null)
+      setAccountEmail('')
+      loadData()
+    } catch (error: any) {
+      if (error.code === '23505') {
+        toast.error('此帳號已被其他教練使用')
+      } else {
+        toast.error('設定帳號失敗：' + error.message)
+      }
+    } finally {
+      setAccountLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -258,14 +311,59 @@ export function StaffManagement() {
             🎓 人員管理
           </h1>
           
-          <Button
-            variant="outline"
-            size="medium"
-            onClick={() => setAddDialogOpen(true)}
-            icon={<span>➕</span>}
+          {activeTab === 'coaches' && (
+            <Button
+              variant="outline"
+              size="medium"
+              onClick={() => setAddDialogOpen(true)}
+              icon={<span>➕</span>}
+            >
+              新增教練
+            </Button>
+          )}
+        </div>
+
+        {/* Tab 切換 */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          marginBottom: '20px',
+          borderBottom: '2px solid #e0e0e0'
+        }}>
+          <button
+            onClick={() => setActiveTab('coaches')}
+            style={{
+              padding: isMobile ? '12px 20px' : '14px 28px',
+              background: activeTab === 'coaches' ? 'white' : 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'coaches' ? '3px solid #2196F3' : '3px solid transparent',
+              color: activeTab === 'coaches' ? '#2196F3' : '#666',
+              fontWeight: activeTab === 'coaches' ? 'bold' : 'normal',
+              fontSize: isMobile ? '14px' : '16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              marginBottom: '-2px'
+            }}
           >
-            新增教練
-          </Button>
+            👥 教練管理
+          </button>
+          <button
+            onClick={() => setActiveTab('accounts')}
+            style={{
+              padding: isMobile ? '12px 20px' : '14px 28px',
+              background: activeTab === 'accounts' ? 'white' : 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'accounts' ? '3px solid #2196F3' : '3px solid transparent',
+              color: activeTab === 'accounts' ? '#2196F3' : '#666',
+              fontWeight: activeTab === 'accounts' ? 'bold' : 'normal',
+              fontSize: isMobile ? '14px' : '16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              marginBottom: '-2px'
+            }}
+          >
+            🔐 帳號配對
+          </button>
         </div>
 
         {/* 說明提示 */}
@@ -371,46 +469,49 @@ export function StaffManagement() {
         </div>
         )}
 
-        {/* 顯示切換 */}
-        <div style={{
-          marginBottom: '20px',
-          display: 'flex',
-          gap: '10px',
-          alignItems: 'center'
-        }}>
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            padding: '10px 16px',
-            background: '#f5f5f5',
-            borderRadius: '8px',
-            transition: 'all 0.2s',
-            userSelect: 'none'
-          }}>
-            <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={() => setShowArchived(!showArchived)}
-              style={{
-                width: '40px',
-                height: '20px',
-                cursor: 'pointer',
-                accentColor: '#5a5a5a'
-              }}
-            />
-            <span style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#666'
+        {/* 教練管理 Tab */}
+        {activeTab === 'coaches' && (
+          <>
+            {/* 顯示切換 */}
+            <div style={{
+              marginBottom: '20px',
+              display: 'flex',
+              gap: '10px',
+              alignItems: 'center'
             }}>
-              顯示已隱藏的教練
-            </span>
-          </label>
-        </div>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                padding: '10px 16px',
+                background: '#f5f5f5',
+                borderRadius: '8px',
+                transition: 'all 0.2s',
+                userSelect: 'none'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={showArchived}
+                  onChange={() => setShowArchived(!showArchived)}
+                  style={{
+                    width: '40px',
+                    height: '20px',
+                    cursor: 'pointer',
+                    accentColor: '#5a5a5a'
+                  }}
+                />
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#666'
+                }}>
+                  顯示已隱藏的教練
+                </span>
+              </label>
+            </div>
 
-        {/* 教練列表 */}
+            {/* 教練列表 */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
@@ -685,6 +786,120 @@ export function StaffManagement() {
             )
           })}
         </div>
+          </>
+        )}
+
+        {/* 帳號配對 Tab */}
+        {activeTab === 'accounts' && (
+          <>
+            {/* 說明提示 */}
+            <div style={{
+              background: '#e3f2fd',
+              padding: isMobile ? '12px 16px' : '14px 20px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '14px',
+              color: '#1565c0',
+              border: '1px solid #90caf9',
+              lineHeight: '1.6'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <span style={{ flexShrink: 0 }}>🔐</span>
+                <div>
+                  <div style={{ marginBottom: '4px' }}>
+                    <strong>帳號配對</strong>：設定教練對應的登入帳號
+                  </div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                    配對後，教練可以在「預約表」旁的「我的回報」頁面看到自己需要回報的預約
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 帳號配對列表 */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
+              gap: '15px' 
+            }}>
+              {coaches.filter(c => c.status !== 'archived').map(coach => (
+                <div
+                  key={coach.id}
+                  style={{
+                    background: 'white',
+                    borderRadius: '12px',
+                    padding: isMobile ? '16px' : '20px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    border: coach.user_email ? '2px solid #4CAF50' : '2px solid #e0e0e0'
+                  }}
+                >
+                  {/* 教練名稱 */}
+                  <div style={{
+                    fontSize: isMobile ? '18px' : '20px',
+                    fontWeight: 'bold',
+                    marginBottom: '12px',
+                    color: '#333'
+                  }}>
+                    {coach.name}
+                  </div>
+
+                  {/* 帳號狀態 */}
+                  {coach.user_email ? (
+                    <div style={{
+                      background: '#e8f5e9',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                        已配對帳號
+                      </div>
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#2e7d32',
+                        wordBreak: 'break-all'
+                      }}>
+                        {coach.user_email}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      background: '#fff3e0',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      marginBottom: '12px',
+                      fontSize: '14px',
+                      color: '#e65100'
+                    }}>
+                      ⚠️ 尚未配對帳號
+                    </div>
+                  )}
+
+                  {/* 設定按鈕 */}
+                  <button
+                    onClick={() => openAccountDialog(coach)}
+                    style={{
+                      width: '100%',
+                      padding: isMobile ? '12px' : '14px',
+                      background: coach.user_email ? '#e3f2fd' : '#2196F3',
+                      color: coach.user_email ? '#1565c0' : 'white',
+                      border: coach.user_email ? '2px solid #90caf9' : 'none',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? '14px' : '15px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    {coach.user_email ? '修改帳號' : '設定帳號'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* 新增教練彈窗 */}
@@ -872,6 +1087,115 @@ export function StaffManagement() {
                 {timeOffLoading ? '設定中...' : '確定'}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 設定帳號彈窗 */}
+      {accountDialogOpen && selectedAccountCoach && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: isMobile ? '20px' : '30px',
+            maxWidth: '450px',
+            width: '100%'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: 'bold' }}>
+              設定帳號：{selectedAccountCoach.name}
+            </h3>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                登入帳號 Email
+              </label>
+              <input
+                type="email"
+                value={accountEmail}
+                onChange={(e) => setAccountEmail(e.target.value)}
+                placeholder="例如：coach@example.com"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <div style={{
+                marginTop: '8px',
+                fontSize: '13px',
+                color: '#666',
+                lineHeight: '1.4'
+              }}>
+                💡 設定後，該教練可以使用此帳號登入並查看自己的回報
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAccountDialogOpen(false)
+                  setSelectedAccountCoach(null)
+                  setAccountEmail('')
+                }}
+                disabled={accountLoading}
+                style={{ flex: 1 }}
+              >
+                取消
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSetAccount}
+                disabled={accountLoading}
+                style={{ flex: 1, background: accountLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+              >
+                {accountLoading ? '設定中...' : '確定'}
+              </Button>
+            </div>
+
+            {/* 清除帳號按鈕 */}
+            {selectedAccountCoach.user_email && (
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
+                <button
+                  onClick={() => {
+                    if (confirm(`確定要清除 ${selectedAccountCoach.name} 的帳號配對嗎？`)) {
+                      setAccountEmail('')
+                      handleSetAccount()
+                    }
+                  }}
+                  disabled={accountLoading}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    background: '#ffebee',
+                    color: '#c62828',
+                    border: '1px solid #ef9a9a',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: accountLoading ? 'not-allowed' : 'pointer',
+                    opacity: accountLoading ? 0.5 : 1
+                  }}
+                >
+                  清除帳號配對
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

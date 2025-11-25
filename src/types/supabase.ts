@@ -602,6 +602,7 @@ export type Database = {
           notes: string | null
           status: string | null
           updated_at: string | null
+          user_email?: string | null
         }
         Insert: {
           created_at?: string | null
@@ -610,6 +611,7 @@ export type Database = {
           notes?: string | null
           status?: string | null
           updated_at?: string | null
+          user_email?: string | null
         }
         Update: {
           created_at?: string | null
@@ -618,6 +620,7 @@ export type Database = {
           notes?: string | null
           status?: string | null
           updated_at?: string | null
+          user_email?: string | null
         }
         Relationships: []
       }
