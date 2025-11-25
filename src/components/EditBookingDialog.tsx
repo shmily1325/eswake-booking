@@ -105,7 +105,8 @@ export function EditBookingDialog({
     if (isOpen) {
       fetchAllData()
     }
-  }, [isOpen, fetchAllData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
 
   // 即時衝突檢查 Effect
   useEffect(() => {
@@ -128,7 +129,8 @@ export function EditBookingDialog({
 
     const timer = setTimeout(check, 500) // Debounce
     return () => clearTimeout(timer)
-  }, [isOpen, startDate, startTime, durationMin, selectedBoatId, selectedCoaches, performConflictCheck, booking?.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, startDate, startTime, durationMin, selectedBoatId, selectedCoaches, booking?.id])
 
   if (!isOpen) return null
 

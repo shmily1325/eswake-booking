@@ -100,7 +100,8 @@ export function RepeatBookingDialog({
     if (isOpen) {
       fetchAllData()
     }
-  }, [isOpen, fetchAllData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
 
   // 生成重複日期列表 - 使用 useCallback 確保穩定性
   const generateRepeatDates = useCallback((): Date[] => {
