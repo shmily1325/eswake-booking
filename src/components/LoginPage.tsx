@@ -20,7 +20,14 @@ export function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/`,
+        // 添加查询参数跳过重定向
+        skipBrowserRedirect: false,
+        // 设置 scopes
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
       },
     })
 

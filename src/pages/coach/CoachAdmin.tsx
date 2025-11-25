@@ -37,7 +37,7 @@ interface PendingReport {
     duration_min: number
     contact_name: string
     boat_id: number
-    boats: { name: string; color: string } | null
+    boats: { id: number; name: string; color: string } | null
   }
   coaches: { id: string; name: string } | null
   old_participant?: any
@@ -106,7 +106,7 @@ export function CoachAdmin() {
           *,
           bookings!inner(
             id, start_at, duration_min, contact_name, boat_id,
-            boats(name, color)
+            boats(id, name, color)
           ),
           coaches:coach_id(id, name),
           members:member_id(id, name, nickname),
@@ -147,7 +147,7 @@ export function CoachAdmin() {
           *,
           bookings!inner(
             id, start_at, duration_min, contact_name, boat_id,
-            boats(name, color)
+            boats(id, name, color)
           ),
           coaches:coach_id(id, name),
           old_participant:replaces_id(*)

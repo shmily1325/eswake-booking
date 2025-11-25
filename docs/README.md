@@ -1,6 +1,6 @@
 # 📚 ES Wake 預約系統 - 文檔中心
 
-> 更新日期：2025-11-23
+> 更新日期：2025-11-25
 
 ---
 
@@ -12,6 +12,7 @@
 - [**功能特性**](./features/) - 各功能模組說明
 
 ### 操作指南
+- [**💰 扣款邏輯完整說明**](./DEDUCTION_FLOW.md) - 教練回報後的扣款處理流程（含價格設定）⭐ 推薦
 - [**備份策略**](./BACKUP_STRATEGY.md) - 完整的資料備份方案
 - [**備份快速開始**](./BACKUP_QUICK_START.md) - 5 分鐘上手備份功能
 
@@ -135,6 +136,7 @@ import { Button, Card, Badge } from '../components/ui'
 ```
 docs/
 ├── README.md                      # 📍 你在這裡
+├── DEDUCTION_FLOW.md              # 💰 扣款邏輯完整說明（推薦閱讀）
 ├── IMPROVEMENTS_SUMMARY.md        # 🎯 最新改善總結
 ├── BACKUP_STRATEGY.md             # 備份策略完整說明
 ├── BACKUP_QUICK_START.md          # 備份快速開始
@@ -147,8 +149,26 @@ docs/
 │   ├── TEST_HELPER.html
 │   └── TEST_REQUIRES_DRIVER.md
 └── archive/                       # 歷史文檔歸檔
-    └── (舊文檔)
+    ├── DEDUCTION_LOGIC.md         # 舊版扣款邏輯（已過時）
+    └── (其他舊文檔)
 ```
+
+### 扣款相關文檔整合說明
+
+**唯一推薦文檔：** [DEDUCTION_FLOW.md](./DEDUCTION_FLOW.md)
+
+此文檔整合了以下內容：
+- ✅ 扣款邏輯完整流程
+- ✅ 動態價格計算方式
+- ✅ 船隻價格設定指南
+- ✅ 指定課價格設定指南
+- ✅ 教練回報操作步驟
+- ✅ 報帳人員處理步驟
+- ✅ 完整範例和常見問題
+
+**已整合文檔：**
+- ❌ ~~DESIGNATED_LESSON_PRICING.md~~ → 已整合至 DEDUCTION_FLOW.md
+- ❌ ~~DEDUCTION_LOGIC.md~~ → 已移至 archive（內容過時）
 
 ---
 
@@ -164,5 +184,5 @@ docs/
 
 ---
 
-**最後更新**: 2025-11-23  
-**版本**: v2.0 (UI 組件庫版本)
+**最後更新**: 2025-11-25  
+**版本**: v2.1 (動態價格系統 + 文檔整合)

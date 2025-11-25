@@ -17,7 +17,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     // 檢測 session 變化
     detectSessionInUrl: true,
     // Storage key（避免與其他應用衝突）
-    storageKey: 'eswake-booking-auth'
+    storageKey: 'eswake-booking-auth',
+    // 使用 PKCE flow（更安全且更穩定）
+    flowType: 'pkce'
   }
 })
 

@@ -546,12 +546,12 @@ export function BoatManagement() {
                                 <span style={{ flexShrink: 0 }}>💡</span>
                                 <div>
                                     <div style={{ marginBottom: '4px' }}>
-                                        <strong>價格計算公式</strong>：實際金額 = Math.ceil(每小時價格 × 分鐘數 ÷ 60)
+                                        <strong>價格計算公式</strong>：實際金額 = Math.ceil(每小時價格 * 分鐘數 / 60)
                                     </div>
                                     <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                                        例如：$10800/小時 × 30分鐘 ÷ 60 = $5400
+                                        例如：$10800/小時 * 30分鐘 / 60 = $5400
                                     </div>
-                                    <div style={{ fontSize: '13px', opacity: 0.9', marginTop: '4px' }}>
+                                    <div style={{ fontSize: '13px', opacity: 0.9, marginTop: '4px' }}>
                                         • <strong>儲值價格</strong>：用於扣儲值時的金額<br />
                                         • <strong>VIP票券價格</strong>：用於 VIP 票券時的金額
                                     </div>
@@ -595,7 +595,7 @@ export function BoatManagement() {
                                         }}>
                                             {boat.name}
                                             {boat.name.includes('彈簧床') && (
-                                                <Badge variant="secondary" size="small">
+                                                <Badge variant="info" size="small">
                                                     不收船費
                                                 </Badge>
                                             )}
