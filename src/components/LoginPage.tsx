@@ -21,12 +21,10 @@ export function LoginPage() {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/`,
-        // 添加查询参数跳过重定向
         skipBrowserRedirect: false,
-        // 设置 scopes
         queryParams: {
           access_type: 'offline',
-          prompt: 'consent',
+          prompt: 'select_account', // 只選擇帳號，不每次都要求同意授權
         }
       },
     })
