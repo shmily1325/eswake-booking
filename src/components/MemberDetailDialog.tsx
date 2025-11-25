@@ -471,40 +471,52 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                           </div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {transactions.slice(0, 20).map((transaction) => (
-                              <div key={transaction.id} style={{
-                                padding: '8px',
-                                background: 'white',
-                                borderRadius: '4px',
-                                fontSize: '13px',
-                                borderLeft: '3px solid ' + (transaction.transaction_type === 'charge' ? '#4caf50' : transaction.transaction_type === 'consume' ? '#f44336' : '#ff9800')
-                              }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                  <span style={{ fontWeight: 'bold' }}>
-                                    {transaction.category === 'balance' ? '💰 儲值' :
-                                     transaction.category === 'vip_voucher' ? '💎 VIP票券' :
-                                     transaction.category === 'designated_lesson' ? '📚 指定課' :
-                                     transaction.category === 'boat_voucher_g23' ? '🚤 G23船券' :
-                                     transaction.category === 'boat_voucher_g21_panther' ? '⛵ G21/黑豹船券' :
-                                     transaction.category === 'gift_boat_hours' ? '🎁 贈送大船' :
-                                     transaction.transaction_type === 'charge' ? '💰 儲值' : 
-                                     transaction.transaction_type === 'consume' ? '💳 消費' : 
-                                     transaction.transaction_type === 'refund' ? '↩️ 退款' : '🔧 調整'}
-                                  </span>
-                                  <span style={{ color: '#666', fontSize: '12px' }}>
-                                    {transaction.created_at ? new Date(transaction.created_at).toLocaleString('zh-TW', { 
-                                      month: '2-digit', 
-                                      day: '2-digit', 
-                                      hour: '2-digit', 
-                                      minute: '2-digit' 
-                                    }) : '-'}
-                                  </span>
+                            {transactions.slice(0, 20).map((transaction) => {
+                              const isIncrease = transaction.transaction_type === 'charge' || transaction.adjust_type === 'increase'
+                              return (
+                                <div key={transaction.id} style={{
+                                  padding: '10px',
+                                  background: 'white',
+                                  borderRadius: '6px',
+                                  fontSize: '13px',
+                                  borderLeft: '3px solid ' + (transaction.transaction_type === 'charge' ? '#4caf50' : transaction.transaction_type === 'consume' ? '#f44336' : '#ff9800')
+                                }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
+                                        {transaction.category === 'balance' ? '💰 儲值' :
+                                         transaction.category === 'vip_voucher' ? '💎 VIP票券' :
+                                         transaction.category === 'designated_lesson' ? '📚 指定課' :
+                                         transaction.category === 'boat_voucher_g23' ? '🚤 G23船券' :
+                                         transaction.category === 'boat_voucher_g21_panther' ? '⛵ G21/黑豹船券' :
+                                         transaction.category === 'gift_boat_hours' ? '🎁 贈送大船' :
+                                         transaction.transaction_type === 'charge' ? '💰 儲值' : 
+                                         transaction.transaction_type === 'consume' ? '💳 消費' : 
+                                         transaction.transaction_type === 'refund' ? '↩️ 退款' : '🔧 調整'}
+                                      </div>
+                                      <div style={{ color: '#999', fontSize: '11px' }}>
+                                        {transaction.transaction_date || (transaction.created_at ? transaction.created_at.substring(0, 10) : '-')}
+                                      </div>
+                                    </div>
+                                    <div style={{
+                                      fontSize: '16px',
+                                      fontWeight: 'bold',
+                                      color: isIncrease ? '#4caf50' : '#f44336',
+                                      whiteSpace: 'nowrap',
+                                      marginLeft: '10px'
+                                    }}>
+                                      {isIncrease ? '+' : '-'}
+                                      {transaction.amount !== null && transaction.amount !== undefined 
+                                        ? `$${Math.abs(transaction.amount).toLocaleString()}`
+                                        : `${Math.abs(transaction.minutes || 0)}分`}
+                                    </div>
+                                  </div>
+                                  <div style={{ color: '#666', fontSize: '12px', lineHeight: '1.4' }}>
+                                    {transaction.description || '-'}
+                                  </div>
                                 </div>
-                                <div style={{ color: '#666', fontSize: '12px' }}>
-                                  {transaction.description || '-'}
-                                </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         )}
                       </div>
