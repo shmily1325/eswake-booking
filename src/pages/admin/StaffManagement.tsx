@@ -14,6 +14,7 @@ interface Coach {
   notes: string | null
   created_at: string | null
   user_email?: string | null
+  designated_lesson_price_30min?: number | null
 }
 
 interface TimeOff {
@@ -33,7 +34,7 @@ export function StaffManagement() {
   const [timeOffs, setTimeOffs] = useState<TimeOff[]>([])
   const [loading, setLoading] = useState(true)
   const [showArchived, setShowArchived] = useState(false) // 是否顯示已歸檔
-  const [activeTab, setActiveTab] = useState<'coaches' | 'accounts'>('coaches') // Tab 切換
+  const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing'>('coaches') // Tab 切換
   
   // 新增教練
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -53,6 +54,12 @@ export function StaffManagement() {
   const [selectedAccountCoach, setSelectedAccountCoach] = useState<Coach | null>(null)
   const [accountEmail, setAccountEmail] = useState('')
   const [accountLoading, setAccountLoading] = useState(false)
+  
+  // 設定指定課價格
+  const [pricingDialogOpen, setPricingDialogOpen] = useState(false)
+  const [selectedPricingCoach, setSelectedPricingCoach] = useState<Coach | null>(null)
+  const [lessonPrice, setLessonPrice] = useState<string>('')
+  const [pricingLoading, setPricingLoading] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -278,6 +285,46 @@ export function StaffManagement() {
     }
   }
 
+  const openPricingDialog = (coach: Coach) => {
+    setSelectedPricingCoach(coach)
+    setLessonPrice(coach.designated_lesson_price_30min?.toString() || '')
+    setPricingDialogOpen(true)
+  }
+
+  const handleSetPrice = async () => {
+    if (!selectedPricingCoach) return
+    
+    // 驗證價格格式（必須是正整數或空值）
+    const priceValue = lessonPrice.trim()
+    if (priceValue && (isNaN(Number(priceValue)) || Number(priceValue) < 0 || !Number.isInteger(Number(priceValue)))) {
+      toast.error('請輸入有效的價格（正整數）')
+      return
+    }
+
+    setPricingLoading(true)
+    try {
+      const { error } = await supabase
+        .from('coaches')
+        .update({
+          designated_lesson_price_30min: priceValue ? parseInt(priceValue) : null,
+          updated_at: getLocalTimestamp()
+        })
+        .eq('id', selectedPricingCoach.id)
+
+      if (error) throw error
+
+      toast.success(priceValue ? `已設定 ${selectedPricingCoach.name} 的指定課價格` : `已清除 ${selectedPricingCoach.name} 的指定課價格`)
+      setPricingDialogOpen(false)
+      setSelectedPricingCoach(null)
+      setLessonPrice('')
+      loadData()
+    } catch (error: any) {
+      toast.error('設定價格失敗：' + error.message)
+    } finally {
+      setPricingLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -330,12 +377,13 @@ export function StaffManagement() {
           display: 'flex',
           gap: '8px',
           marginBottom: '20px',
-          borderBottom: '2px solid #e0e0e0'
+          borderBottom: '2px solid #e0e0e0',
+          overflowX: 'auto'
         }}>
           <button
             onClick={() => setActiveTab('coaches')}
             style={{
-              padding: isMobile ? '12px 20px' : '14px 28px',
+              padding: isMobile ? '12px 16px' : '14px 28px',
               background: activeTab === 'coaches' ? 'white' : 'transparent',
               border: 'none',
               borderBottom: activeTab === 'coaches' ? '3px solid #2196F3' : '3px solid transparent',
@@ -344,7 +392,8 @@ export function StaffManagement() {
               fontSize: isMobile ? '14px' : '16px',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              marginBottom: '-2px'
+              marginBottom: '-2px',
+              whiteSpace: 'nowrap'
             }}
           >
             👥 教練管理
@@ -352,7 +401,7 @@ export function StaffManagement() {
           <button
             onClick={() => setActiveTab('accounts')}
             style={{
-              padding: isMobile ? '12px 20px' : '14px 28px',
+              padding: isMobile ? '12px 16px' : '14px 28px',
               background: activeTab === 'accounts' ? 'white' : 'transparent',
               border: 'none',
               borderBottom: activeTab === 'accounts' ? '3px solid #2196F3' : '3px solid transparent',
@@ -361,10 +410,29 @@ export function StaffManagement() {
               fontSize: isMobile ? '14px' : '16px',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              marginBottom: '-2px'
+              marginBottom: '-2px',
+              whiteSpace: 'nowrap'
             }}
           >
             🔐 帳號配對
+          </button>
+          <button
+            onClick={() => setActiveTab('pricing')}
+            style={{
+              padding: isMobile ? '12px 16px' : '14px 28px',
+              background: activeTab === 'pricing' ? 'white' : 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'pricing' ? '3px solid #2196F3' : '3px solid transparent',
+              color: activeTab === 'pricing' ? '#2196F3' : '#666',
+              fontWeight: activeTab === 'pricing' ? 'bold' : 'normal',
+              fontSize: isMobile ? '14px' : '16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              marginBottom: '-2px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            💰 指定課價格
           </button>
         </div>
 
@@ -902,6 +970,129 @@ export function StaffManagement() {
             </div>
           </>
         )}
+
+        {/* 指定課價格 Tab */}
+        {activeTab === 'pricing' && (
+          <>
+            {/* 說明提示 */}
+            <div style={{
+              background: '#fff9e6',
+              padding: isMobile ? '12px 16px' : '14px 20px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '14px',
+              color: '#856404',
+              border: '1px solid #ffeaa7',
+              lineHeight: '1.6'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <span style={{ flexShrink: 0 }}>💰</span>
+                <div>
+                  <div style={{ marginBottom: '4px' }}>
+                    <strong>指定課價格</strong>：設定每位教練 30 分鐘指定課的價格
+                  </div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                    設定後，在扣款時如果是該教練的指定課，會自動帶入對應價格（其他時長會按比例自動換算，無條件進位）
+                  </div>
+                  <div style={{ fontSize: '13px', opacity: 0.9, marginTop: '4px' }}>
+                    如果未設定，扣款時會顯示自訂輸入框
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 指定課價格列表 */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
+              gap: '15px' 
+            }}>
+              {coaches.filter(c => c.status !== 'archived').map(coach => (
+                <div
+                  key={coach.id}
+                  style={{
+                    background: 'white',
+                    borderRadius: '12px',
+                    padding: isMobile ? '16px' : '20px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    border: coach.designated_lesson_price_30min ? '2px solid #FF9800' : '2px solid #e0e0e0'
+                  }}
+                >
+                  {/* 教練名稱 */}
+                  <div style={{
+                    fontSize: isMobile ? '18px' : '20px',
+                    fontWeight: 'bold',
+                    marginBottom: '12px',
+                    color: '#333'
+                  }}>
+                    {coach.name}
+                  </div>
+
+                  {/* 價格狀態 */}
+                  {coach.designated_lesson_price_30min ? (
+                    <div style={{
+                      background: '#fff8e1',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                        30分鐘指定課價格
+                      </div>
+                      <div style={{
+                        fontSize: '24px',
+                        fontWeight: 'bold',
+                        color: '#f57c00'
+                      }}>
+                        ${coach.designated_lesson_price_30min}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#999', marginTop: '6px' }}>
+                        其他時長自動換算（無條件進位）：
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                        20分=${Math.ceil(coach.designated_lesson_price_30min * 20 / 30)} / 
+                        40分=${Math.ceil(coach.designated_lesson_price_30min * 40 / 30)} / 
+                        60分=${Math.ceil(coach.designated_lesson_price_30min * 60 / 30)} / 
+                        90分=${Math.ceil(coach.designated_lesson_price_30min * 90 / 30)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      background: '#f5f5f5',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      marginBottom: '12px',
+                      fontSize: '14px',
+                      color: '#666'
+                    }}>
+                      💡 未設定價格
+                    </div>
+                  )}
+
+                  {/* 設定按鈕 */}
+                  <button
+                    onClick={() => openPricingDialog(coach)}
+                    style={{
+                      width: '100%',
+                      padding: isMobile ? '12px' : '14px',
+                      background: coach.designated_lesson_price_30min ? '#fff8e1' : '#FF9800',
+                      color: coach.designated_lesson_price_30min ? '#e65100' : 'white',
+                      border: coach.designated_lesson_price_30min ? '2px solid #ffcc80' : 'none',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? '14px' : '15px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    {coach.designated_lesson_price_30min ? '修改價格' : '設定價格'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* 新增教練彈窗 */}
@@ -1194,6 +1385,138 @@ export function StaffManagement() {
                   }}
                 >
                   清除帳號配對
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 設定指定課價格彈窗 */}
+      {pricingDialogOpen && selectedPricingCoach && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: isMobile ? '20px' : '30px',
+            maxWidth: '450px',
+            width: '100%'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: 'bold' }}>
+              設定指定課價格：{selectedPricingCoach.name}
+            </h3>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                30分鐘指定課價格（元）
+              </label>
+              <input
+                type="number"
+                value={lessonPrice}
+                onChange={(e) => setLessonPrice(e.target.value)}
+                placeholder="例如：1000"
+                min="0"
+                step="1"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  boxSizing: 'border-box'
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSetPrice()
+                }}
+              />
+              <div style={{
+                marginTop: '8px',
+                fontSize: '13px',
+                color: '#666',
+                lineHeight: '1.4'
+              }}>
+                💡 其他時長會自動按比例換算（無條件進位：20分、40分、60分、90分）
+              </div>
+              {lessonPrice && !isNaN(Number(lessonPrice)) && Number(lessonPrice) > 0 && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '12px',
+                  background: '#fff8e1',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  color: '#666'
+                }}>
+                  <div style={{ fontWeight: '600', marginBottom: '6px', color: '#f57c00' }}>
+                    換算參考（無條件進位）：
+                  </div>
+                  <div>20分 = ${Math.ceil(Number(lessonPrice) * 20 / 30)}</div>
+                  <div>40分 = ${Math.ceil(Number(lessonPrice) * 40 / 30)}</div>
+                  <div>60分 = ${Math.ceil(Number(lessonPrice) * 60 / 30)}</div>
+                  <div>90分 = ${Math.ceil(Number(lessonPrice) * 90 / 30)}</div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPricingDialogOpen(false)
+                  setSelectedPricingCoach(null)
+                  setLessonPrice('')
+                }}
+                disabled={pricingLoading}
+                style={{ flex: 1 }}
+              >
+                取消
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSetPrice}
+                disabled={pricingLoading}
+                style={{ flex: 1, background: pricingLoading ? '#ccc' : 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)' }}
+              >
+                {pricingLoading ? '設定中...' : '確定'}
+              </Button>
+            </div>
+
+            {/* 清除價格按鈕 */}
+            {selectedPricingCoach.designated_lesson_price_30min && (
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
+                <button
+                  onClick={() => {
+                    if (confirm(`確定要清除 ${selectedPricingCoach.name} 的指定課價格嗎？`)) {
+                      setLessonPrice('')
+                      handleSetPrice()
+                    }
+                  }}
+                  disabled={pricingLoading}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    background: '#ffebee',
+                    color: '#c62828',
+                    border: '1px solid #ef9a9a',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: pricingLoading ? 'not-allowed' : 'pointer',
+                    opacity: pricingLoading ? 0.5 : 1
+                  }}
+                >
+                  清除價格設定
                 </button>
               </div>
             )}
