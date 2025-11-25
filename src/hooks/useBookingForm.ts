@@ -61,7 +61,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
 
     const canRequireDriver = useMemo(() => 
         selectedCoaches.length > 0 && !isSelectedBoatFacility,
-        [selectedCoaches.length, isSelectedBoatFacility]
+        [selectedCoaches, isSelectedBoatFacility]
     )
 
     const filteredMembers = useMemo(() =>
@@ -218,7 +218,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
     }
 
     const performConflictCheck = useCallback(async (excludeBookingId?: number) => {
-        const boatName = selectedBoat?.name || '未知船隻'
+        const boat = boats.find(b => b.id === selectedBoatId)
+        const boatName = boat?.name || '未知船隻'
         const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
 
         return await checkConflict({
@@ -231,7 +232,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
             coachesMap,
             excludeBookingId
         })
-    }, [selectedBoat, coaches, checkConflict, selectedBoatId, startDate, startTime, durationMin, selectedCoaches])
+    }, [boats, coaches, checkConflict, selectedBoatId, startDate, startTime, durationMin, selectedCoaches])
 
     const resetForm = () => {
         setSelectedCoaches([])

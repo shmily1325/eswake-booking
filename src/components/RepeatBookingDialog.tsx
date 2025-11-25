@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, type FormEvent } from 'react'
+import { useState, useEffect, useMemo, useCallback, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
@@ -31,9 +31,6 @@ export function RepeatBookingDialog({
   user,
 }: RepeatBookingDialogProps) {
   const { isMobile } = useResponsive()
-  
-  // 追蹤是否已經載入數據，避免重複載入
-  const hasLoadedRef = useRef(false)
 
   // 重複預約設定
   const [repeatMode, setRepeatMode] = useState<'count' | 'endDate'>('count')
@@ -100,15 +97,10 @@ export function RepeatBookingDialog({
   })
 
   useEffect(() => {
-    if (isOpen && !hasLoadedRef.current) {
-      hasLoadedRef.current = true
+    if (isOpen) {
       fetchAllData()
-    } else if (!isOpen) {
-      // 對話框關閉時重置標記
-      hasLoadedRef.current = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen])
+  }, [isOpen, fetchAllData])
 
   // 生成重複日期列表 - 使用 useCallback 確保穩定性
   const generateRepeatDates = useCallback((): Date[] => {
