@@ -11,22 +11,13 @@ interface VirtualizedBookingListProps {
 }
 
 export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingClick }: VirtualizedBookingListProps) {
-    console.log('[VirtualizedBookingList] Input:', { 
-        boatsCount: boats?.length || 0, 
-        bookingsCount: bookings?.length || 0 
-    })
-    
     // 驗證並過濾資料，確保沒有 null/undefined
     const validBoats = React.useMemo(() => {
-        const result = validateBoats(boats)
-        console.log('[VirtualizedBookingList] Valid boats:', result.length)
-        return result
+        return validateBoats(boats)
     }, [boats])
     
     const validBookings = React.useMemo(() => {
-        const result = validateBookings(bookings)
-        console.log('[VirtualizedBookingList] Valid bookings:', result.length)
-        return result
+        return validateBookings(bookings)
     }, [bookings])
 
     // 預先處理數據：將預約按船隻分組並排序

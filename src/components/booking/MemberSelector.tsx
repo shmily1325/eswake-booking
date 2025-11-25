@@ -32,7 +32,6 @@ export function MemberSelector({
     manualNames,
     setManualNames,
 }: MemberSelectorProps) {
-    console.log('[MemberSelector] Rendering, members:', members?.length)
     return (
         <div style={{ marginBottom: '18px', position: 'relative' }}>
             <label style={{

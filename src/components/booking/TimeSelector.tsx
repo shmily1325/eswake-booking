@@ -15,7 +15,6 @@ export function TimeSelector({
     durationMin,
     setDurationMin,
 }: TimeSelectorProps) {
-    console.log('[TimeSelector] Rendering')
     return (
         <>
             <div style={{ marginBottom: '18px' }}>

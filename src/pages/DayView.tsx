@@ -89,11 +89,10 @@ export function DayView() {
     setLoading(true)
 
     try {
-      // Fetch boats
+      // Fetch boats (包含停用的船隻，以便顯示歷史預約)
       const { data: boatsData, error: boatsError } = await supabase
         .from('boats')
         .select('*')
-        .eq('is_active', true)
         .order('id')
 
       if (boatsError) {

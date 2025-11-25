@@ -96,7 +96,6 @@ export function useBoatsCache() {
       const { data, error: fetchError } = await supabase
         .from('boats')
         .select('id, name, color, is_active')
-        .eq('is_active', true)
         .order('id')
 
       if (fetchError) throw fetchError

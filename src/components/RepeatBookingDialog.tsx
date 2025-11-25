@@ -31,13 +31,8 @@ export function RepeatBookingDialog({
   defaultStartTime,
   user,
 }: RepeatBookingDialogProps) {
-  console.log('[RepeatBookingDialog] Component rendering, isOpen:', isOpen)
-  
   const { isMobile } = useResponsive()
-  console.log('[RepeatBookingDialog] useResponsive loaded, isMobile:', isMobile)
-  
   const { checkConflict } = useBookingConflict()
-  console.log('[RepeatBookingDialog] useBookingConflict loaded')
 
   // 重複預約設定
   const [repeatMode, setRepeatMode] = useState<'count' | 'endDate'>('count')
@@ -102,11 +97,9 @@ export function RepeatBookingDialog({
     defaultBoatId,
     defaultDate: defaultStartTime
   })
-  console.log('[RepeatBookingDialog] useBookingForm loaded, boats:', boats?.length, 'coaches:', coaches?.length)
 
   useEffect(() => {
     if (isOpen) {
-      console.log('[RepeatBookingDialog] Dialog opened, fetching data...')
       fetchAllData()
     }
   }, [isOpen, fetchAllData])
@@ -139,17 +132,8 @@ export function RepeatBookingDialog({
     return dates
   }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate])
 
-  if (!isOpen) {
-    console.log('[RepeatBookingDialog] Not open, returning null')
-    return null
-  }
+  if (!isOpen) return null
 
-  console.log('[RepeatBookingDialog] Rendering dialog content...')
-  console.log('[RepeatBookingDialog] About to render JSX, isMobile:', isMobile)
-  console.log('[RepeatBookingDialog] boats:', boats)
-  console.log('[RepeatBookingDialog] coaches:', coaches)
-
-  console.log('[RepeatBookingDialog] Defining handleSubmit')
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
@@ -326,34 +310,21 @@ export function RepeatBookingDialog({
     }
   }
 
-  console.log('[RepeatBookingDialog] handleSubmit defined')
-  
-  console.log('[RepeatBookingDialog] Defining handleClose')
   const handleClose = () => {
     resetForm()
     onClose()
   }
-  console.log('[RepeatBookingDialog] handleClose defined')
 
-  console.log('[RepeatBookingDialog] About to compute preview dates')
-  
   // 預覽日期 - 取前5個
   let previewDates: Date[] = []
   try {
-    console.log('[RepeatBookingDialog] Calling generateRepeatDates for preview')
     const allDates = generateRepeatDates()
     previewDates = allDates.slice(0, 5)
-    console.log('[RepeatBookingDialog] Preview dates computed:', previewDates.length)
   } catch (error) {
     console.error('[RepeatBookingDialog] Error computing preview:', error)
     previewDates = []
   }
-  
-  console.log('[RepeatBookingDialog] Preview ready, length:', previewDates.length)
 
-  console.log('[RepeatBookingDialog] Before return statement')
-  
-  console.log('[RepeatBookingDialog] Creating JSX...')
   return (
     <div
       style={{

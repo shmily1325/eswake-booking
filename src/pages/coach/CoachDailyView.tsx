@@ -108,10 +108,10 @@ export function CoachDailyView() {
   }, [dateParam])
 
   const loadBoats = async () => {
+    // 包含停用的船隻，以便顯示歷史預約
     const { data } = await supabase
       .from('boats')
       .select('id, name, color')
-      .eq('is_active', true)
       .order('id')
     
     if (data) {

@@ -44,75 +44,131 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div style={{
-          padding: '40px',
-          maxWidth: '800px',
-          margin: '0 auto',
-          fontFamily: 'monospace'
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         }}>
-          <h1 style={{ color: '#e53e3e' }}>⚠️ 發生錯誤</h1>
-          
           <div style={{
-            background: '#fff5f5',
-            border: '2px solid #feb2b2',
-            borderRadius: '8px',
-            padding: '20px',
-            marginTop: '20px'
+            background: 'white',
+            borderRadius: '16px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            padding: '40px',
+            maxWidth: '600px',
+            width: '100%',
+            textAlign: 'center'
           }}>
-            <h2 style={{ marginTop: 0 }}>錯誤訊息：</h2>
-            <pre style={{ 
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              color: '#c53030'
+            {/* 錯誤圖標 */}
+            <div style={{
+              width: '80px',
+              height: '80px',
+              margin: '0 auto 20px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '40px'
             }}>
-              {this.state.error?.message}
-            </pre>
+              😕
+            </div>
 
-            <h3>Stack Trace:</h3>
-            <pre style={{ 
-              whiteSpace: 'pre-wrap',
-              fontSize: '12px',
-              background: '#fff',
-              padding: '10px',
-              borderRadius: '4px',
-              overflow: 'auto',
-              maxHeight: '300px'
+            <h1 style={{ 
+              color: '#2d3748',
+              fontSize: '28px',
+              marginBottom: '16px',
+              fontWeight: '700'
             }}>
-              {this.state.error?.stack}
-            </pre>
+              糟糕！出了點問題
+            </h1>
+            
+            <p style={{
+              color: '#718096',
+              fontSize: '16px',
+              lineHeight: '1.6',
+              marginBottom: '30px'
+            }}>
+              系統遇到了一個意外錯誤，請嘗試重新整理頁面。<br/>
+              如果問題持續發生，請聯繫系統管理員。
+            </p>
 
-            {this.state.errorInfo && (
-              <>
-                <h3>Component Stack:</h3>
-                <pre style={{ 
-                  whiteSpace: 'pre-wrap',
-                  fontSize: '12px',
-                  background: '#fff',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  overflow: 'auto',
-                  maxHeight: '200px'
-                }}>
-                  {this.state.errorInfo.componentStack}
-                </pre>
-              </>
-            )}
+            {/* 簡化的錯誤訊息（可折疊） */}
+            <details style={{
+              background: '#f7fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '24px',
+              textAlign: 'left'
+            }}>
+              <summary style={{
+                cursor: 'pointer',
+                fontWeight: '600',
+                color: '#4a5568',
+                fontSize: '14px',
+                userSelect: 'none'
+              }}>
+                🔍 查看技術細節
+              </summary>
+              <pre style={{ 
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                color: '#e53e3e',
+                fontSize: '13px',
+                marginTop: '12px',
+                fontFamily: 'monospace'
+              }}>
+                {this.state.error?.message}
+              </pre>
+            </details>
+
+            {/* 動作按鈕 */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'center'
+            }}>
+                style={{
+                  flex: 1,
+                  maxWidth: '200px',
+                  padding: '14px 28px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                  transition: 'all 0.3s',
+                }}
+              >
+                🔄 重新整理
+              </button>
+              
+              <button
+                onClick={() => window.location.href = '/'}
+                style={{
+                  flex: 1,
+                  maxWidth: '200px',
+                  padding: '14px 28px',
+                  background: 'white',
+                  color: '#667eea',
+                  border: '2px solid #667eea',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  transition: 'all 0.3s',
+                }}
+              >
+                🏠 回到首頁
+              </button>
+            </div>
           </div>
-
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              marginTop: '20px',
-              padding: '12px 24px',
-              background: '#3182ce',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }}
-          >
-            重新載入頁面
-          </button>
         </div>
       )
     }

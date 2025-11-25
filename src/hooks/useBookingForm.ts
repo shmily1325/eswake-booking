@@ -161,6 +161,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         const { data, error } = await supabase
             .from('boats')
             .select('id, name, color')
+            .eq('is_active', true)  // 只顯示啟用的船隻
             .order('id')
 
         if (error) console.error('Error fetching boats:', error)

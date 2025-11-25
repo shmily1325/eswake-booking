@@ -8,27 +8,16 @@ interface TodayOverviewProps {
 
 export function TodayOverview({ bookings, isMobile }: TodayOverviewProps) {
     const stats = useMemo(() => {
-        console.log('[TodayOverview] Processing bookings:', bookings?.length || 0)
         const safeBookings = bookings || []
         // 統計數據
         const totalBookings = safeBookings.length
 
         // 教練使用統計（筆數 + 總時長）
         const coachStats = new Map<string, { count: number, totalMinutes: number }>()
-        safeBookings.forEach((booking, idx) => {
-            console.log(`[TodayOverview] Processing booking ${idx}:`, {
-                id: booking?.id,
-                hasCoaches: !!booking?.coaches,
-                coachesLength: booking?.coaches?.length
-            })
-            booking.coaches?.forEach((coach, coachIdx) => {
+        safeBookings.forEach((booking) => {
+            booking.coaches?.forEach((coach) => {
                 // 安全檢查：確保 coach 不是 null 且有 name
-                if (!coach) {
-                    console.warn(`[TodayOverview] Coach at index ${coachIdx} is null for booking ${booking?.id}`)
-                    return
-                }
-                if (!coach.name) {
-                    console.warn(`[TodayOverview] Coach at index ${coachIdx} has no name for booking ${booking?.id}:`, coach)
+                if (!coach || !coach.name) {
                     return
                 }
                 
