@@ -70,7 +70,9 @@ export function assembleBookingsWithRelations(
         status: bc.coaches?.status || null,
         notes: bc.coaches?.notes || null,
         created_at: bc.coaches?.created_at || null,
-        updated_at: bc.coaches?.updated_at || null
+        updated_at: bc.coaches?.updated_at || null,
+        user_email: bc.coaches?.user_email || null,
+        designated_lesson_price_30min: bc.coaches?.designated_lesson_price_30min || null
       }))
 
     const bookingDrivers = (relations.drivers || [])
@@ -81,7 +83,9 @@ export function assembleBookingsWithRelations(
         status: bd.coaches?.status || null,
         notes: bd.coaches?.notes || null,
         created_at: bd.coaches?.created_at || null,
-        updated_at: bd.coaches?.updated_at || null
+        updated_at: bd.coaches?.updated_at || null,
+        user_email: bd.coaches?.user_email || null,
+        designated_lesson_price_30min: bd.coaches?.designated_lesson_price_30min || null
       }))
 
     const coachReport = (relations.reports || []).find(
