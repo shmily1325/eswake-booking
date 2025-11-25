@@ -241,11 +241,19 @@ export function StaffManagement() {
   const handleSetAccount = async (emailOverride?: string) => {
     if (!selectedAccountCoach) return
     
+    // 調試：顯示原始值
+    console.log('emailOverride:', emailOverride)
+    console.log('emailOverride !== undefined:', emailOverride !== undefined)
+    console.log('accountEmail state:', accountEmail)
+    console.log('accountEmail type:', typeof accountEmail)
+    
     // 使用參數覆蓋值（用於清除時），否則使用狀態值
-    const email = emailOverride !== undefined ? emailOverride : (accountEmail || '').trim()
+    const trimmedEmail = (accountEmail || '').trim()
+    console.log('trimmedEmail:', trimmedEmail)
+    
+    const email = emailOverride !== undefined ? emailOverride : trimmedEmail
     
     // 調試：顯示 email 的詳細信息
-    console.log('accountEmail state:', accountEmail)
     console.log('Email to validate:', email)
     console.log('Email length:', email?.length)
     console.log('Email charCodes:', email ? Array.from(email).map(c => c.charCodeAt(0)) : [])
