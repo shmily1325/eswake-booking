@@ -244,8 +244,17 @@ export function StaffManagement() {
     // 使用參數覆蓋值（用於清除時），否則使用狀態值
     const email = emailOverride !== undefined ? emailOverride : accountEmail.trim()
     
+    // 調試：顯示 email 的詳細信息
+    console.log('Email to validate:', email)
+    console.log('Email length:', email.length)
+    console.log('Email charCodes:', Array.from(email).map(c => c.charCodeAt(0)))
+    
     // 驗證 email 格式
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const isValid = emailRegex.test(email)
+    console.log('Regex test result:', isValid)
+    
+    if (email && !isValid) {
       toast.error('請輸入有效的 email 格式')
       return
     }
