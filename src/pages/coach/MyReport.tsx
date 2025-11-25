@@ -25,16 +25,25 @@ interface Booking {
 }
 
 interface ParticipantReport {
-  id: number
+  id: number | string
   booking_id: number
-  participant_name: string
+  type: 'teaching' | 'driving'
+  participant_name?: string
   duration_min: number
-  payment_method: string
-  lesson_type: string
+  payment_method?: string
+  lesson_type?: string
   reported_at: string
   booking_start_at: string
   booking_contact_name: string
+  booking_duration_min?: number
   boat_name: string
+}
+
+interface MonthlyStats {
+  teachingMinutes: number
+  teachingCount: number
+  drivingMinutes: number
+  drivingCount: number
 }
 
 export function MyReport() {
@@ -57,6 +66,12 @@ export function MyReport() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
   const [historyRecords, setHistoryRecords] = useState<ParticipantReport[]>([])
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStats>({
+    teachingMinutes: 0,
+    teachingCount: 0,
+    drivingMinutes: 0,
+    drivingCount: 0
+  })
 
   // 載入教練資訊
   useEffect(() => {
@@ -241,7 +256,8 @@ export function MyReport() {
       const endDate = new Date(parseInt(year), parseInt(month), 0)
       const endDateStr = `${year}-${month}-${String(endDate.getDate()).padStart(2, '0')}T23:59:59`
 
-      const { data, error } = await supabase
+      // 查詢教學明細（參與者）
+      const { data: participantData, error: participantError } = await supabase
         .from('booking_participants')
         .select(`
           id,
@@ -261,13 +277,37 @@ export function MyReport() {
         .is('is_deleted', false)
         .gte('bookings.start_at', startDate)
         .lte('bookings.start_at', endDateStr)
-        .order('reported_at', { ascending: false })
+        .order('bookings.start_at', { ascending: false })
 
-      if (error) throw error
+      if (participantError) throw participantError
 
-      const records = (data || []).map((record: any) => ({
+      // 查詢駕駛明細
+      const { data: driverData, error: driverError } = await supabase
+        .from('coach_reports')
+        .select(`
+          id,
+          booking_id,
+          driver_duration_min,
+          created_at,
+          bookings!inner(
+            start_at,
+            contact_name,
+            duration_min,
+            boats(name)
+          )
+        `)
+        .eq('coach_id', coachId)
+        .not('driver_duration_min', 'is', null)
+        .gte('bookings.start_at', startDate)
+        .lte('bookings.start_at', endDateStr)
+        .order('bookings.start_at', { ascending: false })
+
+      if (driverError) throw driverError
+
+      const records = (participantData || []).map((record: any) => ({
         id: record.id,
         booking_id: record.booking_id,
+        type: 'teaching' as const,
         participant_name: record.participant_name,
         duration_min: record.duration_min,
         payment_method: record.payment_method,
@@ -278,7 +318,35 @@ export function MyReport() {
         boat_name: record.bookings.boats?.name || ''
       }))
 
-      setHistoryRecords(records)
+      const driverRecords = (driverData || []).map((record: any) => ({
+        id: `driver-${record.id}`,
+        booking_id: record.booking_id,
+        type: 'driving' as const,
+        duration_min: record.driver_duration_min,
+        reported_at: record.created_at,
+        booking_start_at: record.bookings.start_at,
+        booking_contact_name: record.bookings.contact_name,
+        booking_duration_min: record.bookings.duration_min,
+        boat_name: record.bookings.boats?.name || ''
+      }))
+
+      // 合併並按時間排序
+      const allRecords = [...records, ...driverRecords].sort((a, b) => 
+        new Date(b.booking_start_at).getTime() - new Date(a.booking_start_at).getTime()
+      )
+
+      // 計算統計數據
+      const teachingMinutes = records.reduce((sum, r) => sum + r.duration_min, 0)
+      const drivingMinutes = driverRecords.reduce((sum, r) => sum + r.duration_min, 0)
+
+      setMonthlyStats({
+        teachingMinutes,
+        teachingCount: records.length,
+        drivingMinutes,
+        drivingCount: driverRecords.length
+      })
+
+      setHistoryRecords(allRecords as any)
     } catch (error) {
       console.error('載入回報記錄失敗:', error)
       toast.error('載入回報記錄失敗')
@@ -407,10 +475,12 @@ export function MyReport() {
               <span style={{
                 background: '#ff9800',
                 color: 'white',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                fontSize: '13px',
-                fontWeight: 'bold'
+                padding: '4px 10px',
+                borderRadius: '16px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                minWidth: '24px',
+                textAlign: 'center'
               }}>
                 {unreportedCount}
               </span>
@@ -519,56 +589,118 @@ export function MyReport() {
                     <div
                       key={booking.id}
                       style={{
-                        padding: '16px',
+                        padding: '20px',
                         background: 'white',
-                        border: '2px solid',
-                        borderColor: hasReported ? '#4caf50' : '#ff9800',
-                        borderRadius: '8px',
-                        borderLeft: `6px solid ${hasReported ? '#4caf50' : '#ff9800'}`
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '12px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        transition: 'all 0.2s',
+                        cursor: 'pointer'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'
+                        e.currentTarget.style.transform = 'translateY(0)'
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                        <div>
-                          <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-                            {formatDateTime(booking.start_at)} | {booking.boat_name} ({booking.duration_min}分)
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>
+                            {formatDateTime(booking.start_at)}
                           </div>
-                          <div style={{ fontSize: '14px', color: '#666' }}>
+                          <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                            {booking.boat_name} · {booking.duration_min}分
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#999' }}>
                             {booking.contact_name}
                           </div>
                         </div>
                         <div style={{
-                          padding: '4px 12px',
-                          background: hasReported ? '#4caf50' : '#ff9800',
-                          color: 'white',
-                          borderRadius: '12px',
+                          padding: '6px 14px',
+                          background: hasReported ? '#e8f5e9' : '#fff3e0',
+                          color: hasReported ? '#2e7d32' : '#e65100',
+                          borderRadius: '20px',
                           fontSize: '13px',
-                          fontWeight: '600'
+                          fontWeight: '600',
+                          whiteSpace: 'nowrap'
                         }}>
-                          {hasReported ? '已回報' : '未回報'}
+                          {hasReported ? '✓ 已回報' : '⚠ 未回報'}
                         </div>
                       </div>
                       
-                      <div style={{ fontSize: '13px', color: '#666', marginTop: '8px' }}>
-                        {isCoach && <span>👨‍🏫 教練</span>}
-                        {isCoach && isDriver && <span> · </span>}
-                        {isDriver && <span>🚤 駕駛</span>}
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '8px', 
+                        marginBottom: '12px',
+                        flexWrap: 'wrap'
+                      }}>
+                        {isCoach && (
+                          <span style={{
+                            padding: '4px 10px',
+                            background: '#e3f2fd',
+                            color: '#1565c0',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            🎓 教練
+                          </span>
+                        )}
+                        {isDriver && (
+                          <span style={{
+                            padding: '4px 10px',
+                            background: '#e0f2f1',
+                            color: '#00695c',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            🚤 駕駛
+                          </span>
+                        )}
                       </div>
                       
                       <button
-                        onClick={() => {
-                          // 導航到回報頁面
-                          window.location.href = `/coach-report?date=${booking.start_at.split('T')[0]}`
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // 導航到教練專用回報頁面
+                          const bookingDate = booking.start_at.split('T')[0]
+                          window.location.href = `/my-report-detail?date=${bookingDate}#booking-${booking.id}`
                         }}
                         style={{
-                          marginTop: '12px',
-                          padding: '8px 16px',
-                          background: '#2196f3',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
+                          width: '100%',
+                          padding: '10px 16px',
+                          background: hasReported ? '#f5f5f5' : '#2196f3',
+                          color: hasReported ? '#666' : 'white',
+                          border: hasReported ? '1px solid #e0e0e0' : 'none',
+                          borderRadius: '8px',
                           cursor: 'pointer',
                           fontSize: '14px',
-                          fontWeight: '500'
+                          fontWeight: '600',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (hasReported) {
+                            e.currentTarget.style.background = '#eeeeee'
+                          } else {
+                            e.currentTarget.style.background = '#1976d2'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (hasReported) {
+                            e.currentTarget.style.background = '#f5f5f5'
+                          } else {
+                            e.currentTarget.style.background = '#2196f3'
+                          }
                         }}
                       >
                         {hasReported ? '查看回報' : '立即回報'}
@@ -589,7 +721,7 @@ export function MyReport() {
             borderTopRightRadius: 0
           }}>
             {/* 月份選擇 */}
-            <div style={{ marginBottom: '16px' }}>
+            <div style={{ marginBottom: '24px' }}>
               <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>月份</label>
               <input
                 type="month"
@@ -604,6 +736,130 @@ export function MyReport() {
                 }}
               />
             </div>
+
+            {/* 統計圖表 */}
+            {!loading && (monthlyStats.teachingMinutes > 0 || monthlyStats.drivingMinutes > 0) && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: '20px',
+                marginBottom: '24px'
+              }}>
+                {/* 教學時數對比 */}
+                <div style={{
+                  padding: '20px',
+                  background: 'white',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+                }}>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#333',
+                    marginBottom: '16px',
+                    borderLeft: '4px solid #2196f3',
+                    paddingLeft: '12px'
+                  }}>
+                    🎓 教學時數對比
+                  </div>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: '8px'
+                    }}>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+                        教學
+                      </span>
+                      <span style={{ fontSize: '14px', color: '#666' }}>
+                        {monthlyStats.teachingMinutes}分 ({monthlyStats.teachingCount}筆)
+                      </span>
+                    </div>
+                    <div style={{
+                      width: '100%',
+                      height: '32px',
+                      background: '#e3f2fd',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        background: '#2196f3',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                      }}>
+                        {monthlyStats.teachingMinutes}分
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 駕駛時數對比 */}
+                <div style={{
+                  padding: '20px',
+                  background: 'white',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+                }}>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#333',
+                    marginBottom: '16px',
+                    borderLeft: '4px solid #4caf50',
+                    paddingLeft: '12px'
+                  }}>
+                    🚤 駕駛時數對比
+                  </div>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: '8px'
+                    }}>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+                        駕駛
+                      </span>
+                      <span style={{ fontSize: '14px', color: '#666' }}>
+                        {monthlyStats.drivingMinutes}分 ({monthlyStats.drivingCount}筆)
+                      </span>
+                    </div>
+                    <div style={{
+                      width: '100%',
+                      height: '32px',
+                      background: '#e8f5e9',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        background: '#4caf50',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                      }}>
+                        {monthlyStats.drivingMinutes}分
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* 記錄列表 */}
             {loading ? (
@@ -623,26 +879,39 @@ export function MyReport() {
                       padding: '16px',
                       background: 'white',
                       border: '1px solid #e0e0e0',
-                      borderRadius: '8px'
+                      borderRadius: '8px',
+                      borderLeft: `4px solid ${record.type === 'teaching' ? '#2196f3' : '#4caf50'}`
                     }}
                   >
-                    <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                      {formatDateTime(record.booking_start_at)} | {record.boat_name}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                      預約人：{record.booking_contact_name}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                      參與者：{record.participant_name} ({record.duration_min}分)
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                      付款方式：{getPaymentMethodLabel(record.payment_method)}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                      課程類型：{getLessonTypeLabel(record.lesson_type)}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-                      回報時間：{new Date(record.reported_at).toLocaleString('zh-TW')}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>
+                          {formatDateTime(record.booking_start_at)} | {record.boat_name}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
+                          {record.booking_contact_name}
+                        </div>
+                        {record.type === 'teaching' ? (
+                          <div style={{ fontSize: '13px', color: '#333' }}>
+                            {record.participant_name} · {record.duration_min}分 · {getPaymentMethodLabel(record.payment_method || '')} · {getLessonTypeLabel(record.lesson_type || '')}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '13px', color: '#333' }}>
+                            駕駛 · {record.duration_min}分
+                          </div>
+                        )}
+                      </div>
+                      <div style={{
+                        padding: '4px 10px',
+                        background: record.type === 'teaching' ? '#e3f2fd' : '#e8f5e9',
+                        color: record.type === 'teaching' ? '#1565c0' : '#2e7d32',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {record.type === 'teaching' ? '🎓 教學' : '🚤 駕駛'}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -651,6 +920,7 @@ export function MyReport() {
           </div>
         )}
       </div>
+
     </div>
   )
 }

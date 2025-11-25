@@ -68,6 +68,7 @@ function AppContent() {
           {/* <Route path="/coach-check" element={<CoachCheck />} /> */}
           <Route path="/coach-report" element={<CoachReport />} />
           <Route path="/my-report" element={<MyReport />} />
+          <Route path="/my-report-detail" element={<CoachReport autoFilterByUser={true} />} />
           <Route path="/coach-admin" element={<CoachAdmin />} />
           <Route path="/coach-assignment" element={<CoachAssignment />} />
           <Route path="/member-import" element={<MemberImport />} />
