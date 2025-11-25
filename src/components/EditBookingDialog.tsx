@@ -34,7 +34,6 @@ export function EditBookingDialog({
   const [copyToTime, setCopyToTime] = useState('') // 新增：複製到的時間
   const [copyLoading, setCopyLoading] = useState(false)
   const [copyError, setCopyError] = useState('')
-  const [copyConflictChecking, setCopyConflictChecking] = useState(false)
   const [copyConflictStatus, setCopyConflictStatus] = useState<'checking' | 'available' | 'conflict' | null>(null)
 
   // 使用 useBookingForm Hook
@@ -142,7 +141,6 @@ export function EditBookingDialog({
     }
 
     const checkCopyConflict = async () => {
-      setCopyConflictChecking(true)
       setCopyConflictStatus('checking')
       setCopyError('')
 
@@ -170,8 +168,6 @@ export function EditBookingDialog({
       } catch (err) {
         setCopyConflictStatus('conflict')
         setCopyError('檢查衝突時發生錯誤')
-      } finally {
-        setCopyConflictChecking(false)
       }
     }
 
