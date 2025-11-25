@@ -486,12 +486,8 @@ export function EditBookingDialog({
     setLoading(true)
 
     try {
-      // 檢查是否已有排班、回報記錄和交易記錄
-      const [coachesCheck, driversCheck, participantsResult, reportsResult] = await Promise.all([
-        supabase
-          .from('booking_coaches')
-          .select('id', { count: 'exact', head: true })
-          .eq('booking_id', booking.id),
+      // 檢查是否已有排班、回報記錄和交易記錄（只檢查 booking_drivers）
+      const [driversCheck, participantsResult, reportsResult] = await Promise.all([
         supabase
           .from('booking_drivers')
           .select('id', { count: 'exact', head: true })
@@ -511,11 +507,10 @@ export function EditBookingDialog({
           .eq('booking_id', booking.id)
       ])
 
-      const hasCoachAssignment = (coachesCheck.count || 0) > 0
       const hasDriverAssignment = (driversCheck.count || 0) > 0
       const hasParticipants = (participantsResult.data || []).length > 0
       const hasDriverReports = (reportsResult.count || 0) > 0
-      const hasReports = hasCoachAssignment || hasDriverAssignment || hasParticipants || hasDriverReports
+      const hasReports = hasDriverAssignment || hasParticipants || hasDriverReports
 
       // 檢查有交易記錄的參與者
       const participantsWithTransactions = hasParticipants
@@ -530,8 +525,10 @@ export function EditBookingDialog({
       if (hasReports || participantsWithTransactions.length > 0) {
         const warnings = []
 
-        if (hasCoachAssignment) warnings.push(`教練排班 ${coachesCheck.count} 筆`)
-        if (hasDriverAssignment) warnings.push(`駕駛排班 ${driversCheck.count} 筆`)
+        // 只檢查 booking_drivers 表，有記錄就顯示「已有排班」
+        if (hasDriverAssignment) {
+          warnings.push('已有排班')
+        }
         if (hasParticipants) warnings.push(`參與者記錄 ${participantsResult.data!.length} 筆`)
         if (hasDriverReports) warnings.push(`駕駛回報 ${reportsResult.count} 筆`)
 
