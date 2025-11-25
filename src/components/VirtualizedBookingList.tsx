@@ -76,7 +76,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                         style={{
                             display: 'flex',
                             borderBottom: '2px solid #e9ecef',
-                            minHeight: isMobile ? '140px' : '160px'
+                            // minHeight: isMobile ? '140px' : '160px' // 移除固定最小高度，讓內容自然撐開
                         }}
                     >
                         {/* 左側船名欄 */}
@@ -117,7 +117,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                         <div style={{
                             flex: 1,
                             backgroundColor: 'white',
-                            minHeight: isMobile ? '80px' : '100px',
+                            minHeight: boatBookings.length === 0 ? (isMobile ? '80px' : '100px') : 'auto', // 只有沒預約時才設最小高度
                         }}>
                             {boatBookings.length === 0 ? (
                                 <div style={{

@@ -31,6 +31,7 @@ export function EditBookingDialog({
   // 複製功能狀態
   const [showCopyDialog, setShowCopyDialog] = useState(false)
   const [copyToDate, setCopyToDate] = useState('')
+  const [copyToTime, setCopyToTime] = useState('') // 新增：複製到的時間
   const [copyLoading, setCopyLoading] = useState(false)
   const [copyError, setCopyError] = useState('')
 
@@ -457,22 +458,27 @@ export function EditBookingDialog({
       return
     }
 
+    if (!copyToTime) {
+      setCopyError('請選擇複製到的時間')
+      return
+    }
+
     setCopyLoading(true)
     setCopyError('')
 
     try {
-      // 組合新的日期和時間
-      const newStartAt = `${copyToDate}T${startTime}:00`
+      // 組合新的日期和時間（使用選擇的時間，不是原預約的時間）
+      const newStartAt = `${copyToDate}T${copyToTime}:00`
 
-      // 使用專用的衝突檢查，直接傳遞 copyToDate（不依賴狀態更新）
+      // 使用專用的衝突檢查
       const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
       const selectedBoat = boats.find(b => b.id === selectedBoatId)
       
       const conflictResult = await checkConflictForCopy({
         boatId: selectedBoatId,
         boatName: selectedBoat?.name,
-        date: copyToDate, // 直接使用 copyToDate，不是 startDate
-        startTime,
+        date: copyToDate,
+        startTime: copyToTime, // 使用選擇的時間
         durationMin,
         coachIds: selectedCoaches,
         coachesMap,
@@ -557,7 +563,8 @@ export function EditBookingDialog({
       setCopyLoading(false)
       setShowCopyDialog(false)
       setCopyToDate('')
-      alert(`✅ 預約已複製到 ${copyToDate} ${startTime}`)
+      setCopyToTime('')
+      alert(`✅ 預約已複製到 ${copyToDate} ${copyToTime}`)
       onSuccess()
     } catch (err: any) {
       setCopyError(err.message || '複製失敗')
@@ -1352,6 +1359,31 @@ export function EditBookingDialog({
             </button>
             <button
               type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowCopyDialog(true)
+              }}
+              disabled={loading}
+              style={{
+                padding: '14px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: loading ? '#ccc' : '#ff9800',
+                color: 'white',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                touchAction: 'manipulation',
+                minWidth: '70px',
+                position: 'relative',
+                zIndex: 10,
+              }}
+            >
+              📋 複製
+            </button>
+            <button
+              type="button"
               onClick={handleClose}
               disabled={loading}
               style={{
@@ -1416,6 +1448,8 @@ export function EditBookingDialog({
           onClick={() => {
             if (!copyLoading) {
               setShowCopyDialog(false)
+              setCopyToDate('')
+              setCopyToTime('')
               setCopyError('')
             }
           }}
@@ -1513,6 +1547,8 @@ export function EditBookingDialog({
                 onClick={() => {
                   if (!copyLoading) {
                     setShowCopyDialog(false)
+                    setCopyToDate('')
+                    setCopyToTime('')
                     setCopyError('')
                   }
                 }}
@@ -1535,17 +1571,17 @@ export function EditBookingDialog({
               <button
                 type="button"
                 onClick={handleCopy}
-                disabled={copyLoading || !copyToDate}
+                disabled={copyLoading || !copyToDate || !copyToTime}
                 style={{
                   flex: 1,
                   padding: '12px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: (copyLoading || !copyToDate) ? '#ccc' : 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                  background: (copyLoading || !copyToDate || !copyToTime) ? '#ccc' : 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
                   color: 'white',
                   fontSize: '16px',
                   fontWeight: '600',
-                  cursor: (copyLoading || !copyToDate) ? 'not-allowed' : 'pointer',
+                  cursor: (copyLoading || !copyToDate || !copyToTime) ? 'not-allowed' : 'pointer',
                 }}
               >
                 {copyLoading ? '複製中...' : '確認複製'}
