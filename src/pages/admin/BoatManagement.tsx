@@ -14,6 +14,7 @@ export function BoatManagement() {
     const [loading, setLoading] = useState(true)
     const [boats, setBoats] = useState<Boat[]>([])
     const [unavailableDates, setUnavailableDates] = useState<BoatUnavailableDate[]>([])
+    const [activeTab, setActiveTab] = useState<'boats' | 'pricing'>('boats') // Tab 切換
     const [addDialogOpen, setAddDialogOpen] = useState(false)
     const [newBoatName, setNewBoatName] = useState('')
     const [newBoatColor, setNewBoatColor] = useState('#1976d2')
@@ -27,6 +28,10 @@ export function BoatManagement() {
     const [reason, setReason] = useState('')
     const [unavailableLoading, setUnavailableLoading] = useState(false)
     const { isMobile } = useResponsive()
+    
+    // 價格設定狀態
+    const [editingPrices, setEditingPrices] = useState<{[key: string]: {balance: string, vip: string}}>({})
+    const [savingPrices, setSavingPrices] = useState<{[key: string]: boolean}>({})
 
     useEffect(() => {
         if (user) loadData()
@@ -194,6 +199,64 @@ export function BoatManagement() {
         setUnavailableDialogOpen(true)
     }
 
+    // 初始化編輯價格
+    const initEditingPrice = (boat: Boat) => {
+        if (!editingPrices[boat.id]) {
+            setEditingPrices(prev => ({
+                ...prev,
+                [boat.id]: {
+                    balance: String(boat.balance_price_per_hour || ''),
+                    vip: String(boat.vip_price_per_hour || '')
+                }
+            }))
+        }
+    }
+
+    // 更新船隻價格
+    const handleUpdatePrice = async (boat: Boat) => {
+        const prices = editingPrices[boat.id]
+        if (!prices) return
+
+        const balancePrice = prices.balance ? parseInt(prices.balance) : null
+        const vipPrice = prices.vip ? parseInt(prices.vip) : null
+
+        // 驗證
+        if (balancePrice && balancePrice < 0) {
+            toast.warning('價格不能為負數')
+            return
+        }
+        if (vipPrice && vipPrice < 0) {
+            toast.warning('價格不能為負數')
+            return
+        }
+
+        setSavingPrices(prev => ({ ...prev, [boat.id]: true }))
+        try {
+            const { error } = await supabase
+                .from('boats')
+                .update({
+                    balance_price_per_hour: balancePrice,
+                    vip_price_per_hour: vipPrice
+                })
+                .eq('id', boat.id)
+
+            if (error) throw error
+
+            toast.success('價格更新成功！')
+            loadData()
+        } catch (error) {
+            toast.error('更新價格失敗：' + (error as Error).message)
+        } finally {
+            setSavingPrices(prev => ({ ...prev, [boat.id]: false }))
+        }
+    }
+
+    // 計算預覽價格
+    const calculatePrice = (pricePerHour: number | null, minutes: number): string => {
+        if (!pricePerHour) return '-'
+        return `$${Math.ceil(pricePerHour * minutes / 60).toLocaleString()}`
+    }
+
     if (loading) {
         return (
             <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -229,47 +292,100 @@ export function BoatManagement() {
                         🚤 船隻管理
                     </h1>
 
-                    <Button
-                        variant="outline"
-                        size="medium"
-                        onClick={() => setAddDialogOpen(true)}
-                        icon={<span>➕</span>}
-                    >
-                        新增船隻
-                    </Button>
+                    {activeTab === 'boats' && (
+                        <Button
+                            variant="outline"
+                            size="medium"
+                            onClick={() => setAddDialogOpen(true)}
+                            icon={<span>➕</span>}
+                        >
+                            新增船隻
+                        </Button>
+                    )}
                 </div>
 
-                {/* 說明提示 */}
+                {/* Tab 切換 */}
                 <div style={{
-                    background: '#e3f2fd',
-                    padding: isMobile ? '12px 16px' : '14px 20px',
-                    borderRadius: '8px',
-                    marginBottom: '20px',
-                    fontSize: '14px',
-                    color: '#0d47a1',
-                    border: '1px solid #bbdefb',
-                    lineHeight: '1.6'
+                    display: 'flex',
+                    gap: '8px',
+                    borderBottom: '2px solid #e0e0e0',
+                    marginBottom: '20px'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                        <span style={{ flexShrink: 0 }}>💡</span>
-                        <div>
-                            <div style={{ marginBottom: '4px' }}>
-                                <strong>維修/停用</strong>：設定特定日期或時段船隻不可預約。
-                            </div>
-                            <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                                若不指定時間，則視為<strong>全天停用</strong>。若指定時間（例如 10:00-12:00），則該時段外仍可預約。
+                    <button
+                        onClick={() => setActiveTab('boats')}
+                        style={{
+                            padding: isMobile ? '12px 16px' : '14px 28px',
+                            background: activeTab === 'boats' ? 'white' : 'transparent',
+                            border: 'none',
+                            borderBottom: activeTab === 'boats' ? '3px solid #2196F3' : '3px solid transparent',
+                            color: activeTab === 'boats' ? '#2196F3' : '#666',
+                            fontWeight: activeTab === 'boats' ? 'bold' : 'normal',
+                            fontSize: isMobile ? '14px' : '16px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            marginBottom: '-2px',
+                            whiteSpace: 'nowrap'
+                        }}
+                    >
+                        船隻列表
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('pricing')}
+                        style={{
+                            padding: isMobile ? '12px 16px' : '14px 28px',
+                            background: activeTab === 'pricing' ? 'white' : 'transparent',
+                            border: 'none',
+                            borderBottom: activeTab === 'pricing' ? '3px solid #2196F3' : '3px solid transparent',
+                            color: activeTab === 'pricing' ? '#2196F3' : '#666',
+                            fontWeight: activeTab === 'pricing' ? 'bold' : 'normal',
+                            fontSize: isMobile ? '14px' : '16px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            marginBottom: '-2px',
+                            whiteSpace: 'nowrap'
+                        }}
+                    >
+                        💰 價格設定
+                    </button>
+                </div>
+
+                {/* 船隻列表 Tab */}
+                {activeTab === 'boats' && (
+                    <>
+                        {/* 說明提示 */}
+                        <div style={{
+                            background: '#e3f2fd',
+                            padding: isMobile ? '12px 16px' : '14px 20px',
+                            borderRadius: '8px',
+                            marginBottom: '20px',
+                            fontSize: '14px',
+                            color: '#0d47a1',
+                            border: '1px solid #bbdefb',
+                            lineHeight: '1.6'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                <span style={{ flexShrink: 0 }}>💡</span>
+                                <div>
+                                    <div style={{ marginBottom: '4px' }}>
+                                        <strong>維修/停用</strong>：設定特定日期或時段船隻不可預約。
+                                    </div>
+                                    <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                                        若不指定時間，則視為<strong>全天停用</strong>。若指定時間（例如 10:00-12:00），則該時段外仍可預約。
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </>
+                )}
 
                 {/* 船隻列表 */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-                    gap: '15px'
-                }}>
-                    {boats.map(boat => {
+                {activeTab === 'boats' && (
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+                        gap: '15px'
+                    }}>
+                        {boats.map(boat => {
                         const boatUnavailable = unavailableDates.filter(d => d.boat_id === boat.id)
                         const isActive = boat.is_active
 
@@ -409,7 +525,214 @@ export function BoatManagement() {
                             </div>
                         )
                     })}
-                </div>
+                    </div>
+                )}
+
+                {/* 價格設定 Tab */}
+                {activeTab === 'pricing' && (
+                    <>
+                        {/* 說明提示 */}
+                        <div style={{
+                            background: '#fff9e6',
+                            padding: isMobile ? '12px 16px' : '14px 20px',
+                            borderRadius: '8px',
+                            marginBottom: '20px',
+                            fontSize: '14px',
+                            color: '#8b6914',
+                            border: '1px solid #ffe8a3',
+                            lineHeight: '1.6'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                <span style={{ flexShrink: 0 }}>💡</span>
+                                <div>
+                                    <div style={{ marginBottom: '4px' }}>
+                                        <strong>價格計算公式</strong>：實際金額 = Math.ceil(每小時價格 × 分鐘數 ÷ 60)
+                                    </div>
+                                    <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                                        例如：$10800/小時 × 30分鐘 ÷ 60 = $5400
+                                    </div>
+                                    <div style={{ fontSize: '13px', opacity: 0.9', marginTop: '4px' }}>
+                                        • <strong>儲值價格</strong>：用於扣儲值時的金額<br />
+                                        • <strong>VIP票券價格</strong>：用於 VIP 票券時的金額
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 價格設定列表 */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr',
+                            gap: '15px'
+                        }}>
+                            {boats.map(boat => {
+                                initEditingPrice(boat)
+                                const editing = editingPrices[boat.id] || { balance: '', vip: '' }
+                                const saving = savingPrices[boat.id] || false
+                                const balancePrice = editing.balance ? parseInt(editing.balance) : null
+                                const vipPrice = editing.vip ? parseInt(editing.vip) : null
+
+                                return (
+                                    <div
+                                        key={boat.id}
+                                        style={{
+                                            background: 'white',
+                                            borderRadius: '12px',
+                                            padding: isMobile ? '16px' : '24px',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                            borderTop: `4px solid ${boat.color}`
+                                        }}
+                                    >
+                                        {/* 船隻名稱 */}
+                                        <h3 style={{
+                                            margin: '0 0 20px 0',
+                                            fontSize: isMobile ? '20px' : '22px',
+                                            fontWeight: 'bold',
+                                            color: '#333',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px'
+                                        }}>
+                                            {boat.name}
+                                            {boat.name.includes('彈簧床') && (
+                                                <Badge variant="secondary" size="small">
+                                                    不收船費
+                                                </Badge>
+                                            )}
+                                        </h3>
+
+                                        {/* 價格輸入 */}
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+                                            gap: '16px',
+                                            marginBottom: '16px'
+                                        }}>
+                                            {/* 儲值價格 */}
+                                            <div>
+                                                <label style={{
+                                                    display: 'block',
+                                                    marginBottom: '8px',
+                                                    fontSize: '14px',
+                                                    fontWeight: '600',
+                                                    color: '#555'
+                                                }}>
+                                                    儲值價格（每小時）
+                                                </label>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ fontSize: '16px', color: '#666' }}>$</span>
+                                                    <input
+                                                        type="number"
+                                                        value={editing.balance}
+                                                        onChange={(e) => setEditingPrices(prev => ({
+                                                            ...prev,
+                                                            [boat.id]: { ...editing, balance: e.target.value }
+                                                        }))}
+                                                        placeholder="未設定"
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '10px 12px',
+                                                            borderRadius: '8px',
+                                                            border: '2px solid #e0e0e0',
+                                                            fontSize: '16px',
+                                                            outline: 'none',
+                                                            transition: 'border-color 0.2s'
+                                                        }}
+                                                        onFocus={(e) => e.target.style.borderColor = '#2196F3'}
+                                                        onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* VIP 票券價格 */}
+                                            <div>
+                                                <label style={{
+                                                    display: 'block',
+                                                    marginBottom: '8px',
+                                                    fontSize: '14px',
+                                                    fontWeight: '600',
+                                                    color: '#555'
+                                                }}>
+                                                    VIP 票券價格（每小時）
+                                                </label>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ fontSize: '16px', color: '#666' }}>$</span>
+                                                    <input
+                                                        type="number"
+                                                        value={editing.vip}
+                                                        onChange={(e) => setEditingPrices(prev => ({
+                                                            ...prev,
+                                                            [boat.id]: { ...editing, vip: e.target.value }
+                                                        }))}
+                                                        placeholder="未設定"
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '10px 12px',
+                                                            borderRadius: '8px',
+                                                            border: '2px solid #e0e0e0',
+                                                            fontSize: '16px',
+                                                            outline: 'none',
+                                                            transition: 'border-color 0.2s'
+                                                        }}
+                                                        onFocus={(e) => e.target.style.borderColor = '#2196F3'}
+                                                        onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 價格預覽 */}
+                                        <div style={{
+                                            background: '#f5f5f5',
+                                            padding: '12px 16px',
+                                            borderRadius: '8px',
+                                            marginBottom: '16px',
+                                            fontSize: '13px',
+                                            color: '#666'
+                                        }}>
+                                            <div style={{ fontWeight: '600', marginBottom: '8px', color: '#333' }}>
+                                                價格預覽
+                                            </div>
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+                                                gap: '12px'
+                                            }}>
+                                                <div>
+                                                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>儲值價格</div>
+                                                    <div>20分: {calculatePrice(balancePrice, 20)}</div>
+                                                    <div>30分: {calculatePrice(balancePrice, 30)}</div>
+                                                    <div>40分: {calculatePrice(balancePrice, 40)}</div>
+                                                    <div>60分: {calculatePrice(balancePrice, 60)}</div>
+                                                    <div>90分: {calculatePrice(balancePrice, 90)}</div>
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>VIP 票券價格</div>
+                                                    <div>20分: {calculatePrice(vipPrice, 20)}</div>
+                                                    <div>30分: {calculatePrice(vipPrice, 30)}</div>
+                                                    <div>40分: {calculatePrice(vipPrice, 40)}</div>
+                                                    <div>60分: {calculatePrice(vipPrice, 60)}</div>
+                                                    <div>90分: {calculatePrice(vipPrice, 90)}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 儲存按鈕 */}
+                                        <Button
+                                            variant="primary"
+                                            size="medium"
+                                            onClick={() => handleUpdatePrice(boat)}
+                                            disabled={saving}
+                                            fullWidth
+                                        >
+                                            {saving ? '儲存中...' : '💾 儲存價格'}
+                                        </Button>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* 新增船隻彈窗 */}
