@@ -50,6 +50,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   const [memberData, setMemberData] = useState<any>(null)
   const [coachPrice30min, setCoachPrice30min] = useState<number | null>(null)
   const [boatData, setBoatData] = useState<{ balance_price_per_hour: number | null, vip_price_per_hour: number | null } | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   
   // 判斷是否為現金/匯款結清
   const isCashSettlement = report.payment_method === 'cash' || report.payment_method === 'transfer'
@@ -287,6 +288,25 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
       // 載入船隻價格
       if (boatResult.data) {
         setBoatData(boatResult.data)
+        
+        // 更新船費扣款的金額（儲值或VIP票券）
+        setItems(prevItems => 
+          prevItems.map(item => {
+            // 如果是儲值類別且有價格，計算金額
+            if (item.category === 'balance' && boatResult.data.balance_price_per_hour) {
+              const duration = report.duration_min
+              const amount = Math.ceil(boatResult.data.balance_price_per_hour * duration / 60)
+              return { ...item, amount }
+            }
+            // 如果是VIP票券類別且有價格，計算金額
+            if (item.category === 'vip_voucher' && boatResult.data.vip_price_per_hour) {
+              const duration = report.duration_min
+              const amount = Math.ceil(boatResult.data.vip_price_per_hour * duration / 60)
+              return { ...item, amount }
+            }
+            return item
+          })
+        )
       }
       
       // 如果加載到教練價格，更新狀態並重新計算指定課金額
@@ -394,6 +414,54 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     }
   }
 
+  // 驗證扣款項目
+  const validateItems = (): boolean => {
+    const errors: Record<string, string> = {}
+    
+    items.forEach((item, index) => {
+      const itemKey = `item-${index}`
+      
+      // 跳過直接結清
+      if (item.category === 'direct_settlement') return
+      
+      // 檢查金額/時數
+      if (item.category === 'balance' || item.category === 'vip_voucher') {
+        if (!item.amount || item.amount <= 0) {
+          errors[`${itemKey}-amount`] = '請輸入有效的金額'
+        }
+      } else if (item.category !== 'plan') {
+        if (!item.minutes || item.minutes <= 0) {
+          errors[`${itemKey}-minutes`] = '請輸入有效的時數'
+        }
+      }
+      
+      // 檢查方案名稱
+      if (item.category === 'plan' && !item.planName?.trim()) {
+        errors[`${itemKey}-planName`] = '方案類別必須填寫方案名稱'
+      }
+      
+      // 檢查說明
+      if (!item.description?.trim()) {
+        errors[`${itemKey}-description`] = '請輸入說明'
+      }
+    })
+    
+    setValidationErrors(errors)
+    
+    if (Object.keys(errors).length > 0) {
+      // 滾動到第一個錯誤項目
+      const firstErrorKey = Object.keys(errors)[0]
+      const itemIndex = parseInt(firstErrorKey.split('-')[1])
+      const element = document.getElementById(`deduction-item-${itemIndex}`)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      return false
+    }
+    
+    return true
+  }
+
   // 確認扣款
   const handleConfirm = async () => {
     // 檢查是否所有項目都是直接結清
@@ -412,6 +480,11 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
 
     if (!memberData) {
       alert('會員資料未載入')
+      return
+    }
+
+    // 驗證扣款項目
+    if (!validateItems()) {
       return
     }
 
@@ -445,6 +518,13 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
           // 方案：不扣任何餘額，只記錄使用
           transactionData.amount = 0
           transactionData.minutes = 0
+          // 記錄當前餘額快照（方案不扣款，但要記錄當時狀態）
+          transactionData.balance_after = cumulativeBalances.balance
+          transactionData.vip_voucher_amount_after = cumulativeBalances.vip_voucher_amount
+          transactionData.boat_voucher_g23_minutes_after = cumulativeBalances.boat_voucher_g23_min
+          transactionData.boat_voucher_g21_panther_minutes_after = cumulativeBalances.boat_voucher_g21_panther_min
+          transactionData.designated_lesson_minutes_after = cumulativeBalances.designated_lesson_min
+          transactionData.gift_boat_hours_after = cumulativeBalances.gift_boat_hours_min
           // 不更新會員餘額
         } else if (item.category === 'balance') {
           // 扣儲值金額（使用累積餘額）
@@ -682,21 +762,183 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                   defaultDescription={generateDescription()}
                   boatName={report.bookings.boats?.name || ''}
                   coachPrice30min={coachPrice30min}
-                  onUpdate={(updates) => updateItem(item.id, updates)}
+                  boatData={boatData}
+                  validationErrors={validationErrors}
+                  itemIndex={index}
+                  onUpdate={(updates) => {
+                    updateItem(item.id, updates)
+                    // 清除該項目的錯誤
+                    const newErrors = { ...validationErrors }
+                    Object.keys(newErrors).forEach(key => {
+                      if (key.startsWith(`item-${index}-`)) {
+                        delete newErrors[key]
+                      }
+                    })
+                    setValidationErrors(newErrors)
+                  }}
                   onRemove={() => removeItem(item.id)}
                   canRemove={items.length > 1}
                   totalItems={items.length}
                 />
               ))}
 
-              {/* 操作按鈕 */}
-              <div style={{ 
-                display: 'flex', 
-                gap: '12px', 
-                marginTop: '16px',
+              {/* 總覽 + 操作按鈕區域（固定在底部） */}
+              <div style={{
+                position: 'sticky',
+                bottom: 0,
+                background: 'white',
                 paddingTop: '16px',
-                borderTop: '1px solid #e0e0e0'
+                marginTop: '16px',
+                borderTop: '2px solid #e0e0e0',
+                zIndex: 10
               }}>
+                {/* 總覽卡片 */}
+                {(() => {
+                  // 計算所有扣款的累積影響
+                  const deductionItems = items.filter(item => item.category !== 'direct_settlement')
+                  
+                  if (deductionItems.length === 0) return null
+
+                  // 累積各類別的扣款
+                  const summary: Record<string, { before: number, after: number, unit: string, label: string, emoji: string }> = {}
+                
+                deductionItems.forEach(item => {
+                  let key = ''
+                  let unit = ''
+                  let label = ''
+                  let emoji = ''
+                  let delta = 0
+                  
+                  if (item.category === 'balance') {
+                    key = 'balance'
+                    unit = '元'
+                    label = '儲值'
+                    emoji = '💰'
+                    delta = item.amount || 0
+                  } else if (item.category === 'vip_voucher') {
+                    key = 'vip_voucher'
+                    unit = '元'
+                    label = 'VIP票券'
+                    emoji = '💎'
+                    delta = item.amount || 0
+                  } else if (item.category === 'boat_voucher_g23') {
+                    key = 'boat_voucher_g23'
+                    unit = '分'
+                    label = 'G23船券'
+                    emoji = '🚤'
+                    delta = item.minutes || 0
+                  } else if (item.category === 'boat_voucher_g21_panther') {
+                    key = 'boat_voucher_g21_panther'
+                    unit = '分'
+                    label = 'G21/黑豹券'
+                    emoji = '⛵'
+                    delta = item.minutes || 0
+                  } else if (item.category === 'designated_lesson') {
+                    key = 'designated_lesson'
+                    unit = '分'
+                    label = '指定課時數'
+                    emoji = '🎓'
+                    delta = item.minutes || 0
+                  } else if (item.category === 'gift_boat_hours') {
+                    key = 'gift_boat_hours'
+                    unit = '分'
+                    label = '贈送時數'
+                    emoji = '🎁'
+                    delta = item.minutes || 0
+                  } else if (item.category === 'plan') {
+                    // 方案不扣款，跳過
+                    return
+                  }
+                  
+                  if (key) {
+                    if (!summary[key]) {
+                      // 計算期初值
+                      let before = 0
+                      if (!memberData) {
+                        before = 0
+                      } else if (key === 'balance') {
+                        before = memberData.balance || 0
+                      } else if (key === 'vip_voucher') {
+                        before = memberData.vip_voucher_amount || 0
+                      } else if (key === 'boat_voucher_g23') {
+                        before = memberData.boat_voucher_g23_minutes || 0
+                      } else if (key === 'boat_voucher_g21_panther') {
+                        before = memberData.boat_voucher_g21_panther_minutes || 0
+                      } else if (key === 'designated_lesson') {
+                        before = memberData.designated_lesson_minutes || 0
+                      } else if (key === 'gift_boat_hours') {
+                        before = memberData.gift_boat_hours || 0
+                      }
+                      
+                      summary[key] = { before, after: before, unit, label, emoji }
+                    }
+                    summary[key].after -= delta
+                  }
+                })
+                
+                const summaryEntries = Object.entries(summary)
+                if (summaryEntries.length === 0) return null
+                
+                  return (
+                    <div style={{
+                      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      marginBottom: '12px',
+                      border: '2px solid #bae6fd',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                    }}>
+                      <div style={{ 
+                        fontSize: '13px', 
+                        fontWeight: '600', 
+                        marginBottom: '10px',
+                        color: '#0369a1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        📊 扣款總覽
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {summaryEntries.map(([key, data]) => (
+                          <div key={key} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '8px 10px',
+                            background: 'white',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            border: '1px solid #e0e0e0'
+                          }}>
+                            <span style={{ fontWeight: '500', color: '#64748b' }}>
+                              {data.emoji} {data.label}
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ color: '#475569', fontSize: '12px' }}>
+                                {data.unit === '元' ? `$${data.before.toLocaleString()}` : `${data.before}分`}
+                              </span>
+                              <span style={{ color: '#94a3b8' }}>→</span>
+                              <span style={{
+                                fontWeight: '600',
+                                color: data.after < 0 ? '#dc2626' : '#16a34a'
+                              }}>
+                                {data.unit === '元' ? `$${data.after.toLocaleString()}` : `${data.after}分`}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* 操作按鈕 */}
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '12px'
+                }}>
                 <button
                   onClick={addItem}
                   style={{
@@ -731,16 +973,17 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                 </button>
               </div>
 
-              {!report.member_id && (
-                <div style={{ 
-                  marginTop: '8px', 
-                  fontSize: '14px', 
-                  color: '#f44336',
-                  textAlign: 'center'
-                }}>
-                  ⚠️ 非會員無法扣款
-                </div>
-              )}
+                {!report.member_id && (
+                  <div style={{ 
+                    marginTop: '8px', 
+                    fontSize: '13px', 
+                    color: '#f44336',
+                    textAlign: 'center'
+                  }}>
+                    ⚠️ 非會員無法扣款
+                  </div>
+                )}
+              </div>
             </>
           </div>
         )}
@@ -759,6 +1002,9 @@ interface DeductionItemRowProps {
   defaultDescription: string
   boatName: string
   coachPrice30min: number | null  // 教練指定課價格（30分鐘）
+  boatData: { balance_price_per_hour: number | null, vip_price_per_hour: number | null } | null
+  validationErrors: Record<string, string>
+  itemIndex: number
   onUpdate: (updates: Partial<DeductionItem>) => void
   onRemove: () => void
   canRemove: boolean
@@ -775,11 +1021,17 @@ function DeductionItemRow({
   defaultDescription,
   boatName,
   coachPrice30min,
+  boatData,
+  validationErrors,
+  itemIndex,
   onUpdate, 
   onRemove,
   canRemove,
   totalItems
 }: DeductionItemRowProps) {
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [showNotes, setShowNotes] = useState(!!item.notes)
+
   const categories = [
     { value: 'balance', label: '💰 儲值', emoji: '💰' },
     { value: 'vip_voucher', label: '💎 VIP票券', emoji: '💎' },
@@ -833,17 +1085,27 @@ function DeductionItemRow({
   }
 
   const balance = calculateBalance()
+  
+  // 檢查價格設定
+  const isPriceNotSet = (isBalance || isVipVoucher) && (
+    (isBalance && !boatData?.balance_price_per_hour) ||
+    (isVipVoucher && !boatData?.vip_price_per_hour)
+  )
+  const isCoachPriceNotSet = (isDesignatedLesson || isDesignatedLessonFromBalance) && !coachPrice30min
 
   return (
-    <div style={{
-      background: index % 2 === 0 ? 'linear-gradient(to bottom, #f8fcff, #f0f8ff)' : 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
-      borderRadius: '12px',
-      padding: '16px',
-      marginBottom: '12px',
-      border: index % 2 === 0 ? '2px solid #bae6fd' : '2px solid #e0e0e0',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-      position: 'relative'
-    }}>
+    <div 
+      id={`deduction-item-${itemIndex}`}
+      style={{
+        background: index % 2 === 0 ? 'linear-gradient(to bottom, #f8fcff, #f0f8ff)' : 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '12px',
+        border: index % 2 === 0 ? '2px solid #bae6fd' : '2px solid #e0e0e0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        position: 'relative'
+      }}
+    >
       {/* 標題欄（僅多項時顯示） */}
       {totalItems > 1 && (
         <div style={{ 
@@ -958,6 +1220,40 @@ function DeductionItemRow({
         </select>
       </div>
 
+      {/* 價格未設定警告 */}
+      {(isPriceNotSet || isCoachPriceNotSet) && (
+        <div style={{
+          marginBottom: '14px',
+          padding: '12px 14px',
+          background: 'linear-gradient(135deg, #fff9e6 0%, #fef3c7 100%)',
+          borderRadius: '8px',
+          border: '2px solid #fbbf24',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px'
+        }}>
+          <span style={{ fontSize: '18px', flexShrink: 0 }}>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#92400e', marginBottom: '4px' }}>
+              價格尚未設定
+            </div>
+            <div style={{ fontSize: '12px', color: '#b45309' }}>
+              {isPriceNotSet && (
+                <div>
+                  {isBalance ? '此船隻的儲值價格尚未設定' : '此船隻的VIP票券價格尚未設定'}
+                  ，請在船隻管理頁面設定價格，或使用自訂輸入框。
+                </div>
+              )}
+              {isCoachPriceNotSet && (
+                <div>
+                  此教練的指定課價格尚未設定，請在人員管理頁面設定價格，或使用自訂輸入框。
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 金額/時數選擇 */}
       <div style={{ marginBottom: '14px' }}>
         {isDirectSettlement ? (
@@ -980,6 +1276,26 @@ function DeductionItemRow({
               </div>
             </div>
           </div>
+        ) : isPlan ? (
+          <div style={{
+            background: 'linear-gradient(135deg, #fff9f0 0%, #ffe8d6 100%)',
+            padding: '14px 18px',
+            borderRadius: '8px',
+            border: '2px solid #ffb84d',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '18px' }}>⭐</span>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#b35900' }}>
+                方案記錄
+              </div>
+              <div style={{ fontSize: '12px', color: '#cc6600' }}>
+                不扣除任何餘額，僅記錄方案使用（請在下方填寫方案名稱）
+              </div>
+            </div>
+          </div>
         ) : isBalance || isVipVoucher || (isDesignatedLesson && coachPrice30min) || isDesignatedLessonFromBalance ? (
           <div>
             <div style={{ 
@@ -990,134 +1306,90 @@ function DeductionItemRow({
             }}>
               扣款金額：
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              {(isDesignatedLesson || isDesignatedLessonFromBalance ? getDesignatedLessonAmounts() : (isVipVoucher ? vipVoucherAmounts : commonAmounts)).map((amount, idx) => {
-                // 計算對應的分鐘數
-                let minutes = 0
-                if ((isDesignatedLesson || isDesignatedLessonFromBalance) && coachPrice30min) {
-                  // 指定課：從索引推算分鐘數
-                  const minutesOptions = [20, 30, 40, 60, 90]
-                  minutes = minutesOptions[idx] || 0
-                } else if (isBalance) {
-                  if (boatName.includes('G23')) {
-                    const map: Record<number, number> = { 5400: 30, 7200: 40, 10800: 60, 16200: 90 }
-                    minutes = map[amount] || 0
-                  } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
-                    const map: Record<number, number> = { 2000: 20, 3000: 30, 4000: 40, 6000: 60, 9000: 90 }
-                    minutes = map[amount] || 0
-                  } else if (boatName.includes('粉紅') || boatName.includes('200')) {
-                    const map: Record<number, number> = { 1200: 20, 1800: 30, 2400: 40, 3600: 60, 5400: 90 }
-                    minutes = map[amount] || 0
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              {/* 下拉選單 */}
+              <select
+                value={item.amount || ''}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value === 'custom') {
+                    // 切換到自訂模式
+                    onUpdate({ amount: 0 })
+                  } else {
+                    onUpdate({ amount: parseInt(value) })
                   }
-                } else if (isVipVoucher) {
-                  if (boatName.includes('G23')) {
-                    const map: Record<number, number> = { 4250: 30, 5667: 40, 8500: 60, 12750: 90 }
-                    minutes = map[amount] || 0
-                  } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
-                    const map: Record<number, number> = { 1667: 20, 2500: 30, 3333: 40, 5000: 60, 7500: 90 }
-                    minutes = map[amount] || 0
-                  }
-                }
-
-                return (
-                  <div key={amount} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {minutes > 0 && (
-                      <div style={{ 
-                        fontSize: '11px', 
-                        color: '#94a3b8',
-                        marginBottom: '4px',
-                        fontWeight: '500'
-                      }}>
-                        {minutes}分
-                      </div>
-                    )}
-                    <button
-                      onClick={() => onUpdate({ amount })}
-                      style={{
-                        padding: '10px 18px',
-                        background: item.amount === amount ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
-                        color: item.amount === amount ? 'white' : '#2c3e50',
-                        border: item.amount === amount ? 'none' : '2px solid #e0e0e0',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        boxShadow: item.amount === amount ? '0 2px 8px rgba(102,126,234,0.3)' : 'none',
-                        transition: 'all 0.2s',
-                        minWidth: '85px'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (item.amount !== amount) {
-                          e.currentTarget.style.borderColor = '#667eea'
-                          e.currentTarget.style.transform = 'translateY(-1px)'
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (item.amount !== amount) {
-                          e.currentTarget.style.borderColor = '#e0e0e0'
-                          e.currentTarget.style.transform = 'translateY(0)'
-                        }
-                      }}
-                    >
-                      ${amount}
-                    </button>
-                  </div>
-                )
-              })}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ 
-                  fontSize: '11px', 
-                  color: 'transparent',
-                  marginBottom: '4px',
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
                   fontWeight: '500',
-                  userSelect: 'none'
-                }}>
-                  .
-                </div>
-                <div style={{ 
-                  position: 'relative',
-                  display: 'inline-block'
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    left: '10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    fontSize: '16px',
-                    pointerEvents: 'none',
-                    zIndex: 1
-                  }}>
-                    ✏️
-                  </div>
-                  <input
-                    type="number"
-                    placeholder="自訂"
-                    value={item.amount && !commonAmounts.concat(vipVoucherAmounts).includes(item.amount) ? item.amount : ''}
-                    onChange={(e) => onUpdate({ amount: parseInt(e.target.value) || 0 })}
-                    style={{
-                      padding: '10px 12px 10px 38px',
-                      border: '3px dashed #f59e0b',
-                      borderRadius: '8px',
-                      width: '100px',
-                      fontSize: '14px',
-                      fontWeight: '700',
-                      background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-                      color: '#92400e',
-                      boxShadow: '0 0 0 3px rgba(245,158,11,0.1)'
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = '#f59e0b'
-                      e.currentTarget.style.background = '#fff'
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.3), 0 4px 12px rgba(245,158,11,0.2)'
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#f59e0b'
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)'
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.1)'
-                    }}
-                  />
-                </div>
-              </div>
+                  background: 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+              >
+                <option value="">請選擇金額</option>
+                {(isDesignatedLesson || isDesignatedLessonFromBalance ? getDesignatedLessonAmounts() : (isVipVoucher ? vipVoucherAmounts : commonAmounts)).map((amount, idx) => {
+                  // 計算對應的分鐘數
+                  let minutes = 0
+                  if ((isDesignatedLesson || isDesignatedLessonFromBalance) && coachPrice30min) {
+                    const minutesOptions = [20, 30, 40, 60, 90]
+                    minutes = minutesOptions[idx] || 0
+                  } else if (isBalance) {
+                    if (boatName.includes('G23')) {
+                      const map: Record<number, number> = { 5400: 30, 7200: 40, 10800: 60, 16200: 90 }
+                      minutes = map[amount] || 0
+                    } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
+                      const map: Record<number, number> = { 2000: 20, 3000: 30, 4000: 40, 6000: 60, 9000: 90 }
+                      minutes = map[amount] || 0
+                    } else if (boatName.includes('粉紅') || boatName.includes('200')) {
+                      const map: Record<number, number> = { 1200: 20, 1800: 30, 2400: 40, 3600: 60, 5400: 90 }
+                      minutes = map[amount] || 0
+                    }
+                  } else if (isVipVoucher) {
+                    if (boatName.includes('G23')) {
+                      const map: Record<number, number> = { 4250: 30, 5667: 40, 8500: 60, 12750: 90 }
+                      minutes = map[amount] || 0
+                    } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
+                      const map: Record<number, number> = { 1667: 20, 2500: 30, 3333: 40, 5000: 60, 7500: 90 }
+                      minutes = map[amount] || 0
+                    }
+                  }
+                  
+                  return (
+                    <option key={amount} value={amount}>
+                      {minutes > 0 ? `${minutes}分 - $${amount.toLocaleString()}` : `$${amount.toLocaleString()}`}
+                    </option>
+                  )
+                })}
+                <option value="custom">✏️ 自訂金額</option>
+              </select>
+              
+              {/* 自訂輸入框（當選擇自訂或金額不在列表中時顯示） */}
+              {(item.amount && !commonAmounts.concat(vipVoucherAmounts).concat(getDesignatedLessonAmounts()).includes(item.amount)) && (
+                <input
+                  type="number"
+                  placeholder="請輸入金額"
+                  value={item.amount || ''}
+                  onChange={(e) => onUpdate({ amount: parseInt(e.target.value) || 0 })}
+                  style={{
+                    padding: '10px 12px',
+                    border: '2px solid #f59e0b',
+                    borderRadius: '8px',
+                    width: '150px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    background: 'white'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#f59e0b'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#f59e0b'}
+                />
+              )}
             </div>
           </div>
         ) : (
@@ -1130,83 +1402,79 @@ function DeductionItemRow({
             }}>
               扣款時數：
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {[20, 30, 40, 60, 90].map(minutes => (
-                <button
-                  key={minutes}
-                  onClick={() => onUpdate({ minutes })}
-                  style={{
-                    padding: '10px 18px',
-                    background: item.minutes === minutes ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
-                    color: item.minutes === minutes ? 'white' : '#2c3e50',
-                    border: item.minutes === minutes ? 'none' : '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    boxShadow: item.minutes === minutes ? '0 2px 8px rgba(102,126,234,0.3)' : 'none',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (item.minutes !== minutes) {
-                      e.currentTarget.style.borderColor = '#667eea'
-                      e.currentTarget.style.transform = 'translateY(-1px)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (item.minutes !== minutes) {
-                      e.currentTarget.style.borderColor = '#e0e0e0'
-                      e.currentTarget.style.transform = 'translateY(0)'
-                    }
-                  }}
-                >
-                  {minutes}分
-                </button>
-              ))}
-              <div style={{ 
-                position: 'relative',
-                display: 'inline-block'
-              }}>
-                <div style={{
-                  position: 'absolute',
-                  left: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  fontSize: '16px',
-                  pointerEvents: 'none',
-                  zIndex: 1
-                }}>
-                  ✏️
-                </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              {/* 下拉選單 */}
+              <select
+                value={item.minutes || ''}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value === 'custom') {
+                    onUpdate({ minutes: 0 })
+                  } else {
+                    onUpdate({ minutes: parseInt(value) })
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  background: 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+              >
+                <option value="">請選擇時數</option>
+                {[20, 30, 40, 60, 90].map(minutes => (
+                  <option key={minutes} value={minutes}>{minutes}分鐘</option>
+                ))}
+                <option value="custom">✏️ 自訂時數</option>
+              </select>
+              
+              {/* 自訂輸入框 */}
+              {(item.minutes && ![20, 30, 40, 60, 90].includes(item.minutes)) && (
                 <input
                   type="number"
-                  placeholder="自訂"
+                  placeholder="請輸入分鐘數"
                   value={item.minutes || ''}
                   onChange={(e) => onUpdate({ minutes: parseInt(e.target.value) || 0 })}
                   style={{
-                    padding: '10px 12px 10px 38px',
-                    border: '3px dashed #f59e0b',
+                    padding: '10px 12px',
+                    border: '2px solid #f59e0b',
                     borderRadius: '8px',
-                    width: '100px',
+                    width: '150px',
                     fontSize: '14px',
-                    fontWeight: '700',
-                    background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-                    color: '#92400e',
-                    boxShadow: '0 0 0 3px rgba(245,158,11,0.1)'
+                    fontWeight: '600',
+                    background: 'white'
                   }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#f59e0b'
-                    e.currentTarget.style.background = '#fff'
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.3), 0 4px 12px rgba(245,158,11,0.2)'
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#f59e0b'
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)'
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.1)'
-                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#f59e0b'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#f59e0b'}
                 />
-              </div>
+              )}
             </div>
+          </div>
+        )}
+        
+        {/* 錯誤提示：金額/時數 */}
+        {(validationErrors[`item-${itemIndex}-amount`] || validationErrors[`item-${itemIndex}-minutes`]) && (
+          <div style={{
+            marginTop: '8px',
+            padding: '8px 12px',
+            background: '#fef2f2',
+            borderRadius: '6px',
+            border: '1px solid #fecaca',
+            fontSize: '13px',
+            color: '#dc2626',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <span>⚠️</span>
+            <span>{validationErrors[`item-${itemIndex}-amount`] || validationErrors[`item-${itemIndex}-minutes`]}</span>
           </div>
         )}
       </div>
@@ -1230,106 +1498,236 @@ function DeductionItemRow({
             style={{
               width: '100%',
               padding: '10px 12px',
-              border: '2px solid #e0e0e0',
+              border: validationErrors[`item-${itemIndex}-planName`] ? '2px solid #dc2626' : '2px solid #e0e0e0',
               borderRadius: '8px',
               fontSize: '14px'
             }}
           />
+          
+          {/* 錯誤提示：方案名稱 */}
+          {validationErrors[`item-${itemIndex}-planName`] && (
+            <div style={{
+              marginTop: '8px',
+              padding: '8px 12px',
+              background: '#fef2f2',
+              borderRadius: '6px',
+              border: '1px solid #fecaca',
+              fontSize: '13px',
+              color: '#dc2626',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>⚠️</span>
+              <span>{validationErrors[`item-${itemIndex}-planName`]}</span>
+            </div>
+          )}
         </div>
       )}
 
-      {/* 說明（可編輯） */}
+      {/* 說明（精簡顯示） */}
       <div style={{ marginBottom: '14px' }}>
         <div style={{ 
           fontSize: '13px', 
           color: '#7f8c8d', 
           marginBottom: '8px',
-          fontWeight: '500'
+          fontWeight: '500',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
-          說明：
+          <span>說明：</span>
+          <button
+            type="button"
+            onClick={() => setIsEditingDescription(!isEditingDescription)}
+            style={{
+              padding: '4px 10px',
+              background: 'none',
+              border: '1px solid #e0e0e0',
+              borderRadius: '6px',
+              fontSize: '12px',
+              color: '#666',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f5f5f5'
+              e.currentTarget.style.borderColor = '#999'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'none'
+              e.currentTarget.style.borderColor = '#e0e0e0'
+            }}
+          >
+            {isEditingDescription ? '收起' : '✏️ 編輯'}
+          </button>
         </div>
-        <textarea
-          value={item.description || defaultDescription}
-          onChange={(e) => onUpdate({ description: e.target.value })}
-          placeholder="輸入說明..."
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            background: 'white',
-            border: '2px solid #e9ecef',
-            borderRadius: '8px',
-            fontSize: '14px',
-            color: '#495057',
-            minHeight: '60px',
-            resize: 'vertical',
-            fontFamily: 'inherit',
-            boxSizing: 'border-box'
-          }}
-          onFocus={(e) => e.currentTarget.style.borderColor = '#4a90e2'}
-          onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
-        />
+        
+        {isEditingDescription ? (
+          <textarea
+            value={item.description || defaultDescription}
+            onChange={(e) => onUpdate({ description: e.target.value })}
+            placeholder="輸入說明..."
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              background: 'white',
+              border: validationErrors[`item-${itemIndex}-description`] ? '2px solid #dc2626' : '2px solid #e9ecef',
+              borderRadius: '8px',
+              fontSize: '14px',
+              color: '#495057',
+              minHeight: '80px',
+              resize: 'vertical',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box'
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = '#4a90e2'}
+            onBlur={(e) => e.currentTarget.style.borderColor = validationErrors[`item-${itemIndex}-description`] ? '#dc2626' : '#e9ecef'}
+          />
+        ) : (
+          <div 
+            style={{
+              padding: '10px 12px',
+              background: '#f8f9fa',
+              border: validationErrors[`item-${itemIndex}-description`] ? '2px solid #dc2626' : '1px solid #e9ecef',
+              borderRadius: '8px',
+              fontSize: '13px',
+              color: '#666',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              cursor: 'pointer'
+            }}
+            onClick={() => setIsEditingDescription(true)}
+          >
+            {(item.description || defaultDescription) || '點擊編輯說明...'}
+          </div>
+        )}
+        
+        {/* 錯誤提示：說明 */}
+        {validationErrors[`item-${itemIndex}-description`] && (
+          <div style={{
+            marginTop: '8px',
+            padding: '8px 12px',
+            background: '#fef2f2',
+            borderRadius: '6px',
+            border: '1px solid #fecaca',
+            fontSize: '13px',
+            color: '#dc2626',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <span>⚠️</span>
+            <span>{validationErrors[`item-${itemIndex}-description`]}</span>
+          </div>
+        )}
       </div>
 
-      {/* 註解（可編輯） */}
+      {/* 註解（可選展開） */}
       <div style={{ marginBottom: '14px' }}>
-        <div style={{ 
-          fontSize: '13px', 
-          color: '#7f8c8d', 
-          marginBottom: '8px',
-          fontWeight: '500'
-        }}>
-          註解：
-        </div>
-        <input
-          type="text"
-          placeholder="選填，可用於補充說明..."
-          value={item.notes || ''}
-          onChange={(e) => onUpdate({ notes: e.target.value })}
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            fontSize: '14px'
-          }}
-          onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
-          onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
-        />
+        {!showNotes ? (
+          <button
+            type="button"
+            onClick={() => setShowNotes(true)}
+            style={{
+              padding: '8px 12px',
+              background: 'none',
+              border: '1px dashed #cbd5e0',
+              borderRadius: '6px',
+              fontSize: '13px',
+              color: '#718096',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              width: '100%',
+              textAlign: 'left'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f7fafc'
+              e.currentTarget.style.borderColor = '#a0aec0'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'none'
+              e.currentTarget.style.borderColor = '#cbd5e0'
+            }}
+          >
+            + 新增註解（選填）
+          </button>
+        ) : (
+          <>
+            <div style={{ 
+              fontSize: '13px', 
+              color: '#7f8c8d', 
+              marginBottom: '8px',
+              fontWeight: '500',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <span>註解：</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNotes(false)
+                  onUpdate({ notes: '' })
+                }}
+                style={{
+                  padding: '2px 8px',
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '18px',
+                  color: '#999',
+                  cursor: 'pointer',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <input
+              type="text"
+              placeholder="選填，可用於補充說明..."
+              value={item.notes || ''}
+              onChange={(e) => onUpdate({ notes: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '14px'
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+              onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+            />
+          </>
+        )}
       </div>
 
-      {/* 餘額顯示 */}
-      {memberData && (
+      {/* 餘額顯示（簡化為單行） */}
+      {memberData && !isDirectSettlement && !isPlan && (
         <div style={{
-          padding: '12px 16px',
-          background: balance.after < 0 ? 
-            'linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%)' : 
-            'linear-gradient(135deg, #f0fff4 0%, #e6f7ed 100%)',
-          borderRadius: '8px',
-          fontSize: '14px',
+          padding: '8px 12px',
+          background: balance.after < 0 ? '#fef2f2' : '#f0fdf4',
+          borderRadius: '6px',
+          fontSize: '13px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          fontWeight: '500',
           border: balance.after < 0 ? '1px solid #fecaca' : '1px solid #bbf7d0'
         }}>
-          <span style={{ color: '#64748b' }}>餘額：</span>
-          <div>
-            <span style={{ color: '#475569' }}>
-              {(isBalance || isVipVoucher) ? `$${balance.before}` : `${balance.before}分`}
+          <span style={{ color: '#64748b', fontWeight: '500' }}>
+            {currentCategory?.emoji} 餘額
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#64748b' }}>
+              {(isBalance || isVipVoucher) ? `$${balance.before.toLocaleString()}` : `${balance.before}分`}
             </span>
+            <span style={{ color: '#94a3b8' }}>→</span>
             <span style={{ 
-              margin: '0 10px',
-              color: '#94a3b8',
-              fontSize: '16px'
-            }}>
-              →
-            </span>
-            <span style={{ 
-              fontWeight: '700',
-              fontSize: '16px',
+              fontWeight: '600',
               color: balance.after < 0 ? '#dc2626' : '#16a34a'
             }}>
-              {(isBalance || isVipVoucher) ? `$${balance.after}` : `${balance.after}分`}
+              {(isBalance || isVipVoucher) ? `$${balance.after.toLocaleString()}` : `${balance.after}分`}
             </span>
           </div>
         </div>
