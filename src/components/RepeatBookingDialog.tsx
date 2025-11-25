@@ -149,6 +149,7 @@ export function RepeatBookingDialog({
   console.log('[RepeatBookingDialog] boats:', boats)
   console.log('[RepeatBookingDialog] coaches:', coaches)
 
+  console.log('[RepeatBookingDialog] Defining handleSubmit')
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
@@ -325,11 +326,16 @@ export function RepeatBookingDialog({
     }
   }
 
+  console.log('[RepeatBookingDialog] handleSubmit defined')
+  
+  console.log('[RepeatBookingDialog] Defining handleClose')
   const handleClose = () => {
     resetForm()
     onClose()
   }
+  console.log('[RepeatBookingDialog] handleClose defined')
 
+  console.log('[RepeatBookingDialog] About to define previewDates useMemo, dependencies:', { startDate, startTime, repeatMode, repeatCount, repeatEndDate })
   const previewDates = useMemo(() => {
     console.log('[RepeatBookingDialog] Computing previewDates, startDate:', startDate, 'startTime:', startTime)
     
@@ -380,6 +386,8 @@ export function RepeatBookingDialog({
       return []
     }
   }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate])
+  
+  console.log('[RepeatBookingDialog] previewDates computed, length:', previewDates.length)
 
   console.log('[RepeatBookingDialog] Before return statement')
   
