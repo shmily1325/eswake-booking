@@ -515,7 +515,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
           p_member_id: report.member_id,
           p_participant_id: report.id,
           p_operator_id: operatorId,
-          p_deductions: deductionsData
+          p_deductions: deductionsData as any
         }
       )
 
@@ -524,9 +524,10 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
         throw new Error(rpcError.message || '扣款失敗')
       }
 
-      // 檢查結果
-      if (!result?.success) {
-        throw new Error(result?.error || '扣款處理失敗')
+      // 檢查結果（result 是 Json 類型，需要 type assertion）
+      const resultData = result as { success?: boolean; error?: string; balances?: any }
+      if (!resultData?.success) {
+        throw new Error(resultData?.error || '扣款處理失敗')
       }
 
       alert('扣款完成')
@@ -539,16 +540,6 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     }
   }
 
-  // 取得類別對應的欄位名稱
-  const getCategoryField = (category: DeductionCategory): string => {
-    const fieldMap: Record<string, string> = {
-      'boat_voucher_g23': 'boat_voucher_g23_minutes',
-      'boat_voucher_g21_panther': 'boat_voucher_g21_panther_minutes',
-      'designated_lesson': 'designated_lesson_minutes',
-      'gift_boat_hours': 'gift_boat_hours'
-    }
-    return fieldMap[category] || ''
-  }
 
   return (
     <div style={{
