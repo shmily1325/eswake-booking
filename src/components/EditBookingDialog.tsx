@@ -32,6 +32,7 @@ export function EditBookingDialog({
   const [showCopyDialog, setShowCopyDialog] = useState(false)
   const [copyToDate, setCopyToDate] = useState('')
   const [copyToTime, setCopyToTime] = useState('') // 新增：複製到的時間
+  const [copyFilledBy, setCopyFilledBy] = useState('') // 複製對話框專用的填表人
   const [copyLoading, setCopyLoading] = useState(false)
   const [copyError, setCopyError] = useState('')
   const [copyConflictStatus, setCopyConflictStatus] = useState<'checking' | 'available' | 'conflict' | null>(null)
@@ -599,7 +600,7 @@ export function EditBookingDialog({
       return
     }
 
-    if (!filledBy.trim()) {
+    if (!copyFilledBy.trim()) {
       setCopyError('請填寫填表人')
       return
     }
@@ -651,7 +652,7 @@ export function EditBookingDialog({
         activity_types: activityTypes.length > 0 ? activityTypes : null,
         notes: notes || null,
         requires_driver: requiresDriver,
-        filled_by: filledBy,
+        filled_by: copyFilledBy,
         status: 'confirmed',
         created_by: user.id,
         created_at: getLocalTimestamp(),
@@ -703,7 +704,7 @@ export function EditBookingDialog({
         coachNames: selectedCoaches.length > 0
           ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
           : [],
-        filledBy
+        filledBy: copyFilledBy
       })
 
       // Success
@@ -711,6 +712,7 @@ export function EditBookingDialog({
       setShowCopyDialog(false)
       setCopyToDate('')
       setCopyToTime('')
+      setCopyFilledBy('')
       setCopyError('')
       setCopyConflictStatus(null)
       alert(`✅ 預約已複製到 ${copyToDate} ${copyToTime}`)
@@ -1512,29 +1514,26 @@ export function EditBookingDialog({
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                if (!filledBy.trim()) {
-                  setError('請先填寫填表人才能複製預約')
-                  return
-                }
                 setCopyToTime(startTime) // 預設使用原本的時間
+                setCopyFilledBy(filledBy) // 預設使用目前的填表人
                 setShowCopyDialog(true)
               }}
-              disabled={loading || !filledBy.trim()}
+              disabled={loading}
               style={{
                 padding: '14px 16px',
                 borderRadius: '8px',
                 border: 'none',
-                backgroundColor: (loading || !filledBy.trim()) ? '#ccc' : '#ff9800',
+                backgroundColor: loading ? '#ccc' : '#ff9800',
                 color: 'white',
                 fontSize: '15px',
                 fontWeight: '600',
-                cursor: (loading || !filledBy.trim()) ? 'not-allowed' : 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
                 minWidth: '70px',
                 position: 'relative',
                 zIndex: 10,
               }}
-              title={!filledBy.trim() ? '請先填寫填表人' : '複製此預約到其他日期'}
+              title='複製此預約到其他日期'
             >
               📋 複製
             </button>
@@ -1606,6 +1605,7 @@ export function EditBookingDialog({
               setShowCopyDialog(false)
               setCopyToDate('')
               setCopyToTime('')
+              setCopyFilledBy('')
               setCopyError('')
               setCopyConflictStatus(null)
             }
@@ -1648,6 +1648,30 @@ export function EditBookingDialog({
                 <div><strong>時間：</strong>{startTime}</div>
                 <div><strong>時長：</strong>{durationMin} 分鐘</div>
               </div>
+
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '15px',
+                fontWeight: '600',
+              }}>
+                填表人 <span style={{ color: 'red' }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={copyFilledBy}
+                onChange={(e) => setCopyFilledBy(e.target.value)}
+                placeholder="請輸入您的姓名"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '2px solid #ff9800',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                  marginBottom: '16px',
+                }}
+              />
 
               <label style={{
                 display: 'block',
@@ -1791,6 +1815,7 @@ export function EditBookingDialog({
                     setShowCopyDialog(false)
                     setCopyToDate('')
                     setCopyToTime('')
+                    setCopyFilledBy('')
                     setCopyError('')
                     setCopyConflictStatus(null)
                   }
@@ -1814,19 +1839,19 @@ export function EditBookingDialog({
               <button
                 type="button"
                 onClick={handleCopy}
-                disabled={copyLoading || !copyToDate || !copyToTime || copyConflictStatus === 'checking' || copyConflictStatus === 'conflict'}
+                disabled={copyLoading || !copyFilledBy.trim() || !copyToDate || !copyToTime || copyConflictStatus === 'checking' || copyConflictStatus === 'conflict'}
                 style={{
                   flex: 1,
                   padding: '12px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: (copyLoading || !copyToDate || !copyToTime || copyConflictStatus === 'checking' || copyConflictStatus === 'conflict') 
+                  background: (copyLoading || !copyFilledBy.trim() || !copyToDate || !copyToTime || copyConflictStatus === 'checking' || copyConflictStatus === 'conflict') 
                     ? '#ccc' 
                     : 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
                   color: 'white',
                   fontSize: '16px',
                   fontWeight: '600',
-                  cursor: (copyLoading || !copyToDate || !copyToTime || copyConflictStatus === 'checking' || copyConflictStatus === 'conflict') 
+                  cursor: (copyLoading || !copyFilledBy.trim() || !copyToDate || !copyToTime || copyConflictStatus === 'checking' || copyConflictStatus === 'conflict') 
                     ? 'not-allowed' 
                     : 'pointer',
                 }}
