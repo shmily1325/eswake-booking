@@ -11,6 +11,9 @@ interface DeductionDetailsProps {
   transactions: Transaction[]
   paymentMethod: string
   notes?: string | null
+  boatName?: string
+  duration?: number
+  lessonType?: string | null
 }
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -31,7 +34,7 @@ const CATEGORY_CONFIG: Record<string, { emoji: string; label: string; type: 'amo
   gift_boat_hours: { emoji: '🎁', label: '贈送時數', type: 'minutes' }
 }
 
-export function DeductionDetails({ transactions, paymentMethod, notes }: DeductionDetailsProps) {
+export function DeductionDetails({ transactions, paymentMethod, notes, boatName = '', duration = 0, lessonType = null }: DeductionDetailsProps) {
 
   // 如果是现金/汇款结清，直接显示结清信息
   if (notes && (notes.includes('[現金結清]') || notes.includes('[匯款結清]') || notes.includes('[指定課不收費]'))) {
@@ -79,6 +82,40 @@ export function DeductionDetails({ transactions, paymentMethod, notes }: Deducti
           fontWeight: '500'
         }}>
           {label}結清
+        </div>
+      )
+    }
+    
+    // 如果是票券，根據船隻推測扣款類型
+    if (paymentMethod === 'voucher' && duration > 0) {
+      let voucherType = '船券'
+      if (boatName.includes('G23')) {
+        voucherType = 'G23船券'
+      } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
+        voucherType = 'G21/黑豹券'
+      }
+      
+      return (
+        <div style={{ 
+          fontSize: '12px',
+          marginTop: '4px',
+          color: '#666'
+        }}>
+          {voucherType} {duration}分
+        </div>
+      )
+    }
+    
+    // 如果是指定課不收費
+    if (lessonType === 'designated_free') {
+      return (
+        <div style={{ 
+          fontSize: '12px',
+          marginTop: '4px',
+          color: '#28a745',
+          fontWeight: '500'
+        }}>
+          指定課不收費
         </div>
       )
     }

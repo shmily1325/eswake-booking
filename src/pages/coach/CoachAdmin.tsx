@@ -245,12 +245,31 @@ export function CoachAdmin() {
           .in('booking_participant_id', participantIds)
           .eq('transaction_type', 'consume')
 
+        console.log('=== 交易記錄查詢 ===')
+        console.log('參與者數量:', participantsData.length)
+        console.log('參與者IDs:', participantIds)
+        console.log('交易記錄數量:', transactionsData?.length || 0)
+        console.log('查詢錯誤:', transactionsError)
+        if (transactionsData && transactionsData.length > 0) {
+          console.log('交易記錄範例:', transactionsData[0])
+        }
+
         if (!transactionsError && transactionsData) {
           // 將交易記錄附加到對應的參與者記錄上
           const participantsWithTransactions = participantsData.map(participant => ({
             ...participant,
             transactions: transactionsData.filter(t => t.booking_participant_id === participant.id)
           }))
+          
+          // Debug: 檢查哪些記錄有/沒有交易
+          const withTx = participantsWithTransactions.filter(p => p.transactions.length > 0)
+          const withoutTx = participantsWithTransactions.filter(p => p.transactions.length === 0)
+          console.log('有交易記錄:', withTx.length, '筆')
+          console.log('無交易記錄:', withoutTx.length, '筆')
+          if (withoutTx.length > 0) {
+            console.log('無交易記錄範例:', withoutTx[0])
+          }
+          
           setCompletedReports(participantsWithTransactions)
         } else {
           setCompletedReports(participantsData || [])
@@ -1219,6 +1238,9 @@ export function CoachAdmin() {
                                     transactions={record.transactions || []}
                                     paymentMethod={record.payment_method}
                                     notes={record.notes}
+                                    boatName={record.bookings?.boats?.name || ''}
+                                    duration={record.duration_min}
+                                    lessonType={record.lesson_type}
                                   />
                                 </div>
                               ))}
