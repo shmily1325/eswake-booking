@@ -217,11 +217,12 @@ export function RepeatBookingDialog({
         // 創建預約
         const bookingToInsert = {
           boat_id: selectedBoatId,
-          member_id: selectedMemberIds[0] || null,
+          member_id: selectedMemberIds.length > 0 ? selectedMemberIds[0] : null,
           contact_name: finalStudentName,
           contact_phone: null,
           start_at: newStartAt,
           duration_min: durationMin,
+          cleanup_minutes: isSelectedBoatFacility ? 0 : 15,     // 設施不需清理時間，船隻需要15分鐘
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
           requires_driver: requiresDriver,

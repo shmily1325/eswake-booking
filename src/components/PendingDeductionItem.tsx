@@ -490,108 +490,50 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
 
     setLoading(true)
     try {
-      // 追蹤累積的餘額變化（用於多筆扣款）
-      const cumulativeBalances = {
-        balance: memberData.balance || 0,
-        vip_voucher_amount: memberData.vip_voucher_amount || 0,
-        boat_voucher_g23_min: memberData.boat_voucher_g23_min || 0,
-        boat_voucher_g21_panther_min: memberData.boat_voucher_g21_panther_min || 0,
-        designated_lesson_min: memberData.designated_lesson_min || 0,
-        gift_boat_hours_min: memberData.gift_boat_hours_min || 0
-      }
-      
-      // 處理每筆扣款（跳過直接結清）
-      for (const item of deductionItems) {
-        const updates: any = {}
-        const transactionData: any = {
-          member_id: report.member_id,
-          booking_participant_id: report.id,
-          transaction_type: 'consume',
-          category: item.category,
-          description: item.description || generateDescription(),
-          transaction_date: new Date().toISOString().split('T')[0],
-          operator_id: (await supabase.auth.getUser()).data.user?.id
-        }
+      // 取得當前操作者
+      const { data: userData } = await supabase.auth.getUser()
+      const operatorId = userData.user?.id
 
-        // 根據類別處理
-        if (item.category === 'plan') {
-          // 方案：不扣任何餘額，只記錄使用
-          transactionData.amount = 0
-          transactionData.minutes = 0
-          // 記錄當前餘額快照（方案不扣款，但要記錄當時狀態）
-          transactionData.balance_after = cumulativeBalances.balance
-          transactionData.vip_voucher_amount_after = cumulativeBalances.vip_voucher_amount
-          transactionData.boat_voucher_g23_minutes_after = cumulativeBalances.boat_voucher_g23_min
-          transactionData.boat_voucher_g21_panther_minutes_after = cumulativeBalances.boat_voucher_g21_panther_min
-          transactionData.designated_lesson_minutes_after = cumulativeBalances.designated_lesson_min
-          transactionData.gift_boat_hours_after = cumulativeBalances.gift_boat_hours_min
-          // 不更新會員餘額
-        } else if (item.category === 'balance') {
-          // 扣儲值金額（使用累積餘額）
-          const newBalance = cumulativeBalances.balance - (item.amount || 0)
-          cumulativeBalances.balance = newBalance
-          updates.balance = newBalance
-          transactionData.amount = -(item.amount || 0)
-          transactionData.balance_after = newBalance
-        } else if (item.category === 'vip_voucher') {
-          // 扣VIP票券金額（使用累積餘額）
-          const newAmount = cumulativeBalances.vip_voucher_amount - (item.amount || 0)
-          cumulativeBalances.vip_voucher_amount = newAmount
-          updates.vip_voucher_amount = newAmount
-          transactionData.amount = -(item.amount || 0)
-          transactionData.vip_voucher_amount_after = newAmount
-        } else {
-          // 扣時數（使用累積餘額）
-          const field = getCategoryField(item.category) as keyof typeof cumulativeBalances
-          const current = cumulativeBalances[field]
-          const newValue = current - (item.minutes || 0)
-          cumulativeBalances[field] = newValue
-          updates[field] = newValue
-          transactionData.minutes = -(item.minutes || 0)
-          transactionData[`${field}_after`] = newValue
-        }
-
-        // 記錄註解和方案名稱
-        if (item.category === 'plan') {
-          // 方案：強制記錄方案名稱
-          const planNote = item.planName || '未填寫方案名稱'
-          transactionData.notes = item.notes ? `${planNote} - ${item.notes}` : planNote
-        } else if (item.notes) {
-          // 其他類別：記錄註解
-          transactionData.notes = item.notes
-        }
-
-        // 更新會員餘額（方案不更新）
-        if (item.category !== 'plan' && Object.keys(updates).length > 0) {
-          const { error: updateError } = await supabase
-            .from('members')
-            .update(updates)
-            .eq('id', report.member_id)
-
-          if (updateError) throw updateError
-        }
-
-        // 記錄交易
-        const { error: transactionError } = await supabase
-          .from('transactions')
-          .insert(transactionData)
-
-        if (transactionError) throw transactionError
+      if (!operatorId) {
+        throw new Error('無法取得操作者資訊')
       }
 
-      // 標記為已處理
-      const { error: statusError } = await supabase
-        .from('booking_participants')
-        .update({ status: 'processed' })
-        .eq('id', report.id)
+      // 準備扣款資料（轉換為 JSONB 格式）
+      const deductionsData = deductionItems.map(item => ({
+        category: item.category,
+        amount: item.amount || null,
+        minutes: item.minutes || null,
+        description: item.description || generateDescription(),
+        notes: item.notes || null,
+        planName: item.planName || null
+      }))
 
-      if (statusError) throw statusError
+      // ✅ 使用資料庫交易函數處理扣款（確保原子性）
+      const { data: result, error: rpcError } = await supabase.rpc(
+        'process_deduction_transaction',
+        {
+          p_member_id: report.member_id,
+          p_participant_id: report.id,
+          p_operator_id: operatorId,
+          p_deductions: deductionsData
+        }
+      )
+
+      if (rpcError) {
+        console.error('RPC 錯誤:', rpcError)
+        throw new Error(rpcError.message || '扣款失敗')
+      }
+
+      // 檢查結果
+      if (!result?.success) {
+        throw new Error(result?.error || '扣款處理失敗')
+      }
 
       alert('扣款完成')
       onComplete()
     } catch (error) {
       console.error('扣款失敗:', error)
-      alert('扣款失敗')
+      alert(`扣款失敗：${error instanceof Error ? error.message : '未知錯誤'}`)
     } finally {
       setLoading(false)
     }

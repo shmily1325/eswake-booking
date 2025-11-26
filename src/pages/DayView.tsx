@@ -18,8 +18,6 @@ import { VirtualizedBookingList } from '../components/VirtualizedBookingList'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { inspectData, safeMapArray, tryCatch } from '../utils/debugHelpers'
 import { injectAnimationStyles } from '../utils/animations'
-import { useSwipeGesture } from '../hooks/useSwipeGesture'
-import { usePullToRefresh } from '../hooks/usePullToRefresh'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
 
@@ -93,31 +91,6 @@ export function DayView() {
     setSearchParams({ date: e.target.value })
   }
 
-  // 手機版滑動手勢（左滑下一天，右滑上一天）
-  const swipeRef = useSwipeGesture({
-    onSwipeLeft: () => {
-      if (isMobile) {
-        changeDate(1) // 下一天
-        toast.success('下一天')
-      }
-    },
-    onSwipeRight: () => {
-      if (isMobile) {
-        changeDate(-1) // 上一天
-        toast.success('上一天')
-      }
-    },
-    threshold: 100,
-  })
-
-  // 手機版下拉刷新
-  const { elementRef: pullToRefreshRef, pullState, indicatorText, indicatorOpacity } = usePullToRefresh({
-    onRefresh: async () => {
-      await fetchData()
-      toast.success('已刷新')
-    },
-    threshold: 80,
-  })
   const fetchData = async () => {
     const isInitialLoad = boats.length === 0
     setLoading(true)
@@ -480,13 +453,6 @@ export function DayView() {
   return (
     <ErrorBoundary>
       <div 
-        ref={(el) => {
-          if (isMobile && el) {
-            // 合併兩個 ref
-            (swipeRef as React.MutableRefObject<HTMLDivElement>).current = el;
-            (pullToRefreshRef as React.MutableRefObject<HTMLDivElement>).current = el;
-          }
-        }}
         style={{
           padding: isMobile ? '12px' : '20px',
           minHeight: '100vh',
@@ -495,52 +461,6 @@ export function DayView() {
           overflow: isMobile ? 'hidden' : 'auto',
         }}
       >
-        {/* 下拉刷新指示器 */}
-        {isMobile && pullState.pullDistance > 0 && (
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: `${pullState.pullDistance}px`,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            paddingBottom: '10px',
-            opacity: indicatorOpacity,
-            transition: pullState.pulling ? 'none' : 'opacity 0.3s, height 0.3s',
-            pointerEvents: 'none',
-            zIndex: 10,
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              color: '#666',
-              fontSize: '14px',
-              fontWeight: '500',
-            }}>
-              {pullState.refreshing ? (
-                <>
-                  <div style={{
-                    width: '16px',
-                    height: '16px',
-                    border: '2px solid #ddd',
-                    borderTop: '2px solid #666',
-                    borderRadius: '50%',
-                    animation: 'spin 0.8s linear infinite',
-                  }} />
-                  <span>{indicatorText}</span>
-                </>
-              ) : (
-                <>
-                  <span style={{ fontSize: '18px' }}>↓</span>
-                  <span>{indicatorText}</span>
-                </>
-              )}
-            </div>
-          </div>
-        )}
         <div style={{
           background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
           borderRadius: '8px',

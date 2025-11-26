@@ -68,7 +68,13 @@ export function useMemberSearch() {
     setSearchTerm(value)
     setSelectedMemberId(null)
     setManualName(value)
-    setShowDropdown(filteredMembers.length > 0)
+    // 直接用 value 判斷，不依賴 filteredMembers state（避免競態條件）
+    const hasResults = value.trim().length > 0 && members.some(m =>
+      m.name.toLowerCase().includes(value.toLowerCase()) ||
+      m.nickname?.toLowerCase().includes(value.toLowerCase()) ||
+      m.phone?.includes(value)
+    )
+    setShowDropdown(hasResults)
   }
 
   // 重置所有狀態

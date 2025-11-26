@@ -100,10 +100,10 @@ export async function checkBoatConflict(
   const cleanupMinutes = isFacility ? 0 : 15
   const newSlot = calculateTimeSlot(startTime, durationMin, cleanupMinutes)
 
-  // 查詢當天該船的所有預約
+  // 查詢當天該船的所有預約（包含 cleanup_minutes）
   const { data: existingBookings, error } = await supabase
     .from('bookings')
-    .select('id, start_at, duration_min, contact_name, boats:boat_id(name)')
+    .select('id, start_at, duration_min, cleanup_minutes, contact_name, boats:boat_id(name)')
     .eq('boat_id', boatId)
     .gte('start_at', `${dateStr}T00:00:00`)
     .lte('start_at', `${dateStr}T23:59:59`)
@@ -124,18 +124,19 @@ export async function checkBoatConflict(
 
     const existingTime = existing.start_at.substring(11, 16) // 取 "HH:MM"
 
-    // 檢查現有預約是否為設施（雖然通常同一艘船屬性相同，但為了保險起見或未來擴充）
-    // 這裡假設同一艘船的屬性是固定的，所以直接用傳入的 isFacility 判斷現有預約的清理時間
-    // 但嚴謹來說，應該檢查 existing.boats.name 是否在設施列表中
-    // 為了簡化，我們假設同一 ID 的船屬性一致
-    const existingSlot = calculateTimeSlot(existingTime, existing.duration_min, cleanupMinutes)
+    // ✅ 修復：使用資料庫儲存的 cleanup_minutes，避免假設所有預約清理時間相同
+    // 如果欄位不存在（舊資料），則使用預設值 15
+    const existingCleanupMinutes = (existing as any).cleanup_minutes ?? 15
+    const existingSlot = calculateTimeSlot(existingTime, existing.duration_min, existingCleanupMinutes)
 
     if (checkTimeSlotConflict(newSlot, existingSlot)) {
       // 判斷具體衝突類型並生成訊息
+      const existingCleanupMinutes = (existing as any).cleanup_minutes ?? 15
+      
       if (newSlot.startMinutes >= existingSlot.endMinutes && newSlot.startMinutes < existingSlot.cleanupEndMinutes) {
         return {
           hasConflict: true,
-          reason: `${displayBoatName} 與 ${existing.contact_name} 的預約衝突：${existing.contact_name} 在 ${minutesToTime(existingSlot.endMinutes)} 結束，需要${cleanupMinutes}分鐘接船時間。您的預約 ${startTime} 太接近了。`
+          reason: `${displayBoatName} 與 ${existing.contact_name} 的預約衝突：${existing.contact_name} 在 ${minutesToTime(existingSlot.endMinutes)} 結束，需要${existingCleanupMinutes}分鐘接船時間。您的預約 ${startTime} 太接近了。`
         }
       }
 
