@@ -33,6 +33,7 @@ export function RepeatBookingDialog({
   user,
 }: RepeatBookingDialogProps) {
   const { isMobile } = useResponsive()
+  const toast = useToast()
   const { checkConflict } = useBookingConflict()
 
   // 重複預約設定
@@ -299,12 +300,12 @@ export function RepeatBookingDialog({
 
       // 顯示結果
       if (results.success.length > 0 && results.skipped.length === 0) {
-        alert(`✅ 成功建立 ${results.success.length} 個重複預約！`)
+        toast.success(`成功建立 ${results.success.length} 個重複預約！`)
         resetForm()
         onSuccess()
         onClose()
       } else if (results.success.length > 0 && results.skipped.length > 0) {
-        alert(
+        toast.warning(
           `⚠️ 部分成功：\n` +
           `✅ 成功：${results.success.length} 個\n` +
           `❌ 跳過：${results.skipped.length} 個\n\n` +

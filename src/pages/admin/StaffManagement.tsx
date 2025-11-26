@@ -174,12 +174,12 @@ export function StaffManagement() {
   const handleAddTimeOff = async () => {
     if (!selectedCoach) return
     if (!timeOffStartDate || !timeOffEndDate) {
-      alert('請選擇日期')
+      toast.warning('請選擇日期')
       return
     }
 
     if (timeOffEndDate < timeOffStartDate) {
-      alert('結束日期不能早於開始日期')
+      toast.warning('結束日期不能早於開始日期')
       return
     }
 
