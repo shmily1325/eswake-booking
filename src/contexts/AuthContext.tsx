@@ -16,9 +16,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Check current session with error handling
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (error) {
         console.error('Error getting session:', error)
+        // 如果 session 損壞或過期，清除它並強制重新登入
+        if (import.meta.env.DEV) {
+          console.log('🔴 Session error detected, clearing auth data...')
+        }
+        await supabase.auth.signOut()
         setUser(null)
       } else {
         setUser(session?.user ?? null)
