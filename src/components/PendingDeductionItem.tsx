@@ -1315,7 +1315,7 @@ function DeductionItemRow({
               </select>
               
               {/* 自訂輸入框（當選擇自訂或金額不在列表中時顯示） */}
-              {(item.amount && !commonAmounts.concat(vipVoucherAmounts).concat(getDesignatedLessonAmounts()).includes(item.amount)) && (
+              {(item.amount !== undefined && item.amount !== null && !commonAmounts.concat(vipVoucherAmounts).concat(getDesignatedLessonAmounts()).includes(item.amount)) && (
                 <input
                   type="text"
                   inputMode="numeric"
@@ -1384,7 +1384,7 @@ function DeductionItemRow({
               </select>
               
               {/* 自訂輸入框 */}
-              {(item.minutes && ![20, 30, 40, 60, 90].includes(item.minutes)) && (
+              {(item.minutes !== undefined && item.minutes !== null && ![20, 30, 40, 60, 90].includes(item.minutes)) && (
                 <input
                   type="text"
                   inputMode="numeric"
