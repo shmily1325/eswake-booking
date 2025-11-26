@@ -40,6 +40,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
     const [notes, setNotes] = useState(initialBooking?.notes || '')
     const [requiresDriver, setRequiresDriver] = useState(initialBooking?.requires_driver || false)
     const [filledBy, setFilledBy] = useState(initialBooking?.filled_by || '')
+    const [isCoachPractice, setIsCoachPractice] = useState(initialBooking?.is_coach_practice || false)
 
     // Status
     const [error, setError] = useState('')
@@ -85,6 +86,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
             setNotes(initialBooking.notes || '')
             setRequiresDriver(initialBooking.requires_driver || false)
             setActivityTypes(initialBooking.activity_types || [])
+            setIsCoachPractice(initialBooking.is_coach_practice || false)
             // 編輯模式下清空填表人，讓編輯者重新填寫
             setFilledBy('')
 
@@ -247,6 +249,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         setNotes('')
         setRequiresDriver(false)
         setFilledBy('')
+        setIsCoachPractice(false)
         setError('')
 
         // Reset time to defaults if needed, or keep current
@@ -274,6 +277,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         notes,
         requiresDriver,
         filledBy,
+        isCoachPractice,
         error,
         loading,
         loadingCoaches,
@@ -302,6 +306,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         setNotes,
         setRequiresDriver,
         setFilledBy,
+        setIsCoachPractice,
         setError,
         setLoading,
 

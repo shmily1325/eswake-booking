@@ -29,6 +29,7 @@ interface Booking {
   currentDrivers: string[]
   schedule_notes: string | null
   requires_driver: boolean
+  is_coach_practice?: boolean | null
   status?: string
   member_id?: string | null
   activity_types?: string[] | null
@@ -127,7 +128,7 @@ export function CoachAssignment() {
       // 優化：只查詢需要的字段，減少數據傳輸
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
-        .select('id, start_at, duration_min, contact_name, boat_id, schedule_notes, requires_driver, status, member_id, activity_types, notes, boats:boat_id(id, name, color), booking_members(member_id, members:member_id(id, name, nickname))')
+        .select('id, start_at, duration_min, contact_name, boat_id, schedule_notes, requires_driver, status, member_id, activity_types, notes, is_coach_practice, boats:boat_id(id, name, color), booking_members(member_id, members:member_id(id, name, nickname))')
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
         .eq('status', 'confirmed')
@@ -1277,6 +1278,19 @@ export function CoachAssignment() {
           // 分類預約 - 使用編輯中的值（即時反應）
           bookings.forEach(booking => {
             const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
+            const isCoachPractice = booking.is_coach_practice === true
+            
+            // 教練練習：只顯示在已分配的教練時間表中
+            if (isCoachPractice) {
+              if (booking.currentCoaches && booking.currentCoaches.length > 0) {
+                booking.currentCoaches.forEach(coachId => {
+                  if (coachGroups[coachId]) {
+                    coachGroups[coachId].push(booking)
+                  }
+                })
+              }
+              return // 教練練習不進入其他流程
+            }
             
             // 如果有衝突，只顯示在「需要駕駛」區域
             if (assignment.conflicts.length > 0) {
@@ -1399,18 +1413,38 @@ export function CoachAssignment() {
                         const isPreAssigned = booking.currentCoaches.includes(coach.id) || booking.currentDrivers.includes(coach.id)
                         const isCoach = assignment.coachIds.includes(coach.id)
                         const isDriver = assignment.driverIds.includes(coach.id)
+                        const isCoachPractice = booking.is_coach_practice === true
                         
                         return (
                           <div key={booking.id} style={{
                             padding: isMobile ? '8px 10px' : '10px 12px',
-                            background: '#f8f9fa',
+                            background: isCoachPractice ? '#fff3e0' : '#f8f9fa',
                             borderRadius: '6px',
-                            borderLeft: `3px solid ${booking.boats?.color || '#ccc'}`,
+                            borderLeft: `3px solid ${isCoachPractice ? '#ff9800' : (booking.boats?.color || '#ccc')}`,
                             fontSize: isMobile ? '13px' : '14px',
-                            position: 'relative'
+                            position: 'relative',
+                            border: isCoachPractice ? '1px solid #ff9800' : 'none'
                           }}>
-                            {/* 移除按鈕 - 只有駕駛可以移除 */}
-                            {isDriver && !isCoach && (
+                            {/* 教練練習標識 */}
+                            {isCoachPractice && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                padding: '3px 8px',
+                                background: '#ff9800',
+                                color: 'white',
+                                borderRadius: '4px',
+                                zIndex: 10,
+                              }}>
+                                🏄 教練團練
+                              </div>
+                            )}
+                            
+                            {/* 移除按鈕 - 只有駕駛可以移除（教練練習不可移除）*/}
+                            {!isCoachPractice && isDriver && !isCoach && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()

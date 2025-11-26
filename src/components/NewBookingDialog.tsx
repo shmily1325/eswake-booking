@@ -51,6 +51,7 @@ export function NewBookingDialog({
     notes,
     requiresDriver,
     filledBy,
+    isCoachPractice,
     error,
     loading,
     loadingCoaches,
@@ -77,6 +78,7 @@ export function NewBookingDialog({
     setNotes,
     setRequiresDriver,
     setFilledBy,
+    setIsCoachPractice,
     setError,
     setLoading,
 
@@ -195,6 +197,7 @@ export function NewBookingDialog({
           notes: notes || null,
         requires_driver: requiresDriver,
         filled_by: filledBy,                      // 新增填表人欄位
+        is_coach_practice: isCoachPractice,       // 教練練習標記
           status: 'confirmed',
           created_by: user.id,
           created_at: (() => {
@@ -409,6 +412,8 @@ export function NewBookingDialog({
             setNotes={setNotes}
             filledBy={filledBy}
             setFilledBy={setFilledBy}
+            isCoachPractice={isCoachPractice}
+            setIsCoachPractice={setIsCoachPractice}
           />
 
           {/* 錯誤訊息 */}

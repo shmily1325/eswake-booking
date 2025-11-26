@@ -160,10 +160,11 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
       let bookingsQuery = supabase
         .from('bookings')
         .select(`
-          id, start_at, duration_min, contact_name, notes, boat_id, requires_driver, status,
+          id, start_at, duration_min, contact_name, notes, boat_id, requires_driver, status, is_coach_practice,
           boats(name, color)
         `)
         .eq('status', 'confirmed')
+        .eq('is_coach_practice', false)  // 過濾教練練習
         .order('start_at')
 
       if (viewMode === 'date') {

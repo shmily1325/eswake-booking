@@ -936,6 +936,23 @@ export function DayView() {
                                     })()}
                                   </div>
 
+                                  {/* 教練練習標識 */}
+                                  {booking.is_coach_practice && (
+                                    <div style={{
+                                      fontSize: isMobile ? '11px' : '12px',
+                                      fontWeight: '600',
+                                      padding: '4px 8px',
+                                      background: '#fff3e0',
+                                      border: '1px solid #ff9800',
+                                      borderRadius: '4px',
+                                      color: '#e65100',
+                                      marginBottom: '6px',
+                                      textAlign: 'center',
+                                    }}>
+                                      🏄 教練練習
+                                    </div>
+                                  )}
+
                                   {/* 第三行：預約人 */}
                                   <div style={{
                                     fontSize: isMobile ? '14px' : '16px',

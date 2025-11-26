@@ -57,6 +57,7 @@ export function EditBookingDialog({
     notes,
     requiresDriver,
     filledBy,
+    isCoachPractice,
     error,
     loading,
     loadingCoaches,
@@ -83,6 +84,7 @@ export function EditBookingDialog({
     setNotes,
     setRequiresDriver,
     setFilledBy,
+    setIsCoachPractice,
     setError,
     setLoading,
 
@@ -230,6 +232,7 @@ export function EditBookingDialog({
           notes: notes || null,
           filled_by: filledBy,
           requires_driver: requiresDriver,
+          is_coach_practice: isCoachPractice,
           updated_at: getLocalTimestamp(),
         })
         .eq('id', booking.id)
@@ -1443,6 +1446,8 @@ export function EditBookingDialog({
             setNotes={setNotes}
             filledBy={filledBy}
             setFilledBy={setFilledBy}
+            isCoachPractice={isCoachPractice}
+            setIsCoachPractice={setIsCoachPractice}
           />
 
           {/* 即時衝突回饋 */}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useToast } from './ui'
 
 // 扣款類別
 type DeductionCategory = 
@@ -45,6 +46,7 @@ interface Props {
 }
 
 export function PendingDeductionItem({ report, onComplete }: Props) {
+  const toast = useToast()
   const [isExpanded, setIsExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [memberData, setMemberData] = useState<any>(null)
@@ -365,7 +367,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   // 刪除扣款項目
   const removeItem = (id: string) => {
     if (items.length === 1) {
-      alert('至少需要一個扣款項目')
+      toast.warning('至少需要一個扣款項目')
       return
     }
     setItems(items.filter(item => item.id !== id))
@@ -404,11 +406,11 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
 
       if (error) throw error
       
-      alert(`${settlementLabel}完成`)
+      toast.success(`${settlementLabel}完成`)
       onComplete()
     } catch (error) {
       console.error('結清失敗:', error)
-      alert('結清失敗')
+      toast.error('結清失敗')
     } finally {
       setLoading(false)
     }
@@ -474,12 +476,12 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     const deductionItems = items.filter(item => item.category !== 'direct_settlement')
     
     if (!report.member_id) {
-      alert('非會員無法扣款')
+      toast.warning('非會員無法扣款')
       return
     }
 
     if (!memberData) {
-      alert('會員資料未載入')
+      toast.warning('會員資料未載入')
       return
     }
 
@@ -574,11 +576,11 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
         throw new Error(resultData?.error || '扣款處理失敗')
       }
 
-      alert('扣款完成')
+      toast.success('扣款完成')
       onComplete()
     } catch (error) {
       console.error('扣款失敗:', error)
-      alert(`扣款失敗：${error instanceof Error ? error.message : '未知錯誤'}`)
+      toast.error(`扣款失敗：${error instanceof Error ? error.message : '未知錯誤'}`)
     } finally {
       setLoading(false)
     }

@@ -6,6 +6,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
 import { useBookingConflict } from '../hooks/useBookingConflict'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
+import { useToast } from './ui'
 import { BoatSelector } from './booking/BoatSelector'
 import { TimeSelector } from './booking/TimeSelector'
 import { MemberSelector } from './booking/MemberSelector'
@@ -58,6 +59,7 @@ export function RepeatBookingDialog({
     notes,
     requiresDriver,
     filledBy,
+    isCoachPractice,
     error,
     loading,
     loadingCoaches,
@@ -84,6 +86,7 @@ export function RepeatBookingDialog({
     setNotes,
     setRequiresDriver,
     setFilledBy,
+    setIsCoachPractice,
     setError,
     setLoading,
 
@@ -233,6 +236,7 @@ export function RepeatBookingDialog({
           notes: notes || null,
           requires_driver: requiresDriver,
           filled_by: filledBy,
+          is_coach_practice: isCoachPractice,
           status: 'confirmed',
           created_by: user.id,
           created_at: getLocalTimestamp(),
@@ -543,6 +547,8 @@ export function RepeatBookingDialog({
             setNotes={setNotes}
             filledBy={filledBy}
             setFilledBy={setFilledBy}
+            isCoachPractice={isCoachPractice}
+            setIsCoachPractice={setIsCoachPractice}
           />
 
           {/* 錯誤訊息 */}
