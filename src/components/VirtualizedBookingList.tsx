@@ -190,6 +190,23 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
 
                                                 {/* 預約內容 */}
                                                 <div style={{ flex: 1, minWidth: 0 }}>
+                                                    {/* 教練練習標識 */}
+                                                    {booking.is_coach_practice && (
+                                                        <div style={{
+                                                            display: 'inline-block',
+                                                            fontSize: '11px',
+                                                            fontWeight: '600',
+                                                            padding: '3px 8px',
+                                                            background: '#fff3e0',
+                                                            color: '#e65100',
+                                                            borderRadius: '4px',
+                                                            marginBottom: '6px',
+                                                            border: '1px solid #ff9800',
+                                                        }}>
+                                                            🏄 教練練習
+                                                        </div>
+                                                    )}
+                                                    
                                                     {/* 第一行：預約人 */}
                                                     <div style={{
                                                         fontSize: isMobile ? '14px' : '16px',
