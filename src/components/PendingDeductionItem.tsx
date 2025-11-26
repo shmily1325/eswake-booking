@@ -424,14 +424,14 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
       // 跳過直接結清
       if (item.category === 'direct_settlement') return
       
-      // 檢查金額/時數
+      // 檢查金額/時數（允許 0，但必須有值）
       if (item.category === 'balance' || item.category === 'vip_voucher') {
-        if (!item.amount || item.amount <= 0) {
-          errors[`${itemKey}-amount`] = '請輸入有效的金額'
+        if (item.amount === undefined || item.amount === null || item.amount < 0) {
+          errors[`${itemKey}-amount`] = '請輸入有效的金額（可以是 0）'
         }
       } else if (item.category !== 'plan') {
-        if (!item.minutes || item.minutes <= 0) {
-          errors[`${itemKey}-minutes`] = '請輸入有效的時數'
+        if (item.minutes === undefined || item.minutes === null || item.minutes < 0) {
+          errors[`${itemKey}-minutes`] = '請輸入有效的時數（可以是 0）'
         }
       }
       
@@ -486,6 +486,46 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     // 驗證扣款項目
     if (!validateItems()) {
       return
+    }
+
+    // 檢查是否有 0 值項目，需要用戶確認
+    const zeroValueItems = deductionItems.filter(item => {
+      if (item.category === 'balance' || item.category === 'vip_voucher') {
+        return item.amount === 0
+      } else if (item.category !== 'plan') {
+        return item.minutes === 0
+      }
+      return false
+    })
+
+    if (zeroValueItems.length > 0) {
+      const zeroItemsDesc = zeroValueItems.map((item, idx) => {
+        const categoryLabels: Record<string, string> = {
+          'balance': '💰 儲值',
+          'vip_voucher': '💎 VIP票券',
+          'boat_voucher_g23': '🚤 G23船券',
+          'boat_voucher_g21_panther': '🚤 G21/黑豹券',
+          'designated_lesson': '🎓 指定課時數',
+          'gift_boat_hours': '🎁 贈送時數',
+          'plan': '⭐ 方案',
+          'direct_settlement': '✅ 直接結清'
+        }
+        const categoryLabel = categoryLabels[item.category] || item.category
+        
+        const value = item.category === 'balance' || item.category === 'vip_voucher' 
+          ? '0 元' 
+          : '0 分鐘'
+        
+        return `${idx + 1}. ${categoryLabel}：${value}`
+      }).join('\n')
+
+      const confirmed = window.confirm(
+        `⚠️ 警告：以下項目的扣款金額/時數為 0\n\n${zeroItemsDesc}\n\n確定要繼續扣款嗎？`
+      )
+
+      if (!confirmed) {
+        return
+      }
     }
 
     setLoading(true)
