@@ -414,10 +414,13 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 ⏱️ 贈送時數（分鐘） <span style={{ fontSize: '13px' }}>（選填）</span>
               </label>
               <input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
                 value={formData.free_hours}
-                onChange={(e) => setFormData({ ...formData, free_hours: parseInt(e.target.value) || 0 })}
+                onChange={(e) => {
+                  const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                  setFormData({ ...formData, free_hours: parseInt(numValue) || 0 })
+                }}
                 placeholder="0"
                 style={inputStyle}
                 onFocus={handleFocus}
@@ -488,11 +491,16 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                       <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>（1-145）</span>
                     </label>
                     <input
-                      type="number"
-                      min="1"
-                      max="145"
+                      type="text"
+                      inputMode="numeric"
                       value={board.slot_number}
-                      onChange={(e) => updateBoard(index, 'slot_number', e.target.value)}
+                      onChange={(e) => {
+                        const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                        const num = Number(numValue)
+                        if ((num >= 1 && num <= 145) || numValue === '') {
+                          updateBoard(index, 'slot_number', numValue)
+                        }
+                      }}
                       placeholder="請輸入格位編號"
                       style={{...inputStyle, fontSize: '14px', padding: '8px'}}
                     />

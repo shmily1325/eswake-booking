@@ -1423,12 +1423,14 @@ export function StaffManagement() {
                 30分鐘指定課價格（元）
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={lessonPrice}
-                onChange={(e) => setLessonPrice(e.target.value)}
+                onChange={(e) => {
+                  const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                  setLessonPrice(numValue)
+                }}
                 placeholder="例如：1000"
-                min="0"
-                step="1"
                 style={{
                   width: '100%',
                   padding: '12px',

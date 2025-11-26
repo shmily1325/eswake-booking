@@ -528,11 +528,16 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                             格位編號 (1-145)
                           </label>
                           <input
-                            type="number"
-                            min="1"
-                            max="145"
+                            type="text"
+                            inputMode="numeric"
                             value={slot.slot_number}
-                            onChange={(e) => handleUpdateBoardSlot(index, 'slot_number', e.target.value)}
+                            onChange={(e) => {
+                              const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                              const num = Number(numValue)
+                              if ((num >= 1 && num <= 145) || numValue === '') {
+                                handleUpdateBoardSlot(index, 'slot_number', numValue)
+                              }
+                            }}
                             placeholder="例如：1"
                             style={{...inputStyle, fontSize: '14px'}}
                           />

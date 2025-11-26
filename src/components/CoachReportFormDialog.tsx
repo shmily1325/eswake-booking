@@ -139,13 +139,15 @@ export function CoachReportFormDialog({
                   實際駕駛時數（分鐘）
                 </label>
                 <input
-                  type="number"
-                  value={driverDuration}
-                  onChange={(e) =>
-                    onDriverDurationChange(parseInt(e.target.value) || 0)
-                  }
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
+                  value={driverDuration || ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '') // 只允許數字
+                    onDriverDurationChange(parseInt(value) || 0)
+                  }}
                   style={getInputStyle(isMobile)}
+                  placeholder="60"
                 />
               </div>
             </div>

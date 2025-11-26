@@ -677,11 +677,18 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                   <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>（1-145）</span>
                 </label>
                 <input
-                  type="number"
-                  min="1"
-                  max="145"
+                  type="text"
+                  inputMode="numeric"
                   value={boardFormData.slot_number}
-                  onChange={(e) => setBoardFormData({ ...boardFormData, slot_number: e.target.value })}
+                  onChange={(e) => {
+                    const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                    const num = Number(numValue)
+                    if (num >= 1 && num <= 145) {
+                      setBoardFormData({ ...boardFormData, slot_number: numValue })
+                    } else if (numValue === '') {
+                      setBoardFormData({ ...boardFormData, slot_number: '' })
+                    }
+                  }}
                   placeholder="請輸入格位編號"
                   style={{
                     width: '100%',

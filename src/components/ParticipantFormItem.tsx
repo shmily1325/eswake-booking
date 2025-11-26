@@ -191,13 +191,15 @@ export function ParticipantFormItem({
       <div style={{ marginBottom: '12px' }}>
         <label style={{ ...getLabelStyle(isMobile) }}>時數（分鐘）</label>
         <input
-          type="number"
-          value={participant.duration_min}
-          onChange={(e) =>
-            onUpdate(index, 'duration_min', parseInt(e.target.value) || 0)
-          }
-          min="0"
+          type="text"
+          inputMode="numeric"
+          value={participant.duration_min || ''}
+          onChange={(e) => {
+            const value = e.target.value.replace(/\D/g, '') // 只允許數字
+            onUpdate(index, 'duration_min', parseInt(value) || 0)
+          }}
           style={getInputStyle(isMobile)}
+          placeholder="60"
         />
       </div>
 

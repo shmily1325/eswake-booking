@@ -1380,10 +1380,14 @@ function DeductionItemRow({
               {/* 自訂輸入框（當選擇自訂或金額不在列表中時顯示） */}
               {(item.amount && !commonAmounts.concat(vipVoucherAmounts).concat(getDesignatedLessonAmounts()).includes(item.amount)) && (
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="請輸入金額"
                   value={item.amount || ''}
-                  onChange={(e) => onUpdate({ amount: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '') // 只允許數字
+                    onUpdate({ amount: parseInt(value) || 0 })
+                  }}
                   style={{
                     padding: '10px 12px',
                     border: '2px solid #f59e0b',
@@ -1445,10 +1449,14 @@ function DeductionItemRow({
               {/* 自訂輸入框 */}
               {(item.minutes && ![20, 30, 40, 60, 90].includes(item.minutes)) && (
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="請輸入分鐘數"
                   value={item.minutes || ''}
-                  onChange={(e) => onUpdate({ minutes: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '') // 只允許數字
+                    onUpdate({ minutes: parseInt(value) || 0 })
+                  }}
                   style={{
                     padding: '10px 12px',
                     border: '2px solid #f59e0b',

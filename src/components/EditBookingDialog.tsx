@@ -1400,16 +1400,18 @@ export function EditBookingDialog({
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>自訂：</span>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={durationMin}
                 onChange={(e) => {
-                  const value = Number(e.target.value)
-                  if (value > 0 && value <= 999) {
-                    setDurationMin(value)
+                  const value = e.target.value.replace(/\D/g, '') // 只允許數字
+                  const numValue = Number(value)
+                  if (numValue > 0 && numValue <= 999) {
+                    setDurationMin(numValue)
+                  } else if (value === '') {
+                    setDurationMin(0)
                   }
                 }}
-                min="1"
-                max="999"
                 style={{
                   flex: 1,
                   padding: '10px 12px',

@@ -460,11 +460,18 @@ export function RepeatBookingDialog({
                   重複次數
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={repeatCount}
-                  onChange={(e) => setRepeatCount(Math.max(1, Number(e.target.value)))}
-                  min="1"
-                  max="52"
+                  onChange={(e) => {
+                    const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                    const num = Number(numValue)
+                    if (num >= 1 && num <= 52) {
+                      setRepeatCount(num)
+                    } else if (numValue === '') {
+                      setRepeatCount(1)
+                    }
+                  }}
                   style={{
                     width: '100%',
                     padding: '10px',

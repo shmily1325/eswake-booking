@@ -622,12 +622,16 @@ export function BoatManagement() {
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     <span style={{ fontSize: '16px', color: '#666' }}>$</span>
                                                     <input
-                                                        type="number"
+                                                        type="text"
+                                                        inputMode="numeric"
                                                         value={editing.balance}
-                                                        onChange={(e) => setEditingPrices(prev => ({
-                                                            ...prev,
-                                                            [boat.id]: { ...editing, balance: e.target.value }
-                                                        }))}
+                                                        onChange={(e) => {
+                                                            const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                                                            setEditingPrices(prev => ({
+                                                                ...prev,
+                                                                [boat.id]: { ...editing, balance: numValue }
+                                                            }))
+                                                        }}
                                                         placeholder="未設定"
                                                         style={{
                                                             flex: 1,
@@ -658,12 +662,16 @@ export function BoatManagement() {
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     <span style={{ fontSize: '16px', color: '#666' }}>$</span>
                                                     <input
-                                                        type="number"
+                                                        type="text"
+                                                        inputMode="numeric"
                                                         value={editing.vip}
-                                                        onChange={(e) => setEditingPrices(prev => ({
-                                                            ...prev,
-                                                            [boat.id]: { ...editing, vip: e.target.value }
-                                                        }))}
+                                                        onChange={(e) => {
+                                                            const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                                                            setEditingPrices(prev => ({
+                                                                ...prev,
+                                                                [boat.id]: { ...editing, vip: numValue }
+                                                            }))
+                                                        }}
                                                         placeholder="未設定"
                                                         style={{
                                                             flex: 1,

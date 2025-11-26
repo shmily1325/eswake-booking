@@ -813,11 +813,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   {selectedCategory?.type === 'amount' ? '金額 (元)' : '時數 (分鐘)'} *
                 </label>
                 <input
-                  type="number"
-                  min="0"
-                  step={selectedCategory?.type === 'amount' ? '1' : '1'}
+                  type="text"
+                  inputMode="numeric"
                   value={value}
-                  onChange={(e) => setValue(e.target.value)}
+                  onChange={(e) => {
+                    const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                    setValue(numValue)
+                  }}
                   placeholder={`請輸入${selectedCategory?.type === 'amount' ? '金額' : '分鐘數'}`}
                   style={inputStyle}
                   required
@@ -1147,10 +1149,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                 {CATEGORIES.find(c => c.value === editCategory)?.type === 'amount' ? '金額 (元)' : '時數 (分鐘)'} *
                               </label>
                               <input
-                                type="number"
-                                min="0"
+                                type="text"
+                                inputMode="numeric"
                                 value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
+                                onChange={(e) => {
+                                  const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                                  setEditValue(numValue)
+                                }}
                                 style={{ ...inputStyle, fontSize: '14px' }}
                               />
                             </div>
