@@ -40,7 +40,7 @@ export function BackupPage() {
       if (error) throw error
 
       if (!bookings || bookings.length === 0) {
-        alert('沒有數據可以導出')
+        toast.warning('沒有數據可以導出')
         return
       }
 
@@ -201,7 +201,7 @@ export function BackupPage() {
       if (error) throw error
 
       if (!participants || participants.length === 0) {
-        alert('沒有數據可以導出')
+        toast.warning('沒有數據可以導出')
         return
       }
 
@@ -304,7 +304,7 @@ export function BackupPage() {
       if (bookingsError) throw bookingsError
 
       if (!bookings || bookings.length === 0) {
-        alert('沒有數據可以導出')
+        toast.warning('沒有數據可以導出')
         return
       }
 

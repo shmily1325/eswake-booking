@@ -5,10 +5,12 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalTimestamp } from '../../utils/date'
+import { useToast } from '../../components/ui'
 
 export function LineSettings() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   
@@ -43,7 +45,7 @@ export function LineSettings() {
       }
     } catch (error) {
       console.error('載入設置失敗:', error)
-      alert('❌ 載入設置失敗')
+      toast.error('載入設置失敗')
     } finally {
       setLoading(false)
     }
@@ -88,10 +90,10 @@ export function LineSettings() {
           .eq('setting_key', update.setting_key)
       }
 
-      alert('✅ 設置已儲存')
+      toast.success('設置已儲存')
     } catch (error) {
       console.error('儲存失敗:', error)
-      alert('❌ 儲存失敗')
+      toast.error('儲存失敗')
     } finally {
       setSaving(false)
     }
