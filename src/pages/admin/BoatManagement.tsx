@@ -478,11 +478,36 @@ export function BoatManagement() {
                                                     color: '#555',
                                                     lineHeight: '1.4'
                                                 }}>
-                                                    {record.start_date === record.end_date ? record.start_date : `${record.start_date} ~ ${record.end_date}`}
-                                                    {record.start_time && record.end_time && (
-                                                        <span style={{ fontWeight: 'bold', marginLeft: '6px', color: '#d84315' }}>
-                                                            {record.start_time}-{record.end_time}
-                                                        </span>
+                                                    {/* 顯示日期和時間 */}
+                                                    {record.start_date === record.end_date ? (
+                                                        // 單日維修
+                                                        <>
+                                                            {record.start_date}
+                                                            {record.start_time && record.end_time && (
+                                                                <span style={{ fontWeight: 'bold', marginLeft: '6px', color: '#d84315' }}>
+                                                                    {record.start_time}-{record.end_time}
+                                                                </span>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        // 跨日維修
+                                                        <>
+                                                            {record.start_time ? (
+                                                                // 有指定時間：顯示完整的起止日期時間
+                                                                <>
+                                                                    <span style={{ fontWeight: 'bold', color: '#d84315' }}>
+                                                                        {record.start_date} {record.start_time}
+                                                                    </span>
+                                                                    <span style={{ margin: '0 4px' }}>~</span>
+                                                                    <span style={{ fontWeight: 'bold', color: '#d84315' }}>
+                                                                        {record.end_date} {record.end_time}
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                // 無指定時間：只顯示日期範圍（全天）
+                                                                `${record.start_date} ~ ${record.end_date}`
+                                                            )}
+                                                        </>
                                                     )}
                                                     <span style={{
                                                         marginLeft: '8px',
@@ -815,7 +840,9 @@ export function BoatManagement() {
                         </div>
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                             <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', marginBottom: '5px' }}>開始時間 (選填)</label>
+                                <label style={{ display: 'block', marginBottom: '5px' }}>
+                                    {startDate === endDate ? '開始時間' : '第一天時間'} (選填)
+                                </label>
                                 <div style={{ display: 'flex', gap: '5px' }}>
                                     <select
                                         value={startTime ? startTime.split(':')[0] : ''}
@@ -858,7 +885,9 @@ export function BoatManagement() {
                                 </div>
                             </div>
                             <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', marginBottom: '5px' }}>結束時間 (選填)</label>
+                                <label style={{ display: 'block', marginBottom: '5px' }}>
+                                    {startDate === endDate ? '結束時間' : '最後一天時間'} (選填)
+                                </label>
                                 <div style={{ display: 'flex', gap: '5px' }}>
                                     <select
                                         value={endTime ? endTime.split(':')[0] : ''}
@@ -901,8 +930,19 @@ export function BoatManagement() {
                                 </div>
                             </div>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '15px' }}>
-                            * 時間留空表示全天停用
+                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '15px', lineHeight: '1.5' }}>
+                            {startDate === endDate ? (
+                                <>
+                                    💡 <strong>單日維修：</strong>時間留空表示全天停用<br/>
+                                    　 例如：13:30-15:00 表示當天 13:30 到 15:00 不可用
+                                </>
+                            ) : (
+                                <>
+                                    💡 <strong>跨日維修：</strong>時間留空表示這幾天全天停用<br/>
+                                    　 例如：第一天 13:30、最後一天 15:00<br/>
+                                    　 表示從第一天 13:30 開始到最後一天 15:00 結束
+                                </>
+                            )}
                         </div>
                         <div style={{ marginBottom: '20px' }}>
                             <label style={{ display: 'block', marginBottom: '5px' }}>原因</label>
