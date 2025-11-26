@@ -13,6 +13,13 @@ interface DeductionDetailsProps {
   notes?: string | null
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: '現金',
+  transfer: '匯款',
+  balance: '扣儲值',
+  voucher: '票券'
+}
+
 // 扣款类别配置
 const CATEGORY_CONFIG: Record<string, { emoji: string; label: string; type: 'amount' | 'minutes' }> = {
   balance: { emoji: '💰', label: '儲值', type: 'amount' },
@@ -24,7 +31,7 @@ const CATEGORY_CONFIG: Record<string, { emoji: string; label: string; type: 'amo
   gift_boat_hours: { emoji: '🎁', label: '贈送時數', type: 'minutes' }
 }
 
-export function DeductionDetails({ transactions, notes }: DeductionDetailsProps) {
+export function DeductionDetails({ transactions, paymentMethod, notes }: DeductionDetailsProps) {
 
   // 如果是现金/汇款结清，直接显示结清信息
   if (notes && (notes.includes('[現金結清]') || notes.includes('[匯款結清]') || notes.includes('[指定課不收費]'))) {
@@ -59,9 +66,25 @@ export function DeductionDetails({ transactions, notes }: DeductionDetailsProps)
     )
   }
 
-  // 如果沒有交易記錄，顯示付款方式
+  // 如果沒有交易記錄，根據付款方式顯示
   if (!transactions || transactions.length === 0) {
-    // 顯示付款方式提示
+    // 如果是現金或匯款，可能是直接結清
+    if (paymentMethod === 'cash' || paymentMethod === 'transfer') {
+      const label = PAYMENT_METHOD_LABELS[paymentMethod] || paymentMethod
+      return (
+        <div style={{ 
+          fontSize: '12px',
+          marginTop: '4px',
+          color: '#28a745',
+          fontWeight: '500'
+        }}>
+          {label}結清
+        </div>
+      )
+    }
+    
+    // 其他付款方式但沒有交易記錄，可能是歷史資料
+    const label = PAYMENT_METHOD_LABELS[paymentMethod] || paymentMethod
     return (
       <div style={{ 
         fontSize: '12px',
@@ -69,7 +92,7 @@ export function DeductionDetails({ transactions, notes }: DeductionDetailsProps)
         color: '#999',
         fontStyle: 'italic'
       }}>
-        (尚無扣款記錄)
+        ({label}，無詳細記錄)
       </div>
     )
   }
