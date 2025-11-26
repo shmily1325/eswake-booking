@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { EditMemberDialog } from './EditMemberDialog'
 import { TransactionDialog } from './TransactionDialog'
+import { useToast } from './ui'
 
 interface Member {
   id: string
@@ -62,6 +63,7 @@ interface MemberDetailDialogProps {
 
 export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: MemberDetailDialogProps) {
   const { isMobile } = useResponsive()
+  const toast = useToast()
   const [member, setMember] = useState<Member | null>(null)
   const [boardStorage, setBoardStorage] = useState<BoardStorage[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -135,7 +137,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       loadTransactions()
     } catch (error) {
       console.error('載入會員資料失敗:', error)
-      alert('載入會員資料失敗')
+      toast.error('載入會員資料失敗')
     } finally {
       setLoading(false)
     }
@@ -173,13 +175,13 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
 
   const handleAddBoard = async () => {
     if (!memberId || !boardFormData.slot_number) {
-      alert('請輸入格位編號')
+      toast.warning('請輸入格位編號')
       return
     }
 
     const slotNumber = parseInt(boardFormData.slot_number)
     if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 145) {
-      alert('格位編號必須是 1-145 之間的數字')
+      toast.warning('格位編號必須是 1-145 之間的數字')
       return
     }
 
@@ -196,7 +198,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
 
       if (error) {
         if (error.code === '23505') {
-          alert(`格位 ${slotNumber} 已被使用，請選擇其他格位`)
+          toast.warning(`格位 ${slotNumber} 已被使用，請選擇其他格位`)
         } else {
           throw error
         }
@@ -208,7 +210,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       onUpdate()
     } catch (error) {
       console.error('新增置板失敗:', error)
-      alert('新增置板失敗')
+      toast.error('新增置板失敗')
     }
   }
 
@@ -228,7 +230,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       onUpdate()
     } catch (error) {
       console.error('刪除置板失敗:', error)
-      alert('刪除置板失敗')
+      toast.error('刪除置板失敗')
     }
   }
 
