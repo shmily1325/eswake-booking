@@ -61,12 +61,21 @@ function parseDetails(details: string): ParsedDetails {
       .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
       .replace(/\d+\s*分/, '')
       .replace(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g, '')
-      .replace(/[、，,\s]+/g, ' ')
       .trim()
     
-    const parts = remaining.split(/\s+/).filter(p => p.length > 0)
-    if (parts.length >= 1) info.boat = parts[0]
-    if (parts.length >= 2) info.member = parts[1]
+    // 先移除填表人/課堂人部分（如果有）
+    remaining = remaining.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
+    
+    // 分割：船隻 會員1, 會員2
+    // 第一個空格前是船隻，之後都是會員名（可能用逗號或頓號分隔）
+    const firstSpaceIndex = remaining.indexOf(' ')
+    if (firstSpaceIndex > 0) {
+      info.boat = remaining.substring(0, firstSpaceIndex).trim()
+      info.member = remaining.substring(firstSpaceIndex + 1).trim()
+    } else if (remaining.length > 0) {
+      // 如果沒有空格，整個都是船隻
+      info.boat = remaining
+    }
     
   } else if (isUpdate) {
     // 修改預約：日期 時間 [名稱]，變更：...
@@ -91,12 +100,21 @@ function parseDetails(details: string): ParsedDetails {
       .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
       .replace(/\d+\s*分/, '')
       .replace(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g, '')
-      .replace(/[、，,\s]+/g, ' ')
       .trim()
     
-    const parts = remaining.split(/\s+/).filter(p => p.length > 0)
-    if (parts.length >= 1) info.boat = parts[0]
-    if (parts.length >= 2) info.member = parts[1]
+    // 先移除填表人/課堂人部分（如果有）
+    remaining = remaining.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
+    
+    // 分割：船隻 會員1, 會員2
+    // 第一個空格前是船隻，之後都是會員名（可能用逗號或頓號分隔）
+    const firstSpaceIndex = remaining.indexOf(' ')
+    if (firstSpaceIndex > 0) {
+      info.boat = remaining.substring(0, firstSpaceIndex).trim()
+      info.member = remaining.substring(firstSpaceIndex + 1).trim()
+    } else if (remaining.length > 0) {
+      // 如果沒有空格，整個都是船隻
+      info.boat = remaining
+    }
   }
   
   return info
