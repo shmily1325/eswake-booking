@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
+import { useToast } from './ui'
 
 interface Member {
   id: string
@@ -26,6 +27,7 @@ interface EditMemberDialogProps {
 
 export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMemberDialogProps) {
   const { isMobile } = useResponsive()
+  const toast = useToast()
   const [loading, setLoading] = useState(false)
   const [allMembers, setAllMembers] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
   const [boardSlots, setBoardSlots] = useState<Array<{id?: number, slot_number: string, expires_at: string}>>([])
@@ -125,7 +127,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         .eq('id', slot.id)
       
       if (error) {
-        alert('刪除失敗：' + error.message)
+        toast.error('刪除失敗：' + error.message)
         return
       }
     }
@@ -147,7 +149,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     try {
       const trimmedPhone = formData.phone.trim()
       if (trimmedPhone && !/^09\d{8}$/.test(trimmedPhone)) {
-        alert('電話需為 09 開頭的 10 位數字')
+        toast.warning('電話需為 09 開頭的 10 位數字')
         setLoading(false)
         return
       }
@@ -178,7 +180,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         }
         
         if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 145) {
-          alert(`格位編號 ${slot.slot_number} 必須是 1-145 之間的數字`)
+          toast.warning(`格位編號 ${slot.slot_number} 必須是 1-145 之間的數字`)
           setLoading(false)
           return
         }
@@ -206,7 +208,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             })
           if (error) {
             if (error.code === '23505') {
-              alert(`格位 ${slotNumber} 已被使用，請選擇其他格位`)
+              toast.warning(`格位 ${slotNumber} 已被使用，請選擇其他格位`)
               setLoading(false)
               return
             }
@@ -241,7 +243,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       onClose()
     } catch (error) {
       console.error('更新失敗:', error)
-      alert('更新失敗')
+      toast.error('更新失敗')
     } finally {
       setLoading(false)
     }

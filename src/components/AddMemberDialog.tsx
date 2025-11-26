@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalTimestamp } from '../utils/date'
+import { useToast } from './ui'
 
 interface AddMemberDialogProps {
   open: boolean
@@ -11,6 +12,7 @@ interface AddMemberDialogProps {
 
 export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogProps) {
   const { isMobile } = useResponsive()
+  const toast = useToast()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -84,13 +86,13 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     e.preventDefault()
     
     if (!formData.name.trim()) {
-      alert('請輸入姓名')
+      toast.warning('請輸入姓名')
       return
     }
 
     const trimmedPhone = formData.phone.trim()
     if (trimmedPhone && !/^09\d{8}$/.test(trimmedPhone)) {
-      alert('電話需為 09 開頭的 10 位數字')
+      toast.warning('電話需為 09 開頭的 10 位數字')
       return
     }
 
@@ -190,8 +192,8 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
       setBoards([])
     } catch (error) {
       console.error('新增會員失敗:', error)
-      alert('新增會員失敗')
-    } finally {
+      toast.error('新增會員失敗')
+    } finally{
       setLoading(false)
     }
   }
