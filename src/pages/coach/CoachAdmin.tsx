@@ -5,6 +5,8 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { StatisticsTab } from '../../components/StatisticsTab'
 import { PendingDeductionItem } from '../../components/PendingDeductionItem'
+import { DeductionDetails } from '../../components/DeductionDetails'
+import { ExportReportButton } from '../../components/ExportReportButton'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
@@ -234,7 +236,29 @@ export function CoachAdmin() {
 
       if (driverError) throw driverError
 
-      setCompletedReports(participantsData || [])
+      // 3. 載入交易記錄（用於顯示扣款詳情）
+      if (participantsData && participantsData.length > 0) {
+        const participantIds = participantsData.map(p => p.id)
+        const { data: transactionsData, error: transactionsError } = await supabase
+          .from('transactions')
+          .select('*')
+          .in('booking_participant_id', participantIds)
+          .eq('transaction_type', 'consume')
+
+        if (!transactionsError && transactionsData) {
+          // 將交易記錄附加到對應的參與者記錄上
+          const participantsWithTransactions = participantsData.map(participant => ({
+            ...participant,
+            transactions: transactionsData.filter(t => t.booking_participant_id === participant.id)
+          }))
+          setCompletedReports(participantsWithTransactions)
+        } else {
+          setCompletedReports(participantsData || [])
+        }
+      } else {
+        setCompletedReports([])
+      }
+
       setCompletedDriverReports(driverData || [])
     } catch (error) {
       console.error('載入已結案記錄失敗:', error)
@@ -884,7 +908,7 @@ export function CoachAdmin() {
                 <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>
                   查看模式
                 </label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                   <button
                     onClick={() => setCompletedViewMode('booking')}
                     style={{
@@ -921,6 +945,15 @@ export function CoachAdmin() {
                   >
                     👤 按教練統計
                   </button>
+                  
+                  {/* 匯出報表按鈕 */}
+                  <div style={{ marginLeft: isMobile ? '0' : 'auto', width: isMobile ? '100%' : 'auto' }}>
+                    <ExportReportButton 
+                      records={completedReports}
+                      dateRange={selectedDate.length === 7 ? selectedDate : selectedDate}
+                      isMobile={isMobile}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1049,16 +1082,11 @@ export function CoachAdmin() {
                                     {' • '}{LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}
                                     {' • '}{PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}
                                   </div>
-                                  {record.notes && (
-                                    <div style={{ 
-                                      color: record.notes.includes('[現金結清]') ? '#28a745' : '#999', 
-                                      fontSize: '12px',
-                                      marginTop: '4px',
-                                      fontWeight: record.notes.includes('[現金結清]') ? '600' : 'normal'
-                                    }}>
-                                      💵 {record.notes}
-                                    </div>
-                                  )}
+                                  <DeductionDetails 
+                                    transactions={record.transactions || []}
+                                    paymentMethod={record.payment_method}
+                                    notes={record.notes}
+                                  />
                                 </div>
                               ))}
                             </div>
@@ -1177,24 +1205,21 @@ export function CoachAdmin() {
                                     color: '#333'
                                   }}
                                 >
-                                  <span style={{ fontWeight: '600', color: '#333' }}>
-                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)} {record.bookings.boats?.name}
-                                  </span>
-                                  <span style={{ fontWeight: 'normal', color: '#666' }}> • {record.members?.nickname || record.members?.name || record.participant_name}</span>
-                                  {!record.member_id && <span style={{ color: '#ff9800', fontWeight: 'normal' }}> (非會員)</span>}
-                                  <span style={{ fontWeight: 'normal', color: '#666' }}> {record.duration_min}分</span>
-                                  <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}> • {LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}</span>
-                                  <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}> • {PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}</span>
-                                  {record.notes && (
-                                    <span style={{ 
-                                      color: record.notes.includes('現金結清') ? '#28a745' : '#999',
-                                      fontSize: '12px',
-                                      marginLeft: '6px',
-                                      fontWeight: record.notes.includes('現金結清') ? '600' : 'normal'
-                                    }}>
-                                      ({record.notes})
+                                  <div>
+                                    <span style={{ fontWeight: '600', color: '#333' }}>
+                                      {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)} {record.bookings.boats?.name}
                                     </span>
-                                  )}
+                                    <span style={{ fontWeight: 'normal', color: '#666' }}> • {record.members?.nickname || record.members?.name || record.participant_name}</span>
+                                    {!record.member_id && <span style={{ color: '#ff9800', fontWeight: 'normal' }}> (非會員)</span>}
+                                    <span style={{ fontWeight: 'normal', color: '#666' }}> {record.duration_min}分</span>
+                                    <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}> • {LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}</span>
+                                    <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}> • {PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}</span>
+                                  </div>
+                                  <DeductionDetails 
+                                    transactions={record.transactions || []}
+                                    paymentMethod={record.payment_method}
+                                    notes={record.notes}
+                                  />
                                 </div>
                               ))}
                             </div>
