@@ -4,8 +4,10 @@ import {
   generateCashReport,
   generateTransferReport,
   generateCoachCashReport,
+  generateCSVReport,
   copyToClipboard,
-  downloadAsFile
+  downloadAsFile,
+  downloadAsCSV
 } from '../utils/reportExport'
 
 interface ExportReportButtonProps {
@@ -20,9 +22,10 @@ interface ExportOptionProps {
   onCopy: () => void
   onDownload: () => void
   isLast?: boolean
+  hideOnHover?: boolean // CSV 選項只能下載
 }
 
-function ExportOption({ label, onCopy, onDownload, isLast = false }: ExportOptionProps) {
+function ExportOption({ label, onCopy, onDownload, isLast = false, hideOnHover = false }: ExportOptionProps) {
   const [showActions, setShowActions] = useState(false)
 
   return (
@@ -35,7 +38,7 @@ function ExportOption({ label, onCopy, onDownload, isLast = false }: ExportOptio
       onMouseLeave={() => setShowActions(false)}
     >
       <button
-        onClick={onCopy}
+        onClick={hideOnHover ? onDownload : onCopy}
         style={{
           width: '100%',
           padding: '12px 16px',
@@ -53,7 +56,7 @@ function ExportOption({ label, onCopy, onDownload, isLast = false }: ExportOptio
         onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
       >
         <span>{label}</span>
-        {showActions && (
+        {showActions && !hideOnHover && (
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -72,6 +75,17 @@ function ExportOption({ label, onCopy, onDownload, isLast = false }: ExportOptio
           >
             下載
           </button>
+        )}
+        {hideOnHover && (
+          <span style={{ 
+            fontSize: '12px', 
+            color: '#999',
+            padding: '4px 8px',
+            background: '#f0f0f0',
+            borderRadius: '4px'
+          }}>
+            點擊下載
+          </span>
         )}
       </button>
     </div>
@@ -100,7 +114,7 @@ export function ExportReportButton({ records, dateRange, isMobile = false }: Exp
     }
   }, [showDropdown])
 
-  const handleExport = async (type: 'all' | 'cash' | 'transfer' | 'coach', action: 'copy' | 'download') => {
+  const handleExport = async (type: 'all' | 'cash' | 'transfer' | 'coach' | 'csv', action: 'copy' | 'download') => {
     setExporting(true)
     setShowDropdown(false)
 
@@ -126,11 +140,19 @@ export function ExportReportButton({ records, dateRange, isMobile = false }: Exp
           reportText = generateCoachCashReport(records, dateRange)
           filename = `教練收款明細_${dateStr}.txt`
           break
+        case 'csv':
+          reportText = generateCSVReport(records)
+          filename = `教學記錄明細_${dateStr}.csv`
+          break
       }
 
       if (action === 'download') {
         // 下載檔案
-        downloadAsFile(reportText, filename)
+        if (type === 'csv') {
+          downloadAsCSV(reportText, filename)
+        } else {
+          downloadAsFile(reportText, filename)
+        }
         alert('✅ 報表已下載！')
       } else {
         // 複製到剪貼簿
@@ -231,7 +253,27 @@ export function ExportReportButton({ records, dateRange, isMobile = false }: Exp
             label="按教練匯出（現金/匯款）"
             onCopy={() => handleExport('coach', 'copy')}
             onDownload={() => handleExport('coach', 'download')}
+          />
+          
+          {/* CSV 匯出（分隔線） */}
+          <div style={{ 
+            borderTop: '2px solid #e0e0e0', 
+            margin: '4px 0',
+            background: '#f8f9fa',
+            padding: '8px 16px',
+            fontSize: '12px',
+            color: '#999',
+            fontWeight: '600'
+          }}>
+            Excel 格式
+          </div>
+          
+          <ExportOption
+            label="匯出 CSV (Excel 可開)"
+            onCopy={() => {}} // CSV 不支援複製
+            onDownload={() => handleExport('csv', 'download')}
             isLast
+            hideOnHover // CSV 只能下載
           />
         </div>
       )}

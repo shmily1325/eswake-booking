@@ -30,10 +30,12 @@ const LESSON_TYPE_LABELS: Record<string, string> = {
   designated_free: '指定(不收費)'
 }
 
-// 格式化时间
-function formatTime(datetime: string): string {
+// 格式化日期時間
+function formatDateTime(datetime: string): string {
+  const [datePart] = datetime.split('T')
   const date = new Date(datetime)
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  return `${datePart} ${time}`
 }
 
 // 生成扣款詳情文字
@@ -116,10 +118,10 @@ export function generateAllRecordsReport(
   
   bookingGroups.forEach((bookingRecords) => {
     const firstRecord = bookingRecords[0]
-    const time = formatTime(firstRecord.bookings.start_at)
+    const dateTime = formatDateTime(firstRecord.bookings.start_at)
     const boat = firstRecord.bookings.boats?.name || '未知'
     
-    content += `【${time} | ${boat}】\n`
+    content += `【${dateTime} | ${boat}】\n`
     
     bookingRecords.forEach(record => {
       const coach = record.coaches?.name || '未知'
@@ -183,14 +185,14 @@ export function generateCashReport(records: ExportRecord[], dateRange: string): 
     content += `【${coachName} 教練】\n`
     
     coachRecords.forEach(record => {
-      const time = formatTime(record.bookings.start_at)
+      const dateTime = formatDateTime(record.bookings.start_at)
       const student = record.members?.nickname || record.members?.name || record.participant_name
       const memberTag = !record.member_id ? ' (非會員)' : ''
       const boat = record.bookings.boats?.name || '未知'
       const duration = record.duration_min
       const lessonType = LESSON_TYPE_LABELS[record.lesson_type || 'undesignated'] || '不指定'
       
-      content += `  ${time} | ${student}${memberTag} | ${boat} | ${duration}分 | ${lessonType}\n`
+      content += `  ${dateTime} | ${student}${memberTag} | ${boat} | ${duration}分 | ${lessonType}\n`
     })
     
     content += `  小計：${coachRecords.length}筆\n\n`
@@ -225,14 +227,14 @@ export function generateTransferReport(records: ExportRecord[], dateRange: strin
     content += `【${coachName} 教練】\n`
     
     coachRecords.forEach(record => {
-      const time = formatTime(record.bookings.start_at)
+      const dateTime = formatDateTime(record.bookings.start_at)
       const student = record.members?.nickname || record.members?.name || record.participant_name
       const memberTag = !record.member_id ? ' (非會員)' : ''
       const boat = record.bookings.boats?.name || '未知'
       const duration = record.duration_min
       const lessonType = LESSON_TYPE_LABELS[record.lesson_type || 'undesignated'] || '不指定'
       
-      content += `  ${time} | ${student}${memberTag} | ${boat} | ${duration}分 | ${lessonType}\n`
+      content += `  ${dateTime} | ${student}${memberTag} | ${boat} | ${duration}分 | ${lessonType}\n`
     })
     
     content += `  小計：${coachRecords.length}筆\n\n`
@@ -277,12 +279,12 @@ export function generateCoachCashReport(records: ExportRecord[], dateRange: stri
     if (records.cash.length > 0) {
       content += `  現金：\n`
       records.cash.forEach(record => {
-        const time = formatTime(record.bookings.start_at)
+        const dateTime = formatDateTime(record.bookings.start_at)
         const student = record.members?.nickname || record.members?.name || record.participant_name
         const boat = record.bookings.boats?.name || '未知'
         const duration = record.duration_min
         
-        content += `    ${time} | ${student} | ${boat} | ${duration}分\n`
+        content += `    ${dateTime} | ${student} | ${boat} | ${duration}分\n`
       })
       content += `  小計：${records.cash.length}筆\n\n`
     }
@@ -291,12 +293,12 @@ export function generateCoachCashReport(records: ExportRecord[], dateRange: stri
     if (records.transfer.length > 0) {
       content += `  匯款：\n`
       records.transfer.forEach(record => {
-        const time = formatTime(record.bookings.start_at)
+        const dateTime = formatDateTime(record.bookings.start_at)
         const student = record.members?.nickname || record.members?.name || record.participant_name
         const boat = record.bookings.boats?.name || '未知'
         const duration = record.duration_min
         
-        content += `    ${time} | ${student} | ${boat} | ${duration}分\n`
+        content += `    ${dateTime} | ${student} | ${boat} | ${duration}分\n`
       })
       content += `  小計：${records.transfer.length}筆\n\n`
     }
@@ -347,5 +349,65 @@ export function downloadAsFile(text: string, filename: string): void {
     console.error('下載失敗:', error)
     throw error
   }
+}
+
+// 下載為 CSV 檔案
+export function downloadAsCSV(text: string, filename: string): void {
+  try {
+    // 加上 BOM 讓 Excel 正確識別 UTF-8
+    const BOM = '\uFEFF'
+    const blob = new Blob([BOM + text], { type: 'text/csv;charset=utf-8' })
+    
+    // 建立下載連結
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    
+    // 觸發下載
+    document.body.appendChild(link)
+    link.click()
+    
+    // 清理
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('下載失敗:', error)
+    throw error
+  }
+}
+
+// 生成 CSV 格式的報表
+export function generateCSVReport(records: ExportRecord[]): string {
+  let csv = ''
+  
+  // CSV 標題行
+  csv += '日期時間,教練,學員,會員狀態,船隻,時長(分),課程類型,付款方式,扣款詳情\n'
+  
+  // 資料行
+  records.forEach(record => {
+    const dateTime = formatDateTime(record.bookings.start_at)
+    const coach = record.coaches?.name || '未知'
+    const student = record.members?.nickname || record.members?.name || record.participant_name
+    const memberStatus = record.member_id ? '會員' : '非會員'
+    const boat = record.bookings.boats?.name || '未知'
+    const duration = record.duration_min
+    const lessonType = LESSON_TYPE_LABELS[record.lesson_type || 'undesignated'] || '不指定'
+    const paymentMethod = PAYMENT_METHOD_LABELS[record.payment_method] || record.payment_method
+    const deduction = getDeductionText(record)
+    
+    // 處理欄位中的逗號和引號（CSV 規則）
+    const escapeCsvField = (field: string | number) => {
+      const str = String(field)
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return str
+    }
+    
+    csv += `${escapeCsvField(dateTime)},${escapeCsvField(coach)},${escapeCsvField(student)},${escapeCsvField(memberStatus)},${escapeCsvField(boat)},${escapeCsvField(duration)},${escapeCsvField(lessonType)},${escapeCsvField(paymentMethod)},${escapeCsvField(deduction)}\n`
+  })
+  
+  return csv
 }
 
