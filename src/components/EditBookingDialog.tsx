@@ -595,6 +595,12 @@ export function EditBookingDialog({
       return
     }
 
+    // ✅ 檢查船隻是否已選擇
+    if (!selectedBoatId || selectedBoatId === 0) {
+      setCopyError('請選擇船隻')
+      return
+    }
+
     if (!copyToTime) {
       setCopyError('請選擇複製到的時間')
       return

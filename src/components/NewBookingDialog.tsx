@@ -132,6 +132,12 @@ export function NewBookingDialog({
     e.preventDefault()
     setError('')
 
+    // ✅ 檢查船隻是否已選擇
+    if (!selectedBoatId || selectedBoatId === 0) {
+      setError('請選擇船隻')
+      return
+    }
+
     if (!filledBy.trim()) {
       setError('請填寫填表人姓名')
       return

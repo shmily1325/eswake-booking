@@ -498,6 +498,9 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
         throw new Error('無法取得操作者資訊')
       }
 
+      // ✅ 取得預約日期作為交易日期
+      const bookingDate = report.bookings.start_at.split('T')[0] // "YYYY-MM-DD"
+      
       // 準備扣款資料（轉換為 JSONB 格式）
       const deductionsData = deductionItems.map(item => ({
         category: item.category,
@@ -505,7 +508,8 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
         minutes: item.minutes || null,
         description: item.description || generateDescription(),
         notes: item.notes || null,
-        planName: item.planName || null
+        planName: item.planName || null,
+        transactionDate: bookingDate  // 使用預約日期
       }))
 
       // ✅ 使用資料庫交易函數處理扣款（確保原子性）

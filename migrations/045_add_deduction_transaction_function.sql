@@ -19,6 +19,7 @@ DECLARE
   v_description TEXT;
   v_notes TEXT;
   v_plan_name TEXT;
+  v_transaction_date DATE;
   v_result JSONB;
 BEGIN
   -- 1. 鎖定會員記錄（防止併發問題）
@@ -53,6 +54,7 @@ BEGIN
     v_description := v_deduction->>'description';
     v_notes := v_deduction->>'notes';
     v_plan_name := v_deduction->>'planName';
+    v_transaction_date := COALESCE((v_deduction->>'transactionDate')::DATE, CURRENT_DATE);
 
     -- 根據類別處理
     CASE v_category
@@ -84,7 +86,7 @@ BEGIN
           0,
           v_description,
           COALESCE(v_plan_name || COALESCE(' - ' || v_notes, ''), v_notes),
-          CURRENT_DATE,
+          v_transaction_date,
           p_operator_id,
           (v_cumulative_balances->>'balance')::NUMERIC,
           (v_cumulative_balances->>'vip_voucher_amount')::NUMERIC,
@@ -108,7 +110,7 @@ BEGIN
           balance_after
         ) VALUES (
           p_member_id, p_participant_id, 'consume', v_category,
-          -v_amount, v_description, v_notes, CURRENT_DATE, p_operator_id,
+          -v_amount, v_description, v_notes, v_transaction_date, p_operator_id,
           (v_cumulative_balances->>'balance')::NUMERIC
         );
 
@@ -126,7 +128,7 @@ BEGIN
           vip_voucher_amount_after
         ) VALUES (
           p_member_id, p_participant_id, 'consume', v_category,
-          -v_amount, v_description, v_notes, CURRENT_DATE, p_operator_id,
+          -v_amount, v_description, v_notes, v_transaction_date, p_operator_id,
           (v_cumulative_balances->>'vip_voucher_amount')::NUMERIC
         );
 
@@ -144,7 +146,7 @@ BEGIN
           boat_voucher_g23_minutes_after
         ) VALUES (
           p_member_id, p_participant_id, 'consume', v_category,
-          -v_minutes, v_description, v_notes, CURRENT_DATE, p_operator_id,
+          -v_minutes, v_description, v_notes, v_transaction_date, p_operator_id,
           (v_cumulative_balances->>'boat_voucher_g23_minutes')::INTEGER
         );
 
@@ -162,7 +164,7 @@ BEGIN
           boat_voucher_g21_panther_minutes_after
         ) VALUES (
           p_member_id, p_participant_id, 'consume', v_category,
-          -v_minutes, v_description, v_notes, CURRENT_DATE, p_operator_id,
+          -v_minutes, v_description, v_notes, v_transaction_date, p_operator_id,
           (v_cumulative_balances->>'boat_voucher_g21_panther_minutes')::INTEGER
         );
 
@@ -180,7 +182,7 @@ BEGIN
           designated_lesson_minutes_after
         ) VALUES (
           p_member_id, p_participant_id, 'consume', v_category,
-          -v_minutes, v_description, v_notes, CURRENT_DATE, p_operator_id,
+          -v_minutes, v_description, v_notes, v_transaction_date, p_operator_id,
           (v_cumulative_balances->>'designated_lesson_minutes')::INTEGER
         );
 
@@ -198,7 +200,7 @@ BEGIN
           gift_boat_hours_after
         ) VALUES (
           p_member_id, p_participant_id, 'consume', v_category,
-          -v_minutes, v_description, v_notes, CURRENT_DATE, p_operator_id,
+          -v_minutes, v_description, v_notes, v_transaction_date, p_operator_id,
           (v_cumulative_balances->>'gift_boat_hours')::INTEGER
         );
 
