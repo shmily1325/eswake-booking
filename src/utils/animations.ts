@@ -1,238 +1,264 @@
-// 动画工具函数
-// 提供常用的动画效果和缓动函数
+/**
+ * 動畫工具函數
+ * 提供常用的動畫效果和過渡
+ */
 
-export type EasingFunction = (t: number) => number
+// 動畫持續時間常數
+export const ANIMATION_DURATION = {
+  fast: 150,
+  normal: 300,
+  slow: 500,
+} as const
 
-// 缓动函数
-export const easing = {
-  // 线性
-  linear: (t: number) => t,
+// 動畫緩動函數
+export const EASING = {
+  easeIn: 'cubic-bezier(0.4, 0, 1, 1)',
+  easeOut: 'cubic-bezier(0, 0, 0.2, 1)',
+  easeInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  sharp: 'cubic-bezier(0.4, 0, 0.6, 1)',
+  bounce: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+} as const
 
-  // 二次方
-  easeInQuad: (t: number) => t * t,
-  easeOutQuad: (t: number) => t * (2 - t),
-  easeInOutQuad: (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
-
-  // 三次方
-  easeInCubic: (t: number) => t * t * t,
-  easeOutCubic: (t: number) => --t * t * t + 1,
-  easeInOutCubic: (t: number) =>
-    t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1,
-
-  // 四次方
-  easeInQuart: (t: number) => t * t * t * t,
-  easeOutQuart: (t: number) => 1 - --t * t * t * t,
-  easeInOutQuart: (t: number) =>
-    t < 0.5 ? 8 * t * t * t * t : 1 - 8 * --t * t * t * t,
-
-  // 弹性
-  easeInElastic: (t: number) => {
-    const c4 = (2 * Math.PI) / 3
-    return t === 0 ? 0 : t === 1 ? 1 : -Math.pow(2, 10 * t - 10) * Math.sin((t * 10 - 10.75) * c4)
-  },
-  easeOutElastic: (t: number) => {
-    const c4 = (2 * Math.PI) / 3
-    return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1
-  },
-
-  // 回弹
-  easeOutBounce: (t: number) => {
-    const n1 = 7.5625
-    const d1 = 2.75
-    if (t < 1 / d1) {
-      return n1 * t * t
-    } else if (t < 2 / d1) {
-      return n1 * (t -= 1.5 / d1) * t + 0.75
-    } else if (t < 2.5 / d1) {
-      return n1 * (t -= 2.25 / d1) * t + 0.9375
-    } else {
-      return n1 * (t -= 2.625 / d1) * t + 0.984375
-    }
-  },
-}
-
-// 动画执行函数
-export const animate = (
-  from: number,
-  to: number,
-  duration: number,
-  onUpdate: (value: number) => void,
-  easingFn: EasingFunction = easing.easeOutQuad
-): (() => void) => {
-  const startTime = performance.now()
-  let rafId: number
-
-  const step = (currentTime: number) => {
-    const elapsed = currentTime - startTime
-    const progress = Math.min(elapsed / duration, 1)
-    const easedProgress = easingFn(progress)
-    const currentValue = from + (to - from) * easedProgress
-
-    onUpdate(currentValue)
-
-    if (progress < 1) {
-      rafId = requestAnimationFrame(step)
-    }
-  }
-
-  rafId = requestAnimationFrame(step)
-
-  // 返回取消函数
-  return () => cancelAnimationFrame(rafId)
-}
-
-// 平滑滚动到指定位置
-export const scrollTo = (
-  element: HTMLElement | Window,
-  to: number,
-  duration: number = 300,
-  easingFn: EasingFunction = easing.easeOutQuad
-): Promise<void> => {
-  return new Promise((resolve) => {
-    const start = element === window ? window.pageYOffset : (element as HTMLElement).scrollTop
-    const change = to - start
-
-    const cancel = animate(
-      0,
-      1,
-      duration,
-      (progress) => {
-        const value = start + change * progress
-        if (element === window) {
-          window.scrollTo(0, value)
-        } else {
-          ;(element as HTMLElement).scrollTop = value
-        }
-      },
-      easingFn
-    )
-
-    setTimeout(() => {
-      cancel()
-      resolve()
-    }, duration)
-  })
-}
-
-// 淡入淡出
-export const fade = (
-  element: HTMLElement,
-  direction: 'in' | 'out',
-  duration: number = 300,
-  easingFn: EasingFunction = easing.easeInOutQuad
-): Promise<void> => {
-  return new Promise((resolve) => {
-    const from = direction === 'in' ? 0 : 1
-    const to = direction === 'in' ? 1 : 0
-
-    element.style.opacity = String(from)
-    if (direction === 'in') {
-      element.style.display = 'block'
-    }
-
-    const cancel = animate(from, to, duration, (value) => {
-      element.style.opacity = String(value)
-    }, easingFn)
-
-    setTimeout(() => {
-      cancel()
-      if (direction === 'out') {
-        element.style.display = 'none'
-      }
-      resolve()
-    }, duration)
-  })
-}
-
-// 滑动效果
-export const slide = (
-  element: HTMLElement,
-  direction: 'up' | 'down' | 'left' | 'right',
-  distance: number,
-  duration: number = 300,
-  easingFn: EasingFunction = easing.easeOutQuad
-): Promise<void> => {
-  return new Promise((resolve) => {
-    const isVertical = direction === 'up' || direction === 'down'
-    const isPositive = direction === 'down' || direction === 'right'
-    const from = isPositive ? 0 : distance
-    const to = isPositive ? distance : 0
-
-    const property = isVertical ? 'translateY' : 'translateX'
-
-    const cancel = animate(from, to, duration, (value) => {
-      element.style.transform = `${property}(${value}px)`
-    }, easingFn)
-
-    setTimeout(() => {
-      cancel()
-      resolve()
-    }, duration)
-  })
-}
-
-// 缩放效果
-export const scale = (
-  element: HTMLElement,
-  from: number,
-  to: number,
-  duration: number = 300,
-  easingFn: EasingFunction = easing.easeOutQuad
-): Promise<void> => {
-  return new Promise((resolve) => {
-    const cancel = animate(from, to, duration, (value) => {
-      element.style.transform = `scale(${value})`
-    }, easingFn)
-
-    setTimeout(() => {
-      cancel()
-      resolve()
-    }, duration)
-  })
-}
-
-// 组合动画
-export const sequence = async (...animations: (() => Promise<void>)[]): Promise<void> => {
-  for (const animation of animations) {
-    await animation()
+// 淡入動畫
+export function fadeIn(duration = ANIMATION_DURATION.normal): React.CSSProperties {
+  return {
+    animation: `fadeIn ${duration}ms ${EASING.easeOut}`,
   }
 }
 
-export const parallel = async (...animations: (() => Promise<void>)[]): Promise<void> => {
-  await Promise.all(animations.map((animation) => animation()))
+// 淡出動畫
+export function fadeOut(duration = ANIMATION_DURATION.normal): React.CSSProperties {
+  return {
+    animation: `fadeOut ${duration}ms ${EASING.easeIn}`,
+  }
 }
 
-// CSS 类名切换动画
-export const transitionClass = (
-  element: HTMLElement,
-  className: string,
-  duration: number = 300
-): Promise<void> => {
-  return new Promise((resolve) => {
-    element.classList.add(className)
-    setTimeout(() => {
-      resolve()
-    }, duration)
-  })
+// 滑入動畫
+export function slideIn(
+  direction: 'left' | 'right' | 'up' | 'down' = 'up',
+  duration = ANIMATION_DURATION.normal
+): React.CSSProperties {
+  return {
+    animation: `slideIn${direction.charAt(0).toUpperCase() + direction.slice(1)} ${duration}ms ${EASING.easeOut}`,
+  }
 }
 
-// 数字计数动画
-export const countUp = (
-  from: number,
-  to: number,
-  duration: number,
-  onUpdate: (value: number) => void,
-  easingFn: EasingFunction = easing.easeOutQuad
-): (() => void) => {
-  return animate(from, to, duration, (value) => {
-    onUpdate(Math.round(value))
-  }, easingFn)
+// 滑出動畫
+export function slideOut(
+  direction: 'left' | 'right' | 'up' | 'down' = 'down',
+  duration = ANIMATION_DURATION.normal
+): React.CSSProperties {
+  return {
+    animation: `slideOut${direction.charAt(0).toUpperCase() + direction.slice(1)} ${duration}ms ${EASING.easeIn}`,
+  }
 }
 
-// React Hook 辅助
-export interface UseAnimationReturn {
-  start: () => void
-  stop: () => void
-  isAnimating: boolean
+// 縮放動畫
+export function scale(
+  duration = ANIMATION_DURATION.normal
+): React.CSSProperties {
+  return {
+    animation: `scaleEffect ${duration}ms ${EASING.easeOut}`,
+    animationFillMode: 'both',
+  }
 }
 
+// 彈跳動畫
+export function bounce(duration = ANIMATION_DURATION.slow): React.CSSProperties {
+  return {
+    animation: `bounce ${duration}ms ${EASING.bounce}`,
+  }
+}
+
+// 搖晃動畫（用於錯誤提示）
+export function shake(duration = ANIMATION_DURATION.slow): React.CSSProperties {
+  return {
+    animation: `shake ${duration}ms ${EASING.easeInOut}`,
+  }
+}
+
+// 脈衝動畫
+export function pulse(duration = ANIMATION_DURATION.slow): React.CSSProperties {
+  return {
+    animation: `pulse ${duration}ms ${EASING.easeInOut} infinite`,
+  }
+}
+
+// 旋轉動畫
+export function rotate(duration = 1000): React.CSSProperties {
+  return {
+    animation: `rotate ${duration}ms linear infinite`,
+  }
+}
+
+// 滑動刪除動畫
+export function swipeToDelete(direction: 'left' | 'right' = 'left'): React.CSSProperties {
+  return {
+    animation: `swipe${direction.charAt(0).toUpperCase() + direction.slice(1)} ${ANIMATION_DURATION.normal}ms ${EASING.sharp}`,
+  }
+}
+
+// CSS 動畫關鍵幀
+export const animationKeyframes = `
+  /* 淡入淡出 */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  /* 滑入動畫 */
+  @keyframes slideInUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideInDown {
+    from {
+      transform: translateY(-20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(-20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideInRight {
+    from {
+      transform: translateX(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  /* 滑出動畫 */
+  @keyframes slideOutUp {
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(-20px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes slideOutDown {
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes slideOutLeft {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes slideOutRight {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  /* 縮放動畫 */
+  @keyframes scaleEffect {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* 彈跳動畫 */
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  /* 搖晃動畫 */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+  }
+
+  /* 脈衝動畫 */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  /* 旋轉動畫 */
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* 滑動刪除 */
+  @keyframes swipeLeft {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-100%); opacity: 0; }
+  }
+
+  @keyframes swipeRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+  }
+`
+
+// 將動畫 CSS 注入到頁面
+export function injectAnimationStyles() {
+  if (typeof document === 'undefined') return
+
+  const styleId = 'animation-styles'
+  if (document.getElementById(styleId)) return
+
+  const style = document.createElement('style')
+  style.id = styleId
+  style.textContent = animationKeyframes
+  document.head.appendChild(style)
+}

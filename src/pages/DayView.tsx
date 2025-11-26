@@ -11,12 +11,15 @@ import { getLocalDateString } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { getButtonStyle } from '../styles/designSystem'
 import { getDisplayContactName } from '../utils/bookingFormat'
-import { useToast, ToastContainer } from '../components/ui'
+import { useToast, ToastContainer, BookingListSkeleton, TimelineSkeleton } from '../components/ui'
 import { TodayOverview } from '../components/TodayOverview'
 import { DayViewMobileHeader } from '../components/DayViewMobileHeader'
 import { VirtualizedBookingList } from '../components/VirtualizedBookingList'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { inspectData, safeMapArray, tryCatch } from '../utils/debugHelpers'
+import { injectAnimationStyles } from '../utils/animations'
+import { useSwipeGesture } from '../hooks/useSwipeGesture'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
 
@@ -55,6 +58,11 @@ export function DayView() {
   const dateParam = searchParams.get('date') || getLocalDateString()
   const { isMobile } = useResponsive()
 
+  // 注入動畫樣式
+  useEffect(() => {
+    injectAnimationStyles()
+  }, [])
+
   const [boats, setBoats] = useState<Boat[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,6 +92,32 @@ export function DayView() {
   const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParams({ date: e.target.value })
   }
+
+  // 手機版滑動手勢（左滑下一天，右滑上一天）
+  const swipeRef = useSwipeGesture({
+    onSwipeLeft: () => {
+      if (isMobile) {
+        changeDate(1) // 下一天
+        toast.success('下一天')
+      }
+    },
+    onSwipeRight: () => {
+      if (isMobile) {
+        changeDate(-1) // 上一天
+        toast.success('上一天')
+      }
+    },
+    threshold: 100,
+  })
+
+  // 手機版下拉刷新
+  const { elementRef: pullToRefreshRef, pullState, indicatorText, indicatorOpacity } = usePullToRefresh({
+    onRefresh: async () => {
+      await fetchData()
+      toast.success('已刷新')
+    },
+    threshold: 80,
+  })
   const fetchData = async () => {
     const isInitialLoad = boats.length === 0
     setLoading(true)
@@ -411,42 +445,102 @@ export function DayView() {
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        gap: '20px'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '4px solid #f3f3f3',
-          borderTop: '4px solid #667eea',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }} />
-        <div style={{ fontSize: '18px', color: '#666' }}>
-          載入預約資料中...
+      <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+        {/* 頭部骨架屏 */}
+        <div style={{ 
+          background: 'white', 
+          padding: isMobile ? '16px' : '20px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <div style={{ 
+            maxWidth: '1400px', 
+            margin: '0 auto',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            {!isMobile && <div style={{ width: '120px', height: '40px', background: '#e0e0e0', borderRadius: '8px' }} />}
+            <div style={{ width: isMobile ? '200px' : '300px', height: '40px', background: '#e0e0e0', borderRadius: '8px' }} />
+            <div style={{ width: '100px', height: '40px', background: '#e0e0e0', borderRadius: '8px' }} />
+          </div>
         </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+
+        {/* 內容區骨架屏 */}
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: isMobile ? '16px' : '20px' }}>
+          {viewMode === 'timeline' ? (
+            <TimelineSkeleton isMobile={isMobile} />
+          ) : (
+            <BookingListSkeleton count={8} isMobile={isMobile} />
+          )}
+        </div>
       </div>
     )
   }
 
   return (
     <ErrorBoundary>
-      <div style={{
-        padding: isMobile ? '12px' : '20px',
-        minHeight: '100vh',
-        backgroundColor: '#f8f9fa',
-      }}>
+      <div 
+        ref={(el) => {
+          if (isMobile && el) {
+            // 合併兩個 ref
+            (swipeRef as React.MutableRefObject<HTMLDivElement>).current = el;
+            (pullToRefreshRef as React.MutableRefObject<HTMLDivElement>).current = el;
+          }
+        }}
+        style={{
+          padding: isMobile ? '12px' : '20px',
+          minHeight: '100vh',
+          backgroundColor: '#f8f9fa',
+          position: 'relative',
+          overflow: isMobile ? 'hidden' : 'auto',
+        }}
+      >
+        {/* 下拉刷新指示器 */}
+        {isMobile && pullState.pullDistance > 0 && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: `${pullState.pullDistance}px`,
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            paddingBottom: '10px',
+            opacity: indicatorOpacity,
+            transition: pullState.pulling ? 'none' : 'opacity 0.3s, height 0.3s',
+            pointerEvents: 'none',
+            zIndex: 10,
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#666',
+              fontSize: '14px',
+              fontWeight: '500',
+            }}>
+              {pullState.refreshing ? (
+                <>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid #ddd',
+                    borderTop: '2px solid #666',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite',
+                  }} />
+                  <span>{indicatorText}</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: '18px' }}>↓</span>
+                  <span>{indicatorText}</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         <div style={{
           background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
           borderRadius: '8px',

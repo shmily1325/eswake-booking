@@ -375,26 +375,47 @@ export function LiffMyBookings() {
     return (
       <div style={{
         minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#f5f5f5'
+        background: '#f5f5f5',
+        padding: '16px'
       }}>
-        <div style={{
-          textAlign: 'center',
-          color: '#666'
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #e0e0e0',
-            borderTop: '4px solid #5a5a5a',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px'
+        {/* 頭部骨架屏 */}
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ 
+            width: '150px', 
+            height: '28px', 
+            background: '#e0e0e0', 
+            borderRadius: '6px',
+            marginBottom: '12px'
           }} />
-          <div style={{ fontSize: '16px' }}>載入中...</div>
+          <div style={{ 
+            width: '100%', 
+            height: '48px', 
+            background: 'white', 
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }} />
         </div>
+
+        {/* 預約列表骨架屏 */}
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div 
+            key={i}
+            style={{
+              background: 'white',
+              padding: '16px',
+              borderRadius: '8px',
+              marginBottom: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}
+          >
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ width: '60px', height: '18px', background: '#e0e0e0', borderRadius: '4px' }} />
+              <div style={{ flex: 1, height: '18px', background: '#e0e0e0', borderRadius: '4px' }} />
+            </div>
+            <div style={{ width: '80%', height: '16px', background: '#f0f0f0', borderRadius: '4px', marginBottom: '8px' }} />
+            <div style={{ width: '60%', height: '14px', background: '#f0f0f0', borderRadius: '4px' }} />
+          </div>
+        ))}
       </div>
     )
   }

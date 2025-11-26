@@ -421,12 +421,80 @@ export function MemberManagement() {
   if (loading) {
     return (
       <div style={{ 
-        padding: '20px', 
-        textAlign: 'center',
-        fontSize: '18px',
-        color: '#666'
+        padding: isMobile ? '12px' : '20px',
+        minHeight: '100vh',
+        background: '#f5f5f5'
       }}>
-        載入中...
+        <PageHeader title="👥 會員管理" user={user} showBaoLink={true} />
+
+        {/* 搜尋框骨架屏 */}
+        <div style={{ 
+          marginTop: '20px',
+          marginBottom: '20px',
+          display: 'flex',
+          gap: '12px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ 
+            flex: 1, 
+            minWidth: '200px',
+            height: '48px', 
+            background: 'white', 
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }} />
+          <div style={{ 
+            width: '120px', 
+            height: '48px', 
+            background: '#e0e0e0', 
+            borderRadius: '8px'
+          }} />
+        </div>
+
+        {/* 會員列表骨架屏 */}
+        <div style={{ 
+          background: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          overflow: 'hidden'
+        }}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div 
+              key={i}
+              style={{
+                padding: '16px',
+                borderBottom: i < 7 ? '1px solid #f0f0f0' : 'none',
+                display: 'flex',
+                gap: '12px',
+                alignItems: 'center'
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ 
+                  width: '120px', 
+                  height: '18px', 
+                  background: '#e0e0e0', 
+                  borderRadius: '4px',
+                  marginBottom: '8px'
+                }} />
+                <div style={{ 
+                  width: '80px', 
+                  height: '14px', 
+                  background: '#f0f0f0', 
+                  borderRadius: '4px'
+                }} />
+              </div>
+              <div style={{ 
+                width: '60px', 
+                height: '32px', 
+                background: '#e0e0e0', 
+                borderRadius: '6px'
+              }} />
+            </div>
+          ))}
+        </div>
+
+        <Footer />
       </div>
     )
   }

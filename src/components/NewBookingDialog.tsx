@@ -428,7 +428,7 @@ export function NewBookingDialog({
             display: 'flex',
             gap: '12px',
             marginTop: '20px',
-            paddingBottom: 'calc(20px + env(safe-area-inset-bottom))'
+            paddingBottom: isMobile ? 'calc(20px + env(safe-area-inset-bottom))' : '0'
           }}>
             <button
               type="button"

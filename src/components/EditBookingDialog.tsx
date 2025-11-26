@@ -599,6 +599,11 @@ export function EditBookingDialog({
       return
     }
 
+    if (!filledBy.trim()) {
+      setCopyError('請填寫填表人')
+      return
+    }
+
     setCopyLoading(true)
     setCopyError('')
 
@@ -1475,6 +1480,7 @@ export function EditBookingDialog({
             position: 'relative',
             zIndex: 10,
             flexWrap: 'wrap',
+            paddingBottom: isMobile ? 'calc(20px + env(safe-area-inset-bottom))' : '0'
           }}>
             <button
               type="button"
@@ -1506,24 +1512,29 @@ export function EditBookingDialog({
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
+                if (!filledBy.trim()) {
+                  setError('請先填寫填表人才能複製預約')
+                  return
+                }
                 setCopyToTime(startTime) // 預設使用原本的時間
                 setShowCopyDialog(true)
               }}
-              disabled={loading}
+              disabled={loading || !filledBy.trim()}
               style={{
                 padding: '14px 16px',
                 borderRadius: '8px',
                 border: 'none',
-                backgroundColor: loading ? '#ccc' : '#ff9800',
+                backgroundColor: (loading || !filledBy.trim()) ? '#ccc' : '#ff9800',
                 color: 'white',
                 fontSize: '15px',
                 fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: (loading || !filledBy.trim()) ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
                 minWidth: '70px',
                 position: 'relative',
                 zIndex: 10,
               }}
+              title={!filledBy.trim() ? '請先填寫填表人' : '複製此預約到其他日期'}
             >
               📋 複製
             </button>
@@ -1571,7 +1582,7 @@ export function EditBookingDialog({
         </form>
       </div>
       {isMobile && (
-        <div style={{ height: '20px' }} />
+        <div style={{ height: '80px' }} />
       )}
 
       {/* 複製預約對話框 */}

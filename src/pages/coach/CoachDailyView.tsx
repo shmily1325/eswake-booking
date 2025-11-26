@@ -526,13 +526,44 @@ export function CoachDailyView() {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
         <PageHeader user={user} title="今日預約" />
+        
         <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '50vh' 
+          maxWidth: '1400px', 
+          margin: '0 auto',
+          padding: isMobile ? '16px' : '20px' 
         }}>
-          <div style={{ fontSize: '18px', color: '#666' }}>載入中...</div>
+          {/* 日期選擇器骨架屏 */}
+          <div style={{
+            background: 'white',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ width: '200px', height: '40px', background: '#e0e0e0', borderRadius: '6px' }} />
+          </div>
+
+          {/* 預約卡片骨架屏 */}
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div 
+              key={i}
+              style={{
+                background: 'white',
+                padding: isMobile ? '12px' : '16px',
+                borderRadius: '8px',
+                marginBottom: '12px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+              }}
+            >
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ width: '60px', height: '40px', background: '#e0e0e0', borderRadius: '6px' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ width: '80%', height: '18px', background: '#e0e0e0', borderRadius: '4px', marginBottom: '8px' }} />
+                  <div style={{ width: '60%', height: '14px', background: '#f0f0f0', borderRadius: '4px' }} />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     )
