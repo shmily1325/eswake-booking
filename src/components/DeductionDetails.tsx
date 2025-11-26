@@ -59,9 +59,19 @@ export function DeductionDetails({ transactions, notes }: DeductionDetailsProps)
     )
   }
 
-  // 如果没有交易记录，不显示
+  // 如果沒有交易記錄，顯示付款方式
   if (!transactions || transactions.length === 0) {
-    return null
+    // 顯示付款方式提示
+    return (
+      <div style={{ 
+        fontSize: '12px',
+        marginTop: '4px',
+        color: '#999',
+        fontStyle: 'italic'
+      }}>
+        (尚無扣款記錄)
+      </div>
+    )
   }
 
   // 分析交易记录
