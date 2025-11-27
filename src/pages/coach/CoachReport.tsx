@@ -793,7 +793,7 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
   // 導出當日回報為 CSV
   const exportToCSV = async () => {
     if (allBookings.length === 0) {
-      alert('沒有資料可以匯出')
+      toast.warning('沒有資料可以匯出')
       return
     }
 

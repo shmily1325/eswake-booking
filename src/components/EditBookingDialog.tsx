@@ -725,7 +725,7 @@ export function EditBookingDialog({
       setCopyFilledBy('')
       setCopyError('')
       setCopyConflictStatus(null)
-      alert(`✅ 預約已複製到 ${copyToDate} ${copyToTime}`)
+      toast.success(`預約已複製到 ${copyToDate} ${copyToTime}`)
       onSuccess()
     } catch (err: any) {
       setCopyError(err.message || '複製失敗')

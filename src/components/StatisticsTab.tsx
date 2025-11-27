@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { extractDate, extractTime, getLocalDateString } from '../utils/formatters'
+import { useToast } from './ui'
 
 interface CoachStats {
   coachId: string
@@ -230,7 +231,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
     } catch (error) {
       console.error('載入數據失敗:', error)
-      alert('載入數據失敗')
+      toast.error('載入數據失敗')
     } finally {
       setLoading(false)
     }

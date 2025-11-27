@@ -243,7 +243,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       setTimeout(() => setCopySuccess(false), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
-      alert('複製失敗，請手動複製')
+      toast.error('複製失敗，請手動複製')
     }
   }
 
