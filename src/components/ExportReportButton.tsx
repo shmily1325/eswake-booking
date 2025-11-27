@@ -94,6 +94,7 @@ function ExportOption({ label, onCopy, onDownload, isLast = false, hideOnHover =
 }
 
 export function ExportReportButton({ records, dateRange, isMobile = false }: ExportReportButtonProps) {
+  const toast = useToast()
   const [showDropdown, setShowDropdown] = useState(false)
   const [exporting, setExporting] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
