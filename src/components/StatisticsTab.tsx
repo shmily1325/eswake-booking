@@ -37,6 +37,7 @@ interface StatisticsTabProps {
 }
 
 export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProps) {
+  const toast = useToast()
   // 如果是教練專用模式，預設顯示本月；否則顯示今天
   const [selectedDate, setSelectedDate] = useState(() => {
     if (autoFilterCoachId) {

@@ -5,6 +5,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useResponsive } from '../hooks/useResponsive'
 import { Footer } from '../components/Footer'
 import { formatBookingsForLine, getDisplayContactName } from '../utils/bookingFormat'
+import { useToast } from '../components/ui'
 
 interface Booking {
   id: number
@@ -36,6 +37,7 @@ interface SearchBookingsProps {
 export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
+  const toast = useToast()
   const [searchName, setSearchName] = useState('')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
