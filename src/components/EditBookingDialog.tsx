@@ -28,6 +28,7 @@ export function EditBookingDialog({
   user,
 }: EditBookingDialogProps) {
   const { isMobile } = useResponsive()
+  const toast = useToast()
 
   // 複製功能狀態
   const [showCopyDialog, setShowCopyDialog] = useState(false)
