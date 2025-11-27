@@ -160,6 +160,18 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({
 export const useToast = () => {
   const [messages, setMessages] = useState<ToastMessage[]>([])
 
+  // 連接到全局 toast 管理器
+  useEffect(() => {
+    const { toast: globalToast } = require('../../utils/toast')
+    
+    const unsubscribe = globalToast.subscribe((event: any) => {
+      const id = `toast-${Date.now()}-${Math.random()}`
+      setMessages((prev) => [...prev, { id, type: event.type, message: event.message, duration: event.duration }])
+    })
+
+    return unsubscribe
+  }, [])
+
   const showToast = (type: ToastType, message: string, duration?: number) => {
     const id = `toast-${Date.now()}-${Math.random()}`
     setMessages((prev) => [...prev, { id, type, message, duration }])
