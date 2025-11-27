@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { designSystem } from '../../styles/designSystem'
+import { toast as globalToast } from '../../utils/toast'
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info'
 
@@ -162,9 +163,7 @@ export const useToast = () => {
 
   // 連接到全局 toast 管理器
   useEffect(() => {
-    const { toast: globalToast } = require('../../utils/toast')
-    
-    const unsubscribe = globalToast.subscribe((event: any) => {
+    const unsubscribe = globalToast.subscribe((event) => {
       const id = `toast-${Date.now()}-${Math.random()}`
       setMessages((prev) => [...prev, { id, type: event.type, message: event.message, duration: event.duration }])
     })
