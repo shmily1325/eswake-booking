@@ -338,10 +338,10 @@ export function CoachAdmin() {
       // 重新載入資料
       await Promise.all([loadPendingReports(), loadNonMemberReports()])
       
-      alert(`✅ 已成功關聯到會員：${member.nickname || member.name}\n\n原名「${originalName}」已記錄在備註中\n記錄已移至「會員待扣款」區域，請查看上方列表。`)
+      toast.success(`已成功關聯到會員：${member.nickname || member.name}\n\n原名「${originalName}」已記錄在備註中\n記錄已移至「會員待扣款」區域，請查看上方列表。`)
     } catch (error) {
       console.error('關聯會員失敗:', error)
-      alert(`❌ 關聯會員失敗：${error instanceof Error ? error.message : '未知錯誤'}`)
+      toast.error(`關聯會員失敗：${error instanceof Error ? error.message : '未知錯誤'}`)
     }
   }
 
@@ -367,10 +367,10 @@ export function CoachAdmin() {
       // 重新載入資料
       await loadNonMemberReports()
       
-      alert(`✅ 已成功結案：${report.participant_name}\n\n記錄已移至「已結案記錄」頁籤。`)
+      toast.success(`已成功結案：${report.participant_name}\n\n記錄已移至「已結案記錄」頁籤。`)
     } catch (error) {
       console.error('結案失敗:', error)
-      alert('結案失敗')
+      toast.error('結案失敗')
     }
   }
 
