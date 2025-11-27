@@ -8,6 +8,7 @@ import { useBookingForm } from '../hooks/useBookingForm'
 import { useBookingConflict } from '../hooks/useBookingConflict'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import type { Booking } from '../types/booking'
+import { useToast } from './ui'
 
 import { BookingDetails } from './booking/BookingDetails'
 
