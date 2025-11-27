@@ -9,6 +9,7 @@ import {
   downloadAsFile,
   downloadAsCSV
 } from '../utils/reportExport'
+import { useToast } from './ui'
 
 interface ExportReportButtonProps {
   records: any[]
@@ -153,24 +154,24 @@ export function ExportReportButton({ records, dateRange, isMobile = false }: Exp
         } else {
           downloadAsFile(reportText, filename)
         }
-        alert('✅ 報表已下載！')
+        toast.success('報表已下載！')
       } else {
         // 複製到剪貼簿
         const success = await copyToClipboard(reportText)
         
         if (success) {
-          alert('✅ 報表已複製到剪貼簿！\n\n您可以貼到 Line、Excel 或記事本')
+          toast.success('報表已複製到剪貼簿！\n\n您可以貼到 Line、Excel 或記事本')
         } else {
           // 如果複製失敗，顯示文字讓用戶手動複製
           const confirmed = window.confirm('無法自動複製，要顯示報表內容嗎？')
           if (confirmed) {
-            alert(reportText)
+            toast.info(reportText)
           }
         }
       }
     } catch (error) {
       console.error('匯出失敗:', error)
-      alert('❌ 匯出失敗，請稍後再試')
+      toast.error('匯出失敗，請稍後再試')
     } finally {
       setExporting(false)
     }
