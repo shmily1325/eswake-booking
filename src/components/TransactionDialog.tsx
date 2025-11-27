@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
 import type { Member } from '../types/booking'
+import { useToast } from './ui'
 
 interface TransactionDialogProps {
   open: boolean
@@ -43,6 +44,7 @@ const CATEGORIES = [
 
 export function TransactionDialog({ open, member, onClose, onSuccess, defaultDescription, defaultTransactionDate }: TransactionDialogProps) {
   const { isMobile } = useResponsive()
+  const toast = useToast()
   const [activeTab, setActiveTab] = useState<'transaction' | 'history'>('transaction')
   const [loading, setLoading] = useState(false)
   
@@ -124,7 +126,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       setTransactions(data || [])
     } catch (error: any) {
       console.error('加載交易記錄失敗:', error)
-      alert('加載交易記錄失敗')
+      toast.error('加載交易記錄失敗')
     } finally {
       setLoadingHistory(false)
     }
@@ -146,17 +148,17 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     
     const numValue = parseFloat(editValue)
     if (!numValue || numValue <= 0) {
-      alert('請輸入有效的數值')
+      toast.warning('請輸入有效的數值')
       return
     }
 
     if (!editDescription.trim()) {
-      alert('請輸入說明')
+      toast.warning('請輸入說明')
       return
     }
 
     if (!editTransactionDate) {
-      alert('請選擇交易日期')
+      toast.warning('請選擇交易日期')
       return
     }
 
@@ -280,7 +282,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       setEditNotes('')
     } catch (error: any) {
       console.error('更新失敗:', error)
-      alert(`更新失敗：${error.message}`)
+      toast.error(`更新失敗：${error.message}`)
     }
   }
 
@@ -339,7 +341,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       onSuccess()
     } catch (error: any) {
       console.error('刪除失敗:', error)
-      alert(`刪除失敗：${error.message}`)
+      toast.error(`刪除失敗：${error.message}`)
     }
   }
 
@@ -355,7 +357,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   // 匯出交易記錄
   const handleExportTransactions = () => {
     if (transactions.length === 0) {
-      alert('本月無交易記錄可匯出')
+      toast.warning('本月無交易記錄可匯出')
       return
     }
 
@@ -477,7 +479,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       document.body.removeChild(link)
     } catch (error: any) {
       console.error('匯出失敗:', error)
-      alert('匯出失敗，請稍後再試')
+      toast.error('匯出失敗，請稍後再試')
     }
   }
 
@@ -499,17 +501,17 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     
     const numValue = parseFloat(value)
     if (!numValue || numValue <= 0) {
-      alert('請輸入有效的數值')
+      toast.warning('請輸入有效的數值')
       return
     }
 
     if (!description.trim()) {
-      alert('請輸入說明')
+      toast.warning('請輸入說明')
       return
     }
 
     if (!transactionDate) {
-      alert('請選擇交易日期')
+      toast.warning('請選擇交易日期')
       return
     }
 
@@ -589,7 +591,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       onClose()
     } catch (error: any) {
       console.error('記帳失敗:', error)
-      alert(`記帳失敗：${error.message}`)
+      toast.error(`記帳失敗：${error.message}`)
     } finally {
       setLoading(false)
     }
