@@ -892,7 +892,7 @@ export function StaffManagement() {
               gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
               gap: '15px' 
             }}>
-              {coaches.filter(c => c.status !== 'archived').map(coach => (
+              {coaches.filter(c => c.status === 'active').map(coach => (
                 <div
                   key={coach.id}
                   style={{
@@ -1007,7 +1007,7 @@ export function StaffManagement() {
               gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
               gap: '15px' 
             }}>
-              {coaches.filter(c => c.status !== 'archived').map(coach => (
+              {coaches.filter(c => c.status === 'active').map(coach => (
                 <div
                   key={coach.id}
                   style={{

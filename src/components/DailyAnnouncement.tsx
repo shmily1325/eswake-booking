@@ -13,11 +13,18 @@ interface Birthday {
   nickname: string | null
 }
 
+interface BoatUnavailable {
+  boatName: string
+  reason: string
+  endDate: string
+}
+
 export function DailyAnnouncement() {
   const { isMobile } = useResponsive()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [timeOffCoaches, setTimeOffCoaches] = useState<string[]>([])
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
+  const [unavailableBoats, setUnavailableBoats] = useState<BoatUnavailable[]>([])
   const [isExpanded, setIsExpanded] = useState(true)
 
 
@@ -33,7 +40,8 @@ export function DailyAnnouncement() {
     const [
       announcementResult,
       timeOffResult,
-      birthdayResult
+      birthdayResult,
+      boatUnavailableResult
     ] = await Promise.all([
       // 獲取交辦事項
       supabase
@@ -42,10 +50,10 @@ export function DailyAnnouncement() {
         .eq('display_date', today)
         .order('created_at', { ascending: true }),
       
-      // 獲取今日休假教練
+      // 獲取今日休假教練（排除已隱藏的教練）
       supabase
         .from('coach_time_off')
-        .select('coach_id, coaches(name)')
+        .select('coach_id, coaches(name, status)')
         .lte('start_date', today)
         .or(`end_date.gte.${today},end_date.is.null`),
       
@@ -54,15 +62,26 @@ export function DailyAnnouncement() {
         .from('members')
         .select('name, nickname, birthday')
         .eq('status', 'active')
-        .not('birthday', 'is', null)
+        .not('birthday', 'is', null),
+      
+      // 獲取今日停用的船隻
+      supabase
+        .from('boat_unavailable_dates')
+        .select('boat_id, reason, end_date, boats(name, is_active)')
+        .eq('is_active', true)
+        .lte('start_date', today)
+        .gte('end_date', today)
     ])
 
     // 處理查詢結果
     if (announcementResult.data) setAnnouncements(announcementResult.data)
     
     if (timeOffResult.data) {
-      // 使用 Set 去除重複的教練名字
-      const coachNames = timeOffResult.data.map((item: any) => item.coaches?.name).filter(Boolean)
+      // 只顯示啟用中的教練，過濾掉已停用或已隱藏的教練
+      const coachNames = timeOffResult.data
+        .filter((item: any) => item.coaches?.status === 'active')
+        .map((item: any) => item.coaches?.name)
+        .filter(Boolean)
       const uniqueCoachNames = Array.from(new Set(coachNames))
       setTimeOffCoaches(uniqueCoachNames)
     }
@@ -78,10 +97,24 @@ export function DailyAnnouncement() {
       
       setBirthdays(filtered)
     }
+    
+    if (boatUnavailableResult.data) {
+      // 只顯示啟用中的船隻
+      const boats = boatUnavailableResult.data
+        .filter((item: any) => item.boats?.is_active)
+        .map((item: any) => ({
+          boatName: item.boats?.name,
+          reason: item.reason,
+          endDate: item.end_date
+        }))
+        .filter((item: BoatUnavailable) => item.boatName)
+      
+      setUnavailableBoats(boats)
+    }
   }
 
   const hasAnyData = announcements.length > 0 || timeOffCoaches.length > 0 || 
-                      birthdays.length > 0
+                      birthdays.length > 0 || unavailableBoats.length > 0
 
   if (!hasAnyData) return null
 
@@ -150,6 +183,18 @@ export function DailyAnnouncement() {
           {timeOffCoaches.length > 0 && (
             <div style={{ marginBottom: '6px' }}>
               🏖️ 休假：{timeOffCoaches.join('、')}
+            </div>
+          )}
+
+          {unavailableBoats.length > 0 && (
+            <div style={{ marginBottom: '6px' }}>
+              {unavailableBoats.map((boat, idx) => (
+                <div key={idx} style={{ marginBottom: idx < unavailableBoats.length - 1 ? '2px' : '0' }}>
+                  {idx === 0 && '🚤 船隻維修：'}
+                  {idx > 0 && '　　　　'}
+                  {boat.boatName}（{boat.reason}，至 {boat.endDate}）
+                </div>
+              ))}
             </div>
           )}
 
