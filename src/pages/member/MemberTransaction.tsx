@@ -7,13 +7,14 @@ import { TransactionDialog } from '../../components/TransactionDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import type { Member } from '../../types/booking'
 import { handleError } from '../../utils/errorHandler'
-import { Button } from '../../components/ui'
+import { Button, useToast } from '../../components/ui'
 
 // Member interface removed as it is now imported from types/booking
 
 export function MemberTransaction() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
+  const toast = useToast()
   const [members, setMembers] = useState<Member[]>([])
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,7 +46,7 @@ export function MemberTransaction() {
       setFilteredMembers(data || [])
     } catch (error) {
       console.error('載入會員失敗:', error)
-      alert('載入會員列表失敗')
+      toast.error('載入會員列表失敗')
     } finally {
       setLoading(false)
     }
@@ -89,7 +90,7 @@ export function MemberTransaction() {
 
       if (error) throw error
       if (!allMembers || allMembers.length === 0) {
-        alert('沒有會員財務資料可以導出')
+        toast.warning('沒有會員財務資料可以導出')
         return
       }
 
@@ -135,10 +136,10 @@ export function MemberTransaction() {
       link.click()
       document.body.removeChild(link)
 
-      alert(`✅ 成功導出 ${allMembers.length} 位會員的儲值資料`)
+      toast.success(`成功導出 ${allMembers.length} 位會員的儲值資料`)
     } catch (err: any) {
       console.error('導出失敗:', err)
-      alert('導出失敗: ' + err.message)
+      toast.error('導出失敗: ' + err.message)
     }
   }
 
@@ -259,12 +260,12 @@ export function MemberTransaction() {
   // 匯出總帳
   const handleExportAll = async () => {
     if (!exportStartDate || !exportEndDate) {
-      alert('請選擇開始和結束日期')
+      toast.warning('請選擇開始和結束日期')
       return
     }
 
     if (exportStartDate > exportEndDate) {
-      alert('開始日期不能晚於結束日期')
+      toast.warning('開始日期不能晚於結束日期')
       return
     }
 
@@ -284,7 +285,7 @@ export function MemberTransaction() {
       if (error) throw error
 
       if (!data || data.length === 0) {
-        alert('所選時間範圍內沒有交易記錄')
+        toast.warning('所選時間範圍內沒有交易記錄')
         return
       }
 
