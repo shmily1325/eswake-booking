@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import liff from '@line/liff'
 import { getLocalDateString, getLocalTimestamp } from '../utils/date'
+import { useToast } from '../components/ui'
 
 interface Booking {
   id: number
@@ -128,14 +129,14 @@ export function LiffMyBookings() {
 
       if (error) throw error
 
-      alert('✅ 預約已取消')
+      toast.success('預約已取消')
       // 重新載入預約列表
       if (member) {
         await loadBookings(member.id)
       }
     } catch (err: any) {
       console.error('取消預約失敗:', err)
-      alert('❌ 取消預約失敗：' + err.message)
+      toast.error('取消預約失敗：' + err.message)
     }
   }
 
@@ -239,7 +240,7 @@ export function LiffMyBookings() {
       setTransactions(data || [])
     } catch (err: any) {
       console.error('載入交易記錄失敗:', err)
-      alert('載入交易記錄失敗')
+      toast.error('載入交易記錄失敗')
     } finally {
       setLoadingTransactions(false)
     }
@@ -271,7 +272,7 @@ export function LiffMyBookings() {
       console.log('❌ 查詢錯誤:', queryError)
       
       if (!allMembers || allMembers.length === 0) {
-        alert('❌ 無法查詢會員資料，請稍後再試')
+        toast.error('無法查詢會員資料，請稍後再試')
         setBinding(false)
         return
       }
@@ -287,7 +288,7 @@ export function LiffMyBookings() {
 
       if (!memberData) {
         const debugInfo = `❌ 找不到會員資料\n\n📊 查詢統計：\n- 總會員數：${allMembers.length}\n- 輸入電話：${cleanPhone}\n- Active 會員：${allMembers.filter(m => m.status === 'active').length}\n\n請確認電話號碼正確`
-        alert(debugInfo)
+        toast.warning(debugInfo)
         setBinding(false)
         return
       }
@@ -307,7 +308,7 @@ export function LiffMyBookings() {
         })
 
       if (bindingError) {
-        alert('❌ 綁定失敗：' + bindingError.message)
+        toast.error('綁定失敗：' + bindingError.message)
         setBinding(false)
         return
       }
@@ -318,7 +319,7 @@ export function LiffMyBookings() {
       await loadBookings(memberData.id)
     } catch (err: any) {
       console.error('綁定失敗:', err)
-      alert('❌ 綁定失敗')
+      toast.error('綁定失敗')
     } finally {
       setBinding(false)
     }
