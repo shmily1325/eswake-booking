@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logger } from './logger'
+import { useToast } from '../components/ui'
 
 
 // 超級管理員（硬編碼，始終有權限）
@@ -139,14 +140,15 @@ export function useCheckAllowedUser(_user: User | null) {
  */
 export function useRequireAdmin(user: User | null) {
   const navigate = useNavigate()
+  const toast = useToast()
   const userIsAdmin = isAdmin(user)
   
   useEffect(() => {
     if (!userIsAdmin) {
-      alert('您沒有權限訪問此頁面')
+      toast.error('您沒有權限訪問此頁面')
       navigate('/')
     }
-  }, [userIsAdmin, navigate])
+  }, [userIsAdmin, navigate, toast])
   
   return userIsAdmin
 }
