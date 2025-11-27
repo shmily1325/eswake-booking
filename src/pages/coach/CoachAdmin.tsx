@@ -12,6 +12,7 @@ import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
+import { useToast } from '../../components/ui'
 
 // ============ Types ============
 
@@ -66,6 +67,7 @@ const LESSON_TYPES = [
 export function CoachAdmin() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
+  const toast = useToast()
   
   // Tab 管理
   const [activeTab, setActiveTab] = useState<TabType>('pending')
