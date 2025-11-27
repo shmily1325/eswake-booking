@@ -197,6 +197,12 @@ export function EditBookingDialog({
       return
     }
 
+    // 檢查填表人是否填寫
+    if (!filledBy.trim()) {
+      setError('請填寫填表人姓名')
+      return
+    }
+
     // 檢查早場預約必須指定教練
     const [hour] = startTime.split(':').map(Number)
     if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
