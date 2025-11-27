@@ -43,6 +43,7 @@ interface Transaction {
 type TabType = 'bookings' | 'balance' | 'cancel'
 
 export function LiffMyBookings() {
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [member, setMember] = useState<Member | null>(null)
