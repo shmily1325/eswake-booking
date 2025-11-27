@@ -50,9 +50,9 @@ export function handleError(
   // 記錄到 console
   console.error(`[錯誤] ${context || '操作'}:`, error)
   
-  // 可選：顯示 alert
+  // 可選：顯示 toast
   if (showAlert) {
-    alert(`❌ ${fullMessage}`)
+    toast.error(fullMessage)
   }
   
   return fullMessage
@@ -68,7 +68,7 @@ export function handleSuccess(
   console.log(`[成功] ${message}`)
   
   if (showAlert) {
-    alert(`✅ ${message}`)
+    toast.success(message)
   }
 }
 
