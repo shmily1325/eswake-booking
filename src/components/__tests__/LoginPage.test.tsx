@@ -55,7 +55,7 @@ describe('LoginPage', () => {
           skipBrowserRedirect: false,
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
+            prompt: 'select_account', // 只選擇帳號，不每次都要求同意授權
           }
         }
       })

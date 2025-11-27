@@ -11,6 +11,14 @@ export function LoginPage() {
     const userAgent = navigator.userAgent || navigator.vendor
     const isLine = /Line/i.test(userAgent)
     setIsInLineApp(isLine)
+    
+    // 檢查是否在隱私模式（可能導致無法保持登入）
+    try {
+      localStorage.setItem('test', '1')
+      localStorage.removeItem('test')
+    } catch (e) {
+      console.warn('⚠️ localStorage 無法使用，可能在隱私模式下')
+    }
   }, [])
 
   const handleGoogleLogin = async () => {
