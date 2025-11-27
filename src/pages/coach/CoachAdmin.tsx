@@ -214,6 +214,7 @@ export function CoachAdmin() {
           members:member_id(id, name, nickname)
         `)
         .eq('status', 'processed')
+        .eq('is_teaching', true)
         .eq('is_deleted', false)
         .gte('bookings.start_at', startOfDay)
         .lte('bookings.start_at', endOfDay)
