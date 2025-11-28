@@ -637,14 +637,16 @@ export function StaffManagement() {
         {/* 教練管理 Tab */}
         {activeTab === 'coaches' && (
           <>
-            {/* 顯示切換 + 月份篩選 */}
+            {/* 標題列 + 月份選擇器 */}
             <div style={{
-              marginBottom: '20px',
+              marginBottom: '15px',
               display: 'flex',
-              gap: '10px',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              flexWrap: 'wrap'
+              gap: '12px',
+              flexWrap: isMobile ? 'wrap' : 'nowrap'
             }}>
+              {/* 左邊：顯示切換 */}
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -676,40 +678,23 @@ export function StaffManagement() {
                 </span>
               </label>
 
-              {/* 月份篩選器 */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 16px',
-                background: '#fff8e1',
-                borderRadius: '8px',
-                border: '1px solid #ffecb3'
-              }}>
-                <span style={{
+              {/* 右邊：月份選擇器 */}
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  border: '2px solid #2196F3',
+                  borderRadius: '8px',
                   fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#f57c00',
-                  whiteSpace: 'nowrap'
-                }}>
-                  🗓️ 休假月份：
-                </span>
-                <input
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  style={{
-                    padding: '6px 10px',
-                    border: '2px solid #ffe082',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    background: 'white',
-                    color: '#333',
-                    fontWeight: '500'
-                  }}
-                />
-              </div>
+                  cursor: 'pointer',
+                  background: 'white',
+                  color: '#1565c0',
+                  fontWeight: '500',
+                  minWidth: isMobile ? '100%' : '150px'
+                }}
+              />
             </div>
 
             {/* 教練列表 */}
@@ -931,17 +916,22 @@ export function StaffManagement() {
                           <span style={{ 
                             flex: 1,
                             color: '#555',
-                            lineHeight: '1.4'
+                            lineHeight: '1.4',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            flexWrap: 'wrap'
                           }}>
-                            {timeOff.displayText}
+                            <span style={{ fontWeight: '600' }}>{timeOff.displayText}</span>
                             {timeOff.reason && (
                               <span style={{ 
-                                marginLeft: '8px',
-                                padding: '2px 8px',
+                                padding: '3px 10px',
                                 background: '#fff',
                                 borderRadius: '6px',
                                 fontSize: '12px',
-                                color: '#666'
+                                color: '#f57c00',
+                                fontWeight: '600',
+                                border: '1px solid #ffe082'
                               }}>
                                 {timeOff.reason}
                               </span>

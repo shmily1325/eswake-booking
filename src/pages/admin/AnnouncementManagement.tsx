@@ -155,6 +155,34 @@ export function AnnouncementManagement() {
     setEditingId(null)
   }
 
+  // 按日期分組公告
+  const groupAnnouncementsByDate = (announcements: Announcement[]) => {
+    const grouped = new Map<string, Announcement[]>()
+    
+    announcements.forEach(announcement => {
+      const date = announcement.display_date
+      if (!grouped.has(date)) {
+        grouped.set(date, [])
+      }
+      grouped.get(date)!.push(announcement)
+    })
+
+    // 轉換為數組並排序日期
+    const sortedGroups = Array.from(grouped.entries()).sort((a, b) => {
+      return sortOrder === 'desc' 
+        ? b[0].localeCompare(a[0])  // 新→舊
+        : a[0].localeCompare(b[0])  // 舊→新
+    })
+
+    return sortedGroups
+  }
+
+  // 格式化日期顯示
+  const formatDateHeader = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-')
+    return `${year}/${parseInt(month)}/${parseInt(day)}`
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -261,9 +289,10 @@ export function AnnouncementManagement() {
             <h2 style={{
               margin: 0,
               fontSize: isMobile ? '16px' : '18px',
-              fontWeight: '600'
+              fontWeight: '600',
+              color: '#333'
             }}>
-              📋 所有交辦事項 ({announcements.filter(a => 
+              所有交辦事項 ({announcements.filter(a => 
                 searchText ? a.content.toLowerCase().includes(searchText.toLowerCase()) : true
               ).length})
             </h2>
@@ -273,11 +302,12 @@ export function AnnouncementManagement() {
               onChange={(e) => setSelectedMonth(e.target.value)}
               style={{
                 padding: '8px 12px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
                 fontSize: '14px',
                 cursor: 'pointer',
-                minWidth: isMobile ? '100%' : '150px'
+                minWidth: isMobile ? '100%' : '150px',
+                background: 'white'
               }}
             />
           </div>
@@ -293,19 +323,19 @@ export function AnnouncementManagement() {
             <div style={{ flex: 1, minWidth: isMobile ? '100%' : '200px' }}>
               <input
                 type="text"
-                placeholder="🔍 搜尋內容..."
+                placeholder="搜尋內容..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
                   fontSize: '14px',
                   transition: 'border-color 0.2s'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#2196F3'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
               />
             </div>
 
@@ -314,29 +344,24 @@ export function AnnouncementManagement() {
               onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
               style={{
                 padding: '10px 16px',
-                background: 'white',
+                background: '#f5f5f5',
                 color: '#666',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
                 fontSize: '14px',
-                fontWeight: '600',
+                fontWeight: '500',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
                 transition: 'all 0.2s'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#f5f5f5'
-                e.currentTarget.style.borderColor = '#2196F3'
+                e.currentTarget.style.background = '#e8e8e8'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'white'
-                e.currentTarget.style.borderColor = '#e0e0e0'
+                e.currentTarget.style.background = '#f5f5f5'
               }}
             >
-              {sortOrder === 'desc' ? '⬇️ 新→舊' : '⬆️ 舊→新'}
+              {sortOrder === 'desc' ? '新→舊' : '舊→新'}
             </button>
           </div>
 
@@ -348,7 +373,7 @@ export function AnnouncementManagement() {
 
           {!loading && announcements.length === 0 && !searchText && (
             <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              😊 目前沒有交辦事項
+              目前沒有交辦事項
             </div>
           )}
 
@@ -356,151 +381,179 @@ export function AnnouncementManagement() {
             a.content.toLowerCase().includes(searchText.toLowerCase())
           ).length === 0 && (
             <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              🔍 沒有符合「{searchText}」的搜尋結果
+              沒有符合「{searchText}」的搜尋結果
             </div>
           )}
 
-          {!loading && announcements
-            .filter(announcement => 
+          {!loading && (() => {
+            const filtered = announcements.filter(announcement => 
               searchText ? announcement.content.toLowerCase().includes(searchText.toLowerCase()) : true
             )
-            .map((announcement) => (
-            <div
-              key={announcement.id}
-              style={{
-                padding: '15px',
-                background: '#f8f9fa',
-                borderRadius: '8px',
-                marginBottom: '12px',
-                border: '2px solid #e0e0e0'
-              }}
-            >
-              {editingId === announcement.id ? (
-                // 編輯模式
-                <>
-                  <textarea
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    rows={3}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      border: '1px solid #ccc',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      marginBottom: '10px',
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                  <input
-                    type="date"
-                    value={editDisplayDate}
-                    onChange={(e) => setEditDisplayDate(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      border: '1px solid #ccc',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      marginBottom: '10px'
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => handleEdit(announcement.id)}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        background: 'white',
-                        color: '#666',
-                        border: '2px solid #e0e0e0',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ✓ 儲存
-                    </button>
-                    <button
-                      onClick={cancelEdit}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        background: 'white',
-                        color: '#666',
-                        border: '2px solid #e0e0e0',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ✕ 取消
-                    </button>
-                  </div>
-                </>
-              ) : (
-                // 顯示模式
-                <>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'start',
-                    marginBottom: '10px'
+            const grouped = groupAnnouncementsByDate(filtered)
+
+            return grouped.map(([date, dateAnnouncements]) => (
+              <div key={date} style={{ marginBottom: '24px' }}>
+                {/* 日期標題 */}
+                <div style={{
+                  padding: '8px 12px',
+                  background: '#f5f5f5',
+                  borderRadius: '6px',
+                  marginBottom: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#555'
                   }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        marginBottom: '4px'
-                      }}>
-                        {announcement.content}
-                      </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: '#666'
-                      }}>
-                        📅 {announcement.display_date}
-                      </div>
-                    </div>
+                    {formatDateHeader(date)}
+                  </span>
+                  <span style={{
+                    fontSize: '12px',
+                    color: '#999'
+                  }}>
+                    ({dateAnnouncements.length} 條)
+                  </span>
+                </div>
+
+                {/* 該日期的所有事項 */}
+                {dateAnnouncements.map((announcement) => (
+                  <div
+                    key={announcement.id}
+                    style={{
+                      padding: '12px',
+                      background: 'white',
+                      borderRadius: '6px',
+                      marginBottom: '8px',
+                      border: '1px solid #e0e0e0'
+                    }}
+                  >
+                    {editingId === announcement.id ? (
+                      // 編輯模式
+                      <>
+                        <textarea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          rows={3}
+                          style={{
+                            width: '100%',
+                            padding: '8px',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            fontSize: '14px',
+                            marginBottom: '10px',
+                            fontFamily: 'inherit'
+                          }}
+                        />
+                        <input
+                          type="date"
+                          value={editDisplayDate}
+                          onChange={(e) => setEditDisplayDate(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            fontSize: '14px',
+                            marginBottom: '10px'
+                          }}
+                        />
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => handleEdit(announcement.id)}
+                            style={{
+                              flex: 1,
+                              padding: '8px',
+                              background: '#2196F3',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            儲存
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            style={{
+                              flex: 1,
+                              padding: '8px',
+                              background: '#f5f5f5',
+                              color: '#666',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            取消
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      // 顯示模式
+                      <>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'start',
+                          gap: '12px'
+                        }}>
+                          <div style={{ 
+                            flex: 1,
+                            fontSize: '14px',
+                            color: '#333',
+                            lineHeight: '1.5'
+                          }}>
+                            {announcement.content}
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
+                            <button
+                              onClick={() => startEdit(announcement)}
+                              style={{
+                                padding: '5px 10px',
+                                background: '#f5f5f5',
+                                color: '#666',
+                                border: '1px solid #ddd',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              編輯
+                            </button>
+                            <button
+                              onClick={() => handleDelete(announcement.id)}
+                              style={{
+                                padding: '5px 10px',
+                                background: '#fff',
+                                color: '#f44336',
+                                border: '1px solid #f44336',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              刪除
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    <button
-                      onClick={() => startEdit(announcement)}
-                      style={{
-                        padding: '6px 12px',
-                        background: 'white',
-                        color: '#666',
-                        border: '2px solid #e0e0e0',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ✎ 編輯
-                    </button>
-                    <button
-                      onClick={() => handleDelete(announcement.id)}
-                      style={{
-                        padding: '6px 12px',
-                        background: 'white',
-                        color: '#666',
-                        border: '2px solid #e0e0e0',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🗑 刪除
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
+                ))}
+              </div>
+            ))
+          })()}
         </div>
 
         {/* Footer */}
