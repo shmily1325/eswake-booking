@@ -38,18 +38,27 @@ export function DailyAnnouncement() {
       return `${parseInt(month)}/${parseInt(day)}`
     }
 
+    const formatTime = (timeStr: string) => {
+      // 移除前導零，例如 "09:00" -> "9:00"
+      const [hour, minute] = timeStr.split(':')
+      return `${parseInt(hour)}:${minute}`
+    }
+
     const startDateStr = formatDate(boat.startDate)
     const endDateStr = formatDate(boat.endDate)
     const isSameDay = boat.startDate === boat.endDate
 
     // 如果有時間資訊
     if (boat.startTime || boat.endTime) {
+      const startTimeStr = boat.startTime ? formatTime(boat.startTime) : '0:00'
+      const endTimeStr = boat.endTime ? formatTime(boat.endTime) : '23:59'
+      
       if (isSameDay) {
         // 同一天：11/28 10:00 - 18:00
-        return `${startDateStr} ${boat.startTime || '00:00'} - ${boat.endTime || '23:59'}`
+        return `${startDateStr} ${startTimeStr} - ${endTimeStr}`
       } else {
         // 不同天：11/28 10:00 - 11/30 18:00
-        return `${startDateStr} ${boat.startTime || '00:00'} - ${endDateStr} ${boat.endTime || '23:59'}`
+        return `${startDateStr} ${startTimeStr} - ${endDateStr} ${endTimeStr}`
       }
     }
 
@@ -229,7 +238,7 @@ export function DailyAnnouncement() {
             <div style={{ marginBottom: '6px' }}>
               {unavailableBoats.map((boat, idx) => (
                 <div key={idx} style={{ marginBottom: idx < unavailableBoats.length - 1 ? '2px' : '0' }}>
-                  🚤 {boat.boatName} 維修：{boat.reason}，{formatMaintenanceRange(boat)}
+                  🚤 {boat.boatName} 維修：{boat.reason} ({formatMaintenanceRange(boat)})
                 </div>
               ))}
             </div>

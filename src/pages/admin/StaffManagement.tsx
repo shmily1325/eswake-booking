@@ -35,6 +35,12 @@ export function StaffManagement() {
   const [loading, setLoading] = useState(true)
   const [showArchived, setShowArchived] = useState(false) // 是否顯示已歸檔
   const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing'>('coaches') // Tab 切換
+  const [expandedCoachIds, setExpandedCoachIds] = useState<Set<string>>(new Set()) // 展開的教練ID
+  
+  // 月份篩選
+  const today = new Date()
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   
   // 新增教練
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -64,6 +70,95 @@ export function StaffManagement() {
   useEffect(() => {
     loadData()
   }, [])
+
+  // 格式化日期為 MM/DD
+  const formatShortDate = (dateStr: string): string => {
+    const [, month, day] = dateStr.split('-')
+    return `${parseInt(month)}/${parseInt(day)}`
+  }
+
+  // 合併連續的休假日期
+  const mergeConsecutiveTimeOffs = (timeOffs: TimeOff[]): (TimeOff & { displayText: string })[] => {
+    if (timeOffs.length === 0) return []
+
+    // 按日期排序
+    const sorted = [...timeOffs].sort((a, b) => a.start_date.localeCompare(b.start_date))
+    
+    const merged: (TimeOff & { displayText: string })[] = []
+    let currentGroup: TimeOff[] = [sorted[0]]
+
+    for (let i = 1; i < sorted.length; i++) {
+      const current = sorted[i]
+      const previous = currentGroup[currentGroup.length - 1]
+
+      // 檢查是否為連續日期（且原因相同）
+      const prevEndDate = new Date(previous.end_date)
+      const currStartDate = new Date(current.start_date)
+      const dayDiff = (currStartDate.getTime() - prevEndDate.getTime()) / (1000 * 60 * 60 * 24)
+      
+      const isSameReason = (previous.reason || '') === (current.reason || '')
+      const isConsecutive = dayDiff <= 1 && isSameReason
+
+      if (isConsecutive) {
+        currentGroup.push(current)
+      } else {
+        // 合併當前組
+        merged.push(createMergedTimeOff(currentGroup))
+        currentGroup = [current]
+      }
+    }
+
+    // 合併最後一組
+    if (currentGroup.length > 0) {
+      merged.push(createMergedTimeOff(currentGroup))
+    }
+
+    return merged
+  }
+
+  const createMergedTimeOff = (group: TimeOff[]): TimeOff & { displayText: string } => {
+    const first = group[0]
+    const last = group[group.length - 1]
+    
+    const startStr = formatShortDate(first.start_date)
+    const endStr = formatShortDate(last.end_date)
+    
+    let displayText = startStr === endStr ? startStr : `${startStr} - ${endStr}`
+    
+    return {
+      ...first, // 保留第一個的 ID 等資訊
+      end_date: last.end_date, // 使用最後一個的結束日期
+      displayText,
+      // 將組內所有 ID 保存起來（用於刪除時參考）
+      notes: group.map(t => t.id).join(',') // 臨時存儲所有相關 ID
+    }
+  }
+
+  // 切換展開/收起
+  const toggleExpandCoach = (coachId: string) => {
+    setExpandedCoachIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(coachId)) {
+        newSet.delete(coachId)
+      } else {
+        newSet.add(coachId)
+      }
+      return newSet
+    })
+  }
+
+  // 過濾該月份的休假記錄
+  const filterTimeOffsByMonth = (timeOffs: TimeOff[], month: string): TimeOff[] => {
+    const [year, monthNum] = month.split('-').map(Number)
+    const startDate = `${year}-${String(monthNum).padStart(2, '0')}-01`
+    const lastDay = new Date(year, monthNum, 0).getDate()
+    const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+    return timeOffs.filter(timeOff => {
+      // 如果休假的開始或結束日期在該月份內，就顯示
+      return (timeOff.start_date <= endDate && timeOff.end_date >= startDate)
+    })
+  }
 
   const loadData = async () => {
     setLoading(true)
@@ -542,12 +637,13 @@ export function StaffManagement() {
         {/* 教練管理 Tab */}
         {activeTab === 'coaches' && (
           <>
-            {/* 顯示切換 */}
+            {/* 顯示切換 + 月份篩選 */}
             <div style={{
               marginBottom: '20px',
               display: 'flex',
               gap: '10px',
-              alignItems: 'center'
+              alignItems: 'center',
+              flexWrap: 'wrap'
             }}>
               <label style={{
                 display: 'flex',
@@ -579,6 +675,41 @@ export function StaffManagement() {
                   顯示已隱藏的教練
                 </span>
               </label>
+
+              {/* 月份篩選器 */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                background: '#fff8e1',
+                borderRadius: '8px',
+                border: '1px solid #ffecb3'
+              }}>
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#f57c00',
+                  whiteSpace: 'nowrap'
+                }}>
+                  🗓️ 休假月份：
+                </span>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  style={{
+                    padding: '6px 10px',
+                    border: '2px solid #ffe082',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    background: 'white',
+                    color: '#333',
+                    fontWeight: '500'
+                  }}
+                />
+              </div>
             </div>
 
             {/* 教練列表 */}
@@ -753,77 +884,114 @@ export function StaffManagement() {
                 </div>
 
                 {/* 不在期間記錄 */}
-                {!isArchived && coachTimeOffs.length > 0 && (
-                  <div style={{
-                    marginBottom: '14px',
-                    padding: isMobile ? '12px' : '14px',
-                    background: '#fff8e1',
-                    borderRadius: '10px',
-                    border: '1px solid #ffecb3'
-                  }}>
-                    <div style={{ 
-                      fontSize: '14px', 
-                      fontWeight: '600', 
-                      marginBottom: '10px', 
-                      color: '#f57c00'
+                {!isArchived && coachTimeOffs.length > 0 && (() => {
+                  // 先按月份篩選
+                  const filteredTimeOffs = filterTimeOffsByMonth(coachTimeOffs, selectedMonth)
+                  
+                  // 如果該月份沒有休假記錄，不顯示區塊
+                  if (filteredTimeOffs.length === 0) return null
+                  
+                  // 合併連續日期
+                  const mergedTimeOffs = mergeConsecutiveTimeOffs(filteredTimeOffs)
+                  const isExpanded = expandedCoachIds.has(coach.id)
+                  const maxDisplay = 3
+                  const displayTimeOffs = isExpanded ? mergedTimeOffs : mergedTimeOffs.slice(0, maxDisplay)
+                  const hasMore = mergedTimeOffs.length > maxDisplay
+
+                  return (
+                    <div style={{
+                      marginBottom: '14px',
+                      padding: isMobile ? '12px' : '14px',
+                      background: '#fff8e1',
+                      borderRadius: '10px',
+                      border: '1px solid #ffecb3'
                     }}>
-                      不在期間
-                    </div>
-                    {coachTimeOffs.map(timeOff => (
-                      <div
-                        key={timeOff.id}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: isMobile ? 'flex-start' : 'center',
-                          flexDirection: isMobile ? 'column' : 'row',
-                          padding: '8px 0',
-                          fontSize: '13px',
-                          gap: isMobile ? '8px' : '12px',
-                          borderBottom: timeOff.id === coachTimeOffs[coachTimeOffs.length - 1].id ? 'none' : '1px solid #ffe082'
-                        }}
-                      >
-                        <span style={{ 
-                          flex: 1,
-                          color: '#555',
-                          lineHeight: '1.4'
-                        }}>
-                          {timeOff.start_date} ~ {timeOff.end_date}
-                          {timeOff.reason && (
-                            <span style={{ 
-                              marginLeft: '8px',
-                              padding: '2px 8px',
-                              background: '#fff',
+                      <div style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '600', 
+                        marginBottom: '10px', 
+                        color: '#f57c00'
+                      }}>
+                        不在期間
+                      </div>
+                      {displayTimeOffs.map((timeOff, idx) => (
+                        <div
+                          key={timeOff.id}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: isMobile ? 'flex-start' : 'center',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            padding: '8px 0',
+                            fontSize: '13px',
+                            gap: isMobile ? '8px' : '12px',
+                            borderBottom: idx === displayTimeOffs.length - 1 && !hasMore ? 'none' : '1px solid #ffe082'
+                          }}
+                        >
+                          <span style={{ 
+                            flex: 1,
+                            color: '#555',
+                            lineHeight: '1.4'
+                          }}>
+                            {timeOff.displayText}
+                            {timeOff.reason && (
+                              <span style={{ 
+                                marginLeft: '8px',
+                                padding: '2px 8px',
+                                background: '#fff',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                color: '#666'
+                              }}>
+                                {timeOff.reason}
+                              </span>
+                            )}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteTimeOff(timeOff)}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#f44336',
+                              color: 'white',
+                              border: 'none',
                               borderRadius: '6px',
                               fontSize: '12px',
-                              color: '#666'
-                            }}>
-                              {timeOff.reason}
-                            </span>
-                          )}
-                        </span>
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                              alignSelf: isMobile ? 'flex-start' : 'center'
+                            }}
+                          >
+                            刪除
+                          </button>
+                        </div>
+                      ))}
+                      
+                      {/* 展開/收起按鈕 */}
+                      {hasMore && (
                         <button
-                          onClick={() => handleDeleteTimeOff(timeOff)}
+                          onClick={() => toggleExpandCoach(coach.id)}
                           style={{
-                            padding: '6px 12px',
-                            background: '#f44336',
-                            color: 'white',
-                            border: 'none',
+                            width: '100%',
+                            marginTop: '8px',
+                            padding: '6px',
+                            background: 'transparent',
+                            color: '#f57c00',
+                            border: '1px solid #ffe082',
                             borderRadius: '6px',
                             fontSize: '12px',
                             fontWeight: '600',
                             cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                            alignSelf: isMobile ? 'flex-start' : 'center'
+                            transition: 'all 0.2s'
                           }}
                         >
-                          刪除
+                          {isExpanded ? `收起 ▲` : `查看全部 ${mergedTimeOffs.length} 筆 ▼`}
                         </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {/* 設定休假按鈕 - 只對未歸檔教練顯示 */}
                 {!isArchived && (
