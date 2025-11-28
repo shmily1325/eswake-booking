@@ -28,6 +28,10 @@ export function AnnouncementManagement() {
   const [editContent, setEditContent] = useState('')
   const [editDisplayDate, setEditDisplayDate] = useState('')
   
+  // 搜尋和過濾
+  const [searchText, setSearchText] = useState('')
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc') // desc = 新→舊
+  
   const { execute: executeAsync } = useAsyncOperation()
   
   // 月份篩選（格式：YYYY-MM）
@@ -37,7 +41,7 @@ export function AnnouncementManagement() {
 
   useEffect(() => {
     loadAnnouncements()
-  }, [selectedMonth])
+  }, [selectedMonth, sortOrder])
 
   const loadAnnouncements = async () => {
     setLoading(true)
@@ -53,8 +57,8 @@ export function AnnouncementManagement() {
         .select('*')
         .gte('display_date', startDate)
         .lte('display_date', endDate)
-        .order('display_date', { ascending: true })
-        .order('created_at', { ascending: false })
+        .order('display_date', { ascending: sortOrder === 'asc' })
+        .order('created_at', { ascending: sortOrder === 'asc' })
 
       if (data) setAnnouncements(data)
     } catch (error) {
@@ -259,7 +263,9 @@ export function AnnouncementManagement() {
               fontSize: isMobile ? '16px' : '18px',
               fontWeight: '600'
             }}>
-              📋 所有交辦事項 ({announcements.length})
+              📋 所有交辦事項 ({announcements.filter(a => 
+                searchText ? a.content.toLowerCase().includes(searchText.toLowerCase()) : true
+              ).length})
             </h2>
             <input
               type="month"
@@ -276,19 +282,89 @@ export function AnnouncementManagement() {
             />
           </div>
 
+          {/* 搜尋和排序控制 */}
+          <div style={{
+            marginBottom: '15px',
+            display: 'flex',
+            gap: '10px',
+            flexWrap: isMobile ? 'wrap' : 'nowrap'
+          }}>
+            {/* 搜尋框 */}
+            <div style={{ flex: 1, minWidth: isMobile ? '100%' : '200px' }}>
+              <input
+                type="text"
+                placeholder="🔍 搜尋內容..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#2196F3'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+              />
+            </div>
+
+            {/* 排序按鈕 */}
+            <button
+              onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+              style={{
+                padding: '10px 16px',
+                background: 'white',
+                color: '#666',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f5f5f5'
+                e.currentTarget.style.borderColor = '#2196F3'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'white'
+                e.currentTarget.style.borderColor = '#e0e0e0'
+              }}
+            >
+              {sortOrder === 'desc' ? '⬇️ 新→舊' : '⬆️ 舊→新'}
+            </button>
+          </div>
+
           {loading && (
             <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
               載入中...
             </div>
           )}
 
-          {!loading && announcements.length === 0 && (
+          {!loading && announcements.length === 0 && !searchText && (
             <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
               😊 目前沒有交辦事項
             </div>
           )}
 
-          {!loading && announcements.map((announcement) => (
+          {!loading && searchText && announcements.filter(a => 
+            a.content.toLowerCase().includes(searchText.toLowerCase())
+          ).length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+              🔍 沒有符合「{searchText}」的搜尋結果
+            </div>
+          )}
+
+          {!loading && announcements
+            .filter(announcement => 
+              searchText ? announcement.content.toLowerCase().includes(searchText.toLowerCase()) : true
+            )
+            .map((announcement) => (
             <div
               key={announcement.id}
               style={{

@@ -16,7 +16,10 @@ interface Birthday {
 interface BoatUnavailable {
   boatName: string
   reason: string
+  startDate: string
+  startTime: string | null
   endDate: string
+  endTime: string | null
 }
 
 export function DailyAnnouncement() {
@@ -26,6 +29,39 @@ export function DailyAnnouncement() {
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
   const [unavailableBoats, setUnavailableBoats] = useState<BoatUnavailable[]>([])
   const [isExpanded, setIsExpanded] = useState(true)
+
+  // 格式化維修時間範圍
+  const formatMaintenanceRange = (boat: BoatUnavailable): string => {
+    const formatDate = (dateStr: string) => {
+      // 將 YYYY-MM-DD 格式轉為 MM/DD
+      const [, month, day] = dateStr.split('-')
+      return `${parseInt(month)}/${parseInt(day)}`
+    }
+
+    const startDateStr = formatDate(boat.startDate)
+    const endDateStr = formatDate(boat.endDate)
+    const isSameDay = boat.startDate === boat.endDate
+
+    // 如果有時間資訊
+    if (boat.startTime || boat.endTime) {
+      if (isSameDay) {
+        // 同一天：11/28 10:00 - 18:00
+        return `${startDateStr} ${boat.startTime || '00:00'} - ${boat.endTime || '23:59'}`
+      } else {
+        // 不同天：11/28 10:00 - 11/30 18:00
+        return `${startDateStr} ${boat.startTime || '00:00'} - ${endDateStr} ${boat.endTime || '23:59'}`
+      }
+    }
+
+    // 沒有時間資訊
+    if (isSameDay) {
+      // 同一天：11/28
+      return startDateStr
+    } else {
+      // 不同天：11/28 - 11/30
+      return `${startDateStr} - ${endDateStr}`
+    }
+  }
 
 
   useEffect(() => {
@@ -67,7 +103,7 @@ export function DailyAnnouncement() {
       // 獲取今日停用的船隻
       supabase
         .from('boat_unavailable_dates')
-        .select('boat_id, reason, end_date, boats(name, is_active)')
+        .select('boat_id, reason, start_date, start_time, end_date, end_time, boats(name, is_active)')
         .eq('is_active', true)
         .lte('start_date', today)
         .gte('end_date', today)
@@ -105,7 +141,10 @@ export function DailyAnnouncement() {
         .map((item: any) => ({
           boatName: item.boats?.name,
           reason: item.reason,
-          endDate: item.end_date
+          startDate: item.start_date,
+          startTime: item.start_time,
+          endDate: item.end_date,
+          endTime: item.end_time
         }))
         .filter((item: BoatUnavailable) => item.boatName)
       
@@ -190,9 +229,7 @@ export function DailyAnnouncement() {
             <div style={{ marginBottom: '6px' }}>
               {unavailableBoats.map((boat, idx) => (
                 <div key={idx} style={{ marginBottom: idx < unavailableBoats.length - 1 ? '2px' : '0' }}>
-                  {idx === 0 && '🚤 船隻維修：'}
-                  {idx > 0 && '　　　　'}
-                  {boat.boatName}（{boat.reason}，至 {boat.endDate}）
+                  🚤 {boat.boatName} 維修：{boat.reason}，{formatMaintenanceRange(boat)}
                 </div>
               ))}
             </div>
