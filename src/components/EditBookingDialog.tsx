@@ -30,6 +30,9 @@ export function EditBookingDialog({
   const { isMobile } = useResponsive()
   const toast = useToast()
 
+  // 刪除狀態 - 獨立於 loading，防止干擾
+  const [isDeleting, setIsDeleting] = useState(false)
+
   // 複製功能狀態
   const [showCopyDialog, setShowCopyDialog] = useState(false)
   const [copyToDate, setCopyToDate] = useState('')
@@ -210,9 +213,15 @@ export function EditBookingDialog({
       return
     }
 
-    setLoading(true)
+    // 防止重複提交
+    if (loading) {
+      console.log('更新進行中，忽略重複請求')
+      return
+    }
 
     try {
+      console.log('開始更新預約，ID:', booking.id)
+      
       // Combine date and time into ISO format（TEXT 格式，不含時區）
       const newStartAt = `${startDate}T${startTime}:00`
 
@@ -221,7 +230,6 @@ export function EditBookingDialog({
 
       if (conflictResult.hasConflict) {
         setError(conflictResult.reason)
-        setLoading(false)
         return
       }
 
@@ -383,17 +391,27 @@ export function EditBookingDialog({
           confirmMessage += `\n確定要修改嗎？`
 
           if (!confirm(confirmMessage)) {
-            setLoading(false)
+            console.log('用戶取消修改')
             return
           }
 
-          // 用戶確認後，刪除排班和回報記錄
+          console.log('用戶確認修改，清除排班和回報記錄...')
+          // 用戶確認後才開始 loading
+          setLoading(true)
+
+          // 刪除排班和回報記錄
           await Promise.all([
             supabase.from('booking_drivers').delete().eq('booking_id', booking.id),
             supabase.from('coach_reports').delete().eq('booking_id', booking.id),
             supabase.from('booking_participants').delete().eq('booking_id', booking.id).eq('is_deleted', false)
           ])
+        } else {
+          // 沒有需要確認的記錄，直接開始 loading
+          setLoading(true)
         }
+      } else {
+        // 沒有修改關鍵欄位，直接開始 loading
+        setLoading(true)
       }
 
       // 如果改為不需要駕駛，靜默刪除司機排班
@@ -495,7 +513,14 @@ export function EditBookingDialog({
       return
     }
 
-    setLoading(true)
+    // 防止重複執行
+    if (loading || isDeleting) {
+      console.log('刪除進行中，忽略重複請求')
+      return
+    }
+
+    console.log('開始刪除流程，預約 ID:', booking.id)
+    setIsDeleting(true) // 標記刪除開始
 
     try {
       // 檢查是否已有排班、回報記錄和交易記錄（只檢查 booking_drivers）
@@ -518,6 +543,26 @@ export function EditBookingDialog({
           .select('id', { count: 'exact', head: true })
           .eq('booking_id', booking.id)
       ])
+
+      // 檢查資料庫查詢是否有錯誤
+      if (driversCheck.error) {
+        console.error('查詢排班記錄失敗:', driversCheck.error)
+        setError('查詢排班記錄失敗：' + driversCheck.error.message)
+        setIsDeleting(false)
+        return
+      }
+      if (participantsResult.error) {
+        console.error('查詢參與者記錄失敗:', participantsResult.error)
+        setError('查詢參與者記錄失敗：' + participantsResult.error.message)
+        setIsDeleting(false)
+        return
+      }
+      if (reportsResult.error) {
+        console.error('查詢回報記錄失敗:', reportsResult.error)
+        setError('查詢回報記錄失敗：' + reportsResult.error.message)
+        setIsDeleting(false)
+        return
+      }
 
       const hasDriverAssignment = (driversCheck.count || 0) > 0
       const hasParticipants = (participantsResult.data || []).length > 0
@@ -555,9 +600,14 @@ export function EditBookingDialog({
       }
 
       if (!confirm(confirmMessage)) {
-        setLoading(false)
+        console.log('用戶取消刪除')
+        setIsDeleting(false)
         return
       }
+
+      console.log('用戶確認刪除，開始執行...')
+      // 用戶確認後才開始 loading
+      setLoading(true)
 
       // 刪除預約（CASCADE 會自動刪除相關記錄）
       const { error: deleteError } = await supabase
@@ -566,11 +616,14 @@ export function EditBookingDialog({
         .eq('id', booking.id)
 
       if (deleteError) {
+        console.error('刪除失敗:', deleteError)
         setError(deleteError.message || '刪除失敗')
         setLoading(false)
+        toast.error('刪除失敗：' + (deleteError.message || '未知錯誤'))
         return
       }
 
+      console.log('刪除成功，記錄審計日誌...')
       // 記錄到審計日誌
       await logBookingDeletion({
         userEmail: user.email || '',
@@ -582,21 +635,31 @@ export function EditBookingDialog({
       })
 
       // Success
+      console.log('刪除完成，關閉對話框')
       setLoading(false)
+      setIsDeleting(false) // 重置刪除狀態
+      toast.success('預約已刪除')
       onSuccess()
       onClose()
     } catch (err: any) {
-      setError(err.message || '刪除失敗')
+      console.error('刪除過程發生錯誤:', err)
+      const errorMessage = err.message || '刪除失敗'
+      setError(errorMessage)
       setLoading(false)
+      setIsDeleting(false) // 重要：重置刪除狀態
+      toast.error('刪除失敗：' + errorMessage)
     }
   }
 
   const handleClose = () => {
-    if (!loading) {
-      resetForm()
-      setError('')
-      onClose()
+    // 如果正在刪除或更新中，不允許關閉
+    if (loading || isDeleting) {
+      console.log('操作進行中，無法關閉對話框')
+      return
     }
+    resetForm()
+    setError('')
+    onClose()
   }
 
   // 處理複製預約

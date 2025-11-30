@@ -27,19 +27,12 @@ export function useMemberSearch() {
   const loadMembers = async () => {
     const { data } = await supabase
       .from('members')
-      .select('id, name, nickname, phone, status')
+      .select('id, name, nickname, phone')
       .eq('status', 'active')
       .order('name')
     
     if (data) {
-      // Filter out status field for the component state
-      const members = data.map(({ id, name, nickname, phone }) => ({
-        id,
-        name,
-        nickname,
-        phone
-      }))
-      setMembers(members)
+      setMembers(data)
     }
   }
 

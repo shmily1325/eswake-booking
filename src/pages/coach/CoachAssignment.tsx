@@ -350,9 +350,17 @@ export function CoachAssignment() {
   }
 
   const handleSaveAll = async () => {
-    setSaving(true)
+    // 先清空錯誤和成功訊息
     setError('')
     setSuccess('')
+
+    // 防止重複執行
+    if (saving) {
+      console.log('保存進行中，忽略重複請求')
+      return
+    }
+
+    console.log('開始保存排班...')
 
     try {
       // 0. 先檢查是否所有預約都有指定教練或駕駛
@@ -368,7 +376,6 @@ export function CoachAssignment() {
       
       if (missingPersonnel.length > 0) {
         setError('⚠️ 以下預約尚未指定駕駛：\n\n' + missingPersonnel.map(m => `• ${m}`).join('\n'))
-        setSaving(false)
         return
       }
 
@@ -848,10 +855,19 @@ export function CoachAssignment() {
         confirmMessage += `\n確定要繼續嗎？`
         
         if (!confirm(confirmMessage)) {
-          setSaving(false)
+          console.log('用戶取消保存')
           return
         }
 
+        console.log('用戶確認保存，開始執行...')
+      }
+
+      // 用戶確認後才開始 saving 狀態
+      setSaving(true)
+
+      // 如果有需要清除的回報記錄，先清除
+      if (bookingsWithReports.size > 0) {
+        console.log('清除回報記錄...')
         // 清除回報記錄（全部硬刪除）
         await Promise.all([
           // 刪除所有參與者記錄
