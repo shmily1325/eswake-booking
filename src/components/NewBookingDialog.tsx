@@ -31,6 +31,16 @@ export function NewBookingDialog({
 
   const { isMobile } = useResponsive()
 
+  // 防止背景滾動
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = ''
+      }
+    }
+  }, [isOpen])
+
   // 使用 useBookingForm Hook
   const {
     // State
@@ -134,6 +144,12 @@ export function NewBookingDialog({
     e.preventDefault()
     setError('')
 
+    // 防止重複提交（最優先檢查）
+    if (loading) {
+      console.log('提交進行中，忽略重複請求')
+      return
+    }
+
     // ✅ 檢查船隻是否已選擇
     if (!selectedBoatId || selectedBoatId === 0) {
       setError('請選擇船隻')
@@ -158,6 +174,7 @@ export function NewBookingDialog({
       return
     }
 
+    // 立即設置 loading 防止重複點擊
     setLoading(true)
 
     try {
@@ -311,31 +328,76 @@ export function NewBookingDialog({
         bottom: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: isMobile ? 'flex-end' : 'center',
         justifyContent: 'center',
         zIndex: 1000,
-        padding: '16px',
-        overflowY: 'auto',
+        padding: isMobile ? '0' : '16px',
+        overflowY: isMobile ? 'hidden' : 'auto',
       }}
-      onClick={handleClose}
+      onClick={loading ? undefined : handleClose}
     >
       <div
         style={{
           backgroundColor: 'white',
-          padding: '20px',
-          borderRadius: '12px',
+          borderRadius: isMobile ? '16px 16px 0 0' : '12px',
           width: '100%',
           maxWidth: '500px',
           color: '#000',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          margin: 'auto',
+          margin: isMobile ? 'auto 0 0 0' : 'auto',
+          maxHeight: isMobile ? '95vh' : '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ marginTop: 0, color: '#000', fontSize: '20px', marginBottom: '20px' }}>新增預約</h2>
+        {/* 標題欄 - Sticky */}
+        <div style={{
+          padding: isMobile ? '20px 20px 16px' : '20px',
+          borderBottom: '1px solid #e0e0e0',
+          position: 'sticky',
+          top: 0,
+          background: 'white',
+          zIndex: 1,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <h2 style={{ 
+            margin: 0, 
+            fontSize: isMobile ? '18px' : '20px', 
+            fontWeight: 'bold',
+            color: '#000',
+          }}>
+            ➕ 新增預約
+          </h2>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={loading}
+            style={{
+              border: 'none',
+              background: 'none',
+              fontSize: '28px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              color: '#666',
+              padding: '0 8px',
+              opacity: loading ? 0.5 : 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit}>
+        {/* 內容區域 - Scrollable */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: isMobile ? '20px' : '20px',
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          <form onSubmit={handleSubmit} id="new-booking-form">
 
           {/* 1. 預約人選擇 */}
           <MemberSelector
@@ -435,58 +497,79 @@ export function NewBookingDialog({
               <span style={{ whiteSpace: 'pre-line', flex: 1 }}>{error}</span>
             </div>
           )}
+          </form>
+        </div>
 
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            marginTop: '20px',
-            paddingBottom: isMobile ? 'calc(20px + env(safe-area-inset-bottom))' : '0'
-          }}>
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: '14px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                backgroundColor: 'white',
-                color: '#333',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.5 : 1,
-                touchAction: 'manipulation',
-                minHeight: '52px',
-              }}
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              disabled={loading || conflictStatus === 'conflict'}
-              style={{
-                flex: 1,
-                padding: '14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: (loading || conflictStatus === 'conflict') ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-                color: 'white',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: (loading || conflictStatus === 'conflict') ? 'not-allowed' : 'pointer',
-                touchAction: 'manipulation',
-                minHeight: '52px',
-              }}
-            >
-              {loading ? '處理中...' : '確認新增'}
-            </button>
-          </div>
-        </form>
-        {isMobile && (
-          <div style={{ height: '80px' }} />
-        )}
+        {/* 按鈕欄 - Sticky 底部 */}
+        <div style={{
+          padding: isMobile ? '12px 20px' : '16px 20px',
+          borderTop: '1px solid #e0e0e0',
+          position: 'sticky',
+          bottom: 0,
+          background: 'white',
+          zIndex: 1,
+          display: 'flex',
+          gap: '12px',
+          paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom))' : '16px',
+        }}>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: isMobile ? '14px' : '12px',
+              borderRadius: '8px',
+              border: '1px solid #ccc',
+              backgroundColor: 'white',
+              color: '#333',
+              fontSize: isMobile ? '16px' : '15px',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.5 : 1,
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+            }}
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            form="new-booking-form"
+            disabled={loading || conflictStatus === 'conflict'}
+            style={{
+              flex: 1,
+              padding: isMobile ? '14px' : '12px',
+              borderRadius: '8px',
+              border: 'none',
+              background: (loading || conflictStatus === 'conflict') ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+              color: 'white',
+              fontSize: isMobile ? '16px' : '15px',
+              fontWeight: '600',
+              cursor: (loading || conflictStatus === 'conflict') ? 'not-allowed' : 'pointer',
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
+            {loading ? (
+              <>
+                <span style={{ 
+                  display: 'inline-block',
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                }} />
+                處理中...
+              </>
+            ) : '✅ 確認新增'}
+          </button>
+        </div>
       </div>
     </div>
   )

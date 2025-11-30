@@ -36,6 +36,16 @@ export function RepeatBookingDialog({
   const toast = useToast()
   const { checkConflict } = useBookingConflict()
 
+  // 防止背景滾動
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = ''
+      }
+    }
+  }, [isOpen])
+
   // 重複預約設定
   const [repeatMode, setRepeatMode] = useState<'count' | 'endDate'>('count')
   const [repeatCount, setRepeatCount] = useState(8)
@@ -142,6 +152,12 @@ export function RepeatBookingDialog({
     e.preventDefault()
     setError('')
 
+    // 防止重複提交（最優先檢查）
+    if (loading) {
+      console.log('提交進行中，忽略重複請求')
+      return
+    }
+
     // ✅ 檢查船隻是否已選擇
     if (!selectedBoatId || selectedBoatId === 0) {
       setError('請選擇船隻')
@@ -166,6 +182,7 @@ export function RepeatBookingDialog({
       return
     }
 
+    // 立即設置 loading 防止重複點擊
     setLoading(true)
 
     try {
@@ -348,30 +365,73 @@ export function RepeatBookingDialog({
         bottom: 0,
         background: 'rgba(0, 0, 0, 0.5)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: isMobile ? 'flex-end' : 'center',
         justifyContent: 'center',
         zIndex: 1000,
-        padding: isMobile ? '10px' : '20px',
+        padding: isMobile ? '0' : '20px',
+        overflowY: isMobile ? 'hidden' : 'auto',
       }}
-      onClick={handleClose}
+      onClick={loading ? undefined : handleClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'white',
-          borderRadius: '12px',
+          borderRadius: isMobile ? '16px 16px 0 0' : '12px',
           width: '100%',
           maxWidth: '600px',
-          maxHeight: '90vh',
-          overflow: 'auto',
-          padding: isMobile ? '20px' : '30px',
+          maxHeight: isMobile ? '95vh' : '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
         }}
       >
-        <h2 style={{ marginTop: 0, marginBottom: '20px', fontSize: '24px', fontWeight: 'bold' }}>
-          📅 重複預約
-        </h2>
+        {/* 標題欄 - Sticky */}
+        <div style={{
+          padding: isMobile ? '20px 20px 16px' : '24px 30px 20px',
+          borderBottom: '1px solid #e0e0e0',
+          position: 'sticky',
+          top: 0,
+          background: 'white',
+          zIndex: 1,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <h2 style={{ 
+            margin: 0, 
+            fontSize: isMobile ? '20px' : '24px', 
+            fontWeight: 'bold',
+          }}>
+            📅 重複預約
+          </h2>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={loading}
+            style={{
+              border: 'none',
+              background: 'none',
+              fontSize: '28px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              color: '#666',
+              padding: '0 8px',
+              opacity: loading ? 0.5 : 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit}>
+        {/* 內容區域 - Scrollable */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: isMobile ? '20px' : '30px',
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          <form onSubmit={handleSubmit} id="repeat-booking-form">
           {/* 會員選擇 */}
           <MemberSelector
             members={members}
@@ -568,47 +628,79 @@ export function RepeatBookingDialog({
               ⚠️ {error}
             </div>
           )}
+          </form>
+        </div>
 
-          {/* 按鈕 */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: '14px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                backgroundColor: 'white',
-                color: '#333',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.5 : 1,
-              }}
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: '14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-                color: 'white',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {loading ? '建立中...' : `確認建立 ${previewDates.length}+ 個預約`}
-            </button>
-          </div>
-        </form>
+        {/* 按鈕欄 - Sticky 底部 */}
+        <div style={{
+          padding: isMobile ? '12px 20px' : '16px 30px',
+          borderTop: '1px solid #e0e0e0',
+          position: 'sticky',
+          bottom: 0,
+          background: 'white',
+          zIndex: 1,
+          display: 'flex',
+          gap: '12px',
+          paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom))' : '16px',
+        }}>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: isMobile ? '14px' : '12px',
+              borderRadius: '8px',
+              border: '1px solid #ccc',
+              backgroundColor: 'white',
+              color: '#333',
+              fontSize: isMobile ? '16px' : '15px',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.5 : 1,
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+            }}
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            form="repeat-booking-form"
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: isMobile ? '14px' : '12px',
+              borderRadius: '8px',
+              border: 'none',
+              background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+              color: 'white',
+              fontSize: isMobile ? '16px' : '15px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
+            {loading ? (
+              <>
+                <span style={{ 
+                  display: 'inline-block',
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                }} />
+                建立中...
+              </>
+            ) : `✅ 確認建立 ${previewDates.length}+ 個預約`}
+          </button>
+        </div>
       </div>
     </div>
   )

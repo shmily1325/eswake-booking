@@ -33,6 +33,16 @@ export function EditBookingDialog({
   // 刪除狀態 - 獨立於 loading，防止干擾
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // 防止背景滾動
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = ''
+      }
+    }
+  }, [isOpen])
+
   // 複製功能狀態
   const [showCopyDialog, setShowCopyDialog] = useState(false)
   const [copyToDate, setCopyToDate] = useState('')
@@ -194,6 +204,12 @@ export function EditBookingDialog({
     e.preventDefault()
     setError('')
 
+    // 防止重複提交（最優先檢查）
+    if (loading) {
+      console.log('更新進行中，忽略重複請求')
+      return
+    }
+
     // 安全檢查：確保 booking 和 booking.id 存在
     if (!booking || !booking.id) {
       setError('預約資料不完整，無法更新')
@@ -219,11 +235,8 @@ export function EditBookingDialog({
       return
     }
 
-    // 防止重複提交
-    if (loading) {
-      console.log('更新進行中，忽略重複請求')
-      return
-    }
+    // 立即設置 loading 防止重複點擊
+    setLoading(true)
 
     try {
       console.log('開始更新預約，ID:', booking.id)
@@ -403,12 +416,11 @@ export function EditBookingDialog({
 
           if (!confirm(confirmMessage)) {
             console.log('用戶取消修改')
+            setLoading(false) // 重置 loading 狀態
             return
           }
 
           console.log('用戶確認修改，清除排班和回報記錄...')
-          // 用戶確認後才開始 loading
-          setLoading(true)
 
           // 刪除排班和回報記錄
           await Promise.all([
@@ -416,13 +428,7 @@ export function EditBookingDialog({
             supabase.from('coach_reports').delete().eq('booking_id', booking.id),
             supabase.from('booking_participants').delete().eq('booking_id', booking.id).eq('is_deleted', false)
           ])
-        } else {
-          // 沒有需要確認的記錄，直接開始 loading
-          setLoading(true)
         }
-      } else {
-        // 沒有修改關鍵欄位，直接開始 loading
-        setLoading(true)
       }
 
       // 如果改為不需要駕駛，靜默刪除司機排班
@@ -832,30 +838,77 @@ export function EditBookingDialog({
         bottom: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: isMobile ? 'flex-end' : 'center',
         justifyContent: 'center',
         zIndex: 1000,
-        padding: '16px',
-        overflowY: 'auto',
+        padding: isMobile ? '0' : '16px',
+        overflowY: isMobile ? 'hidden' : 'auto',
       }}
-      onClick={handleClose}
+      onClick={loading || isDeleting ? undefined : handleClose}
     >
       <div
         style={{
           backgroundColor: 'white',
-          padding: '20px',
-          borderRadius: '12px',
+          borderRadius: isMobile ? '16px 16px 0 0' : '12px',
           width: '100%',
           maxWidth: '500px',
           color: '#000',
-          margin: 'auto',
+          margin: isMobile ? 'auto 0 0 0' : 'auto',
           position: 'relative',
-          maxHeight: '90vh',
-          overflowY: 'auto',
+          maxHeight: isMobile ? '95vh' : '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <form onSubmit={handleUpdate}>
+        {/* 標題欄 - Sticky */}
+        <div style={{
+          padding: isMobile ? '20px 20px 16px' : '20px',
+          borderBottom: '1px solid #e0e0e0',
+          position: 'sticky',
+          top: 0,
+          background: 'white',
+          zIndex: 1,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <h2 style={{ 
+            margin: 0, 
+            fontSize: isMobile ? '18px' : '20px', 
+            fontWeight: 'bold',
+            color: '#000',
+          }}>
+            ✏️ 修改預約
+          </h2>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={loading || isDeleting}
+            style={{
+              border: 'none',
+              background: 'none',
+              fontSize: '28px',
+              cursor: (loading || isDeleting) ? 'not-allowed' : 'pointer',
+              color: '#666',
+              padding: '0 8px',
+              opacity: (loading || isDeleting) ? 0.5 : 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* 內容區域 - Scrollable */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: isMobile ? '20px' : '20px',
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          <form onSubmit={handleUpdate} id="edit-booking-form">
           {/* 預約人選擇（支援多會員選擇或手動輸入） */}
           <div style={{ marginBottom: '18px', position: 'relative' }}>
             <label style={{
@@ -1577,115 +1630,135 @@ export function EditBookingDialog({
               <span style={{ whiteSpace: 'pre-line', flex: 1 }}>{error}</span>
             </div>
           )}
+          </form>
+        </div>
 
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            marginTop: '20px',
-            position: 'relative',
-            zIndex: 10,
-            flexWrap: 'wrap',
-            paddingBottom: isMobile ? 'calc(20px + env(safe-area-inset-bottom))' : '0'
-          }}>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                handleDelete()
-              }}
-              disabled={loading}
-              style={{
-                padding: '14px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: loading ? '#ccc' : '#dc3545',
-                color: 'white',
-                fontSize: '15px',
-                fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                touchAction: 'manipulation',
-                minWidth: '70px',
-                position: 'relative',
-                zIndex: 10,
-              }}
-            >
-              刪除
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                setCopyToTime(startTime) // 預設使用原本的時間
-                setCopyFilledBy(filledBy) // 預設使用目前的填表人
-                setShowCopyDialog(true)
-              }}
-              disabled={loading}
-              style={{
-                padding: '14px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: loading ? '#ccc' : '#ff9800',
-                color: 'white',
-                fontSize: '15px',
-                fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                touchAction: 'manipulation',
-                minWidth: '70px',
-                position: 'relative',
-                zIndex: 10,
-              }}
-              title='複製此預約到其他日期'
-            >
-              📋 複製
-            </button>
+        {/* 按鈕欄 - Sticky 底部 */}
+        <div style={{
+          padding: isMobile ? '12px 20px' : '16px 20px',
+          borderTop: '1px solid #e0e0e0',
+          position: 'sticky',
+          bottom: 0,
+          background: 'white',
+          zIndex: 1,
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap',
+          paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom))' : '16px',
+        }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              handleDelete()
+            }}
+            disabled={loading}
+            style={{
+              padding: isMobile ? '14px 12px' : '12px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: loading ? '#ccc' : '#dc3545',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+              flex: isMobile ? '0 0 auto' : '0',
+            }}
+          >
+            🗑️ 刪除
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setCopyToTime(startTime)
+              setCopyFilledBy(filledBy)
+              setShowCopyDialog(true)
+            }}
+            disabled={loading}
+            style={{
+              padding: isMobile ? '14px 12px' : '12px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: loading ? '#ccc' : '#ff9800',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+              flex: isMobile ? '0 0 auto' : '0',
+            }}
+            title='複製此預約到其他日期'
+          >
+            📋 複製
+          </button>
+          <div style={{ flex: 1, minWidth: isMobile ? '100%' : 'auto', display: 'flex', gap: '8px' }}>
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
               style={{
                 flex: 1,
-                padding: '14px',
+                padding: isMobile ? '14px' : '12px',
                 borderRadius: '8px',
                 border: '1px solid #ccc',
                 backgroundColor: 'white',
                 color: '#333',
-                fontSize: '16px',
+                fontSize: isMobile ? '16px' : '15px',
                 fontWeight: '500',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.5 : 1,
                 touchAction: 'manipulation',
-                minWidth: '80px',
+                minHeight: isMobile ? '48px' : '44px',
               }}
             >
               取消
             </button>
             <button
               type="submit"
+              form="edit-booking-form"
               disabled={loading || conflictStatus === 'conflict'}
               style={{
                 flex: 1,
-                padding: '14px',
+                padding: isMobile ? '14px' : '12px',
                 borderRadius: '8px',
                 border: 'none',
                 background: (loading || conflictStatus === 'conflict') ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
                 color: 'white',
-                fontSize: '16px',
-                fontWeight: '500',
+                fontSize: isMobile ? '16px' : '15px',
+                fontWeight: '600',
                 cursor: (loading || conflictStatus === 'conflict') ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
-                minWidth: '80px',
+                minHeight: isMobile ? '48px' : '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
               }}
             >
-              {loading ? '處理中...' : '確認更新'}
+              {loading ? (
+                <>
+                  <span style={{ 
+                    display: 'inline-block',
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderTop: '2px solid white',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite',
+                  }} />
+                  處理中...
+                </>
+              ) : '✅ 確認更新'}
             </button>
           </div>
-        </form>
+        </div>
       </div>
-      {isMobile && (
-        <div style={{ height: '80px' }} />
-      )}
 
       {/* 複製預約對話框 */}
       {showCopyDialog && (
