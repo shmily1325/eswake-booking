@@ -49,16 +49,9 @@ function parseDetails(details: string): ParsedDetails {
   const durationMatch = details.match(/(\d+)\s*分/)
   if (durationMatch) info.duration = `${durationMatch[1]}分`
   
-  // 3. 提取教練（XX教練）- 支援中文、英文、中英混合名稱
-  const coachMatches = details.match(/([\u4e00-\u9fa5A-Za-z0-9]+(?:\s+[\u4e00-\u9fa5A-Za-z0-9]+)*)\s*(?:教練|老師)/g)
-  if (coachMatches) {
-    const coaches = coachMatches.map(m => m.replace(/教練|老師/g, '').trim())
-    info.coach = coaches.join('/')
-  }
-  
   if (isCreate) {
-    // 新增預約：日期 時間 時長 船隻 會員 | 教練
-    // 新格式使用 | 分隔會員和教練，舊格式沒有 |
+    // 新增預約：日期 時間 時長 船隻 會員 | 教練（新格式）
+    //         日期 時間 時長 船隻 會員 教練（舊格式）
     let text = details
       .replace(/^新增預約[:：]\s*/, '')
       .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
@@ -73,8 +66,16 @@ function parseDetails(details: string): ParsedDetails {
     if (pipeIndex > 0) {
       // 新格式：船隻 會員 | 教練
       const beforePipe = text.substring(0, pipeIndex).trim()
-      // 教練部分已經在前面提取了，不需要再處理
+      const afterPipe = text.substring(pipeIndex + 3).trim() // +3 跳過 " | "
       
+      // 提取教練（從 | 後面）
+      const coachMatches = afterPipe.match(/([\u4e00-\u9fa5A-Za-z0-9\s]+?)(?:教練|老師)/g)
+      if (coachMatches) {
+        const coaches = coachMatches.map(m => m.replace(/教練|老師/g, '').trim())
+        info.coach = coaches.join('/')
+      }
+      
+      // 解析船隻和會員
       const firstSpaceIndex = beforePipe.indexOf(' ')
       if (firstSpaceIndex > 0) {
         info.boat = beforePipe.substring(0, firstSpaceIndex).trim()
@@ -83,9 +84,20 @@ function parseDetails(details: string): ParsedDetails {
         info.boat = beforePipe
       }
     } else {
-      // 舊格式：船隻 會員 教練（需要移除教練部分）
-      text = text.replace(/([\u4e00-\u9fa5A-Za-z0-9]+(?:\s+[\u4e00-\u9fa5A-Za-z0-9]+)*)\s*(?:教練|老師)/g, '').trim()
+      // 舊格式：從右往左解析（教練在最後）
+      // 只匹配緊鄰"教練"/"老師"前的連續字符（不含空格）
+      // 例如："粉紅 Ivan 木馬教練" → 只匹配 "木馬"
+      const coachPattern = /([\u4e00-\u9fa5A-Za-z0-9]+)(?:教練|老師)/g
+      const coachMatches = text.match(coachPattern)
+      if (coachMatches) {
+        const coaches = coachMatches.map(m => m.replace(/教練|老師/g, '').trim())
+        info.coach = coaches.join('/')
+        
+        // 移除所有教練部分（只移除教練名+教練/老師，不移除前面的空格和其他內容）
+        text = text.replace(/([\u4e00-\u9fa5A-Za-z0-9]+)(?:教練|老師)/g, '').trim()
+      }
       
+      // 剩下的格式：船隻 會員
       const firstSpaceIndex = text.indexOf(' ')
       if (firstSpaceIndex > 0) {
         info.boat = text.substring(0, firstSpaceIndex).trim()
