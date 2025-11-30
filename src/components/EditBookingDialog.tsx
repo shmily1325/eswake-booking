@@ -906,6 +906,7 @@ export function EditBookingDialog({
           flex: 1,
           overflowY: 'auto',
           padding: isMobile ? '20px' : '20px',
+          paddingBottom: isMobile ? '120px' : '20px',
           WebkitOverflowScrolling: 'touch',
         }}>
           <form onSubmit={handleUpdate} id="edit-booking-form">
@@ -1633,18 +1634,16 @@ export function EditBookingDialog({
           </form>
         </div>
 
-        {/* 按鈕欄 - Sticky 底部 */}
+        {/* 按鈕欄 - 固定底部 */}
         <div style={{
           padding: isMobile ? '12px 20px' : '16px 20px',
           borderTop: '1px solid #e0e0e0',
-          position: 'sticky',
-          bottom: 0,
           background: 'white',
-          zIndex: 1,
           display: 'flex',
           gap: '8px',
           flexWrap: 'wrap',
           paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom))' : '16px',
+          flexShrink: 0,
         }}>
           <button
             type="button"

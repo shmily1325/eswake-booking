@@ -429,6 +429,7 @@ export function RepeatBookingDialog({
           flex: 1,
           overflowY: 'auto',
           padding: isMobile ? '20px' : '30px',
+          paddingBottom: isMobile ? '120px' : '30px',
           WebkitOverflowScrolling: 'touch',
         }}>
           <form onSubmit={handleSubmit} id="repeat-booking-form">
@@ -631,17 +632,15 @@ export function RepeatBookingDialog({
           </form>
         </div>
 
-        {/* 按鈕欄 - Sticky 底部 */}
+        {/* 按鈕欄 - 固定底部 */}
         <div style={{
           padding: isMobile ? '12px 20px' : '16px 30px',
           borderTop: '1px solid #e0e0e0',
-          position: 'sticky',
-          bottom: 0,
           background: 'white',
-          zIndex: 1,
           display: 'flex',
           gap: '12px',
           paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom))' : '16px',
+          flexShrink: 0,
         }}>
           <button
             type="button"
