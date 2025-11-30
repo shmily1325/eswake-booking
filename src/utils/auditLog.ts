@@ -52,11 +52,12 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
   const [, month, day] = dateStr.split('-')
   const formattedTime = `${month}/${day} ${timeStr}`
 
-  // 格式：11/20 14:45 60分 G23 小楊 小胖教練 (填表人: xxx)
+  // 格式：11/20 14:45 60分 G23 小楊 | 小胖教練、Ivan教練 (填表人: xxx)
+  // 使用 | 分隔會員和教練，避免解析混亂
   let details = `${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
   
   if (coachNames.length > 0) {
-    details += ` ${coachNames.map(name => `${name}教練`).join('、')}`
+    details += ` | ${coachNames.map(name => `${name}教練`).join('、')}`
   }
   
   // 加上填表人資訊
@@ -147,6 +148,7 @@ export async function logBookingDeletion(params: DeleteBookingLogParams) {
   const formattedTime = `${month}/${day} ${timeStr}`
   
   // 格式：11/20 14:45 60分 G23 小楊 (填表人: xxx)
+  // 刪除記錄不包含教練資訊，所以不需要 | 分隔符
   let details = `刪除預約：${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
   
   // 加上填表人資訊

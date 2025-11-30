@@ -30,6 +30,8 @@ interface ParsedDetails {
  * - 新增預約：「日期 時間 時長 船隻 會員 教練」
  * - 修改預約：「日期 時間 船隻 · 變更 · 欄位: 舊值 → 新值」
  * - 刪除預約：「日期 時間 船隻 會員」
+ * 
+ * 教練名稱支援：純中文、純英文、中英混合（如：阿靜教練、Ivan教練、水晶 ED教練）
  */
 function parseDetails(details: string): ParsedDetails {
   const info: ParsedDetails = { rawText: details }
@@ -47,34 +49,50 @@ function parseDetails(details: string): ParsedDetails {
   const durationMatch = details.match(/(\d+)\s*分/)
   if (durationMatch) info.duration = `${durationMatch[1]}分`
   
-  // 3. 提取教練（XX教練）
-  const coachMatches = details.match(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g)
+  // 3. 提取教練（XX教練）- 支援中文、英文、中英混合名稱
+  const coachMatches = details.match(/([\u4e00-\u9fa5A-Za-z0-9]+(?:\s+[\u4e00-\u9fa5A-Za-z0-9]+)*)\s*(?:教練|老師)/g)
   if (coachMatches) {
     const coaches = coachMatches.map(m => m.replace(/教練|老師/g, '').trim())
     info.coach = coaches.join('/')
   }
   
   if (isCreate) {
-    // 新增預約：日期 時間 時長 船隻 會員 教練
-    let remaining = details
+    // 新增預約：日期 時間 時長 船隻 會員 | 教練
+    // 新格式使用 | 分隔會員和教練，舊格式沒有 |
+    let text = details
       .replace(/^新增預約[:：]\s*/, '')
       .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
       .replace(/\d+\s*分/, '')
-      .replace(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g, '')
       .trim()
     
     // 先移除填表人/課堂人部分（如果有）
-    remaining = remaining.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
+    text = text.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
     
-    // 分割：船隻 會員1, 會員2
-    // 第一個空格前是船隻，之後都是會員名（可能用逗號或頓號分隔）
-    const firstSpaceIndex = remaining.indexOf(' ')
-    if (firstSpaceIndex > 0) {
-      info.boat = remaining.substring(0, firstSpaceIndex).trim()
-      info.member = remaining.substring(firstSpaceIndex + 1).trim()
-    } else if (remaining.length > 0) {
-      // 如果沒有空格，整個都是船隻
-      info.boat = remaining
+    // 檢查是否有 | 分隔符（新格式）
+    const pipeIndex = text.indexOf(' | ')
+    if (pipeIndex > 0) {
+      // 新格式：船隻 會員 | 教練
+      const beforePipe = text.substring(0, pipeIndex).trim()
+      // 教練部分已經在前面提取了，不需要再處理
+      
+      const firstSpaceIndex = beforePipe.indexOf(' ')
+      if (firstSpaceIndex > 0) {
+        info.boat = beforePipe.substring(0, firstSpaceIndex).trim()
+        info.member = beforePipe.substring(firstSpaceIndex + 1).trim()
+      } else {
+        info.boat = beforePipe
+      }
+    } else {
+      // 舊格式：船隻 會員 教練（需要移除教練部分）
+      text = text.replace(/([\u4e00-\u9fa5A-Za-z0-9]+(?:\s+[\u4e00-\u9fa5A-Za-z0-9]+)*)\s*(?:教練|老師)/g, '').trim()
+      
+      const firstSpaceIndex = text.indexOf(' ')
+      if (firstSpaceIndex > 0) {
+        info.boat = text.substring(0, firstSpaceIndex).trim()
+        info.member = text.substring(firstSpaceIndex + 1).trim()
+      } else if (text.length > 0) {
+        info.boat = text
+      }
     }
     
   } else if (isUpdate) {
@@ -95,25 +113,27 @@ function parseDetails(details: string): ParsedDetails {
     
   } else if (isDelete) {
     // 刪除預約：日期 時間 船隻 會員
-    let remaining = details
+    let text = details
       .replace(/^刪除預約[:：]\s*/, '')
       .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
       .replace(/\d+\s*分/, '')
-      .replace(/([\u4e00-\u9fa5]{2,5}|[A-Z][a-z]+)\s*(?:教練|老師)/g, '')
       .trim()
     
     // 先移除填表人/課堂人部分（如果有）
-    remaining = remaining.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
+    text = text.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
+    
+    // 先提取並移除所有教練
+    text = text.replace(/([\u4e00-\u9fa5A-Za-z0-9]+(?:\s+[\u4e00-\u9fa5A-Za-z0-9]+)*)\s*(?:教練|老師)/g, '').trim()
     
     // 分割：船隻 會員1, 會員2
     // 第一個空格前是船隻，之後都是會員名（可能用逗號或頓號分隔）
-    const firstSpaceIndex = remaining.indexOf(' ')
+    const firstSpaceIndex = text.indexOf(' ')
     if (firstSpaceIndex > 0) {
-      info.boat = remaining.substring(0, firstSpaceIndex).trim()
-      info.member = remaining.substring(firstSpaceIndex + 1).trim()
-    } else if (remaining.length > 0) {
+      info.boat = text.substring(0, firstSpaceIndex).trim()
+      info.member = text.substring(firstSpaceIndex + 1).trim()
+    } else if (text.length > 0) {
       // 如果沒有空格，整個都是船隻
-      info.boat = remaining
+      info.boat = text
     }
   }
   
@@ -149,13 +169,13 @@ function formatDateHeader(dateStr: string): string {
     const isToday = date.toDateString() === today.toDateString()
     const isYesterday = date.toDateString() === yesterday.toDateString()
     
-    if (isToday) return `今天 ${month}/${day}`
-    if (isYesterday) return `昨天 ${month}/${day}`
+    if (isToday) return `今天 ${year}/${month}/${day}`
+    if (isYesterday) return `昨天 ${year}/${month}/${day}`
     
     const weekdays = ['日', '一', '二', '三', '四', '五', '六']
     const weekday = weekdays[date.getDay()]
     
-    return `${month}/${day} (${weekday})`
+    return `${year}/${month}/${day} (${weekday})`
   } catch {
     return dateStr
   }
@@ -275,9 +295,9 @@ export function AuditLog() {
     try {
       const datetime = dateString.substring(0, 16)
       const [dateStr, timeStr] = datetime.split('T')
-      const [, month, day] = dateStr.split('-')
+      const [year, month, day] = dateStr.split('-')
       
-      return `${month}/${day} ${timeStr}`
+      return `${year}/${month}/${day} ${timeStr}`
     } catch (error) {
       console.error('Error formatting date:', error)
       return dateString

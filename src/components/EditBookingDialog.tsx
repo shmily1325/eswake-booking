@@ -335,11 +335,7 @@ export function EditBookingDialog({
             .eq('booking_id', booking.id),
           supabase
             .from('booking_participants')
-            .select(`
-              id,
-              participant_name,
-              transactions(count)
-            `)
+            .select('id, participant_name')
             .eq('booking_id', booking.id)
             .eq('is_deleted', false)
         ])
@@ -349,13 +345,22 @@ export function EditBookingDialog({
         const hasParticipants = (participantsResult.data || []).length > 0
         const hasAnyReports = hasDriverAssignment || hasCoachReports || hasParticipants
 
-        // 檢查有交易記錄的參與者
-        const participantsWithTransactions = hasParticipants
-          ? participantsResult.data!.filter((p: any) => {
-            const txCount = p.transactions?.[0]?.count || 0
-            return txCount > 0
-          })
-          : []
+        // 檢查有交易記錄的參與者（單獨查詢）
+        let participantsWithTransactions: any[] = []
+        if (hasParticipants) {
+          const participantIds = participantsResult.data!.map((p: any) => p.id)
+          const { data: transactionsData } = await supabase
+            .from('transactions')
+            .select('id, booking_participant_id')
+            .in('booking_participant_id', participantIds)
+          
+          if (transactionsData && transactionsData.length > 0) {
+            const participantIdsWithTx = new Set(transactionsData.map(t => t.booking_participant_id))
+            participantsWithTransactions = participantsResult.data!.filter((p: any) => 
+              participantIdsWithTx.has(p.id)
+            )
+          }
+        }
 
         // 如果有任何排班或回報記錄，需要警告用戶
         if (hasAnyReports) {
@@ -531,11 +536,7 @@ export function EditBookingDialog({
           .eq('booking_id', booking.id),
         supabase
           .from('booking_participants')
-          .select(`
-            id,
-            participant_name,
-            transactions(count)
-          `)
+          .select('id, participant_name')
           .eq('booking_id', booking.id)
           .eq('is_deleted', false),
         supabase
@@ -569,13 +570,22 @@ export function EditBookingDialog({
       const hasDriverReports = (reportsResult.count || 0) > 0
       const hasReports = hasDriverAssignment || hasParticipants || hasDriverReports
 
-      // 檢查有交易記錄的參與者
-      const participantsWithTransactions = hasParticipants
-        ? participantsResult.data!.filter((p: any) => {
-          const txCount = p.transactions?.[0]?.count || 0
-          return txCount > 0
-        })
-        : []
+      // 檢查有交易記錄的參與者（單獨查詢）
+      let participantsWithTransactions: any[] = []
+      if (hasParticipants) {
+        const participantIds = participantsResult.data!.map((p: any) => p.id)
+        const { data: transactionsData } = await supabase
+          .from('transactions')
+          .select('id, booking_participant_id')
+          .in('booking_participant_id', participantIds)
+        
+        if (transactionsData && transactionsData.length > 0) {
+          const participantIdsWithTx = new Set(transactionsData.map(t => t.booking_participant_id))
+          participantsWithTransactions = participantsResult.data!.filter((p: any) => 
+            participantIdsWithTx.has(p.id)
+          )
+        }
+      }
 
       // 根據是否有回報給予不同的提示
       let confirmMessage = '確定要刪除這個預約嗎？'
