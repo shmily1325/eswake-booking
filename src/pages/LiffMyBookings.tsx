@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import liff from '@line/liff'
 import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 import { useToast } from '../components/ui'
+import { triggerHaptic } from '../utils/haptic'
 
 interface Booking {
   id: number
@@ -123,6 +124,7 @@ export function LiffMyBookings() {
 
   const handleCancelBooking = async (bookingId: number) => {
     try {
+      triggerHaptic('warning')
       const { error } = await supabase
         .from('bookings')
         .delete()
@@ -130,6 +132,7 @@ export function LiffMyBookings() {
 
       if (error) throw error
 
+      triggerHaptic('success')
       toast.success('預約已取消')
       // 重新載入預約列表
       if (member) {
@@ -137,6 +140,7 @@ export function LiffMyBookings() {
       }
     } catch (err: any) {
       console.error('取消預約失敗:', err)
+      triggerHaptic('error')
       toast.error('取消預約失敗：' + err.message)
     }
   }
@@ -249,6 +253,7 @@ export function LiffMyBookings() {
 
   const handleCategoryClick = (category: string) => {
     if (!member) return
+    triggerHaptic('light')
     setSelectedCategory(category)
     setShowTransactions(true)
     loadTransactions(member.id, category)
@@ -257,6 +262,7 @@ export function LiffMyBookings() {
   const handleBinding = async () => {
     if (!phone || !lineUserId) return
 
+    triggerHaptic('medium')
     setBinding(true)
     try {
       // 清理電話號碼：移除所有非數字字符
@@ -309,12 +315,14 @@ export function LiffMyBookings() {
         })
 
       if (bindingError) {
+        triggerHaptic('error')
         toast.error('綁定失敗：' + bindingError.message)
         setBinding(false)
         return
       }
 
       // 綁定成功
+      triggerHaptic('success')
       setMember(memberData)
       setShowBindingForm(false)
       await loadBookings(memberData.id)
@@ -382,14 +390,14 @@ export function LiffMyBookings() {
       }}>
         {/* 頭部骨架屏 */}
         <div style={{ marginBottom: '20px' }}>
-          <div style={{ 
+          <div className="skeleton-pulse" style={{ 
             width: '150px', 
             height: '28px', 
             background: '#e0e0e0', 
             borderRadius: '6px',
             marginBottom: '12px'
           }} />
-          <div style={{ 
+          <div className="skeleton-pulse" style={{ 
             width: '100%', 
             height: '48px', 
             background: 'white', 
@@ -402,6 +410,7 @@ export function LiffMyBookings() {
         {Array.from({ length: 5 }).map((_, i) => (
           <div 
             key={i}
+            className="skeleton-pulse"
             style={{
               background: 'white',
               padding: '16px',
@@ -411,11 +420,11 @@ export function LiffMyBookings() {
             }}
           >
             <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-              <div style={{ width: '60px', height: '18px', background: '#e0e0e0', borderRadius: '4px' }} />
-              <div style={{ flex: 1, height: '18px', background: '#e0e0e0', borderRadius: '4px' }} />
+              <div className="skeleton-pulse" style={{ width: '60px', height: '18px', background: '#e0e0e0', borderRadius: '4px' }} />
+              <div className="skeleton-pulse" style={{ flex: 1, height: '18px', background: '#e0e0e0', borderRadius: '4px' }} />
             </div>
-            <div style={{ width: '80%', height: '16px', background: '#f0f0f0', borderRadius: '4px', marginBottom: '8px' }} />
-            <div style={{ width: '60%', height: '14px', background: '#f0f0f0', borderRadius: '4px' }} />
+            <div className="skeleton-pulse" style={{ width: '80%', height: '16px', background: '#f0f0f0', borderRadius: '4px', marginBottom: '8px' }} />
+            <div className="skeleton-pulse" style={{ width: '60%', height: '14px', background: '#f0f0f0', borderRadius: '4px' }} />
           </div>
         ))}
       </div>
@@ -577,6 +586,7 @@ export function LiffMyBookings() {
       <div style={{
         background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
         padding: '20px',
+        paddingTop: 'calc(20px + var(--safe-area-inset-top, 0px))',
         color: 'white',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
@@ -617,11 +627,14 @@ export function LiffMyBookings() {
         background: 'white',
         borderBottom: '1px solid #e0e0e0',
         position: 'sticky',
-        top: 0,
+        top: 'var(--safe-area-inset-top, 0px)',
         zIndex: 10
       }}>
         <button
-          onClick={() => setActiveTab('bookings')}
+          onClick={() => {
+            triggerHaptic('light')
+            setActiveTab('bookings')
+          }}
           style={{
             flex: 1,
             padding: '16px',
@@ -638,7 +651,10 @@ export function LiffMyBookings() {
           📅 我的預約
         </button>
         <button
-          onClick={() => setActiveTab('balance')}
+          onClick={() => {
+            triggerHaptic('light')
+            setActiveTab('balance')
+          }}
           style={{
             flex: 1,
             padding: '16px',
@@ -655,7 +671,10 @@ export function LiffMyBookings() {
           💰 查儲值
         </button>
         <button
-          onClick={() => setActiveTab('cancel')}
+          onClick={() => {
+            triggerHaptic('light')
+            setActiveTab('cancel')
+          }}
           style={{
             flex: 1,
             padding: '16px',
@@ -1270,6 +1289,7 @@ export function LiffMyBookings() {
       {/* Footer */}
       <div style={{
         padding: '20px',
+        paddingBottom: 'calc(20px + var(--safe-area-inset-bottom, 0px))',
         textAlign: 'center',
         color: '#999',
         fontSize: '12px'
@@ -1291,6 +1311,19 @@ export function LiffMyBookings() {
             to {
               transform: translateY(0);
             }
+          }
+
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.5;
+            }
+          }
+
+          .skeleton-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
           }
         `}
       </style>

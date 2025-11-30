@@ -200,6 +200,12 @@ export function EditBookingDialog({
       return
     }
 
+    // 檢查預約人是否填寫
+    if (!finalStudentName || !finalStudentName.trim()) {
+      setError('請填寫預約人姓名')
+      return
+    }
+
     // 檢查填表人是否填寫
     if (!filledBy.trim()) {
       setError('請填寫填表人姓名')
@@ -432,7 +438,9 @@ export function EditBookingDialog({
 
       // 檢查預約人變更
       if (booking.contact_name !== finalStudentName) {
-        changes.push(`預約人: ${booking.contact_name} → ${finalStudentName}`)
+        const oldName = booking.contact_name || '(無)'
+        const newName = finalStudentName || '(無)'
+        changes.push(`預約人: ${oldName} → ${newName}`)
       }
 
       // 檢查船變更

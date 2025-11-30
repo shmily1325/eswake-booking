@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { designSystem } from '../../styles/designSystem'
 import { toast as globalToast } from '../../utils/toast'
+import { useResponsive } from '../../hooks/useResponsive'
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info'
 
@@ -17,6 +18,7 @@ interface ToastProps {
 }
 
 const Toast: React.FC<ToastProps> = ({ message, onClose }) => {
+  const { isMobile } = useResponsive()
   const [isExiting, setIsExiting] = useState(false)
 
   useEffect(() => {
@@ -69,8 +71,8 @@ const Toast: React.FC<ToastProps> = ({ message, onClose }) => {
     borderRadius: designSystem.borderRadius.md,
     boxShadow: designSystem.shadows.elevation[6],
     marginBottom: designSystem.spacing.sm,
-    minWidth: '300px',
-    maxWidth: '500px',
+    minWidth: isMobile ? '280px' : '300px',
+    maxWidth: isMobile ? '90vw' : '500px',
     animation: isExiting ? 'slideOut 0.3s ease-out' : 'slideIn 0.3s ease-out',
     cursor: 'pointer',
   }
@@ -130,12 +132,22 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({
   onClose,
   position = 'top-right',
 }) => {
+  const { isMobile } = useResponsive()
+  
+  // 移动端默认使用顶部居中，桌面端使用传入的位置
+  const effectivePosition = isMobile ? 'top-center' : position
+  
   const positionStyles: Record<string, React.CSSProperties> = {
     'top-right': { top: '20px', right: '20px' },
     'top-left': { top: '20px', left: '20px' },
     'bottom-right': { bottom: '20px', right: '20px' },
     'bottom-left': { bottom: '20px', left: '20px' },
-    'top-center': { top: '20px', left: '50%', transform: 'translateX(-50%)' },
+    'top-center': { 
+      top: isMobile ? 'calc(20px + var(--safe-area-inset-top, 0px))' : '20px',
+      left: '50%', 
+      transform: 'translateX(-50%)',
+      alignItems: 'center'
+    },
   }
 
   const containerStyle: React.CSSProperties = {
@@ -143,7 +155,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({
     zIndex: designSystem.zIndex.notification,
     display: 'flex',
     flexDirection: 'column',
-    ...positionStyles[position],
+    ...positionStyles[effectivePosition],
   }
 
   if (messages.length === 0) return null

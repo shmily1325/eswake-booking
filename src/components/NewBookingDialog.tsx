@@ -140,14 +140,14 @@ export function NewBookingDialog({
       return
     }
 
-    if (!filledBy.trim()) {
-      setError('請填寫填表人姓名')
+    // 檢查預約人是否填寫（檢查最終的組合結果）
+    if (!finalStudentName || !finalStudentName.trim()) {
+      setError('請填寫預約人姓名')
       return
     }
 
-    // 檢查至少要有會員或手動輸入姓名
-    if (selectedMemberIds.length === 0 && manualNames.length === 0) {
-      setError('請選擇會員或輸入非會員姓名')
+    if (!filledBy.trim()) {
+      setError('請填寫填表人姓名')
       return
     }
 
