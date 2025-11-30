@@ -429,7 +429,6 @@ export function RepeatBookingDialog({
           flex: 1,
           overflowY: 'auto',
           padding: isMobile ? '20px' : '30px',
-          paddingBottom: isMobile ? '120px' : '30px',
           WebkitOverflowScrolling: 'touch',
         }}>
           <form onSubmit={handleSubmit} id="repeat-booking-form">
@@ -639,7 +638,7 @@ export function RepeatBookingDialog({
           background: 'white',
           display: 'flex',
           gap: '12px',
-          paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom))' : '16px',
+          paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : '16px',
           flexShrink: 0,
         }}>
           <button

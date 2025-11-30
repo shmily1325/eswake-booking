@@ -395,7 +395,6 @@ export function NewBookingDialog({
           flex: 1,
           overflowY: 'auto',
           padding: isMobile ? '20px' : '20px',
-          paddingBottom: isMobile ? '120px' : '20px',
           WebkitOverflowScrolling: 'touch',
         }}>
           <form onSubmit={handleSubmit} id="new-booking-form">
@@ -508,7 +507,7 @@ export function NewBookingDialog({
           background: 'white',
           display: 'flex',
           gap: '12px',
-          paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom))' : '16px',
+          paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : '16px',
           flexShrink: 0,
         }}>
           <button
