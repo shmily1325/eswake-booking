@@ -344,7 +344,7 @@ export function NewBookingDialog({
           maxWidth: '500px',
           color: '#000',
           margin: isMobile ? 'auto 0 0 0' : 'auto',
-          maxHeight: isMobile ? '95vh' : '90vh',
+          maxHeight: isMobile ? '80vh' : '90vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -507,7 +507,7 @@ export function NewBookingDialog({
           background: 'white',
           display: 'flex',
           gap: '12px',
-          paddingBottom: isMobile ? 'max(env(safe-area-inset-bottom), 60px)' : '16px',
+          paddingBottom: isMobile ? '16px' : '16px',
           flexShrink: 0,
         }}>
           <button

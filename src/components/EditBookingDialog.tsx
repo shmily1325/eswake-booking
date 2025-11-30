@@ -855,7 +855,7 @@ export function EditBookingDialog({
           color: '#000',
           margin: isMobile ? 'auto 0 0 0' : 'auto',
           position: 'relative',
-          maxHeight: isMobile ? '95vh' : '90vh',
+          maxHeight: isMobile ? '80vh' : '90vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -1641,7 +1641,7 @@ export function EditBookingDialog({
           display: 'flex',
           gap: '8px',
           flexWrap: 'wrap',
-          paddingBottom: isMobile ? 'max(env(safe-area-inset-bottom), 60px)' : '16px',
+          paddingBottom: isMobile ? '16px' : '16px',
           flexShrink: 0,
         }}>
           <button
