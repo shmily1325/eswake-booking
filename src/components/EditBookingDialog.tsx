@@ -906,6 +906,7 @@ export function EditBookingDialog({
           flex: 1,
           overflowY: 'auto',
           padding: isMobile ? '20px' : '20px',
+          paddingBottom: isMobile ? '80px' : '20px',
           WebkitOverflowScrolling: 'touch',
         }}>
           <form onSubmit={handleUpdate} id="edit-booking-form">
@@ -1641,7 +1642,7 @@ export function EditBookingDialog({
           display: 'flex',
           gap: '8px',
           flexWrap: 'wrap',
-          paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : '16px',
+          paddingBottom: isMobile ? 'calc(20px + env(safe-area-inset-bottom))' : '16px',
           flexShrink: 0,
         }}>
           <button
