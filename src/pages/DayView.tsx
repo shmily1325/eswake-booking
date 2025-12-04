@@ -455,10 +455,13 @@ export function DayView() {
       <div 
         style={{
           padding: isMobile ? '12px' : '20px',
-          minHeight: '100vh',
+          height: isMobile ? 'auto' : '100vh',
+          minHeight: isMobile ? '100vh' : 'auto',
           backgroundColor: '#f8f9fa',
           position: 'relative',
-          overflow: isMobile ? 'hidden' : 'visible',
+          overflow: 'hidden',
+          display: isMobile ? 'block' : 'flex',
+          flexDirection: isMobile ? undefined : 'column',
         }}
       >
         <div style={{
