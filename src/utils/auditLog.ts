@@ -5,6 +5,18 @@ import { supabase } from '../lib/supabase'
  * 統一管理所有操作的日誌記錄
  */
 
+/**
+ * 統一的時間格式化函數
+ * 格式化時間：2025-11-09T23:15:00 → 2025/11/09 23:15
+ * 包含年份以避免跨年度預約混淆
+ */
+function formatBookingTime(startTime: string): string {
+  const datetime = startTime.substring(0, 16) // 取到分鐘
+  const [dateStr, timeStr] = datetime.split('T')
+  const [year, month, day] = dateStr.split('-')
+  return `${year}/${month}/${day} ${timeStr}`
+}
+
 interface CreateBookingLogParams {
   userEmail: string
   studentName: string
@@ -46,13 +58,9 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
     filledBy
   } = params
 
-  // 格式化時間：2025-11-09T23:15:00 → 11/09 23:15
-  const datetime = startTime.substring(0, 16) // 取到分钟
-  const [dateStr, timeStr] = datetime.split('T')
-  const [, month, day] = dateStr.split('-')
-  const formattedTime = `${month}/${day} ${timeStr}`
+  const formattedTime = formatBookingTime(startTime)
 
-  // 格式：11/20 14:45 60分 G23 小楊 | 小胖教練、Ivan教練 (填表人: xxx)
+  // 格式：2025/11/20 14:45 60分 G23 小楊 | 小胖教練、Ivan教練 (填表人: xxx)
   // 使用 | 分隔會員和教練，避免解析混亂
   let details = `${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
   
@@ -97,13 +105,9 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
 export async function logBookingUpdate(params: UpdateBookingLogParams) {
   const { userEmail, studentName, startTime, changes, filledBy } = params
 
-  // 格式化時間：2025-11-09T23:15:00 → 11/09 23:15
-  const datetime = startTime.substring(0, 16)
-  const [dateStr, timeStr] = datetime.split('T')
-  const [, month, day] = dateStr.split('-')
-  const formattedTime = `${month}/${day} ${timeStr}`
+  const formattedTime = formatBookingTime(startTime)
 
-  // 格式：11/20 14:45 小楊，變更：... (填表人: xxx)
+  // 格式：2025/11/20 14:45 小楊，變更：... (填表人: xxx)
   let details = `修改預約：${formattedTime} ${studentName}，變更：${changes.join('、')}`
   
   // 加上填表人資訊
@@ -141,13 +145,9 @@ export async function logBookingUpdate(params: UpdateBookingLogParams) {
 export async function logBookingDeletion(params: DeleteBookingLogParams) {
   const { userEmail, studentName, boatName, startTime, durationMin, filledBy } = params
 
-  // 格式化時間顯示
-  const datetime = startTime.substring(0, 16)
-  const [dateStr, timeStr] = datetime.split('T')
-  const [, month, day] = dateStr.split('-')
-  const formattedTime = `${month}/${day} ${timeStr}`
+  const formattedTime = formatBookingTime(startTime)
   
-  // 格式：11/20 14:45 60分 G23 小楊 (填表人: xxx)
+  // 格式：2025/11/20 14:45 60分 G23 小楊 (填表人: xxx)
   // 刪除記錄不包含教練資訊，所以不需要 | 分隔符
   let details = `刪除預約：${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
   
@@ -272,13 +272,9 @@ interface CoachAssignmentLogParams {
 export async function logCoachAssignment(params: CoachAssignmentLogParams) {
   const { userEmail, studentName, boatName, startTime, changes } = params
 
-  // 格式化時間：2025-11-09T23:15:00 → 11/09 23:15
-  const datetime = startTime.substring(0, 16)
-  const [dateStr, timeStr] = datetime.split('T')
-  const [, month, day] = dateStr.split('-')
-  const formattedTime = `${month}/${day} ${timeStr}`
+  const formattedTime = formatBookingTime(startTime)
 
-  // 格式：11/20 14:45 G23 小楊，變更：...
+  // 格式：2025/11/20 14:45 G23 小楊，變更：...
   const details = `排班：${formattedTime} ${boatName} ${studentName}，變更：${changes.join('、')}`
 
   // 非阻塞寫入

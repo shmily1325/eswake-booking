@@ -544,12 +544,12 @@ export function BoatManagement() {
                                                     {record.start_date === record.end_date ? (
                                                         // 單日維修
                                                         <>
-                                                            {record.start_date}
-                                                            {record.start_time && record.end_time && (
-                                                                <span style={{ fontWeight: 'bold', marginLeft: '6px', color: '#d84315' }}>
-                                                                    {record.start_time}-{record.end_time}
-                                                                </span>
-                                                            )}
+                                                            <span style={{ fontWeight: 'bold', color: '#d84315' }}>
+                                                                {record.start_date}
+                                                                {record.start_time && record.end_time && (
+                                                                    <> {record.start_time}-{record.end_time}</>
+                                                                )}
+                                                            </span>
                                                         </>
                                                     ) : (
                                                         // 跨日維修

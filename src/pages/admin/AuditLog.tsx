@@ -20,6 +20,7 @@ interface ParsedDetails {
   coach?: string
   time?: string
   duration?: string
+  filledBy?: string  // 填表人
   rawText: string
 }
 
@@ -31,6 +32,10 @@ interface ParsedDetails {
  * - 修改預約：「日期 時間 船隻 · 變更 · 欄位: 舊值 → 新值」
  * - 刪除預約：「日期 時間 船隻 會員」
  * 
+ * 時間格式支援：
+ * - 新格式（含年份）：2025/12/31 09:00
+ * - 舊格式（無年份）：12/31 09:00
+ * 
  * 教練名稱支援：純中文、純英文、中英混合（如：阿靜教練、Ivan教練、水晶 ED教練）
  */
 function parseDetails(details: string): ParsedDetails {
@@ -41,8 +46,10 @@ function parseDetails(details: string): ParsedDetails {
   const isUpdate = details.startsWith('修改預約')
   const isDelete = details.startsWith('刪除預約')
   
-  // 1. 提取時間（格式：11/01 13:45）
-  const timeMatch = details.match(/(\d{1,2}\/\d{1,2}\s+\d{2}:\d{2})/)
+  // 1. 提取時間（支援新舊格式）
+  // 新格式：2025/12/31 09:00（含年份）
+  // 舊格式：12/31 09:00（不含年份）
+  const timeMatch = details.match(/(\d{4}\/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}|\d{1,2}\/\d{1,2}\s+\d{2}:\d{2})/)
   if (timeMatch) info.time = timeMatch[1]
   
   // 2. 提取時長（60分）
@@ -54,7 +61,7 @@ function parseDetails(details: string): ParsedDetails {
     //         日期 時間 時長 船隻 會員 教練（舊格式）
     let text = details
       .replace(/^新增預約[:：]\s*/, '')
-      .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
+      .replace(/\d{4}\/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}|\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '') // 移除時間（支援新舊格式）
       .replace(/\d+\s*分/, '')
       .trim()
     
@@ -127,7 +134,7 @@ function parseDetails(details: string): ParsedDetails {
     // 刪除預約：日期 時間 船隻 會員
     let text = details
       .replace(/^刪除預約[:：]\s*/, '')
-      .replace(/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '')
+      .replace(/\d{4}\/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}|\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/, '') // 移除時間（支援新舊格式）
       .replace(/\d+\s*分/, '')
       .trim()
     
@@ -147,6 +154,12 @@ function parseDetails(details: string): ParsedDetails {
       // 如果沒有空格，整個都是船隻
       info.boat = text
     }
+  }
+  
+  // 提取填表人/課堂人信息（適用於所有操作類型）
+  const filledByMatch = details.match(/\((?:填表人|課堂人)[:：]\s*([^)]+)\)/)
+  if (filledByMatch) {
+    info.filledBy = filledByMatch[1].trim()
   }
   
   return info
@@ -213,39 +226,66 @@ export function AuditLog() {
     return getLocalDateString()
   })
   
-  // 新增：操作者篩選
-  const [selectedOperator, setSelectedOperator] = useState<string>('all')
+  // 新增：填表人篩選
+  const [selectedFilledBy, setSelectedFilledBy] = useState<string>('all')
 
   useEffect(() => {
     fetchLogs()
   }, [filter, startDate, endDate])
 
-  // 計算所有操作者
-  const operators = useMemo(() => {
-    const uniqueOperators = [...new Set(logs.map(log => log.user_email).filter(Boolean))] as string[]
-    return uniqueOperators.sort()
+  // 計算所有填表人（包含舊資料）
+  const filledByList = useMemo(() => {
+    const filledBySet = new Set<string>()
+    let hasEmptyFilledBy = false
+    
+    logs.forEach(log => {
+      const parsed = parseDetails(log.details)
+      if (parsed.filledBy) {
+        filledBySet.add(parsed.filledBy)
+      } else {
+        hasEmptyFilledBy = true
+      }
+    })
+    
+    const list = Array.from(filledBySet).sort()
+    // 如果有沒有填表人的記錄，在列表最前面加上這個選項
+    if (hasEmptyFilledBy) {
+      list.unshift('（無填表人）')
+    }
+    return list
   }, [logs])
 
   // 篩選和搜尋邏輯
   const displayedLogs = useMemo(() => {
     let filtered = logs
     
-    // 操作者篩選
-    if (selectedOperator !== 'all') {
-      filtered = filtered.filter(log => log.user_email === selectedOperator)
+    // 填表人篩選
+    if (selectedFilledBy !== 'all') {
+      filtered = filtered.filter(log => {
+        const parsed = parseDetails(log.details)
+        // 特殊處理：篩選沒有填表人的舊記錄
+        if (selectedFilledBy === '（無填表人）') {
+          return !parsed.filledBy
+        }
+        return parsed.filledBy === selectedFilledBy
+      })
     }
     
     // 搜尋篩選
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(log => 
-        (log.details && log.details.toLowerCase().includes(query)) ||
-        (log.user_email && log.user_email.toLowerCase().includes(query))
-      )
+      filtered = filtered.filter(log => {
+        const parsed = parseDetails(log.details)
+        return (
+          (log.details && log.details.toLowerCase().includes(query)) ||
+          (log.user_email && log.user_email.toLowerCase().includes(query)) ||
+          (parsed.filledBy && parsed.filledBy.toLowerCase().includes(query))
+        )
+      })
     }
     
     return filtered
-  }, [logs, selectedOperator, searchQuery])
+  }, [logs, selectedFilledBy, searchQuery])
 
   // 按日期分組
   const groupedLogs = useMemo(() => {
@@ -482,7 +522,7 @@ export function AuditLog() {
         </div>
       </div>
 
-      {/* 搜尋框 + 操作者篩選 */}
+      {/* 搜尋框 + 填表人篩選 */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
@@ -498,7 +538,7 @@ export function AuditLog() {
         }}>
           <input
             type="text"
-            placeholder="🔍 搜尋會員名稱、操作者或預約內容..."
+            placeholder="🔍 搜尋會員名稱、填表人或預約內容..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -511,10 +551,10 @@ export function AuditLog() {
             }}
           />
           
-          {/* 操作者下拉選單 */}
+          {/* 填表人下拉選單 */}
           <select
-            value={selectedOperator}
-            onChange={(e) => setSelectedOperator(e.target.value)}
+            value={selectedFilledBy}
+            onChange={(e) => setSelectedFilledBy(e.target.value)}
             style={{
               padding: '12px 16px',
               fontSize: '14px',
@@ -526,9 +566,9 @@ export function AuditLog() {
               minWidth: '200px',
             }}
           >
-            <option value="all">👤 全部操作者</option>
-            {operators.map(email => (
-              <option key={email || 'unknown'} value={email || ''}>{email ? email.split('@')[0] : '未知'}</option>
+            <option value="all">📝 全部填表人</option>
+            {filledByList.map(name => (
+              <option key={name} value={name}>{name}</option>
             ))}
           </select>
         </div>
@@ -577,7 +617,7 @@ export function AuditLog() {
           color: '#666',
           padding: '0 4px',
         }}>
-          {searchQuery || selectedOperator !== 'all' ? (
+          {searchQuery || selectedFilledBy !== 'all' ? (
             <>找到 <strong style={{ color: '#007bff' }}>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）</>
           ) : (
             <>共 <strong style={{ color: '#007bff' }}>{logs.length}</strong> 筆記錄</>
@@ -606,7 +646,7 @@ export function AuditLog() {
           color: '#999',
           fontSize: '16px',
         }}>
-          {searchQuery || selectedOperator !== 'all' ? '沒有符合的記錄' : '沒有記錄'}
+          {searchQuery || selectedFilledBy !== 'all' ? '沒有符合的記錄' : '沒有記錄'}
         </div>
       ) : (
         // 按日期分組顯示
@@ -764,12 +804,60 @@ export function AuditLog() {
                         </div>
                       )}
 
-                      {/* 操作者 */}
-                      <div style={{ marginBottom: '8px', fontSize: '14px' }}>
-                        <strong>操作者：</strong>
-                        <span style={{ color: '#666' }}>
-                          {highlightText(log.user_email || '未知', searchQuery)}
-                        </span>
+                      {/* 填表人/操作者 */}
+                      <div style={{ marginBottom: '8px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        {parsed.filledBy ? (
+                          <>
+                            <strong>填表人：</strong>
+                            <button
+                              onClick={() => setSelectedFilledBy(parsed.filledBy!)}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: '13px',
+                                border: 'none',
+                                borderRadius: '4px',
+                                backgroundColor: '#e3f2fd',
+                                color: '#1565c0',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#bbdefb'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e3f2fd'}
+                            >
+                              📝 {parsed.filledBy}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <strong>操作者：</strong>
+                            <span style={{ color: '#999', fontSize: '13px' }}>
+                              {highlightText(log.user_email || '未知', searchQuery)}
+                            </span>
+                            <button
+                              onClick={() => setSelectedFilledBy('（無填表人）')}
+                              style={{
+                                padding: '2px 8px',
+                                fontSize: '12px',
+                                border: '1px solid #e0e0e0',
+                                borderRadius: '4px',
+                                backgroundColor: '#fafafa',
+                                color: '#757575',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.backgroundColor = '#eeeeee'
+                                e.currentTarget.style.borderColor = '#bdbdbd'
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.backgroundColor = '#fafafa'
+                                e.currentTarget.style.borderColor = '#e0e0e0'
+                              }}
+                            >
+                              舊資料
+                            </button>
+                          </>
+                        )}
                       </div>
 
                       {/* 詳細內容（帶高亮） */}

@@ -418,44 +418,62 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       {/* Results */}
       {hasSearched && (
         <div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px',
-            flexWrap: 'wrap',
-            gap: '12px'
-          }}>
+          {/* 只在非加载状态时显示结果统计 */}
+          {!loading && (
             <div style={{
-              fontSize: '16px',
-              color: '#666',
-              fontWeight: '500',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+              flexWrap: 'wrap',
+              gap: '12px'
             }}>
-              找到 {bookings.length} 筆預約
+              <div style={{
+                fontSize: '16px',
+                color: '#666',
+                fontWeight: '500',
+              }}>
+                找到 {bookings.length} 筆預約
+              </div>
+              
+              {bookings.length > 0 && (
+                <button
+                  onClick={handleCopyToClipboard}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    background: copySuccess ? '#28a745' : '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {copySuccess ? '✓ 已複製' : '📋 複製 LINE 格式'}
+                </button>
+              )}
             </div>
-            
-            {bookings.length > 0 && (
-              <button
-                onClick={handleCopyToClipboard}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  background: copySuccess ? '#28a745' : '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {copySuccess ? '✓ 已複製' : '📋 複製 LINE 格式'}
-              </button>
-            )}
-          </div>
+          )}
+
+          {/* 加载状态显示 */}
+          {loading && (
+            <div style={{
+              padding: '40px',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              textAlign: 'center',
+              color: '#666',
+              fontSize: '16px',
+              marginBottom: '16px',
+            }}>
+              🔍 搜尋中...
+            </div>
+          )}
 
           {!loading && bookings.length === 0 ? (
             <div style={{
