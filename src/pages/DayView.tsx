@@ -458,7 +458,7 @@ export function DayView() {
           minHeight: '100vh',
           backgroundColor: '#f8f9fa',
           position: 'relative',
-          overflow: isMobile ? 'hidden' : 'auto',
+          overflow: isMobile ? 'hidden' : 'visible',
         }}
       >
         <div style={{
