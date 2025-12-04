@@ -239,6 +239,10 @@ export function AuditLog() {
     let hasEmptyFilledBy = false
     
     logs.forEach(log => {
+      if (!log.details) {
+        hasEmptyFilledBy = true
+        return
+      }
       const parsed = parseDetails(log.details)
       if (parsed.filledBy) {
         filledBySet.add(parsed.filledBy)
@@ -262,6 +266,9 @@ export function AuditLog() {
     // 填表人篩選
     if (selectedFilledBy !== 'all') {
       filtered = filtered.filter(log => {
+        if (!log.details) {
+          return selectedFilledBy === '（無填表人）'
+        }
         const parsed = parseDetails(log.details)
         // 特殊處理：篩選沒有填表人的舊記錄
         if (selectedFilledBy === '（無填表人）') {
@@ -275,12 +282,17 @@ export function AuditLog() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(log => {
+        const detailsMatch = log.details && log.details.toLowerCase().includes(query)
+        const emailMatch = log.user_email && log.user_email.toLowerCase().includes(query)
+        
+        if (!log.details) {
+          return detailsMatch || emailMatch
+        }
+        
         const parsed = parseDetails(log.details)
-        return (
-          (log.details && log.details.toLowerCase().includes(query)) ||
-          (log.user_email && log.user_email.toLowerCase().includes(query)) ||
-          (parsed.filledBy && parsed.filledBy.toLowerCase().includes(query))
-        )
+        const filledByMatch = parsed.filledBy && parsed.filledBy.toLowerCase().includes(query)
+        
+        return detailsMatch || emailMatch || filledByMatch
       })
     }
     
