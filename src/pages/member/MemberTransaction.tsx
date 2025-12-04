@@ -502,34 +502,34 @@ export function MemberTransaction() {
       </div>
 
       {/* 會員列表 */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        overflow: 'hidden',
+      <div style={{ 
+        display: 'grid',
+        gap: '15px'
       }}>
         {loading ? (
           <div style={{
+            background: 'white',
             padding: '40px',
+            borderRadius: '12px',
             textAlign: 'center',
             color: '#999',
+            fontSize: '16px'
           }}>
             載入中...
           </div>
         ) : filteredMembers.length === 0 ? (
           <div style={{
+            background: 'white',
             padding: '40px',
+            borderRadius: '12px',
             textAlign: 'center',
             color: '#999',
+            fontSize: '16px'
           }}>
             {searchTerm ? '沒有找到符合條件的會員' : '暫無會員資料'}
           </div>
         ) : (
-          <div style={{
-            maxHeight: isMobile ? 'calc(100vh - 280px)' : 'calc(100vh - 240px)',
-            overflowY: 'auto',
-          }}>
-            {filteredMembers.map((member) => (
+          filteredMembers.map((member) => (
               <div
                 key={member.id}
                 onClick={() => handleMemberClick(member)}
@@ -660,8 +660,7 @@ export function MemberTransaction() {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+            ))
         )}
       </div>
 

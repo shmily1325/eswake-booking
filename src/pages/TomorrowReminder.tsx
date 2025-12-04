@@ -88,6 +88,7 @@ export function TomorrowReminder() {
         .select('*, boats:boat_id(id, name, color)')
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
+        .or('is_coach_practice.is.null,is_coach_practice.eq.false')
         .order('start_at', { ascending: true })
       
       if (bookingsData && bookingsData.length > 0) {

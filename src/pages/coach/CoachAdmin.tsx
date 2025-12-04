@@ -7,6 +7,7 @@ import { StatisticsTab } from '../../components/StatisticsTab'
 import { PendingDeductionItem } from '../../components/PendingDeductionItem'
 import { DeductionDetails } from '../../components/DeductionDetails'
 import { ExportReportButton } from '../../components/ExportReportButton'
+import { DateRangePicker } from '../../components/DateRangePicker'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
@@ -676,21 +677,13 @@ export function CoachAdmin() {
 
               {/* 日期選擇（僅在按日期查看時顯示） */}
               {pendingViewMode === 'date' && (
-                <div>
-                  <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>
-                    選擇日期
-                  </label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    style={{
-                      ...getInputStyle(isMobile),
-                      fontSize: '15px',
-                      fontWeight: '500'
-                    }}
-                  />
-                </div>
+                <DateRangePicker
+                  selectedDate={selectedDate}
+                  onDateChange={setSelectedDate}
+                  isMobile={isMobile}
+                  showTodayButton={false}
+                  label="選擇日期或月份"
+                />
               )}
             </div>
 
@@ -851,78 +844,13 @@ export function CoachAdmin() {
             }}>
               {/* 月份選擇 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>
-                  查詢期間
-                </label>
-                
-                {/* 快捷按鈕 */}
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => setSelectedDate(getLocalDateString())}
-                    style={{
-                      flex: isMobile ? 1 : 'none',
-                      padding: '10px 20px',
-                      background: selectedDate.length === 10 && selectedDate === getLocalDateString() 
-                        ? '#4caf50' 
-                        : '#e8f5e9',
-                      color: selectedDate.length === 10 && selectedDate === getLocalDateString() 
-                        ? '#fff' 
-                        : '#2e7d32',
-                      border: `2px solid ${selectedDate.length === 10 && selectedDate === getLocalDateString() 
-                        ? '#4caf50' 
-                        : '#81c784'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      boxShadow: selectedDate.length === 10 && selectedDate === getLocalDateString() 
-                        ? '0 2px 8px rgba(76,175,80,0.3)' 
-                        : 'none'
-                    }}
-                  >
-                    🗓️ 今天
-                  </button>
-                  <button
-                    onClick={() => {
-                      const today = new Date()
-                      const year = today.getFullYear()
-                      const month = String(today.getMonth() + 1).padStart(2, '0')
-                      setSelectedDate(`${year}-${month}`)
-                    }}
-                    style={{
-                      flex: isMobile ? 1 : 'none',
-                      padding: '10px 20px',
-                      background: selectedDate.length === 7 ? '#2196f3' : '#e3f2fd',
-                      color: selectedDate.length === 7 ? '#fff' : '#1976d2',
-                      border: `2px solid ${selectedDate.length === 7 ? '#2196f3' : '#90caf9'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    📅 本月
-                  </button>
-                </div>
-
-                {/* 日期選擇器 */}
-                <div style={{ marginTop: '12px' }}>
-                  <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>
-                    或選擇其他日期
-                  </label>
-                  <input
-                    type="date"
-                    value={selectedDate.length === 10 ? selectedDate : ''}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    style={{
-                      ...getInputStyle(isMobile),
-                      fontSize: '14px',
-                      fontWeight: '500'
-                    }}
-                  />
-                </div>
+                <DateRangePicker
+                  selectedDate={selectedDate}
+                  onDateChange={setSelectedDate}
+                  isMobile={isMobile}
+                  showTodayButton={true}
+                  label="查詢期間"
+                />
               </div>
               
               {/* 查看模式切換 */}

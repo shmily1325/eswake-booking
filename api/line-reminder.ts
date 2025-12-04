@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = getLocalDateString(tomorrow);
 
-    // Query bookings for tomorrow with booking_members
+    // Query bookings for tomorrow with booking_members (exclude coach practice)
     const { data: bookings } = await supabase
       .from('bookings')
       .select(`
@@ -44,7 +44,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         boats:boat_id(name)
       `)
       .gte('start_at', `${tomorrowStr}T00:00:00`)
-      .lte('start_at', `${tomorrowStr}T23:59:59`);
+      .lte('start_at', `${tomorrowStr}T23:59:59`)
+      .or('is_coach_practice.is.null,is_coach_practice.eq.false');
 
     if (!bookings || bookings.length === 0) {
       return res.status(200).json({ message: 'No bookings tomorrow' });

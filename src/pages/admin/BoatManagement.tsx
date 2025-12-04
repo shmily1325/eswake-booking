@@ -29,6 +29,11 @@ export function BoatManagement() {
     const [unavailableLoading, setUnavailableLoading] = useState(false)
     const { isMobile } = useResponsive()
     
+    // 月份篩選
+    const today = new Date()
+    const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+    const [selectedMonth, setSelectedMonth] = useState(currentMonth)
+    
     // 價格設定狀態
     const [editingPrices, setEditingPrices] = useState<{[key: string]: {balance: string, vip: string}}>({})
     const [savingPrices, setSavingPrices] = useState<{[key: string]: boolean}>({})
@@ -45,11 +50,12 @@ export function BoatManagement() {
                 .select('*')
                 .order('id')
 
+            // 查詢所有維修記錄（包括歷史記錄）
             const { data: unavailableData } = await supabase
                 .from('boat_unavailable_dates')
                 .select('*')
                 .eq('is_active', true)
-                .gte('end_date', getLocalDateString())
+                .order('start_date', { ascending: false })
 
             if (boatsData) {
                 // 自定義排序順序（與 useGlobalCache 保持一致）
@@ -65,6 +71,19 @@ export function BoatManagement() {
         } finally {
             setLoading(false)
         }
+    }
+
+    // 過濾該月份的維修記錄
+    const filterUnavailableByMonth = (unavailables: BoatUnavailableDate[], month: string): BoatUnavailableDate[] => {
+        const [year, monthNum] = month.split('-').map(Number)
+        const startDate = `${year}-${String(monthNum).padStart(2, '0')}-01`
+        const lastDay = new Date(year, monthNum, 0).getDate()
+        const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+        return unavailables.filter(unavailable => {
+            // 如果維修的開始或結束日期在該月份內，就顯示
+            return (unavailable.start_date <= endDate && unavailable.end_date >= startDate)
+        })
     }
 
     const handleAddBoat = async () => {
@@ -267,7 +286,7 @@ export function BoatManagement() {
 
     return (
         <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
-            <PageHeader user={user!} title="船隻管理" />
+            <PageHeader user={user!} title="船隻管理" showBaoLink={true} />
 
             <div style={{
                 maxWidth: '1000px',
@@ -375,6 +394,47 @@ export function BoatManagement() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* 月份選擇器 */}
+                        <div style={{
+                            marginBottom: '20px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: isMobile ? 'wrap' : 'nowrap',
+                            gap: '12px',
+                            background: '#f8f9fa',
+                            padding: isMobile ? '12px' : '12px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid #e0e0e0'
+                        }}>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontSize: '14px',
+                                color: '#666'
+                            }}>
+                                <span>📅</span>
+                                <span>查看維修記錄</span>
+                            </div>
+                            <input
+                                type="month"
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                                style={{
+                                    padding: '8px 12px',
+                                    border: '2px solid #2196F3',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    cursor: 'pointer',
+                                    background: 'white',
+                                    color: '#1565c0',
+                                    fontWeight: '600',
+                                    minWidth: isMobile ? '100%' : '150px'
+                                }}
+                            />
+                        </div>
                     </>
                 )}
 
@@ -386,7 +446,9 @@ export function BoatManagement() {
                         gap: '15px'
                     }}>
                         {boats.map(boat => {
-                        const boatUnavailable = unavailableDates.filter(d => d.boat_id === boat.id)
+                        // 先過濾該船的維修記錄，再按月份過濾
+                        const boatAllUnavailable = unavailableDates.filter(d => d.boat_id === boat.id)
+                        const boatUnavailable = filterUnavailableByMonth(boatAllUnavailable, selectedMonth)
                         const isActive = boat.is_active
 
                         return (

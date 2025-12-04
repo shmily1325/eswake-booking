@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { extractDate, extractTime, getLocalDateString } from '../utils/formatters'
 import { useToast } from './ui'
+import { DateRangePicker } from './DateRangePicker'
 
 interface CoachStats {
   coachId: string
@@ -263,68 +264,13 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       }}>
         {/* 查詢期間 */}
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
-            fontWeight: '600', 
-            fontSize: '15px', 
-            color: '#333' 
-          }}>
-            查詢期間
-          </label>
-          
-          {/* 快捷按鈕 */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-            <button
-              onClick={() => setSelectedDate(getLocalDateString())}
-              style={{
-                flex: isMobile ? 1 : 'none',
-                padding: '10px 20px',
-                background: selectedDate.length === 10 && selectedDate === getLocalDateString() 
-                  ? '#4caf50' 
-                  : '#e8f5e9',
-                color: selectedDate.length === 10 && selectedDate === getLocalDateString() 
-                  ? '#fff' 
-                  : '#2e7d32',
-                border: `2px solid ${selectedDate.length === 10 && selectedDate === getLocalDateString() 
-                  ? '#4caf50' 
-                  : '#81c784'}`,
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                transition: 'all 0.2s',
-                boxShadow: selectedDate.length === 10 && selectedDate === getLocalDateString() 
-                  ? '0 2px 8px rgba(76,175,80,0.3)' 
-                  : 'none'
-              }}
-            >
-              🗓️ 今天
-            </button>
-            <button
-              onClick={() => {
-                const today = new Date()
-                const year = today.getFullYear()
-                const month = String(today.getMonth() + 1).padStart(2, '0')
-                setSelectedDate(`${year}-${month}`)
-              }}
-              style={{
-                flex: isMobile ? 1 : 'none',
-                padding: '10px 20px',
-                background: selectedDate.length === 7 ? '#2196f3' : '#e3f2fd',
-                color: selectedDate.length === 7 ? '#fff' : '#1976d2',
-                border: `2px solid ${selectedDate.length === 7 ? '#2196f3' : '#90caf9'}`,
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                transition: 'all 0.2s',
-                boxShadow: selectedDate.length === 7 ? '0 2px 8px rgba(33,150,243,0.3)' : 'none'
-              }}
-            >
-              📅 本月
-            </button>
-          </div>
+          <DateRangePicker
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            isMobile={isMobile}
+            showTodayButton={true}
+            label="查詢期間"
+          />
         </div>
 
         {/* 教練篩選 - 只在非自動篩選模式下顯示 */}
