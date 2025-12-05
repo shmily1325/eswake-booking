@@ -259,7 +259,7 @@ export function CoachDailyView() {
     const month = date.getMonth() + 1
     const day = date.getDate()
     const weekday = days[date.getDay()]
-    return `${month}月${day}日 星期${weekday}`
+    return { dateText: `${month}月${day}日`, weekday: `星期${weekday}` }
   }
 
   // 獲取某個時間點的預約
@@ -615,12 +615,30 @@ export function CoachDailyView() {
               textAlign: 'center'
             }}>
               <div style={{
-                fontSize: isMobile ? '18px' : '20px',
-                fontWeight: 'bold',
-                color: '#333',
-                marginBottom: '4px'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                marginBottom: '4px',
+                flexWrap: 'wrap'
               }}>
-                {formatDisplayDate(dateParam)}
+                <div style={{
+                  fontSize: isMobile ? '18px' : '20px',
+                  fontWeight: 'bold',
+                  color: '#333',
+                }}>
+                  {formatDisplayDate(dateParam).dateText}
+                </div>
+                <div style={{
+                  fontSize: isMobile ? '13px' : '14px',
+                  fontWeight: '600',
+                  color: 'white',
+                  background: '#5a5a5a',
+                  padding: '2px 10px',
+                  borderRadius: '12px',
+                }}>
+                  {formatDisplayDate(dateParam).weekday}
+                </div>
               </div>
               {dateParam !== getLocalDateString() && (
                 <button
