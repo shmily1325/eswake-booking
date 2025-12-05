@@ -4,6 +4,7 @@ import liff from '@line/liff'
 import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 import { useToast } from '../components/ui'
 import { triggerHaptic } from '../utils/haptic'
+import { logBookingDeletion } from '../utils/auditLog'
 
 interface Booking {
   id: number
@@ -125,6 +126,34 @@ export function LiffMyBookings() {
   const handleCancelBooking = async (bookingId: number) => {
     try {
       triggerHaptic('warning')
+      
+      if (!member) {
+        toast.error('無法取得會員資訊')
+        return
+      }
+
+      // 先查詢完整的預約資訊，以便記錄到審計日誌
+      const { data: bookingData, error: fetchError } = await supabase
+        .from('bookings')
+        .select('id, contact_name, start_at, duration_min, boats:boat_id(name)')
+        .eq('id', bookingId)
+        .single()
+
+      if (fetchError || !bookingData) {
+        throw new Error('無法取得預約資訊')
+      }
+
+      // 記錄到審計日誌（使用會員名稱作為填表人）
+      await logBookingDeletion({
+        userEmail: `line:${lineUserId}`, // LINE 用戶的識別
+        studentName: bookingData.contact_name || member.name,
+        boatName: (bookingData.boats as any)?.name || '未知',
+        startTime: bookingData.start_at,
+        durationMin: bookingData.duration_min,
+        filledBy: member.name // 使用會員名稱作為填表人
+      })
+
+      // 刪除預約
       const { error } = await supabase
         .from('bookings')
         .delete()
@@ -135,9 +164,7 @@ export function LiffMyBookings() {
       triggerHaptic('success')
       toast.success('預約已取消')
       // 重新載入預約列表
-      if (member) {
-        await loadBookings(member.id)
-      }
+      await loadBookings(member.id)
     } catch (err: any) {
       console.error('取消預約失敗:', err)
       triggerHaptic('error')

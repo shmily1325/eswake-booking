@@ -532,6 +532,13 @@ export function EditBookingDialog({
       return
     }
 
+    // 檢查填表人是否填寫
+    if (!filledBy.trim()) {
+      setError('請先填寫填表人後再刪除')
+      toast.error('請先填寫填表人後再刪除')
+      return
+    }
+
     // 防止重複執行
     if (loading || isDeleting) {
       console.log('刪除進行中，忽略重複請求')
@@ -648,14 +655,14 @@ export function EditBookingDialog({
       }
 
       console.log('刪除成功，記錄審計日誌...')
-      // 記錄到審計日誌
+      // 記錄到審計日誌（使用表單中重新填寫的填表人）
       await logBookingDeletion({
         userEmail: user.email || '',
         studentName: booking.contact_name,
         boatName: booking.boats?.name || '未知',
         startTime: booking.start_at,
         durationMin: booking.duration_min,
-        filledBy: booking.filled_by || undefined
+        filledBy: filledBy  // 使用表單中重新填寫的填表人
       })
 
       // Success
