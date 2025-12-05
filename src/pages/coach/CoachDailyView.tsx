@@ -259,7 +259,7 @@ export function CoachDailyView() {
     const month = date.getMonth() + 1
     const day = date.getDate()
     const weekday = days[date.getDay()]
-    return `${month}月${day}日 (${weekday})`
+    return `${month}月${day}日 星期${weekday}`
   }
 
   // 獲取某個時間點的預約

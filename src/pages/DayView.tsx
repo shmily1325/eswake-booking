@@ -7,7 +7,7 @@ import { RepeatBookingDialog } from '../components/RepeatBookingDialog'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { UserMenu } from '../components/UserMenu'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString } from '../utils/date'
+import { getLocalDateString, getWeekdayText } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { getButtonStyle } from '../styles/designSystem'
 import { getDisplayContactName } from '../utils/bookingFormat'
@@ -535,17 +535,33 @@ export function DayView() {
             >
               ←
             </button>
-            <input
-              type="date"
-              value={dateParam}
-              onChange={handleDateInputChange}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #dee2e6',
-                fontSize: '14px',
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type="date"
+                value={dateParam}
+                onChange={handleDateInputChange}
+                style={{
+                  padding: '8px 12px',
+                  paddingRight: '70px',
+                  borderRadius: '6px',
+                  border: '1px solid #dee2e6',
+                  fontSize: '14px',
+                }}
+              />
+              {/* 星期幾顯示 */}
+              <span style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: '13px',
+                color: '#666',
+                fontWeight: '500',
+                pointerEvents: 'none',
+              }}>
+                {getWeekdayText(dateParam)}
+              </span>
+            </div>
             <button
               onClick={() => changeDate(1)}
               style={{

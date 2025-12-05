@@ -233,12 +233,17 @@ export function AuditLog() {
     fetchLogs()
   }, [filter, startDate, endDate])
 
-  // 計算所有填表人（包含舊資料）
+  // 計算所有填表人（排除排班記錄）
   const filledByList = useMemo(() => {
     const filledBySet = new Set<string>()
     let hasEmptyFilledBy = false
     
     logs.forEach(log => {
+      // 排班記錄不參與填表人統計
+      if (log.table_name === 'coach_assignment') {
+        return
+      }
+      
       if (!log.details) {
         hasEmptyFilledBy = true
         return
@@ -252,7 +257,7 @@ export function AuditLog() {
     })
     
     const list = Array.from(filledBySet).sort()
-    // 如果有沒有填表人的記錄，在列表最前面加上這個選項
+    // 如果有沒有填表人的預約記錄，在列表最前面加上這個選項
     if (hasEmptyFilledBy) {
       list.unshift('（無填表人）')
     }
@@ -263,9 +268,14 @@ export function AuditLog() {
   const displayedLogs = useMemo(() => {
     let filtered = logs
     
-    // 填表人篩選
+    // 填表人篩選（排班記錄不參與填表人篩選）
     if (selectedFilledBy !== 'all') {
       filtered = filtered.filter(log => {
+        // 排班記錄始終顯示，不受填表人篩選影響
+        if (log.table_name === 'coach_assignment') {
+          return true
+        }
+        
         if (!log.details) {
           return selectedFilledBy === '（無填表人）'
         }
@@ -818,57 +828,68 @@ export function AuditLog() {
 
                       {/* 填表人/操作者 */}
                       <div style={{ marginBottom: '8px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        {parsed.filledBy ? (
-                          <>
-                            <strong>填表人：</strong>
-                            <button
-                              onClick={() => setSelectedFilledBy(parsed.filledBy!)}
-                              style={{
-                                padding: '4px 10px',
-                                fontSize: '13px',
-                                border: 'none',
-                                borderRadius: '4px',
-                                backgroundColor: '#e3f2fd',
-                                color: '#1565c0',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                              }}
-                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#bbdefb'}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e3f2fd'}
-                            >
-                              📝 {parsed.filledBy}
-                            </button>
-                          </>
-                        ) : (
+                        {log.table_name === 'coach_assignment' ? (
+                          // 排班記錄：只顯示操作者，不顯示填表人和舊資料按鈕
                           <>
                             <strong>操作者：</strong>
                             <span style={{ color: '#999', fontSize: '13px' }}>
                               {highlightText(log.user_email || '未知', searchQuery)}
                             </span>
-                            <button
-                              onClick={() => setSelectedFilledBy('（無填表人）')}
-                              style={{
-                                padding: '2px 8px',
-                                fontSize: '12px',
-                                border: '1px solid #e0e0e0',
-                                borderRadius: '4px',
-                                backgroundColor: '#fafafa',
-                                color: '#757575',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.backgroundColor = '#eeeeee'
-                                e.currentTarget.style.borderColor = '#bdbdbd'
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.backgroundColor = '#fafafa'
-                                e.currentTarget.style.borderColor = '#e0e0e0'
-                              }}
-                            >
-                              舊資料
-                            </button>
                           </>
+                        ) : (
+                          // 預約記錄：顯示填表人或操作者（含舊資料按鈕）
+                          parsed.filledBy ? (
+                            <>
+                              <strong>填表人：</strong>
+                              <button
+                                onClick={() => setSelectedFilledBy(parsed.filledBy!)}
+                                style={{
+                                  padding: '4px 10px',
+                                  fontSize: '13px',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  backgroundColor: '#e3f2fd',
+                                  color: '#1565c0',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#bbdefb'}
+                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e3f2fd'}
+                              >
+                                📝 {parsed.filledBy}
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <strong>操作者：</strong>
+                              <span style={{ color: '#999', fontSize: '13px' }}>
+                                {highlightText(log.user_email || '未知', searchQuery)}
+                              </span>
+                              <button
+                                onClick={() => setSelectedFilledBy('（無填表人）')}
+                                style={{
+                                  padding: '2px 8px',
+                                  fontSize: '12px',
+                                  border: '1px solid #e0e0e0',
+                                  borderRadius: '4px',
+                                  backgroundColor: '#fafafa',
+                                  color: '#757575',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#eeeeee'
+                                  e.currentTarget.style.borderColor = '#bdbdbd'
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#fafafa'
+                                  e.currentTarget.style.borderColor = '#e0e0e0'
+                                }}
+                              >
+                                舊資料
+                              </button>
+                            </>
+                          )
                         )}
                       </div>
 

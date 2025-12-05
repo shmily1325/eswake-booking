@@ -11,6 +11,22 @@ export function getLocalDateString(date: Date = new Date()): string {
 }
 
 /**
+ * 獲取日期的星期幾
+ * @param dateString - 日期字串 (YYYY-MM-DD)
+ * @returns 星期幾的中文表示 (星期一、星期二...星期日)
+ */
+export function getWeekdayText(dateString: string): string {
+  try {
+    const [year, month, day] = dateString.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+    return weekdays[date.getDay()]
+  } catch {
+    return ''
+  }
+}
+
+/**
  * 獲取本地日期時間字串（避免時區偏移）
  * @param date - Date 對象
  * @returns YYYY-MM-DDTHH:mm 格式的本地日期時間字串

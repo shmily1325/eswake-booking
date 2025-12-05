@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { designSystem } from '../styles/designSystem'
+import { getWeekdayText } from '../utils/date'
 
 interface DayViewMobileHeaderProps {
     date: string
@@ -73,6 +74,21 @@ export function DayViewMobileHeader({
                             boxSizing: 'border-box',
                         }}
                     />
+                    {/* 星期幾顯示 */}
+                    <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        right: '12px',
+                        transform: 'translateY(-50%)',
+                        fontSize: '13px',
+                        color: designSystem.colors.text.secondary,
+                        fontWeight: '500',
+                        pointerEvents: 'none',
+                        backgroundColor: '#f8f9fa',
+                        padding: '0 4px',
+                    }}>
+                        {getWeekdayText(date)}
+                    </div>
                 </div>
 
                 <button

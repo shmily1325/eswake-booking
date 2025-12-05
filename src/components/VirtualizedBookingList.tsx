@@ -53,8 +53,6 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
             width: '100%',
             background: '#f8f9fa',
             borderRadius: '8px',
-            overflow: 'auto',
-            maxHeight: 'calc(100vh - 250px)',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             border: '1px solid #e9ecef'
         }}>
