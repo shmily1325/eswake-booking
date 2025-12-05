@@ -1,4 +1,5 @@
 import { getLocalDateString } from '../utils/formatters'
+import { getWeekdayText } from '../utils/date'
 
 interface DateRangePickerProps {
   selectedDate: string
@@ -137,6 +138,18 @@ export function DateRangePicker({
               transition: 'border-color 0.2s'
             }}
           />
+          {/* 星期幾顯示 - 只在選擇特定日期時顯示 */}
+          {selectedDate.length === 10 && (
+            <div style={{
+              marginTop: '4px',
+              fontSize: '12px',
+              color: '#666',
+              fontWeight: '500',
+              textAlign: 'center'
+            }}>
+              {getWeekdayText(selectedDate)}
+            </div>
+          )}
         </div>
       </div>
     </div>

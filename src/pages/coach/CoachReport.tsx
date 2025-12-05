@@ -9,7 +9,7 @@ import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
 import { Button, useToast, ToastContainer } from '../../components/ui'
 import { isFacility } from '../../utils/facility'
-import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
+import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
 import {
   calculateIsTeaching,
@@ -1320,18 +1320,44 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
                   今天
                 </button>
               </div>
-              <input 
-                type="date" 
-                value={selectedDate} 
-                onChange={(e) => {
-                  const newDate = e.target.value
-                  // 驗證日期格式（必須是 yyyy-MM-dd）
-                  if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                    setSelectedDate(newDate)
-                  }
-                }} 
-                style={getInputStyle(isMobile)} 
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <input 
+                  type="date" 
+                  value={selectedDate} 
+                  onChange={(e) => {
+                    const newDate = e.target.value
+                    // 驗證日期格式（必須是 yyyy-MM-dd）
+                    if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                      setSelectedDate(newDate)
+                    }
+                  }} 
+                  style={getInputStyle(isMobile)} 
+                />
+                {/* 星期幾顯示 */}
+                {!isMobile && (
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: 'white',
+                    background: '#5a5a5a',
+                    padding: '6px 12px',
+                    borderRadius: '12px',
+                  }}>
+                    {getWeekdayText(selectedDate)}
+                  </span>
+                )}
+              </div>
+              {/* 手機版星期顯示 */}
+              {isMobile && (
+                <div style={{
+                  marginTop: '4px',
+                  fontSize: '12px',
+                  color: '#666',
+                  fontWeight: '500',
+                }}>
+                  {getWeekdayText(selectedDate)}
+                </div>
+              )}
             </div>
           )}
 

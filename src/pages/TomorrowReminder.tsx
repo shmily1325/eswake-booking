@@ -4,7 +4,7 @@ import { useAuthUser } from '../contexts/AuthContext'
 import { UserMenu } from '../components/UserMenu'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString } from '../utils/date'
+import { getLocalDateString, getWeekdayText } from '../utils/date'
 import { Footer } from '../components/Footer'
 
 interface Booking {
@@ -375,30 +375,53 @@ export function TomorrowReminder() {
           }}>
             選擇日期
           </label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            style={{
-              padding: isMobile ? '10px 12px' : '8px 12px',
-              border: '1px solid #dee2e6',
-              borderRadius: '4px',
-              fontSize: isMobile ? '15px' : '14px',
-              width: isMobile ? '100%' : 'auto',
-              maxWidth: isMobile ? '100%' : '200px',
-              touchAction: 'manipulation'
-            }}
-          />
-          {loading && (
-            <span style={{ 
-              marginLeft: isMobile ? '0' : '10px', 
-              marginTop: isMobile ? '8px' : '0',
-              display: isMobile ? 'block' : 'inline',
-              color: '#666', 
-              fontSize: isMobile ? '13px' : '14px' 
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={{
+                padding: isMobile ? '10px 12px' : '8px 12px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                fontSize: isMobile ? '15px' : '14px',
+                width: isMobile ? '100%' : 'auto',
+                maxWidth: isMobile ? '100%' : '200px',
+                touchAction: 'manipulation'
+              }}
+            />
+            {/* 星期幾顯示 */}
+            {!isMobile && (
+              <span style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: 'white',
+                background: '#5a5a5a',
+                padding: '6px 12px',
+                borderRadius: '12px',
+              }}>
+                {getWeekdayText(selectedDate)}
+              </span>
+            )}
+            {loading && (
+              <span style={{ 
+                color: '#666', 
+                fontSize: isMobile ? '13px' : '14px' 
+              }}>
+                載入中...
+              </span>
+            )}
+          </div>
+          {/* 手機版星期顯示 */}
+          {isMobile && (
+            <div style={{
+              marginTop: '4px',
+              fontSize: '12px',
+              color: '#666',
+              fontWeight: '500',
             }}>
-              載入中...
-            </span>
+              {getWeekdayText(selectedDate)}
+            </div>
           )}
         </div>
 
