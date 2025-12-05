@@ -455,11 +455,11 @@ export function DayView() {
       <div 
         style={{
           padding: isMobile ? '12px' : '20px',
-          height: isMobile ? 'auto' : '100vh',
+          height: isMobile ? 'auto' : (viewMode === 'timeline' ? '100vh' : 'auto'),
           minHeight: isMobile ? '100vh' : 'auto',
           backgroundColor: '#f8f9fa',
           position: 'relative',
-          overflow: 'hidden',
+          overflow: viewMode === 'timeline' ? 'hidden' : 'visible',
           display: isMobile ? 'block' : 'flex',
           flexDirection: isMobile ? undefined : 'column',
         }}
@@ -535,33 +535,30 @@ export function DayView() {
             >
               ←
             </button>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="date"
-                value={dateParam}
-                onChange={handleDateInputChange}
-                style={{
-                  padding: '8px 12px',
-                  paddingRight: '70px',
-                  borderRadius: '6px',
-                  border: '1px solid #dee2e6',
-                  fontSize: '14px',
-                }}
-              />
-              {/* 星期幾顯示 */}
-              <span style={{
-                position: 'absolute',
-                right: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                fontSize: '13px',
-                color: '#666',
-                fontWeight: '500',
-                pointerEvents: 'none',
-              }}>
-                {getWeekdayText(dateParam)}
-              </span>
-            </div>
+            <input
+              type="date"
+              value={dateParam}
+              onChange={handleDateInputChange}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid #dee2e6',
+                fontSize: '14px',
+              }}
+            />
+            {/* 星期幾顯示 - 獨立顯示 */}
+            <span style={{
+              padding: '8px 12px',
+              borderRadius: '6px',
+              background: '#f8f9fa',
+              color: '#495057',
+              fontSize: '14px',
+              fontWeight: '600',
+              border: '1px solid #dee2e6',
+              whiteSpace: 'nowrap',
+            }}>
+              {getWeekdayText(dateParam)}
+            </span>
             <button
               onClick={() => changeDate(1)}
               style={{

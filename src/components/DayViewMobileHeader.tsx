@@ -55,7 +55,7 @@ export function DayViewMobileHeader({
                     ←
                 </button>
 
-                <div style={{ flex: 1, position: 'relative' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <input
                         type="date"
                         value={date}
@@ -74,18 +74,12 @@ export function DayViewMobileHeader({
                             boxSizing: 'border-box',
                         }}
                     />
-                    {/* 星期幾顯示 */}
+                    {/* 星期幾顯示 - 放在日期選擇器下方 */}
                     <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        right: '12px',
-                        transform: 'translateY(-50%)',
-                        fontSize: '13px',
+                        fontSize: '12px',
                         color: designSystem.colors.text.secondary,
                         fontWeight: '500',
-                        pointerEvents: 'none',
-                        backgroundColor: '#f8f9fa',
-                        padding: '0 4px',
+                        textAlign: 'center',
                     }}>
                         {getWeekdayText(date)}
                     </div>
