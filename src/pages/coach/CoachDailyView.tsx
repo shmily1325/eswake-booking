@@ -632,10 +632,11 @@ export function CoachDailyView() {
                 <div style={{
                   fontSize: isMobile ? '13px' : '14px',
                   fontWeight: '600',
-                  color: 'white',
-                  background: '#5a5a5a',
-                  padding: '2px 10px',
+                  color: '#495057',
+                  background: '#f8f9fa',
+                  padding: '4px 12px',
                   borderRadius: '12px',
+                  border: '1px solid #dee2e6',
                 }}>
                   {formatDisplayDate(dateParam).weekday}
                 </div>

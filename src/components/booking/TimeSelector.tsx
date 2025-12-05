@@ -1,3 +1,5 @@
+import { getWeekdayText } from '../../utils/date'
+
 interface TimeSelectorProps {
     startDate: string
     setStartDate: (date: string) => void
@@ -42,6 +44,22 @@ export function TimeSelector({
                         touchAction: 'manipulation',
                     }}
                 />
+                {/* 星期幾顯示 - 更醒目 */}
+                {startDate && (
+                    <div style={{
+                        marginTop: '8px',
+                        padding: '8px 12px',
+                        background: '#f8f9fa',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '6px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        color: '#495057',
+                        textAlign: 'center',
+                    }}>
+                        {getWeekdayText(startDate)}
+                    </div>
+                )}
             </div>
 
             <div style={{ marginBottom: '18px' }}>

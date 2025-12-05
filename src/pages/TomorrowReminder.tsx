@@ -375,52 +375,85 @@ export function TomorrowReminder() {
           }}>
             選擇日期
           </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{
-                padding: isMobile ? '10px 12px' : '8px 12px',
-                border: '1px solid #dee2e6',
-                borderRadius: '4px',
-                fontSize: isMobile ? '15px' : '14px',
-                width: isMobile ? '100%' : 'auto',
-                maxWidth: isMobile ? '100%' : '200px',
-                touchAction: 'manipulation'
-              }}
-            />
-            {/* 星期幾顯示 */}
-            {!isMobile && (
-              <span style={{
-                fontSize: '13px',
-                fontWeight: '600',
+          {isMobile ? (
+            // 手機版：徽章在右上角
+            <div style={{ position: 'relative', marginBottom: loading ? '8px' : '0' }}>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{
+                  padding: '10px 12px',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '4px',
+                  fontSize: '15px',
+                  width: '100%',
+                  touchAction: 'manipulation'
+                }}
+              />
+              {/* 星期幾徽章 - 右上角 */}
+              <div style={{
+                position: 'absolute',
+                top: '-8px',
+                right: '8px',
+                fontSize: '11px',
                 color: 'white',
+                fontWeight: '600',
                 background: '#5a5a5a',
-                padding: '6px 12px',
-                borderRadius: '12px',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                pointerEvents: 'none',
+              }}>
+                {getWeekdayText(selectedDate)}
+              </div>
+              {loading && (
+                <div style={{ 
+                  marginTop: '8px',
+                  color: '#666', 
+                  fontSize: '13px'
+                }}>
+                  載入中...
+                </div>
+              )}
+            </div>
+          ) : (
+            // 電腦版：徽章在旁邊
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  maxWidth: '200px',
+                  touchAction: 'manipulation'
+                }}
+              />
+              {/* 星期幾徽章 */}
+              <span style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                background: '#f8f9fa',
+                color: '#495057',
+                fontSize: '14px',
+                fontWeight: '600',
+                border: '1px solid #dee2e6',
+                whiteSpace: 'nowrap',
               }}>
                 {getWeekdayText(selectedDate)}
               </span>
-            )}
-            {loading && (
-              <span style={{ 
-                color: '#666', 
-                fontSize: isMobile ? '13px' : '14px' 
-              }}>
-                載入中...
-              </span>
-            )}
-          </div>
-          {/* 手機版星期顯示 */}
-          {isMobile && (
-            <div style={{
-              marginTop: '4px',
-              fontSize: '12px',
-              color: '#666',
-              fontWeight: '500',
-            }}>
-              {getWeekdayText(selectedDate)}
+              {loading && (
+                <span style={{ 
+                  color: '#666', 
+                  fontSize: '14px' 
+                }}>
+                  載入中...
+                </span>
+              )}
             </div>
           )}
         </div>

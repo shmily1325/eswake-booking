@@ -1320,42 +1320,66 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
                   今天
                 </button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <input 
-                  type="date" 
-                  value={selectedDate} 
-                  onChange={(e) => {
-                    const newDate = e.target.value
-                    // 驗證日期格式（必須是 yyyy-MM-dd）
-                    if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                      setSelectedDate(newDate)
-                    }
-                  }} 
-                  style={getInputStyle(isMobile)} 
-                />
-                {/* 星期幾顯示 */}
-                {!isMobile && (
-                  <span style={{
-                    fontSize: '13px',
-                    fontWeight: '600',
+              {isMobile ? (
+                // 手機版：徽章在右上角
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="date" 
+                    value={selectedDate} 
+                    onChange={(e) => {
+                      const newDate = e.target.value
+                      // 驗證日期格式（必須是 yyyy-MM-dd）
+                      if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        setSelectedDate(newDate)
+                      }
+                    }} 
+                    style={getInputStyle(isMobile)} 
+                  />
+                  {/* 星期幾徽章 - 右上角 */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    right: '8px',
+                    fontSize: '11px',
                     color: 'white',
+                    fontWeight: '600',
                     background: '#5a5a5a',
-                    padding: '6px 12px',
-                    borderRadius: '12px',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    pointerEvents: 'none',
+                  }}>
+                    {getWeekdayText(selectedDate)}
+                  </div>
+                </div>
+              ) : (
+                // 電腦版：徽章在旁邊
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input 
+                    type="date" 
+                    value={selectedDate} 
+                    onChange={(e) => {
+                      const newDate = e.target.value
+                      // 驗證日期格式（必須是 yyyy-MM-dd）
+                      if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        setSelectedDate(newDate)
+                      }
+                    }} 
+                    style={getInputStyle(isMobile)} 
+                  />
+                  {/* 星期幾徽章 */}
+                  <span style={{
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    background: '#f8f9fa',
+                    color: '#495057',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    border: '1px solid #dee2e6',
+                    whiteSpace: 'nowrap',
                   }}>
                     {getWeekdayText(selectedDate)}
                   </span>
-                )}
-              </div>
-              {/* 手機版星期顯示 */}
-              {isMobile && (
-                <div style={{
-                  marginTop: '4px',
-                  fontSize: '12px',
-                  color: '#666',
-                  fontWeight: '500',
-                }}>
-                  {getWeekdayText(selectedDate)}
                 </div>
               )}
             </div>
