@@ -54,6 +54,26 @@ interface Transaction {
   notes?: string | null
 }
 
+interface MemberNote {
+  id: number
+  member_id: string
+  event_date: string
+  event_type: string
+  description: string
+  created_at: string | null
+  updated_at: string | null
+}
+
+// 事件類型選項
+const EVENT_TYPES = [
+  { value: '續約', label: '續約', color: '#4caf50' },
+  { value: '購買', label: '購買', color: '#2196f3' },
+  { value: '贈送', label: '贈送', color: '#9c27b0' },
+  { value: '使用', label: '使用', color: '#ff9800' },
+  { value: '入會', label: '入會', color: '#e91e63' },
+  { value: '備註', label: '備註', color: '#607d8b' },
+]
+
 interface MemberDetailDialogProps {
   open: boolean
   memberId: string | null
@@ -67,15 +87,25 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
   const [member, setMember] = useState<Member | null>(null)
   const [boardStorage, setBoardStorage] = useState<BoardStorage[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [memberNotes, setMemberNotes] = useState<MemberNote[]>([])
   const [loading, setLoading] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'info' | 'transactions' | 'boards'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'transactions' | 'boards' | 'notes'>('info')
   const [addBoardDialogOpen, setAddBoardDialogOpen] = useState(false)
   const [boardFormData, setBoardFormData] = useState({
     slot_number: '',
     expires_at: '',
     notes: ''
+  })
+  
+  // 備忘錄相關狀態
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false)
+  const [editingNote, setEditingNote] = useState<MemberNote | null>(null)
+  const [noteFormData, setNoteFormData] = useState({
+    event_date: '',
+    event_type: '備註',
+    description: ''
   })
 
   useEffect(() => {
@@ -83,6 +113,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       setEditDialogOpen(false)
       setTransactionDialogOpen(false)
       setAddBoardDialogOpen(false)
+      setNoteDialogOpen(false)
+      setEditingNote(null)
       setActiveTab('info')
     }
   }, [open])
@@ -135,6 +167,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       
       // 交易記錄延遲載入（在需要時才載入）
       loadTransactions()
+      // 載入備忘錄
+      loadMemberNotes()
     } catch (error) {
       console.error('載入會員資料失敗:', error)
       toast.error('載入會員資料失敗')
@@ -161,6 +195,116 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     } catch (error) {
       console.error('載入交易記錄失敗:', error)
     }
+  }
+
+  // 載入會員備忘錄
+  const loadMemberNotes = async () => {
+    if (!memberId) return
+    
+    try {
+      // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
+      const { data, error } = await supabase
+        .from('member_notes')
+        .select('*')
+        .eq('member_id', memberId)
+        .order('event_date', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setMemberNotes(data || [])
+    } catch (error) {
+      console.error('載入備忘錄失敗:', error)
+    }
+  }
+
+  // 新增/編輯備忘錄
+  const handleSaveNote = async () => {
+    if (!memberId || !noteFormData.event_date || !noteFormData.description.trim()) {
+      toast.warning('請填寫日期和說明')
+      return
+    }
+
+    try {
+      if (editingNote) {
+        // 編輯
+        // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
+        const { error } = await supabase
+          .from('member_notes')
+          .update({
+            event_date: noteFormData.event_date,
+            event_type: noteFormData.event_type,
+            description: noteFormData.description.trim()
+          })
+          .eq('id', editingNote.id)
+
+        if (error) throw error
+        toast.success('備忘錄已更新')
+      } else {
+        // 新增
+        // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
+        const { error } = await supabase
+          .from('member_notes')
+          .insert([{
+            member_id: memberId,
+            event_date: noteFormData.event_date,
+            event_type: noteFormData.event_type,
+            description: noteFormData.description.trim()
+          }])
+
+        if (error) throw error
+        toast.success('備忘錄已新增')
+      }
+
+      setNoteDialogOpen(false)
+      setEditingNote(null)
+      setNoteFormData({ event_date: '', event_type: '備註', description: '' })
+      loadMemberNotes()
+    } catch (error) {
+      console.error('儲存備忘錄失敗:', error)
+      toast.error('儲存失敗')
+    }
+  }
+
+  // 刪除備忘錄
+  const handleDeleteNote = async (noteId: number) => {
+    if (!confirm('確定要刪除這則備忘錄嗎？')) return
+
+    try {
+      // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
+      const { error } = await supabase
+        .from('member_notes')
+        .delete()
+        .eq('id', noteId)
+
+      if (error) throw error
+      toast.success('備忘錄已刪除')
+      loadMemberNotes()
+    } catch (error) {
+      console.error('刪除備忘錄失敗:', error)
+      toast.error('刪除失敗')
+    }
+  }
+
+  // 開啟編輯備忘錄
+  const handleEditNote = (note: MemberNote) => {
+    setEditingNote(note)
+    setNoteFormData({
+      event_date: note.event_date,
+      event_type: note.event_type,
+      description: note.description
+    })
+    setNoteDialogOpen(true)
+  }
+
+  // 開啟新增備忘錄
+  const handleAddNote = () => {
+    setEditingNote(null)
+    setNoteFormData({ 
+      event_date: new Date().toISOString().split('T')[0], 
+      event_type: '備註', 
+      description: '' 
+    })
+    setNoteDialogOpen(true)
   }
 
   const handleEditSuccess = () => {
@@ -319,22 +463,21 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                 >
                   基本資料
                 </button>
-                {/* 暫時隱藏交易記錄功能 */}
-                {/* <button
-                  onClick={() => setActiveTab('transactions')}
+                <button
+                  onClick={() => setActiveTab('notes')}
                   style={{
                     flex: 1,
                     padding: '15px',
                     border: 'none',
-                    background: activeTab === 'transactions' ? 'white' : 'transparent',
-                    borderBottom: activeTab === 'transactions' ? '2px solid #667eea' : 'none',
+                    background: activeTab === 'notes' ? 'white' : 'transparent',
+                    borderBottom: activeTab === 'notes' ? '2px solid #667eea' : 'none',
                     cursor: 'pointer',
-                    fontWeight: activeTab === 'transactions' ? 'bold' : 'normal',
-                    color: activeTab === 'transactions' ? '#667eea' : '#666',
+                    fontWeight: activeTab === 'notes' ? 'bold' : 'normal',
+                    color: activeTab === 'notes' ? '#667eea' : '#666',
                   }}
                 >
-                  交易記錄 ({transactions.length})
-                </button> */}
+                  📝 備忘錄 {memberNotes.length > 0 && `(${memberNotes.length})`}
+                </button>
               </div>
 
               {/* 內容區 */}
@@ -575,6 +718,136 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                       <div style={{ height: '80px' }} />
                     )}
                   </>
+                ) : activeTab === 'notes' ? (
+                  // 備忘錄標籤
+                  <div>
+                    {/* 新增備忘錄按鈕 */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <button
+                        onClick={handleAddNote}
+                        style={{
+                          width: '100%',
+                          padding: '12px 20px',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '15px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        ➕ 新增備忘錄
+                      </button>
+                    </div>
+
+                    {/* 備忘錄列表 */}
+                    {memberNotes.length === 0 ? (
+                      <div style={{ 
+                        textAlign: 'center', 
+                        padding: '50px 20px', 
+                        color: '#999',
+                        background: '#f8f9fa',
+                        borderRadius: '8px',
+                      }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
+                        <div style={{ fontSize: '16px', marginBottom: '8px' }}>尚無備忘錄</div>
+                        <div style={{ fontSize: '14px' }}>點擊上方按鈕新增第一則備忘錄</div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {memberNotes.map((note) => {
+                          const eventType = EVENT_TYPES.find(t => t.value === note.event_type) || EVENT_TYPES[5]
+                          return (
+                            <div
+                              key={note.id}
+                              style={{
+                                background: '#f8f9fa',
+                                borderRadius: '8px',
+                                padding: '14px',
+                                borderLeft: `4px solid ${eventType.color}`,
+                              }}
+                            >
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                                marginBottom: '8px',
+                              }}>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '8px',
+                                    marginBottom: '4px',
+                                  }}>
+                                    <span style={{
+                                      background: eventType.color,
+                                      color: 'white',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      fontWeight: '600',
+                                    }}>
+                                      {eventType.label}
+                                    </span>
+                                    <span style={{ color: '#666', fontSize: '13px' }}>
+                                      {note.event_date}
+                                    </span>
+                                  </div>
+                                  <div style={{ 
+                                    fontSize: '14px', 
+                                    color: '#333',
+                                    lineHeight: '1.5',
+                                    whiteSpace: 'pre-wrap',
+                                  }}>
+                                    {note.description}
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
+                                  <button
+                                    onClick={() => handleEditNote(note)}
+                                    style={{
+                                      padding: '6px 10px',
+                                      background: '#e3f2fd',
+                                      color: '#1976d2',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteNote(note.id)}
+                                    style={{
+                                      padding: '6px 10px',
+                                      background: '#ffebee',
+                                      color: '#d32f2f',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {isMobile && (
+                      <div style={{ height: '80px' }} />
+                    )}
+                  </div>
                 ) : (
                   // 交易記錄標籤
                   <div>
@@ -780,6 +1053,181 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                 }}
               >
                 確認新增
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 新增/編輯備忘錄對話框 */}
+      {noteDialogOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '20px',
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          }}>
+            {/* 標題 */}
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
+                {editingNote ? '✏️ 編輯備忘錄' : '➕ 新增備忘錄'}
+              </h2>
+              <button
+                onClick={() => {
+                  setNoteDialogOpen(false)
+                  setEditingNote(null)
+                  setNoteFormData({ event_date: '', event_type: '備註', description: '' })
+                }}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* 表單 */}
+            <div style={{ padding: '20px' }}>
+              {/* 事件日期 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  事件日期 <span style={{ color: 'red' }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  value={noteFormData.event_date}
+                  onChange={(e) => setNoteFormData({ ...noteFormData, event_date: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+
+              {/* 事件類型 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  事件類型
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {EVENT_TYPES.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setNoteFormData({ ...noteFormData, event_type: type.value })}
+                      style={{
+                        padding: '8px 14px',
+                        border: noteFormData.event_type === type.value 
+                          ? `2px solid ${type.color}` 
+                          : '2px solid #e0e0e0',
+                        borderRadius: '20px',
+                        background: noteFormData.event_type === type.value 
+                          ? type.color 
+                          : 'white',
+                        color: noteFormData.event_type === type.value 
+                          ? 'white' 
+                          : '#666',
+                        fontSize: '13px',
+                        fontWeight: noteFormData.event_type === type.value ? '600' : 'normal',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 說明 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  說明 <span style={{ color: 'red' }}>*</span>
+                </label>
+                <textarea
+                  value={noteFormData.description}
+                  onChange={(e) => setNoteFormData({ ...noteFormData, description: e.target.value })}
+                  placeholder="請輸入備忘錄內容..."
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* 按鈕 */}
+            <div style={{
+              padding: '20px',
+              borderTop: '1px solid #e0e0e0',
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={() => {
+                  setNoteDialogOpen(false)
+                  setEditingNote(null)
+                  setNoteFormData({ event_date: '', event_type: '備註', description: '' })
+                }}
+                style={{
+                  padding: '10px 20px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveNote}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                }}
+              >
+                {editingNote ? '儲存變更' : '確認新增'}
               </button>
             </div>
           </div>

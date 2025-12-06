@@ -17,6 +17,7 @@ import { MyReport } from './pages/coach/MyReport'
 import { CoachAdmin } from './pages/coach/CoachAdmin'
 import { CoachAssignment } from './pages/coach/CoachAssignment'
 import { MemberImport } from './pages/member/MemberImport'
+import { MemberNotesImport } from './pages/member/MemberNotesImport'
 import { AuditLog } from './pages/admin/AuditLog'
 import { TomorrowReminder } from './pages/TomorrowReminder'
 import { BackupPage } from './pages/admin/BackupPage'
@@ -72,6 +73,7 @@ function AppContent() {
           <Route path="/coach-admin" element={<CoachAdmin />} />
           <Route path="/coach-assignment" element={<CoachAssignment />} />
           <Route path="/member-import" element={<MemberImport />} />
+          <Route path="/member-notes-import" element={<MemberNotesImport />} />
           <Route path="/audit-log" element={<AuditLog />} />
           <Route path="/tomorrow" element={<TomorrowReminder />} />
           <Route path="/backup" element={<BackupPage />} />

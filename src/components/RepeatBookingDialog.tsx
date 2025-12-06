@@ -612,24 +612,27 @@ export function RepeatBookingDialog({
             setIsCoachPractice={setIsCoachPractice}
           />
 
-          {/* 錯誤訊息 */}
-          {error && (
-            <div style={{
-              padding: '14px 16px',
-              backgroundColor: '#fff3cd',
-              border: '2px solid #ffc107',
-              borderRadius: '8px',
-              marginTop: '20px',
-              color: '#856404',
-              fontSize: '15px',
-              fontWeight: '600',
-              whiteSpace: 'pre-line',
-            }}>
-              ⚠️ {error}
-            </div>
-          )}
           </form>
         </div>
+
+        {/* 錯誤訊息 - 固定在按鈕上方，不需滾動就能看到 */}
+        {error && (
+          <div style={{
+            padding: isMobile ? '12px 20px' : '14px 24px',
+            backgroundColor: '#fff3cd',
+            borderTop: '2px solid #ffc107',
+            color: '#856404',
+            fontSize: '15px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '10px',
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: '20px', flexShrink: 0 }}>⚠️</span>
+            <span style={{ whiteSpace: 'pre-line', flex: 1 }}>{error}</span>
+          </div>
+        )}
 
         {/* 按鈕欄 - 固定底部 */}
         <div style={{
