@@ -418,17 +418,63 @@ export function BoardManagement() {
     const slotInfo = getSlotInfo(num)
     const isOccupied = !!slotInfo
     
+    // 計算到期狀態
+    const getExpiryStatus = () => {
+      if (!slotInfo?.expires_at) return 'normal'
+      const today = new Date()
+      const expiryDate = new Date(slotInfo.expires_at)
+      const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      
+      if (daysUntilExpiry < 0) return 'expired'
+      if (daysUntilExpiry <= 30) return 'expiring'
+      return 'normal'
+    }
+    
+    const expiryStatus = isOccupied ? getExpiryStatus() : 'empty'
+    
+    // 根據狀態設定顏色
+    const getSlotStyles = () => {
+      switch (expiryStatus) {
+        case 'expired':
+          return {
+            background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)',
+            color: '#c62828',
+            border: '2px solid #ef9a9a'
+          }
+        case 'expiring':
+          return {
+            background: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)',
+            color: '#e65100',
+            border: '2px solid #ffcc80'
+          }
+        case 'normal':
+          return {
+            background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+            color: '#2e7d32',
+            border: '2px solid #a5d6a7'
+          }
+        default:
+          return {
+            background: '#f5f5f5',
+            color: '#999',
+            border: '2px solid #e0e0e0'
+          }
+      }
+    }
+    
+    const slotStyles = getSlotStyles()
+    
     return (
       <div
         key={num}
         onClick={() => handleSlotClick(slotInfo, num)}
         style={{
           padding: isMobile ? '6px' : '8px',
-          background: isOccupied ? 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)' : '#f5f5f5',
-          color: isOccupied ? 'white' : '#999',
+          background: slotStyles.background,
+          color: slotStyles.color,
           borderRadius: '6px',
           cursor: 'pointer',
-          border: isOccupied ? '2px solid #2e7d32' : '2px solid #e0e0e0',
+          border: slotStyles.border,
           transition: 'all 0.2s',
           minHeight: isMobile ? '65px' : '75px',
           display: 'flex',
@@ -439,7 +485,7 @@ export function BoardManagement() {
         onMouseEnter={(e) => {
           if (isOccupied) {
             e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
           }
         }}
         onMouseLeave={(e) => {
@@ -477,6 +523,23 @@ export function BoardManagement() {
                 lineHeight: '1.2'
               }}>
                 📅 {slotInfo.expires_at}
+              </div>
+            )}
+            
+            {/* 備註提示 */}
+            {slotInfo.notes && (
+              <div style={{ 
+                fontSize: isMobile ? '8px' : '9px',
+                opacity: 0.9,
+                marginTop: '2px',
+                lineHeight: '1.2',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+              title={slotInfo.notes}
+              >
+                📝 {slotInfo.notes.length > 8 ? slotInfo.notes.substring(0, 8) + '...' : slotInfo.notes}
               </div>
             )}
           </>

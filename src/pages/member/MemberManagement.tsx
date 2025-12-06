@@ -163,10 +163,10 @@ export function MemberManagement() {
             gift_boat_hours, membership_end_date, membership_start_date,
             membership_type, membership_partner_id,
             board_slot_number, board_expiry_date,
-            status, created_at
+            status, created_at, updated_at
           `)
           .eq('status', showInactive ? 'inactive' : 'active')
-          .order('created_at', { ascending: false})
+          .order('nickname', { ascending: true, nullsFirst: false })
           .limit(200),  // 限制最多 200 筆，避免一次載入太多
         
         supabase
