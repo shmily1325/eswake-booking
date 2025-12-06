@@ -1658,13 +1658,13 @@ export function EditBookingDialog({
 
         {/* 按鈕欄 - 固定底部 */}
         <div style={{
-          padding: isMobile ? '12px 20px' : '16px 20px',
+          padding: isMobile ? '12px 20px' : '20px 24px',
           borderTop: '1px solid #e0e0e0',
           background: 'white',
           display: 'flex',
-          gap: '8px',
+          gap: isMobile ? '8px' : '12px',
           flexWrap: 'wrap',
-          paddingBottom: isMobile ? '16px' : '16px',
+          paddingBottom: isMobile ? 'max(20px, env(safe-area-inset-bottom))' : '20px',
           flexShrink: 0,
         }}>
           <button
@@ -1676,17 +1676,18 @@ export function EditBookingDialog({
             }}
             disabled={loading}
             style={{
-              padding: isMobile ? '14px 12px' : '12px 16px',
+              padding: isMobile ? '14px 12px' : '12px 20px',
               borderRadius: '8px',
               border: 'none',
               backgroundColor: loading ? '#ccc' : '#dc3545',
               color: 'white',
-              fontSize: '14px',
+              fontSize: isMobile ? '14px' : '15px',
               fontWeight: '600',
               cursor: loading ? 'not-allowed' : 'pointer',
               touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',
-              flex: isMobile ? '0 0 auto' : '0',
+              flex: isMobile ? '0 0 auto' : '0 0 auto',
+              minWidth: isMobile ? 'auto' : '100px',
             }}
           >
             🗑️ 刪除
@@ -1702,30 +1703,31 @@ export function EditBookingDialog({
             }}
             disabled={loading}
             style={{
-              padding: isMobile ? '14px 12px' : '12px 16px',
+              padding: isMobile ? '14px 12px' : '12px 20px',
               borderRadius: '8px',
               border: 'none',
               backgroundColor: loading ? '#ccc' : '#ff9800',
               color: 'white',
-              fontSize: '14px',
+              fontSize: isMobile ? '14px' : '15px',
               fontWeight: '600',
               cursor: loading ? 'not-allowed' : 'pointer',
               touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',
-              flex: isMobile ? '0 0 auto' : '0',
+              flex: isMobile ? '0 0 auto' : '0 0 auto',
+              minWidth: isMobile ? 'auto' : '100px',
             }}
             title='複製此預約到其他日期'
           >
             📋 複製
           </button>
-          <div style={{ flex: 1, minWidth: isMobile ? '100%' : 'auto', display: 'flex', gap: '8px' }}>
+          <div style={{ flex: 1, minWidth: isMobile ? '100%' : 'auto', display: 'flex', gap: isMobile ? '8px' : '12px' }}>
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
               style={{
                 flex: 1,
-                padding: isMobile ? '14px' : '12px',
+                padding: isMobile ? '14px' : '12px 24px',
                 borderRadius: '8px',
                 border: '1px solid #ccc',
                 backgroundColor: 'white',
@@ -1736,6 +1738,7 @@ export function EditBookingDialog({
                 opacity: loading ? 0.5 : 1,
                 touchAction: 'manipulation',
                 minHeight: isMobile ? '48px' : '44px',
+                minWidth: isMobile ? 'auto' : '120px',
               }}
             >
               取消
@@ -1746,7 +1749,7 @@ export function EditBookingDialog({
               disabled={loading || conflictStatus === 'conflict'}
               style={{
                 flex: 1,
-                padding: isMobile ? '14px' : '12px',
+                padding: isMobile ? '14px' : '12px 24px',
                 borderRadius: '8px',
                 border: 'none',
                 background: (loading || conflictStatus === 'conflict') ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
@@ -1756,6 +1759,7 @@ export function EditBookingDialog({
                 cursor: (loading || conflictStatus === 'conflict') ? 'not-allowed' : 'pointer',
                 touchAction: 'manipulation',
                 minHeight: isMobile ? '48px' : '44px',
+                minWidth: isMobile ? 'auto' : '120px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

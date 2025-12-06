@@ -502,12 +502,12 @@ export function NewBookingDialog({
 
         {/* 按鈕欄 - 固定底部 */}
         <div style={{
-          padding: isMobile ? '12px 20px' : '16px 20px',
+          padding: isMobile ? '12px 20px' : '20px 24px',
           borderTop: '1px solid #e0e0e0',
           background: 'white',
           display: 'flex',
-          gap: '12px',
-          paddingBottom: isMobile ? '16px' : '16px',
+          gap: isMobile ? '8px' : '12px',
+          paddingBottom: isMobile ? 'max(20px, env(safe-area-inset-bottom))' : '20px',
           flexShrink: 0,
         }}>
           <button
@@ -516,7 +516,7 @@ export function NewBookingDialog({
             disabled={loading}
             style={{
               flex: 1,
-              padding: isMobile ? '14px' : '12px',
+              padding: isMobile ? '14px' : '12px 24px',
               borderRadius: '8px',
               border: '1px solid #ccc',
               backgroundColor: 'white',
@@ -527,6 +527,7 @@ export function NewBookingDialog({
               opacity: loading ? 0.5 : 1,
               touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',
+              minWidth: isMobile ? 'auto' : '120px',
             }}
           >
             取消
@@ -537,7 +538,7 @@ export function NewBookingDialog({
             disabled={loading || conflictStatus === 'conflict'}
             style={{
               flex: 1,
-              padding: isMobile ? '14px' : '12px',
+              padding: isMobile ? '14px' : '12px 24px',
               borderRadius: '8px',
               border: 'none',
               background: (loading || conflictStatus === 'conflict') ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
@@ -547,6 +548,7 @@ export function NewBookingDialog({
               cursor: (loading || conflictStatus === 'conflict') ? 'not-allowed' : 'pointer',
               touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',
+              minWidth: isMobile ? 'auto' : '120px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
