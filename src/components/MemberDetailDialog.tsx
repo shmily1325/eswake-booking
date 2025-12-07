@@ -26,7 +26,6 @@ interface Member {
   membership_type: string | null
   membership_partner_id: string | null
   board_slot_number: string | null
-  board_start_date: string | null
   board_expiry_date: string | null
   notes: string | null
   status: string | null
@@ -38,6 +37,7 @@ interface Member {
 interface BoardStorage {
   id: number
   slot_number: number
+  start_date: string | null
   expires_at: string | null
   notes: string | null
   status: string | null
@@ -82,6 +82,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
   const [addBoardDialogOpen, setAddBoardDialogOpen] = useState(false)
   const [boardFormData, setBoardFormData] = useState({
     slot_number: '',
+    start_date: '',
     expires_at: '',
     notes: ''
   })
@@ -299,6 +300,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         .insert([{
           member_id: memberId,
           slot_number: slotNumber,
+          start_date: boardFormData.start_date || null,
           expires_at: boardFormData.expires_at || null,
           notes: boardFormData.notes.trim() || null,
           status: 'active'
@@ -312,7 +314,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         }
         return
       }
-      setBoardFormData({ slot_number: '', expires_at: '', notes: '' })
+      setBoardFormData({ slot_number: '', start_date: '', expires_at: '', notes: '' })
       setAddBoardDialogOpen(false)
       loadMemberData()
       onUpdate()
@@ -491,14 +493,11 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                     <div style={{ marginBottom: '30px' }}>
                       <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>🎫 會員服務</h3>
                       <div style={{ display: 'grid', gap: '12px' }}>
-                        {member.membership_start_date && (
-                          <InfoRow label="會籍開始" value={member.membership_start_date} />
-                        )}
-                        {member.membership_end_date && (
+                        {(member.membership_start_date || member.membership_end_date) && (
                           <InfoRow 
-                            label="會籍到期" 
-                            value={member.membership_end_date}
-                            highlight={isExpiringSoon(member.membership_end_date)}
+                            label="📅 會籍" 
+                            value={`${member.membership_start_date ? `開始：${member.membership_start_date}` : ''}${member.membership_start_date && member.membership_end_date ? '　' : ''}${member.membership_end_date ? `到期：${member.membership_end_date}${isExpired(member.membership_end_date) ? ' (已過期)' : ''}` : ''}`}
+                            highlight={member.membership_end_date ? (isExpired(member.membership_end_date) || isExpiringSoon(member.membership_end_date)) : false}
                           />
                         )}
                         {member.membership_type === 'dual' && member.partner && (
@@ -752,7 +751,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
               <button
                 onClick={() => {
                   setAddBoardDialogOpen(false)
-                  setBoardFormData({ slot_number: '', expires_at: '', notes: '' })
+                  setBoardFormData({ slot_number: '', start_date: '', expires_at: '', notes: '' })
                 }}
                 style={{
                   border: 'none',
@@ -788,6 +787,25 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                     }
                   }}
                   placeholder="請輸入格位編號"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+
+              {/* 置板開始 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                  置板開始 <span style={{ fontSize: '13px' }}>（選填）</span>
+                </label>
+                <input
+                  type="date"
+                  value={boardFormData.start_date}
+                  onChange={(e) => setBoardFormData({ ...boardFormData, start_date: e.target.value })}
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -849,7 +867,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
               <button
                 onClick={() => {
                   setAddBoardDialogOpen(false)
-                  setBoardFormData({ slot_number: '', expires_at: '', notes: '' })
+                  setBoardFormData({ slot_number: '', start_date: '', expires_at: '', notes: '' })
                 }}
                 style={{
                   padding: '10px 20px',
@@ -1088,6 +1106,12 @@ function getMembershipTypeLabel(type: string): string {
     case 'guest': return '非會員'
     default: return type || '會員'
   }
+}
+
+function isExpired(dateString: string): boolean {
+  const expiryDate = new Date(dateString)
+  const today = new Date()
+  return expiryDate < today
 }
 
 function isExpiringSoon(dateString: string): boolean {

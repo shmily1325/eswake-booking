@@ -27,13 +27,12 @@ interface Member {
   membership_type: string  // 'general', 'dual', 'guest' (非會員、一般會員、雙人會員)
   membership_partner_id: string | null
   board_slot_number: string | null
-  board_start_date: string | null
   board_expiry_date: string | null
   notes: string | null
   status: string
   created_at: string
   board_count?: number  // 置板數量（從 board_storage 計算）
-  board_slots?: Array<{ slot_number: number; expires_at: string | null }>  // 置板詳細資訊
+  board_slots?: Array<{ slot_number: number; start_date: string | null; expires_at: string | null }>  // 置板詳細資訊
   partner?: Member | null  // 配對會員資料
   member_notes?: MemberNote[]  // 會員備忘錄
 }
@@ -181,7 +180,7 @@ export function MemberManagement() {
         
         supabase
           .from('board_storage')
-          .select('member_id, slot_number, expires_at')
+          .select('member_id, slot_number, start_date, expires_at')
           .eq('status', 'active')
           .order('slot_number', { ascending: true }),
         
@@ -199,13 +198,14 @@ export function MemberManagement() {
       const notesData = notesResult.data || []
 
       // 整理每個會員的置板資料
-      const memberBoards: Record<string, Array<{ slot_number: number; expires_at: string | null }>> = {}
+      const memberBoards: Record<string, Array<{ slot_number: number; start_date: string | null; expires_at: string | null }>> = {}
       boardData.forEach((board: any) => {
         if (!memberBoards[board.member_id]) {
           memberBoards[board.member_id] = []
         }
         memberBoards[board.member_id].push({
           slot_number: board.slot_number,
+          start_date: board.start_date,
           expires_at: board.expires_at
         })
       })
@@ -1191,11 +1191,14 @@ export function MemberManagement() {
                     flexDirection: 'column',
                     gap: '4px'
                   }}>
+                    {/* 置板格位 */}
                     {member.board_slots.map((slot, index) => {
                       const isExpired = slot.expires_at && new Date(slot.expires_at) < new Date()
                       return (
                         <div key={index} style={{ color: isExpired ? '#f44336' : '#2e7d32' }}>
-                          🏄 置板 #{slot.slot_number} {slot.expires_at && `⏰到期：${formatDate(slot.expires_at)}`}
+                          🏄 #{slot.slot_number}
+                          {slot.start_date && ` 📅${formatDate(slot.start_date)}`}
+                          {slot.expires_at && ` ⏰${formatDate(slot.expires_at)}`}
                           {isExpired && ' (已過期)'}
                         </div>
                       )

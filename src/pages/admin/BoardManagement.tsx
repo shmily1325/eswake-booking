@@ -14,6 +14,7 @@ interface BoardSlot {
   member_id?: string
   member_name?: string
   member_nickname?: string | null
+  start_date?: string | null
   expires_at?: string | null
   notes?: string | null
   status?: string | null
@@ -37,6 +38,7 @@ export function BoardManagement() {
   const [selectedSlot, setSelectedSlot] = useState<BoardSlot | null>(null)
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState({
+    start_date: '',
     expires_at: '',
     notes: ''
   })
@@ -47,6 +49,7 @@ export function BoardManagement() {
   const [searchResults, setSearchResults] = useState<MemberBasic[]>([])
   const [selectedMember, setSelectedMember] = useState<MemberBasic | null>(null)
   const [newBoardForm, setNewBoardForm] = useState({
+    start_date: '',
     expires_at: '',
     notes: ''
   })
@@ -257,6 +260,7 @@ export function BoardManagement() {
           id,
           slot_number,
           member_id,
+          start_date,
           expires_at,
           notes,
           status,
@@ -276,6 +280,7 @@ export function BoardManagement() {
         member_id: item.member_id,
         member_name: item.members?.name,
         member_nickname: item.members?.nickname,
+        start_date: item.start_date,
         expires_at: item.expires_at,
         notes: item.notes,
         status: item.status,
@@ -300,6 +305,7 @@ export function BoardManagement() {
     setEditing(false)
     if (slotInfo) {
       setEditForm({
+        start_date: slotInfo.start_date || '',
         expires_at: slotInfo.expires_at || '',
         notes: slotInfo.notes || ''
       })
@@ -313,6 +319,7 @@ export function BoardManagement() {
       const { error } = await supabase
         .from('board_storage')
         .update({
+          start_date: editForm.start_date || null,
           expires_at: editForm.expires_at || null,
           notes: editForm.notes.trim() || null,
         })
@@ -382,6 +389,7 @@ export function BoardManagement() {
         .insert({
           slot_number: selectedSlot.slot_number,
           member_id: selectedMember.id,
+          start_date: newBoardForm.start_date || null,
           expires_at: newBoardForm.expires_at || null,
           notes: newBoardForm.notes.trim() || null,
           status: 'active'
@@ -395,7 +403,7 @@ export function BoardManagement() {
       setSelectedMember(null)
       setMemberSearch('')
       setSearchResults([])
-      setNewBoardForm({ expires_at: '', notes: '' })
+      setNewBoardForm({ start_date: '', expires_at: '', notes: '' })
       
       loadBoardData()
     } catch (error) {
@@ -411,7 +419,7 @@ export function BoardManagement() {
     setSelectedMember(null)
     setMemberSearch('')
     setSearchResults([])
-    setNewBoardForm({ expires_at: '', notes: '' })
+    setNewBoardForm({ start_date: '', expires_at: '', notes: '' })
   }
 
   const renderSlotCard = (num: number) => {
@@ -812,6 +820,25 @@ export function BoardManagement() {
                   {/* 編輯模式 */}
                   {editing ? (
                     <>
+                      {/* 開始日 */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                          開始日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={editForm.start_date}
+                          onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                          }}
+                        />
+                      </div>
+
                       {/* 到期日 */}
                       <div style={{ marginBottom: '16px' }}>
                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
@@ -1072,6 +1099,25 @@ export function BoardManagement() {
                             </button>
                           </div>
                         )}
+                      </div>
+
+                      {/* 開始日 */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                          開始日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={newBoardForm.start_date}
+                          onChange={(e) => setNewBoardForm({ ...newBoardForm, start_date: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                          }}
+                        />
                       </div>
 
                       {/* 到期日 */}

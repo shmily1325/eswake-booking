@@ -30,7 +30,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   const toast = useToast()
   const [loading, setLoading] = useState(false)
   const [allMembers, setAllMembers] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
-  const [boardSlots, setBoardSlots] = useState<Array<{id?: number, slot_number: string, expires_at: string}>>([])
+  const [boardSlots, setBoardSlots] = useState<Array<{id?: number, slot_number: string, start_date: string, expires_at: string}>>([])
   const [formData, setFormData] = useState({
     name: member.name,
     nickname: member.nickname || '',
@@ -58,7 +58,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   const loadBoardSlots = async () => {
     const { data } = await supabase
       .from('board_storage')
-      .select('id, slot_number, expires_at')
+      .select('id, slot_number, start_date, expires_at')
       .eq('member_id', member.id)
       .eq('status', 'active')
       .order('slot_number')
@@ -66,6 +66,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       setBoardSlots(data.map(slot => ({
         id: slot.id,
         slot_number: String(slot.slot_number),
+        start_date: slot.start_date || '',
         expires_at: slot.expires_at || ''
       })))
     }
@@ -113,7 +114,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
 
   // 添加新置板格位
   const handleAddBoardSlot = () => {
-    setBoardSlots([...boardSlots, { slot_number: '', expires_at: '' }])
+    setBoardSlots([...boardSlots, { slot_number: '', start_date: '', expires_at: '' }])
   }
 
   // 刪除置板格位
@@ -136,7 +137,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   }
 
   // 更新置板格位
-  const handleUpdateBoardSlot = (index: number, field: 'slot_number' | 'expires_at', value: string) => {
+  const handleUpdateBoardSlot = (index: number, field: 'slot_number' | 'start_date' | 'expires_at', value: string) => {
     const newSlots = [...boardSlots]
     newSlots[index][field] = value
     setBoardSlots(newSlots)
@@ -191,6 +192,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             .from('board_storage')
             .update({
               slot_number: slotNumber,
+              start_date: slot.start_date || null,
               expires_at: slot.expires_at || null,
               status: 'active'
             })
@@ -203,6 +205,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             .insert({
               member_id: member.id,
               slot_number: slotNumber,
+              start_date: slot.start_date || null,
               expires_at: slot.expires_at || null,
               status: 'active'
             })
@@ -541,6 +544,17 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                               }
                             }}
                             placeholder="例如：1"
+                            style={{...inputStyle, fontSize: '14px'}}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '13px' }}>
+                            開始日期
+                          </label>
+                          <input
+                            type="date"
+                            value={slot.start_date}
+                            onChange={(e) => handleUpdateBoardSlot(index, 'start_date', e.target.value)}
                             style={{...inputStyle, fontSize: '14px'}}
                           />
                         </div>

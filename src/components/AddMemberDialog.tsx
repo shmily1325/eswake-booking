@@ -47,12 +47,13 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
   
   const [boards, setBoards] = useState<Array<{
     slot_number: string
+    start_date: string
     expires_at: string
     notes: string
   }>>([])
 
   const addBoard = () => {
-    setBoards([...boards, { slot_number: '', expires_at: '', notes: '' }])
+    setBoards([...boards, { slot_number: '', start_date: '', expires_at: '', notes: '' }])
   }
 
   const removeBoard = (index: number) => {
@@ -142,6 +143,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           boardsToInsert.push({
             member_id: newMember.id,
             slot_number: slotNumber,
+            start_date: board.start_date || null,
             expires_at: board.expires_at || null,
             notes: board.notes.trim() || null,
             status: 'active',
@@ -504,6 +506,19 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                         }
                       }}
                       placeholder="請輸入格位編號"
+                      style={{...inputStyle, fontSize: '14px', padding: '8px'}}
+                    />
+                  </div>
+
+                  {/* 置板開始 */}
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#666' }}>
+                      置板開始 <span style={{ fontSize: '12px' }}>（選填）</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={board.start_date}
+                      onChange={(e) => updateBoard(index, 'start_date', e.target.value)}
                       style={{...inputStyle, fontSize: '14px', padding: '8px'}}
                     />
                   </div>
