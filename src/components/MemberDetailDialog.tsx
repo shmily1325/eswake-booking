@@ -170,7 +170,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         .from('member_notes')
         .select('*')
         .eq('member_id', memberId)
-        .order('event_date', { ascending: false })
+        .order('event_date', { ascending: true, nullsFirst: true })
         .order('created_at', { ascending: false })
 
       if (error) throw error

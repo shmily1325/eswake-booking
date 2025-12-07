@@ -188,7 +188,7 @@ export function MemberManagement() {
         supabase
           .from('member_notes')
           .select('id, member_id, event_date, event_type, description')
-          .order('event_date', { ascending: false, nullsFirst: true })
+          .order('event_date', { ascending: true, nullsFirst: true })
       ])
 
       if (membersResult.error) throw membersResult.error
@@ -1119,7 +1119,7 @@ export function MemberManagement() {
                       📝 備忘錄 ({member.member_notes.length})
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {member.member_notes.slice(0, 3).map((note) => {
+                      {member.member_notes.slice(-10).map((note) => {
                         const eventColors: Record<string, string> = {
                           '續約': '#4caf50',
                           '購買': '#2196f3',
@@ -1160,9 +1160,9 @@ export function MemberManagement() {
                           </div>
                         )
                       })}
-                      {member.member_notes.length > 3 && (
+                      {member.member_notes.length > 10 && (
                         <div style={{ fontSize: '11px', color: '#999', textAlign: 'center' }}>
-                          還有 {member.member_notes.length - 3} 則備忘錄...
+                          還有 {member.member_notes.length - 10} 則較舊的備忘錄...
                         </div>
                       )}
                     </div>
