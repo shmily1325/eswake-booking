@@ -27,6 +27,7 @@ interface Member {
   membership_type: string  // 'general', 'dual', 'guest' (非會員、一般會員、雙人會員)
   membership_partner_id: string | null
   board_slot_number: string | null
+  board_start_date: string | null
   board_expiry_date: string | null
   notes: string | null
   status: string
@@ -287,24 +288,46 @@ export function MemberManagement() {
 
   const handleExportMembers = async () => {
     try {
-      // 載入所有會員（包含隱藏的）
-      const { data: allMembers, error } = await supabase
-        .from('members')
-        .select(`
-          id, name, nickname, phone, birthday, notes, 
-          balance, vip_voucher_amount, designated_lesson_minutes, 
-          boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, 
-          gift_boat_hours, membership_end_date, membership_start_date,
-          membership_type, membership_partner_id,
-          status, created_at
-        `)
-        .order('created_at', { ascending: false })
+      // 並行載入會員資料和備忘錄
+      const [membersResult, notesResult] = await Promise.all([
+        supabase
+          .from('members')
+          .select(`
+            id, name, nickname, phone, birthday, notes, 
+            balance, vip_voucher_amount, designated_lesson_minutes, 
+            boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, 
+            gift_boat_hours, membership_end_date, membership_start_date,
+            membership_type, membership_partner_id,
+            status, created_at
+          `)
+          .order('created_at', { ascending: false }),
+        // @ts-ignore
+        supabase
+          .from('member_notes')
+          .select('member_id, event_date, event_type, description')
+          .order('event_date', { ascending: true })
+      ])
 
-      if (error) throw error
-      if (!allMembers || allMembers.length === 0) {
+      if (membersResult.error) throw membersResult.error
+      const allMembers = membersResult.data || []
+      
+      if (allMembers.length === 0) {
         toast.warning('沒有會員資料可以導出')
         return
       }
+
+      // 整理備忘錄資料
+      const notesData = notesResult.data || []
+      const memberNotesMap: Record<string, string[]> = {}
+      notesData.forEach((note: any) => {
+        if (!memberNotesMap[note.member_id]) {
+          memberNotesMap[note.member_id] = []
+        }
+        const noteStr = note.event_date 
+          ? `${note.event_date} ${note.description}`
+          : note.description
+        memberNotesMap[note.member_id].push(noteStr)
+      })
 
       // 載入配對會員資料
       const partnerIds = allMembers
@@ -328,7 +351,7 @@ export function MemberManagement() {
       // 準備 CSV 內容
       const headers = [
         '姓名', '暱稱', '會籍類型', '配對會員', 
-        '會員開始日期', '會員截止日', '電話', '生日', '備註', '狀態'
+        '會員開始日期', '會員截止日', '電話', '生日', '備忘錄', '狀態'
       ]
 
       const rows = allMembers.map((member: any) => {
@@ -345,6 +368,9 @@ export function MemberManagement() {
           ? (partnersMap[member.membership_partner_id].nickname || partnersMap[member.membership_partner_id].name)
           : ''
 
+        // 備忘錄（用分號分隔）
+        const notesStr = memberNotesMap[member.id]?.join(' ; ') || ''
+
         return [
           member.name || '',
           member.nickname || '',
@@ -354,7 +380,7 @@ export function MemberManagement() {
           member.membership_end_date || '',
           member.phone || '',
           member.birthday || '',
-          member.notes || '',
+          notesStr,
           member.status === 'active' ? '啟用' : '隱藏'
         ]
       })
@@ -541,22 +567,24 @@ export function MemberManagement() {
         flexWrap: 'wrap'
       }}>
         <button
-          onClick={() => navigate('/member-import')}
+          disabled
+          title="功能已停用"
           style={{
             flex: isMobile ? '1 1 100%' : '0 0 auto',
             padding: isMobile ? '12px 16px' : '10px 20px',
-            background: 'white',
-            color: '#666',
+            background: '#f5f5f5',
+            color: '#bbb',
             border: '2px solid #e0e0e0',
             borderRadius: '8px',
             fontSize: isMobile ? '14px' : '15px',
             fontWeight: '600',
-            cursor: 'pointer',
+            cursor: 'not-allowed',
             transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '8px'
+            gap: '8px',
+            opacity: 0.6
           }}
         >
           <span>📥</span>

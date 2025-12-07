@@ -26,6 +26,7 @@ interface Member {
   membership_type: string | null
   membership_partner_id: string | null
   board_slot_number: string | null
+  board_start_date: string | null
   board_expiry_date: string | null
   notes: string | null
   status: string | null
