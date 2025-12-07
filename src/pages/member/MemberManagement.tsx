@@ -1136,19 +1136,14 @@ export function MemberManagement() {
                         </div>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                      {member.membership_start_date && (
-                        <div>🎫 會籍開始：{formatDate(member.membership_start_date)}</div>
-                      )}
-                      {member.membership_end_date && (
-                        <div style={{ 
-                          color: new Date(member.membership_end_date) < new Date() ? '#f44336' : '#666'
-                        }}>
-                          🎫 會籍到期：{formatDate(member.membership_end_date)}
-                          {new Date(member.membership_end_date) < new Date() && ' (已過期)'}
-                        </div>
-                      )}
-                    </div>
+                    {(member.membership_start_date || member.membership_end_date) && (
+                      <div style={{ 
+                        color: member.membership_end_date && new Date(member.membership_end_date) < new Date() ? '#f44336' : '#666'
+                      }}>
+                        🎫 會籍：{member.membership_start_date ? formatDate(member.membership_start_date) : '?'} → {member.membership_end_date ? formatDate(member.membership_end_date) : '?'}
+                        {member.membership_end_date && new Date(member.membership_end_date) < new Date() && ' (已過期)'}
+                      </div>
+                    )}
                     {/* 置板資訊 */}
                     {member.board_slots && member.board_slots.length > 0 && (
                       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
@@ -1159,9 +1154,7 @@ export function MemberManagement() {
                               color: isExpired ? '#f44336' : '#2e7d32',
                               fontSize: '13px'
                             }}>
-                              🏄 置板 #{slot.slot_number}
-                              {slot.start_date && ` 開始：${formatDate(slot.start_date)}`}
-                              {slot.expires_at && ` 到期：${formatDate(slot.expires_at)}`}
+                              🏄 置板 #{slot.slot_number}：{slot.start_date ? formatDate(slot.start_date) : '?'} → {slot.expires_at ? formatDate(slot.expires_at) : '?'}
                               {isExpired && ' (已過期)'}
                             </div>
                           )

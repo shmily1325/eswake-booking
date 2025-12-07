@@ -4,7 +4,7 @@ import { UserMenu } from '../components/UserMenu'
 import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
-import { isAdmin } from '../utils/auth'
+import { isAdmin, isEditorAsync } from '../utils/auth'
 import { supabase } from '../lib/supabase'
 import { useState, useEffect } from 'react'
 
@@ -12,6 +12,7 @@ export function HomePage() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [isCoach, setIsCoach] = useState(false)
+  const [isEditorUser, setIsEditorUser] = useState(false)
   
   // Detect V2 environment
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
@@ -42,6 +43,22 @@ export function HomePage() {
     checkIfCoach()
   }, [user?.email])
   
+  // 檢查用戶是否為小編（但不是管理員）
+  useEffect(() => {
+    const checkIfEditor = async () => {
+      if (!user || userIsAdmin) {
+        setIsEditorUser(false)
+        return
+      }
+      
+      const isEditor = await isEditorAsync(user)
+      // 只有小編且不是管理員才顯示小編入口
+      setIsEditorUser(isEditor && !userIsAdmin)
+    }
+    
+    checkIfEditor()
+  }, [user, userIsAdmin])
+  
   const menuItems: Array<{
     title: string
     icon: string
@@ -49,6 +66,7 @@ export function HomePage() {
     subtitle?: string
     isAdmin?: boolean
     isCoach?: boolean
+    isEditor?: boolean
   }> = [
     {
       title: '今日預約',
@@ -85,6 +103,12 @@ export function HomePage() {
       title: '編輯記錄',
       icon: '📋',
       link: '/audit-log'
+    },
+    {
+      title: '船隻管理',
+      icon: '🚤',
+      link: '/boats',
+      isEditor: true
     },
     {
       title: 'BAO',
@@ -159,6 +183,7 @@ export function HomePage() {
             .filter(item => {
               if (item.isAdmin && !userIsAdmin) return false
               if (item.isCoach && !isCoach) return false
+              if (item.isEditor && !isEditorUser) return false
               return true
             })
             .map((item, index) => (

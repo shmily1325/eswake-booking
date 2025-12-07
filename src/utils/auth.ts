@@ -18,6 +18,7 @@ export const SUPER_ADMINS = [
 // 權限緩存
 let adminEmailsCache: string[] | null = null
 let allowedEmailsCache: string[] | null = null
+let editorEmailsCache: string[] | null = null
 let cacheTimestamp: number = 0
 const CACHE_DURATION = 60000 // 1分鐘
 
@@ -83,11 +84,42 @@ async function loadAllowedEmails(): Promise<string[]> {
 }
 
 /**
+ * 從資料庫載入小編列表
+ */
+async function loadEditorEmails(): Promise<string[]> {
+  const now = Date.now()
+  
+  // 使用緩存
+  if (editorEmailsCache && (now - cacheTimestamp < CACHE_DURATION)) {
+    return editorEmailsCache
+  }
+  
+  try {
+    const { data, error } = await (supabase as any)
+      .from('editor_users')
+      .select('email')
+    
+    if (error) {
+      logger.error('Failed to load editor emails:', error)
+      return []
+    }
+    
+    const emails: string[] = data?.map((row: any) => row.email) || []
+    editorEmailsCache = emails
+    return emails
+  } catch (err) {
+    logger.error('Failed to load editor emails:', err)
+    return []
+  }
+}
+
+/**
  * 清除權限緩存
  */
 export function clearPermissionCache() {
   adminEmailsCache = null
   allowedEmailsCache = null
+  editorEmailsCache = null
   cacheTimestamp = 0
 }
 
@@ -171,5 +203,40 @@ export function hasPermission(user: User | null, permission: 'admin' | 'coach' |
     default:
       return false
   }
+}
+
+/**
+ * 檢查用戶是否為小編（異步版本）
+ * 小編可以看到更多功能，如船隻管理等
+ */
+export async function isEditorAsync(user: User | null): Promise<boolean> {
+  if (!user || !user.email) return false
+  
+  // 管理員（包括超級管理員）同時也有小編權限
+  const adminEmails = await loadAdminEmails()
+  if (adminEmails.includes(user.email)) return true
+  
+  // 檢查是否在小編列表中
+  const editorEmails = await loadEditorEmails()
+  return editorEmails.includes(user.email)
+}
+
+/**
+ * 檢查用戶是否為小編（同步版本，使用緩存）
+ * 注意：第一次呼叫可能返回 false，因為緩存可能尚未載入
+ */
+export function isEditor(user: User | null): boolean {
+  if (!user || !user.email) return false
+  
+  // 超級管理員也有小編權限
+  if (SUPER_ADMINS.includes(user.email)) return true
+  
+  // 檢查緩存中的管理員（管理員也有小編權限）
+  if (adminEmailsCache && adminEmailsCache.includes(user.email)) return true
+  
+  // 檢查緩存中的小編
+  if (editorEmailsCache && editorEmailsCache.includes(user.email)) return true
+  
+  return false
 }
 

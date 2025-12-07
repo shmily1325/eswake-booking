@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -7,11 +8,14 @@ import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import type { Boat, BoatUnavailableDate } from '../../types/booking'
 import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
 import { designSystem } from '../../styles/designSystem'
+import { isEditorAsync } from '../../utils/auth'
 
 export function BoatManagement() {
     const user = useAuthUser()
+    const navigate = useNavigate()
     const toast = useToast()
     const [loading, setLoading] = useState(true)
+    const [hasAccess, setHasAccess] = useState(false)
     const [boats, setBoats] = useState<Boat[]>([])
     const [unavailableDates, setUnavailableDates] = useState<BoatUnavailableDate[]>([])
     const [activeTab, setActiveTab] = useState<'boats' | 'pricing'>('boats') // Tab 切換
@@ -38,8 +42,23 @@ export function BoatManagement() {
     const [editingPrices, setEditingPrices] = useState<{[key: string]: {balance: string, vip: string}}>({})
     const [savingPrices, setSavingPrices] = useState<{[key: string]: boolean}>({})
 
+    // 權限檢查
     useEffect(() => {
-        if (user) loadData()
+        const checkAccess = async () => {
+            if (!user) return
+            
+            const canAccess = await isEditorAsync(user)
+            if (!canAccess) {
+                toast.error('您沒有權限訪問此頁面')
+                navigate('/')
+                return
+            }
+            
+            setHasAccess(true)
+            loadData()
+        }
+        
+        checkAccess()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user])
 
@@ -276,7 +295,7 @@ export function BoatManagement() {
         return `$${Math.ceil(pricePerHour * minutes / 60).toLocaleString()}`
     }
 
-    if (loading) {
+    if (loading || !hasAccess) {
         return (
             <div style={{ padding: '20px', textAlign: 'center' }}>
                 載入中...

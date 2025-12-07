@@ -25,12 +25,13 @@ import { BoardManagement } from './pages/admin/BoardManagement'
 import { BaoHub } from './pages/BaoHub'
 import { StaffManagement } from './pages/admin/StaffManagement'
 import { BoatManagement } from './pages/admin/BoatManagement'
+// import { EditorHub } from './pages/EditorHub' // 已整合到人員管理
 import { QuickTransaction } from './pages/QuickTransaction'
 import { MemberTransaction } from './pages/member/MemberTransaction'
 import { AnnouncementManagement } from './pages/admin/AnnouncementManagement'
 import { LineSettings } from './pages/admin/LineSettings'
 import { CoachDailyView } from './pages/coach/CoachDailyView'
-import { PermissionManagement } from './pages/admin/PermissionManagement'
+// import { PermissionManagement } from './pages/admin/PermissionManagement' // 暫時停用
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { LiffMyBookings } from './pages/LiffMyBookings'
 
@@ -84,8 +85,9 @@ function AppContent() {
           <Route path="/announcements" element={<AnnouncementManagement />} />
           <Route path="/line-settings" element={<LineSettings />} />
           <Route path="/coach-daily" element={<CoachDailyView />} />
-          <Route path="/permissions" element={<PermissionManagement />} />
+          {/* <Route path="/permissions" element={<PermissionManagement />} /> */}
           <Route path="/boats" element={<BoatManagement />} />
+          {/* <Route path="/editor" element={<EditorHub />} /> */}
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
         </Routes>
       </BrowserRouter>

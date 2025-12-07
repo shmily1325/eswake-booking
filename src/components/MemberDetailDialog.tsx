@@ -96,6 +96,10 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     description: ''
   })
 
+  // 續約相關狀態
+  const [renewDialogOpen, setRenewDialogOpen] = useState(false)
+  const [renewEndDate, setRenewEndDate] = useState('')
+
   useEffect(() => {
     if (!open) {
       setEditDialogOpen(false)
@@ -103,6 +107,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       setAddBoardDialogOpen(false)
       setNoteDialogOpen(false)
       setEditingNote(null)
+      setRenewDialogOpen(false)
+      setRenewEndDate('')
     }
   }, [open])
 
@@ -315,6 +321,48 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     }
   }
 
+  // 續約
+  const handleRenew = async () => {
+    if (!member || !memberId || !renewEndDate) {
+      toast.warning('請選擇新的到期日')
+      return
+    }
+
+    try {
+      // 1. 更新會員資料
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({
+          membership_end_date: renewEndDate
+        })
+        .eq('id', memberId)
+
+      if (updateError) throw updateError
+
+      // 2. 新增備忘錄
+      const today = new Date().toISOString().split('T')[0]
+      // @ts-ignore
+      await supabase
+        .from('member_notes')
+        .insert([{
+          member_id: memberId,
+          event_date: today,
+          event_type: '續約',
+          description: `續約至 ${renewEndDate}`
+        }])
+
+      toast.success('續約成功')
+      setRenewDialogOpen(false)
+      setRenewEndDate('')
+      loadMemberData()
+      loadMemberNotes()
+      onUpdate()
+    } catch (error) {
+      console.error('續約失敗:', error)
+      toast.error('續約失敗')
+    }
+  }
+
   const handleEditSuccess = () => {
     loadMemberData()
     onUpdate()
@@ -454,147 +502,224 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
               {/* 內容區 */}
               <div style={{ padding: isMobile ? '16px' : '20px' }}>
                     {/* 基本資料 */}
-                    <div style={{ marginBottom: '30px' }}>
-                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>👤 基本資料</h3>
-                      <div style={{ display: 'grid', gap: '12px' }}>
-                        <InfoRow label="姓名" value={member.name} />
-                        <InfoRow label="暱稱" value={member.nickname || '-'} />
-                        <InfoRow label="生日" value={member.birthday || '-'} />
-                        <InfoRow label="電話" value={member.phone || '-'} />
-                        <InfoRow label="會籍類型" value={getMembershipTypeLabel(member.membership_type || 'personal')} />
-                        {member.notes && <InfoRow label="備註" value={member.notes} />}
-                      </div>
-                    </div>
-
-                    {/* 儲值資訊 */}
-                    <div style={{ marginBottom: '30px' }}>
-                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>💰 儲值資訊</h3>
-                      <div style={{ 
-                        background: '#f8f9fa',
-                        borderRadius: '8px',
-                        padding: '15px',
-                        border: '1px solid #e0e0e0'
-                      }}>
-                        <InfoRow label="💵 儲值" value={`$${(member.balance ?? 0).toFixed(0)}`} />
-                        <InfoRow label="🎁 VIP 票券" value={`$${(member.vip_voucher_amount ?? 0).toFixed(0)}`} />
-                        <InfoRow label="🚤 G23 船券" value={`${member.boat_voucher_g23_minutes ?? 0} 分鐘`} />
-                        <InfoRow label="⛵ G21/黑豹共通船券" value={`${member.boat_voucher_g21_panther_minutes ?? 0} 分鐘`} />
-                        <InfoRow label="⏱️ 贈送大船時數" value={`${member.gift_boat_hours ?? 0} 分鐘`} />
-                        <InfoRow label="📚 指定課時數" value={`${member.designated_lesson_minutes ?? 0} 分鐘`} />
-                      </div>
-                    </div>
-
-                    {/* 置板資訊 */}
-                    <div style={{ marginBottom: '30px' }}>
-                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>🏄 置板服務</h3>
-                      <div style={{ 
-                        background: '#f8f9fa',
-                        borderRadius: '8px',
-                        padding: '15px',
-                        border: '1px solid #e0e0e0'
-                      }}>
-                        {boardStorage.length === 0 ? (
-                          <div style={{ textAlign: 'center', color: '#999', fontSize: '14px' }}>
-                            尚無置板記錄
-                          </div>
-                        ) : (
-                          <div>
-                            {boardStorage.map((board, index) => (
-                              <div key={board.id}>
-                                {index > 0 && <div style={{ height: '1px', background: '#dee2e6', margin: '10px 0' }} />}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <div style={{ flex: 1 }}>
-                                    <span style={{ fontWeight: 'bold' }}>#{board.slot_number}</span>
-                                    {board.expires_at && <span style={{ color: '#666', marginLeft: '10px', fontSize: '13px' }}>({board.expires_at})</span>}
-                                  </div>
-                                  <button
-                                    onClick={() => handleDeleteBoard(board.id, board.slot_number)}
-                                    style={{
-                                      padding: '4px 12px',
-                                      background: '#f44336',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: '4px',
-                                      fontSize: '12px',
-                                      cursor: 'pointer',
-                                      transition: 'background 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = '#d32f2f'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = '#f44336'}
-                                  >
-                                    移除
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 會員服務 */}
-                    <div style={{ marginBottom: '30px' }}>
-                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>🎫 會員服務</h3>
-                      <div style={{ display: 'grid', gap: '12px' }}>
-                        {(member.membership_start_date || member.membership_end_date) && (
-                          <InfoRow 
-                            label="📅 會籍" 
-                            value={`${member.membership_start_date ? `開始：${member.membership_start_date}` : ''}${member.membership_start_date && member.membership_end_date ? '　' : ''}${member.membership_end_date ? `到期：${member.membership_end_date}${isExpired(member.membership_end_date) ? ' (已過期)' : ''}` : ''}`}
-                            highlight={member.membership_end_date ? (isExpired(member.membership_end_date) || isExpiringSoon(member.membership_end_date)) : false}
-                          />
-                        )}
-                        {member.membership_type === 'dual' && member.partner && (
-                          <InfoRow 
-                            label="🔗 配對會員" 
-                            value={member.partner.nickname || member.partner.name} 
-                          />
-                        )}
-                      </div>
-                      {/* 不續約轉非會員按鈕 - 只顯示給會員/雙人會員 */}
-                      {(member.membership_type === 'general' || member.membership_type === 'dual') && (
-                        <button
-                          onClick={handleConvertToGuest}
-                          style={{
-                            marginTop: '12px',
-                            padding: '8px 16px',
-                            background: '#f5f5f5',
-                            color: '#666',
-                            border: '1px solid #ddd',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          ⚠️ 不續約，轉為非會員
-                        </button>
-                      )}
-                    </div>
-
-                    {/* 備忘錄 */}
-                    <div style={{ marginBottom: '30px' }}>
+                    <div style={{ marginBottom: '24px' }}>
                       <div style={{ 
                         display: 'flex', 
                         justifyContent: 'space-between', 
                         alignItems: 'center',
-                        marginBottom: '15px'
+                        marginBottom: '12px'
                       }}>
-                        <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>
-                          📝 備忘錄 {memberNotes.length > 0 && `(${memberNotes.length})`}
+                        <h3 style={{ margin: 0, fontSize: '16px', color: '#333', fontWeight: '600' }}>👤 基本資料</h3>
+                        <button
+                          onClick={() => setEditDialogOpen(true)}
+                          style={{
+                            padding: '4px 12px',
+                            background: '#f5f5f5',
+                            color: '#666',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✏️ 編輯
+                        </button>
+                      </div>
+                      <div style={{ 
+                        background: '#f8f9fa',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                      }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '14px' }}>
+                          <div><span style={{ color: '#666' }}>姓名：</span>{member.name}</div>
+                          {member.nickname && <div><span style={{ color: '#666' }}>暱稱：</span>{member.nickname}</div>}
+                          {member.phone && <div><span style={{ color: '#666' }}>電話：</span>{member.phone}</div>}
+                          {member.birthday && <div><span style={{ color: '#666' }}>生日：</span>{formatDate(member.birthday)}</div>}
+                          <div>
+                            <span style={{ 
+                              background: member.membership_type === 'guest' ? '#fff9e6' : '#e3f2fd',
+                              color: member.membership_type === 'guest' ? '#856404' : '#1976d2',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}>
+                              {getMembershipTypeLabel(member.membership_type || 'general')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 會籍 */}
+                    {(member.membership_type === 'general' || member.membership_type === 'dual') && (
+                      <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333', fontWeight: '600' }}>🎫 會籍</h3>
+                        <div style={{ 
+                          background: '#f8f9fa',
+                          borderRadius: '8px',
+                          padding: '12px 16px',
+                        }}>
+                          <div style={{ 
+                            fontSize: '14px', 
+                            marginBottom: '12px',
+                            color: member.membership_end_date && isExpired(member.membership_end_date) ? '#f44336' : '#333'
+                          }}>
+                            {formatDate(member.membership_start_date) || '?'} → {formatDate(member.membership_end_date) || '?'}
+                            {member.membership_end_date && isExpired(member.membership_end_date) && 
+                              <span style={{ marginLeft: '8px', fontWeight: '600' }}>(已過期)</span>
+                            }
+                          </div>
+                          {member.membership_type === 'dual' && member.partner && (
+                            <div style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>
+                              🔗 配對：{member.partner.nickname || member.partner.name}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                            <button
+                              onClick={() => {
+                                const currentEnd = member.membership_end_date 
+                                  ? new Date(member.membership_end_date) 
+                                  : new Date()
+                                const newEnd = new Date(currentEnd)
+                                newEnd.setFullYear(newEnd.getFullYear() + 1)
+                                setRenewEndDate(newEnd.toISOString().split('T')[0])
+                                setRenewDialogOpen(true)
+                              }}
+                              style={{
+                                padding: '6px 14px',
+                                background: '#4caf50',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              🔄 續約
+                            </button>
+                            <button
+                              onClick={handleConvertToGuest}
+                              style={{
+                                padding: '6px 14px',
+                                background: 'white',
+                                color: '#666',
+                                border: '1px solid #ddd',
+                                borderRadius: '4px',
+                                fontSize: '13px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              轉非會員
+                            </button>
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#999', lineHeight: '1.5' }}>
+                            <div>• <strong>續約</strong>：設定新的到期日（預設+1年），會記錄到備忘錄</div>
+                            <div>• <strong>轉非會員</strong>：清空會籍日期（資料在備忘錄），保留儲值和置板可繼續使用</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 置板 */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: '12px'
+                      }}>
+                        <h3 style={{ margin: 0, fontSize: '16px', color: '#333', fontWeight: '600' }}>🏄 置板</h3>
+                        <button
+                          onClick={() => setAddBoardDialogOpen(true)}
+                          style={{
+                            padding: '4px 12px',
+                            background: '#5a5a5a',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          + 新增
+                        </button>
+                      </div>
+                      {boardStorage.length === 0 ? (
+                        <div style={{ 
+                          background: '#f8f9fa',
+                          borderRadius: '8px',
+                          padding: '16px',
+                          textAlign: 'center', 
+                          color: '#999', 
+                          fontSize: '13px' 
+                        }}>
+                          尚無置板
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {boardStorage.map((board) => (
+                            <div key={board.id} style={{
+                              background: '#f8f9fa',
+                              borderRadius: '6px',
+                              padding: '10px 14px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              fontSize: '13px'
+                            }}>
+                              <div>
+                                <span style={{ fontWeight: '600' }}>#{board.slot_number}</span>
+                                {board.start_date && <span style={{ color: '#666', marginLeft: '8px' }}>{formatDate(board.start_date)}</span>}
+                                {board.expires_at && <span style={{ color: '#666' }}> → {formatDate(board.expires_at)}</span>}
+                                {board.expires_at && isExpired(board.expires_at) && 
+                                  <span style={{ color: '#f44336', marginLeft: '6px' }}>(已過期)</span>
+                                }
+                              </div>
+                              <button
+                                onClick={() => handleDeleteBoard(board.id, board.slot_number)}
+                                style={{
+                                  padding: '2px 8px',
+                                  background: 'transparent',
+                                  color: '#999',
+                                  border: 'none',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                移除
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 備忘錄 */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: '12px'
+                      }}>
+                        <h3 style={{ margin: 0, fontSize: '16px', color: '#333', fontWeight: '600' }}>
+                          📝 備忘錄 {memberNotes.length > 0 && <span style={{ color: '#999', fontWeight: 'normal' }}>({memberNotes.length})</span>}
                         </h3>
                         <button
                           onClick={handleAddNote}
                           style={{
-                            padding: '8px 16px',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            padding: '4px 12px',
+                            background: '#5a5a5a',
                             color: 'white',
                             border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: '600',
+                            borderRadius: '4px',
+                            fontSize: '12px',
                             cursor: 'pointer',
                           }}
                         >
-                          ➕ 新增
+                          + 新增
                         </button>
                       </div>
                       
@@ -702,53 +827,50 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                       )}
                     </div>
 
-                    {/* 操作按鈕 */}
-                    <div style={{
-                      display: 'flex',
-                      gap: '12px',
-                      flexWrap: 'wrap',
-                      marginTop: '30px',
-                    }}>
-                      <button
-                        type="button"
-                        onClick={() => setEditDialogOpen(true)}
-                        style={{
-                          flex: isMobile ? '1 1 100%' : '1',
-                          padding: '12px 20px',
-                          background: '#667eea',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '16px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          touchAction: 'manipulation',
-                          WebkitTapHighlightColor: 'transparent',
-                        }}
-                      >
-                        ✏️ 編輯資料
-                      </button>
-                      {/* 暫時隱藏記帳功能 */}
-                      {/* <button
-                        onClick={() => setTransactionDialogOpen(true)}
-                        style={{
-                          flex: isMobile ? '1 1 100%' : '1',
-                          padding: '12px 20px',
-                          background: '#667eea',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '16px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        💳 記帳
-                      </button> */}
+                    {/* 金流資訊 */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333', fontWeight: '600' }}>💰 金流</h3>
+                      <div style={{ 
+                        background: '#f8f9fa',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                      }}>
+                        <div style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: 'repeat(2, 1fr)',
+                          gap: '10px',
+                          fontSize: '13px'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#666' }}>儲值</span>
+                            <span style={{ fontWeight: '500' }}>${(member.balance ?? 0).toFixed(0)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#666' }}>VIP票券</span>
+                            <span style={{ fontWeight: '500' }}>${(member.vip_voucher_amount ?? 0).toFixed(0)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#666' }}>G23船券</span>
+                            <span style={{ fontWeight: '500' }}>{member.boat_voucher_g23_minutes ?? 0}分</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#666' }}>G21/黑豹</span>
+                            <span style={{ fontWeight: '500' }}>{member.boat_voucher_g21_panther_minutes ?? 0}分</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#666' }}>贈送大船</span>
+                            <span style={{ fontWeight: '500' }}>{member.gift_boat_hours ?? 0}分</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#666' }}>指定課</span>
+                            <span style={{ fontWeight: '500' }}>{member.designated_lesson_minutes ?? 0}分</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {isMobile && (
-                      <div style={{ height: '80px' }} />
+                      <div style={{ height: '40px' }} />
                     )}
               </div>
             </>
@@ -1122,40 +1244,102 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                   padding: '10px 20px',
                   border: 'none',
                   borderRadius: '6px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: '#5a5a5a',
                   color: 'white',
                   cursor: 'pointer',
                   fontSize: '14px',
                   fontWeight: 'bold',
                 }}
               >
-                {editingNote ? '儲存變更' : '確認新增'}
+                {editingNote ? '儲存' : '新增'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 續約對話框 */}
+      {renewDialogOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '400px',
+            width: '90%',
+            padding: '24px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>🔄 會籍續約</h3>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                新的到期日
+              </label>
+              <input
+                type="date"
+                value={renewEndDate}
+                onChange={(e) => setRenewEndDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                }}
+              />
+              <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                目前到期：{member?.membership_end_date ? formatDate(member.membership_end_date) : '未設定'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setRenewDialogOpen(false)
+                  setRenewEndDate('')
+                }}
+                style={{
+                  padding: '10px 20px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleRenew}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                }}
+              >
+                確認續約
               </button>
             </div>
           </div>
         </div>
       )}
     </>
-  )
-}
-
-// 輔助組件
-function InfoRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      padding: '10px 0',
-      borderBottom: '1px solid #f0f0f0',
-    }}>
-      <span style={{ color: '#666', fontWeight: '500' }}>{label}</span>
-      <span style={{ 
-        color: highlight ? '#ff4d4f' : '#333',
-        fontWeight: highlight ? 'bold' : 'normal',
-      }}>
-        {value}
-      </span>
-    </div>
   )
 }
 
@@ -1175,10 +1359,23 @@ function isExpired(dateString: string): boolean {
   return expiryDate < today
 }
 
-function isExpiringSoon(dateString: string): boolean {
-  const expiryDate = new Date(dateString)
-  const today = new Date()
-  const daysUntilExpiry = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-  return daysUntilExpiry <= 30 && daysUntilExpiry >= 0
+// 統一日期格式為 YYYY-MM-DD
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return ''
+  
+  // 格式 1: YYYY-MM-DD (已經是標準格式)
+  if (dateStr.includes('-') && dateStr.split('-').length === 3) {
+    const [year, month, day] = dateStr.split('-')
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+  // 格式 2: MM/DD/YYYY (轉換為 YYYY-MM-DD)
+  else if (dateStr.includes('/')) {
+    const parts = dateStr.split('/')
+    if (parts.length === 3) {
+      const [month, day, year] = parts
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    }
+  }
+  return dateStr
 }
 

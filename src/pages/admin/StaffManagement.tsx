@@ -6,6 +6,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
+import { clearPermissionCache } from '../../utils/auth'
 
 interface Coach {
   id: string
@@ -26,15 +27,24 @@ interface TimeOff {
   notes: string | null
 }
 
+interface EditorUser {
+  id: string
+  email: string
+  created_at: string | null
+  created_by: string | null
+  notes: string | null
+}
+
 export function StaffManagement() {
   const user = useAuthUser()
   const toast = useToast()
   const { isMobile } = useResponsive()
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [timeOffs, setTimeOffs] = useState<TimeOff[]>([])
+  const [editorUsers, setEditorUsers] = useState<EditorUser[]>([])
   const [loading, setLoading] = useState(true)
   const [showArchived, setShowArchived] = useState(false) // 是否顯示已歸檔
-  const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing'>('coaches') // Tab 切換
+  const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing' | 'features'>('coaches') // Tab 切換
   const [expandedCoachIds, setExpandedCoachIds] = useState<Set<string>>(new Set()) // 展開的教練ID
   
   // 月份篩選
@@ -66,6 +76,10 @@ export function StaffManagement() {
   const [selectedPricingCoach, setSelectedPricingCoach] = useState<Coach | null>(null)
   const [lessonPrice, setLessonPrice] = useState<string>('')
   const [pricingLoading, setPricingLoading] = useState(false)
+  
+  // 功能權限（小編）
+  const [newEditorEmail, setNewEditorEmail] = useState('')
+  const [addingEditor, setAddingEditor] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -163,7 +177,7 @@ export function StaffManagement() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [coachesResult, timeOffsResult] = await Promise.all([
+      const [coachesResult, timeOffsResult, editorsResult] = await Promise.all([
         supabase
           .from('coaches')
           .select('*')
@@ -171,14 +185,20 @@ export function StaffManagement() {
         supabase
           .from('coach_time_off')
           .select('*')
-          .order('start_date', { ascending: false })
+          .order('start_date', { ascending: false }),
+        (supabase as any)
+          .from('editor_users')
+          .select('*')
+          .order('email')
       ])
 
       if (coachesResult.error) throw coachesResult.error
       if (timeOffsResult.error) throw timeOffsResult.error
+      // editor_users 表可能不存在，忽略錯誤
 
       setCoaches(coachesResult.data || [])
       setTimeOffs(timeOffsResult.data || [])
+      setEditorUsers(editorsResult.data as any || [])
     } catch (error) {
       console.error('載入資料失敗:', error)
       toast.error('載入資料失敗')
@@ -420,6 +440,81 @@ export function StaffManagement() {
     }
   }
 
+  // 新增功能權限帳號
+  const handleAddEditor = async () => {
+    if (!newEditorEmail.trim()) {
+      toast.warning('請輸入 Email')
+      return
+    }
+
+    if (!newEditorEmail.includes('@')) {
+      toast.warning('請輸入有效的 Email')
+      return
+    }
+
+    setAddingEditor(true)
+    try {
+      // 加入 editor_users 表
+      const { error: editorError } = await (supabase as any)
+        .from('editor_users')
+        .insert([{
+          email: newEditorEmail.trim().toLowerCase(),
+          created_by: user.email,
+          notes: null
+        }])
+
+      if (editorError) {
+        if (editorError.code === '23505') {
+          throw new Error('此 Email 已有功能權限')
+        }
+        throw editorError
+      }
+
+      // 同時加入白名單（使用 upsert）
+      await supabase
+        .from('allowed_users')
+        .upsert([{
+          email: newEditorEmail.trim().toLowerCase(),
+          created_by: user.email,
+          notes: '功能權限'
+        }], {
+          onConflict: 'email',
+          ignoreDuplicates: true
+        })
+
+      toast.success(`已將 ${newEditorEmail} 加入功能權限`)
+      setNewEditorEmail('')
+      clearPermissionCache() // 清除權限緩存
+      loadData()
+    } catch (error) {
+      toast.error('新增失敗: ' + (error as Error).message)
+    } finally {
+      setAddingEditor(false)
+    }
+  }
+
+  // 移除功能權限帳號
+  const handleRemoveEditor = async (id: string, email: string) => {
+    if (!confirm(`確定要將 ${email} 從功能權限移除嗎？`)) {
+      return
+    }
+
+    try {
+      const { error } = await (supabase as any)
+        .from('editor_users')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      toast.success(`已將 ${email} 從功能權限移除`)
+      clearPermissionCache() // 清除權限緩存
+      loadData()
+    } catch (error) {
+      toast.error('移除失敗: ' + (error as Error).message)
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -528,6 +623,24 @@ export function StaffManagement() {
             }}
           >
             💰 指定課價格
+          </button>
+          <button
+            onClick={() => setActiveTab('features')}
+            style={{
+              padding: isMobile ? '12px 16px' : '14px 28px',
+              background: activeTab === 'features' ? 'white' : 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'features' ? '3px solid #2196F3' : '3px solid transparent',
+              color: activeTab === 'features' ? '#2196F3' : '#666',
+              fontWeight: activeTab === 'features' ? 'bold' : 'normal',
+              fontSize: isMobile ? '14px' : '16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              marginBottom: '-2px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            🚤 功能權限
           </button>
         </div>
 
@@ -1248,6 +1361,176 @@ export function StaffManagement() {
                   </button>
                 </div>
               ))}
+            </div>
+          </>
+        )}
+
+        {/* 功能權限 Tab */}
+        {activeTab === 'features' && (
+          <>
+            {/* 說明提示 */}
+            <div style={{
+              background: '#e3f2fd',
+              padding: isMobile ? '12px 16px' : '14px 20px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '14px',
+              color: '#1565c0',
+              border: '1px solid #90caf9',
+              lineHeight: '1.6'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <span style={{ flexShrink: 0 }}>🚤</span>
+                <div>
+                  <div style={{ marginBottom: '6px' }}>
+                    <strong>功能權限</strong>：設定哪些帳號可以在首頁看到額外功能
+                  </div>
+                  <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '8px' }}>
+                    加入後，該帳號登入時首頁會直接顯示對應功能的 icon
+                  </div>
+                  <div style={{ 
+                    background: 'rgba(255,255,255,0.7)', 
+                    padding: '10px 12px', 
+                    borderRadius: '6px',
+                    fontSize: '13px'
+                  }}>
+                    <div style={{ fontWeight: '600', marginBottom: '4px', color: '#0d47a1' }}>
+                      目前開放的功能：
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>🚤</span>
+                      <span><strong>船隻管理</strong> - 管理船隻狀態、設定維修/停用時段、調整價格</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 新增帳號 */}
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: isMobile ? '16px' : '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                marginBottom: '16px',
+                color: '#333'
+              }}>
+                新增帳號
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px',
+                flexDirection: isMobile ? 'column' : 'row'
+              }}>
+                <input
+                  type="email"
+                  value={newEditorEmail}
+                  onChange={(e) => setNewEditorEmail(e.target.value)}
+                  placeholder="輸入 Email"
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddEditor()
+                  }}
+                />
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleAddEditor}
+                  disabled={addingEditor}
+                >
+                  {addingEditor ? '新增中...' : '➕ 新增'}
+                </Button>
+              </div>
+            </div>
+
+            {/* 已授權帳號列表 */}
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: isMobile ? '16px' : '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                marginBottom: '16px',
+                color: '#333',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                已授權帳號
+                <Badge variant="info" size="small">
+                  {editorUsers.length} 人
+                </Badge>
+              </div>
+
+              {editorUsers.length === 0 ? (
+                <div style={{
+                  padding: '40px 20px',
+                  textAlign: 'center',
+                  color: '#999',
+                  fontSize: '14px'
+                }}>
+                  尚無帳號，請在上方新增
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {editorUsers.map((editor) => (
+                    <div
+                      key={editor.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '14px 16px',
+                        background: '#f8f9fa',
+                        borderRadius: '10px',
+                        border: '1px solid #e9ecef',
+                        gap: '12px',
+                        flexWrap: 'wrap'
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{
+                          fontSize: '15px',
+                          fontWeight: '600',
+                          color: '#333',
+                          wordBreak: 'break-all'
+                        }}>
+                          {editor.email}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#999',
+                          marginTop: '4px'
+                        }}>
+                          加入時間：{editor.created_at ? new Date(editor.created_at).toLocaleDateString('zh-TW') : '-'}
+                        </div>
+                      </div>
+                      <Button
+                        variant="danger"
+                        size="small"
+                        onClick={() => handleRemoveEditor(editor.id, editor.email)}
+                      >
+                        移除
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
