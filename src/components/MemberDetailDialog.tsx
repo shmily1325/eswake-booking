@@ -272,6 +272,49 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     setNoteDialogOpen(true)
   }
 
+  // 不續約轉非會員
+  const handleConvertToGuest = async () => {
+    if (!member || !memberId) return
+    
+    const confirmMsg = `確定要將 ${member.nickname || member.name} 轉為非會員嗎？\n\n這會：\n• 會籍類型改為「非會員」\n• 清空會籍開始/到期日期\n• 新增一則備忘錄記錄\n\n儲值餘額和置板會保留。`
+    if (!confirm(confirmMsg)) return
+
+    try {
+      // 1. 更新會員資料
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({
+          membership_type: 'guest',
+          membership_start_date: null,
+          membership_end_date: null
+        })
+        .eq('id', memberId)
+
+      if (updateError) throw updateError
+
+      // 2. 新增備忘錄
+      const today = new Date().toISOString().split('T')[0]
+      const oldEndDate = member.membership_end_date ? `（原到期：${member.membership_end_date}）` : ''
+      // @ts-ignore
+      await supabase
+        .from('member_notes')
+        .insert([{
+          member_id: memberId,
+          event_date: today,
+          event_type: '備註',
+          description: `會籍不續約，轉非會員${oldEndDate}`
+        }])
+
+      toast.success('已轉為非會員')
+      loadMemberData()
+      loadMemberNotes()
+      onUpdate()
+    } catch (error) {
+      console.error('轉換失敗:', error)
+      toast.error('轉換失敗')
+    }
+  }
+
   const handleEditSuccess = () => {
     loadMemberData()
     onUpdate()
@@ -507,6 +550,24 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                           />
                         )}
                       </div>
+                      {/* 不續約轉非會員按鈕 - 只顯示給會員/雙人會員 */}
+                      {(member.membership_type === 'general' || member.membership_type === 'dual') && (
+                        <button
+                          onClick={handleConvertToGuest}
+                          style={{
+                            marginTop: '12px',
+                            padding: '8px 16px',
+                            background: '#f5f5f5',
+                            color: '#666',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ⚠️ 不續約，轉為非會員
+                        </button>
+                      )}
                     </div>
 
                     {/* 備忘錄 */}

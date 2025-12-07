@@ -174,7 +174,7 @@ export function MemberManagement() {
             board_slot_number, board_expiry_date,
             status, created_at, updated_at
           `)
-          .eq('status', showInactive ? 'inactive' : 'active')
+          .in('status', showInactive ? ['active', 'inactive'] : ['active'])
           .order('nickname', { ascending: true, nullsFirst: false })
           .limit(200),  // 限制最多 200 筆，避免一次載入太多
         
@@ -640,26 +640,59 @@ export function MemberManagement() {
 
       {/* 搜尋欄與篩選器 */}
       <div style={{ marginBottom: isMobile ? '15px' : '20px' }}>
-        <input
-          type="text"
-          placeholder="搜尋會員（姓名、暱稱）"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            width: '100%',
-            padding: isMobile ? '10px 14px' : '12px 16px',
-            border: '1px solid #dee2e6',
-            borderRadius: '8px',
-            fontSize: '14px',
-            outline: 'none',
-            transition: 'border-color 0.2s',
-            background: 'white',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            marginBottom: '12px'
-          }}
-          onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
-          onBlur={(e) => e.currentTarget.style.borderColor = '#dee2e6'}
-        />
+        <div style={{ position: 'relative', marginBottom: '12px' }}>
+          <input
+            type="text"
+            placeholder="搜尋會員（姓名、暱稱）"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              // 輸入搜尋時自動切到「全部」，避免找不到人
+              if (e.target.value && membershipTypeFilter !== 'all') {
+                setMembershipTypeFilter('all')
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: isMobile ? '10px 14px' : '12px 16px',
+              paddingRight: searchTerm ? '40px' : '16px',
+              border: '1px solid #dee2e6',
+              borderRadius: '8px',
+              fontSize: '14px',
+              outline: 'none',
+              transition: 'border-color 0.2s',
+              background: 'white',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+            onBlur={(e) => e.currentTarget.style.borderColor = '#dee2e6'}
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: '#999',
+                color: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: '20px',
+                height: '20px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
         
         {/* 會員種類篩選 */}
         <div style={{ 
@@ -691,6 +724,30 @@ export function MemberManagement() {
               {type.label}
             </button>
           ))}
+          
+          {/* 包含已隱藏的會員 */}
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer',
+            userSelect: 'none',
+            gap: '6px',
+            marginLeft: 'auto',
+            fontSize: '13px',
+            color: '#666'
+          }}>
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              style={{
+                width: '16px',
+                height: '16px',
+                cursor: 'pointer'
+              }}
+            />
+            包含已隱藏
+          </label>
         </div>
       </div>
 
@@ -860,40 +917,6 @@ export function MemberManagement() {
         </div>
       )}
 
-      {/* 顯示已隱藏的切換開關 */}
-      <div style={{ 
-        marginBottom: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px'
-      }}>
-        <label style={{
-          display: 'flex',
-          alignItems: 'center',
-          cursor: 'pointer',
-          userSelect: 'none',
-          gap: '8px'
-        }}>
-          <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
-            style={{
-              width: '18px',
-              height: '18px',
-              cursor: 'pointer'
-            }}
-          />
-          <span style={{ 
-            fontSize: '14px', 
-            color: '#666',
-            fontWeight: '500'
-          }}>
-            顯示已隱藏的會員
-          </span>
-        </label>
-      </div>
-
       {/* 統計資訊 */}
       <div style={{ 
         display: 'grid',
@@ -909,7 +932,7 @@ export function MemberManagement() {
           textAlign: 'center'
         }}>
           <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-            👥 {showInactive ? '已隱藏' : '啟用會員'}
+            👥 {showInactive ? '全部會員' : '啟用會員'}
           </div>
           <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: '#2196F3' }}>
             {filteredMembers.length}
@@ -981,14 +1004,15 @@ export function MemberManagement() {
             <div
               key={member.id}
               style={{
-                background: 'white',
+                background: member.status === 'inactive' ? '#f5f5f5' : 'white',
                 padding: '20px',
                 borderRadius: '12px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 transition: 'all 0.2s',
                 cursor: 'pointer',
                 border: '2px solid transparent',
-                position: 'relative'
+                position: 'relative',
+                opacity: member.status === 'inactive' ? 0.7 : 1
               }}
               onClick={() => {
                 setSelectedMemberId(member.id)
@@ -1076,6 +1100,18 @@ export function MemberManagement() {
                         fontWeight: '600'
                       }}>
                         雙人會籍
+                      </span>
+                    )}
+                    {member.status === 'inactive' && (
+                      <span style={{ 
+                        fontSize: '12px', 
+                        color: '#fff',
+                        background: '#9e9e9e',
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        fontWeight: '600'
+                      }}>
+                        已隱藏
                       </span>
                     )}
                   </div>
