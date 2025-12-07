@@ -1123,7 +1123,9 @@ export function MemberManagement() {
                               color: isExpired ? '#f44336' : '#2e7d32',
                               fontSize: '13px'
                             }}>
-                              🏄 置板 #{slot.slot_number} 到期：{slot.expires_at ? formatDate(slot.expires_at) : '未設定'}
+                              🏄 置板 #{slot.slot_number}
+                              {slot.start_date && ` 開始：${formatDate(slot.start_date)}`}
+                              {slot.expires_at && ` 到期：${formatDate(slot.expires_at)}`}
                               {isExpired && ' (已過期)'}
                             </div>
                           )
