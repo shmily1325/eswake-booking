@@ -55,11 +55,6 @@ export function BaoHub() {
             title: '置板管理',
             icon: '🏄',
             link: '/boards'
-          },
-          {
-            title: '備忘錄匯入',
-            icon: '📝',
-            link: '/member-notes-import'
           }
         ]
       },

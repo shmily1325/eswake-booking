@@ -1102,17 +1102,34 @@ export function MemberManagement() {
                     </div>
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                       {member.membership_start_date && (
-                        <div>📅 開始：{formatDate(member.membership_start_date)}</div>
+                        <div>🎫 會籍開始：{formatDate(member.membership_start_date)}</div>
                       )}
                       {member.membership_end_date && (
                         <div style={{ 
                           color: new Date(member.membership_end_date) < new Date() ? '#f44336' : '#666'
                         }}>
-                          ⏰ 到期：{formatDate(member.membership_end_date)}
+                          🎫 會籍到期：{formatDate(member.membership_end_date)}
                           {new Date(member.membership_end_date) < new Date() && ' (已過期)'}
                         </div>
                       )}
                     </div>
+                    {/* 置板資訊 */}
+                    {member.board_slots && member.board_slots.length > 0 && (
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
+                        {member.board_slots.map((slot, index) => {
+                          const isExpired = slot.expires_at && new Date(slot.expires_at) < new Date()
+                          return (
+                            <div key={index} style={{ 
+                              color: isExpired ? '#f44336' : '#2e7d32',
+                              fontSize: '13px'
+                            }}>
+                              🏄 置板 #{slot.slot_number} 到期：{slot.expires_at ? formatDate(slot.expires_at) : '未設定'}
+                              {isExpired && ' (已過期)'}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {member.notes && (
@@ -1180,29 +1197,6 @@ export function MemberManagement() {
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-
-                {/* 第三層：置板資料 */}
-                {(member.board_slots && member.board_slots.length > 0) && (
-                  <div style={{ 
-                    fontSize: '13px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px'
-                  }}>
-                    {/* 置板格位 */}
-                    {member.board_slots.map((slot, index) => {
-                      const isExpired = slot.expires_at && new Date(slot.expires_at) < new Date()
-                      return (
-                        <div key={index} style={{ color: isExpired ? '#f44336' : '#2e7d32' }}>
-                          🏄 #{slot.slot_number}
-                          {slot.start_date && ` 📅${formatDate(slot.start_date)}`}
-                          {slot.expires_at && ` ⏰${formatDate(slot.expires_at)}`}
-                          {isExpired && ' (已過期)'}
-                        </div>
-                      )
-                    })}
                   </div>
                 )}
 
