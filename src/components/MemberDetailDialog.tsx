@@ -42,18 +42,6 @@ interface BoardStorage {
   status: string | null
 }
 
-interface Transaction {
-  id: number
-  transaction_type: string
-  category: string
-  amount: number | null
-  minutes: number | null
-  description: string
-  created_at: string | null
-  transaction_date?: string | null
-  notes?: string | null
-}
-
 interface MemberNote {
   id: number
   member_id: string
@@ -86,12 +74,10 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
   const toast = useToast()
   const [member, setMember] = useState<Member | null>(null)
   const [boardStorage, setBoardStorage] = useState<BoardStorage[]>([])
-  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [memberNotes, setMemberNotes] = useState<MemberNote[]>([])
   const [loading, setLoading] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'info' | 'transactions' | 'boards' | 'notes'>('info')
   const [addBoardDialogOpen, setAddBoardDialogOpen] = useState(false)
   const [boardFormData, setBoardFormData] = useState({
     slot_number: '',
@@ -115,7 +101,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       setAddBoardDialogOpen(false)
       setNoteDialogOpen(false)
       setEditingNote(null)
-      setActiveTab('info')
     }
   }, [open])
 
@@ -165,8 +150,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       if (boardResult.error) throw boardResult.error
       setBoardStorage(boardResult.data || [])
       
-      // 交易記錄延遲載入（在需要時才載入）
-      loadTransactions()
       // 載入備忘錄
       loadMemberNotes()
     } catch (error) {
@@ -174,26 +157,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       toast.error('載入會員資料失敗')
     } finally {
       setLoading(false)
-    }
-  }
-
-  // 延遲載入交易記錄（僅預覽用，完整記錄請至「儲值」頁面查看）
-  const loadTransactions = async () => {
-    if (!memberId) return
-    
-    try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('member_id', memberId)
-        .order('transaction_date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(20)  // 只顯示最近 20 筆作為快速預覽
-
-      if (error) throw error
-      setTransactions(data || [])
-    } catch (error) {
-      console.error('載入交易記錄失敗:', error)
     }
   }
 
@@ -442,48 +405,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
             <div style={{ padding: '50px', textAlign: 'center', color: '#666' }}>找不到會員資料</div>
           ) : (
             <>
-              {/* 標籤切換 */}
-              <div style={{
-                display: 'flex',
-                borderBottom: '1px solid #e0e0e0',
-                background: '#f8f9fa',
-              }}>
-                <button
-                  onClick={() => setActiveTab('info')}
-                  style={{
-                    flex: 1,
-                    padding: '15px',
-                    border: 'none',
-                    background: activeTab === 'info' ? 'white' : 'transparent',
-                    borderBottom: activeTab === 'info' ? '2px solid #667eea' : 'none',
-                    cursor: 'pointer',
-                    fontWeight: activeTab === 'info' ? 'bold' : 'normal',
-                    color: activeTab === 'info' ? '#667eea' : '#666',
-                  }}
-                >
-                  基本資料
-                </button>
-                <button
-                  onClick={() => setActiveTab('notes')}
-                  style={{
-                    flex: 1,
-                    padding: '15px',
-                    border: 'none',
-                    background: activeTab === 'notes' ? 'white' : 'transparent',
-                    borderBottom: activeTab === 'notes' ? '2px solid #667eea' : 'none',
-                    cursor: 'pointer',
-                    fontWeight: activeTab === 'notes' ? 'bold' : 'normal',
-                    color: activeTab === 'notes' ? '#667eea' : '#666',
-                  }}
-                >
-                  📝 備忘錄 {memberNotes.length > 0 && `(${memberNotes.length})`}
-                </button>
-              </div>
-
               {/* 內容區 */}
               <div style={{ padding: isMobile ? '16px' : '20px' }}>
-                {activeTab === 'info' ? (
-                  <>
                     {/* 基本資料 */}
                     <div style={{ marginBottom: '30px' }}>
                       <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>👤 基本資料</h3>
@@ -586,87 +509,136 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                       </div>
                     </div>
 
-                    {/* 最近交易記錄（預覽） */}
+                    {/* 備忘錄 */}
                     <div style={{ marginBottom: '30px' }}>
-                      <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>📜 最近交易記錄</h3>
-                      
-                      {/* 提示訊息 */}
-                      <div style={{
-                        background: '#f0f7ff',
-                        border: '1px solid #d0e5ff',
-                        borderRadius: '6px',
-                        padding: '10px 15px',
-                        marginBottom: '12px',
-                        fontSize: '13px',
-                        color: '#1976d2'
-                      }}>
-                        💡 僅顯示最近 20 筆記錄，完整交易記錄請至「儲值」頁面查看
-                      </div>
-
-                      {/* 交易記錄列表 */}
                       <div style={{ 
-                        background: '#f8f9fa',
-                        borderRadius: '8px',
-                        padding: '15px',
-                        border: '1px solid #e0e0e0',
-                        maxHeight: '300px',
-                        overflowY: 'auto'
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: '15px'
                       }}>
-                        {transactions.length === 0 ? (
-                          <div style={{ textAlign: 'center', color: '#999', fontSize: '14px', padding: '20px 0' }}>
-                            尚無交易記錄
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {transactions.slice(0, 20).map((transaction) => {
-                              const isIncrease = transaction.transaction_type === 'charge'
-                              return (
-                                <div key={transaction.id} style={{
-                                  padding: '10px',
-                                  background: 'white',
-                                  borderRadius: '6px',
-                                  fontSize: '13px',
-                                  borderLeft: '3px solid ' + (transaction.transaction_type === 'charge' ? '#4caf50' : transaction.transaction_type === 'consume' ? '#f44336' : '#ff9800')
+                        <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>
+                          📝 備忘錄 {memberNotes.length > 0 && `(${memberNotes.length})`}
+                        </h3>
+                        <button
+                          onClick={handleAddNote}
+                          style={{
+                            padding: '8px 16px',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ➕ 新增
+                        </button>
+                      </div>
+                      
+                      {memberNotes.length === 0 ? (
+                        <div style={{ 
+                          textAlign: 'center', 
+                          padding: '30px 20px', 
+                          color: '#999',
+                          background: '#f8f9fa',
+                          borderRadius: '8px',
+                          border: '1px solid #e0e0e0'
+                        }}>
+                          <div style={{ fontSize: '32px', marginBottom: '8px' }}>📝</div>
+                          <div style={{ fontSize: '14px' }}>尚無備忘錄</div>
+                        </div>
+                      ) : (
+                        <div style={{ 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          gap: '10px',
+                          maxHeight: '300px',
+                          overflowY: 'auto'
+                        }}>
+                          {memberNotes.map((note) => {
+                            const eventType = EVENT_TYPES.find(t => t.value === note.event_type) || EVENT_TYPES[5]
+                            return (
+                              <div
+                                key={note.id}
+                                style={{
+                                  background: '#f8f9fa',
+                                  borderRadius: '8px',
+                                  padding: '12px',
+                                  borderLeft: `4px solid ${eventType.color}`,
+                                }}
+                              >
+                                <div style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'flex-start',
                                 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                                    <div style={{ flex: 1 }}>
-                                      <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
-                                        {transaction.category === 'balance' ? '💰 儲值' :
-                                         transaction.category === 'vip_voucher' ? '💎 VIP票券' :
-                                         transaction.category === 'designated_lesson' ? '📚 指定課' :
-                                         transaction.category === 'boat_voucher_g23' ? '🚤 G23船券' :
-                                         transaction.category === 'boat_voucher_g21_panther' ? '⛵ G21/黑豹船券' :
-                                         transaction.category === 'gift_boat_hours' ? '🎁 贈送大船' :
-                                         transaction.transaction_type === 'charge' ? '💰 儲值' : 
-                                         transaction.transaction_type === 'consume' ? '💳 消費' : 
-                                         transaction.transaction_type === 'refund' ? '↩️ 退款' : '🔧 調整'}
-                                      </div>
-                                      <div style={{ color: '#999', fontSize: '11px' }}>
-                                        {transaction.transaction_date || (transaction.created_at ? transaction.created_at.substring(0, 10) : '-')}
-                                      </div>
-                                    </div>
-                                    <div style={{
-                                      fontSize: '16px',
-                                      fontWeight: 'bold',
-                                      color: isIncrease ? '#4caf50' : '#f44336',
-                                      whiteSpace: 'nowrap',
-                                      marginLeft: '10px'
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      gap: '8px',
+                                      marginBottom: '4px',
                                     }}>
-                                      {isIncrease ? '+' : '-'}
-                                      {transaction.amount !== null && transaction.amount !== undefined 
-                                        ? `$${Math.abs(transaction.amount).toLocaleString()}`
-                                        : `${Math.abs(transaction.minutes || 0)}分`}
+                                      <span style={{
+                                        background: eventType.color,
+                                        color: 'white',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                      }}>
+                                        {eventType.label}
+                                      </span>
+                                      <span style={{ color: '#666', fontSize: '12px' }}>
+                                        {note.event_date || ''}
+                                      </span>
+                                    </div>
+                                    <div style={{ 
+                                      fontSize: '13px', 
+                                      color: '#333',
+                                      lineHeight: '1.4',
+                                    }}>
+                                      {note.description}
                                     </div>
                                   </div>
-                                  <div style={{ color: '#666', fontSize: '12px', lineHeight: '1.4' }}>
-                                    {transaction.description || '-'}
+                                  <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+                                    <button
+                                      onClick={() => handleEditNote(note)}
+                                      style={{
+                                        padding: '4px 8px',
+                                        background: '#e3f2fd',
+                                        color: '#1976d2',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      ✏️
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteNote(note.id)}
+                                      style={{
+                                        padding: '4px 8px',
+                                        background: '#ffebee',
+                                        color: '#d32f2f',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      🗑️
+                                    </button>
                                   </div>
                                 </div>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     {/* 操作按鈕 */}
@@ -717,156 +689,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                     {isMobile && (
                       <div style={{ height: '80px' }} />
                     )}
-                  </>
-                ) : activeTab === 'notes' ? (
-                  // 備忘錄標籤
-                  <div>
-                    {/* 新增備忘錄按鈕 */}
-                    <div style={{ marginBottom: '16px' }}>
-                      <button
-                        onClick={handleAddNote}
-                        style={{
-                          width: '100%',
-                          padding: '12px 20px',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '15px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                        }}
-                      >
-                        ➕ 新增備忘錄
-                      </button>
-                    </div>
-
-                    {/* 備忘錄列表 */}
-                    {memberNotes.length === 0 ? (
-                      <div style={{ 
-                        textAlign: 'center', 
-                        padding: '50px 20px', 
-                        color: '#999',
-                        background: '#f8f9fa',
-                        borderRadius: '8px',
-                      }}>
-                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
-                        <div style={{ fontSize: '16px', marginBottom: '8px' }}>尚無備忘錄</div>
-                        <div style={{ fontSize: '14px' }}>點擊上方按鈕新增第一則備忘錄</div>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {memberNotes.map((note) => {
-                          const eventType = EVENT_TYPES.find(t => t.value === note.event_type) || EVENT_TYPES[5]
-                          return (
-                            <div
-                              key={note.id}
-                              style={{
-                                background: '#f8f9fa',
-                                borderRadius: '8px',
-                                padding: '14px',
-                                borderLeft: `4px solid ${eventType.color}`,
-                              }}
-                            >
-                              <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'flex-start',
-                                marginBottom: '8px',
-                              }}>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    gap: '8px',
-                                    marginBottom: '4px',
-                                  }}>
-                                    <span style={{
-                                      background: eventType.color,
-                                      color: 'white',
-                                      padding: '2px 8px',
-                                      borderRadius: '4px',
-                                      fontSize: '12px',
-                                      fontWeight: '600',
-                                    }}>
-                                      {eventType.label}
-                                    </span>
-                                    <span style={{ color: '#666', fontSize: '13px' }}>
-                                      {note.event_date}
-                                    </span>
-                                  </div>
-                                  <div style={{ 
-                                    fontSize: '14px', 
-                                    color: '#333',
-                                    lineHeight: '1.5',
-                                    whiteSpace: 'pre-wrap',
-                                  }}>
-                                    {note.description}
-                                  </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
-                                  <button
-                                    onClick={() => handleEditNote(note)}
-                                    style={{
-                                      padding: '6px 10px',
-                                      background: '#e3f2fd',
-                                      color: '#1976d2',
-                                      border: 'none',
-                                      borderRadius: '4px',
-                                      fontSize: '12px',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    ✏️
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteNote(note.id)}
-                                    style={{
-                                      padding: '6px 10px',
-                                      background: '#ffebee',
-                                      color: '#d32f2f',
-                                      border: 'none',
-                                      borderRadius: '4px',
-                                      fontSize: '12px',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    🗑️
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                    {isMobile && (
-                      <div style={{ height: '80px' }} />
-                    )}
-                  </div>
-                ) : (
-                  // 交易記錄標籤
-                  <div>
-                    {transactions.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '50px', color: '#999' }}>
-                        尚無交易記錄
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {transactions.map((transaction) => (
-                          <TransactionCard key={transaction.id} transaction={transaction} />
-                        ))}
-                      </div>
-                    )}
-                    {isMobile && (
-                      <div style={{ height: '80px' }} />
-                    )}
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -1253,94 +1075,6 @@ function InfoRow({ label, value, highlight = false }: { label: string; value: st
       }}>
         {value}
       </span>
-    </div>
-  )
-}
-
-function TransactionCard({ transaction }: { transaction: Transaction }) {
-  const getTransactionIcon = (type: string) => {
-    switch (type) {
-      case 'charge': return '💰'
-      case 'purchase': return '🛒'
-      case 'consume': return '💸'
-      case 'refund': return '↩️'
-      case 'expire': return '⏰'
-      case 'adjust': return '🔧'
-      default: return '📝'
-    }
-  }
-
-  const getCategoryLabel = (category: string) => {
-    switch (category) {
-      case 'balance': return '儲值'
-      case 'vip_voucher': return 'VIP票券'
-      case 'designated_lesson': return '指定課'
-      case 'boat_voucher': return '船券'
-      case 'boat_voucher_g23': return 'G23船券'
-      case 'boat_voucher_g21': return 'G21船券'
-      case 'boat_voucher_g21_panther': return 'G21/黑豹船券'
-      case 'gift_boat_hours': return '贈送大船'
-      case 'membership': return '會籍'
-      case 'board_storage': return '置板'
-      case 'lesson': return '教練課程'
-      default: return category
-    }
-  }
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'charge': return '儲值'
-      case 'purchase': return '購買'
-      case 'consume': return '消耗'
-      case 'refund': return '退款'
-      case 'expire': return '過期'
-      case 'adjust': return '調整'
-      default: return type
-    }
-  }
-
-  return (
-    <div style={{
-      background: 'white',
-      border: '1px solid #e0e0e0',
-      borderRadius: '8px',
-      padding: '15px',
-      display: 'flex',
-      gap: '15px',
-      alignItems: 'flex-start',
-    }}>
-      <div style={{ fontSize: '24px' }}>{getTransactionIcon(transaction.transaction_type)}</div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-          {getTypeLabel(transaction.transaction_type)} - {getCategoryLabel(transaction.category)}
-        </div>
-        <div style={{ color: '#666', fontSize: '14px', marginBottom: '5px' }}>
-          {transaction.description}
-        </div>
-        <div style={{ fontSize: '13px', color: '#999' }}>
-          {transaction.created_at ? new Date(transaction.created_at).toLocaleString('zh-TW') : '-'}
-        </div>
-      </div>
-      <div style={{ textAlign: 'right' }}>
-        {transaction.amount !== null && (
-          <div style={{
-            color: transaction.amount > 0 ? '#52c41a' : '#ff4d4f',
-            fontWeight: 'bold',
-            fontSize: '16px',
-          }}>
-            {transaction.amount > 0 ? '+' : ''}{transaction.amount}
-          </div>
-        )}
-        {transaction.minutes !== null && (
-          <div style={{
-            color: transaction.minutes > 0 ? '#52c41a' : '#ff4d4f',
-            fontWeight: 'bold',
-            fontSize: '16px',
-          }}>
-            {transaction.minutes > 0 ? '+' : ''}{transaction.minutes} 分鐘
-          </div>
-        )}
-      </div>
     </div>
   )
 }

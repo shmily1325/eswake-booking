@@ -34,6 +34,15 @@ interface Member {
   board_count?: number  // 置板數量（從 board_storage 計算）
   board_slots?: Array<{ slot_number: number; expires_at: string | null }>  // 置板詳細資訊
   partner?: Member | null  // 配對會員資料
+  member_notes?: MemberNote[]  // 會員備忘錄
+}
+
+interface MemberNote {
+  id: number
+  member_id: string
+  event_date: string | null
+  event_type: string
+  description: string
 }
 
 export function MemberManagement() {
@@ -152,8 +161,8 @@ export function MemberManagement() {
   const loadMembers = async () => {
     setLoading(true)
     try {
-      // 並行查詢會員資料和置板資料（重要：從串行改為並行，提升載入速度）
-      const [membersResult, boardResult] = await Promise.all([
+      // 並行查詢會員資料、置板資料和備忘錄
+      const [membersResult, boardResult, notesResult] = await Promise.all([
         supabase
           .from('members')
           .select(`
@@ -173,13 +182,20 @@ export function MemberManagement() {
           .from('board_storage')
           .select('member_id, slot_number, expires_at')
           .eq('status', 'active')
-          .order('slot_number', { ascending: true })
+          .order('slot_number', { ascending: true }),
+        
+        // @ts-ignore - member_notes 表
+        supabase
+          .from('member_notes')
+          .select('id, member_id, event_date, event_type, description')
+          .order('event_date', { ascending: false, nullsFirst: true })
       ])
 
       if (membersResult.error) throw membersResult.error
 
       const membersData = membersResult.data || []
       const boardData = boardResult.data || []
+      const notesData = notesResult.data || []
 
       // 整理每個會員的置板資料
       const memberBoards: Record<string, Array<{ slot_number: number; expires_at: string | null }>> = {}
@@ -191,6 +207,15 @@ export function MemberManagement() {
           slot_number: board.slot_number,
           expires_at: board.expires_at
         })
+      })
+
+      // 整理每個會員的備忘錄
+      const memberNotes: Record<string, MemberNote[]> = {}
+      notesData.forEach((note: any) => {
+        if (!memberNotes[note.member_id]) {
+          memberNotes[note.member_id] = []
+        }
+        memberNotes[note.member_id].push(note)
       })
 
       // 載入配對會員資料
@@ -217,7 +242,8 @@ export function MemberManagement() {
         ...member,
         board_slots: memberBoards[member.id] || [],
         board_count: memberBoards[member.id]?.length || 0,
-        partner: member.membership_partner_id ? partnersMap[member.membership_partner_id] : null
+        partner: member.membership_partner_id ? partnersMap[member.membership_partner_id] : null,
+        member_notes: memberNotes[member.id] || []
       }))
 
       setMembers(membersWithBoards)
@@ -1080,63 +1106,68 @@ export function MemberManagement() {
                   )}
                 </div>
 
-                {/* 第二層：儲值資料 */}
-                <div style={{ 
-                  background: '#fff',
-                  padding: isMobile ? '8px' : '10px 12px',
-                  borderRadius: '6px',
-                  marginBottom: '10px',
-                  border: '1px solid #e0e0e0'
-                }}>
+                {/* 第二層：備忘錄 */}
+                {member.member_notes && member.member_notes.length > 0 && (
                   <div style={{ 
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-                    gap: isMobile ? '8px' : '10px',
-                    textAlign: 'center'
+                    background: '#fff',
+                    padding: isMobile ? '8px' : '10px 12px',
+                    borderRadius: '6px',
+                    marginBottom: '10px',
+                    border: '1px solid #e0e0e0'
                   }}>
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💰 儲值餘額</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                        ${(member.balance || 0).toLocaleString()}
-                      </div>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: '600' }}>
+                      📝 備忘錄 ({member.member_notes.length})
                     </div>
-
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💎 VIP票券</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                        ${(member.vip_voucher_amount || 0).toLocaleString()}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>📚 指定課</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                        {(member.designated_lesson_minutes || 0).toLocaleString()}分
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🚤 G23船券</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                        {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>⛵ G21/黑豹</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                        {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                        {(member.gift_boat_hours || 0).toLocaleString()}分
-                      </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {member.member_notes.slice(0, 3).map((note) => {
+                        const eventColors: Record<string, string> = {
+                          '續約': '#4caf50',
+                          '購買': '#2196f3',
+                          '贈送': '#9c27b0',
+                          '使用': '#ff9800',
+                          '入會': '#e91e63',
+                          '備註': '#607d8b'
+                        }
+                        const color = eventColors[note.event_type] || '#607d8b'
+                        return (
+                          <div key={note.id} style={{
+                            fontSize: '12px',
+                            padding: '6px 8px',
+                            background: '#f8f9fa',
+                            borderRadius: '4px',
+                            borderLeft: `3px solid ${color}`,
+                            display: 'flex',
+                            gap: '8px',
+                            alignItems: 'flex-start'
+                          }}>
+                            <span style={{
+                              background: color,
+                              color: 'white',
+                              padding: '1px 6px',
+                              borderRadius: '3px',
+                              fontSize: '10px',
+                              fontWeight: '600',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {note.event_type}
+                            </span>
+                            <span style={{ color: '#666', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                              {note.event_date || ''}
+                            </span>
+                            <span style={{ color: '#333', flex: 1 }}>
+                              {note.description}
+                            </span>
+                          </div>
+                        )
+                      })}
+                      {member.member_notes.length > 3 && (
+                        <div style={{ fontSize: '11px', color: '#999', textAlign: 'center' }}>
+                          還有 {member.member_notes.length - 3} 則備忘錄...
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* 第三層：置板資料 */}
                 {(member.board_slots && member.board_slots.length > 0) && (
