@@ -1110,15 +1110,15 @@ export function MemberManagement() {
                 {member.member_notes && member.member_notes.length > 0 && (
                   <div style={{ 
                     background: '#fff',
-                    padding: isMobile ? '8px' : '10px 12px',
+                    padding: isMobile ? '10px' : '12px',
                     borderRadius: '6px',
                     marginBottom: '10px',
                     border: '1px solid #e0e0e0'
                   }}>
-                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: '600' }}>
+                    <div style={{ fontSize: '13px', color: '#555', marginBottom: '10px', fontWeight: '600' }}>
                       📝 備忘錄 ({member.member_notes.length})
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {member.member_notes.slice(-10).map((note) => {
                         const eventColors: Record<string, string> = {
                           '續約': '#4caf50',
@@ -1131,37 +1131,23 @@ export function MemberManagement() {
                         const color = eventColors[note.event_type] || '#607d8b'
                         return (
                           <div key={note.id} style={{
-                            fontSize: '12px',
-                            padding: '6px 8px',
-                            background: '#f8f9fa',
-                            borderRadius: '4px',
+                            fontSize: '13px',
+                            padding: '6px 10px',
                             borderLeft: `3px solid ${color}`,
-                            display: 'flex',
-                            gap: '8px',
-                            alignItems: 'flex-start'
+                            color: '#333',
+                            lineHeight: '1.4'
                           }}>
-                            <span style={{
-                              background: color,
-                              color: 'white',
-                              padding: '1px 6px',
-                              borderRadius: '3px',
-                              fontSize: '10px',
-                              fontWeight: '600',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {note.event_type}
-                            </span>
-                            <span style={{ color: '#666', fontSize: '11px', whiteSpace: 'nowrap' }}>
-                              {note.event_date || ''}
-                            </span>
-                            <span style={{ color: '#333', flex: 1 }}>
-                              {note.description}
-                            </span>
+                            {note.event_date && (
+                              <span style={{ color: '#888', marginRight: '8px' }}>
+                                {note.event_date}
+                              </span>
+                            )}
+                            {note.description}
                           </div>
                         )
                       })}
                       {member.member_notes.length > 10 && (
-                        <div style={{ fontSize: '11px', color: '#999', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#999', textAlign: 'center', marginTop: '4px' }}>
                           還有 {member.member_notes.length - 10} 則較舊的備忘錄...
                         </div>
                       )}
