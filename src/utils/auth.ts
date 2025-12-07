@@ -12,7 +12,7 @@ import { useToast } from '../components/ui'
 export const SUPER_ADMINS = [
   'callumbao1122@gmail.com',
   'pjpan0511@gmail.com',
-  'minlin1325@gmail.com',
+  // 'minlin1325@gmail.com',
 ]
 
 // 權限緩存
