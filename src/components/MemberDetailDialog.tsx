@@ -1712,6 +1712,7 @@ function getMembershipTypeLabel(type: string): string {
     case 'general': return '會員'
     case 'dual': return '雙人會員'
     case 'guest': return '非會員'
+    case 'es': return 'ES'
     default: return type || '會員'
   }
 }

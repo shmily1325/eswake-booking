@@ -398,6 +398,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 <option value="general">會員</option>
                 <option value="dual">雙人會員</option>
                 <option value="guest">非會員</option>
+                <option value="es">ES</option>
               </select>
             </div>
 

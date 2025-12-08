@@ -24,7 +24,7 @@ interface Member {
   gift_boat_hours: number  // 贈送大船時數
   membership_end_date: string | null
   membership_start_date: string | null
-  membership_type: string  // 'general', 'dual', 'guest' (非會員、一般會員、雙人會員)
+  membership_type: string  // 'general', 'dual', 'guest', 'es' (一般會員、雙人會員、非會員、ES)
   membership_partner_id: string | null
   board_slot_number: string | null
   board_expiry_date: string | null
@@ -425,6 +425,8 @@ export function MemberManagement() {
           membershipTypeLabel = '雙人會員'
         } else if (member.membership_type === 'guest') {
           membershipTypeLabel = '非會員'
+        } else if (member.membership_type === 'es') {
+          membershipTypeLabel = 'ES'
         }
         
         // 配對會員
@@ -491,6 +493,9 @@ export function MemberManagement() {
     // 篩選會員種類
     if (membershipTypeFilter !== 'all') {
       result = result.filter(member => {
+        if (membershipTypeFilter === 'member') {
+          return member.membership_type === 'general' || member.membership_type === 'dual'
+        }
         return member.membership_type === membershipTypeFilter
       })
     }
@@ -700,9 +705,11 @@ export function MemberManagement() {
         {/* 會員類型篩選 */}
         {[
           { value: 'all', label: '全部', count: members.length },
+          { value: 'member', label: '會員', count: members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length },
           { value: 'general', label: '一般會員', count: members.filter(m => m.membership_type === 'general').length },
           { value: 'dual', label: '雙人會員', count: members.filter(m => m.membership_type === 'dual').length },
-          { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length }
+          { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length },
+          { value: 'es', label: 'ES', count: members.filter(m => m.membership_type === 'es').length }
         ].map(type => (
           <button
             key={type.value}
@@ -998,7 +1005,7 @@ export function MemberManagement() {
                       fontWeight: 'bold',
                       fontSize: '12px'
                     }}>
-                      {member.membership_type === 'guest' ? '🎫 非會員' : '👤 會員'}
+                      {member.membership_type === 'guest' ? '🎫 非會員' : member.membership_type === 'es' ? '🏄 ES' : '👤 會員'}
                     </span>
                     {member.membership_type === 'dual' && (
                       <span style={{ 
@@ -1010,6 +1017,18 @@ export function MemberManagement() {
                         fontWeight: '600'
                       }}>
                         雙人會籍
+                      </span>
+                    )}
+                    {member.membership_type === 'es' && (
+                      <span style={{ 
+                        fontSize: '12px', 
+                        color: '#fff',
+                        background: '#333',
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        fontWeight: '600'
+                      }}>
+                        ES
                       </span>
                     )}
                     {member.status === 'inactive' && (
