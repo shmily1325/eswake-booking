@@ -3,10 +3,12 @@ import { useAuthUser } from '../contexts/AuthContext'
 import { UserMenu } from '../components/UserMenu'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
+import { isAdmin } from '../utils/auth'
 
 export function BaoHub() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
+  const userIsAdmin = isAdmin(user)
 
   const baoFeatures: Array<{
     section: string
@@ -16,6 +18,7 @@ export function BaoHub() {
       link: string
       comingSoon?: boolean
       disabled?: boolean
+      adminOnly?: boolean
     }>
   }> = [
       {
@@ -85,7 +88,7 @@ export function BaoHub() {
             title: 'LINE 提醒設置',
             icon: '📱',
             link: '/line-settings',
-            disabled: true
+            adminOnly: true
           }
         ]
       }
@@ -191,7 +194,9 @@ export function BaoHub() {
               gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
               gap: '15px'
             }}>
-              {section.items.map((feature) => (
+              {section.items
+                .filter(feature => !feature.adminOnly || userIsAdmin)
+                .map((feature) => (
                 feature.comingSoon ? (
                   <div
                     key={feature.title}

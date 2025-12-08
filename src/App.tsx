@@ -30,6 +30,7 @@ import { QuickTransaction } from './pages/QuickTransaction'
 import { MemberTransaction } from './pages/member/MemberTransaction'
 import { AnnouncementManagement } from './pages/admin/AnnouncementManagement'
 import { LineSettings } from './pages/admin/LineSettings'
+import { LineReminderAdmin } from './pages/LineReminderAdmin'
 import { CoachDailyView } from './pages/coach/CoachDailyView'
 // import { PermissionManagement } from './pages/admin/PermissionManagement' // 暫時停用
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
@@ -84,6 +85,7 @@ function AppContent() {
           <Route path="/staff" element={<StaffManagement />} />
           <Route path="/announcements" element={<AnnouncementManagement />} />
           <Route path="/line-settings" element={<LineSettings />} />
+          <Route path="/line-reminder" element={<LineReminderAdmin />} />
           <Route path="/coach-daily" element={<CoachDailyView />} />
           {/* <Route path="/permissions" element={<PermissionManagement />} /> */}
           <Route path="/boats" element={<BoatManagement />} />

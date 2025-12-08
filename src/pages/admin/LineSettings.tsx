@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -6,11 +7,14 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalTimestamp } from '../../utils/date'
 import { useToast } from '../../components/ui'
+import { isAdmin } from '../../utils/auth'
 
 export function LineSettings() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const { isMobile } = useResponsive()
   const toast = useToast()
+  const userIsAdmin = isAdmin(user)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   
@@ -208,6 +212,31 @@ export function LineSettings() {
             }} />
           </div>
         </div>
+
+        {/* 明日提醒管理按鈕 - 只有管理員可見 */}
+        {userIsAdmin && (
+          <button
+            onClick={() => navigate('/line-reminder')}
+            style={{
+              marginTop: '16px',
+              width: '100%',
+              padding: '14px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            📢 明日提醒管理（審視 & 一鍵發送）
+          </button>
+        )}
       </div>
 
       {/* Access Token 設置 */}
