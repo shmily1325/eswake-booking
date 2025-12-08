@@ -99,6 +99,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
   // 會籍續約相關狀態
   const [renewDialogOpen, setRenewDialogOpen] = useState(false)
   const [renewEndDate, setRenewEndDate] = useState('')
+  const [renewBothPartners, setRenewBothPartners] = useState(true) // 雙人會員是否一起續約
 
   // 置板續約相關狀態
   const [boardRenewDialogOpen, setBoardRenewDialogOpen] = useState(false)
@@ -152,7 +153,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       if (memberData.membership_partner_id) {
         const { data: partner } = await supabase
           .from('members')
-          .select('id, name, nickname')
+          .select('id, name, nickname, membership_end_date')
           .eq('id', memberData.membership_partner_id)
           .single()
         partnerData = partner
@@ -360,6 +361,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     }
 
     const isGuest = member.membership_type === 'guest'
+    const isDual = member.membership_type === 'dual'
+    const hasPartner = isDual && member.membership_partner_id && member.partner
     const today = new Date().toISOString().split('T')[0]
 
     try {
@@ -392,9 +395,68 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
           description: isGuest ? `入會，會籍至 ${renewEndDate}` : `續約至 ${renewEndDate}`
         }])
 
-      toast.success(isGuest ? '已轉為會員' : '續約成功')
+      // 3. 處理雙人會員
+      if (hasPartner && member.membership_partner_id) {
+        if (renewBothPartners) {
+          // 一起續約：更新配對會員的到期日
+          await supabase
+            .from('members')
+            .update({ membership_end_date: renewEndDate })
+            .eq('id', member.membership_partner_id)
+
+          // 幫配對會員加備忘錄
+          // @ts-ignore
+          await supabase.from('member_notes').insert([{
+            member_id: member.membership_partner_id,
+            event_date: today,
+            event_type: '續約',
+            description: `續約至 ${renewEndDate}（與 ${member.nickname || member.name} 一起續約）`
+          }])
+        } else {
+          // 只續自己：解除配對，雙方都變一般會員
+          // 更新自己為一般會員
+          await supabase
+            .from('members')
+            .update({ 
+              membership_type: 'general',
+              membership_partner_id: null 
+            })
+            .eq('id', memberId)
+
+          // 更新配對會員為一般會員
+          await supabase
+            .from('members')
+            .update({ 
+              membership_type: 'general',
+              membership_partner_id: null 
+            })
+            .eq('id', member.membership_partner_id)
+
+          // 幫配對會員加備忘錄
+          // @ts-ignore
+          await supabase.from('member_notes').insert([{
+            member_id: member.membership_partner_id,
+            event_date: today,
+            event_type: '備註',
+            description: `配對會員 ${member.nickname || member.name} 單獨續約，解除配對，改為一般會員`
+          }])
+
+          // 幫自己加備忘錄（解除配對）
+          // @ts-ignore
+          await supabase.from('member_notes').insert([{
+            member_id: memberId,
+            event_date: today,
+            event_type: '備註',
+            description: `單獨續約，與 ${member.partner?.nickname || member.partner?.name} 解除配對，改為一般會員`
+          }])
+        }
+      }
+
+      const partnerMsg = hasPartner ? (renewBothPartners ? '（含配對會員）' : '（已解除配對）') : ''
+      toast.success(isGuest ? '已轉為會員' : `續約成功${partnerMsg}`)
       setRenewDialogOpen(false)
       setRenewEndDate('')
+      setRenewBothPartners(true)
       loadMemberData()
       loadMemberNotes()
       onUpdate()
@@ -1483,6 +1545,43 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                 </div>
               )}
             </div>
+
+            {/* 雙人會員選項 */}
+            {member?.membership_type === 'dual' && member?.partner && (
+              <div style={{ 
+                marginBottom: '20px',
+                padding: '12px',
+                background: renewBothPartners ? '#e3f2fd' : '#fff3e0',
+                borderRadius: '8px',
+                border: renewBothPartners ? '1px solid #90caf9' : '1px solid #ffcc80',
+              }}>
+                <label style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '10px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={renewBothPartners}
+                    onChange={(e) => setRenewBothPartners(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <span>
+                    🔗 同時續約配對會員 <strong>{member.partner.nickname || member.partner.name}</strong>
+                  </span>
+                </label>
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '8px', marginLeft: '28px' }}>
+                  配對會員目前到期：{(member.partner as any).membership_end_date ? formatDate((member.partner as any).membership_end_date) : '未設定'}
+                </div>
+                {!renewBothPartners && (
+                  <div style={{ fontSize: '12px', color: '#e65100', marginTop: '8px', marginLeft: '28px' }}>
+                    ⚠️ 不勾選會解除配對，雙方都變為一般會員
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button

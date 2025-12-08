@@ -260,12 +260,62 @@ export function MemberManagement() {
 
   const handleArchiveMember = async (memberId: string) => {
     try {
+      // 先取得會員資料
+      const { data: member } = await supabase
+        .from('members')
+        .select('id, name, nickname, membership_type, membership_partner_id')
+        .eq('id', memberId)
+        .single()
+
+      if (!member) throw new Error('找不到會員')
+
+      const today = new Date().toISOString().split('T')[0]
+      const hasPartner = member.membership_type === 'dual' && member.membership_partner_id
+
+      // 1. 如果有配對，解除配對關係
+      if (hasPartner && member.membership_partner_id) {
+        const partnerId = member.membership_partner_id
+
+        // 配對會員改為一般會員
+        await supabase
+          .from('members')
+          .update({ 
+            membership_type: 'general',
+            membership_partner_id: null 
+          })
+          .eq('id', partnerId)
+
+        // 幫配對會員加備忘錄
+        // @ts-ignore
+        await supabase.from('member_notes').insert([{
+          member_id: partnerId,
+          event_date: today,
+          event_type: '備註',
+          description: `配對會員 ${member.nickname || member.name} 已隱藏，解除配對，改為一般會員`
+        }])
+      }
+
+      // 2. 隱藏會員（清除配對）
       const { error } = await supabase
         .from('members')
-        .update({ status: 'inactive' })
+        .update({ 
+          status: 'inactive',
+          membership_partner_id: null
+        })
         .eq('id', memberId)
       
       if (error) throw error
+
+      // 3. 新增備忘錄
+      // @ts-ignore
+      await supabase.from('member_notes').insert([{
+        member_id: memberId,
+        event_date: today,
+        event_type: '備註',
+        description: '會員隱藏'
+      }])
+
+      toast.success('已隱藏會員')
       await loadMembers()
     } catch (err: any) {
       console.error('隱藏會員失敗:', err)
@@ -275,12 +325,24 @@ export function MemberManagement() {
 
   const handleRestoreMember = async (memberId: string) => {
     try {
-      const { error} = await supabase
+      const { error } = await supabase
         .from('members')
         .update({ status: 'active' })
         .eq('id', memberId)
       
       if (error) throw error
+
+      // 新增備忘錄
+      const today = new Date().toISOString().split('T')[0]
+      // @ts-ignore
+      await supabase.from('member_notes').insert([{
+        member_id: memberId,
+        event_date: today,
+        event_type: '備註',
+        description: '會員恢復'
+      }])
+
+      toast.success('已恢復會員')
       await loadMembers()
     } catch (err: any) {
       console.error('恢復會員失敗:', err)
