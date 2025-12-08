@@ -374,6 +374,19 @@ export function BoardManagement() {
         .eq('id', selectedSlot.id)
 
       if (error) throw error
+
+      // 新增備忘錄
+      if (selectedSlot.member_id) {
+        const today = new Date().toISOString().split('T')[0]
+        // @ts-ignore
+        await supabase.from('member_notes').insert([{
+          member_id: selectedSlot.member_id,
+          event_date: today,
+          event_type: '備註',
+          description: `移除置板 #${selectedSlot.slot_number}`
+        }])
+      }
+
       toast.success(`已刪除格位 #${selectedSlot.slot_number}`)
       setSelectedSlot(null)
       loadBoardData()

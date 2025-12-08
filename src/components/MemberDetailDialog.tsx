@@ -443,8 +443,20 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         .eq('id', boardId)
 
       if (error) throw error
+
+      // 新增備忘錄
+      const today = new Date().toISOString().split('T')[0]
+      // @ts-ignore
+      await supabase.from('member_notes').insert([{
+        member_id: memberId,
+        event_date: today,
+        event_type: '備註',
+        description: `移除置板 #${slotNumber}`
+      }])
+
       toast.success(`已刪除格位 #${slotNumber}`)
       loadMemberData()
+      loadMemberNotes()
       onUpdate()
     } catch (error) {
       console.error('刪除置板失敗:', error)
