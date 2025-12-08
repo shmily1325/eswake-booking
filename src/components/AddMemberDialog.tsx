@@ -173,6 +173,34 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           .eq('id', formData.membership_partner_id)
       }
 
+      // 4. 自動新增備忘錄
+      const notesToAdd: Array<{member_id: string, event_date: string | null, description: string}> = []
+      
+      // 入會備忘錄
+      if (formData.membership_start_date && formData.membership_type !== 'guest') {
+        notesToAdd.push({
+          member_id: newMember.id,
+          event_date: formData.membership_start_date,
+          description: '入會'
+        })
+      }
+      
+      // 置板備忘錄
+      for (const board of boards) {
+        if (board.slot_number && board.start_date) {
+          notesToAdd.push({
+            member_id: newMember.id,
+            event_date: board.start_date,
+            description: `置板開始 #${board.slot_number}`
+          })
+        }
+      }
+      
+      if (notesToAdd.length > 0) {
+        // @ts-ignore
+        await supabase.from('member_notes').insert(notesToAdd)
+      }
+
       onSuccess()
       onClose()
       
@@ -290,7 +318,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 type="text"
                 value={formData.nickname}
                 onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                placeholder="例如：阿明+那個男人"
+                placeholder="請輸入暱稱"
                 maxLength={100}
                 style={inputStyle}
                 onFocus={handleFocus}

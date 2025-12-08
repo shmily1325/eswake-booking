@@ -321,45 +321,55 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     }
   }
 
-  // 續約
+  // 續約 / 轉會員
   const handleRenew = async () => {
     if (!member || !memberId || !renewEndDate) {
       toast.warning('請選擇新的到期日')
       return
     }
 
+    const isGuest = member.membership_type === 'guest'
+    const today = new Date().toISOString().split('T')[0]
+
     try {
       // 1. 更新會員資料
+      const updateData: any = {
+        membership_end_date: renewEndDate
+      }
+      
+      // 如果是非會員轉會員，設定開始日期和類型
+      if (isGuest) {
+        updateData.membership_type = 'general'
+        updateData.membership_start_date = today
+      }
+
       const { error: updateError } = await supabase
         .from('members')
-        .update({
-          membership_end_date: renewEndDate
-        })
+        .update(updateData)
         .eq('id', memberId)
 
       if (updateError) throw updateError
 
       // 2. 新增備忘錄
-      const today = new Date().toISOString().split('T')[0]
       // @ts-ignore
       await supabase
         .from('member_notes')
         .insert([{
           member_id: memberId,
           event_date: today,
-          event_type: '續約',
-          description: `續約至 ${renewEndDate}`
+          event_type: isGuest ? '入會' : '續約',
+          description: isGuest ? `入會，會籍至 ${renewEndDate}` : `續約至 ${renewEndDate}`
         }])
 
-      toast.success('續約成功')
+      toast.success(isGuest ? '已轉為會員' : '續約成功')
       setRenewDialogOpen(false)
       setRenewEndDate('')
       loadMemberData()
       loadMemberNotes()
       onUpdate()
     } catch (error) {
-      console.error('續約失敗:', error)
-      toast.error('續約失敗')
+      console.error('操作失敗:', error)
+      toast.error('操作失敗')
     }
   }
 
@@ -551,7 +561,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                       </div>
                     </div>
 
-                    {/* 會籍 */}
+                    {/* 會籍 - 會員 */}
                     {(member.membership_type === 'general' || member.membership_type === 'dual') && (
                       <div style={{ marginBottom: '24px' }}>
                         <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333', fontWeight: '600' }}>🎫 會籍</h3>
@@ -617,6 +627,46 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                           <div style={{ fontSize: '12px', color: '#999', lineHeight: '1.5' }}>
                             <div>• <strong>續約</strong>：設定新的到期日（預設+1年），會記錄到備忘錄</div>
                             <div>• <strong>轉非會員</strong>：清空會籍日期（資料在備忘錄），保留儲值和置板可繼續使用</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 會籍 - 非會員 */}
+                    {member.membership_type === 'guest' && (
+                      <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333', fontWeight: '600' }}>🎫 會籍</h3>
+                        <div style={{ 
+                          background: '#f8f9fa',
+                          borderRadius: '8px',
+                          padding: '12px 16px',
+                        }}>
+                          <div style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
+                            目前為非會員
+                          </div>
+                          <button
+                            onClick={() => {
+                              const today = new Date()
+                              const endDate = new Date(today)
+                              endDate.setFullYear(endDate.getFullYear() + 1)
+                              setRenewEndDate(endDate.toISOString().split('T')[0])
+                              setRenewDialogOpen(true)
+                            }}
+                            style={{
+                              padding: '6px 14px',
+                              background: '#4caf50',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            🎫 轉為會員
+                          </button>
+                          <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                            設定會籍開始與到期日，會記錄到備忘錄
                           </div>
                         </div>
                       </div>
@@ -1258,7 +1308,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         </div>
       )}
 
-      {/* 續約對話框 */}
+      {/* 續約/入會對話框 */}
       {renewDialogOpen && (
         <div style={{
           position: 'fixed',
@@ -1280,11 +1330,13 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
             padding: '24px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
           }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>🔄 會籍續約</h3>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>
+              {member?.membership_type === 'guest' ? '🎫 轉為會員' : '🔄 會籍續約'}
+            </h3>
             
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                新的到期日
+                {member?.membership_type === 'guest' ? '會籍到期日' : '新的到期日'}
               </label>
               <input
                 type="date"
@@ -1298,9 +1350,15 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                   fontSize: '14px',
                 }}
               />
-              <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-                目前到期：{member?.membership_end_date ? formatDate(member.membership_end_date) : '未設定'}
-              </div>
+              {member?.membership_type === 'guest' ? (
+                <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                  會籍開始日將設為今天
+                </div>
+              ) : (
+                <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                  目前到期：{member?.membership_end_date ? formatDate(member.membership_end_date) : '未設定'}
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
@@ -1333,7 +1391,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                   fontWeight: 'bold',
                 }}
               >
-                確認續約
+                {member?.membership_type === 'guest' ? '確認轉為會員' : '確認續約'}
               </button>
             </div>
           </div>
