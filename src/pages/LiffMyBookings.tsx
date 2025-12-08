@@ -53,7 +53,9 @@ export function LiffMyBookings() {
   const [lineUserId, setLineUserId] = useState<string | null>(null)
   const [showBindingForm, setShowBindingForm] = useState(false)
   const [phone, setPhone] = useState('')
+  const [birthday, setBirthday] = useState('')
   const [binding, setBinding] = useState(false)
+  const [bindingError, setBindingError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('bookings')
   
   // 交易記錄彈出框
@@ -61,6 +63,25 @@ export function LiffMyBookings() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loadingTransactions, setLoadingTransactions] = useState(false)
+  const [transactionCache, setTransactionCache] = useState<Record<string, Transaction[]>>({})
+  
+  // 刷新狀態
+  const [refreshing, setRefreshing] = useState(false)
+  
+  // 友好日期顯示
+  const formatFriendlyDate = (dateStr: string) => {
+    const today = getLocalDateString()
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = getLocalDateString(yesterday)
+    
+    if (dateStr === today) return '今天'
+    if (dateStr === yesterdayStr) return '昨天'
+    
+    // 顯示月/日
+    const date = new Date(dateStr)
+    return `${date.getMonth() + 1}/${date.getDate()}`
+  }
 
   useEffect(() => {
     initLiff()
@@ -76,7 +97,7 @@ export function LiffMyBookings() {
       }
 
       // 強制清除快取：添加版本號
-      const version = '20241114-001'
+      const version = '20251208-001'
       console.log('🚀 LIFF 版本:', version)
 
       await liff.init({ liffId })
@@ -123,6 +144,7 @@ export function LiffMyBookings() {
     }
   }
 
+  /* 暫時隱藏取消預約功能
   const handleCancelBooking = async (bookingId: number) => {
     try {
       triggerHaptic('warning')
@@ -171,6 +193,7 @@ export function LiffMyBookings() {
       toast.error('取消預約失敗：' + err.message)
     }
   }
+  */
 
   const loadBookings = async (memberId: string) => {
     try {
@@ -250,7 +273,47 @@ export function LiffMyBookings() {
     }
   }
 
-  const loadTransactions = async (memberId: string, category: string) => {
+  // 刷新資料
+  const handleRefresh = async () => {
+    if (!lineUserId || refreshing) return
+    
+    setRefreshing(true)
+    triggerHaptic('light')
+    
+    // 清除交易記錄快取
+    setTransactionCache({})
+    
+    try {
+      // 重新查詢會員資料
+      const { data: binding } = await supabase
+        .from('line_bindings')
+        .select('member_id, members(id, name, nickname, phone, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours)')
+        .eq('line_user_id', lineUserId)
+        .eq('status', 'active')
+        .single()
+
+      if (binding && binding.members) {
+        const memberData = binding.members as any
+        setMember(memberData)
+        await loadBookings(memberData.id)
+        toast.success('資料已更新')
+      }
+    } catch (err: any) {
+      console.error('刷新失敗:', err)
+      toast.error('刷新失敗')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const loadTransactions = async (memberId: string, category: string, forceRefresh = false) => {
+    // 檢查快取
+    const cacheKey = `${memberId}_${category}`
+    if (!forceRefresh && transactionCache[cacheKey]) {
+      setTransactions(transactionCache[cacheKey])
+      return
+    }
+    
     setLoadingTransactions(true)
     try {
       // 計算兩個月前的日期
@@ -269,7 +332,10 @@ export function LiffMyBookings() {
 
       if (error) throw error
 
-      setTransactions(data || [])
+      const result = data || []
+      setTransactions(result)
+      // 存入快取
+      setTransactionCache(prev => ({ ...prev, [cacheKey]: result }))
     } catch (err: any) {
       console.error('載入交易記錄失敗:', err)
       toast.error('載入交易記錄失敗')
@@ -291,6 +357,7 @@ export function LiffMyBookings() {
 
     triggerHaptic('medium')
     setBinding(true)
+    setBindingError(null)
     try {
       // 清理電話號碼：移除所有非數字字符
       const cleanPhone = phone.replace(/\D/g, '')
@@ -321,14 +388,14 @@ export function LiffMyBookings() {
       console.log('✅ 找到的會員:', memberData)
 
       if (!memberData) {
-        const debugInfo = `❌ 找不到會員資料\n\n📊 查詢統計：\n- 總會員數：${allMembers.length}\n- 輸入電話：${cleanPhone}\n- Active 會員：${allMembers.filter(m => m.status === 'active').length}\n\n請確認電話號碼正確`
-        toast.warning(debugInfo)
+        triggerHaptic('error')
+        setBindingError('找不到此電話號碼的會員資料')
         setBinding(false)
         return
       }
 
       // 創建綁定
-      const { error: bindingError } = await supabase
+      const { error: bindError } = await supabase
         .from('line_bindings')
         .upsert({
           line_user_id: lineUserId,
@@ -341,11 +408,23 @@ export function LiffMyBookings() {
           onConflict: 'line_user_id'
         })
 
-      if (bindingError) {
+      if (bindError) {
         triggerHaptic('error')
-        toast.error('綁定失敗：' + bindingError.message)
+        toast.error('綁定失敗：' + bindError.message)
         setBinding(false)
         return
+      }
+
+      // 如果有填寫生日，更新會員資料
+      if (birthday) {
+        const { error: updateError } = await supabase
+          .from('members')
+          .update({ birthday })
+          .eq('id', memberData.id)
+        
+        if (updateError) {
+          console.error('更新生日失敗:', updateError)
+        }
       }
 
       // 綁定成功
@@ -463,7 +542,7 @@ export function LiffMyBookings() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%)',
         padding: '20px',
         display: 'flex',
         alignItems: 'center',
@@ -512,8 +591,69 @@ export function LiffMyBookings() {
               margin: '8px 0 0',
               fontFamily: 'monospace'
             }}>
-              v20241114-001
+              v20251208-002
             </p>
+          </div>
+
+          {/* 錯誤提示 */}
+          {bindingError && (
+            <div style={{
+              background: '#fff2f0',
+              border: '1px solid #ffccc7',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ fontSize: '14px', color: '#cf1322', marginBottom: '8px', fontWeight: '600' }}>
+                ❌ {bindingError}
+              </div>
+              <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
+                如果您確定電話號碼正確，請直接<strong>私訊官方帳號</strong>告知您的：
+                <br/>• 姓名
+                <br/>• 電話號碼
+                <br/>我們會協助您完成綁定！
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#555',
+              marginBottom: '8px'
+            }}>
+              手機號碼 <span style={{ color: '#cf1322' }}>*</span>
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value)
+                setBindingError(null)
+              }}
+              placeholder="請輸入您的手機號碼"
+              style={{
+                width: '100%',
+                padding: '14px',
+                border: bindingError ? '2px solid #ff4d4f' : '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                outline: 'none',
+                transition: 'border-color 0.2s'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#5a5a5a'}
+              onBlur={(e) => e.target.style.borderColor = bindingError ? '#ff4d4f' : '#e0e0e0'}
+            />
+            <div style={{
+              fontSize: '12px',
+              color: '#999',
+              marginTop: '6px'
+            }}>
+              例如：0912345678
+            </div>
           </div>
 
           <div style={{ marginBottom: '20px' }}>
@@ -524,13 +664,12 @@ export function LiffMyBookings() {
               color: '#555',
               marginBottom: '8px'
             }}>
-              手機號碼
+              生日（選填）
             </label>
             <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="請輸入您的手機號碼"
+              type="date"
+              value={birthday}
+              onChange={(e) => setBirthday(e.target.value)}
               style={{
                 width: '100%',
                 padding: '14px',
@@ -541,7 +680,7 @@ export function LiffMyBookings() {
                 outline: 'none',
                 transition: 'border-color 0.2s'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#667eea'}
+              onFocus={(e) => e.target.style.borderColor = '#5a5a5a'}
               onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
             />
             <div style={{
@@ -549,7 +688,7 @@ export function LiffMyBookings() {
               color: '#999',
               marginTop: '6px'
             }}>
-              例如：0912345678
+              填寫生日可收到生日祝福 🎂
             </div>
           </div>
 
@@ -561,7 +700,7 @@ export function LiffMyBookings() {
               padding: '14px',
               background: binding || !phone 
                 ? '#ccc' 
-                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -630,15 +769,41 @@ export function LiffMyBookings() {
           }}>
             我的預約
           </h1>
-          <img 
-            src="/logo_circle (white).png" 
-            alt="ES Wake Logo" 
-            style={{ 
-              width: '40px', 
-              height: '40px',
-              objectFit: 'contain'
-            }} 
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: refreshing ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <span style={{
+                fontSize: '18px',
+                display: 'inline-block',
+                animation: refreshing ? 'spin 1s linear infinite' : 'none'
+              }}>
+                🔄
+              </span>
+            </button>
+            <img 
+              src="/logo_circle (white).png" 
+              alt="ES Wake Logo" 
+              style={{ 
+                width: '40px', 
+                height: '40px',
+                objectFit: 'contain'
+              }} 
+            />
+          </div>
         </div>
         <div style={{
           fontSize: '14px',
@@ -697,6 +862,7 @@ export function LiffMyBookings() {
         >
           💰 查儲值
         </button>
+        {/* 暫時隱藏取消預約功能
         <button
           onClick={() => {
             triggerHaptic('light')
@@ -717,6 +883,7 @@ export function LiffMyBookings() {
         >
           ❌ 取消預約
         </button>
+        */}
       </div>
 
       {/* Content */}
@@ -972,6 +1139,7 @@ export function LiffMyBookings() {
                   background: '#f8f9fa',
                   borderRadius: '8px',
                   padding: '16px',
+                  border: '2px solid #faad14',
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
@@ -997,6 +1165,7 @@ export function LiffMyBookings() {
                   background: '#f8f9fa',
                   borderRadius: '8px',
                   padding: '16px',
+                  border: '2px solid #1890ff',
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
@@ -1022,6 +1191,7 @@ export function LiffMyBookings() {
                   background: '#f8f9fa',
                   borderRadius: '8px',
                   padding: '16px',
+                  border: '2px solid #13c2c2',
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
@@ -1047,6 +1217,7 @@ export function LiffMyBookings() {
                   background: '#f8f9fa',
                   borderRadius: '8px',
                   padding: '16px',
+                  border: '2px solid #eb2f96',
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
@@ -1068,7 +1239,7 @@ export function LiffMyBookings() {
           </div>
         )}
 
-        {/* Tab: 取消預約 */}
+        {/* 暫時隱藏取消預約功能
         {activeTab === 'cancel' && (
           <div style={{
             background: 'white',
@@ -1194,6 +1365,7 @@ export function LiffMyBookings() {
             )}
           </div>
         )}
+        */}
       </div>
 
       {/* 交易記錄彈出框 */}
@@ -1284,7 +1456,7 @@ export function LiffMyBookings() {
                       marginBottom: '6px'
                     }}>
                       <div style={{ fontSize: '14px', color: '#666' }}>
-                        {transaction.transaction_date}
+                        {formatFriendlyDate(transaction.transaction_date)}
                       </div>
                       <div style={{
                         fontSize: '18px',
@@ -1293,7 +1465,7 @@ export function LiffMyBookings() {
                       }}>
                         {(transaction.adjust_type === 'increase' || transaction.transaction_type === 'charge') ? '+' : '-'}
                         {getCategoryUnit(selectedCategory) === '元' ? '$' : ''}
-                        {transaction.amount || transaction.minutes || 0}
+                        {Math.abs(transaction.amount || transaction.minutes || 0)}
                         {getCategoryUnit(selectedCategory) === '分' ? '分' : ''}
                       </div>
                     </div>
