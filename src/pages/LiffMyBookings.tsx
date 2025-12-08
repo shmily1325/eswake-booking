@@ -437,9 +437,32 @@ export function LiffMyBookings() {
         }
       }
 
-      // 綁定成功
+      // 綁定成功 - 重新載入完整的會員資料（包含儲值欄位）
       triggerHaptic('success')
-      setMember(memberData)
+      
+      const { data: fullMemberData } = await supabase
+        .from('members')
+        .select('id, name, nickname, phone, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours')
+        .eq('id', memberData.id)
+        .single()
+      
+      if (fullMemberData) {
+        setMember({
+          id: fullMemberData.id,
+          name: fullMemberData.name,
+          nickname: fullMemberData.nickname,
+          phone: fullMemberData.phone,
+          balance: fullMemberData.balance ?? undefined,
+          vip_voucher_amount: fullMemberData.vip_voucher_amount ?? undefined,
+          designated_lesson_minutes: fullMemberData.designated_lesson_minutes ?? undefined,
+          boat_voucher_g23_minutes: fullMemberData.boat_voucher_g23_minutes ?? undefined,
+          boat_voucher_g21_panther_minutes: fullMemberData.boat_voucher_g21_panther_minutes ?? undefined,
+          gift_boat_hours: fullMemberData.gift_boat_hours ?? undefined,
+        })
+      } else {
+        setMember(memberData)
+      }
+      
       setShowBindingForm(false)
       await loadBookings(memberData.id)
     } catch (err: any) {

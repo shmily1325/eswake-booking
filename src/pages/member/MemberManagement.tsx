@@ -612,7 +612,7 @@ export function MemberManagement() {
 
   return (
     <div style={{ 
-      padding: isMobile ? '12px' : '20px',
+      padding: isMobile ? '12px 16px' : '20px',
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
@@ -971,14 +971,14 @@ export function MemberManagement() {
                     }}
                     style={{
                       position: 'absolute',
-                      top: '12px',
-                      right: '12px',
+                      top: isMobile ? '8px' : '12px',
+                      right: isMobile ? '8px' : '12px',
                       background: member.status === 'inactive' ? '#4caf50' : '#f5f5f5',
                       color: member.status === 'inactive' ? 'white' : '#999',
                       border: 'none',
                       borderRadius: '6px',
-                      padding: '4px 10px',
-                      fontSize: '12px',
+                      padding: isMobile ? '3px 8px' : '4px 10px',
+                      fontSize: isMobile ? '11px' : '12px',
                       cursor: 'pointer',
                       fontWeight: '500',
                       transition: 'all 0.2s',
@@ -988,12 +988,12 @@ export function MemberManagement() {
                     {member.status === 'inactive' ? '恢復' : '隱藏'}
                   </button>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '60px' }}>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: isMobile ? '50px' : '60px' }}>
+                    <h3 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold' }}>
                       {member.nickname && member.nickname.trim() ? member.nickname : member.name}
                     </h3>
                     {member.nickname && member.nickname.trim() && (
-                      <span style={{ fontSize: '13px', color: '#999' }}>
+                      <span style={{ fontSize: isMobile ? '12px' : '13px', color: '#999' }}>
                         ({member.name})
                       </span>
                     )}
@@ -1050,11 +1050,11 @@ export function MemberManagement() {
                   <div style={{ 
                     display: 'flex', 
                     flexDirection: 'column',
-                    gap: '6px',
-                    fontSize: '13px',
+                    gap: isMobile ? '4px' : '6px',
+                    fontSize: isMobile ? '12px' : '13px',
                     color: '#666'
                   }}>
-                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: isMobile ? '10px' : '16px', flexWrap: 'wrap' }}>
                       {member.phone && (
                         <div>📱 {member.phone}</div>
                       )}
