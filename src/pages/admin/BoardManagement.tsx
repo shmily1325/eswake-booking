@@ -484,11 +484,12 @@ export function BoardManagement() {
           cursor: 'pointer',
           border: slotStyles.border,
           transition: 'all 0.2s',
-          minHeight: isMobile ? '65px' : '75px',
+          height: isMobile ? '80px' : '90px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'flex-start',
-          position: 'relative'
+          position: 'relative',
+          overflow: 'hidden'
         }}
         onMouseEnter={(e) => {
           if (isOccupied) {

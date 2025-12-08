@@ -644,49 +644,51 @@ export function StaffManagement() {
           </button>
         </div>
 
-        {/* 說明提示 */}
-        <div style={{
-          background: '#fff9e6',
-          padding: isMobile ? '12px 16px' : '14px 20px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          fontSize: '14px',
-          color: '#856404',
-          border: '1px solid #ffeaa7',
-          lineHeight: '1.6'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <span style={{ flexShrink: 0 }}>💡</span>
-            {isMobile ? (
-              <div>
-                <div style={{ marginBottom: '4px' }}>
-                  <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選
+        {/* 說明提示 - 只在教練管理 Tab 顯示 */}
+        {activeTab === 'coaches' && (
+          <div style={{
+            background: '#fff9e6',
+            padding: isMobile ? '12px 16px' : '14px 20px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            fontSize: '14px',
+            color: '#856404',
+            border: '1px solid #ffeaa7',
+            lineHeight: '1.6'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <span style={{ flexShrink: 0 }}>💡</span>
+              {isMobile ? (
+                <div>
+                  <div style={{ marginBottom: '4px' }}>
+                    <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選
+                  </div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                    <strong>休假</strong>：特定日期選不到該教練（例如：出國或者雪季）
+                  </div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                    <strong>隱藏</strong>：不再顯示該教練但仍保存於資料庫，可隨時恢復（例如：外師或其他俱樂部教練）
+                  </div>
                 </div>
-                <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                  <strong>休假</strong>：特定日期選不到該教練（例如：出國或者雪季）
+              ) : (
+                <div>
+                  <div style={{ marginBottom: '6px' }}>
+                    <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選擇
+                  </div>
+                  <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
+                    <strong>休假</strong>：特定日期選不到該教練（例如：出國或者雪季）
+                  </div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                    <strong>隱藏</strong>：不再顯示該教練但仍保存於資料庫，可隨時恢復（例如：外師或其他俱樂部教練）
+                  </div>
                 </div>
-                <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                  <strong>隱藏</strong>：不再顯示該教練但仍保存於資料庫，可隨時恢復（例如：外師或其他俱樂部教練）
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div style={{ marginBottom: '6px' }}>
-                  <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選擇
-                </div>
-                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
-                  <strong>休假</strong>：特定日期選不到該教練（例如：出國或者雪季）
-                </div>
-                <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                  <strong>隱藏</strong>：不再顯示該教練但仍保存於資料庫，可隨時恢復（例如：外師或其他俱樂部教練）
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 統計資訊 - 手機版隱藏 */}
-        {!isMobile && (
+        {/* 統計資訊 - 只在教練管理 Tab 且非手機版顯示 */}
+        {activeTab === 'coaches' && !isMobile && (
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, 1fr)',

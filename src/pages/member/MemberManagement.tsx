@@ -636,6 +636,29 @@ export function MemberManagement() {
           <span>🏄</span>
           <span>置板管理</span>
         </button>
+
+        <button
+          onClick={() => setAddDialogOpen(true)}
+          style={{
+            flex: isMobile ? '1 1 100%' : '0 0 auto',
+            padding: isMobile ? '12px 16px' : '10px 20px',
+            background: '#5a5a5a',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: isMobile ? '14px' : '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+        >
+          <span>+</span>
+          <span>新增會員</span>
+        </button>
       </div>
 
       {/* 搜尋欄與篩選器 */}
@@ -1235,26 +1258,6 @@ export function MemberManagement() {
             </div>
           ))
         )}
-      </div>
-
-      {/* 新增會員按鈕 */}
-      <div style={{ marginTop: '20px', textAlign: 'center' }}>
-        <button
-          onClick={() => setAddDialogOpen(true)}
-          style={{
-            padding: isMobile ? '12px 24px' : '14px 28px',
-            background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: isMobile ? '16px' : '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(90, 90, 90, 0.3)'
-          }}
-        >
-          + 新增會員
-        </button>
       </div>
 
       {/* Footer */}

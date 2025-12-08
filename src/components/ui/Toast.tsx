@@ -22,7 +22,7 @@ const Toast: React.FC<ToastProps> = ({ message, onClose }) => {
   const [isExiting, setIsExiting] = useState(false)
 
   useEffect(() => {
-    const duration = message.duration || 3000
+    const duration = message.duration || 2000  // 縮短為 2 秒
     const timer = setTimeout(() => {
       setIsExiting(true)
       setTimeout(() => onClose(message.id), 300) // 等待动画完成
