@@ -287,23 +287,49 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
   const handleConvertToGuest = async () => {
     if (!member || !memberId) return
     
-    const confirmMsg = `確定要將 ${member.nickname || member.name} 轉為非會員嗎？\n\n這會：\n• 會籍類型改為「非會員」\n• 清空會籍開始/到期日期\n• 新增一則備忘錄記錄\n\n儲值餘額和置板會保留。`
+    const hasPartner = member.membership_type === 'dual' && member.membership_partner_id
+    const partnerInfo = hasPartner ? `\n• 解除與 ${member.partner?.nickname || member.partner?.name || '配對會員'} 的配對關係` : ''
+    
+    const confirmMsg = `確定要將 ${member.nickname || member.name} 轉為非會員嗎？\n\n這會：\n• 會籍類型改為「非會員」\n• 清空會籍開始/到期日期${partnerInfo}\n• 新增一則備忘錄記錄\n\n儲值餘額和置板會保留。`
     if (!confirm(confirmMsg)) return
 
     try {
-      // 1. 更新會員資料
+      // 1. 如果有配對，先解除配對關係
+      if (hasPartner && member.membership_partner_id) {
+        // 將配對會員改為一般會員，並清除配對
+        await supabase
+          .from('members')
+          .update({
+            membership_type: 'general',
+            membership_partner_id: null
+          })
+          .eq('id', member.membership_partner_id)
+        
+        // 幫配對會員加一則備忘錄
+        const today = new Date().toISOString().split('T')[0]
+        // @ts-ignore
+        await supabase.from('member_notes').insert([{
+          member_id: member.membership_partner_id,
+          event_date: today,
+          event_type: '備註',
+          description: `配對會員 ${member.nickname || member.name} 轉非會員，改為一般會員`
+        }])
+      }
+
+      // 2. 更新會員資料
       const { error: updateError } = await supabase
         .from('members')
         .update({
           membership_type: 'guest',
           membership_start_date: null,
-          membership_end_date: null
+          membership_end_date: null,
+          membership_partner_id: null
         })
         .eq('id', memberId)
 
       if (updateError) throw updateError
 
-      // 2. 新增備忘錄
+      // 3. 新增備忘錄
       const today = new Date().toISOString().split('T')[0]
       const oldEndDate = member.membership_end_date ? `（原到期：${member.membership_end_date}）` : ''
       // @ts-ignore
