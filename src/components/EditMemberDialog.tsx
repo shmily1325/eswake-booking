@@ -557,7 +557,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                             type="date"
                             value={slot.start_date}
                             onChange={(e) => handleUpdateBoardSlot(index, 'start_date', e.target.value)}
-                            style={{...inputStyle, fontSize: '14px'}}
+                            style={{...inputStyle, fontSize: '14px', maxWidth: '100%', boxSizing: 'border-box'}}
                           />
                         </div>
                         <div>
@@ -568,7 +568,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                             type="date"
                             value={slot.expires_at}
                             onChange={(e) => handleUpdateBoardSlot(index, 'expires_at', e.target.value)}
-                            style={{...inputStyle, fontSize: '14px'}}
+                            style={{...inputStyle, fontSize: '14px', maxWidth: '100%', boxSizing: 'border-box'}}
                           />
                         </div>
                       </div>

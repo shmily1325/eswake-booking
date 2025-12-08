@@ -106,6 +106,11 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
   const [boardRenewEndDate, setBoardRenewEndDate] = useState('')
   const [renewingBoard, setRenewingBoard] = useState<{id: number, slot_number: number, expires_at: string | null} | null>(null)
 
+  // 快速編輯電話相關狀態
+  const [quickEditPhoneOpen, setQuickEditPhoneOpen] = useState(false)
+  const [quickEditPhone, setQuickEditPhone] = useState('')
+  const [savingPhone, setSavingPhone] = useState(false)
+
   useEffect(() => {
     if (!open) {
       setEditDialogOpen(false)
@@ -115,6 +120,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       setEditingNote(null)
       setRenewDialogOpen(false)
       setRenewEndDate('')
+      setQuickEditPhoneOpen(false)
+      setQuickEditPhone('')
     }
   }, [open])
 
@@ -191,6 +198,37 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       setMemberNotes(data || [])
     } catch (error) {
       console.error('載入備忘錄失敗:', error)
+    }
+  }
+
+  // 快速編輯電話
+  const handleQuickSavePhone = async () => {
+    if (!memberId) return
+    
+    const trimmedPhone = quickEditPhone.trim()
+    if (trimmedPhone && !/^09\d{8}$/.test(trimmedPhone)) {
+      toast.warning('手機號碼需為 09 開頭的 10 位數字')
+      return
+    }
+    
+    setSavingPhone(true)
+    try {
+      const { error } = await supabase
+        .from('members')
+        .update({ phone: trimmedPhone || null })
+        .eq('id', memberId)
+      
+      if (error) throw error
+      
+      toast.success('手機號碼已更新')
+      setQuickEditPhoneOpen(false)
+      loadMemberData()
+      onUpdate()
+    } catch (error) {
+      console.error('更新手機號碼失敗:', error)
+      toast.error('更新失敗')
+    } finally {
+      setSavingPhone(false)
     }
   }
 
@@ -712,7 +750,27 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '14px' }}>
                           <div><span style={{ color: '#666' }}>姓名：</span>{member.name}</div>
                           {member.nickname && <div><span style={{ color: '#666' }}>暱稱：</span>{member.nickname}</div>}
-                          {member.phone && <div><span style={{ color: '#666' }}>電話：</span>{member.phone}</div>}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ color: '#666' }}>手機：</span>
+                            {member.phone || <span style={{ color: '#999' }}>未填寫</span>}
+                            <button
+                              onClick={() => {
+                                setQuickEditPhone(member.phone || '')
+                                setQuickEditPhoneOpen(true)
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: '2px 6px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                color: '#667eea',
+                              }}
+                              title="修改手機號碼"
+                            >
+                              ✏️
+                            </button>
+                          </div>
                           {member.birthday && <div><span style={{ color: '#666' }}>生日：</span>{formatDate(member.birthday)}</div>}
                           <div>
                             <span style={{ 
@@ -1697,6 +1755,103 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                 }}
               >
                 確認續約
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 快速編輯手機號碼彈出框 */}
+      {quickEditPhoneOpen && (
+        <div
+          onClick={() => setQuickEditPhoneOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: '20px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '360px',
+              width: '100%',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>📱 修改手機號碼</h3>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <input
+                type="tel"
+                value={quickEditPhone}
+                onChange={(e) => setQuickEditPhone(e.target.value)}
+                placeholder="請輸入手機號碼"
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleQuickSavePhone()
+                  }
+                }}
+              />
+              <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                格式：09 開頭的 10 位數字
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setQuickEditPhoneOpen(false)}
+                disabled={savingPhone}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  background: 'white',
+                  cursor: savingPhone ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleQuickSavePhone}
+                disabled={savingPhone}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: savingPhone ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  cursor: savingPhone ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                }}
+              >
+                {savingPhone ? '儲存中...' : '確認'}
               </button>
             </div>
           </div>
