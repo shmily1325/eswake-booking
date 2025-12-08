@@ -700,9 +700,9 @@ export function MemberManagement() {
         {/* 會員類型篩選 */}
         {[
           { value: 'all', label: '全部', count: members.length },
-          { value: 'general', label: '一般會員' },
-          { value: 'dual', label: '雙人會員' },
-          { value: 'guest', label: '非會員' }
+          { value: 'general', label: '一般會員', count: members.filter(m => m.membership_type === 'general').length },
+          { value: 'dual', label: '雙人會員', count: members.filter(m => m.membership_type === 'dual').length },
+          { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length }
         ].map(type => (
           <button
             key={type.value}
@@ -721,7 +721,7 @@ export function MemberManagement() {
               fontWeight: membershipTypeFilter === type.value && expiringFilter === 'none' ? '600' : 'normal'
             }}
           >
-            {type.label}
+            {type.label} ({type.count})
           </button>
         ))}
 
