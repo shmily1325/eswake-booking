@@ -1005,7 +1005,7 @@ export function MemberManagement() {
                       fontWeight: 'bold',
                       fontSize: '12px'
                     }}>
-                      {member.membership_type === 'guest' ? '🎫 非會員' : member.membership_type === 'es' ? '🏄 ES' : '👤 會員'}
+                      {member.membership_type === 'guest' ? '🎫 非會員' : member.membership_type === 'es' ? '' : '👤 會員'}
                     </span>
                     {member.membership_type === 'dual' && (
                       <span style={{ 
@@ -1023,7 +1023,7 @@ export function MemberManagement() {
                       <span style={{ 
                         fontSize: '12px', 
                         color: '#fff',
-                        background: '#333',
+                        background: '#888',
                         padding: '3px 10px',
                         borderRadius: '12px',
                         fontWeight: '600'
