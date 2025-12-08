@@ -121,16 +121,17 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   const handleRemoveBoardSlot = async (index: number) => {
     const slot = boardSlots[index]
     if (slot.id) {
-      // 如果有 ID，從資料庫刪除
+      // 如果有 ID，從資料庫真正刪除
       const { error } = await supabase
         .from('board_storage')
-        .update({ status: 'inactive' })
+        .delete()
         .eq('id', slot.id)
       
       if (error) {
         toast.error('刪除失敗：' + error.message)
         return
       }
+      toast.success(`已刪除格位 #${slot.slot_number}`)
     }
     // 從列表中移除
     setBoardSlots(boardSlots.filter((_, i) => i !== index))

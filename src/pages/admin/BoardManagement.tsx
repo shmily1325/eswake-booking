@@ -338,17 +338,18 @@ export function BoardManagement() {
   const handleDeleteBoard = async () => {
     if (!selectedSlot?.id) return
     
-    if (!confirm(`確定要刪除格位 ${selectedSlot.slot_number} 嗎？`)) {
+    if (!confirm(`確定要刪除格位 #${selectedSlot.slot_number} 嗎？`)) {
       return
     }
 
     try {
       const { error } = await supabase
         .from('board_storage')
-        .update({ status: 'cancelled' })
+        .delete()
         .eq('id', selectedSlot.id)
 
       if (error) throw error
+      toast.success(`已刪除格位 #${selectedSlot.slot_number}`)
       setSelectedSlot(null)
       loadBoardData()
     } catch (error) {

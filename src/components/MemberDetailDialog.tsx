@@ -447,6 +447,45 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     }
   }
 
+  // 置板續約（延長一年）
+  const handleRenewBoard = async (boardId: number, slotNumber: number, currentExpiry: string | null) => {
+    const currentDate = currentExpiry ? new Date(currentExpiry) : new Date()
+    const newExpiry = new Date(currentDate)
+    newExpiry.setFullYear(newExpiry.getFullYear() + 1)
+    const newExpiryStr = newExpiry.toISOString().split('T')[0]
+
+    if (!confirm(`確定要將格位 #${slotNumber} 延長至 ${newExpiryStr} 嗎？`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('board_storage')
+        .update({ expires_at: newExpiryStr })
+        .eq('id', boardId)
+
+      if (error) throw error
+
+      // 新增備忘錄
+      const today = new Date().toISOString().split('T')[0]
+      // @ts-ignore
+      await supabase.from('member_notes').insert([{
+        member_id: memberId,
+        event_date: today,
+        event_type: '續約置板',
+        description: `置板續約 #${slotNumber}，至 ${newExpiryStr}`
+      }])
+
+      toast.success(`格位 #${slotNumber} 已延長至 ${newExpiryStr}`)
+      loadMemberData()
+      loadMemberNotes()
+      onUpdate()
+    } catch (error) {
+      console.error('置板續約失敗:', error)
+      toast.error('置板續約失敗')
+    }
+  }
+
   if (!open || !memberId) return null
 
   return (
@@ -729,19 +768,35 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                                   <span style={{ color: '#f44336', marginLeft: '6px' }}>(已過期)</span>
                                 }
                               </div>
-                              <button
-                                onClick={() => handleDeleteBoard(board.id, board.slot_number)}
-                                style={{
-                                  padding: '2px 8px',
-                                  background: 'transparent',
-                                  color: '#999',
-                                  border: 'none',
-                                  fontSize: '12px',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                移除
-                              </button>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  onClick={() => handleRenewBoard(board.id, board.slot_number, board.expires_at)}
+                                  style={{
+                                    padding: '2px 8px',
+                                    background: '#4caf50',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  +1年
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteBoard(board.id, board.slot_number)}
+                                  style={{
+                                    padding: '2px 8px',
+                                    background: 'transparent',
+                                    color: '#999',
+                                    border: 'none',
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  移除
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
