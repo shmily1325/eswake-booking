@@ -6,6 +6,18 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalTimestamp, getLocalDateString } from '../../utils/date'
 import { useToast } from '../../components/ui'
+import { designSystem, getCardStyle } from '../../styles/designSystem'
+
+interface MemberReminder {
+  id: string
+  name: string
+  nickname: string | null
+  phone: string | null
+  has_line: boolean
+  line_user_id?: string
+  message: string
+  sent?: boolean
+}
 
 interface BookingWithMembers {
   id: number
@@ -14,14 +26,7 @@ interface BookingWithMembers {
   boat_name: string
   boat_color: string
   coaches: string[]
-  members: {
-    id: string
-    name: string
-    nickname: string | null
-    phone: string | null
-    has_line: boolean
-    line_user_id?: string
-  }[]
+  members: MemberReminder[]
 }
 
 interface BindingStats {
@@ -37,7 +42,7 @@ export function LineSettings() {
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [sending, setSending] = useState(false)
+  const [sendingMember, setSendingMember] = useState<string | null>(null)
   
   const [enabled, setEnabled] = useState(false)
   const [accessToken, setAccessToken] = useState('')
@@ -48,7 +53,7 @@ export function LineSettings() {
   const [unboundMembers, setUnboundMembers] = useState<any[]>([])
   const [showUnbound, setShowUnbound] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [lastSentResult, setLastSentResult] = useState<{ sent: number; time: string } | null>(null)
+  const [expandedBooking, setExpandedBooking] = useState<number | null>(null)
 
   useEffect(() => {
     loadAll()
@@ -105,7 +110,6 @@ export function LineSettings() {
         binding_rate: total > 0 ? Math.round((bound / total) * 100) : 0
       })
 
-      // 查詢未綁定會員
       const boundIds = boundMembers?.map(b => b.member_id) || []
       const { data: unbound } = await supabase
         .from('members')
@@ -119,6 +123,25 @@ export function LineSettings() {
     } catch (error) {
       console.error('載入統計失敗:', error)
     }
+  }
+
+  // 生成提醒訊息
+  const generateMessage = (memberName: string, booking: any) => {
+    const [date, time] = booking.start_at.split('T')
+    const [, month, day] = date.split('-')
+    const dateStr = `${month}/${day}`
+    const timeStr = time.substring(0, 5)
+    const coaches = booking.coaches?.join('、') || '未指定'
+    
+    return `🌊 明日預約提醒
+
+${memberName} 您好！
+📅 明天 ${dateStr} ${timeStr}
+🚤 ${booking.boat_name}
+👨‍🏫 教練：${coaches}
+⏱️ 時長：${booking.duration_min}分鐘
+
+請提前10分鐘到場 🏄`
   }
 
   const loadTomorrowBookings = async () => {
@@ -165,26 +188,36 @@ export function LineSettings() {
         .in('member_id', memberIds)
 
       const formattedBookings: BookingWithMembers[] = bookingsData.map(booking => {
+        const coaches = bookingCoaches
+          ?.filter(bc => bc.booking_id === booking.id)
+          .map(bc => (bc.coaches as any)?.name)
+          .filter(Boolean) || []
+
+        const bookingInfo = {
+          start_at: booking.start_at,
+          duration_min: booking.duration_min,
+          boat_name: (booking.boats as any)?.name || '未指定',
+          coaches
+        }
+
         const members = bookingMembers
           ?.filter(bm => bm.booking_id === booking.id)
           .map(bm => {
             const member = bm.members as any
             const binding = lineBindings?.find(lb => lb.member_id === member?.id)
+            const memberName = member?.nickname || member?.name || '會員'
             return {
               id: member?.id,
               name: member?.name,
               nickname: member?.nickname,
               phone: member?.phone,
               has_line: !!binding,
-              line_user_id: binding?.line_user_id
+              line_user_id: binding?.line_user_id,
+              message: generateMessage(memberName, bookingInfo),
+              sent: false
             }
           })
           .filter(m => m.id) || []
-
-        const coaches = bookingCoaches
-          ?.filter(bc => bc.booking_id === booking.id)
-          .map(bc => (bc.coaches as any)?.name)
-          .filter(Boolean) || []
 
         return {
           id: booking.id,
@@ -232,32 +265,65 @@ export function LineSettings() {
     }
   }
 
-  const handleSendReminders = async () => {
-    if (sending) return
+  // 更新單一會員的訊息
+  const updateMemberMessage = (bookingId: number, memberId: string, newMessage: string) => {
+    setBookings(prev => prev.map(b => {
+      if (b.id === bookingId) {
+        return {
+          ...b,
+          members: b.members.map(m => 
+            m.id === memberId ? { ...m, message: newMessage } : m
+          )
+        }
+      }
+      return b
+    }))
+  }
 
-    const membersWithLine = bookings.flatMap(b => b.members.filter(m => m.has_line))
-    if (membersWithLine.length === 0) {
-      toast.error('沒有可發送的會員（都未綁定 LINE）')
-      return
-    }
-
-    if (!confirm(`確定要發送明日提醒給 ${membersWithLine.length} 位會員嗎？`)) {
-      return
-    }
-
-    setSending(true)
+  // 複製訊息
+  const copyMessage = async (message: string) => {
     try {
-      const response = await fetch('/api/line-reminder', { method: 'GET' })
-      const result = await response.json()
+      await navigator.clipboard.writeText(message)
+      toast.success('已複製到剪貼簿')
+    } catch {
+      toast.error('複製失敗')
+    }
+  }
 
-      if (result.success) {
-        toast.success(`✅ 已發送 ${result.sent} 則提醒`)
-        setLastSentResult({
-          sent: result.sent,
-          time: new Date().toLocaleTimeString('zh-TW')
+  // 發送單一會員的提醒
+  const sendToMember = async (bookingId: number, member: MemberReminder) => {
+    if (!member.has_line || !member.line_user_id) {
+      toast.error('此會員未綁定 LINE')
+      return
+    }
+
+    setSendingMember(member.id)
+    try {
+      const response = await fetch('/api/line-send-single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineUserId: member.line_user_id,
+          message: member.message
         })
-      } else if (result.message) {
-        toast.info(result.message)
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        toast.success(`✅ 已發送給 ${member.nickname || member.name}`)
+        // 標記為已發送
+        setBookings(prev => prev.map(b => {
+          if (b.id === bookingId) {
+            return {
+              ...b,
+              members: b.members.map(m => 
+                m.id === member.id ? { ...m, sent: true } : m
+              )
+            }
+          }
+          return b
+        }))
       } else {
         toast.error('發送失敗：' + (result.error || '未知錯誤'))
       }
@@ -265,8 +331,58 @@ export function LineSettings() {
       console.error('發送失敗:', err)
       toast.error('發送失敗：' + err.message)
     } finally {
-      setSending(false)
+      setSendingMember(null)
     }
+  }
+
+  // 一鍵發送所有已綁定會員
+  const sendAllBound = async () => {
+    const boundMembers = bookings.flatMap(b => 
+      b.members.filter(m => m.has_line && !m.sent).map(m => ({ bookingId: b.id, member: m }))
+    )
+    
+    if (boundMembers.length === 0) {
+      toast.info('沒有需要發送的會員')
+      return
+    }
+
+    if (!confirm(`確定要發送提醒給 ${boundMembers.length} 位會員嗎？`)) {
+      return
+    }
+
+    let sentCount = 0
+    for (const { bookingId, member } of boundMembers) {
+      try {
+        const response = await fetch('/api/line-send-single', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lineUserId: member.line_user_id,
+            message: member.message
+          })
+        })
+        
+        const result = await response.json()
+        if (result.success) {
+          sentCount++
+          setBookings(prev => prev.map(b => {
+            if (b.id === bookingId) {
+              return {
+                ...b,
+                members: b.members.map(m => 
+                  m.id === member.id ? { ...m, sent: true } : m
+                )
+              }
+            }
+            return b
+          }))
+        }
+      } catch (err) {
+        console.error('發送失敗:', err)
+      }
+    }
+
+    toast.success(`✅ 已發送 ${sentCount}/${boundMembers.length} 則提醒`)
   }
 
   const formatTime = (dateString: string) => {
@@ -281,16 +397,16 @@ export function LineSettings() {
   const totalMembers = bookings.flatMap(b => b.members).length
   const membersWithLine = bookings.flatMap(b => b.members.filter(m => m.has_line)).length
   const membersWithoutLine = totalMembers - membersWithLine
+  const sentCount = bookings.flatMap(b => b.members.filter(m => m.sent)).length
 
-  // LINE Brand Color
   const lineGreen = '#06C755'
-  const lineGreenDark = '#00B14F'
 
   if (loading) {
     return (
       <div style={{ 
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%)'
+        background: designSystem.colors.background.main,
+        padding: isMobile ? '12px' : '20px'
       }}>
         <PageHeader title="LINE 提醒中心" user={user} showBaoLink={true} />
         <div style={{ 
@@ -298,20 +414,10 @@ export function LineSettings() {
           alignItems: 'center', 
           justifyContent: 'center',
           height: '60vh',
-          color: 'white',
-          fontSize: '18px'
+          color: designSystem.colors.text.secondary,
+          fontSize: '16px'
         }}>
-          <div style={{ 
-            width: '40px', 
-            height: '40px', 
-            border: '3px solid rgba(255,255,255,0.2)',
-            borderTop: `3px solid ${lineGreen}`,
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginRight: '12px'
-          }} />
           載入中...
-          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
         </div>
       </div>
     )
@@ -320,191 +426,105 @@ export function LineSettings() {
   return (
     <div style={{ 
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%)',
+      background: designSystem.colors.background.main,
       padding: isMobile ? '12px' : '20px'
     }}>
       <PageHeader title="LINE 提醒中心" user={user} showBaoLink={true} />
 
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        {/* 頂部統計卡片 */}
+        {/* 綁定統計卡片 */}
         <div style={{
-          background: 'linear-gradient(135deg, #06C755 0%, #00B14F 100%)',
-          borderRadius: '20px',
-          padding: isMobile ? '20px' : '28px',
-          marginBottom: '20px',
-          boxShadow: '0 10px 40px rgba(6, 199, 85, 0.3)',
+          ...getCardStyle(isMobile),
+          background: `linear-gradient(135deg, ${lineGreen} 0%, #00B14F 100%)`,
+          color: 'white',
           position: 'relative',
           overflow: 'hidden'
         }}>
-          {/* 裝飾背景 */}
-          <div style={{
-            position: 'absolute',
-            top: '-50%',
-            right: '-10%',
-            width: '200px',
-            height: '200px',
-            background: 'rgba(255,255,255,0.1)',
-            borderRadius: '50%'
-          }} />
-          <div style={{
-            position: 'absolute',
-            bottom: '-30%',
-            left: '10%',
-            width: '150px',
-            height: '150px',
-            background: 'rgba(255,255,255,0.05)',
-            borderRadius: '50%'
-          }} />
-
           <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '12px',
-              marginBottom: '20px'
-            }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                background: 'rgba(255,255,255,0.2)',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '24px'
-              }}>
-                💬
-              </div>
-              <div>
-                <h2 style={{ margin: 0, color: 'white', fontSize: '22px', fontWeight: '700' }}>
-                  LINE 綁定統計
-                </h2>
-                <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '14px' }}>
-                  會員 LINE 通知綁定狀態
-                </p>
-              </div>
-            </div>
-
+            <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '600' }}>
+              📊 LINE 綁定統計
+            </h3>
+            
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(3, 1fr)', 
-              gap: '16px',
-              marginBottom: '20px'
+              gap: '12px',
+              marginBottom: '16px'
             }}>
-              <div style={{
-                background: 'rgba(255,255,255,0.15)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: '16px',
-                padding: '16px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: isMobile ? '32px' : '40px', fontWeight: '800', color: 'white' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: isMobile ? '28px' : '36px', fontWeight: '700' }}>
                   {stats?.bound_members || 0}
                 </div>
-                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', marginTop: '4px' }}>
-                  已綁定
-                </div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>已綁定</div>
               </div>
-              <div style={{
-                background: 'rgba(255,255,255,0.15)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: '16px',
-                padding: '16px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: isMobile ? '32px' : '40px', fontWeight: '800', color: 'white' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: isMobile ? '28px' : '36px', fontWeight: '700' }}>
                   {stats?.total_active_members || 0}
                 </div>
-                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', marginTop: '4px' }}>
-                  總會員
-                </div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>總會員</div>
               </div>
-              <div style={{
-                background: 'rgba(255,255,255,0.15)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: '16px',
-                padding: '16px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: isMobile ? '32px' : '40px', fontWeight: '800', color: 'white' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: isMobile ? '28px' : '36px', fontWeight: '700' }}>
                   {stats?.binding_rate || 0}%
                 </div>
-                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', marginTop: '4px' }}>
-                  綁定率
-                </div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>綁定率</div>
               </div>
             </div>
 
-            {/* 進度條 */}
             <div style={{
-              background: 'rgba(255,255,255,0.2)',
-              borderRadius: '10px',
-              height: '12px',
+              background: 'rgba(255,255,255,0.3)',
+              borderRadius: '6px',
+              height: '8px',
               overflow: 'hidden',
-              marginBottom: '16px'
+              marginBottom: '12px'
             }}>
               <div style={{
                 width: `${stats?.binding_rate || 0}%`,
                 height: '100%',
-                background: 'rgba(255,255,255,0.9)',
-                borderRadius: '10px',
-                transition: 'width 0.5s ease'
+                background: 'white',
+                borderRadius: '6px',
+                transition: 'width 0.3s'
               }} />
             </div>
 
-            {/* 未綁定會員按鈕 */}
             <button
               onClick={() => setShowUnbound(!showUnbound)}
               style={{
-                padding: '10px 20px',
+                padding: '8px 16px',
                 background: 'rgba(255,255,255,0.2)',
-                border: '1px solid rgba(255,255,255,0.3)',
-                borderRadius: '10px',
+                border: 'none',
+                borderRadius: '6px',
                 color: 'white',
-                fontSize: '14px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'all 0.2s'
+                fontSize: '13px',
+                cursor: 'pointer'
               }}
             >
-              {showUnbound ? '🔼 隱藏' : '🔽 查看'} 未綁定會員 
-              <span style={{
-                background: 'rgba(255,255,255,0.3)',
-                padding: '2px 10px',
-                borderRadius: '12px',
-                fontSize: '13px',
-                fontWeight: '600'
-              }}>
-                {(stats?.total_active_members || 0) - (stats?.bound_members || 0)} 人
-              </span>
+              {showUnbound ? '▲ 隱藏' : '▼ 查看'} 未綁定會員 ({(stats?.total_active_members || 0) - (stats?.bound_members || 0)} 人)
             </button>
 
             {showUnbound && unboundMembers.length > 0 && (
               <div style={{
-                marginTop: '16px',
-                padding: '16px',
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                maxHeight: '200px',
+                marginTop: '12px',
+                padding: '12px',
+                background: 'rgba(255,255,255,0.15)',
+                borderRadius: '8px',
+                maxHeight: '180px',
                 overflowY: 'auto'
               }}>
                 <div style={{ 
                   display: 'grid', 
                   gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
-                  gap: '8px' 
+                  gap: '6px' 
                 }}>
                   {unboundMembers.map(m => (
                     <div key={m.id} style={{ 
                       fontSize: '13px', 
-                      padding: '8px 12px',
+                      padding: '6px 10px',
                       background: 'rgba(255,255,255,0.1)',
-                      borderRadius: '8px',
-                      color: 'white'
+                      borderRadius: '4px'
                     }}>
-                      ❌ {m.nickname || m.name}
-                      {m.phone && <span style={{ opacity: 0.7, marginLeft: '8px' }}>({m.phone})</span>}
+                      {m.nickname || m.name}
+                      {m.phone && <span style={{ opacity: 0.7, marginLeft: '6px' }}>({m.phone})</span>}
                     </div>
                   ))}
                 </div>
@@ -514,57 +534,28 @@ export function LineSettings() {
         </div>
 
         {/* 明日預約區塊 */}
-        <div style={{
-          background: 'rgba(255,255,255,0.05)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: '20px',
-          border: '1px solid rgba(255,255,255,0.1)',
-          padding: isMobile ? '20px' : '28px',
-          marginBottom: '20px'
-        }}>
+        <div style={getCardStyle(isMobile)}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '20px',
+            marginBottom: '16px',
             flexWrap: 'wrap',
-            gap: '12px'
+            gap: '10px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                width: '44px',
-                height: '44px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '20px'
-              }}>
-                📅
-              </div>
-              <div>
-                <h3 style={{ margin: 0, color: 'white', fontSize: '18px', fontWeight: '600' }}>
-                  明日預約
-                </h3>
-                <p style={{ margin: 0, color: 'rgba(255,255,255,0.6)', fontSize: '14px' }}>
-                  {tomorrowDisplay}
-                </p>
-              </div>
-            </div>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: designSystem.colors.text.primary }}>
+              📅 明日預約 ({tomorrowDisplay})
+            </h3>
             <button
               onClick={loadTomorrowBookings}
               style={{
-                padding: '8px 16px',
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '8px',
-                color: 'white',
+                padding: '6px 12px',
+                background: designSystem.colors.background.main,
+                border: `1px solid ${designSystem.colors.border.main}`,
+                borderRadius: '6px',
                 fontSize: '13px',
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
+                color: designSystem.colors.text.secondary
               }}
             >
               🔄 重新載入
@@ -574,69 +565,100 @@ export function LineSettings() {
           {bookings.length === 0 ? (
             <div style={{ 
               textAlign: 'center', 
-              padding: '60px 20px',
-              color: 'rgba(255,255,255,0.5)'
+              padding: '40px 20px',
+              color: designSystem.colors.text.secondary
             }}>
-              <div style={{ fontSize: '64px', marginBottom: '16px' }}>🌴</div>
-              <div style={{ fontSize: '18px' }}>明天沒有預約</div>
-              <div style={{ fontSize: '14px', marginTop: '8px' }}>好好休息吧！</div>
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🌴</div>
+              <div>明天沒有預約</div>
             </div>
           ) : (
             <>
               {/* 統計摘要 */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-                gap: '12px',
-                marginBottom: '20px'
+                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)',
+                gap: '10px',
+                marginBottom: '16px'
               }}>
                 <div style={{
-                  background: 'rgba(255,255,255,0.08)',
-                  borderRadius: '12px',
-                  padding: '16px',
+                  background: designSystem.colors.background.main,
+                  borderRadius: '8px',
+                  padding: '12px',
                   textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: 'white' }}>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: designSystem.colors.text.primary }}>
                     {bookings.length}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>預約數</div>
+                  <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>預約數</div>
                 </div>
                 <div style={{
-                  background: 'rgba(255,255,255,0.08)',
-                  borderRadius: '12px',
-                  padding: '16px',
+                  background: designSystem.colors.background.main,
+                  borderRadius: '8px',
+                  padding: '12px',
                   textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: 'white' }}>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: designSystem.colors.text.primary }}>
                     {totalMembers}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>會員數</div>
+                  <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>會員數</div>
                 </div>
                 <div style={{
-                  background: 'rgba(76, 175, 80, 0.2)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  textAlign: 'center',
-                  border: '1px solid rgba(76, 175, 80, 0.3)'
+                  background: designSystem.colors.success[50],
+                  borderRadius: '8px',
+                  padding: '12px',
+                  textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: '#4caf50' }}>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: designSystem.colors.success[700] }}>
                     {membersWithLine}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'rgba(76, 175, 80, 0.9)' }}>✅ 可發送</div>
+                  <div style={{ fontSize: '12px', color: designSystem.colors.success[700] }}>✅ 可發送</div>
                 </div>
                 <div style={{
-                  background: 'rgba(244, 67, 54, 0.2)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  textAlign: 'center',
-                  border: '1px solid rgba(244, 67, 54, 0.3)'
+                  background: designSystem.colors.danger[50],
+                  borderRadius: '8px',
+                  padding: '12px',
+                  textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: '#f44336' }}>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: designSystem.colors.danger[700] }}>
                     {membersWithoutLine}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'rgba(244, 67, 54, 0.9)' }}>❌ 未綁定</div>
+                  <div style={{ fontSize: '12px', color: designSystem.colors.danger[700] }}>❌ 未綁定</div>
+                </div>
+                <div style={{
+                  background: designSystem.colors.info[50],
+                  borderRadius: '8px',
+                  padding: '12px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: designSystem.colors.info[700] }}>
+                    {sentCount}
+                  </div>
+                  <div style={{ fontSize: '12px', color: designSystem.colors.info[700] }}>📤 已發送</div>
                 </div>
               </div>
+
+              {/* 一鍵發送按鈕 */}
+              {membersWithLine > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <button
+                    onClick={sendAllBound}
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      background: lineGreen,
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(6, 199, 85, 0.3)'
+                    }}
+                  >
+                    🚀 一鍵發送所有已綁定會員 ({membersWithLine - sentCount} 待發送)
+                  </button>
+                </div>
+              )}
 
               {/* 預約列表 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -644,195 +666,228 @@ export function LineSettings() {
                   <div
                     key={booking.id}
                     style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      borderRadius: '14px',
-                      padding: '16px',
-                      borderLeft: `4px solid ${booking.boat_color}`,
-                      transition: 'all 0.2s'
+                      background: designSystem.colors.background.main,
+                      borderRadius: '10px',
+                      padding: '14px',
+                      borderLeft: `4px solid ${booking.boat_color}`
                     }}
                   >
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '10px'
-                    }}>
+                    {/* 預約標題 */}
+                    <div 
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}
+                    >
                       <div style={{ 
                         fontWeight: '600', 
-                        fontSize: '16px',
-                        color: 'white',
+                        fontSize: '15px',
+                        color: designSystem.colors.text.primary,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '10px'
+                        gap: '8px'
                       }}>
                         <span style={{
-                          background: 'rgba(255,255,255,0.15)',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          fontSize: '14px'
+                          background: 'white',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                          border: `1px solid ${designSystem.colors.border.main}`
                         }}>
                           {formatTime(booking.start_at)}
                         </span>
                         <span style={{
                           display: 'inline-block',
-                          width: '10px',
-                          height: '10px',
+                          width: '8px',
+                          height: '8px',
                           background: booking.boat_color,
-                          borderRadius: '3px'
+                          borderRadius: '2px'
                         }} />
                         {booking.boat_name}
+                        <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
+                          ({booking.duration_min}分)
+                        </span>
                       </div>
-                      <div style={{ 
-                        fontSize: '13px', 
-                        color: 'rgba(255,255,255,0.5)',
-                        background: 'rgba(255,255,255,0.1)',
-                        padding: '4px 10px',
-                        borderRadius: '6px'
+                      <span style={{ 
+                        fontSize: '14px',
+                        color: designSystem.colors.text.secondary,
+                        transform: expandedBooking === booking.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: '0.2s'
                       }}>
-                        {booking.duration_min} 分鐘
-                      </div>
+                        ▼
+                      </span>
                     </div>
+                    
                     {booking.coaches.length > 0 && (
                       <div style={{ 
                         fontSize: '13px', 
-                        color: 'rgba(255,255,255,0.6)', 
-                        marginBottom: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
+                        color: designSystem.colors.text.secondary, 
+                        marginTop: '6px'
                       }}>
                         🎓 {booking.coaches.join('、')}
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+
+                    {/* 會員標籤列表 */}
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' }}>
                       {booking.members.map(member => (
                         <div
                           key={member.id}
                           style={{
-                            padding: '6px 14px',
-                            borderRadius: '20px',
+                            padding: '5px 12px',
+                            borderRadius: '16px',
                             fontSize: '13px',
                             fontWeight: '500',
-                            background: member.has_line 
-                              ? 'linear-gradient(135deg, rgba(76, 175, 80, 0.3) 0%, rgba(76, 175, 80, 0.2) 100%)'
-                              : 'linear-gradient(135deg, rgba(244, 67, 54, 0.3) 0%, rgba(244, 67, 54, 0.2) 100%)',
-                            border: member.has_line 
-                              ? '1px solid rgba(76, 175, 80, 0.5)'
-                              : '1px solid rgba(244, 67, 54, 0.5)',
-                            color: member.has_line ? '#81c784' : '#e57373',
+                            background: member.sent 
+                              ? designSystem.colors.info[50]
+                              : member.has_line 
+                                ? designSystem.colors.success[50] 
+                                : designSystem.colors.danger[50],
+                            color: member.sent
+                              ? designSystem.colors.info[700]
+                              : member.has_line 
+                                ? designSystem.colors.success[700] 
+                                : designSystem.colors.danger[700],
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px'
+                            gap: '4px'
                           }}
                         >
-                          {member.has_line ? '✅' : '❌'}
+                          {member.sent ? '📤' : member.has_line ? '✅' : '❌'}
                           {member.nickname || member.name}
                         </div>
                       ))}
                     </div>
+
+                    {/* 展開的會員詳細 */}
+                    {expandedBooking === booking.id && (
+                      <div style={{ marginTop: '16px', borderTop: `1px solid ${designSystem.colors.border.light}`, paddingTop: '16px' }}>
+                        {booking.members.map(member => (
+                          <div
+                            key={member.id}
+                            style={{
+                              background: 'white',
+                              borderRadius: '8px',
+                              padding: '12px',
+                              marginBottom: '10px',
+                              border: `1px solid ${designSystem.colors.border.main}`
+                            }}
+                          >
+                            {/* 會員名稱 */}
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              marginBottom: '10px'
+                            }}>
+                              <div style={{ 
+                                fontWeight: '600', 
+                                fontSize: '14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}>
+                                {member.sent ? '📤' : member.has_line ? '✅' : '❌'}
+                                {member.nickname || member.name}
+                                {member.phone && (
+                                  <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
+                                    ({member.phone})
+                                  </span>
+                                )}
+                                {member.sent && (
+                                  <span style={{ 
+                                    fontSize: '11px', 
+                                    background: designSystem.colors.info[50],
+                                    color: designSystem.colors.info[700],
+                                    padding: '2px 8px',
+                                    borderRadius: '10px'
+                                  }}>
+                                    已發送
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* 訊息預覽/編輯 */}
+                            <textarea
+                              value={member.message}
+                              onChange={(e) => updateMemberMessage(booking.id, member.id, e.target.value)}
+                              style={{
+                                width: '100%',
+                                minHeight: '120px',
+                                padding: '10px',
+                                border: `1px solid ${designSystem.colors.border.main}`,
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                lineHeight: '1.5',
+                                resize: 'vertical',
+                                boxSizing: 'border-box',
+                                fontFamily: 'inherit'
+                              }}
+                            />
+
+                            {/* 操作按鈕 */}
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                              {member.has_line && !member.sent && (
+                                <button
+                                  onClick={() => sendToMember(booking.id, member)}
+                                  disabled={sendingMember === member.id}
+                                  style={{
+                                    flex: 1,
+                                    padding: '10px',
+                                    background: sendingMember === member.id ? designSystem.colors.border.main : lineGreen,
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    cursor: sendingMember === member.id ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
+                                  {sendingMember === member.id ? '發送中...' : '📤 發送 LINE'}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => copyMessage(member.message)}
+                                style={{
+                                  flex: 1,
+                                  padding: '10px',
+                                  background: designSystem.colors.secondary[100],
+                                  color: designSystem.colors.text.primary,
+                                  border: `1px solid ${designSystem.colors.border.main}`,
+                                  borderRadius: '6px',
+                                  fontSize: '13px',
+                                  fontWeight: '500',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                📋 複製訊息
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
-              </div>
-
-              {/* 發送按鈕 */}
-              <div style={{
-                marginTop: '24px',
-                padding: '20px',
-                background: 'rgba(255,255,255,0.05)',
-                borderRadius: '16px',
-                textAlign: 'center'
-              }}>
-                {lastSentResult && (
-                  <div style={{
-                    marginBottom: '16px',
-                    padding: '12px 20px',
-                    background: 'rgba(76, 175, 80, 0.2)',
-                    borderRadius: '10px',
-                    border: '1px solid rgba(76, 175, 80, 0.3)',
-                    color: '#81c784',
-                    fontSize: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
-                  }}>
-                    ✅ 上次發送：{lastSentResult.time}，已發送 {lastSentResult.sent} 則提醒
-                  </div>
-                )}
-                <button
-                  onClick={handleSendReminders}
-                  disabled={sending || membersWithLine === 0}
-                  style={{
-                    padding: '16px 40px',
-                    background: sending || membersWithLine === 0 
-                      ? 'rgba(255,255,255,0.1)' 
-                      : `linear-gradient(135deg, ${lineGreen} 0%, ${lineGreenDark} 100%)`,
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontSize: '17px',
-                    fontWeight: '700',
-                    cursor: sending || membersWithLine === 0 ? 'not-allowed' : 'pointer',
-                    boxShadow: sending || membersWithLine === 0 
-                      ? 'none' 
-                      : '0 8px 30px rgba(6, 199, 85, 0.4)',
-                    transition: 'all 0.3s',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '10px'
-                  }}
-                >
-                  {sending ? (
-                    <>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        border: '2px solid rgba(255,255,255,0.3)',
-                        borderTop: '2px solid white',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                      }} />
-                      發送中...
-                    </>
-                  ) : (
-                    <>🚀 發送明日提醒 ({membersWithLine} 人)</>
-                  )}
-                </button>
-                {membersWithoutLine > 0 && (
-                  <div style={{ 
-                    marginTop: '12px', 
-                    fontSize: '13px', 
-                    color: '#e57373',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
-                  }}>
-                    ⚠️ 有 {membersWithoutLine} 位會員未綁定 LINE，無法收到提醒
-                  </div>
-                )}
               </div>
             </>
           )}
         </div>
 
-        {/* 設定區塊（可收合） */}
-        <div style={{
-          background: 'rgba(255,255,255,0.05)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: '20px',
-          border: '1px solid rgba(255,255,255,0.1)',
-          overflow: 'hidden',
-          marginBottom: '20px'
-        }}>
+        {/* 設定區塊 */}
+        <div style={getCardStyle(isMobile)}>
           <button
             onClick={() => setShowSettings(!showSettings)}
             style={{
               width: '100%',
-              padding: '20px 24px',
+              padding: 0,
               background: 'transparent',
               border: 'none',
-              color: 'white',
+              color: designSystem.colors.text.primary,
               fontSize: '16px',
               fontWeight: '600',
               cursor: 'pointer',
@@ -842,43 +897,24 @@ export function LineSettings() {
               textAlign: 'left'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{
-                width: '40px',
-                height: '40px',
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px'
-              }}>
-                ⚙️
-              </span>
-              <div>
-                <div>進階設定</div>
-                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', fontWeight: '400' }}>
-                  Access Token、提醒時間等
-                </div>
-              </div>
-            </div>
+            <span>⚙️ 進階設定</span>
             <span style={{ 
-              fontSize: '20px',
-              transition: 'transform 0.3s',
-              transform: showSettings ? 'rotate(180deg)' : 'rotate(0deg)'
+              fontSize: '14px',
+              color: designSystem.colors.text.secondary,
+              transform: showSettings ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: '0.2s'
             }}>
               ▼
             </span>
           </button>
 
           {showSettings && (
-            <div style={{ padding: '0 24px 24px' }}>
-              {/* 功能開關 */}
+            <div style={{ marginTop: '20px' }}>
               <div style={{
-                padding: '20px',
-                background: 'rgba(255,255,255,0.05)',
-                borderRadius: '14px',
-                marginBottom: '16px'
+                padding: '16px',
+                background: designSystem.colors.background.main,
+                borderRadius: '8px',
+                marginBottom: '12px'
               }}>
                 <div style={{ 
                   display: 'flex', 
@@ -886,18 +922,18 @@ export function LineSettings() {
                   alignItems: 'center'
                 }}>
                   <div>
-                    <div style={{ color: 'white', fontSize: '15px', fontWeight: '600' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: designSystem.colors.text.primary }}>
                       啟用自動提醒
                     </div>
-                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', marginTop: '4px' }}>
+                    <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginTop: '2px' }}>
                       每日自動發送明日預約提醒
                     </div>
                   </div>
                   <label style={{
                     position: 'relative',
                     display: 'inline-block',
-                    width: '56px',
-                    height: '30px',
+                    width: '50px',
+                    height: '28px',
                     cursor: 'pointer'
                   }}>
                     <input
@@ -912,15 +948,15 @@ export function LineSettings() {
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      background: enabled ? lineGreen : 'rgba(255,255,255,0.2)',
-                      borderRadius: '30px',
+                      background: enabled ? lineGreen : designSystem.colors.border.main,
+                      borderRadius: '28px',
                       transition: '0.3s'
                     }}>
                       <span style={{
                         position: 'absolute',
-                        height: '24px',
-                        width: '24px',
-                        left: enabled ? '28px' : '3px',
+                        height: '22px',
+                        width: '22px',
+                        left: enabled ? '25px' : '3px',
                         bottom: '3px',
                         background: 'white',
                         borderRadius: '50%',
@@ -932,14 +968,13 @@ export function LineSettings() {
                 </div>
               </div>
 
-              {/* 提醒時間 */}
               <div style={{
-                padding: '20px',
-                background: 'rgba(255,255,255,0.05)',
-                borderRadius: '14px',
-                marginBottom: '16px'
+                padding: '16px',
+                background: designSystem.colors.background.main,
+                borderRadius: '8px',
+                marginBottom: '12px'
               }}>
-                <div style={{ color: 'white', fontSize: '15px', fontWeight: '600', marginBottom: '12px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: designSystem.colors.text.primary, marginBottom: '10px' }}>
                   ⏰ 提醒發送時間
                 </div>
                 <input
@@ -947,27 +982,24 @@ export function LineSettings() {
                   value={reminderTime}
                   onChange={(e) => setReminderTime(e.target.value)}
                   style={{
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '10px',
-                    color: 'white',
-                    fontSize: '16px'
+                    padding: '10px 14px',
+                    border: `2px solid ${designSystem.colors.border.main}`,
+                    borderRadius: '6px',
+                    fontSize: '15px'
                   }}
                 />
-                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', marginTop: '8px' }}>
+                <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginTop: '6px' }}>
                   每天此時間發送隔日預約提醒
                 </div>
               </div>
 
-              {/* Access Token */}
               <div style={{
-                padding: '20px',
-                background: 'rgba(255,255,255,0.05)',
-                borderRadius: '14px',
+                padding: '16px',
+                background: designSystem.colors.background.main,
+                borderRadius: '8px',
                 marginBottom: '16px'
               }}>
-                <div style={{ color: 'white', fontSize: '15px', fontWeight: '600', marginBottom: '12px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: designSystem.colors.text.primary, marginBottom: '10px' }}>
                   🔑 LINE Channel Access Token
                 </div>
                 <input
@@ -977,11 +1009,9 @@ export function LineSettings() {
                   placeholder="貼上你的 Channel Access Token"
                   style={{
                     width: '100%',
-                    padding: '14px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '10px',
-                    color: 'white',
+                    padding: '12px 14px',
+                    border: `2px solid ${designSystem.colors.border.main}`,
+                    borderRadius: '6px',
                     fontSize: '14px',
                     boxSizing: 'border-box'
                   }}
@@ -991,12 +1021,10 @@ export function LineSettings() {
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    marginTop: '10px',
+                    display: 'inline-block',
+                    marginTop: '8px',
                     color: lineGreen,
-                    fontSize: '14px',
+                    fontSize: '13px',
                     textDecoration: 'none'
                   }}
                 >
@@ -1004,24 +1032,19 @@ export function LineSettings() {
                 </a>
               </div>
 
-              {/* 儲存按鈕 */}
               <button
                 onClick={handleSave}
                 disabled={saving}
                 style={{
                   width: '100%',
-                  padding: '16px',
-                  background: saving 
-                    ? 'rgba(255,255,255,0.1)' 
-                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  padding: '14px',
+                  background: saving ? designSystem.colors.border.main : designSystem.gradients.primary,
                   color: 'white',
                   border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '16px',
+                  borderRadius: '8px',
+                  fontSize: '15px',
                   fontWeight: '600',
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                  boxShadow: saving ? 'none' : '0 8px 30px rgba(102, 126, 234, 0.4)',
-                  transition: 'all 0.3s'
+                  cursor: saving ? 'not-allowed' : 'pointer'
                 }}
               >
                 {saving ? '儲存中...' : '💾 儲存設定'}
@@ -1032,23 +1055,18 @@ export function LineSettings() {
 
         {/* 使用說明 */}
         <div style={{
-          background: 'rgba(255, 193, 7, 0.1)',
-          borderRadius: '16px',
-          padding: '20px',
-          border: '1px solid rgba(255, 193, 7, 0.3)',
-          marginBottom: '20px'
+          ...getCardStyle(isMobile),
+          background: designSystem.colors.warning[50],
+          border: `1px solid ${designSystem.colors.warning[500]}`
         }}>
           <h4 style={{ 
-            margin: '0 0 12px', 
-            fontSize: '15px', 
-            color: '#ffc107',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
+            margin: '0 0 10px', 
+            fontSize: '14px', 
+            color: designSystem.colors.warning[700]
           }}>
             💡 會員如何綁定 LINE？
           </h4>
-          <div style={{ fontSize: '14px', color: 'rgba(255, 193, 7, 0.9)', lineHeight: '1.8' }}>
+          <div style={{ fontSize: '13px', color: designSystem.colors.warning[700], lineHeight: '1.7' }}>
             1. 會員掃描官方帳號 QR Code 加入好友<br/>
             2. 在聊天室發送「<strong>綁定 手機號碼</strong>」（例：綁定 0912345678）<br/>
             3. 系統會自動比對會員資料完成綁定<br/>
@@ -1058,19 +1076,6 @@ export function LineSettings() {
       </div>
 
       <Footer />
-
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        input::placeholder {
-          color: rgba(255,255,255,0.4);
-        }
-        input::-webkit-calendar-picker-indicator {
-          filter: invert(1);
-        }
-      `}</style>
     </div>
   )
 }
