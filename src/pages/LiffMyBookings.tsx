@@ -391,7 +391,7 @@ export function LiffMyBookings() {
 
       if (!memberData) {
         triggerHaptic('error')
-        setBindingError('找不到此電話號碼的會員資料')
+        setBindingError('找不到此手機號碼的會員資料')
         setBinding(false)
         return
       }
@@ -611,10 +611,7 @@ export function LiffMyBookings() {
                 ❌ {bindingError}
               </div>
               <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-                如果您確定電話號碼正確，請直接<strong>私訊官方帳號</strong>告知您的：
-                <br/>• 姓名
-                <br/>• 電話號碼
-                <br/>我們會協助您完成綁定！
+                如果您確定手機號碼正確，請直接<strong>私訊官方帳號</strong>告知您的手機號碼，我們會協助您完成綁定！
               </div>
             </div>
           )}
@@ -687,8 +684,8 @@ export function LiffMyBookings() {
                 }}
               >
                 <option value="">年</option>
-                {Array.from({ length: 80 }, (_, i) => {
-                  const year = new Date().getFullYear() - i - 10
+                {Array.from({ length: 100 }, (_, i) => {
+                  const year = new Date().getFullYear() - i
                   return <option key={year} value={year}>{year}</option>
                 })}
               </select>
@@ -778,7 +775,7 @@ export function LiffMyBookings() {
             <div style={{ fontWeight: '600', marginBottom: '8px', color: '#555' }}>
               💡 綁定說明
             </div>
-            • 請輸入您的手機號碼與生日<br/>
+            • 請輸入您的手機與生日<br/>
             • 綁定後可查看預約紀錄與儲值紀錄
           </div>
         </div>
