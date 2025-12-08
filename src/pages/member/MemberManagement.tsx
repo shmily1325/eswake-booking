@@ -60,6 +60,8 @@ export function MemberManagement() {
   const [expiringMemberships, setExpiringMemberships] = useState<any[]>([])
   const [expiringBoards, setExpiringBoards] = useState<any[]>([])
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 'all', 'general', 'dual', 'guest'
+  const [expiringFilter, setExpiringFilter] = useState<string>('none') // 'none', 'membership', 'board'
+  const [showExpiringDetails, setShowExpiringDetails] = useState(false) // 收合/展開到期詳情
 
   useEffect(() => {
     loadMembers()
@@ -439,36 +441,26 @@ export function MemberManagement() {
         member.nickname?.toLowerCase().includes(lowerSearch)
       )
     }
+
+    // 篩選到期會員
+    if (expiringFilter === 'membership') {
+      const expiringMemberNames = new Set(expiringMemberships.map((m: any) => m.name))
+      const expiringMemberNicknames = new Set(expiringMemberships.map((m: any) => m.nickname).filter(Boolean))
+      result = result.filter(member => 
+        expiringMemberNames.has(member.name) || 
+        (member.nickname && expiringMemberNicknames.has(member.nickname))
+      )
+    } else if (expiringFilter === 'board') {
+      const expiringBoardMemberNames = new Set(expiringBoards.map((b: any) => b.member_name))
+      result = result.filter(member => 
+        expiringBoardMemberNames.has(member.name) || 
+        expiringBoardMemberNames.has(member.nickname)
+      )
+    }
     
     return result
-  }, [members, searchTerm, membershipTypeFilter])
+  }, [members, searchTerm, membershipTypeFilter, expiringFilter, expiringMemberships, expiringBoards])
 
-  // 根據篩選後的會員計算到期提醒
-  const filteredExpiringData = useMemo(() => {
-    // 篩選會籍到期
-    const memberIds = new Set(filteredMembers.map(m => m.id))
-    const filteredMembershipExpiring = expiringMemberships.filter((m: any) => {
-      // 找到對應的會員
-      const member = members.find(mem => 
-        (mem.name === m.name || mem.nickname === m.nickname)
-      )
-      return member && memberIds.has(member.id)
-    })
-    
-    // 篩選置板到期
-    const filteredBoardExpiring = expiringBoards.filter((b: any) => {
-      // 找到對應的會員
-      const member = members.find(m => 
-        (m.name === b.member_name || m.nickname === b.member_name)
-      )
-      return member && memberIds.has(member.id)
-    })
-    
-    return {
-      memberships: filteredMembershipExpiring,
-      boards: filteredBoardExpiring
-    }
-  }, [filteredMembers, expiringMemberships, expiringBoards, members])
 
   if (loading) {
     return (
@@ -557,91 +549,20 @@ export function MemberManagement() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      <PageHeader title="👥 會員管理" user={user} showBaoLink={true} />
-
-      {/* 快捷功能按鈕 */}
-      <div style={{ 
-        display: 'flex', 
-        gap: isMobile ? '8px' : '12px', 
-        marginBottom: isMobile ? '15px' : '20px',
-        flexWrap: 'wrap'
+      {/* 標題區 + 新增會員按鈕 */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '20px',
+        flexWrap: 'wrap',
+        gap: '12px'
       }}>
-        <button
-          disabled
-          title="功能已停用"
-          style={{
-            flex: isMobile ? '1 1 100%' : '0 0 auto',
-            padding: isMobile ? '12px 16px' : '10px 20px',
-            background: '#f5f5f5',
-            color: '#bbb',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '15px',
-            fontWeight: '600',
-            cursor: 'not-allowed',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            opacity: 0.6
-          }}
-        >
-          <span>📥</span>
-          <span>匯入</span>
-        </button>
-
-        <button
-          onClick={handleExportMembers}
-          style={{
-            flex: isMobile ? '1 1 100%' : '0 0 auto',
-            padding: isMobile ? '12px 16px' : '10px 20px',
-            background: 'white',
-            color: '#666',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '15px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          <span>📤</span>
-          <span>匯出</span>
-        </button>
-
-        <button
-          onClick={() => navigate('/boards')}
-          style={{
-            flex: isMobile ? '1 1 100%' : '0 0 auto',
-            padding: isMobile ? '12px 16px' : '10px 20px',
-            background: 'white',
-            color: '#666',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '15px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          <span>🏄</span>
-          <span>置板管理</span>
-        </button>
-
+        <PageHeader title="👥 會員管理" user={user} showBaoLink={true} />
         <button
           onClick={() => setAddDialogOpen(true)}
           style={{
-            flex: isMobile ? '1 1 100%' : '0 0 auto',
-            padding: isMobile ? '12px 16px' : '10px 20px',
+            padding: isMobile ? '10px 20px' : '12px 24px',
             background: '#5a5a5a',
             color: 'white',
             border: 'none',
@@ -649,15 +570,12 @@ export function MemberManagement() {
             fontSize: isMobile ? '14px' : '15px',
             fontWeight: '600',
             cursor: 'pointer',
-            transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
+            gap: '6px'
           }}
         >
-          <span>+</span>
-          <span>新增會員</span>
+          + 新增會員
         </button>
       </div>
 
@@ -774,237 +692,182 @@ export function MemberManagement() {
         </div>
       </div>
 
-      {/* 到期提醒區塊 */}
-      {(expiringMemberships.length > 0 || expiringBoards.length > 0) && (
-        <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: isMobile ? '16px' : '20px',
-          marginBottom: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          border: '1px solid #e0e0e0'
-        }}>
-          {expiringMemberships.length > 0 && (() => {
-            const today = getLocalDateString()
-            const expired = expiringMemberships.filter((m: any) => {
-              let normalizedDate = m.membership_end_date
-              if (m.membership_end_date.includes('/')) {
-                const [month, day, year] = m.membership_end_date.split('/')
-                normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-              }
-              return normalizedDate < today
-            })
-            const upcoming = expiringMemberships.filter((m: any) => {
-              let normalizedDate = m.membership_end_date
-              if (m.membership_end_date.includes('/')) {
-                const [month, day, year] = m.membership_end_date.split('/')
-                normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-              }
-              return normalizedDate >= today
-            })
-            
-            return (
-              <>
-                {expired.length > 0 && (
-                  <div style={{ marginBottom: upcoming.length > 0 ? '12px' : '0' }}>
-                    <div style={{ 
-                      fontSize: isMobile ? '13px' : '14px',
-                      fontWeight: '600',
-                      color: '#666',
-                      marginBottom: '8px'
-                    }}>
-                      ⚠️ 已過期會籍
-                    </div>
-                    <div style={{ 
-                      display: 'flex', 
-                      flexWrap: 'wrap', 
-                      gap: '8px'
-                    }}>
-                      {expired.map((m: any, idx: number) => (
-                        <div key={idx} style={{
-                          padding: '4px 10px',
-                          background: '#fafafa',
-                          borderRadius: '6px',
-                          fontSize: isMobile ? '12px' : '13px',
-                          color: '#666'
-                        }}>
-                          {(m.nickname && m.nickname.trim()) || m.name} ({formatDate(m.membership_end_date)})
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {upcoming.length > 0 && (
-                  <div>
-                    <div style={{ 
-                      fontSize: isMobile ? '13px' : '14px',
-                      fontWeight: '600',
-                      color: '#666',
-                      marginBottom: '8px'
-                    }}>
-                      ⏰ 即將到期
-                    </div>
-                    <div style={{ 
-                      display: 'flex', 
-                      flexWrap: 'wrap', 
-                      gap: '8px'
-                    }}>
-                      {upcoming.map((m: any, idx: number) => (
-                        <div key={idx} style={{
-                          padding: '4px 10px',
-                          background: '#fafafa',
-                          borderRadius: '6px',
-                          fontSize: isMobile ? '12px' : '13px',
-                          color: '#666'
-                        }}>
-                          {(m.nickname && m.nickname.trim()) || m.name} ({formatDate(m.membership_end_date)})
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )
-          })()}
-
-          {expiringBoards.length > 0 && (() => {
-            const today = getLocalDateString()
-            const expiredBoards = expiringBoards.filter((b: any) => b.expires_at < today)
-            const upcomingBoards = expiringBoards.filter((b: any) => b.expires_at >= today)
-            
-            return (
-              <div style={{ marginTop: expiringMemberships.length > 0 ? '12px' : '0' }}>
-                {expiredBoards.length > 0 && (
-                  <div style={{ marginBottom: upcomingBoards.length > 0 ? '12px' : '0' }}>
-                    <div style={{ 
-                      fontSize: isMobile ? '13px' : '14px',
-                      fontWeight: '600',
-                      color: '#666',
-                      marginBottom: '8px'
-                    }}>
-                      🏄 已過期置板
-                    </div>
-                    <div style={{ 
-                      display: 'flex', 
-                      flexWrap: 'wrap', 
-                      gap: '8px'
-                    }}>
-                      {expiredBoards.map((b: any, idx: number) => (
-                        <div key={idx} style={{
-                          padding: '4px 10px',
-                          background: '#fafafa',
-                          borderRadius: '6px',
-                          fontSize: isMobile ? '12px' : '13px',
-                          color: '#666'
-                        }}>
-                          #{b.slot_number} {b.member_name} ({formatDate(b.expires_at)})
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {upcomingBoards.length > 0 && (
-                  <div>
-                    <div style={{ 
-                      fontSize: isMobile ? '13px' : '14px',
-                      fontWeight: '600',
-                      color: '#666',
-                      marginBottom: '8px'
-                    }}>
-                      🏄 置板即將到期
-                    </div>
-                    <div style={{ 
-                      display: 'flex', 
-                      flexWrap: 'wrap', 
-                      gap: '8px'
-                    }}>
-                      {upcomingBoards.map((b: any, idx: number) => (
-                        <div key={idx} style={{
-                          padding: '4px 10px',
-                          background: '#fafafa',
-                          borderRadius: '6px',
-                          fontSize: isMobile ? '12px' : '13px',
-                          color: '#666'
-                        }}>
-                          #{b.slot_number} {b.member_name} ({formatDate(b.expires_at)})
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })()}
-        </div>
-      )}
-
-      {/* 統計資訊 */}
+      {/* 統計卡片（可點擊篩選） */}
       <div style={{ 
         display: 'grid',
         gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)',
         gap: '12px',
-        marginBottom: '20px'
+        marginBottom: '16px'
       }}>
-        <div style={{
-          background: 'white',
-          padding: isMobile ? '16px 12px' : '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-            👥 {showInactive ? '全部會員' : '啟用會員'}
+        <div 
+          onClick={() => setExpiringFilter('none')}
+          style={{
+            background: expiringFilter === 'none' ? '#e3f2fd' : 'white',
+            padding: isMobile ? '12px 8px' : '16px',
+            borderRadius: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            textAlign: 'center',
+            cursor: 'pointer',
+            border: expiringFilter === 'none' ? '2px solid #2196F3' : '2px solid transparent',
+            transition: 'all 0.2s'
+          }}
+        >
+          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+            👥 {showInactive ? '全部' : '啟用會員'}
           </div>
-          <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: '#2196F3' }}>
+          <div style={{ fontSize: isMobile ? '20px' : '28px', fontWeight: 'bold', color: '#2196F3' }}>
             {filteredMembers.length}
           </div>
-          {membershipTypeFilter !== 'all' && (
-            <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
-              (已篩選)
-            </div>
-          )}
         </div>
         
-        <div style={{
-          background: 'white',
-          padding: isMobile ? '16px 12px' : '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          textAlign: 'center',
-          border: filteredExpiringData.memberships.length > 0 ? '2px solid #ff9800' : 'none'
-        }}>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>⚠️ 會籍到期提醒</div>
-          <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: filteredExpiringData.memberships.length > 0 ? '#ff9800' : '#999' }}>
-            {filteredExpiringData.memberships.length}
+        <div 
+          onClick={() => setExpiringFilter(expiringFilter === 'membership' ? 'none' : 'membership')}
+          style={{
+            background: expiringFilter === 'membership' ? '#fff3e0' : 'white',
+            padding: isMobile ? '12px 8px' : '16px',
+            borderRadius: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            textAlign: 'center',
+            cursor: expiringMemberships.length > 0 ? 'pointer' : 'default',
+            border: expiringFilter === 'membership' ? '2px solid #ff9800' : (expiringMemberships.length > 0 ? '2px solid #ff9800' : '2px solid transparent'),
+            transition: 'all 0.2s',
+            opacity: expiringMemberships.length > 0 ? 1 : 0.5
+          }}
+        >
+          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>⚠️ 會籍到期</div>
+          <div style={{ fontSize: isMobile ? '20px' : '28px', fontWeight: 'bold', color: expiringMemberships.length > 0 ? '#ff9800' : '#999' }}>
+            {expiringMemberships.length}
           </div>
-          {membershipTypeFilter !== 'all' && (
-            <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
-              (已篩選)
-            </div>
-          )}
+          {expiringFilter === 'membership' && <div style={{ fontSize: '10px', color: '#ff9800' }}>點擊取消篩選</div>}
         </div>
 
+        <div 
+          onClick={() => setExpiringFilter(expiringFilter === 'board' ? 'none' : 'board')}
+          style={{
+            background: expiringFilter === 'board' ? '#e3f2fd' : 'white',
+            padding: isMobile ? '12px 8px' : '16px',
+            borderRadius: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            textAlign: 'center',
+            cursor: expiringBoards.length > 0 ? 'pointer' : 'default',
+            border: expiringFilter === 'board' ? '2px solid #2196F3' : (expiringBoards.length > 0 ? '2px solid #2196F3' : '2px solid transparent'),
+            transition: 'all 0.2s',
+            opacity: expiringBoards.length > 0 ? 1 : 0.5
+          }}
+        >
+          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>🏄 置板到期</div>
+          <div style={{ fontSize: isMobile ? '20px' : '28px', fontWeight: 'bold', color: expiringBoards.length > 0 ? '#2196F3' : '#999' }}>
+            {expiringBoards.length}
+          </div>
+          {expiringFilter === 'board' && <div style={{ fontSize: '10px', color: '#2196F3' }}>點擊取消篩選</div>}
+        </div>
+      </div>
+
+      {/* 到期詳情（收合式） */}
+      {(expiringMemberships.length > 0 || expiringBoards.length > 0) && (
         <div style={{
           background: 'white',
-          padding: isMobile ? '16px 12px' : '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          textAlign: 'center',
-          border: filteredExpiringData.boards.length > 0 ? '2px solid #2196F3' : 'none'
+          borderRadius: '8px',
+          marginBottom: '16px',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+          overflow: 'hidden'
         }}>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>🏄 置板到期提醒</div>
-          <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: filteredExpiringData.boards.length > 0 ? '#2196F3' : '#999' }}>
-            {filteredExpiringData.boards.length}
-          </div>
-          {membershipTypeFilter !== 'all' && (
-            <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
-              (已篩選)
+          <button
+            onClick={() => setShowExpiringDetails(!showExpiringDetails)}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: '13px',
+              color: '#666'
+            }}
+          >
+            <span>
+              📋 到期詳情：會籍 {expiringMemberships.length} 位、置板 {expiringBoards.length} 位
+            </span>
+            <span>{showExpiringDetails ? '▲ 收合' : '▼ 展開'}</span>
+          </button>
+          
+          {showExpiringDetails && (
+            <div style={{ padding: '0 16px 16px', borderTop: '1px solid #eee' }}>
+              {expiringMemberships.length > 0 && (() => {
+                const today = getLocalDateString()
+                const expired = expiringMemberships.filter((m: any) => {
+                  let normalizedDate = m.membership_end_date
+                  if (m.membership_end_date.includes('/')) {
+                    const [month, day, year] = m.membership_end_date.split('/')
+                    normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+                  }
+                  return normalizedDate < today
+                })
+                const upcoming = expiringMemberships.filter((m: any) => {
+                  let normalizedDate = m.membership_end_date
+                  if (m.membership_end_date.includes('/')) {
+                    const [month, day, year] = m.membership_end_date.split('/')
+                    normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+                  }
+                  return normalizedDate >= today
+                })
+                return (
+                  <div style={{ marginTop: '12px' }}>
+                    {expired.length > 0 && (
+                      <div style={{ marginBottom: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#f44336', fontWeight: '600' }}>⚠️ 已過期 ({expired.length})：</span>
+                        <span style={{ fontSize: '12px', color: '#666' }}>
+                          {expired.slice(0, 5).map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
+                          {expired.length > 5 && `...等 ${expired.length} 位`}
+                        </span>
+                      </div>
+                    )}
+                    {upcoming.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: '12px', color: '#ff9800', fontWeight: '600' }}>⏰ 即將到期 ({upcoming.length})：</span>
+                        <span style={{ fontSize: '12px', color: '#666' }}>
+                          {upcoming.slice(0, 5).map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
+                          {upcoming.length > 5 && `...等 ${upcoming.length} 位`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+              
+              {expiringBoards.length > 0 && (() => {
+                const today = getLocalDateString()
+                const expiredBoards = expiringBoards.filter((b: any) => b.expires_at < today)
+                const upcomingBoards = expiringBoards.filter((b: any) => b.expires_at >= today)
+                return (
+                  <div style={{ marginTop: expiringMemberships.length > 0 ? '12px' : '12px' }}>
+                    {expiredBoards.length > 0 && (
+                      <div style={{ marginBottom: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#f44336', fontWeight: '600' }}>🏄 已過期置板 ({expiredBoards.length})：</span>
+                        <span style={{ fontSize: '12px', color: '#666' }}>
+                          {expiredBoards.slice(0, 5).map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
+                          {expiredBoards.length > 5 && `...等 ${expiredBoards.length} 位`}
+                        </span>
+                      </div>
+                    )}
+                    {upcomingBoards.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: '12px', color: '#2196F3', fontWeight: '600' }}>🏄 即將到期置板 ({upcomingBoards.length})：</span>
+                        <span style={{ fontSize: '12px', color: '#666' }}>
+                          {upcomingBoards.slice(0, 5).map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
+                          {upcomingBoards.length > 5 && `...等 ${upcomingBoards.length} 位`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )}
         </div>
-      </div>
+      )}
 
       {/* 會員列表 */}
       <div style={{ 
@@ -1258,6 +1121,51 @@ export function MemberManagement() {
             </div>
           ))
         )}
+      </div>
+
+      {/* 次要功能按鈕 */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '12px', 
+        justifyContent: 'center',
+        marginTop: '30px',
+        marginBottom: '20px',
+        flexWrap: 'wrap'
+      }}>
+        <button
+          onClick={handleExportMembers}
+          style={{
+            padding: '10px 20px',
+            background: 'white',
+            color: '#666',
+            border: '1px solid #ddd',
+            borderRadius: '6px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          📤 匯出會員資料
+        </button>
+        <button
+          onClick={() => navigate('/boards')}
+          style={{
+            padding: '10px 20px',
+            background: 'white',
+            color: '#666',
+            border: '1px solid #ddd',
+            borderRadius: '6px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          🏄 置板管理
+        </button>
       </div>
 
       {/* Footer */}
