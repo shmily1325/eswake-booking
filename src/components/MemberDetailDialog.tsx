@@ -747,12 +747,18 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                         borderRadius: '8px',
                         padding: '12px 16px',
                       }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '14px' }}>
+                        <div style={{ 
+                          display: isMobile ? 'flex' : 'flex', 
+                          flexDirection: isMobile ? 'column' : 'row',
+                          flexWrap: isMobile ? 'nowrap' : 'wrap', 
+                          gap: isMobile ? '8px' : '16px', 
+                          fontSize: '14px' 
+                        }}>
                           <div><span style={{ color: '#666' }}>姓名：</span>{member.name}</div>
                           {member.nickname && <div><span style={{ color: '#666' }}>暱稱：</span>{member.nickname}</div>}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ color: '#666' }}>手機：</span>
-                            {member.phone || <span style={{ color: '#999' }}>未填寫</span>}
+                            <span>{member.phone || <span style={{ color: '#999' }}>未填寫</span>}</span>
                             <button
                               onClick={() => {
                                 setQuickEditPhone(member.phone || '')
@@ -765,6 +771,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                                 cursor: 'pointer',
                                 fontSize: '14px',
                                 color: '#667eea',
+                                flexShrink: 0,
                               }}
                               title="修改手機號碼"
                             >
