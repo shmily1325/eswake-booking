@@ -997,16 +997,18 @@ export function MemberManagement() {
                         ({member.name})
                       </span>
                     )}
-                    <span style={{ 
-                      background: member.membership_type === 'guest' ? '#fff9e6' : '#e3f2fd',
-                      color: member.membership_type === 'guest' ? '#856404' : '#1976d2',
-                      padding: '3px 10px',
-                      borderRadius: '12px',
-                      fontWeight: 'bold',
-                      fontSize: '12px'
-                    }}>
-                      {member.membership_type === 'guest' ? '🎫 非會員' : member.membership_type === 'es' ? '' : '👤 會員'}
-                    </span>
+                    {member.membership_type !== 'es' && (
+                      <span style={{ 
+                        background: member.membership_type === 'guest' ? '#fff9e6' : '#e3f2fd',
+                        color: member.membership_type === 'guest' ? '#856404' : '#1976d2',
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        fontWeight: 'bold',
+                        fontSize: '12px'
+                      }}>
+                        {member.membership_type === 'guest' ? '🎫 非會員' : '👤 會員'}
+                      </span>
+                    )}
                     {member.membership_type === 'dual' && (
                       <span style={{ 
                         fontSize: '12px', 
