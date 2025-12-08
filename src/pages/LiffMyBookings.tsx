@@ -53,7 +53,9 @@ export function LiffMyBookings() {
   const [lineUserId, setLineUserId] = useState<string | null>(null)
   const [showBindingForm, setShowBindingForm] = useState(false)
   const [phone, setPhone] = useState('')
-  const [birthday, setBirthday] = useState('')
+  const [birthYear, setBirthYear] = useState('')
+  const [birthMonth, setBirthMonth] = useState('')
+  const [birthDay, setBirthDay] = useState('')
   const [binding, setBinding] = useState(false)
   const [bindingError, setBindingError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('bookings')
@@ -415,8 +417,9 @@ export function LiffMyBookings() {
         return
       }
 
-      // 如果有填寫生日，更新會員資料
-      if (birthday) {
+      // 更新會員生日
+      if (birthYear && birthMonth && birthDay) {
+        const birthday = `${birthYear}-${birthMonth}-${birthDay}`
         const { error: updateError } = await supabase
           .from('members')
           .update({ birthday })
@@ -666,36 +669,81 @@ export function LiffMyBookings() {
             }}>
               生日
             </label>
-            <input
-              type="date"
-              value={birthday}
-              onChange={(e) => setBirthday(e.target.value)}
-              style={{
-                width: '100%',
-                maxWidth: '100%',
-                padding: '14px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                boxSizing: 'border-box',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none',
-                appearance: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#5a5a5a'}
-              onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {/* 年 */}
+              <select
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                style={{
+                  flex: 1.2,
+                  padding: '14px 8px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                  background: 'white',
+                  color: birthYear ? '#333' : '#999'
+                }}
+              >
+                <option value="">年</option>
+                {Array.from({ length: 80 }, (_, i) => {
+                  const year = new Date().getFullYear() - i - 10
+                  return <option key={year} value={year}>{year}</option>
+                })}
+              </select>
+              {/* 月 */}
+              <select
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '14px 8px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                  background: 'white',
+                  color: birthMonth ? '#333' : '#999'
+                }}
+              >
+                <option value="">月</option>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <option key={i + 1} value={String(i + 1).padStart(2, '0')}>{i + 1}月</option>
+                ))}
+              </select>
+              {/* 日 */}
+              <select
+                value={birthDay}
+                onChange={(e) => setBirthDay(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '14px 8px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                  background: 'white',
+                  color: birthDay ? '#333' : '#999'
+                }}
+              >
+                <option value="">日</option>
+                {Array.from({ length: 31 }, (_, i) => (
+                  <option key={i + 1} value={String(i + 1).padStart(2, '0')}>{i + 1}日</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <button
             onClick={handleBinding}
-            disabled={binding || !phone || !birthday}
+            disabled={binding || !phone || !birthYear || !birthMonth || !birthDay}
             style={{
               width: '100%',
               padding: '14px',
-              background: binding || !phone || !birthday
+              background: binding || !phone || !birthYear || !birthMonth || !birthDay
                 ? '#ccc' 
                 : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
               color: 'white',
@@ -703,12 +751,12 @@ export function LiffMyBookings() {
               borderRadius: '8px',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: binding || !phone || !birthday ? 'not-allowed' : 'pointer',
+              cursor: binding || !phone || !birthYear || !birthMonth || !birthDay ? 'not-allowed' : 'pointer',
               transition: 'transform 0.1s',
               marginBottom: '16px'
             }}
             onMouseDown={(e) => {
-              if (!binding && phone && birthday) {
+              if (!binding && phone && birthYear && birthMonth && birthDay) {
                 (e.target as HTMLElement).style.transform = 'scale(0.98)'
               }
             }}
