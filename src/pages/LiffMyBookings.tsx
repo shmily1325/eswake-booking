@@ -99,7 +99,7 @@ export function LiffMyBookings() {
       }
 
       // 強制清除快取：添加版本號
-      const version = '20251208-001'
+      const version = '20251208-002'
       console.log('🚀 LIFF 版本:', version)
 
       await liff.init({ liffId })
@@ -419,14 +419,21 @@ export function LiffMyBookings() {
 
       // 更新會員生日
       if (birthYear && birthMonth && birthDay) {
-        const birthday = `${birthYear}-${birthMonth}-${birthDay}`
-        const { error: updateError } = await supabase
+        const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`
+        console.log('📅 準備更新生日:', birthday, '會員ID:', memberData.id)
+        
+        const { data: updateData, error: updateError } = await supabase
           .from('members')
           .update({ birthday })
           .eq('id', memberData.id)
+          .select()
         
         if (updateError) {
-          console.error('更新生日失敗:', updateError)
+          console.error('❌ 更新生日失敗:', updateError)
+          // 不阻擋綁定流程，但記錄錯誤
+          toast.error('生日更新失敗，請稍後在會員資料中手動更新')
+        } else {
+          console.log('✅ 生日更新成功:', updateData)
         }
       }
 
@@ -594,7 +601,7 @@ export function LiffMyBookings() {
               margin: '8px 0 0',
               fontFamily: 'monospace'
             }}>
-              v20251208-002
+              v20251208-003
             </p>
           </div>
 
@@ -611,7 +618,7 @@ export function LiffMyBookings() {
                 ❌ {bindingError}
               </div>
               <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-                如果您確定手機號碼正確，請直接<strong>私訊官方帳號</strong>告知您的手機號碼，我們會協助您完成綁定！
+                如果您確定正確，請直接<strong>私訊官方帳號</strong>告知您的手機號碼，我們會協助您完成綁定！
               </div>
             </div>
           )}
@@ -776,7 +783,7 @@ export function LiffMyBookings() {
               💡 綁定說明
             </div>
             • 請輸入您的手機與生日<br/>
-            • 綁定後可查看預約紀錄與儲值紀錄
+            • 綁定後即可查看預約與儲值紀錄
           </div>
         </div>
       </div>
