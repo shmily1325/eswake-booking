@@ -420,9 +420,23 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         }
         return
       }
+
+      // 新增備忘錄
+      const today = new Date().toISOString().split('T')[0]
+      const expiryInfo = boardFormData.expires_at ? `，至 ${boardFormData.expires_at}` : ''
+      // @ts-ignore
+      await supabase.from('member_notes').insert([{
+        member_id: memberId,
+        event_date: boardFormData.start_date || today,
+        event_type: '備註',
+        description: `置板開始 #${slotNumber}${expiryInfo}`
+      }])
+
+      toast.success(`已新增格位 #${slotNumber}`)
       setBoardFormData({ slot_number: '', start_date: '', expires_at: '', notes: '' })
       setAddBoardDialogOpen(false)
       loadMemberData()
+      loadMemberNotes()
       onUpdate()
     } catch (error) {
       console.error('新增置板失敗:', error)

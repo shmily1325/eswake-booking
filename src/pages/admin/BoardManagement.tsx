@@ -436,6 +436,19 @@ export function BoardManagement() {
 
       if (error) throw error
 
+      // 新增備忘錄
+      const today = new Date().toISOString().split('T')[0]
+      const expiryInfo = newBoardForm.expires_at ? `，至 ${newBoardForm.expires_at}` : ''
+      // @ts-ignore
+      await supabase.from('member_notes').insert([{
+        member_id: selectedMember.id,
+        event_date: newBoardForm.start_date || today,
+        event_type: '備註',
+        description: `置板開始 #${selectedSlot.slot_number}${expiryInfo}`
+      }])
+
+      toast.success(`已新增格位 #${selectedSlot.slot_number}`)
+
       // 重置狀態
       setIsAddingBoard(false)
       setSelectedSlot(null)
