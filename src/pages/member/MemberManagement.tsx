@@ -549,46 +549,22 @@ export function MemberManagement() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      {/* 標題區 + 新增會員按鈕 */}
+      <PageHeader title="👥 會員管理" user={user} showBaoLink={true} />
+
+      {/* 搜尋欄 + 新增會員按鈕 */}
       <div style={{
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        flexWrap: 'wrap',
-        gap: '12px'
+        gap: '12px',
+        marginBottom: '12px',
+        alignItems: 'center'
       }}>
-        <PageHeader title="👥 會員管理" user={user} showBaoLink={true} />
-        <button
-          onClick={() => setAddDialogOpen(true)}
-          style={{
-            padding: isMobile ? '10px 20px' : '12px 24px',
-            background: '#5a5a5a',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '15px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          + 新增會員
-        </button>
-      </div>
-
-      {/* 搜尋欄與篩選器 */}
-      <div style={{ marginBottom: isMobile ? '15px' : '20px' }}>
-        <div style={{ position: 'relative', marginBottom: '12px' }}>
+        <div style={{ flex: 1, position: 'relative' }}>
           <input
             type="text"
             placeholder="搜尋會員（姓名、暱稱）"
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value)
-              // 輸入搜尋時自動切到「全部」，避免找不到人
               if (e.target.value && membershipTypeFilter !== 'all') {
                 setMembershipTypeFilter('all')
               }
@@ -601,12 +577,9 @@ export function MemberManagement() {
               borderRadius: '8px',
               fontSize: '14px',
               outline: 'none',
-              transition: 'border-color 0.2s',
               background: 'white',
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             }}
-            onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
-            onBlur={(e) => e.currentTarget.style.borderColor = '#dee2e6'}
           />
           {searchTerm && (
             <button
@@ -627,140 +600,133 @@ export function MemberManagement() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                lineHeight: 1,
               }}
             >
               ✕
             </button>
           )}
         </div>
-        
-        {/* 會員種類篩選 */}
-        <div style={{ 
-          display: 'flex', 
-          gap: '8px', 
-          flexWrap: 'wrap'
-        }}>
-          {[
-            { value: 'all', label: '全部' },
-            { value: 'general', label: '一般會員' },
-            { value: 'dual', label: '雙人會員' },
-            { value: 'guest', label: '非會員' }
-          ].map(type => (
-            <button
-              key={type.value}
-              onClick={() => setMembershipTypeFilter(type.value)}
-              style={{
-                padding: '6px 14px',
-                background: membershipTypeFilter === type.value ? '#667eea' : 'white',
-                color: membershipTypeFilter === type.value ? 'white' : '#666',
-                border: `1px solid ${membershipTypeFilter === type.value ? '#667eea' : '#ddd'}`,
-                borderRadius: '6px',
-                fontSize: '13px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                fontWeight: membershipTypeFilter === type.value ? '600' : 'normal'
-              }}
-            >
-              {type.label}
-            </button>
-          ))}
-          
-          {/* 包含已隱藏的會員 */}
-          <label style={{
+        <button
+          onClick={() => setAddDialogOpen(true)}
+          style={{
+            padding: isMobile ? '10px 16px' : '12px 20px',
+            background: '#5a5a5a',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: isMobile ? '14px' : '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
             display: 'flex',
             alignItems: 'center',
-            cursor: 'pointer',
-            userSelect: 'none',
-            gap: '6px',
-            marginLeft: 'auto',
-            fontSize: '13px',
-            color: '#666'
-          }}>
-            <input
-              type="checkbox"
-              checked={showInactive}
-              onChange={(e) => setShowInactive(e.target.checked)}
-              style={{
-                width: '16px',
-                height: '16px',
-                cursor: 'pointer'
-              }}
-            />
-            包含已隱藏
-          </label>
-        </div>
+            gap: '6px'
+          }}
+        >
+          + 新增會員
+        </button>
       </div>
 
-      {/* 統計卡片（可點擊篩選） */}
+      {/* 統一篩選列 */}
       <div style={{ 
-        display: 'grid',
-        gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)',
-        gap: '12px',
-        marginBottom: '16px'
+        display: 'flex', 
+        gap: '8px', 
+        flexWrap: 'wrap',
+        marginBottom: '16px',
+        alignItems: 'center'
       }}>
-        <div 
-          onClick={() => setExpiringFilter('none')}
-          style={{
-            background: expiringFilter === 'none' ? '#e3f2fd' : 'white',
-            padding: isMobile ? '12px 8px' : '16px',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            textAlign: 'center',
-            cursor: 'pointer',
-            border: expiringFilter === 'none' ? '2px solid #2196F3' : '2px solid transparent',
-            transition: 'all 0.2s'
-          }}
-        >
-          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-            👥 {showInactive ? '全部' : '啟用會員'}
-          </div>
-          <div style={{ fontSize: isMobile ? '20px' : '28px', fontWeight: 'bold', color: '#2196F3' }}>
-            {filteredMembers.length}
-          </div>
-        </div>
-        
-        <div 
-          onClick={() => setExpiringFilter(expiringFilter === 'membership' ? 'none' : 'membership')}
-          style={{
-            background: expiringFilter === 'membership' ? '#fff3e0' : 'white',
-            padding: isMobile ? '12px 8px' : '16px',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            textAlign: 'center',
-            cursor: expiringMemberships.length > 0 ? 'pointer' : 'default',
-            border: expiringFilter === 'membership' ? '2px solid #ff9800' : (expiringMemberships.length > 0 ? '2px solid #ff9800' : '2px solid transparent'),
-            transition: 'all 0.2s',
-            opacity: expiringMemberships.length > 0 ? 1 : 0.5
-          }}
-        >
-          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>⚠️ 會籍到期</div>
-          <div style={{ fontSize: isMobile ? '20px' : '28px', fontWeight: 'bold', color: expiringMemberships.length > 0 ? '#ff9800' : '#999' }}>
-            {expiringMemberships.length}
-          </div>
-          {expiringFilter === 'membership' && <div style={{ fontSize: '10px', color: '#ff9800' }}>點擊取消篩選</div>}
-        </div>
+        {/* 會員類型篩選 */}
+        {[
+          { value: 'all', label: '全部', count: members.length },
+          { value: 'general', label: '一般會員' },
+          { value: 'dual', label: '雙人會員' },
+          { value: 'guest', label: '非會員' }
+        ].map(type => (
+          <button
+            key={type.value}
+            onClick={() => {
+              setMembershipTypeFilter(type.value)
+              setExpiringFilter('none')
+            }}
+            style={{
+              padding: '6px 12px',
+              background: membershipTypeFilter === type.value && expiringFilter === 'none' ? '#5a5a5a' : 'white',
+              color: membershipTypeFilter === type.value && expiringFilter === 'none' ? 'white' : '#666',
+              border: `1px solid ${membershipTypeFilter === type.value && expiringFilter === 'none' ? '#5a5a5a' : '#ddd'}`,
+              borderRadius: '6px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              fontWeight: membershipTypeFilter === type.value && expiringFilter === 'none' ? '600' : 'normal'
+            }}
+          >
+            {type.label}
+          </button>
+        ))}
 
-        <div 
-          onClick={() => setExpiringFilter(expiringFilter === 'board' ? 'none' : 'board')}
+        {/* 分隔線 */}
+        <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+
+        {/* 到期篩選 */}
+        <button
+          onClick={() => {
+            setExpiringFilter(expiringFilter === 'membership' ? 'none' : 'membership')
+            if (expiringFilter !== 'membership') setMembershipTypeFilter('all')
+          }}
+          disabled={expiringMemberships.length === 0}
           style={{
-            background: expiringFilter === 'board' ? '#e3f2fd' : 'white',
-            padding: isMobile ? '12px 8px' : '16px',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            textAlign: 'center',
-            cursor: expiringBoards.length > 0 ? 'pointer' : 'default',
-            border: expiringFilter === 'board' ? '2px solid #2196F3' : (expiringBoards.length > 0 ? '2px solid #2196F3' : '2px solid transparent'),
-            transition: 'all 0.2s',
-            opacity: expiringBoards.length > 0 ? 1 : 0.5
+            padding: '6px 12px',
+            background: expiringFilter === 'membership' ? '#ff9800' : 'white',
+            color: expiringFilter === 'membership' ? 'white' : (expiringMemberships.length > 0 ? '#ff9800' : '#ccc'),
+            border: `1px solid ${expiringFilter === 'membership' ? '#ff9800' : (expiringMemberships.length > 0 ? '#ff9800' : '#ddd')}`,
+            borderRadius: '6px',
+            fontSize: '13px',
+            cursor: expiringMemberships.length > 0 ? 'pointer' : 'default',
+            fontWeight: expiringFilter === 'membership' ? '600' : 'normal',
+            opacity: expiringMemberships.length === 0 ? 0.5 : 1
           }}
         >
-          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>🏄 置板到期</div>
-          <div style={{ fontSize: isMobile ? '20px' : '28px', fontWeight: 'bold', color: expiringBoards.length > 0 ? '#2196F3' : '#999' }}>
-            {expiringBoards.length}
-          </div>
-          {expiringFilter === 'board' && <div style={{ fontSize: '10px', color: '#2196F3' }}>點擊取消篩選</div>}
-        </div>
+          ⚠️ 會籍到期 ({expiringMemberships.length})
+        </button>
+
+        <button
+          onClick={() => {
+            setExpiringFilter(expiringFilter === 'board' ? 'none' : 'board')
+            if (expiringFilter !== 'board') setMembershipTypeFilter('all')
+          }}
+          disabled={expiringBoards.length === 0}
+          style={{
+            padding: '6px 12px',
+            background: expiringFilter === 'board' ? '#2196F3' : 'white',
+            color: expiringFilter === 'board' ? 'white' : (expiringBoards.length > 0 ? '#2196F3' : '#ccc'),
+            border: `1px solid ${expiringFilter === 'board' ? '#2196F3' : (expiringBoards.length > 0 ? '#2196F3' : '#ddd')}`,
+            borderRadius: '6px',
+            fontSize: '13px',
+            cursor: expiringBoards.length > 0 ? 'pointer' : 'default',
+            fontWeight: expiringFilter === 'board' ? '600' : 'normal',
+            opacity: expiringBoards.length === 0 ? 0.5 : 1
+          }}
+        >
+          🏄 置板到期 ({expiringBoards.length})
+        </button>
+        
+        {/* 包含已隱藏 */}
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          cursor: 'pointer',
+          gap: '6px',
+          marginLeft: 'auto',
+          fontSize: '13px',
+          color: '#666'
+        }}>
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+          />
+          包含已隱藏
+        </label>
       </div>
 
       {/* 到期詳情（收合式） */}
