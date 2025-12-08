@@ -315,17 +315,34 @@ export function BoardManagement() {
   const handleSaveEdit = async () => {
     if (!selectedSlot?.id) return
 
+    const oldExpiry = selectedSlot.expires_at
+    const newExpiry = editForm.expires_at || null
+
     try {
       const { error } = await supabase
         .from('board_storage')
         .update({
           start_date: editForm.start_date || null,
-          expires_at: editForm.expires_at || null,
+          expires_at: newExpiry,
           notes: editForm.notes.trim() || null,
         })
         .eq('id', selectedSlot.id)
 
       if (error) throw error
+
+      // 如果到期日有變更，新增備忘錄
+      if (selectedSlot.member_id && oldExpiry !== newExpiry && newExpiry) {
+        const today = new Date().toISOString().split('T')[0]
+        // @ts-ignore
+        await supabase.from('member_notes').insert([{
+          member_id: selectedSlot.member_id,
+          event_date: today,
+          event_type: '續約置板',
+          description: `置板續約 #${selectedSlot.slot_number}，至 ${newExpiry}`
+        }])
+      }
+
+      toast.success('已更新')
       setEditing(false)
       setSelectedSlot(null)
       loadBoardData()
@@ -333,6 +350,14 @@ export function BoardManagement() {
       console.error('更新失敗:', error)
       toast.error('更新失敗')
     }
+  }
+
+  // 快速延長一年
+  const handleExtendOneYear = () => {
+    const currentExpiry = editForm.expires_at ? new Date(editForm.expires_at) : new Date()
+    const newExpiry = new Date(currentExpiry)
+    newExpiry.setFullYear(newExpiry.getFullYear() + 1)
+    setEditForm({ ...editForm, expires_at: newExpiry.toISOString().split('T')[0] })
   }
 
   const handleDeleteBoard = async () => {
@@ -846,18 +871,37 @@ export function BoardManagement() {
                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
                           到期日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
                         </label>
-                        <input
-                          type="date"
-                          value={editForm.expires_at}
-                          onChange={(e) => setEditForm({ ...editForm, expires_at: e.target.value })}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                          }}
-                        />
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <input
+                            type="date"
+                            value={editForm.expires_at}
+                            onChange={(e) => setEditForm({ ...editForm, expires_at: e.target.value })}
+                            style={{
+                              flex: 1,
+                              padding: '10px',
+                              border: '2px solid #e0e0e0',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleExtendOneYear}
+                            style={{
+                              padding: '10px 16px',
+                              background: '#4caf50',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            +1年
+                          </button>
+                        </div>
                       </div>
 
                       {/* 備註 */}

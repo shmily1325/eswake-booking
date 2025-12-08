@@ -96,9 +96,14 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     description: ''
   })
 
-  // 續約相關狀態
+  // 會籍續約相關狀態
   const [renewDialogOpen, setRenewDialogOpen] = useState(false)
   const [renewEndDate, setRenewEndDate] = useState('')
+
+  // 置板續約相關狀態
+  const [boardRenewDialogOpen, setBoardRenewDialogOpen] = useState(false)
+  const [boardRenewEndDate, setBoardRenewEndDate] = useState('')
+  const [renewingBoard, setRenewingBoard] = useState<{id: number, slot_number: number, expires_at: string | null} | null>(null)
 
   useEffect(() => {
     if (!open) {
@@ -447,22 +452,28 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
     }
   }
 
-  // 置板續約（延長一年）
-  const handleRenewBoard = async (boardId: number, slotNumber: number, currentExpiry: string | null) => {
+  // 打開置板續約對話框
+  const openBoardRenewDialog = (boardId: number, slotNumber: number, currentExpiry: string | null) => {
     const currentDate = currentExpiry ? new Date(currentExpiry) : new Date()
     const newExpiry = new Date(currentDate)
     newExpiry.setFullYear(newExpiry.getFullYear() + 1)
-    const newExpiryStr = newExpiry.toISOString().split('T')[0]
+    setBoardRenewEndDate(newExpiry.toISOString().split('T')[0])
+    setRenewingBoard({ id: boardId, slot_number: slotNumber, expires_at: currentExpiry })
+    setBoardRenewDialogOpen(true)
+  }
 
-    if (!confirm(`確定要將格位 #${slotNumber} 延長至 ${newExpiryStr} 嗎？`)) {
+  // 執行置板續約
+  const handleBoardRenew = async () => {
+    if (!renewingBoard || !boardRenewEndDate) {
+      toast.warning('請選擇新的到期日')
       return
     }
 
     try {
       const { error } = await supabase
         .from('board_storage')
-        .update({ expires_at: newExpiryStr })
-        .eq('id', boardId)
+        .update({ expires_at: boardRenewEndDate })
+        .eq('id', renewingBoard.id)
 
       if (error) throw error
 
@@ -473,10 +484,13 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
         member_id: memberId,
         event_date: today,
         event_type: '續約置板',
-        description: `置板續約 #${slotNumber}，至 ${newExpiryStr}`
+        description: `置板續約 #${renewingBoard.slot_number}，至 ${boardRenewEndDate}`
       }])
 
-      toast.success(`格位 #${slotNumber} 已延長至 ${newExpiryStr}`)
+      toast.success(`格位 #${renewingBoard.slot_number} 已延長至 ${boardRenewEndDate}`)
+      setBoardRenewDialogOpen(false)
+      setBoardRenewEndDate('')
+      setRenewingBoard(null)
       loadMemberData()
       loadMemberNotes()
       onUpdate()
@@ -770,7 +784,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                               </div>
                               <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
-                                  onClick={() => handleRenewBoard(board.id, board.slot_number, board.expires_at)}
+                                  onClick={() => openBoardRenewDialog(board.id, board.slot_number, board.expires_at)}
                                   style={{
                                     padding: '2px 8px',
                                     background: '#4caf50',
@@ -1449,6 +1463,89 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                 }}
               >
                 {member?.membership_type === 'guest' ? '確認轉為會員' : '確認續約'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 置板續約對話框 */}
+      {boardRenewDialogOpen && renewingBoard && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '400px',
+            width: '90%',
+            padding: '24px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>🏄 置板續約 #{renewingBoard.slot_number}</h3>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                新的到期日
+              </label>
+              <input
+                type="date"
+                value={boardRenewEndDate}
+                onChange={(e) => setBoardRenewEndDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                }}
+              />
+              <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                目前到期：{renewingBoard.expires_at ? formatDate(renewingBoard.expires_at) : '未設定'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setBoardRenewDialogOpen(false)
+                  setBoardRenewEndDate('')
+                  setRenewingBoard(null)
+                }}
+                style={{
+                  padding: '10px 20px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleBoardRenew}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                }}
+              >
+                確認續約
               </button>
             </div>
           </div>
