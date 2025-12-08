@@ -4,7 +4,7 @@ import liff from '@line/liff'
 import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 import { useToast } from '../components/ui'
 import { triggerHaptic } from '../utils/haptic'
-import { logBookingDeletion } from '../utils/auditLog'
+// import { logBookingDeletion } from '../utils/auditLog' // 暫時隱藏取消預約功能
 
 interface Booking {
   id: number
