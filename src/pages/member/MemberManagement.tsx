@@ -785,8 +785,7 @@ export function MemberManagement() {
                       <div style={{ marginBottom: '8px' }}>
                         <span style={{ fontSize: '12px', color: '#f44336', fontWeight: '600' }}>⚠️ 已過期 ({expired.length})：</span>
                         <span style={{ fontSize: '12px', color: '#666' }}>
-                          {expired.slice(0, 5).map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
-                          {expired.length > 5 && `...等 ${expired.length} 位`}
+                          {expired.map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
                         </span>
                       </div>
                     )}
@@ -794,8 +793,7 @@ export function MemberManagement() {
                       <div>
                         <span style={{ fontSize: '12px', color: '#ff9800', fontWeight: '600' }}>⏰ 即將到期 ({upcoming.length})：</span>
                         <span style={{ fontSize: '12px', color: '#666' }}>
-                          {upcoming.slice(0, 5).map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
-                          {upcoming.length > 5 && `...等 ${upcoming.length} 位`}
+                          {upcoming.map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
                         </span>
                       </div>
                     )}
@@ -813,8 +811,7 @@ export function MemberManagement() {
                       <div style={{ marginBottom: '8px' }}>
                         <span style={{ fontSize: '12px', color: '#f44336', fontWeight: '600' }}>🏄 已過期置板 ({expiredBoards.length})：</span>
                         <span style={{ fontSize: '12px', color: '#666' }}>
-                          {expiredBoards.slice(0, 5).map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
-                          {expiredBoards.length > 5 && `...等 ${expiredBoards.length} 位`}
+                          {expiredBoards.map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
                         </span>
                       </div>
                     )}
@@ -822,8 +819,7 @@ export function MemberManagement() {
                       <div>
                         <span style={{ fontSize: '12px', color: '#2196F3', fontWeight: '600' }}>🏄 即將到期置板 ({upcomingBoards.length})：</span>
                         <span style={{ fontSize: '12px', color: '#666' }}>
-                          {upcomingBoards.slice(0, 5).map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
-                          {upcomingBoards.length > 5 && `...等 ${upcomingBoards.length} 位`}
+                          {upcomingBoards.map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
                         </span>
                       </div>
                     )}
