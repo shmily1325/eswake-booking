@@ -624,7 +624,7 @@ export function LiffMyBookings() {
               color: '#555',
               marginBottom: '8px'
             }}>
-              手機號碼 <span style={{ color: '#cf1322' }}>*</span>
+              手機號碼
             </label>
             <input
               type="tel"
@@ -664,7 +664,7 @@ export function LiffMyBookings() {
               color: '#555',
               marginBottom: '8px'
             }}>
-              生日（選填）
+              生日
             </label>
             <input
               type="date"
@@ -672,33 +672,30 @@ export function LiffMyBookings() {
               onChange={(e) => setBirthday(e.target.value)}
               style={{
                 width: '100%',
+                maxWidth: '100%',
                 padding: '14px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
                 fontSize: '16px',
                 boxSizing: 'border-box',
                 outline: 'none',
-                transition: 'border-color 0.2s'
+                transition: 'border-color 0.2s',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                appearance: 'none'
               }}
               onFocus={(e) => e.target.style.borderColor = '#5a5a5a'}
               onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
             />
-            <div style={{
-              fontSize: '12px',
-              color: '#999',
-              marginTop: '6px'
-            }}>
-              填寫生日可收到生日祝福 🎂
-            </div>
           </div>
 
           <button
             onClick={handleBinding}
-            disabled={binding || !phone}
+            disabled={binding || !phone || !birthday}
             style={{
               width: '100%',
               padding: '14px',
-              background: binding || !phone 
+              background: binding || !phone || !birthday
                 ? '#ccc' 
                 : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
               color: 'white',
@@ -706,12 +703,12 @@ export function LiffMyBookings() {
               borderRadius: '8px',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: binding || !phone ? 'not-allowed' : 'pointer',
+              cursor: binding || !phone || !birthday ? 'not-allowed' : 'pointer',
               transition: 'transform 0.1s',
               marginBottom: '16px'
             }}
             onMouseDown={(e) => {
-              if (!binding && phone) {
+              if (!binding && phone && birthday) {
                 (e.target as HTMLElement).style.transform = 'scale(0.98)'
               }
             }}
@@ -733,9 +730,8 @@ export function LiffMyBookings() {
             <div style={{ fontWeight: '600', marginBottom: '8px', color: '#555' }}>
               💡 綁定說明
             </div>
-            • 請輸入您在系統中註冊的手機號碼<br/>
-            • 綁定後可查看您的預約記錄<br/>
-            • 未來將自動收到預約提醒
+            • 請輸入您的手機號碼與生日<br/>
+            • 綁定後可查看預約紀錄與儲值紀錄
           </div>
         </div>
       </div>
