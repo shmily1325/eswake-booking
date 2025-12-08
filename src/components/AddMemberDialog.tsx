@@ -99,6 +99,27 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
     setLoading(true)
     try {
+      // 0. 先檢查格位是否可用
+      if (boards.length > 0) {
+        const slotNumbers = boards
+          .filter(b => b.slot_number)
+          .map(b => parseInt(b.slot_number))
+        
+        if (slotNumbers.length > 0) {
+          const { data: existingSlots } = await supabase
+            .from('board_storage')
+            .select('slot_number')
+            .in('slot_number', slotNumbers)
+          
+          if (existingSlots && existingSlots.length > 0) {
+            const occupiedSlots = existingSlots.map(s => `#${s.slot_number}`).join('、')
+            toast.error(`格位 ${occupiedSlots} 已被使用，請選擇其他格位`)
+            setLoading(false)
+            return
+          }
+        }
+      }
+
       // 1. 新增會員
       const { data: newMember, error: memberError } = await supabase
         .from('members')
@@ -200,7 +221,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
         // @ts-ignore
         await supabase.from('member_notes').insert(notesToAdd)
       }
-
       onSuccess()
       onClose()
       
@@ -220,9 +240,14 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
         notes: '',
       })
       setBoards([])
-    } catch (error) {
+    } catch (error: any) {
       console.error('新增會員失敗:', error)
-      toast.error('新增會員失敗')
+      const message = error?.message || '未知錯誤'
+      if (message.includes('格位')) {
+        toast.error(message)
+      } else {
+        toast.error(`新增會員失敗: ${message}`)
+      }
     } finally{
       setLoading(false)
     }

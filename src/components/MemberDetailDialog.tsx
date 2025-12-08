@@ -426,17 +426,19 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
   }
 
   const handleDeleteBoard = async (boardId: number, slotNumber: number) => {
-    if (!confirm(`確定要刪除格位 ${slotNumber} 嗎？`)) {
+    if (!confirm(`確定要刪除格位 #${slotNumber} 嗎？`)) {
       return
     }
 
     try {
+      // 真正刪除記錄，而不是只改狀態
       const { error } = await supabase
         .from('board_storage')
-        .update({ status: 'cancelled' })
+        .delete()
         .eq('id', boardId)
 
       if (error) throw error
+      toast.success(`已刪除格位 #${slotNumber}`)
       loadMemberData()
       onUpdate()
     } catch (error) {
