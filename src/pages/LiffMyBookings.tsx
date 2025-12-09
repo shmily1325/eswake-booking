@@ -489,6 +489,19 @@ export function LiffMyBookings() {
     const end = new Date(start.getTime() + duration * 60000)
     return `${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`
   }
+  
+  // 取得抵達時間（提前30分鐘）
+  const getArrivalTime = (startAt: string) => {
+    const start = new Date(startAt)
+    const arrival = new Date(start.getTime() - 30 * 60000)
+    return `${arrival.getHours().toString().padStart(2, '0')}:${arrival.getMinutes().toString().padStart(2, '0')}`
+  }
+  
+  // 取得下水時間
+  const getStartTime = (startAt: string) => {
+    const start = new Date(startAt)
+    return `${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`
+  }
 
   if (error) {
     return (
@@ -984,11 +997,21 @@ export function LiffMyBookings() {
             flexDirection: 'column',
             gap: '12px'
           }}>
-            {bookings.map((booking) => {
-              const coachNames = booking.coaches.map(c => c.name).join('、') || '未指定'
-              const driverNames = booking.drivers.map(d => d.name).join('、')
+            {(() => {
+              // 追蹤每天的第一個預約
+              const seenDates = new Set<string>()
               
-              return (
+              return bookings.map((booking) => {
+                const coachNames = booking.coaches.map(c => c.name).join('、')
+                
+                // 檢查是否為當天第一個預約
+                const bookingDate = booking.start_at.split('T')[0]
+                const isFirstOfDay = !seenDates.has(bookingDate)
+                if (isFirstOfDay) {
+                  seenDates.add(bookingDate)
+                }
+              
+                return (
                 <div
                   key={booking.id}
                   style={{
@@ -999,18 +1022,43 @@ export function LiffMyBookings() {
                     borderLeft: `4px solid ${booking.boats?.color || '#1976d2'}`
                   }}
                 >
-                  {/* 日期時間 */}
+                  {/* 日期 */}
                   <div style={{
                     fontSize: '16px',
                     fontWeight: '600',
                     color: '#333',
-                    marginBottom: '12px',
+                    marginBottom: '8px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px'
                   }}>
                     <span>📅</span>
                     <span>{formatDate(booking.start_at)}</span>
+                  </div>
+                  
+                  {/* 抵達時間 & 下水時間 */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '16px',
+                    marginBottom: '12px',
+                    padding: '10px 12px',
+                    background: '#f0f7ff',
+                    borderRadius: '8px'
+                  }}>
+                    {isFirstOfDay && (
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>🚗 抵達時間</div>
+                        <div style={{ fontSize: '18px', fontWeight: '700', color: '#1976d2' }}>
+                          {getArrivalTime(booking.start_at)}
+                        </div>
+                      </div>
+                    )}
+                    <div style={isFirstOfDay ? { borderLeft: '1px solid #ddd', paddingLeft: '16px' } : {}}>
+                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>🏄 下水時間</div>
+                      <div style={{ fontSize: '18px', fontWeight: '700', color: '#333' }}>
+                        {getStartTime(booking.start_at)}
+                      </div>
+                    </div>
                   </div>
 
                   {/* 船隻 */}
@@ -1039,27 +1087,17 @@ export function LiffMyBookings() {
                   }}>
                     ⏱️ {booking.duration_min} 分鐘
                     <span style={{ color: '#999', marginLeft: '8px' }}>
-                      (結束時間: {getEndTime(booking.start_at, booking.duration_min)})
+                      (結束: {getEndTime(booking.start_at, booking.duration_min)})
                     </span>
                   </div>
 
-                  {/* 教練 */}
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#666',
-                    marginBottom: driverNames ? '8px' : '0'
-                  }}>
-                    🎓 教練：{coachNames}
-                  </div>
-
-                  {/* 駕駛 */}
-                  {driverNames && (
+                  {/* 教練（如果有指定才顯示）*/}
+                  {coachNames && (
                     <div style={{
                       fontSize: '14px',
-                      color: '#666',
-                      marginBottom: '8px'
+                      color: '#666'
                     }}>
-                      🚤 駕駛：{driverNames}
+                      🎓 指定教練: {coachNames}
                     </div>
                   )}
 
@@ -1106,7 +1144,8 @@ export function LiffMyBookings() {
                   )}
                 </div>
               )
-            })}
+            })
+            })()}
           </div>
         )}
           </>
@@ -1369,7 +1408,7 @@ export function LiffMyBookings() {
                   const now = new Date()
                   const hoursDiff = (startTime.getTime() - now.getTime()) / (1000 * 60 * 60)
                   const canCancel = hoursDiff > 24
-                  const coachNames = booking.coaches.map(c => c.name).join('、') || '未指定'
+                  const coachNames = booking.coaches.map(c => c.name).join('、')
                   
                   return (
                     <div
@@ -1391,7 +1430,7 @@ export function LiffMyBookings() {
                         {formatDate(booking.start_at)}
                       </div>
                       <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-                        🚤 {booking.boats?.name} · 🎓 {coachNames}
+                        🚤 {booking.boats?.name}{coachNames ? ` · 指定教練: ${coachNames}` : ''}
                       </div>
                       <div style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
                         ⏱️ {booking.duration_min} 分鐘
