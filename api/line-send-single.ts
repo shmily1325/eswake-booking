@@ -36,7 +36,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error('LINE API Error:', errorData);
       return res.status(response.status).json({ 
         success: false, 
-        error: errorData.message || 'Failed to send message' 
+        error: errorData.message || 'Failed to send message',
+        details: errorData
       });
     }
 
