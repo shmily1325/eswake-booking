@@ -14,14 +14,20 @@
 4. 建立服務帳號 (Service Account)
 5. 建立 JSON 金鑰並下載保存
 
-### 步驟 2：建立 Google Drive 資料夾
+### 步驟 2：建立 Google Drive 資料夾（**重要**）
+
+> ⚠️ **重要**：服務帳號沒有儲存配額，無法在自己的 Drive 中儲存檔案。**必須**將檔案上傳到已共享給服務帳號的資料夾。
 
 1. 在 Google Drive 建立一個新的資料夾（例如：`ESWake 資料庫備份`）
 2. 取得資料夾 ID：
    - 開啟資料夾
    - 網址格式：`https://drive.google.com/drive/folders/<FOLDER_ID>`
    - 複製 `<FOLDER_ID>` 部分
-3. 將服務帳號的 email 加入資料夾的「共用」設定，給予「編輯者」權限
+3. **將服務帳號的 email 加入資料夾的「共用」設定，給予「編輯者」權限**
+   - 在資料夾上按右鍵 → 「共用」
+   - 輸入服務帳號的 email（例如：`backup-service@project.iam.gserviceaccount.com`）
+   - 選擇「編輯者」權限
+   - 點擊「傳送」
 
 ### 步驟 3：設定 Vercel 環境變數
 
@@ -33,7 +39,7 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase `service_role` API key | `eyJhbGciOiJI...` |
 | `GOOGLE_CLIENT_EMAIL` | 服務帳號 email | `backup-service@project.iam.gserviceaccount.com` |
 | `GOOGLE_PRIVATE_KEY` | 服務帳號私鑰（保留 `-----BEGIN ... END PRIVATE KEY-----`） | `-----BEGIN PRIVATE KEY-----<br>...<br>-----END PRIVATE KEY-----` |
-| `GOOGLE_DRIVE_FOLDER_ID` | Google Drive 資料夾 ID（可選，不設定會上傳到服務帳號的根目錄） | `1abc123...XYZ` |
+| `GOOGLE_DRIVE_FOLDER_ID` | **Google Drive 資料夾 ID（必填）** | `1abc123...XYZ` |
 
 > 若私鑰是單行字串，程式會自動把 `\n` 還原成換行。
 
@@ -107,12 +113,25 @@ eswake_backup_2025-12-09T10-00-00.sql
 
 ### 問題 2：無法上傳到資料夾
 
-**錯誤**：`Permission denied`
+**錯誤**：`Permission denied` 或 `storageQuotaExceeded`
 
 **解決**：
-1. 確認服務帳號 email 已加入資料夾的「共用」設定
+1. **確認服務帳號 email 已加入資料夾的「共用」設定**（這是最常見的問題）
 2. 確認服務帳號有「編輯者」權限
 3. 檢查 `GOOGLE_DRIVE_FOLDER_ID` 是否正確
+4. 確認資料夾不是服務帳號自己的 Drive，而是您的個人 Drive 或共享雲端硬碟
+
+### 問題 2-1：服務帳號沒有儲存配額錯誤
+
+**錯誤**：`Service Accounts do not have storage quota`
+
+**原因**：服務帳號無法在自己的 Drive 中儲存檔案。
+
+**解決**：
+1. **必須設定 `GOOGLE_DRIVE_FOLDER_ID`**（不能為空）
+2. **必須將服務帳號加入資料夾的「共用」設定**，給予「編輯者」權限
+3. 確認資料夾是您的個人 Drive 或共享雲端硬碟，不是服務帳號的 Drive
+4. 如果使用共享雲端硬碟（Shared Drive），確保服務帳號在該共享雲端硬碟有權限
 
 ### 問題 3：備份檔案為空
 

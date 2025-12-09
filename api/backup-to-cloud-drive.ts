@@ -71,6 +71,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       logStep('錯誤: Missing Google Drive credentials');
       throw new Error('Missing Google Drive credentials');
     }
+    if (!googleDriveFolderId) {
+      logStep('錯誤: GOOGLE_DRIVE_FOLDER_ID 必須設定');
+      throw new Error('GOOGLE_DRIVE_FOLDER_ID 必須設定。服務帳號無法在自己的 Drive 中儲存檔案，必須上傳到已共享的資料夾。');
+    }
 
     // 初始化 Google Drive 客户端
     logStep('3. 初始化 Google Drive 客戶端');
@@ -78,7 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       email: googleClientEmail,
       key: googlePrivateKey,
       scopes: [
-        'https://www.googleapis.com/auth/drive.file', // 只能存取服務帳號建立的檔案
+        'https://www.googleapis.com/auth/drive', // 需要完整權限以存取共享資料夾
       ],
     });
     const drive = google.drive({ version: 'v3', auth });
@@ -183,12 +187,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const fileMetadata = {
       name: fileName,
       mimeType: 'text/plain',
+      parents: [googleDriveFolderId], // 必須上傳到共享資料夾
     };
-
-    // 如果有指定資料夾 ID，將檔案上傳到該資料夾
-    if (googleDriveFolderId) {
-      (fileMetadata as any).parents = [googleDriveFolderId];
-    }
 
     const media = {
       mimeType: 'text/plain',
@@ -199,6 +199,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       requestBody: fileMetadata,
       media: media,
       fields: 'id, name, webViewLink, size, createdTime',
+      supportsAllDrives: true, // 支援共享雲端硬碟
+      supportsTeamDrives: true, // 支援團隊雲端硬碟（舊版 API）
     });
 
     logStep('8. 檔案上傳完成', {
@@ -216,14 +218,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
       // 查詢所有備份檔案
-      const query = googleDriveFolderId
-        ? `'${googleDriveFolderId}' in parents and name contains 'eswake_backup_' and name endsWith '.sql'`
-        : `name contains 'eswake_backup_' and name endsWith '.sql'`;
+      const query = `'${googleDriveFolderId}' in parents and name contains 'eswake_backup_' and name endsWith '.sql'`;
 
       const listResponse = await drive.files.list({
         q: query,
         fields: 'files(id, name, createdTime)',
         orderBy: 'createdTime desc',
+        supportsAllDrives: true, // 支援共享雲端硬碟
+        includeItemsFromAllDrives: true, // 包含所有雲端硬碟的檔案
+        supportsTeamDrives: true, // 支援團隊雲端硬碟（舊版 API）
       });
 
       if (listResponse.data.files) {
