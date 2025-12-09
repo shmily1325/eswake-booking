@@ -11,6 +11,10 @@
       "schedule": "20 19 * * *"
     },
     {
+      "path": "/api/backup-to-cloud-drive",
+      "schedule": "0 1 15 * *"
+    },
+    {
       "path": "/api/line-reminder",
       "schedule": "0 19 * * *"
     }

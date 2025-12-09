@@ -14,6 +14,7 @@ export function BackupPage() {
   const [backupLoading, setBackupLoading] = useState(false)
   const [fullBackupLoading, setFullBackupLoading] = useState(false)
   const [queryableBackupLoading, setQueryableBackupLoading] = useState(false)
+  const [cloudBackupLoading, setCloudBackupLoading] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [exportType, setExportType] = useState<'bookings' | 'member_hours' | 'coach_hours'>('bookings')
@@ -528,6 +529,43 @@ export function BackupPage() {
     }
   }
 
+  const backupToCloudDrive = async () => {
+    setCloudBackupLoading(true)
+    try {
+      const response = await fetch('/api/backup-to-cloud-drive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || '備份失敗')
+      }
+
+      const result = await response.json()
+      
+      if (result.fileUrl) {
+        toast.success(
+          `✅ ${result.message}\n\n` +
+          `檔案名稱: ${result.fileName}\n` +
+          `檔案大小: ${result.fileSize ? `${(parseInt(result.fileSize) / 1024).toFixed(2)} KB` : '未知'}\n` +
+          `總記錄數: ${result.totalRecords} 筆\n\n` +
+          `點擊確定後將在新視窗開啟 Google Drive`
+        )
+        window.open(result.fileUrl, '_blank')
+      } else {
+        toast.success(`✅ ${result.message}`)
+      }
+    } catch (error) {
+      console.error('Cloud backup error:', error)
+      toast.error(`備份失敗：${(error as Error).message}`)
+    } finally {
+      setCloudBackupLoading(false)
+    }
+  }
+
   const backupToGoogleSheets = async () => {
     setBackupLoading(true)
     const startTime = Date.now()
@@ -811,24 +849,67 @@ export function BackupPage() {
             </button>
             <button
               onClick={backupToGoogleSheets}
-              disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading}
+              disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading}
               style={{
                 flex: 1,
                 minWidth: '200px',
                 padding: '16px',
                 fontSize: '16px',
                 fontWeight: '600',
-                background: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? '#ccc' : 'linear-gradient(135deg, #4285f4 0%, #34a853 100%)',
+                background: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? '#ccc' : 'linear-gradient(135deg, #4285f4 0%, #34a853 100%)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '10px',
-                cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'not-allowed' : 'pointer',
-                boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'none' : '0 4px 12px rgba(66, 133, 244, 0.3)',
+                cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'not-allowed' : 'pointer',
+                boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'none' : '0 4px 12px rgba(66, 133, 244, 0.3)',
                 transition: 'all 0.2s'
               }}
             >
               {backupLoading ? '⏳ 備份中...' : '☁️ 備份到 Google Sheets'}
             </button>
+          </div>
+
+          {/* 云端完整数据库备份 */}
+          <div style={{
+            marginTop: '20px',
+            padding: '20px',
+            backgroundColor: '#f0f9ff',
+            borderRadius: '8px',
+            border: '1px solid #93c5fd'
+          }}>
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#1e40af' }}>
+              ☁️ 云端完整数据库备份
+            </h3>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
+              将完整数据库备份（SQL 文件）自动上传到 Google Drive，无需电脑开机
+            </p>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                onClick={backupToCloudDrive}
+                disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading}
+                style={{
+                  flex: 1,
+                  minWidth: '200px',
+                  padding: '16px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  background: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? '#ccc' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.3)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {cloudBackupLoading ? '⏳ 上傳中...' : '☁️ 備份到 Google Drive (SQL)'}
+              </button>
+            </div>
+            <div style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>
+              <div>💡 <strong>云端备份</strong>：完整数据库 SQL 文件自动上传到 Google Drive</div>
+              <div style={{ marginTop: '5px' }}>💡 <strong>自动清理</strong>：自动删除超过 90 天的旧备份</div>
+              <div style={{ marginTop: '5px' }}>💡 <strong>无需电脑开机</strong>：系统每天自动备份（UTC 02:00）</div>
+            </div>
           </div>
 
           {/* 完整備份和可查詢備份 */}
@@ -848,19 +929,19 @@ export function BackupPage() {
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button
                 onClick={backupFullDatabase}
-                disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading}
+                disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading}
                 style={{
                   flex: 1,
                   minWidth: '200px',
                   padding: '16px',
                   fontSize: '16px',
                   fontWeight: '600',
-                  background: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? '#ccc' : 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                  background: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? '#ccc' : 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '10px',
-                  cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'not-allowed' : 'pointer',
-                  boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'none' : '0 4px 12px rgba(220, 53, 69, 0.3)',
+                  cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'none' : '0 4px 12px rgba(220, 53, 69, 0.3)',
                   transition: 'all 0.2s'
                 }}
               >
@@ -868,19 +949,19 @@ export function BackupPage() {
               </button>
               <button
                 onClick={backupQueryable}
-                disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading}
+                disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading}
                 style={{
                   flex: 1,
                   minWidth: '200px',
                   padding: '16px',
                   fontSize: '16px',
                   fontWeight: '600',
-                  background: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? '#ccc' : 'linear-gradient(135deg, #fd7e14 0%, #e55a00 100%)',
+                  background: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? '#ccc' : 'linear-gradient(135deg, #fd7e14 0%, #e55a00 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '10px',
-                  cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'not-allowed' : 'pointer',
-                  boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'none' : '0 4px 12px rgba(253, 126, 20, 0.3)',
+                  cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'none' : '0 4px 12px rgba(253, 126, 20, 0.3)',
                   transition: 'all 0.2s'
                 }}
               >
