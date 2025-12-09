@@ -52,7 +52,6 @@ export function LineSettings() {
   const [sentStudents, setSentStudents] = useState<Set<string>>(new Set())
   
   // LINE 綁定資料
-  const [lineBindings, setLineBindings] = useState<Map<string, string>>(new Map()) // phone -> line_user_id
   const [bindingStats, setBindingStats] = useState<BindingStats | null>(null)
   const [boundMembersList, setBoundMembersList] = useState<any[]>([])
   const [unboundMembers, setUnboundMembers] = useState<any[]>([])
@@ -136,22 +135,15 @@ export function LineSettings() {
         .select('member_id, line_user_id, phone, members:member_id(id, name, nickname, phone)')
         .eq('status', 'active')
       
-      // 建立 phone -> line_user_id 的對照表
-      const bindingMap = new Map<string, string>()
+      // 建立會員綁定列表（包含 line_user_id）
       const boundList: any[] = []
       bindings?.forEach(b => {
-        if (b.phone) {
-          bindingMap.set(b.phone.replace(/-/g, ''), b.line_user_id)
-        }
         if (b.members) {
           const member = b.members as any
-          if (member.phone) {
-            bindingMap.set(member.phone.replace(/-/g, ''), b.line_user_id)
-          }
-          boundList.push(member)
+          // ✅ 將 line_user_id 一起存入 boundList
+          boundList.push({ ...member, line_user_id: b.line_user_id })
         }
       })
-      setLineBindings(bindingMap)
       setBoundMembersList(boundList)
       
       // 統計
@@ -390,25 +382,12 @@ export function LineSettings() {
   
   // 檢查學員是否有 LINE 綁定
   const getStudentLineInfo = (studentName: string): { hasLine: boolean; lineUserId?: string } => {
-    // 找出此學員的電話
-    for (const booking of bookings) {
-      const names = booking.contact_name.split(',').map(n => n.trim())
-      if (names.includes(studentName)) {
-        // 查找 booking_members 中的電話
-        // 這邊簡化處理：用名字匹配綁定
-        for (const [, lineUserId] of lineBindings) {
-          // 嘗試匹配（實際上應該用 member_id 匹配）
-          if (lineUserId) {
-            // 檢查 boundMembersList 中是否有這個學員
-            const boundMember = boundMembersList.find(m => 
-              m.name === studentName || m.nickname === studentName
-            )
-            if (boundMember) {
-              return { hasLine: true, lineUserId }
-            }
-          }
-        }
-      }
+    // ✅ 直接從 boundMembersList 中查找（現在包含 line_user_id）
+    const boundMember = boundMembersList.find(m => 
+      m.name === studentName || m.nickname === studentName
+    )
+    if (boundMember && boundMember.line_user_id) {
+      return { hasLine: true, lineUserId: boundMember.line_user_id }
     }
     return { hasLine: false }
   }
