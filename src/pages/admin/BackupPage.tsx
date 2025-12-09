@@ -475,7 +475,7 @@ export function BackupPage() {
         throw new Error(error.message || '備份失敗')
       }
 
-      // 下载 SQL 文件
+      // 下載 SQL 檔案
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -485,7 +485,7 @@ export function BackupPage() {
       link.click()
       URL.revokeObjectURL(url)
 
-      toast.success('完整數據庫備份成功！文件已下載，請保存到 WD MY BOOK 硬盤。')
+      toast.success('完整資料庫備份成功！檔案已下載，請保存到 WD MY BOOK 硬碟。')
     } catch (error) {
       console.error('Full backup error:', error)
       toast.error(`備份失敗：${(error as Error).message}`)
@@ -509,7 +509,7 @@ export function BackupPage() {
         throw new Error(error.message || '備份失敗')
       }
 
-      // 下载 JSON 文件
+      // 下載 JSON 檔案
       const data = await response.json()
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -520,7 +520,7 @@ export function BackupPage() {
       link.click()
       URL.revokeObjectURL(url)
 
-      toast.success('可查詢備份成功！文件已下載，可用查詢工具打開：/backup-query-tool.html')
+      toast.success('可查詢備份成功！檔案已下載，可用查詢工具打開：/backup-query-tool.html')
     } catch (error) {
       console.error('Queryable backup error:', error)
       toast.error(`備份失敗：${(error as Error).message}`)
@@ -845,7 +845,7 @@ export function BackupPage() {
                 transition: 'all 0.2s'
               }}
             >
-              {loading ? '⏳ 導出中...' : '💾 導出 CSV 文件'}
+              {loading ? '⏳ 導出中...' : '💾 導出 CSV 檔案'}
             </button>
             <button
               onClick={backupToGoogleSheets}
@@ -869,7 +869,7 @@ export function BackupPage() {
             </button>
           </div>
 
-          {/* 云端完整数据库备份 */}
+          {/* 雲端完整資料庫備份 */}
           <div style={{
             marginTop: '20px',
             padding: '20px',
@@ -878,10 +878,10 @@ export function BackupPage() {
             border: '1px solid #93c5fd'
           }}>
             <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#1e40af' }}>
-              ☁️ 云端完整数据库备份
+              ☁️ 雲端完整資料庫備份
             </h3>
             <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
-              将完整数据库备份（SQL 文件）自动上传到 Google Drive，无需电脑开机
+              將完整資料庫備份（SQL 檔案）自動上傳到 Google Drive，無需電腦開機
             </p>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button
@@ -906,9 +906,9 @@ export function BackupPage() {
               </button>
             </div>
             <div style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>
-              <div>💡 <strong>云端备份</strong>：完整数据库 SQL 文件自动上传到 Google Drive</div>
-              <div style={{ marginTop: '5px' }}>💡 <strong>自动清理</strong>：自动删除超过 90 天的旧备份</div>
-              <div style={{ marginTop: '5px' }}>💡 <strong>无需电脑开机</strong>：系统每天自动备份（UTC 02:00）</div>
+              <div>💡 <strong>雲端備份</strong>：完整資料庫 SQL 檔案自動上傳到 Google Drive</div>
+              <div style={{ marginTop: '5px' }}>💡 <strong>自動清理</strong>：自動刪除超過 90 天的舊備份</div>
+              <div style={{ marginTop: '5px' }}>💡 <strong>無需電腦開機</strong>：系統每天自動備份（UTC 02:00）</div>
             </div>
           </div>
 
@@ -924,7 +924,7 @@ export function BackupPage() {
               🛡️ 災難恢復備份（推薦）
             </h3>
             <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
-              在網頁和數據庫掛掉時，可以使用這些備份文件查詢預約和財務數據
+              在網頁和資料庫掛掉時，可以使用這些備份檔案查詢預約和財務數據
             </p>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button
@@ -988,12 +988,12 @@ export function BackupPage() {
               💡 使用說明：
             </div>
             <ul style={{ margin: 0, paddingLeft: '20px' }}>
-              <li>CSV 文件可用 Excel 或 Google Sheets 打開</li>
+              <li>CSV 檔案可用 Excel 或 Google Sheets 打開</li>
               <li>包含完整的預約、會員時數、教練時數等詳細資訊</li>
               <li>所有時間已格式化為易讀格式（YYYY/MM/DD HH:mm）</li>
               <li>系統會每天自動備份到 Google Sheets（根據 vercel.json 中的 cron 設定）</li>
               <li>也可以手動點擊「備份到 Google Sheets」按鈕立即備份</li>
-              <li><strong>建議：</strong>每週備份一次完整數據庫，每天備份一次可查詢備份到 WD MY BOOK 硬盤</li>
+              <li><strong>建議：</strong>每週備份一次完整資料庫，每天備份一次可查詢備份到 WD MY BOOK 硬碟</li>
             </ul>
           </div>
         </div>
