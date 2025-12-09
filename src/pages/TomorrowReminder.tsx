@@ -238,9 +238,10 @@ export function TomorrowReminder() {
     
     // ✅ 按順序處理每個預約
     studentBookings.forEach((booking, index) => {
-      const coachNames = booking.coaches && booking.coaches.length > 0
-        ? booking.coaches.map(c => c.name).join('/')
-        : '未指定'
+      const hasCoach = booking.coaches && booking.coaches.length > 0
+      const coachNames = hasCoach
+        ? booking.coaches!.map(c => c.name).join('/')
+        : ''
       const startTime = formatTimeNoColon(booking.start_at)
       const boatName = booking.boats?.name || ''
       const isFacility = boatName.includes('彈簧床')
@@ -253,7 +254,9 @@ export function TomorrowReminder() {
       if (index === 0) {
         // 第一個預約：教練 + 抵達時間 + 下水時間（或彈簧床）
         const arrivalTime = getArrivalTimeNoColon(booking.start_at)
-        message += `${coachNames}教練\n`
+        if (hasCoach) {
+          message += `${coachNames}教練\n`
+        }
         message += `${arrivalTime}抵達\n`
         if (isFacility) {
           message += `${startTime}彈簧床\n`
@@ -269,7 +272,7 @@ export function TomorrowReminder() {
           message += `\n${shipLabel}\n`
         }
         
-        // 檢查是否同一個教練
+        // 檢查是否同一個教練（空字串也視為相同，避免重複顯示空內容）
         if (coachNames === previousCoachNames) {
           // 同一個教練：只顯示時間，不顯示教練名稱
           if (isFacility) {
@@ -278,8 +281,10 @@ export function TomorrowReminder() {
             message += `${startTime}下水\n`
           }
         } else {
-          // 不同教練：顯示教練名稱 + 時間
-          message += `${coachNames}教練\n`
+          // 不同教練：顯示教練名稱 + 時間（如果有教練才顯示）
+          if (hasCoach) {
+            message += `${coachNames}教練\n`
+          }
           if (isFacility) {
             message += `${startTime}彈簧床\n`
           } else {
@@ -774,10 +779,10 @@ export function TomorrowReminder() {
                   const startTime = formatTimeNoColon(booking.start_at)
                   const arrivalTime = getArrivalTimeNoColon(booking.start_at)
                   
-                  // 直接使用 booking.coaches 數組
+                  // 直接使用 booking.coaches 數組（如果沒有教練就不顯示）
                   const allCoaches = booking.coaches && booking.coaches.length > 0
                     ? booking.coaches.map(c => c.name).join(' / ')
-                    : '未指定'
+                    : ''
                   
                   return (
                     <div
@@ -808,7 +813,7 @@ export function TomorrowReminder() {
                           {booking.contact_name}
                         </div>
                         <div style={{ fontSize: isMobile ? '12px' : '12px', color: '#666', marginTop: '2px' }}>
-                          {allCoaches} · {booking.boats?.name} · {booking.duration_min}分
+                          {allCoaches ? `${allCoaches} · ` : ''}{booking.boats?.name} · {booking.duration_min}分
                         </div>
                       </div>
                       
