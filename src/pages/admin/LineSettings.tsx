@@ -85,6 +85,7 @@ export function LineSettings() {
   const [accessToken, setAccessToken] = useState('')
   const [reminderTime, setReminderTime] = useState('19:00')
   const [saving, setSaving] = useState(false)
+  const [showToken, setShowToken] = useState(false)
   
   useEffect(() => {
     localStorage.setItem('includeWeatherWarning', JSON.stringify(includeWeatherWarning))
@@ -901,13 +902,33 @@ export function LineSettings() {
 
               <div style={{ padding: '12px', background: designSystem.colors.background.main, borderRadius: '6px', marginBottom: '12px' }}>
                 <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>🔑 Access Token</div>
-                <input
-                  type="password"
-                  value={accessToken}
-                  onChange={(e) => setAccessToken(e.target.value)}
-                  placeholder="LINE Channel Access Token"
-                  style={{ width: '100%', padding: '10px', border: `1px solid ${designSystem.colors.border.main}`, borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showToken ? 'text' : 'password'}
+                    value={accessToken}
+                    onChange={(e) => setAccessToken(e.target.value)}
+                    placeholder="LINE Channel Access Token"
+                    style={{ width: '100%', padding: '10px', paddingRight: '70px', border: `1px solid ${designSystem.colors.border.main}`, borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowToken(!showToken)}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'transparent',
+                      border: 'none',
+                      fontSize: '13px',
+                      color: designSystem.colors.primary[500],
+                      cursor: 'pointer',
+                      padding: '4px 8px'
+                    }}
+                  >
+                    {showToken ? '隱藏' : '顯示'}
+                  </button>
+                </div>
               </div>
 
               <button
