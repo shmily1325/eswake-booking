@@ -192,7 +192,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const media = {
       mimeType: 'text/plain',
-      body: Buffer.from(sqlContent, 'utf-8'),
+      body: sqlContent, // 直接使用字符串，Google Drive API 會自動處理
     };
 
     const uploadResponse = await drive.files.create({
