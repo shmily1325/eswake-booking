@@ -496,68 +496,80 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           {/* 日期區間篩選 */}
           <div style={{ marginBottom: '16px' }}>
             <div style={{ 
-              fontSize: '14px', 
-              fontWeight: '500', 
-              color: '#495057',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               marginBottom: '8px'
             }}>
-              📅 日期區間 {(startDate || endDate) && <span style={{ color: '#007bff' }}>(已設定)</span>}
-            </div>
-            <div style={{ 
-              display: 'flex', 
-              gap: '8px',
-              alignItems: 'center'
-            }}>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: '10px 12px',
-                  border: startDate ? '2px solid #007bff' : '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: startDate ? '#f0f7ff' : 'white',
-                }}
-              />
-              <span style={{ color: '#666' }}>~</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: '10px 12px',
-                  border: endDate ? '2px solid #007bff' : '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: endDate ? '#f0f7ff' : 'white',
-                }}
-              />
+              <span style={{ 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: '#495057',
+              }}>
+                📅 日期區間 {(startDate || endDate) && <span style={{ color: '#007bff' }}>(已設定)</span>}
+              </span>
               {(startDate || endDate) && (
                 <button
                   type="button"
                   onClick={() => { setStartDate(''); setEndDate(''); }}
                   style={{
-                    padding: '10px',
+                    padding: '4px 10px',
                     border: 'none',
                     background: '#dc3545',
                     color: 'white',
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '14px',
+                    fontSize: '12px',
                     fontWeight: '600',
                   }}
                 >
-                  ✕
+                  清除
                 </button>
               )}
             </div>
             <div style={{ 
+              display: 'flex', 
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: '8px',
+              alignItems: isMobile ? 'stretch' : 'center'
+            }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', color: '#666', minWidth: '32px' }}>從</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    border: startDate ? '2px solid #007bff' : '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: startDate ? '#f0f7ff' : 'white',
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', color: '#666', minWidth: '32px' }}>到</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    border: endDate ? '2px solid #007bff' : '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: endDate ? '#f0f7ff' : 'white',
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ 
               fontSize: '12px', 
               color: '#888',
-              marginTop: '4px'
+              marginTop: '6px'
             }}>
               {(!startDate && !endDate) ? '不設定日期區間時，預設只顯示未來預約' : ''}
             </div>
