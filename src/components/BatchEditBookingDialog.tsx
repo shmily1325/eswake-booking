@@ -259,16 +259,16 @@ export function BatchEditBookingDialog({
             }
           }
           
-          // 1. 檢查船隻維修/停用
-          if (fieldsToEdit.has('boat') && selectedBoatId) {
-            const availability = await checkBoatUnavailable(selectedBoatId, dateStr, startTime, undefined, actualDuration)
+          // 1. 檢查船隻維修/停用（不管改船還是改時長都要檢查）
+          if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration')) {
+            const availability = await checkBoatUnavailable(actualBoatId, dateStr, startTime, undefined, actualDuration)
             if (availability.isUnavailable) {
               skippedBoat++
               continue
             }
           }
           
-          // 2. 檢查船隻衝突（使用原本的完整檢查，包含清理時間）
+          // 2. 檢查船隻時間衝突（使用原本的完整檢查，包含清理時間）
           if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration')) {
             const boatConflict = await checkBoatConflict(
               actualBoatId,
@@ -365,10 +365,10 @@ export function BatchEditBookingDialog({
         }
       }
       
-      // 記錄 Audit Log
+      // 記錄 Audit Log（只記錄成功的）
       if (successCount > 0 && user?.email) {
         const details = `批次修改 ${successCount} 筆預約：${changes.join('、')} (填表人: ${filledBy.trim()})`
-        logAction(user.email, 'update', 'bookings', details)
+        await logAction(user.email, 'update', 'bookings', details)
       }
       
       const totalSkipped = skippedBoat + skippedCoach + skippedDuration
