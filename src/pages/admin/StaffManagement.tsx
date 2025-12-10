@@ -1320,13 +1320,13 @@ export function StaffManagement() {
                         ${coach.designated_lesson_price_30min}
                       </div>
                       <div style={{ fontSize: '12px', color: '#999', marginTop: '6px' }}>
-                        其他時長自動換算（無條件進位）：
+                        其他時長自動換算（無條件捨去）：
                       </div>
                       <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                        20分=${Math.ceil(coach.designated_lesson_price_30min * 20 / 30)} / 
-                        40分=${Math.ceil(coach.designated_lesson_price_30min * 40 / 30)} / 
-                        60分=${Math.ceil(coach.designated_lesson_price_30min * 60 / 30)} / 
-                        90分=${Math.ceil(coach.designated_lesson_price_30min * 90 / 30)}
+                        20分=${Math.floor(coach.designated_lesson_price_30min * 20 / 30)} / 
+                        40分=${Math.floor(coach.designated_lesson_price_30min * 40 / 30)} / 
+                        60分=${Math.floor(coach.designated_lesson_price_30min * 60 / 30)} / 
+                        90分=${Math.floor(coach.designated_lesson_price_30min * 90 / 30)}
                       </div>
                     </div>
                   ) : (
@@ -1904,12 +1904,12 @@ export function StaffManagement() {
                   color: '#666'
                 }}>
                   <div style={{ fontWeight: '600', marginBottom: '6px', color: '#f57c00' }}>
-                    換算參考（無條件進位）：
+                    換算參考（無條件捨去）：
                   </div>
-                  <div>20分 = ${Math.ceil(Number(lessonPrice) * 20 / 30)}</div>
-                  <div>40分 = ${Math.ceil(Number(lessonPrice) * 40 / 30)}</div>
-                  <div>60分 = ${Math.ceil(Number(lessonPrice) * 60 / 30)}</div>
-                  <div>90分 = ${Math.ceil(Number(lessonPrice) * 90 / 30)}</div>
+                  <div>20分 = ${Math.floor(Number(lessonPrice) * 20 / 30)}</div>
+                  <div>40分 = ${Math.floor(Number(lessonPrice) * 40 / 30)}</div>
+                  <div>60分 = ${Math.floor(Number(lessonPrice) * 60 / 30)}</div>
+                  <div>90分 = ${Math.floor(Number(lessonPrice) * 90 / 30)}</div>
                 </div>
               )}
             </div>

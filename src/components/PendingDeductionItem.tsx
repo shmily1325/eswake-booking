@@ -123,7 +123,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     
     // G23（最少30分鐘）
     if (boatName.includes('G23')) {
-      return [30, 40, 60, 90].map(min => Math.ceil(pricePerHour * min / 60))
+      return [30, 40, 60, 90].map(min => Math.floor(pricePerHour * min / 60))
     }
     
     // 粉紅/200：沒有 VIP 價格
@@ -132,7 +132,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     }
     
     // 其他船隻
-    return [20, 30, 40, 60, 90].map(min => Math.ceil(pricePerHour * min / 60))
+    return [20, 30, 40, 60, 90].map(min => Math.floor(pricePerHour * min / 60))
   }
   
   const defaultCategory = getDefaultCategory()
@@ -148,7 +148,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     
     if (defaultCategory === 'vip_voucher') {
       if (!boatData?.vip_price_per_hour) return undefined
-      return Math.ceil(boatData.vip_price_per_hour * duration / 60)
+      return Math.floor(boatData.vip_price_per_hour * duration / 60)
     }
     
     return undefined
@@ -184,18 +184,11 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     return `${lessonLabel}${dateTime} ${boatName} ${duration}分 ${coachName}教練${participantSuffix}`
   }
   
-  // 計算指定課金額（根據教練價格和時長）
+  // 計算指定課金額（根據教練價格和時長，任何時長都自動計算）
   const calculateDesignatedLessonAmount = (minutes: number): number | undefined => {
     if (!coachPrice30min) return undefined
-    
-    // 只有在預設時長列表中才返回金額，否則返回 undefined（讓用戶用自訂框）
-    const presetMinutes = [20, 30, 40, 60, 90]
-    if (!presetMinutes.includes(minutes)) {
-      return undefined  // 不在預設中，不默認選中
-    }
-    
-    // 按比例計算並無條件進位：(教練30分鐘價格 * 實際分鐘數) / 30
-    return Math.ceil(coachPrice30min * minutes / 30)
+    // 按比例計算並無條件捨去：(教練30分鐘價格 * 實際分鐘數) / 30
+    return Math.floor(coachPrice30min * minutes / 30)
   }
 
   // 初始化扣款項目（如果是指定課需收費，自動新增指定課扣款）
@@ -303,7 +296,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
             // 如果是VIP票券類別且有價格，計算金額
             if (item.category === 'vip_voucher' && boatResult.data.vip_price_per_hour) {
               const duration = report.duration_min
-              const amount = Math.ceil(boatResult.data.vip_price_per_hour * duration / 60)
+              const amount = Math.floor(boatResult.data.vip_price_per_hour * duration / 60)
               return { ...item, amount }
             }
             return item
@@ -324,7 +317,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
               const isDesignatedLessonItem = item.category === 'designated_lesson' || 
                                             (item.description?.includes('【指定課】') || false)
               if (isDesignatedLessonItem) {
-                return { ...item, amount: Math.ceil(price * (item.minutes || report.duration_min) / 30) }
+                return { ...item, amount: Math.floor(price * (item.minutes || report.duration_min) / 30) }
               }
               return item
             })
@@ -1031,10 +1024,10 @@ function DeductionItemRow({
   const isDesignatedLessonFromBalance = isBalance && (item.description?.includes('【指定課】') || false)
   const currentCategory = categories.find(c => c.value === item.category)
   
-  // 指定課的常用金額（根據教練價格計算，無條件進位）
+  // 指定課的常用金額（根據教練價格計算，無條件捨去）
   const getDesignatedLessonAmounts = (): number[] => {
     if (!coachPrice30min) return []
-    return [20, 30, 40, 60, 90].map(minutes => Math.ceil(coachPrice30min * minutes / 30))
+    return [20, 30, 40, 60, 90].map(minutes => Math.floor(coachPrice30min * minutes / 30))
   }
 
   // 計算餘額
@@ -1169,13 +1162,13 @@ function DeductionItemRow({
                 updates.amount = map[duration]
               }
             } else if (newCategory === 'vip_voucher') {
-              // VIP票券：根據教練回報的分鐘數自動選中對應金額
+              // VIP票券：根據教練回報的分鐘數自動選中對應金額（無條件捨去）
               updates.minutes = undefined
               if (boatName.includes('G23')) {
-                const map: Record<number, number> = { 30: 4250, 40: 5667, 60: 8500, 90: 12750 }
+                const map: Record<number, number> = { 30: 4250, 40: 5666, 60: 8500, 90: 12750 }
                 updates.amount = map[duration]
               } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
-                const map: Record<number, number> = { 20: 1667, 30: 2500, 40: 3333, 60: 5000, 90: 7500 }
+                const map: Record<number, number> = { 20: 1666, 30: 2500, 40: 3333, 60: 5000, 90: 7500 }
                 updates.amount = map[duration]
               }
             } else {
@@ -1339,10 +1332,10 @@ function DeductionItemRow({
                     }
                   } else if (isVipVoucher) {
                     if (boatName.includes('G23')) {
-                      const map: Record<number, number> = { 4250: 30, 5667: 40, 8500: 60, 12750: 90 }
+                      const map: Record<number, number> = { 4250: 30, 5666: 40, 8500: 60, 12750: 90 }
                       minutes = map[amount] || 0
                     } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
-                      const map: Record<number, number> = { 1667: 20, 2500: 30, 3333: 40, 5000: 60, 7500: 90 }
+                      const map: Record<number, number> = { 1666: 20, 2500: 30, 3333: 40, 5000: 60, 7500: 90 }
                       minutes = map[amount] || 0
                     }
                   }
