@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
 import { logAction } from '../utils/auditLog'
+import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 
 interface Coach {
   id: string
@@ -284,12 +285,32 @@ export function BatchEditBookingDialog({
             }
           }
           
-          // 如果要改教練，檢查衝突
-          if (fieldsToEdit.has('coaches') && selectedCoaches.length > 0) {
-            const conflictingCoaches = await checkCoachConflict(bookingId, selectedCoaches)
-            if (conflictingCoaches.length > 0) {
-              skippedCoach++
-              continue
+          // 如果要改教練，檢查衝突和 08:00 規則
+          if (fieldsToEdit.has('coaches')) {
+            // 先檢查 08:00 規則
+            if (selectedCoaches.length === 0) {
+              const { data: booking } = await supabase
+                .from('bookings')
+                .select('start_at')
+                .eq('id', bookingId)
+                .single()
+              
+              if (booking) {
+                const hour = parseInt(booking.start_at.split('T')[1].split(':')[0])
+                if (hour < EARLY_BOOKING_HOUR_LIMIT) {
+                  skippedCoach++ // 08:00 前不能清空教練
+                  continue
+                }
+              }
+            }
+            
+            // 檢查教練衝突
+            if (selectedCoaches.length > 0) {
+              const conflictingCoaches = await checkCoachConflict(bookingId, selectedCoaches)
+              if (conflictingCoaches.length > 0) {
+                skippedCoach++
+                continue
+              }
             }
           }
           
@@ -364,7 +385,7 @@ export function BatchEditBookingDialog({
       } else if (totalSkipped > 0) {
         const skipReasons: string[] = []
         if (skippedBoat > 0) skipReasons.push(`${skippedBoat}筆船隻衝突`)
-        if (skippedCoach > 0) skipReasons.push(`${skippedCoach}筆教練衝突`)
+        if (skippedCoach > 0) skipReasons.push(`${skippedCoach}筆教練衝突或08:00規則`)
         if (skippedDuration > 0) skipReasons.push(`${skippedDuration}筆時長衝突`)
         toast.warning(`更新完成：${successCount} 筆成功，跳過 ${skipReasons.join('、')}`)
         onSuccess()
@@ -571,32 +592,59 @@ export function BatchEditBookingDialog({
             </label>
             
             {fieldsToEdit.has('coaches') && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-                {loadingData ? (
-                  <span style={{ color: '#666' }}>載入中...</span>
-                ) : coaches.map(coach => (
+              <div>
+                <div style={{ 
+                  padding: '8px 12px', 
+                  backgroundColor: '#fff3cd', 
+                  borderRadius: '6px', 
+                  marginBottom: '12px',
+                  fontSize: '13px',
+                  color: '#856404'
+                }}>
+                  ⚠️ 08:00 前的預約必須指定教練，不指定時該筆會被跳過
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {/* 不指定教練按鈕 */}
                   <button
-                    key={coach.id}
                     type="button"
-                    onClick={() => toggleCoach(coach.id)}
+                    onClick={() => setSelectedCoaches([])}
                     style={{
                       padding: '8px 12px',
                       borderRadius: '20px',
-                      border: 'none',
-                      background: selectedCoaches.includes(coach.id) ? '#007bff' : '#e9ecef',
-                      color: selectedCoaches.includes(coach.id) ? 'white' : '#495057',
+                      border: selectedCoaches.length === 0 ? '2px solid #dc3545' : '2px solid #e9ecef',
+                      background: selectedCoaches.length === 0 ? '#f8d7da' : '#e9ecef',
+                      color: selectedCoaches.length === 0 ? '#dc3545' : '#495057',
                       cursor: 'pointer',
                       fontSize: '14px',
-                      fontWeight: '500',
+                      fontWeight: '600',
                       transition: 'all 0.2s',
                     }}
                   >
-                    {coach.name}
+                    不指定教練
                   </button>
-                ))}
-                {selectedCoaches.length === 0 && (
-                  <span style={{ fontSize: '13px', color: '#dc3545' }}>（將清空教練）</span>
-                )}
+                  {loadingData ? (
+                    <span style={{ color: '#666' }}>載入中...</span>
+                  ) : coaches.map(coach => (
+                    <button
+                      key={coach.id}
+                      type="button"
+                      onClick={() => toggleCoach(coach.id)}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '20px',
+                        border: 'none',
+                        background: selectedCoaches.includes(coach.id) ? '#007bff' : '#e9ecef',
+                        color: selectedCoaches.includes(coach.id) ? 'white' : '#495057',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {coach.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
