@@ -533,37 +533,56 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               display: 'flex', 
               flexDirection: isMobile ? 'column' : 'row',
               gap: '8px',
-              alignItems: isMobile ? 'stretch' : 'center'
+              alignItems: isMobile ? 'stretch' : 'center',
+              width: '100%',
             }}>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '13px', color: '#666', minWidth: '32px' }}>從</span>
+              <div style={{ 
+                flex: 1, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                minWidth: 0,
+              }}>
+                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>從</span>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   style={{
                     flex: 1,
-                    padding: '12px',
+                    minWidth: 0,
+                    width: '100%',
+                    padding: '10px',
                     border: startDate ? '2px solid #007bff' : '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
                     backgroundColor: startDate ? '#f0f7ff' : 'white',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '13px', color: '#666', minWidth: '32px' }}>到</span>
+              <div style={{ 
+                flex: 1, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                minWidth: 0,
+              }}>
+                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>到</span>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   style={{
                     flex: 1,
-                    padding: '12px',
+                    minWidth: 0,
+                    width: '100%',
+                    padding: '10px',
                     border: endDate ? '2px solid #007bff' : '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
                     backgroundColor: endDate ? '#f0f7ff' : 'white',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>

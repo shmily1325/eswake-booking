@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
@@ -26,6 +26,14 @@ export function BatchDeleteConfirmDialog({
   const [filledBy, setFilledBy] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   
+  // 每次打開時重置表單
+  useEffect(() => {
+    if (isOpen) {
+      setFilledBy('')
+      setConfirmed(false)
+    }
+  }, [isOpen])
+  
   const handleClose = () => {
     setFilledBy('')
     setConfirmed(false)
@@ -51,9 +59,10 @@ export function BatchDeleteConfirmDialog({
       
       for (const bookingId of bookingIds) {
         try {
+          // 真的刪除（CASCADE 會自動刪除相關記錄）
           const { error } = await supabase
             .from('bookings')
-            .update({ status: 'cancelled' })
+            .delete()
             .eq('id', bookingId)
           
           if (error) throw error
@@ -174,7 +183,7 @@ export function BatchDeleteConfirmDialog({
               ⚠️ 此操作無法復原！
             </div>
             <div style={{ fontSize: '14px', color: '#856404' }}>
-              刪除後的預約將被標記為「已取消」，無法恢復。請確認您要刪除的預約正確無誤。
+              預約將被永久刪除，無法恢復。請確認您要刪除的預約正確無誤。
             </div>
           </div>
           
@@ -263,17 +272,38 @@ export function BatchDeleteConfirmDialog({
             onClick={handleDelete}
             disabled={loading || !filledBy.trim() || !confirmed}
             style={{
-              padding: '12px 24px',
+              padding: '14px 28px',
               border: 'none',
               borderRadius: '8px',
               background: (loading || !filledBy.trim() || !confirmed) ? '#ccc' : '#dc3545',
               color: 'white',
               cursor: (loading || !filledBy.trim() || !confirmed) ? 'not-allowed' : 'pointer',
-              fontSize: '15px',
+              fontSize: '16px',
               fontWeight: '600',
+              transition: 'all 0.15s',
+              transform: 'scale(1)',
+              opacity: loading ? 0.7 : 1,
+            }}
+            onTouchStart={(e) => {
+              if (!loading && filledBy.trim() && confirmed) {
+                e.currentTarget.style.transform = 'scale(0.95)'
+                e.currentTarget.style.opacity = '0.8'
+              }
+            }}
+            onTouchEnd={(e) => {
+              e.currentTarget.style.transform = 'scale(1)'
+              e.currentTarget.style.opacity = '1'
+            }}
+            onMouseDown={(e) => {
+              if (!loading && filledBy.trim() && confirmed) {
+                e.currentTarget.style.transform = 'scale(0.95)'
+              }
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = 'scale(1)'
             }}
           >
-            {loading ? '刪除中...' : `確認刪除 (${bookingIds.length} 筆)`}
+            {loading ? '🔄 刪除中...' : `🗑️ 確認刪除 (${bookingIds.length} 筆)`}
           </button>
         </div>
       </div>

@@ -534,20 +534,20 @@ export function RepeatBookingDialog({
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px',
+                  gap: '10px',
                 }}>
                   <button
                     type="button"
                     onClick={() => setRepeatCount(Math.max(1, repeatCount - 1))}
                     disabled={repeatCount <= 1}
                     style={{
-                      width: '48px',
-                      height: '48px',
+                      width: '40px',
+                      height: '40px',
                       borderRadius: '8px',
                       border: 'none',
                       background: repeatCount <= 1 ? '#e0e0e0' : '#007bff',
                       color: 'white',
-                      fontSize: '24px',
+                      fontSize: '20px',
                       fontWeight: 'bold',
                       cursor: repeatCount <= 1 ? 'not-allowed' : 'pointer',
                       display: 'flex',
@@ -558,15 +558,15 @@ export function RepeatBookingDialog({
                     −
                   </button>
                   <div style={{
-                    flex: 1,
+                    minWidth: '80px',
                     textAlign: 'center',
-                    fontSize: '24px',
-                    fontWeight: 'bold',
+                    fontSize: '18px',
+                    fontWeight: '600',
                     color: '#333',
-                    padding: '10px',
+                    padding: '8px 16px',
                     background: '#f8f9fa',
                     borderRadius: '8px',
-                    border: '2px solid #e0e0e0',
+                    border: '1px solid #e0e0e0',
                   }}>
                     {repeatCount} 週
                   </div>
@@ -575,13 +575,13 @@ export function RepeatBookingDialog({
                     onClick={() => setRepeatCount(Math.min(52, repeatCount + 1))}
                     disabled={repeatCount >= 52}
                     style={{
-                      width: '48px',
-                      height: '48px',
+                      width: '40px',
+                      height: '40px',
                       borderRadius: '8px',
                       border: 'none',
                       background: repeatCount >= 52 ? '#e0e0e0' : '#007bff',
                       color: 'white',
-                      fontSize: '24px',
+                      fontSize: '20px',
                       fontWeight: 'bold',
                       cursor: repeatCount >= 52 ? 'not-allowed' : 'pointer',
                       display: 'flex',
@@ -591,33 +591,6 @@ export function RepeatBookingDialog({
                   >
                     +
                   </button>
-                </div>
-                {/* 快速選擇 */}
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  marginTop: '12px',
-                  flexWrap: 'wrap',
-                }}>
-                  {[4, 8, 12, 16, 24].map(num => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setRepeatCount(num)}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        border: 'none',
-                        background: repeatCount === num ? '#007bff' : '#e9ecef',
-                        color: repeatCount === num ? 'white' : '#495057',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {num}週
-                    </button>
-                  ))}
                 </div>
               </div>
             )}

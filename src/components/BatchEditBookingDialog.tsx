@@ -58,9 +58,16 @@ export function BatchEditBookingDialog({
   const [filledBy, setFilledBy] = useState('')
   
   
-  // 載入教練和船隻列表
+  // 載入教練和船隻列表，並重置表單
   useEffect(() => {
     if (isOpen) {
+      // 重置所有設定，避免保留上次的選擇
+      setFieldsToEdit(new Set())
+      setSelectedBoatId(null)
+      setSelectedCoaches([])
+      setNotes('')
+      setDurationMin(60)  // 預設60分鐘更合理
+      setFilledBy('')
       loadData()
     }
   }, [isOpen])
@@ -168,6 +175,59 @@ export function BatchEditBookingDialog({
       // 建立 coachesMap
       const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
       
+      // 追蹤已成功更新的預約，用於檢查批次內部衝突
+      const updatedBookings: Array<{
+        id: number
+        boatId: number
+        dateStr: string
+        startTime: string
+        duration: number
+        coachIds: string[]
+      }> = []
+      
+      // 輔助函數：檢查與已更新預約的時間衝突
+      const checkInternalConflict = (
+        boatId: number,
+        dateStr: string,
+        startTime: string,
+        duration: number,
+        coachIds: string[]
+      ): { hasConflict: boolean; type: 'boat' | 'coach' | null } => {
+        const newStart = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1])
+        const newEnd = newStart + duration
+        const newCleanupEnd = newEnd + 15 // 清理時間
+        
+        for (const updated of updatedBookings) {
+          if (updated.dateStr !== dateStr) continue
+          
+          const existStart = parseInt(updated.startTime.split(':')[0]) * 60 + parseInt(updated.startTime.split(':')[1])
+          const existEnd = existStart + updated.duration
+          const existCleanupEnd = existEnd + 15
+          
+          // 檢查船隻衝突
+          if (updated.boatId === boatId) {
+            // 時間重疊檢查（包含清理時間）
+            const hasOverlap = !(newEnd <= existStart || newStart >= existCleanupEnd) ||
+                              !(existEnd <= newStart || existStart >= newCleanupEnd)
+            if (hasOverlap) {
+              return { hasConflict: true, type: 'boat' }
+            }
+          }
+          
+          // 檢查教練衝突
+          if (coachIds.length > 0 && updated.coachIds.length > 0) {
+            const sharedCoach = coachIds.some(c => updated.coachIds.includes(c))
+            if (sharedCoach) {
+              const hasOverlap = !(newEnd <= existStart || newStart >= existEnd)
+              if (hasOverlap) {
+                return { hasConflict: true, type: 'coach' }
+              }
+            }
+          }
+        }
+        return { hasConflict: false, type: null }
+      }
+      
       for (const booking of bookingsData) {
         try {
           const dateStr = booking.start_at.split('T')[0]
@@ -177,6 +237,27 @@ export function BatchEditBookingDialog({
           const actualBoatId = fieldsToEdit.has('boat') && selectedBoatId ? selectedBoatId : booking.boat_id
           const actualBoatName = fieldsToEdit.has('boat') && targetBoat ? targetBoat.name : (booking.boats as any)?.name || ''
           const isBoatFacility = isFacility(actualBoatName)
+          const actualCoachIds = fieldsToEdit.has('coaches') ? selectedCoaches : []
+          
+          // 0. 檢查與本批次內已更新預約的衝突
+          if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration') || fieldsToEdit.has('coaches')) {
+            const internalConflict = checkInternalConflict(
+              actualBoatId,
+              dateStr,
+              startTime,
+              actualDuration,
+              actualCoachIds
+            )
+            if (internalConflict.hasConflict) {
+              if (internalConflict.type === 'boat') {
+                if (fieldsToEdit.has('boat')) skippedBoat++
+                else skippedDuration++
+              } else {
+                skippedCoach++
+              }
+              continue
+            }
+          }
           
           // 1. 檢查船隻維修/停用
           if (fieldsToEdit.has('boat') && selectedBoatId) {
@@ -267,6 +348,16 @@ export function BatchEditBookingDialog({
             }
           }
           
+          // 記錄已更新的預約，用於檢查批次內部衝突
+          updatedBookings.push({
+            id: booking.id,
+            boatId: actualBoatId,
+            dateStr,
+            startTime,
+            duration: actualDuration,
+            coachIds: actualCoachIds,
+          })
+          
           successCount++
         } catch (err) {
           console.error(`更新預約 ${booking.id} 失敗:`, err)
@@ -285,16 +376,27 @@ export function BatchEditBookingDialog({
       if (errorCount === 0 && totalSkipped === 0) {
         toast.success(`成功更新 ${successCount} 筆預約`)
         onSuccess()
+        handleClose()
       } else if (totalSkipped > 0) {
         const skipReasons: string[] = []
         if (skippedBoat > 0) skipReasons.push(`${skippedBoat}筆船隻衝突/維修`)
         if (skippedCoach > 0) skipReasons.push(`${skippedCoach}筆教練衝突或08:00規則`)
         if (skippedDuration > 0) skipReasons.push(`${skippedDuration}筆時長衝突`)
-        toast.warning(`更新完成：${successCount} 筆成功，跳過 ${skipReasons.join('、')}`)
-        onSuccess()
+        
+        if (successCount === 0) {
+          // 全部都被跳過
+          toast.error(`⚠️ 全部預約都因衝突被跳過：${skipReasons.join('、')}`)
+        } else {
+          toast.warning(`更新完成：${successCount} 筆成功，跳過 ${skipReasons.join('、')}`)
+          onSuccess()
+          handleClose()
+        }
       } else {
         toast.warning(`更新完成：${successCount} 筆成功，${errorCount} 筆失敗`)
-        onSuccess()
+        if (successCount > 0) {
+          onSuccess()
+          handleClose()
+        }
       }
     } catch (err) {
       console.error('批次更新失敗:', err)
@@ -713,19 +815,40 @@ export function BatchEditBookingDialog({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading || fieldsToEdit.size === 0}
+            disabled={loading || fieldsToEdit.size === 0 || !filledBy.trim()}
             style={{
-              padding: '12px 24px',
+              padding: '14px 28px',
               border: 'none',
               borderRadius: '8px',
-              background: (loading || fieldsToEdit.size === 0) ? '#ccc' : '#28a745',
+              background: (loading || fieldsToEdit.size === 0 || !filledBy.trim()) ? '#ccc' : '#28a745',
               color: 'white',
-              cursor: (loading || fieldsToEdit.size === 0) ? 'not-allowed' : 'pointer',
-              fontSize: '15px',
+              cursor: (loading || fieldsToEdit.size === 0 || !filledBy.trim()) ? 'not-allowed' : 'pointer',
+              fontSize: '16px',
               fontWeight: '600',
+              transition: 'all 0.15s',
+              transform: 'scale(1)',
+              opacity: loading ? 0.7 : 1,
+            }}
+            onTouchStart={(e) => {
+              if (!loading && fieldsToEdit.size > 0 && filledBy.trim()) {
+                e.currentTarget.style.transform = 'scale(0.95)'
+                e.currentTarget.style.opacity = '0.8'
+              }
+            }}
+            onTouchEnd={(e) => {
+              e.currentTarget.style.transform = 'scale(1)'
+              e.currentTarget.style.opacity = '1'
+            }}
+            onMouseDown={(e) => {
+              if (!loading && fieldsToEdit.size > 0 && filledBy.trim()) {
+                e.currentTarget.style.transform = 'scale(0.95)'
+              }
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = 'scale(1)'
             }}
           >
-            {loading ? '更新中...' : `確認修改 (${bookingIds.length} 筆)`}
+            {loading ? '🔄 更新中...' : `✅ 確認修改 (${bookingIds.length} 筆)`}
           </button>
         </div>
       </div>
