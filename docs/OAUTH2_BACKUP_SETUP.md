@@ -19,10 +19,14 @@
    - 選擇「外部」使用者類型（除非您有 Google Workspace）
    - 填寫應用程式資訊：
      - 應用程式名稱：`ESWake 備份系統`
-     - 使用者支援電子郵件：您的 email
+     - 使用者支援電子郵件：您的 email（例如：`pjpan0511@gmail.com`）
      - 開發人員連絡資訊：您的 email
    - 新增範圍：`https://www.googleapis.com/auth/drive.file`
-   - 新增測試使用者（如果應用程式尚未發布）
+   - **新增測試使用者**（**非常重要**，如果應用程式尚未發布）：
+     - 在「測試使用者」區塊中，點擊「+ 新增使用者」
+     - 輸入您的 Google 帳號 email（例如：`pjpan0511@gmail.com`）
+     - 點擊「新增」
+     - ⚠️ **重要**：只有列在測試使用者清單中的帳號才能授權應用程式
 7. 建立 OAuth 用戶端 ID：
    - 應用程式類型：選擇「網頁應用程式」
    - 名稱：`ESWake Backup`
@@ -244,15 +248,49 @@ https://eswake-booking.vercel.app/api/oauth2-auth-url
    - 重新訪問 `https://eswake-booking.vercel.app/api/oauth2-auth-url`
    - 複製新的 `authUrl` 並在瀏覽器中開啟
 
-### 問題 1：授權失敗
+### 問題 1：access_denied 錯誤（應用程式未驗證）
 
-**錯誤**：`invalid_grant` 或 `access_denied`
+**錯誤**：`Error 403: access_denied` 或 `eswake-booking.vercel.app has not completed the Google verification process`
+
+**原因**：應用程式處於測試階段，只有列在測試使用者清單中的帳號才能授權。
+
+**解決步驟**：
+
+1. **前往 OAuth 同意畫面設定**：
+   - 前往 [Google Cloud Console](https://console.cloud.google.com/)
+   - 選擇您的專案
+   - 前往「API 和服務」→「OAuth 同意畫面」
+
+2. **添加測試使用者**：
+   - 在「測試使用者」區塊中，點擊「+ 新增使用者」
+   - 輸入您的 Google 帳號 email（例如：`pjpan0511@gmail.com`）
+   - 點擊「新增」
+   - ⚠️ **重要**：只有列在測試使用者清單中的帳號才能授權應用程式
+   - 最多可以添加 100 個測試使用者
+
+3. **等待幾分鐘**：
+   - 變更可能需要幾分鐘才會生效
+
+4. **重新嘗試授權**：
+   - 清除瀏覽器快取（可選）
+   - 重新訪問 `https://eswake-booking.vercel.app/api/oauth2-auth-url`
+   - 複製新的 `authUrl` 並在瀏覽器中開啟
+   - 現在應該可以正常授權了
+
+**替代方案：發布應用程式**（進階）：
+- 如果應用程式已經準備好，可以申請發布
+- 發布後，任何用戶都可以授權，不需要測試使用者清單
+- 但需要通過 Google 的驗證流程（可能需要幾天時間）
+
+### 問題 1.5：其他授權失敗錯誤
+
+**錯誤**：`invalid_grant` 或其他授權錯誤
 
 **解決**：
 1. 確認 OAuth 用戶端 ID 和密鑰正確
 2. 確認重新導向 URI 與設定一致
 3. 確認授權碼未過期（授權碼只能使用一次）
-4. 如果使用測試使用者，確認已將您的 email 加入測試使用者清單
+4. 確認您已在測試使用者清單中（如果應用程式處於測試階段）
 
 ### 問題 2：刷新令牌過期
 
