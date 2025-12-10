@@ -8,6 +8,7 @@ import { formatBookingsForLine, getDisplayContactName } from '../utils/bookingFo
 import { useToast } from '../components/ui'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { BatchEditBookingDialog } from '../components/BatchEditBookingDialog'
+import { isEditorAsync } from '../utils/auth'
 import type { Booking as FullBooking } from '../types/booking'
 
 interface Booking {
@@ -64,6 +65,19 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedBookingIds, setSelectedBookingIds] = useState<Set<number>>(new Set())
   const [batchEditDialogOpen, setBatchEditDialogOpen] = useState(false)
+  
+  // 小編權限（只有小編可以編輯和批次修改）
+  const [isEditor, setIsEditor] = useState(false)
+  
+  useEffect(() => {
+    const checkEditorPermission = async () => {
+      if (user) {
+        const hasPermission = await isEditorAsync(user)
+        setIsEditor(hasPermission)
+      }
+    }
+    checkEditorPermission()
+  }, [user])
 
   useEffect(() => {
     loadMembers()
@@ -553,29 +567,31 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               
               {bookings.length > 0 && (
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {/* 選擇模式切換 */}
-                  <button
-                    onClick={toggleSelectionMode}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      background: selectionMode ? '#6c757d' : '#f8f9fa',
-                      color: selectionMode ? 'white' : '#495057',
-                      border: selectionMode ? 'none' : '1px solid #dee2e6',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    {selectionMode ? '✕ 取消選擇' : '☑️ 批次選擇'}
-                  </button>
+                  {/* 選擇模式切換 - 只有小編可見 */}
+                  {isEditor && (
+                    <button
+                      onClick={toggleSelectionMode}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        background: selectionMode ? '#6c757d' : '#f8f9fa',
+                        color: selectionMode ? 'white' : '#495057',
+                        border: selectionMode ? 'none' : '1px solid #dee2e6',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {selectionMode ? '✕ 取消選擇' : '☑️ 批次選擇'}
+                    </button>
+                  )}
 
                   {/* 選擇模式下的操作按鈕 */}
-                  {selectionMode && (
+                  {selectionMode && isEditor && (
                     <>
                       <button
                         onClick={selectedBookingIds.size === bookings.length ? deselectAll : selectAll}
@@ -681,9 +697,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   <div
                     key={booking.id}
                     onClick={(e) => {
-                      if (selectionMode) {
+                      if (selectionMode && isEditor) {
                         toggleBookingSelection(booking.id, e)
-                      } else if (!isLoadingThis) {
+                      } else if (!isLoadingThis && isEditor) {
                         handleBookingClick(booking.id)
                       }
                     }}
@@ -694,12 +710,12 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       boxShadow: isSelected ? '0 2px 8px rgba(0,123,255,0.25)' : '0 2px 4px rgba(0,0,0,0.1)',
                       borderLeft: `4px solid ${isSelected ? '#007bff' : (booking.boats?.color || '#ccc')}`,
                       opacity: isPast ? 0.7 : 1,
-                      cursor: isLoadingThis ? 'wait' : 'pointer',
+                      cursor: isEditor ? (isLoadingThis ? 'wait' : 'pointer') : 'default',
                       transition: 'all 0.2s',
                       position: 'relative',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isLoadingThis && !selectionMode) {
+                      if (!isLoadingThis && !selectionMode && isEditor) {
                         e.currentTarget.style.transform = 'translateY(-2px)'
                         e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
                       }
@@ -762,7 +778,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {!selectionMode && isLoadingThis && (
+                        {/* 只有小編可以看到編輯標籤 */}
+                        {isEditor && !selectionMode && isLoadingThis && (
                           <span style={{
                             padding: '4px 8px',
                             backgroundColor: '#007bff',
@@ -774,7 +791,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                             載入中...
                           </span>
                         )}
-                        {!selectionMode && !isLoadingThis && (
+                        {isEditor && !selectionMode && !isLoadingThis && (
                           <span style={{
                             padding: '4px 8px',
                             backgroundColor: '#e9ecef',

@@ -1396,12 +1396,16 @@ export function StaffManagement() {
                     borderRadius: '6px',
                     fontSize: '13px'
                   }}>
-                    <div style={{ fontWeight: '600', marginBottom: '4px', color: '#0d47a1' }}>
+                    <div style={{ fontWeight: '600', marginBottom: '6px', color: '#0d47a1' }}>
                       目前開放的功能：
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                       <span>🚤</span>
                       <span><strong>船隻管理</strong> - 管理船隻狀態、設定維修/停用時段、調整價格</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>🔍</span>
+                      <span><strong>預約編輯</strong> - 在預約查詢中編輯預約、批次修改</span>
                     </div>
                   </div>
                 </div>

@@ -475,7 +475,7 @@ export function PermissionManagement() {
             ✏️ 小編列表
           </h2>
           <p style={{ ...getTextStyle('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: designSystem.spacing.lg }}>
-            小編可以存取船隻管理等特定功能（管理員自動擁有小編權限）
+            小編可以存取船隻管理、預約編輯、批次修改等功能（管理員自動擁有小編權限）
           </p>
 
           {/* 新增小編 */}
