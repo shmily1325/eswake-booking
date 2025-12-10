@@ -1,0 +1,267 @@
+# 🔐 OAuth 2.0 雲端備份設定指南
+
+## 📋 功能說明
+
+使用 OAuth 2.0 讓應用程式代表用戶存取 Google Drive，可以上傳檔案到用戶的個人 Google Drive 資料夾，**無需 Google Workspace**。
+
+> ⚠️ **注意**：此方案需要用戶授權，適用於需要存取用戶個人 Drive 的場景。
+
+## 🚀 設定步驟
+
+### 步驟 1：建立 OAuth 2.0 憑證
+
+1. 前往 [Google Cloud Console](https://console.cloud.google.com/)
+2. 建立或選取專案
+3. 啟用 **Google Drive API**
+4. 前往「憑證」頁面
+5. 點擊「建立憑證」→「OAuth 用戶端 ID」
+6. 如果尚未設定 OAuth 同意畫面，需要先設定：
+   - 選擇「外部」使用者類型（除非您有 Google Workspace）
+   - 填寫應用程式資訊：
+     - 應用程式名稱：`ESWake 備份系統`
+     - 使用者支援電子郵件：您的 email
+     - 開發人員連絡資訊：您的 email
+   - 新增範圍：`https://www.googleapis.com/auth/drive.file`
+   - 新增測試使用者（如果應用程式尚未發布）
+7. 建立 OAuth 用戶端 ID：
+   - 應用程式類型：選擇「網頁應用程式」
+   - 名稱：`ESWake Backup`
+   - 已授權的重新導向 URI：
+     - 開發環境：`http://localhost:3000/api/oauth2-callback`
+     - 生產環境：`https://eswake-booking.vercel.app/api/oauth2-callback`
+     - 也可以使用：`http://localhost:3000` 和 `https://your-domain.vercel.app`
+8. 點擊「建立」
+9. 複製「用戶端 ID」和「用戶端密鑰」
+
+### 步驟 2：設定初始環境變數
+
+在 Vercel 專案的 `Settings -> Environment Variables` 中先設定：
+
+| 變數名稱 | 說明 | 範例 |
+|----------|------|------|
+| `GOOGLE_OAUTH_CLIENT_ID` | OAuth 2.0 用戶端 ID | `123456789-abc.apps.googleusercontent.com` |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | OAuth 2.0 用戶端密鑰 | `GOCSPX-xxxxx` |
+| `GOOGLE_OAUTH_REDIRECT_URI` | 重新導向 URI（可選，預設為 `/api/oauth2-callback`） | `https://eswake-booking.vercel.app/api/oauth2-callback` |
+
+### 步驟 2.5：重新部署應用程式
+
+> ⚠️ **重要**：新增 API 端點後，**必須重新部署**才能使用新的端點。
+
+1. 確認 `api/oauth2-auth-url.ts` 和 `api/oauth2-callback.ts` 檔案已提交到 Git
+2. 在 Vercel Dashboard 中：
+   - 前往專案頁面
+   - 點擊「Deployments」標籤
+   - 點擊最新的部署旁邊的「⋯」選單
+   - 選擇「Redeploy」
+   - 或推送新的 commit 到 Git 觸發自動部署
+3. 等待部署完成（通常需要 1-2 分鐘）
+
+### 步驟 3：取得授權 URL
+
+1. **確認部署完成後**，訪問以下 URL 取得授權連結：
+
+```
+https://eswake-booking.vercel.app/api/oauth2-auth-url
+```
+
+> 💡 **提示**：如果看到 404 錯誤，請確認：
+> - 已重新部署應用程式（步驟 2.5）
+> - 檔案 `api/oauth2-auth-url.ts` 存在於專案中
+> - 等待幾分鐘讓 Vercel 完成部署
+
+2. 回應會包含 `authUrl`，複製此 URL
+
+3. 在瀏覽器中開啟此 URL
+
+4. 登入您的 Google 帳號
+
+5. 授權應用程式存取 Google Drive
+
+6. 授權後，瀏覽器會重新導向到回調端點，並顯示刷新令牌
+
+### 步驟 4：取得刷新令牌
+
+授權完成後，您會看到一個 JSON 回應，包含：
+
+```json
+{
+  "success": true,
+  "message": "✅ 成功取得刷新令牌！",
+  "tokens": {
+    "refresh_token": "1//0xxxxx...",
+    "access_token": "ya29.xxxxx...",
+    "expiry_date": 1234567890
+  },
+  "instructions": {
+    "step1": "請將以下刷新令牌複製到 Vercel 環境變數：",
+    "step2": "變數名稱：GOOGLE_OAUTH_REFRESH_TOKEN",
+    "step3": "變數值：1//0xxxxx...",
+    "step4": "更新環境變數後重新部署",
+    "note": "⚠️ 刷新令牌只會顯示一次，請妥善保存！"
+  }
+}
+```
+
+> ⚠️ **重要**：請立即複製 `refresh_token` 的值，它只會顯示一次！
+
+### 步驟 5：設定完整的 Vercel 環境變數
+
+在 Vercel 專案的 `Settings -> Environment Variables` 中新增或確認以下變數：
+
+| 變數名稱 | 說明 | 範例 |
+|----------|------|------|
+| `SUPABASE_URL` | Supabase 專案 URL | `https://xxxx.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase `service_role` API key | `eyJhbGciOiJI...` |
+| `GOOGLE_OAUTH_CLIENT_ID` | OAuth 2.0 用戶端 ID | `123456789-abc.apps.googleusercontent.com` |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | OAuth 2.0 用戶端密鑰 | `GOCSPX-xxxxx` |
+| `GOOGLE_OAUTH_REFRESH_TOKEN` | 刷新令牌（從步驟 4 取得） | `1//0xxxxx` |
+| `GOOGLE_DRIVE_FOLDER_ID` | Google Drive 資料夾 ID | `1abc123...XYZ` |
+
+> ⚠️ **重要**：`GOOGLE_OAUTH_REFRESH_TOKEN` 是長期有效的令牌，請妥善保管。
+
+> 💡 **提示**：`api/backup-to-cloud-drive.ts` 已支援 OAuth 2.0，會自動偵測並使用 OAuth 2.0 憑證（如果已設定）。
+
+### 步驟 6：建立 Google Drive 資料夾
+
+1. 在您的 Google Drive 建立一個資料夾（例如：`ESWake 資料庫備份`）
+2. 取得資料夾 ID：
+   - 開啟資料夾
+   - 網址格式：`https://drive.google.com/drive/folders/<FOLDER_ID>`
+   - 複製 `<FOLDER_ID>` 部分
+3. 將 `GOOGLE_DRIVE_FOLDER_ID` 設定為此資料夾 ID
+
+### 步驟 7：重新部署
+
+更新環境變數後重新部署或觸發 redeploy。
+
+### 步驟 8：驗證
+
+1. 在前端手動按「☁️ 備份到 Google Drive (SQL)」，確認成功訊息
+2. 到 Google Drive 資料夾檢查是否新增了 SQL 檔案
+3. Vercel Dashboard → Functions → `api/backup-to-cloud-drive` 可查看詳細日誌
+
+## 🔄 自動備份排程
+
+`vercel.json` 已設定每日自動備份：
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/backup-to-cloud-drive",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}
+```
+
+- **執行時間**：每天 UTC 02:00（台灣時間 10:00）
+- **備份內容**：完整資料庫（所有表）
+- **檔案格式**：SQL 檔案
+- **自動清理**：自動刪除超過 90 天的舊備份
+
+## 🔐 安全建議
+
+1. **保護 OAuth 憑證**：
+   - 不要將 `GOOGLE_OAUTH_CLIENT_SECRET` 和 `GOOGLE_OAUTH_REFRESH_TOKEN` 公開
+   - 只在 Vercel 環境變數中儲存
+
+2. **刷新令牌安全**：
+   - 刷新令牌是長期有效的，可以存取用戶的 Google Drive
+   - 如果洩露，請立即撤銷：
+     - 前往 [Google 帳號設定](https://myaccount.google.com/permissions)
+     - 找到「第三方應用程式和服務」
+     - 撤銷應用程式存取權限
+
+3. **定期檢查備份**：
+   - 確認備份檔案正常上傳
+   - 檢查 Vercel 函數日誌
+
+## 🆘 故障排除
+
+### 問題 0：404 錯誤（端點找不到）
+
+**錯誤**：`404: NOT_FOUND` 當訪問 `/api/oauth2-auth-url` 或 `/api/oauth2-callback`
+
+**解決**：
+1. **確認檔案存在**：檢查 `api/oauth2-auth-url.ts` 和 `api/oauth2-callback.ts` 是否在專案中
+2. **重新部署**：
+   - 在 Vercel Dashboard 中觸發重新部署
+   - 或推送新的 commit 到 Git
+3. **等待部署完成**：通常需要 1-2 分鐘
+4. **檢查部署日誌**：確認沒有編譯錯誤
+5. **確認檔案路徑**：Vercel 的 API 路由應該在 `api/` 目錄下，檔名應該與路由一致
+
+### 問題 1：授權失敗
+
+**錯誤**：`invalid_grant` 或 `access_denied`
+
+**解決**：
+1. 確認 OAuth 用戶端 ID 和密鑰正確
+2. 確認重新導向 URI 與設定一致
+3. 確認授權碼未過期（授權碼只能使用一次）
+4. 如果使用測試使用者，確認已將您的 email 加入測試使用者清單
+
+### 問題 2：刷新令牌過期
+
+**錯誤**：`invalid_grant: Token has been expired or revoked`
+
+**解決**：
+1. 重新執行步驟 2-3 取得新的刷新令牌
+2. 更新 Vercel 環境變數 `GOOGLE_OAUTH_REFRESH_TOKEN`
+3. 重新部署
+
+### 問題 3：無法上傳檔案
+
+**錯誤**：`Permission denied`
+
+**解決**：
+1. 確認 `GOOGLE_DRIVE_FOLDER_ID` 正確
+2. 確認資料夾存在且可存取
+3. 確認 OAuth 範圍包含 `https://www.googleapis.com/auth/drive.file`
+
+### 問題 4：授權碼只能使用一次
+
+**錯誤**：`invalid_grant: Code was already redeemed`
+
+**解決**：
+- 授權碼只能使用一次，如果已經使用過，需要重新取得授權碼
+- 重新執行步驟 2-3
+
+## 📝 注意事項
+
+1. **首次授權**：
+   - 首次授權時，需要用戶手動授權
+   - 取得刷新令牌後，可以自動使用，無需再次授權
+
+2. **令牌有效期**：
+   - 訪問令牌（access token）有效期約 1 小時
+   - 刷新令牌（refresh token）長期有效，除非被撤銷
+   - 應用程式會自動使用刷新令牌取得新的訪問令牌
+
+3. **OAuth 同意畫面**：
+   - 如果應用程式尚未發布，只能新增最多 100 個測試使用者
+   - 發布應用程式後，任何用戶都可以授權
+
+4. **與服務帳號的差異**：
+   - OAuth 2.0 代表用戶存取，使用用戶的儲存配額
+   - 服務帳號有自己的配額限制（無法在共享資料夾中建立檔案）
+
+## 📚 相關文檔
+
+- [完整備份策略](./BACKUP_STRATEGY.md)
+- [自動備份到 WD MY BOOK](./AUTO_BACKUP_SETUP.md)
+- [雲端備份設定（服務帳號）](./CLOUD_BACKUP_SETUP.md)
+
+## 🎯 快速開始
+
+1. **建立 OAuth 2.0 憑證**（步驟 1）
+2. **設定初始環境變數**（步驟 2）
+3. **取得授權 URL 並授權**（步驟 3）
+4. **取得刷新令牌**（步驟 4）
+5. **設定完整環境變數**（步驟 5）
+6. **建立 Google Drive 資料夾**（步驟 6）
+7. **重新部署並驗證**（步驟 7-8）
+
+完成以上步驟後，系統會自動使用 OAuth 2.0 認證上傳備份檔案到您的 Google Drive！
+

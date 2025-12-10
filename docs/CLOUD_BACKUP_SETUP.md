@@ -4,6 +4,13 @@
 
 這個功能會將完整資料庫備份（SQL 檔案）自動上傳到 Google Drive，**無需電腦開機**。
 
+> ⚠️ **重要限制**：由於 Google 在 2025 年 4 月更改了服務帳號的儲存策略，**服務帳號無法在共享的個人 Google Drive 資料夾中建立檔案**，即使資料夾已正確共享。這是一個已知的 Google 限制。
+>
+> **解決方案**：
+> 1. **使用共享雲端硬碟（Shared Drive）** - 需要 Google Workspace 帳號（推薦）
+> 2. **使用 OAuth 2.0** - 需要用戶授權（較複雜）
+> 3. **使用本地備份** - 使用「自動備份到 WD MY BOOK」功能（最簡單）
+
 ## 🚀 設定步驟
 
 ### 步驟 1：建立 Google Cloud 專案與服務帳號
@@ -16,18 +23,29 @@
 
 ### 步驟 2：建立 Google Drive 資料夾（**重要**）
 
-> ⚠️ **重要**：服務帳號沒有儲存配額，無法在自己的 Drive 中儲存檔案。**必須**將檔案上傳到已共享給服務帳號的資料夾。
+> ⚠️ **重要限制**：由於 Google 的限制，服務帳號**無法在共享的個人 Google Drive 資料夾中建立檔案**，即使資料夾已正確共享。
 
-1. 在 Google Drive 建立一個新的資料夾（例如：`ESWake 資料庫備份`）
-2. 取得資料夾 ID：
+#### 方案 A：使用共享雲端硬碟（Shared Drive）- **推薦**
+
+> 需要 Google Workspace 帳號
+
+1. 在 Google Workspace 中建立或使用現有的**共享雲端硬碟**（Shared Drive）
+2. 在共享雲端硬碟中建立一個資料夾（例如：`ESWake 資料庫備份`）
+3. 取得資料夾 ID：
    - 開啟資料夾
    - 網址格式：`https://drive.google.com/drive/folders/<FOLDER_ID>`
    - 複製 `<FOLDER_ID>` 部分
-3. **將服務帳號的 email 加入資料夾的「共用」設定，給予「編輯者」權限**
-   - 在資料夾上按右鍵 → 「共用」
-   - 輸入服務帳號的 email（例如：`backup-service@project.iam.gserviceaccount.com`）
-   - 選擇「編輯者」權限
-   - 點擊「傳送」
+4. **將服務帳號加入共享雲端硬碟**：
+   - 在共享雲端硬碟上按右鍵 → 「管理成員」
+   - 新增服務帳號的 email，給予「內容管理員」或「編輯者」權限
+
+#### 方案 B：使用個人 Google Drive（**不支援**）
+
+> ⚠️ **注意**：此方案**無法使用**，因為服務帳號無法在共享的個人 Google Drive 資料夾中建立檔案。
+
+如果您使用的是個人 Google Drive（非 Google Workspace），請考慮：
+- 使用「自動備份到 WD MY BOOK」功能（參考 `docs/AUTO_BACKUP_SETUP.md`）
+- 升級到 Google Workspace 並使用共享雲端硬碟
 
 ### 步驟 3：設定 Vercel 環境變數
 
@@ -123,15 +141,30 @@ eswake_backup_2025-12-09T10-00-00.sql
 
 ### 問題 2-1：服務帳號沒有儲存配額錯誤
 
-**錯誤**：`Service Accounts do not have storage quota`
+**錯誤**：`Service Accounts do not have storage quota` 或 `storageQuotaExceeded`
 
-**原因**：服務帳號無法在自己的 Drive 中儲存檔案。
+**原因**：這是 Google 的限制。即使資料夾已正確共享，服務帳號仍然無法在共享的個人 Google Drive 資料夾中建立檔案。
 
-**解決**：
-1. **必須設定 `GOOGLE_DRIVE_FOLDER_ID`**（不能為空）
-2. **必須將服務帳號加入資料夾的「共用」設定**，給予「編輯者」權限
-3. 確認資料夾是您的個人 Drive 或共享雲端硬碟，不是服務帳號的 Drive
-4. 如果使用共享雲端硬碟（Shared Drive），確保服務帳號在該共享雲端硬碟有權限
+**解決方案**：
+
+1. **使用共享雲端硬碟（Shared Drive）** - **推薦**
+   - 需要 Google Workspace 帳號
+   - 在共享雲端硬碟中建立資料夾
+   - 將服務帳號加入共享雲端硬碟（不是資料夾）
+   - 服務帳號在共享雲端硬碟中可以建立檔案
+
+2. **使用本地備份** - **最簡單**
+   - 使用「自動備份到 WD MY BOOK」功能
+   - 參考文件：`docs/AUTO_BACKUP_SETUP.md`
+   - 不需要 Google Workspace，不需要額外設定
+
+3. **使用 OAuth 2.0** - **較複雜**
+   - 需要設定 OAuth 2.0 憑證
+   - 用戶需要授權應用程式存取 Google Drive
+   - 適用於需要存取用戶個人 Drive 的場景
+   - 📖 **詳細設定步驟**：請參考 [OAuth 2.0 備份設定指南](./OAUTH2_BACKUP_SETUP.md)
+
+**如果您使用的是個人 Google Drive（非 Google Workspace），建議使用本地備份方案或 OAuth 2.0 方案。**
 
 ### 問題 3：備份檔案為空
 
@@ -146,4 +179,5 @@ eswake_backup_2025-12-09T10-00-00.sql
 
 - [完整備份策略](./BACKUP_STRATEGY.md)
 - [自動備份到 WD MY BOOK](./AUTO_BACKUP_SETUP.md)
+- [OAuth 2.0 備份設定指南](./OAUTH2_BACKUP_SETUP.md)
 

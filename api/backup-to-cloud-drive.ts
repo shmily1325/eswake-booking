@@ -59,34 +59,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     logStep('2. 檢查環境變數');
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const googleDriveFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID; // Google Drive 資料夾 ID
+
+    // OAuth 2.0 憑證（優先使用）
+    const googleOAuthClientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+    const googleOAuthClientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+    const googleOAuthRefreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+
+    // 服務帳號憑證（備用）
     const googleClientEmail = process.env.GOOGLE_CLIENT_EMAIL;
     const googlePrivateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    const googleDriveFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID; // Google Drive 資料夾 ID
 
     if (!supabaseUrl || !supabaseServiceKey) {
       logStep('錯誤: Missing Supabase credentials');
       throw new Error('Missing Supabase credentials');
     }
-    if (!googleClientEmail || !googlePrivateKey) {
-      logStep('錯誤: Missing Google Drive credentials');
-      throw new Error('Missing Google Drive credentials');
-    }
     if (!googleDriveFolderId) {
       logStep('錯誤: GOOGLE_DRIVE_FOLDER_ID 必須設定');
-      throw new Error('GOOGLE_DRIVE_FOLDER_ID 必須設定。服務帳號無法在自己的 Drive 中儲存檔案，必須上傳到已共享的資料夾。');
+      throw new Error('GOOGLE_DRIVE_FOLDER_ID 必須設定');
     }
 
     // 初始化 Google Drive 客户端
     logStep('3. 初始化 Google Drive 客戶端');
-    const auth = new google.auth.JWT({
-      email: googleClientEmail,
-      key: googlePrivateKey,
-      scopes: [
-        'https://www.googleapis.com/auth/drive', // 需要完整權限以存取共享資料夾
-      ],
-    });
+    let auth: any;
+    let authType: string;
+
+    // 優先使用 OAuth 2.0（如果已配置）
+    if (googleOAuthClientId && googleOAuthClientSecret && googleOAuthRefreshToken) {
+      logStep('3.0 使用 OAuth 2.0 認證');
+      authType = 'OAuth 2.0';
+      const oauth2Client = new google.auth.OAuth2(
+        googleOAuthClientId,
+        googleOAuthClientSecret
+      );
+      oauth2Client.setCredentials({
+        refresh_token: googleOAuthRefreshToken,
+      });
+      auth = oauth2Client;
+    } else if (googleClientEmail && googlePrivateKey) {
+      // 使用服務帳號（JWT）
+      logStep('3.0 使用服務帳號認證');
+      authType = 'Service Account';
+      auth = new google.auth.JWT({
+        email: googleClientEmail,
+        key: googlePrivateKey,
+        scopes: [
+          'https://www.googleapis.com/auth/drive', // 需要完整權限以存取共享資料夾
+        ],
+      });
+    } else {
+      logStep('錯誤: Missing Google Drive credentials');
+      throw new Error('必須設定 OAuth 2.0 憑證（GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN）或服務帳號憑證（GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY）');
+    }
+
     const drive = google.drive({ version: 'v3', auth });
-    logStep('3.1 Google Drive 客戶端初始化完成');
+    logStep(`3.1 Google Drive 客戶端初始化完成（使用 ${authType}）`);
 
     // 创建 Supabase 客户端
     logStep('4. 建立 Supabase 客戶端');
@@ -273,6 +300,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       totalTime: `${totalTime}ms`
     });
     console.error('Backup error:', error);
+
+    // 检查是否是存储配额错误
+    if (error.message?.includes('storage quota') || error.message?.includes('Service Accounts do not have storage quota')) {
+      return res.status(500).json({
+        error: '備份失敗：服務帳號儲存配額限制',
+        message: '服務帳號無法在共享資料夾中建立檔案。請使用以下解決方案：\n\n' +
+          '方案 1：使用共享雲端硬碟（Shared Drive）\n' +
+          '- 需要 Google Workspace 帳號\n' +
+          '- 在共享雲端硬碟中建立資料夾\n' +
+          '- 將服務帳號加入共享雲端硬碟\n\n' +
+          '方案 2：使用 OAuth 2.0（需要用戶授權）\n' +
+          '- 需要設定 OAuth 2.0 憑證\n' +
+          '- 用戶需要授權應用程式存取 Google Drive\n\n' +
+          '方案 3：使用本地備份\n' +
+          '- 使用「自動備份到 WD MY BOOK」功能\n' +
+          '- 參考文件：docs/AUTO_BACKUP_SETUP.md',
+        executionTime: totalTime,
+        errorCode: 'STORAGE_QUOTA_EXCEEDED',
+      });
+    }
 
     return res.status(500).json({
       error: '備份失敗',
