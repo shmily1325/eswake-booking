@@ -121,6 +121,8 @@ export function BatchEditBookingDialog({
   
   // 執行批次更新
   const handleSubmit = async () => {
+    console.log('[批次修改] 開始執行', { fieldsToEdit: Array.from(fieldsToEdit), bookingIds, selectedBoatId, durationMin })
+    
     if (fieldsToEdit.size === 0) {
       toast.warning('請至少選擇一個要修改的欄位')
       return
@@ -239,6 +241,8 @@ export function BatchEditBookingDialog({
           const isBoatFacility = isFacility(actualBoatName)
           const actualCoachIds = fieldsToEdit.has('coaches') ? selectedCoaches : []
           
+          console.log(`[批次修改] 檢查預約 ${booking.id}:`, { dateStr, startTime, actualDuration, actualBoatId, actualBoatName })
+          
           // 0. 檢查與本批次內已更新預約的衝突
           if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration') || fieldsToEdit.has('coaches')) {
             const internalConflict = checkInternalConflict(
@@ -249,6 +253,7 @@ export function BatchEditBookingDialog({
               actualCoachIds
             )
             if (internalConflict.hasConflict) {
+              console.log(`[批次修改] 預約 ${booking.id} 內部衝突:`, internalConflict)
               if (internalConflict.type === 'boat') {
                 if (fieldsToEdit.has('boat')) skippedBoat++
                 else skippedDuration++
@@ -262,6 +267,7 @@ export function BatchEditBookingDialog({
           // 1. 檢查船隻維修/停用（不管改船還是改時長都要檢查）
           if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration')) {
             const availability = await checkBoatUnavailable(actualBoatId, dateStr, startTime, undefined, actualDuration)
+            console.log(`[批次修改] 預約 ${booking.id} 維修檢查:`, availability)
             if (availability.isUnavailable) {
               skippedBoat++
               continue
@@ -279,6 +285,7 @@ export function BatchEditBookingDialog({
               booking.id,
               actualBoatName
             )
+            console.log(`[批次修改] 預約 ${booking.id} 船隻衝突檢查:`, boatConflict)
             if (boatConflict.hasConflict) {
               if (fieldsToEdit.has('boat')) skippedBoat++
               else skippedDuration++
@@ -289,6 +296,7 @@ export function BatchEditBookingDialog({
           // 3. 檢查 08:00 規則
           if (fieldsToEdit.has('coaches') && selectedCoaches.length === 0) {
             if (hour < EARLY_BOOKING_HOUR_LIMIT) {
+              console.log(`[批次修改] 預約 ${booking.id} 08:00規則跳過`)
               skippedCoach++
               continue
             }
@@ -304,6 +312,7 @@ export function BatchEditBookingDialog({
               coachesMap,
               booking.id
             )
+            console.log(`[批次修改] 預約 ${booking.id} 教練衝突檢查:`, coachConflict)
             if (coachConflict.hasConflict) {
               skippedCoach++
               continue
@@ -372,6 +381,7 @@ export function BatchEditBookingDialog({
       }
       
       const totalSkipped = skippedBoat + skippedCoach + skippedDuration
+      console.log('[批次修改] 結果:', { successCount, errorCount, skippedBoat, skippedCoach, skippedDuration, totalSkipped })
       
       if (errorCount === 0 && totalSkipped === 0) {
         toast.success(`成功更新 ${successCount} 筆預約`)
