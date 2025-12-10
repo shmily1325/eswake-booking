@@ -12,7 +12,7 @@
     },
     {
       "path": "/api/backup-to-cloud-drive",
-      "schedule": "50 17 * * *"
+      "schedule": "00 18 * * *"
     },
     {
       "path": "/api/line-reminder",
