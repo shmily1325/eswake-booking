@@ -4,6 +4,9 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
 import { logAction } from '../utils/auditLog'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
+import { checkBoatConflict, checkCoachesConflictBatch } from '../utils/bookingConflict'
+import { checkBoatUnavailable } from '../utils/availability'
+import { isFacility } from '../utils/facility'
 
 interface Coach {
   id: string
@@ -108,129 +111,6 @@ export function BatchEditBookingDialog({
   }
   
   
-  // 檢查教練衝突
-  const checkCoachConflict = async (bookingId: number, coachIds: string[]): Promise<string[]> => {
-    if (coachIds.length === 0) return []
-    
-    const { data: booking } = await supabase
-      .from('bookings')
-      .select('start_at, duration_min')
-      .eq('id', bookingId)
-      .single()
-    
-    if (!booking) return []
-    
-    const startAt = new Date(booking.start_at)
-    const endAt = new Date(startAt.getTime() + (booking.duration_min || 30) * 60 * 1000)
-    const dateStr = booking.start_at.split('T')[0]
-    
-    const conflictingCoaches: string[] = []
-    
-    for (const coachId of coachIds) {
-      // 查詢該教練當天的其他預約
-      const { data: coachBookings } = await supabase
-        .from('booking_coaches')
-        .select('booking_id, bookings!inner(id, start_at, duration_min, status)')
-        .eq('coach_id', coachId)
-        .neq('booking_id', bookingId)
-      
-      if (!coachBookings) continue
-      
-      for (const cb of coachBookings) {
-        const b = cb.bookings as any
-        if (b.status === 'cancelled') continue
-        if (!b.start_at.startsWith(dateStr)) continue
-        
-        const bStart = new Date(b.start_at)
-        const bEnd = new Date(bStart.getTime() + (b.duration_min || 30) * 60 * 1000)
-        
-        if (startAt < bEnd && endAt > bStart) {
-          conflictingCoaches.push(coachId)
-          break
-        }
-      }
-    }
-    
-    return conflictingCoaches
-  }
-  
-  // 檢查時長變更後的衝突（船隻和教練）
-  const checkDurationConflict = async (bookingId: number, newDuration: number): Promise<boolean> => {
-    const { data: booking } = await supabase
-      .from('bookings')
-      .select('start_at, boat_id')
-      .eq('id', bookingId)
-      .single()
-    
-    if (!booking) return false
-    
-    const startAt = new Date(booking.start_at)
-    const newEndAt = new Date(startAt.getTime() + newDuration * 60 * 1000)
-    const dateStr = booking.start_at.split('T')[0]
-    
-    // 檢查船隻衝突
-    const { data: boatConflicts } = await supabase
-      .from('bookings')
-      .select('id, start_at, duration_min')
-      .eq('boat_id', booking.boat_id)
-      .gte('start_at', `${dateStr}T00:00:00`)
-      .lte('start_at', `${dateStr}T23:59:59`)
-      .neq('id', bookingId)
-      .neq('status', 'cancelled')
-    
-    if (boatConflicts) {
-      for (const c of boatConflicts) {
-        const cStart = new Date(c.start_at)
-        const cEnd = new Date(cStart.getTime() + (c.duration_min || 30) * 60 * 1000)
-        if (startAt < cEnd && newEndAt > cStart) {
-          return true
-        }
-      }
-    }
-    
-    return false
-  }
-  
-  // 檢查船隻衝突
-  const checkBoatConflict = async (bookingId: number, newBoatId: number): Promise<boolean> => {
-    const { data: booking } = await supabase
-      .from('bookings')
-      .select('start_at, duration_min')
-      .eq('id', bookingId)
-      .single()
-    
-    if (!booking) return false
-    
-    // 計算預約的時間範圍
-    const startAt = new Date(booking.start_at)
-    const endAt = new Date(startAt.getTime() + (booking.duration_min || 30) * 60 * 1000)
-    
-    // 查詢同一天同一艘船的預約
-    const dateStr = booking.start_at.split('T')[0]
-    const { data: conflicts } = await supabase
-      .from('bookings')
-      .select('id, start_at, duration_min')
-      .eq('boat_id', newBoatId)
-      .gte('start_at', `${dateStr}T00:00:00`)
-      .lte('start_at', `${dateStr}T23:59:59`)
-      .neq('id', bookingId)
-      .neq('status', 'cancelled')
-    
-    if (!conflicts || conflicts.length === 0) return false
-    
-    // 檢查時間是否重疊
-    for (const c of conflicts) {
-      const cStart = new Date(c.start_at)
-      const cEnd = new Date(cStart.getTime() + (c.duration_min || 30) * 60 * 1000)
-      
-      // 檢查時間重疊
-      if (startAt < cEnd && endAt > cStart) {
-        return true // 有衝突
-      }
-    }
-    
-    return false
-  }
   
   // 執行批次更新
   const handleSubmit = async () => {
@@ -258,14 +138,15 @@ export function BatchEditBookingDialog({
       let skippedCoach = 0
       let skippedDuration = 0
       
+      // 準備變更描述
       const changes: string[] = []
-      if (fieldsToEdit.has('boat') && selectedBoatId) {
-        const boat = boats.find(b => b.id === selectedBoatId)
-        changes.push(`船隻→${boat?.name || '未知'}`)
+      const targetBoat = fieldsToEdit.has('boat') && selectedBoatId ? boats.find(b => b.id === selectedBoatId) : null
+      if (targetBoat) {
+        changes.push(`船隻→${targetBoat.name}`)
       }
       if (fieldsToEdit.has('coaches')) {
         const coachNames = coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
-        changes.push(`教練→${coachNames.length > 0 ? coachNames.join('、') : '清空'}`)
+        changes.push(`教練→${coachNames.length > 0 ? coachNames.join('、') : '不指定'}`)
       }
       if (fieldsToEdit.has('duration')) {
         changes.push(`時長→${durationMin}分鐘`)
@@ -274,56 +155,81 @@ export function BatchEditBookingDialog({
         changes.push(`備註→${notes.trim() || '清空'}`)
       }
       
-      for (const bookingId of bookingIds) {
+      // 優化：一次查詢所有預約的完整資訊
+      const { data: bookingsData } = await supabase
+        .from('bookings')
+        .select('id, start_at, duration_min, boat_id, boats:boat_id(name)')
+        .in('id', bookingIds)
+      
+      if (!bookingsData) {
+        throw new Error('無法查詢預約資料')
+      }
+      
+      // 建立 coachesMap
+      const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
+      
+      for (const booking of bookingsData) {
         try {
-          // 如果要改船，先檢查衝突
+          const dateStr = booking.start_at.split('T')[0]
+          const startTime = booking.start_at.split('T')[1].substring(0, 5)
+          const hour = parseInt(startTime.split(':')[0])
+          const actualDuration = fieldsToEdit.has('duration') ? durationMin : booking.duration_min
+          const actualBoatId = fieldsToEdit.has('boat') && selectedBoatId ? selectedBoatId : booking.boat_id
+          const actualBoatName = fieldsToEdit.has('boat') && targetBoat ? targetBoat.name : (booking.boats as any)?.name || ''
+          const isBoatFacility = isFacility(actualBoatName)
+          
+          // 1. 檢查船隻維修/停用
           if (fieldsToEdit.has('boat') && selectedBoatId) {
-            const hasConflict = await checkBoatConflict(bookingId, selectedBoatId)
-            if (hasConflict) {
+            const availability = await checkBoatUnavailable(selectedBoatId, dateStr, startTime, undefined, actualDuration)
+            if (availability.isUnavailable) {
               skippedBoat++
               continue
             }
           }
           
-          // 如果要改教練，檢查衝突和 08:00 規則
-          if (fieldsToEdit.has('coaches')) {
-            // 先檢查 08:00 規則
-            if (selectedCoaches.length === 0) {
-              const { data: booking } = await supabase
-                .from('bookings')
-                .select('start_at')
-                .eq('id', bookingId)
-                .single()
-              
-              if (booking) {
-                const hour = parseInt(booking.start_at.split('T')[1].split(':')[0])
-                if (hour < EARLY_BOOKING_HOUR_LIMIT) {
-                  skippedCoach++ // 08:00 前不能清空教練
-                  continue
-                }
-              }
-            }
-            
-            // 檢查教練衝突
-            if (selectedCoaches.length > 0) {
-              const conflictingCoaches = await checkCoachConflict(bookingId, selectedCoaches)
-              if (conflictingCoaches.length > 0) {
-                skippedCoach++
-                continue
-              }
-            }
-          }
-          
-          // 如果要改時長，檢查衝突
-          if (fieldsToEdit.has('duration')) {
-            const hasConflict = await checkDurationConflict(bookingId, durationMin)
-            if (hasConflict) {
-              skippedDuration++
+          // 2. 檢查船隻衝突（使用原本的完整檢查，包含清理時間）
+          if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration')) {
+            const boatConflict = await checkBoatConflict(
+              actualBoatId,
+              dateStr,
+              startTime,
+              actualDuration,
+              isBoatFacility,
+              booking.id,
+              actualBoatName
+            )
+            if (boatConflict.hasConflict) {
+              if (fieldsToEdit.has('boat')) skippedBoat++
+              else skippedDuration++
               continue
             }
           }
           
-          // 更新 bookings 表的欄位
+          // 3. 檢查 08:00 規則
+          if (fieldsToEdit.has('coaches') && selectedCoaches.length === 0) {
+            if (hour < EARLY_BOOKING_HOUR_LIMIT) {
+              skippedCoach++
+              continue
+            }
+          }
+          
+          // 4. 檢查教練衝突（使用原本的完整檢查）
+          if (fieldsToEdit.has('coaches') && selectedCoaches.length > 0) {
+            const coachConflict = await checkCoachesConflictBatch(
+              selectedCoaches,
+              dateStr,
+              startTime,
+              actualDuration,
+              coachesMap,
+              booking.id
+            )
+            if (coachConflict.hasConflict) {
+              skippedCoach++
+              continue
+            }
+          }
+          
+          // 通過所有檢查，執行更新
           const updateData: Record<string, any> = {}
           
           if (fieldsToEdit.has('boat') && selectedBoatId) {
@@ -336,28 +242,25 @@ export function BatchEditBookingDialog({
             updateData.duration_min = durationMin
           }
           
-          // 如果有要更新 bookings 表的欄位
           if (Object.keys(updateData).length > 0) {
             const { error } = await supabase
               .from('bookings')
               .update(updateData)
-              .eq('id', bookingId)
+              .eq('id', booking.id)
             
             if (error) throw error
           }
           
           // 更新教練
           if (fieldsToEdit.has('coaches')) {
-            // 先刪除舊的
             await supabase
               .from('booking_coaches')
               .delete()
-              .eq('booking_id', bookingId)
+              .eq('booking_id', booking.id)
             
-            // 新增新的
             if (selectedCoaches.length > 0) {
               const coachInserts = selectedCoaches.map(coachId => ({
-                booking_id: bookingId,
+                booking_id: booking.id,
                 coach_id: coachId,
               }))
               await supabase.from('booking_coaches').insert(coachInserts)
@@ -366,7 +269,7 @@ export function BatchEditBookingDialog({
           
           successCount++
         } catch (err) {
-          console.error(`更新預約 ${bookingId} 失敗:`, err)
+          console.error(`更新預約 ${booking.id} 失敗:`, err)
           errorCount++
         }
       }
@@ -384,7 +287,7 @@ export function BatchEditBookingDialog({
         onSuccess()
       } else if (totalSkipped > 0) {
         const skipReasons: string[] = []
-        if (skippedBoat > 0) skipReasons.push(`${skippedBoat}筆船隻衝突`)
+        if (skippedBoat > 0) skipReasons.push(`${skippedBoat}筆船隻衝突/維修`)
         if (skippedCoach > 0) skipReasons.push(`${skippedCoach}筆教練衝突或08:00規則`)
         if (skippedDuration > 0) skipReasons.push(`${skippedDuration}筆時長衝突`)
         toast.warning(`更新完成：${successCount} 筆成功，跳過 ${skipReasons.join('、')}`)
