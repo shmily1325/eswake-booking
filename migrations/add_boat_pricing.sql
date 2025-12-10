@@ -55,7 +55,7 @@ FROM boats
 ORDER BY name;
 
 -- 注意事項：
--- 1. 金額計算公式：Math.ceil(price_per_hour * minutes / 60)
+-- 1. 金額計算公式：Math.floor(price_per_hour * minutes / 60)
 -- 2. 例如：$10800/小時 * 30分鐘 / 60 = $5400
 -- 3. 如果船隻沒有設定價格，扣款時只顯示自訂輸入框
 -- 4. 未來新增船隻時，請在「船隻管理」→「價格設定」tab 中設定價格
