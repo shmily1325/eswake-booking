@@ -525,33 +525,100 @@ export function RepeatBookingDialog({
               <div>
                 <label style={{
                   display: 'block',
-                  marginBottom: '6px',
+                  marginBottom: '8px',
                   fontSize: '14px',
                   fontWeight: '500',
                 }}>
                   重複次數
                 </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={repeatCount}
-                  onChange={(e) => {
-                    const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
-                    const num = Number(numValue)
-                    if (num >= 1 && num <= 52) {
-                      setRepeatCount(num)
-                    } else if (numValue === '') {
-                      setRepeatCount(1)
-                    }
-                  }}
-                  style={{
-                    width: '100%',
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setRepeatCount(Math.max(1, repeatCount - 1))}
+                    disabled={repeatCount <= 1}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: repeatCount <= 1 ? '#e0e0e0' : '#007bff',
+                      color: 'white',
+                      fontSize: '24px',
+                      fontWeight: 'bold',
+                      cursor: repeatCount <= 1 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    −
+                  </button>
+                  <div style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    color: '#333',
                     padding: '10px',
-                    borderRadius: '6px',
-                    border: '1px solid #ccc',
-                    fontSize: '15px',
-                  }}
-                />
+                    background: '#f8f9fa',
+                    borderRadius: '8px',
+                    border: '2px solid #e0e0e0',
+                  }}>
+                    {repeatCount} 週
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setRepeatCount(Math.min(52, repeatCount + 1))}
+                    disabled={repeatCount >= 52}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: repeatCount >= 52 ? '#e0e0e0' : '#007bff',
+                      color: 'white',
+                      fontSize: '24px',
+                      fontWeight: 'bold',
+                      cursor: repeatCount >= 52 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+                {/* 快速選擇 */}
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  marginTop: '12px',
+                  flexWrap: 'wrap',
+                }}>
+                  {[4, 8, 12, 16, 24].map(num => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setRepeatCount(num)}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        border: 'none',
+                        background: repeatCount === num ? '#007bff' : '#e9ecef',
+                        color: repeatCount === num ? 'white' : '#495057',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {num}週
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
