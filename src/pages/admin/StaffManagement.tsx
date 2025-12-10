@@ -1408,8 +1408,8 @@ export function StaffManagement() {
                       <span><strong>批次修改</strong> - 在預約查詢中批次修改多筆預約</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                      <span>📋</span>
-                      <span><strong>複製預約</strong> - 在預約表中複製預約到其他日期</span>
+                      <span>🔄</span>
+                      <span><strong>重複預約</strong> - 在預約表中將預約重複到多個日期</span>
                     </div>
                   </div>
                 </div>

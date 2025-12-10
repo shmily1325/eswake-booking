@@ -9,6 +9,12 @@ interface Coach {
   status: string | null
 }
 
+interface Boat {
+  id: number
+  name: string
+  is_active: boolean | null
+}
+
 interface BatchEditBookingDialogProps {
   isOpen: boolean
   onClose: () => void
@@ -16,7 +22,7 @@ interface BatchEditBookingDialogProps {
   bookingIds: number[]
 }
 
-type EditField = 'coaches' | 'drivers' | 'activity_types' | 'notes' | 'schedule_notes'
+type EditField = 'boat' | 'coaches' | 'drivers' | 'activity_types' | 'notes' | 'schedule_notes'
 
 const ACTIVITY_OPTIONS = ['Wake', 'Surf', 'Ski', 'Foil']
 
@@ -31,37 +37,51 @@ export function BatchEditBookingDialog({
   
   const [loading, setLoading] = useState(false)
   const [coaches, setCoaches] = useState<Coach[]>([])
-  const [loadingCoaches, setLoadingCoaches] = useState(true)
+  const [boats, setBoats] = useState<Boat[]>([])
+  const [loadingData, setLoadingData] = useState(true)
   
   // 要修改的欄位開關
   const [fieldsToEdit, setFieldsToEdit] = useState<Set<EditField>>(new Set())
   
   // 修改的值
+  const [selectedBoatId, setSelectedBoatId] = useState<number | null>(null)
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([])
   const [selectedActivityTypes, setSelectedActivityTypes] = useState<string[]>([])
   const [notes, setNotes] = useState('')
   const [scheduleNotes, setScheduleNotes] = useState('')
   
-  // 載入教練列表
+  
+  // 載入教練和船隻列表
   useEffect(() => {
     if (isOpen) {
-      loadCoaches()
+      loadData()
     }
   }, [isOpen])
   
-  const loadCoaches = async () => {
-    setLoadingCoaches(true)
-    const { data } = await supabase
-      .from('coaches')
-      .select('id, name, status')
-      .eq('status', 'active')
-      .order('name')
+  const loadData = async () => {
+    setLoadingData(true)
     
-    if (data) {
-      setCoaches(data)
+    const [coachesResult, boatsResult] = await Promise.all([
+      supabase
+        .from('coaches')
+        .select('id, name, status')
+        .eq('status', 'active')
+        .order('name'),
+      supabase
+        .from('boats')
+        .select('id, name, is_active')
+        .eq('is_active', true)
+        .order('name')
+    ])
+    
+    if (coachesResult.data) {
+      setCoaches(coachesResult.data)
     }
-    setLoadingCoaches(false)
+    if (boatsResult.data) {
+      setBoats(boatsResult.data)
+    }
+    setLoadingData(false)
   }
   
   // 切換要編輯的欄位
@@ -102,10 +122,56 @@ export function BatchEditBookingDialog({
     }
   }
   
+  // 檢查船隻衝突
+  const checkBoatConflict = async (bookingId: number, newBoatId: number): Promise<boolean> => {
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('start_at, duration_min')
+      .eq('id', bookingId)
+      .single()
+    
+    if (!booking) return false
+    
+    // 計算預約的時間範圍
+    const startAt = new Date(booking.start_at)
+    const endAt = new Date(startAt.getTime() + (booking.duration_min || 30) * 60 * 1000)
+    
+    // 查詢同一天同一艘船的預約
+    const dateStr = booking.start_at.split('T')[0]
+    const { data: conflicts } = await supabase
+      .from('bookings')
+      .select('id, start_at, duration_min')
+      .eq('boat_id', newBoatId)
+      .gte('start_at', `${dateStr}T00:00:00`)
+      .lte('start_at', `${dateStr}T23:59:59`)
+      .neq('id', bookingId)
+      .neq('status', 'cancelled')
+    
+    if (!conflicts || conflicts.length === 0) return false
+    
+    // 檢查時間是否重疊
+    for (const c of conflicts) {
+      const cStart = new Date(c.start_at)
+      const cEnd = new Date(cStart.getTime() + (c.duration_min || 30) * 60 * 1000)
+      
+      // 檢查時間重疊
+      if (startAt < cEnd && endAt > cStart) {
+        return true // 有衝突
+      }
+    }
+    
+    return false
+  }
+  
   // 執行批次更新
   const handleSubmit = async () => {
     if (fieldsToEdit.size === 0) {
       toast.warning('請至少選擇一個要修改的欄位')
+      return
+    }
+    
+    if (fieldsToEdit.has('boat') && !selectedBoatId) {
+      toast.warning('請選擇要更改的船隻')
       return
     }
     
@@ -114,12 +180,25 @@ export function BatchEditBookingDialog({
     try {
       let successCount = 0
       let errorCount = 0
+      let skippedCount = 0
       
       for (const bookingId of bookingIds) {
         try {
+          // 如果要改船，先檢查衝突
+          if (fieldsToEdit.has('boat') && selectedBoatId) {
+            const hasConflict = await checkBoatConflict(bookingId, selectedBoatId)
+            if (hasConflict) {
+              skippedCount++
+              continue
+            }
+          }
+          
           // 更新 bookings 表的欄位
           const updateData: Record<string, any> = {}
           
+          if (fieldsToEdit.has('boat') && selectedBoatId) {
+            updateData.boat_id = selectedBoatId
+          }
           if (fieldsToEdit.has('activity_types')) {
             updateData.activity_types = selectedActivityTypes.length > 0 ? selectedActivityTypes : null
           }
@@ -183,8 +262,11 @@ export function BatchEditBookingDialog({
         }
       }
       
-      if (errorCount === 0) {
+      if (errorCount === 0 && skippedCount === 0) {
         toast.success(`成功更新 ${successCount} 筆預約`)
+        onSuccess()
+      } else if (skippedCount > 0) {
+        toast.warning(`更新完成：${successCount} 筆成功，${skippedCount} 筆因船隻衝突跳過`)
         onSuccess()
       } else {
         toast.warning(`更新完成：${successCount} 筆成功，${errorCount} 筆失敗`)
@@ -201,6 +283,7 @@ export function BatchEditBookingDialog({
   // 重置表單
   const resetForm = () => {
     setFieldsToEdit(new Set())
+    setSelectedBoatId(null)
     setSelectedCoaches([])
     setSelectedDrivers([])
     setSelectedActivityTypes([])
@@ -300,6 +383,70 @@ export function BatchEditBookingDialog({
             ⚠️ 請勾選要修改的欄位，未勾選的欄位將保持不變
           </div>
           
+          {/* 船隻 */}
+          <div style={{
+            marginBottom: '20px',
+            padding: '16px',
+            border: fieldsToEdit.has('boat') ? '2px solid #ff6b35' : '1px solid #e0e0e0',
+            borderRadius: '8px',
+            backgroundColor: fieldsToEdit.has('boat') ? '#fff5f0' : 'white',
+          }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              marginBottom: fieldsToEdit.has('boat') ? '12px' : '0',
+            }}>
+              <input
+                type="checkbox"
+                checked={fieldsToEdit.has('boat')}
+                onChange={() => toggleField('boat')}
+                style={{ width: '18px', height: '18px' }}
+              />
+              <span style={{ fontWeight: '600', fontSize: '15px' }}>🚤 修改船隻</span>
+            </label>
+            
+            {fieldsToEdit.has('boat') && (
+              <div>
+                <div style={{ 
+                  padding: '8px 12px', 
+                  backgroundColor: '#ffe0b2', 
+                  borderRadius: '6px', 
+                  marginBottom: '12px',
+                  fontSize: '13px',
+                  color: '#e65100'
+                }}>
+                  ⚠️ 若目標船隻在該時段已有預約，該筆會被跳過
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {loadingData ? (
+                    <span style={{ color: '#666' }}>載入中...</span>
+                  ) : boats.map(boat => (
+                    <button
+                      key={boat.id}
+                      type="button"
+                      onClick={() => setSelectedBoatId(boat.id)}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: selectedBoatId === boat.id ? '#ff6b35' : '#e9ecef',
+                        color: selectedBoatId === boat.id ? 'white' : '#495057',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {boat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
           {/* 教練 */}
           <div style={{
             marginBottom: '20px',
@@ -326,7 +473,7 @@ export function BatchEditBookingDialog({
             
             {fieldsToEdit.has('coaches') && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-                {loadingCoaches ? (
+                {loadingData ? (
                   <span style={{ color: '#666' }}>載入中...</span>
                 ) : coaches.map(coach => (
                   <button
@@ -381,7 +528,7 @@ export function BatchEditBookingDialog({
             
             {fieldsToEdit.has('drivers') && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-                {loadingCoaches ? (
+                {loadingData ? (
                   <span style={{ color: '#666' }}>載入中...</span>
                 ) : coaches.map(coach => (
                   <button

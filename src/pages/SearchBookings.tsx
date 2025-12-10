@@ -47,9 +47,13 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   
-  // 簡化的篩選邏輯：固定為未來預約
+  // 篩選選項
   const [onlyToday, setOnlyToday] = useState(false) // 是否只顯示今日新增
   const [copySuccess, setCopySuccess] = useState(false)
+  
+  // 日期區間篩選
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   
   const [members, setMembers] = useState<Member[]>([])
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
@@ -167,8 +171,17 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         .select('*, boats:boat_id(name, color), booking_members(member_id, members:member_id(id, name, nickname))')
         .in('id', Array.from(bookingIds))
       
-      // 固定為未來預約
-      query = query.gte('start_at', nowStr)
+      // 日期區間篩選
+      if (startDate) {
+        query = query.gte('start_at', `${startDate}T00:00:00`)
+      } else {
+        // 沒設日期區間時，預設只顯示未來預約
+        query = query.gte('start_at', nowStr)
+      }
+      
+      if (endDate) {
+        query = query.lte('start_at', `${endDate}T23:59:59`)
+      }
       
       // 如果勾選「只顯示今日新增」
       if (onlyToday) {
@@ -480,7 +493,77 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             )}
           </div>
 
-          {/* 篩選選項：固定為未來預約 */}
+          {/* 日期區間篩選 */}
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ 
+              fontSize: '14px', 
+              fontWeight: '500', 
+              color: '#495057',
+              marginBottom: '8px'
+            }}>
+              📅 日期區間 {(startDate || endDate) && <span style={{ color: '#007bff' }}>(已設定)</span>}
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              gap: '8px',
+              alignItems: 'center'
+            }}>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  border: startDate ? '2px solid #007bff' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: startDate ? '#f0f7ff' : 'white',
+                }}
+              />
+              <span style={{ color: '#666' }}>~</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  border: endDate ? '2px solid #007bff' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: endDate ? '#f0f7ff' : 'white',
+                }}
+              />
+              {(startDate || endDate) && (
+                <button
+                  type="button"
+                  onClick={() => { setStartDate(''); setEndDate(''); }}
+                  style={{
+                    padding: '10px',
+                    border: 'none',
+                    background: '#dc3545',
+                    color: 'white',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <div style={{ 
+              fontSize: '12px', 
+              color: '#888',
+              marginTop: '4px'
+            }}>
+              {(!startDate && !endDate) ? '不設定日期區間時，預設只顯示未來預約' : ''}
+            </div>
+          </div>
+
+          {/* 篩選選項 */}
           <div style={{ marginBottom: '20px' }}>
             {/* 今日新增 checkbox */}
             <label style={{
