@@ -699,7 +699,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     onClick={(e) => {
                       if (selectionMode && isEditor) {
                         toggleBookingSelection(booking.id, e)
-                      } else if (!isLoadingThis && isEditor) {
+                      } else if (!isLoadingThis && !selectionMode) {
+                        // 所有人都可以編輯預約
                         handleBookingClick(booking.id)
                       }
                     }}
@@ -710,12 +711,12 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       boxShadow: isSelected ? '0 2px 8px rgba(0,123,255,0.25)' : '0 2px 4px rgba(0,0,0,0.1)',
                       borderLeft: `4px solid ${isSelected ? '#007bff' : (booking.boats?.color || '#ccc')}`,
                       opacity: isPast ? 0.7 : 1,
-                      cursor: isEditor ? (isLoadingThis ? 'wait' : 'pointer') : 'default',
+                      cursor: isLoadingThis ? 'wait' : 'pointer',
                       transition: 'all 0.2s',
                       position: 'relative',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isLoadingThis && !selectionMode && isEditor) {
+                      if (!isLoadingThis && !selectionMode) {
                         e.currentTarget.style.transform = 'translateY(-2px)'
                         e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
                       }
@@ -778,8 +779,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {/* 只有小編可以看到編輯標籤 */}
-                        {isEditor && !selectionMode && isLoadingThis && (
+                        {/* 所有人都可以看到編輯標籤 */}
+                        {!selectionMode && isLoadingThis && (
                           <span style={{
                             padding: '4px 8px',
                             backgroundColor: '#007bff',
@@ -791,7 +792,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                             載入中...
                           </span>
                         )}
-                        {isEditor && !selectionMode && !isLoadingThis && (
+                        {!selectionMode && !isLoadingThis && (
                           <span style={{
                             padding: '4px 8px',
                             backgroundColor: '#e9ecef',

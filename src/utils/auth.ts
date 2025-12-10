@@ -11,8 +11,8 @@ import { useToast } from '../components/ui'
 // 超級管理員（硬編碼，始終有權限）
 export const SUPER_ADMINS = [
   'callumbao1122@gmail.com',
-  'pjpan0511@gmail.com',
-  'minlin1325@gmail.com',
+  //'pjpan0511@gmail.com',
+  //'minlin1325@gmail.com',
 ]
 
 // 權限緩存

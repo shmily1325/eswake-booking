@@ -18,6 +18,7 @@ import { VirtualizedBookingList } from '../components/VirtualizedBookingList'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { inspectData, safeMapArray, tryCatch } from '../utils/debugHelpers'
 import { injectAnimationStyles } from '../utils/animations'
+import { isEditorAsync } from '../utils/auth'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
 
@@ -73,6 +74,19 @@ export function DayView() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('list')
+  
+  // 小編權限（只有小編可以使用重複預約）
+  const [isEditor, setIsEditor] = useState(false)
+  
+  useEffect(() => {
+    const checkEditorPermission = async () => {
+      if (user) {
+        const hasPermission = await isEditorAsync(user)
+        setIsEditor(hasPermission)
+      }
+    }
+    checkEditorPermission()
+  }, [user])
 
   const changeDate = (offset: number) => {
     const [year, month, day] = dateParam.split('-').map(Number)
@@ -688,36 +702,39 @@ export function DayView() {
                 >
                   + 新增預約
                 </button>
-                <button
-                  onClick={() => {
-                    setSelectedBoatId(0)
-                    const now = new Date()
-                    const currentHour = String(now.getHours()).padStart(2, '0')
-                    const currentMinute = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, '0')
-                    setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
-                    setRepeatDialogOpen(true)
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '14px 20px',
-                    borderTop: '2px dashed #ffc107',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    color: '#f57c00',
-                    fontSize: '15px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'background 0.2s',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fff3cd'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  🔁 重複預約
-                </button>
+                {/* 重複預約按鈕 - 只有小編可見 */}
+                {isEditor && (
+                  <button
+                    onClick={() => {
+                      setSelectedBoatId(0)
+                      const now = new Date()
+                      const currentHour = String(now.getHours()).padStart(2, '0')
+                      const currentMinute = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, '0')
+                      setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
+                      setRepeatDialogOpen(true)
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '14px 20px',
+                      borderTop: '2px dashed #ffc107',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      color: '#f57c00',
+                      fontSize: '15px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fff3cd'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    🔁 重複預約
+                  </button>
+                )}
               </div>
             </div>
 
