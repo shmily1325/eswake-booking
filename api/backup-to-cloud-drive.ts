@@ -245,7 +245,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
       // 查詢所有備份檔案
-      const query = `'${googleDriveFolderId}' in parents and name contains 'eswake_backup_' and name endsWith '.sql'`;
+      // 注意：Google Drive API 不支援 endsWith，使用 contains 並在程式碼中過濾
+      const query = `'${googleDriveFolderId}' in parents and name contains 'eswake_backup_' and name contains '.sql'`;
 
       const listResponse = await drive.files.list({
         q: query,
@@ -258,10 +259,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (listResponse.data.files) {
         let deletedCount = 0;
-        for (const file of listResponse.data.files) {
+        // 過濾出以 .sql 結尾的檔案（因為 API 不支援 endsWith）
+        const backupFiles = listResponse.data.files.filter(file => 
+          file.name && file.name.endsWith('.sql')
+        );
+        
+        for (const file of backupFiles) {
           if (file.createdTime && file.createdTime < cutoffDateStr) {
             try {
-              await drive.files.delete({ fileId: file.id! });
+              await drive.files.delete({ 
+                fileId: file.id!,
+                supportsAllDrives: true, // 支援共享雲端硬碟
+              });
               deletedCount++;
               logStep(`刪除舊備份: ${file.name}`, { createdTime: file.createdTime });
             } catch (deleteError) {
