@@ -24,11 +24,11 @@ export function BatchDeleteConfirmDialog({
   
   const [loading, setLoading] = useState(false)
   const [filledBy, setFilledBy] = useState('')
-  const [confirmText, setConfirmText] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
   
   const handleClose = () => {
     setFilledBy('')
-    setConfirmText('')
+    setConfirmed(false)
     onClose()
   }
   
@@ -38,8 +38,8 @@ export function BatchDeleteConfirmDialog({
       return
     }
     
-    if (confirmText !== '確認刪除') {
-      toast.warning('請輸入「確認刪除」以確認操作')
+    if (!confirmed) {
+      toast.warning('請勾選確認')
       return
     }
     
@@ -201,27 +201,36 @@ export function BatchDeleteConfirmDialog({
             />
           </div>
           
-          {/* 確認輸入 */}
+          {/* 確認勾選 */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{
-              display: 'block',
-              fontWeight: '600',
-              fontSize: '14px',
-              marginBottom: '6px',
-              color: '#333',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '16px',
+              backgroundColor: confirmed ? '#f8d7da' : '#f8f9fa',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              border: confirmed ? '2px solid #dc3545' : '1px solid #e0e0e0',
             }}>
-              請輸入「<span style={{ color: '#dc3545' }}>確認刪除</span>」以確認操作
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+                style={{ 
+                  width: '24px', 
+                  height: '24px',
+                  cursor: 'pointer',
+                }}
+              />
+              <span style={{ 
+                fontSize: '15px', 
+                fontWeight: '600',
+                color: confirmed ? '#dc3545' : '#333',
+              }}>
+                我確認要刪除這 {bookingIds.length} 筆預約
+              </span>
             </label>
-            <input
-              type="text"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="確認刪除"
-              style={{
-                ...inputStyle,
-                borderColor: confirmText === '確認刪除' ? '#28a745' : '#e0e0e0',
-              }}
-            />
           </div>
         </div>
         
@@ -252,14 +261,14 @@ export function BatchDeleteConfirmDialog({
           <button
             type="button"
             onClick={handleDelete}
-            disabled={loading || !filledBy.trim() || confirmText !== '確認刪除'}
+            disabled={loading || !filledBy.trim() || !confirmed}
             style={{
               padding: '12px 24px',
               border: 'none',
               borderRadius: '8px',
-              background: (loading || !filledBy.trim() || confirmText !== '確認刪除') ? '#ccc' : '#dc3545',
+              background: (loading || !filledBy.trim() || !confirmed) ? '#ccc' : '#dc3545',
               color: 'white',
-              cursor: (loading || !filledBy.trim() || confirmText !== '確認刪除') ? 'not-allowed' : 'pointer',
+              cursor: (loading || !filledBy.trim() || !confirmed) ? 'not-allowed' : 'pointer',
               fontSize: '15px',
               fontWeight: '600',
             }}
