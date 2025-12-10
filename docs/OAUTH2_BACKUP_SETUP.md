@@ -26,22 +26,31 @@
 7. 建立 OAuth 用戶端 ID：
    - 應用程式類型：選擇「網頁應用程式」
    - 名稱：`ESWake Backup`
-   - 已授權的重新導向 URI：
-     - 開發環境：`http://localhost:3000/api/oauth2-callback`
-     - 生產環境：`https://eswake-booking.vercel.app/api/oauth2-callback`
-     - 也可以使用：`http://localhost:3000` 和 `https://your-domain.vercel.app`
+   - **已授權的重新導向 URI**（**非常重要**，必須完全匹配）：
+     - **生產環境**：`https://eswake-booking.vercel.app/api/oauth2-callback`
+     - 開發環境（可選）：`http://localhost:3000/api/oauth2-callback`
+     - ⚠️ **注意**：
+       - URI 必須**完全匹配**，包括 `https://` 和結尾的 `/api/oauth2-callback`
+       - 不要有多餘的斜線或空格
+       - 如果使用自訂網域，請使用自訂網域的完整 URL
 8. 點擊「建立」
 9. 複製「用戶端 ID」和「用戶端密鑰」
+
+> 💡 **提示**：如果之後遇到 `redirect_uri_mismatch` 錯誤，請檢查：
+> - Google Cloud Console 中的重定向 URI 是否與實際使用的完全一致
+> - 可以在 Vercel 環境變數中設定 `GOOGLE_OAUTH_REDIRECT_URI` 來明確指定
 
 ### 步驟 2：設定初始環境變數
 
 在 Vercel 專案的 `Settings -> Environment Variables` 中先設定：
 
-| 變數名稱 | 說明 | 範例 |
-|----------|------|------|
-| `GOOGLE_OAUTH_CLIENT_ID` | OAuth 2.0 用戶端 ID | `123456789-abc.apps.googleusercontent.com` |
-| `GOOGLE_OAUTH_CLIENT_SECRET` | OAuth 2.0 用戶端密鑰 | `GOCSPX-xxxxx` |
-| `GOOGLE_OAUTH_REDIRECT_URI` | 重新導向 URI（可選，預設為 `/api/oauth2-callback`） | `https://eswake-booking.vercel.app/api/oauth2-callback` |
+| 變數名稱 | 說明 | 範例 | 必填 |
+|----------|------|------|------|
+| `GOOGLE_OAUTH_CLIENT_ID` | OAuth 2.0 用戶端 ID | `123456789-abc.apps.googleusercontent.com` | ✅ |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | OAuth 2.0 用戶端密鑰 | `GOCSPX-xxxxx` | ✅ |
+| `GOOGLE_OAUTH_REDIRECT_URI` | 重新導向 URI（**強烈建議設定**，避免 redirect_uri_mismatch 錯誤） | `https://eswake-booking.vercel.app/api/oauth2-callback` | ⚠️ 建議 |
+
+> 💡 **建議**：設定 `GOOGLE_OAUTH_REDIRECT_URI` 可以確保重定向 URI 固定，避免因為請求頭變化而導致的 `redirect_uri_mismatch` 錯誤。此 URI 必須與 Google Cloud Console 中配置的「已授權的重新導向 URI」**完全一致**。
 
 ### 步驟 2.5：重新部署應用程式
 
@@ -191,6 +200,49 @@ https://eswake-booking.vercel.app/api/oauth2-auth-url
 3. **等待部署完成**：通常需要 1-2 分鐘
 4. **檢查部署日誌**：確認沒有編譯錯誤
 5. **確認檔案路徑**：Vercel 的 API 路由應該在 `api/` 目錄下，檔名應該與路由一致
+
+### 問題 0.5：redirect_uri_mismatch 錯誤
+
+**錯誤**：`Error 400: redirect_uri_mismatch` 當嘗試授權時
+
+**原因**：Google Cloud Console 中配置的重定向 URI 與實際使用的不一致。
+
+**解決步驟**：
+
+1. **確認實際使用的重定向 URI**：
+   - 訪問 `https://eswake-booking.vercel.app/api/oauth2-auth-url`
+   - 複製返回的 `authUrl`
+   - 在瀏覽器中開啟 `authUrl`，查看錯誤訊息中顯示的實際 URI
+   - 或檢查瀏覽器網址列中的 `redirect_uri` 參數
+
+2. **在 Google Cloud Console 中添加正確的 URI**：
+   - 前往 [Google Cloud Console](https://console.cloud.google.com/)
+   - 選擇您的專案
+   - 前往「API 和服務」→「憑證」
+   - 找到您的 OAuth 2.0 用戶端 ID，點擊編輯（鉛筆圖示）
+   - 在「已授權的重新導向 URI」中，**確保包含以下 URI**：
+     ```
+     https://eswake-booking.vercel.app/api/oauth2-callback
+     ```
+   - ⚠️ **重要**：
+     - URI 必須**完全匹配**，包括協議（`https://`）、網域、路徑
+     - 不要有多餘的斜線、空格或參數
+     - 如果使用自訂網域，請使用自訂網域的完整 URL
+   - 點擊「儲存」
+
+3. **（可選）設定環境變數明確指定**：
+   - 在 Vercel 環境變數中新增：
+     - 變數名稱：`GOOGLE_OAUTH_REDIRECT_URI`
+     - 變數值：`https://eswake-booking.vercel.app/api/oauth2-callback`
+   - 這樣可以確保使用固定的 URI，不會因為請求頭而變化
+
+4. **等待幾分鐘**：
+   - Google Cloud Console 的變更可能需要幾分鐘才會生效
+
+5. **重新嘗試**：
+   - 清除瀏覽器快取（可選）
+   - 重新訪問 `https://eswake-booking.vercel.app/api/oauth2-auth-url`
+   - 複製新的 `authUrl` 並在瀏覽器中開啟
 
 ### 問題 1：授權失敗
 
