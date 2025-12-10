@@ -8,6 +8,7 @@ import { formatBookingsForLine, getDisplayContactName } from '../utils/bookingFo
 import { useToast } from '../components/ui'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { BatchEditBookingDialog } from '../components/BatchEditBookingDialog'
+import { BatchDeleteConfirmDialog } from '../components/BatchDeleteConfirmDialog'
 import { isEditorAsync } from '../utils/auth'
 import type { Booking as FullBooking } from '../types/booking'
 
@@ -69,6 +70,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedBookingIds, setSelectedBookingIds] = useState<Set<number>>(new Set())
   const [batchEditDialogOpen, setBatchEditDialogOpen] = useState(false)
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false)
   
   // 小編權限（只有小編可以編輯和批次修改）
   const [isEditor, setIsEditor] = useState(false)
@@ -706,25 +708,46 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       </button>
                       
                       {selectedBookingIds.size > 0 && (
-                        <button
-                          onClick={() => setBatchEditDialogOpen(true)}
-                          style={{
-                            padding: '8px 16px',
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            background: '#28a745',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          ✏️ 批次修改 ({selectedBookingIds.size})
-                        </button>
+                        <>
+                          <button
+                            onClick={() => setBatchEditDialogOpen(true)}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              background: '#28a745',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            ✏️ 批次修改 ({selectedBookingIds.size})
+                          </button>
+                          <button
+                            onClick={() => setBatchDeleteDialogOpen(true)}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              background: '#dc3545',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            🗑️ 批次刪除 ({selectedBookingIds.size})
+                          </button>
+                        </>
                       )}
                     </>
                   )}
@@ -992,6 +1015,16 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         onClose={() => setBatchEditDialogOpen(false)}
         onSuccess={handleBatchEditSuccess}
         bookingIds={Array.from(selectedBookingIds)}
+        user={user}
+      />
+      
+      {/* 批次刪除確認對話框 */}
+      <BatchDeleteConfirmDialog
+        isOpen={batchDeleteDialogOpen}
+        onClose={() => setBatchDeleteDialogOpen(false)}
+        onSuccess={handleBatchEditSuccess}
+        bookingIds={Array.from(selectedBookingIds)}
+        user={user}
       />
     </div>
   )

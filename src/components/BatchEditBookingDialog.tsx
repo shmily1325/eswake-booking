@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
+import { logAction } from '../utils/auditLog'
 
 interface Coach {
   id: string
@@ -20,17 +21,19 @@ interface BatchEditBookingDialogProps {
   onClose: () => void
   onSuccess: () => void
   bookingIds: number[]
+  user: { email?: string } | null
 }
 
-type EditField = 'boat' | 'coaches' | 'drivers' | 'activity_types' | 'notes' | 'schedule_notes'
+type EditField = 'boat' | 'coaches' | 'notes' | 'duration'
 
-const ACTIVITY_OPTIONS = ['Wake', 'Surf', 'Ski', 'Foil']
+const DURATION_OPTIONS = [30, 45, 60, 90, 120]
 
 export function BatchEditBookingDialog({
   isOpen,
   onClose,
   onSuccess,
   bookingIds,
+  user,
 }: BatchEditBookingDialogProps) {
   const { isMobile } = useResponsive()
   const toast = useToast()
@@ -46,10 +49,9 @@ export function BatchEditBookingDialog({
   // 修改的值
   const [selectedBoatId, setSelectedBoatId] = useState<number | null>(null)
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
-  const [selectedDrivers, setSelectedDrivers] = useState<string[]>([])
-  const [selectedActivityTypes, setSelectedActivityTypes] = useState<string[]>([])
   const [notes, setNotes] = useState('')
-  const [scheduleNotes, setScheduleNotes] = useState('')
+  const [durationMin, setDurationMin] = useState<number>(30)
+  const [filledBy, setFilledBy] = useState('')
   
   
   // 載入教練和船隻列表
@@ -104,22 +106,88 @@ export function BatchEditBookingDialog({
     }
   }
   
-  // 切換駕駛選擇
-  const toggleDriver = (driverId: string) => {
-    if (selectedDrivers.includes(driverId)) {
-      setSelectedDrivers(selectedDrivers.filter(id => id !== driverId))
-    } else {
-      setSelectedDrivers([...selectedDrivers, driverId])
+  
+  // 檢查教練衝突
+  const checkCoachConflict = async (bookingId: number, coachIds: string[]): Promise<string[]> => {
+    if (coachIds.length === 0) return []
+    
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('start_at, duration_min')
+      .eq('id', bookingId)
+      .single()
+    
+    if (!booking) return []
+    
+    const startAt = new Date(booking.start_at)
+    const endAt = new Date(startAt.getTime() + (booking.duration_min || 30) * 60 * 1000)
+    const dateStr = booking.start_at.split('T')[0]
+    
+    const conflictingCoaches: string[] = []
+    
+    for (const coachId of coachIds) {
+      // 查詢該教練當天的其他預約
+      const { data: coachBookings } = await supabase
+        .from('booking_coaches')
+        .select('booking_id, bookings!inner(id, start_at, duration_min, status)')
+        .eq('coach_id', coachId)
+        .neq('booking_id', bookingId)
+      
+      if (!coachBookings) continue
+      
+      for (const cb of coachBookings) {
+        const b = cb.bookings as any
+        if (b.status === 'cancelled') continue
+        if (!b.start_at.startsWith(dateStr)) continue
+        
+        const bStart = new Date(b.start_at)
+        const bEnd = new Date(bStart.getTime() + (b.duration_min || 30) * 60 * 1000)
+        
+        if (startAt < bEnd && endAt > bStart) {
+          conflictingCoaches.push(coachId)
+          break
+        }
+      }
     }
+    
+    return conflictingCoaches
   }
   
-  // 切換活動類型
-  const toggleActivityType = (type: string) => {
-    if (selectedActivityTypes.includes(type)) {
-      setSelectedActivityTypes(selectedActivityTypes.filter(t => t !== type))
-    } else {
-      setSelectedActivityTypes([...selectedActivityTypes, type])
+  // 檢查時長變更後的衝突（船隻和教練）
+  const checkDurationConflict = async (bookingId: number, newDuration: number): Promise<boolean> => {
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('start_at, boat_id')
+      .eq('id', bookingId)
+      .single()
+    
+    if (!booking) return false
+    
+    const startAt = new Date(booking.start_at)
+    const newEndAt = new Date(startAt.getTime() + newDuration * 60 * 1000)
+    const dateStr = booking.start_at.split('T')[0]
+    
+    // 檢查船隻衝突
+    const { data: boatConflicts } = await supabase
+      .from('bookings')
+      .select('id, start_at, duration_min')
+      .eq('boat_id', booking.boat_id)
+      .gte('start_at', `${dateStr}T00:00:00`)
+      .lte('start_at', `${dateStr}T23:59:59`)
+      .neq('id', bookingId)
+      .neq('status', 'cancelled')
+    
+    if (boatConflicts) {
+      for (const c of boatConflicts) {
+        const cStart = new Date(c.start_at)
+        const cEnd = new Date(cStart.getTime() + (c.duration_min || 30) * 60 * 1000)
+        if (startAt < cEnd && newEndAt > cStart) {
+          return true
+        }
+      }
     }
+    
+    return false
   }
   
   // 檢查船隻衝突
@@ -175,12 +243,35 @@ export function BatchEditBookingDialog({
       return
     }
     
+    if (!filledBy.trim()) {
+      toast.warning('請輸入填表人')
+      return
+    }
+    
     setLoading(true)
     
     try {
       let successCount = 0
       let errorCount = 0
-      let skippedCount = 0
+      let skippedBoat = 0
+      let skippedCoach = 0
+      let skippedDuration = 0
+      
+      const changes: string[] = []
+      if (fieldsToEdit.has('boat') && selectedBoatId) {
+        const boat = boats.find(b => b.id === selectedBoatId)
+        changes.push(`船隻→${boat?.name || '未知'}`)
+      }
+      if (fieldsToEdit.has('coaches')) {
+        const coachNames = coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
+        changes.push(`教練→${coachNames.length > 0 ? coachNames.join('、') : '清空'}`)
+      }
+      if (fieldsToEdit.has('duration')) {
+        changes.push(`時長→${durationMin}分鐘`)
+      }
+      if (fieldsToEdit.has('notes')) {
+        changes.push(`備註→${notes.trim() || '清空'}`)
+      }
       
       for (const bookingId of bookingIds) {
         try {
@@ -188,7 +279,25 @@ export function BatchEditBookingDialog({
           if (fieldsToEdit.has('boat') && selectedBoatId) {
             const hasConflict = await checkBoatConflict(bookingId, selectedBoatId)
             if (hasConflict) {
-              skippedCount++
+              skippedBoat++
+              continue
+            }
+          }
+          
+          // 如果要改教練，檢查衝突
+          if (fieldsToEdit.has('coaches') && selectedCoaches.length > 0) {
+            const conflictingCoaches = await checkCoachConflict(bookingId, selectedCoaches)
+            if (conflictingCoaches.length > 0) {
+              skippedCoach++
+              continue
+            }
+          }
+          
+          // 如果要改時長，檢查衝突
+          if (fieldsToEdit.has('duration')) {
+            const hasConflict = await checkDurationConflict(bookingId, durationMin)
+            if (hasConflict) {
+              skippedDuration++
               continue
             }
           }
@@ -199,14 +308,11 @@ export function BatchEditBookingDialog({
           if (fieldsToEdit.has('boat') && selectedBoatId) {
             updateData.boat_id = selectedBoatId
           }
-          if (fieldsToEdit.has('activity_types')) {
-            updateData.activity_types = selectedActivityTypes.length > 0 ? selectedActivityTypes : null
-          }
           if (fieldsToEdit.has('notes')) {
             updateData.notes = notes.trim() || null
           }
-          if (fieldsToEdit.has('schedule_notes')) {
-            updateData.schedule_notes = scheduleNotes.trim() || null
+          if (fieldsToEdit.has('duration')) {
+            updateData.duration_min = durationMin
           }
           
           // 如果有要更新 bookings 表的欄位
@@ -237,24 +343,6 @@ export function BatchEditBookingDialog({
             }
           }
           
-          // 更新駕駛
-          if (fieldsToEdit.has('drivers')) {
-            // 先刪除舊的
-            await supabase
-              .from('booking_drivers')
-              .delete()
-              .eq('booking_id', bookingId)
-            
-            // 新增新的
-            if (selectedDrivers.length > 0) {
-              const driverInserts = selectedDrivers.map(driverId => ({
-                booking_id: bookingId,
-                driver_id: driverId,
-              }))
-              await supabase.from('booking_drivers').insert(driverInserts)
-            }
-          }
-          
           successCount++
         } catch (err) {
           console.error(`更新預約 ${bookingId} 失敗:`, err)
@@ -262,11 +350,23 @@ export function BatchEditBookingDialog({
         }
       }
       
-      if (errorCount === 0 && skippedCount === 0) {
+      // 記錄 Audit Log
+      if (successCount > 0 && user?.email) {
+        const details = `批次修改 ${successCount} 筆預約：${changes.join('、')} (填表人: ${filledBy.trim()})`
+        logAction(user.email, 'update', 'bookings', details)
+      }
+      
+      const totalSkipped = skippedBoat + skippedCoach + skippedDuration
+      
+      if (errorCount === 0 && totalSkipped === 0) {
         toast.success(`成功更新 ${successCount} 筆預約`)
         onSuccess()
-      } else if (skippedCount > 0) {
-        toast.warning(`更新完成：${successCount} 筆成功，${skippedCount} 筆因船隻衝突跳過`)
+      } else if (totalSkipped > 0) {
+        const skipReasons: string[] = []
+        if (skippedBoat > 0) skipReasons.push(`${skippedBoat}筆船隻衝突`)
+        if (skippedCoach > 0) skipReasons.push(`${skippedCoach}筆教練衝突`)
+        if (skippedDuration > 0) skipReasons.push(`${skippedDuration}筆時長衝突`)
+        toast.warning(`更新完成：${successCount} 筆成功，跳過 ${skipReasons.join('、')}`)
         onSuccess()
       } else {
         toast.warning(`更新完成：${successCount} 筆成功，${errorCount} 筆失敗`)
@@ -285,10 +385,9 @@ export function BatchEditBookingDialog({
     setFieldsToEdit(new Set())
     setSelectedBoatId(null)
     setSelectedCoaches([])
-    setSelectedDrivers([])
-    setSelectedActivityTypes([])
     setNotes('')
-    setScheduleNotes('')
+    setDurationMin(30)
+    setFilledBy('')
   }
   
   // 關閉時重置
@@ -502,114 +601,6 @@ export function BatchEditBookingDialog({
             )}
           </div>
           
-          {/* 駕駛 */}
-          <div style={{
-            marginBottom: '20px',
-            padding: '16px',
-            border: fieldsToEdit.has('drivers') ? '2px solid #007bff' : '1px solid #e0e0e0',
-            borderRadius: '8px',
-            backgroundColor: fieldsToEdit.has('drivers') ? '#f0f7ff' : 'white',
-          }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              marginBottom: fieldsToEdit.has('drivers') ? '12px' : '0',
-            }}>
-              <input
-                type="checkbox"
-                checked={fieldsToEdit.has('drivers')}
-                onChange={() => toggleField('drivers')}
-                style={{ width: '18px', height: '18px' }}
-              />
-              <span style={{ fontWeight: '600', fontSize: '15px' }}>🚤 修改駕駛</span>
-            </label>
-            
-            {fieldsToEdit.has('drivers') && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-                {loadingData ? (
-                  <span style={{ color: '#666' }}>載入中...</span>
-                ) : coaches.map(coach => (
-                  <button
-                    key={coach.id}
-                    type="button"
-                    onClick={() => toggleDriver(coach.id)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '20px',
-                      border: 'none',
-                      background: selectedDrivers.includes(coach.id) ? '#17a2b8' : '#e9ecef',
-                      color: selectedDrivers.includes(coach.id) ? 'white' : '#495057',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {coach.name}
-                  </button>
-                ))}
-                {selectedDrivers.length === 0 && (
-                  <span style={{ fontSize: '13px', color: '#dc3545' }}>（將清空駕駛）</span>
-                )}
-              </div>
-            )}
-          </div>
-          
-          {/* 活動類型 */}
-          <div style={{
-            marginBottom: '20px',
-            padding: '16px',
-            border: fieldsToEdit.has('activity_types') ? '2px solid #007bff' : '1px solid #e0e0e0',
-            borderRadius: '8px',
-            backgroundColor: fieldsToEdit.has('activity_types') ? '#f0f7ff' : 'white',
-          }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              marginBottom: fieldsToEdit.has('activity_types') ? '12px' : '0',
-            }}>
-              <input
-                type="checkbox"
-                checked={fieldsToEdit.has('activity_types')}
-                onChange={() => toggleField('activity_types')}
-                style={{ width: '18px', height: '18px' }}
-              />
-              <span style={{ fontWeight: '600', fontSize: '15px' }}>🏄 修改活動類型</span>
-            </label>
-            
-            {fieldsToEdit.has('activity_types') && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-                {ACTIVITY_OPTIONS.map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => toggleActivityType(type)}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '20px',
-                      border: 'none',
-                      background: selectedActivityTypes.includes(type) ? '#28a745' : '#e9ecef',
-                      color: selectedActivityTypes.includes(type) ? 'white' : '#495057',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {type}
-                  </button>
-                ))}
-                {selectedActivityTypes.length === 0 && (
-                  <span style={{ fontSize: '13px', color: '#dc3545' }}>（將清空活動類型）</span>
-                )}
-              </div>
-            )}
-          </div>
-          
           {/* 備註 */}
           <div style={{
             marginBottom: '20px',
@@ -649,43 +640,95 @@ export function BatchEditBookingDialog({
             )}
           </div>
           
-          {/* 排班備註 */}
+          {/* 時長 */}
           <div style={{
             marginBottom: '20px',
             padding: '16px',
-            border: fieldsToEdit.has('schedule_notes') ? '2px solid #007bff' : '1px solid #e0e0e0',
+            border: fieldsToEdit.has('duration') ? '2px solid #9c27b0' : '1px solid #e0e0e0',
             borderRadius: '8px',
-            backgroundColor: fieldsToEdit.has('schedule_notes') ? '#f0f7ff' : 'white',
+            backgroundColor: fieldsToEdit.has('duration') ? '#f3e5f5' : 'white',
           }}>
             <label style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
               cursor: 'pointer',
-              marginBottom: fieldsToEdit.has('schedule_notes') ? '12px' : '0',
+              marginBottom: fieldsToEdit.has('duration') ? '12px' : '0',
             }}>
               <input
                 type="checkbox"
-                checked={fieldsToEdit.has('schedule_notes')}
-                onChange={() => toggleField('schedule_notes')}
+                checked={fieldsToEdit.has('duration')}
+                onChange={() => toggleField('duration')}
                 style={{ width: '18px', height: '18px' }}
               />
-              <span style={{ fontWeight: '600', fontSize: '15px' }}>📋 修改排班備註</span>
+              <span style={{ fontWeight: '600', fontSize: '15px' }}>⏱️ 修改時長</span>
             </label>
             
-            {fieldsToEdit.has('schedule_notes') && (
-              <textarea
-                value={scheduleNotes}
-                onChange={(e) => setScheduleNotes(e.target.value)}
-                placeholder="輸入新的排班備註（留空將清除）"
-                rows={2}
-                style={{
-                  ...inputStyle,
-                  resize: 'vertical',
-                  marginTop: '8px',
-                }}
-              />
+            {fieldsToEdit.has('duration') && (
+              <div>
+                <div style={{ 
+                  padding: '8px 12px', 
+                  backgroundColor: '#e1bee7', 
+                  borderRadius: '6px', 
+                  marginBottom: '12px',
+                  fontSize: '13px',
+                  color: '#7b1fa2'
+                }}>
+                  ⚠️ 若修改後與其他預約時間衝突，該筆會被跳過
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {DURATION_OPTIONS.map(duration => (
+                    <button
+                      key={duration}
+                      type="button"
+                      onClick={() => setDurationMin(duration)}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: durationMin === duration ? '#9c27b0' : '#e9ecef',
+                        color: durationMin === duration ? 'white' : '#495057',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {duration}分鐘
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
+          </div>
+          
+          {/* 填表人（必填）*/}
+          <div style={{
+            marginBottom: '20px',
+            padding: '16px',
+            border: filledBy.trim() ? '2px solid #28a745' : '2px solid #dc3545',
+            borderRadius: '8px',
+            backgroundColor: filledBy.trim() ? '#d4edda' : '#fff5f5',
+          }}>
+            <label style={{
+              display: 'block',
+              fontWeight: '600',
+              fontSize: '15px',
+              marginBottom: '8px',
+              color: filledBy.trim() ? '#28a745' : '#dc3545',
+            }}>
+              ✍️ 填表人 <span style={{ color: '#dc3545' }}>*</span>
+            </label>
+            <input
+              type="text"
+              value={filledBy}
+              onChange={(e) => setFilledBy(e.target.value)}
+              placeholder="請輸入填表人姓名"
+              style={{
+                ...inputStyle,
+                borderColor: filledBy.trim() ? '#28a745' : '#dc3545',
+              }}
+            />
           </div>
         </div>
         
