@@ -107,11 +107,11 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     
     // G23（最少30分鐘）
     if (boatName.includes('G23')) {
-      return [30, 40, 60, 90].map(min => Math.ceil(pricePerHour * min / 60))
+      return [30, 40, 60, 90].map(min => Math.floor(pricePerHour * min / 60))
     }
     
     // 其他船隻
-    return [20, 30, 40, 60, 90].map(min => Math.ceil(pricePerHour * min / 60))
+    return [20, 30, 40, 60, 90].map(min => Math.floor(pricePerHour * min / 60))
   }
 
   // 根據船隻價格和時間動態計算 VIP 票券金額
@@ -143,7 +143,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
     
     if (defaultCategory === 'balance') {
       if (!boatData?.balance_price_per_hour) return undefined
-      return Math.ceil(boatData.balance_price_per_hour * duration / 60)
+      return Math.floor(boatData.balance_price_per_hour * duration / 60)
     }
     
     if (defaultCategory === 'vip_voucher') {
@@ -290,7 +290,7 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
             // 如果是儲值類別且有價格，計算金額
             if (item.category === 'balance' && boatResult.data.balance_price_per_hour) {
               const duration = report.duration_min
-              const amount = Math.ceil(boatResult.data.balance_price_per_hour * duration / 60)
+              const amount = Math.floor(boatResult.data.balance_price_per_hour * duration / 60)
               return { ...item, amount }
             }
             // 如果是VIP票券類別且有價格，計算金額

@@ -289,10 +289,10 @@ export function BoatManagement() {
         }
     }
 
-    // 計算預覽價格
+    // 計算預覽價格（無條件捨去）
     const calculatePrice = (pricePerHour: number | null, minutes: number): string => {
         if (!pricePerHour) return '-'
-        return `$${Math.ceil(pricePerHour * minutes / 60).toLocaleString()}`
+        return `$${Math.floor(pricePerHour * minutes / 60).toLocaleString()}`
     }
 
     if (loading || !hasAccess) {
@@ -652,7 +652,7 @@ export function BoatManagement() {
                                 <span style={{ flexShrink: 0 }}>💡</span>
                                 <div>
                                     <div style={{ marginBottom: '4px' }}>
-                                        <strong>價格計算公式</strong>：實際金額 = Math.ceil(每小時價格 * 分鐘數 / 60)
+                                        <strong>價格計算公式</strong>：實際金額 = Math.floor(每小時價格 * 分鐘數 / 60)
                                     </div>
                                     <div style={{ fontSize: '13px', opacity: 0.9 }}>
                                         例如：$10800/小時 * 30分鐘 / 60 = $5400

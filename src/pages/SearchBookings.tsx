@@ -6,6 +6,9 @@ import { useResponsive } from '../hooks/useResponsive'
 import { Footer } from '../components/Footer'
 import { formatBookingsForLine, getDisplayContactName } from '../utils/bookingFormat'
 import { useToast } from '../components/ui'
+import { EditBookingDialog } from '../components/EditBookingDialog'
+import { BatchEditBookingDialog } from '../components/BatchEditBookingDialog'
+import type { Booking as FullBooking } from '../types/booking'
 
 interface Booking {
   id: number
@@ -51,6 +54,16 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
   const [showMemberDropdown, setShowMemberDropdown] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  
+  // 編輯對話框狀態
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [selectedBookingForEdit, setSelectedBookingForEdit] = useState<FullBooking | null>(null)
+  const [loadingBookingId, setLoadingBookingId] = useState<number | null>(null)
+  
+  // 批次選擇模式
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedBookingIds, setSelectedBookingIds] = useState<Set<number>>(new Set())
+  const [batchEditDialogOpen, setBatchEditDialogOpen] = useState(false)
 
   useEffect(() => {
     loadMembers()
@@ -249,6 +262,107 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     }
   }
 
+  // 載入完整預約資料並打開編輯對話框
+  const handleBookingClick = async (bookingId: number) => {
+    setLoadingBookingId(bookingId)
+    try {
+      // 查詢完整的預約資料
+      const { data: bookingData, error: bookingError } = await supabase
+        .from('bookings')
+        .select('*, boats:boat_id(*)')
+        .eq('id', bookingId)
+        .single()
+
+      if (bookingError) throw bookingError
+
+      // 查詢教練
+      const { data: coachesData } = await supabase
+        .from('booking_coaches')
+        .select('coaches:coach_id(*)')
+        .eq('booking_id', bookingId)
+
+      // 查詢駕駛
+      const { data: driversData } = await supabase
+        .from('booking_drivers')
+        .select('coaches:driver_id(*)')
+        .eq('booking_id', bookingId)
+
+      // 查詢會員
+      const { data: membersData } = await supabase
+        .from('booking_members')
+        .select('member_id')
+        .eq('booking_id', bookingId)
+
+      // 組合完整資料
+      const fullBooking: FullBooking = {
+        ...bookingData,
+        coaches: coachesData?.map(c => (c as any).coaches).filter(Boolean) || [],
+        drivers: driversData?.map(d => (d as any).coaches).filter(Boolean) || [],
+        booking_members: membersData || [],
+      }
+
+      setSelectedBookingForEdit(fullBooking)
+      setEditDialogOpen(true)
+    } catch (err) {
+      console.error('載入預約資料失敗:', err)
+      toast.error('載入預約資料失敗')
+    } finally {
+      setLoadingBookingId(null)
+    }
+  }
+
+  // 編輯成功後重新搜尋
+  const handleEditSuccess = () => {
+    setEditDialogOpen(false)
+    setSelectedBookingForEdit(null)
+    // 重新執行搜尋
+    if (searchName.trim()) {
+      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+      handleSearch(fakeEvent)
+    }
+  }
+
+  // 批次選擇相關函數
+  const toggleSelectionMode = () => {
+    if (selectionMode) {
+      // 關閉選擇模式時清空選擇
+      setSelectedBookingIds(new Set())
+    }
+    setSelectionMode(!selectionMode)
+  }
+
+  const toggleBookingSelection = (bookingId: number, e: React.MouseEvent) => {
+    e.stopPropagation() // 防止觸發卡片的 onClick
+    const newSet = new Set(selectedBookingIds)
+    if (newSet.has(bookingId)) {
+      newSet.delete(bookingId)
+    } else {
+      newSet.add(bookingId)
+    }
+    setSelectedBookingIds(newSet)
+  }
+
+  const selectAll = () => {
+    const allIds = new Set(bookings.map(b => b.id))
+    setSelectedBookingIds(allIds)
+  }
+
+  const deselectAll = () => {
+    setSelectedBookingIds(new Set())
+  }
+
+  // 批次編輯成功後
+  const handleBatchEditSuccess = () => {
+    setBatchEditDialogOpen(false)
+    setSelectedBookingIds(new Set())
+    setSelectionMode(false)
+    // 重新執行搜尋
+    if (searchName.trim()) {
+      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+      handleSearch(fakeEvent)
+    }
+  }
+
   return (
     <div style={{ 
       padding: isEmbedded ? '0' : '20px',
@@ -434,28 +548,103 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 fontWeight: '500',
               }}>
                 找到 {bookings.length} 筆預約
+                {selectionMode && selectedBookingIds.size > 0 && (
+                  <span style={{ color: '#007bff', marginLeft: '8px' }}>
+                    （已選 {selectedBookingIds.size} 筆）
+                  </span>
+                )}
               </div>
               
               {bookings.length > 0 && (
-                <button
-                  onClick={handleCopyToClipboard}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    background: copySuccess ? '#28a745' : '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {copySuccess ? '✓ 已複製' : '📋 複製 LINE 格式'}
-                </button>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {/* 選擇模式切換 */}
+                  <button
+                    onClick={toggleSelectionMode}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      background: selectionMode ? '#6c757d' : '#f8f9fa',
+                      color: selectionMode ? 'white' : '#495057',
+                      border: selectionMode ? 'none' : '1px solid #dee2e6',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {selectionMode ? '✕ 取消選擇' : '☑️ 批次選擇'}
+                  </button>
+
+                  {/* 選擇模式下的操作按鈕 */}
+                  {selectionMode && (
+                    <>
+                      <button
+                        onClick={selectedBookingIds.size === bookings.length ? deselectAll : selectAll}
+                        style={{
+                          padding: '8px 12px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          background: '#f8f9fa',
+                          color: '#495057',
+                          border: '1px solid #dee2e6',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {selectedBookingIds.size === bookings.length ? '取消全選' : '全選'}
+                      </button>
+                      
+                      {selectedBookingIds.size > 0 && (
+                        <button
+                          onClick={() => setBatchEditDialogOpen(true)}
+                          style={{
+                            padding: '8px 16px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            background: '#28a745',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          ✏️ 批次修改 ({selectedBookingIds.size})
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {/* 複製 LINE 格式按鈕 */}
+                  {!selectionMode && (
+                    <button
+                      onClick={handleCopyToClipboard}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        background: copySuccess ? '#28a745' : '#007bff',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {copySuccess ? '✓ 已複製' : '📋 複製 LINE 格式'}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -490,16 +679,40 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {bookings.map((booking) => {
                 const isPast = isPastBooking(booking.start_at)
+                const isLoadingThis = loadingBookingId === booking.id
+                const isSelected = selectedBookingIds.has(booking.id)
                 return (
                   <div
                     key={booking.id}
+                    onClick={(e) => {
+                      if (selectionMode) {
+                        toggleBookingSelection(booking.id, e)
+                      } else if (!isLoadingThis) {
+                        handleBookingClick(booking.id)
+                      }
+                    }}
                     style={{
                       padding: '16px',
-                      backgroundColor: 'white',
+                      backgroundColor: isSelected ? '#e3f2fd' : (isLoadingThis ? '#f8f9fa' : 'white'),
                       borderRadius: '8px',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                      borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`,
+                      boxShadow: isSelected ? '0 2px 8px rgba(0,123,255,0.25)' : '0 2px 4px rgba(0,0,0,0.1)',
+                      borderLeft: `4px solid ${isSelected ? '#007bff' : (booking.boats?.color || '#ccc')}`,
                       opacity: isPast ? 0.7 : 1,
+                      cursor: isLoadingThis ? 'wait' : 'pointer',
+                      transition: 'all 0.2s',
+                      position: 'relative',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isLoadingThis && !selectionMode) {
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selectionMode) {
+                        e.currentTarget.style.transform = 'translateY(0)'
+                        e.currentTarget.style.boxShadow = isSelected ? '0 2px 8px rgba(0,123,255,0.25)' : '0 2px 4px rgba(0,0,0,0.1)'
+                      }
                     }}
                   >
                     <div style={{
@@ -510,34 +723,86 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       flexWrap: 'wrap',
                       gap: '8px',
                     }}>
-                      <div>
-                        <div style={{
-                          fontSize: '18px',
-                          fontWeight: '600',
-                          color: '#000',
-                          marginBottom: '4px',
-                        }}>
-                          {getDisplayContactName(booking)}
-                        </div>
-                        <div style={{
-                          fontSize: '14px',
-                          color: '#666',
-                        }}>
-                          {formatDateTime(booking.start_at)}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                        {/* 選擇模式下的 Checkbox */}
+                        {selectionMode && (
+                          <div
+                            onClick={(e) => toggleBookingSelection(booking.id, e)}
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '4px',
+                              border: isSelected ? 'none' : '2px solid #dee2e6',
+                              backgroundColor: isSelected ? '#007bff' : 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              flexShrink: 0,
+                              marginTop: '2px',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            {isSelected && (
+                              <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>✓</span>
+                            )}
+                          </div>
+                        )}
+                        <div>
+                          <div style={{
+                            fontSize: '18px',
+                            fontWeight: '600',
+                            color: '#000',
+                            marginBottom: '4px',
+                          }}>
+                            {getDisplayContactName(booking)}
+                          </div>
+                          <div style={{
+                            fontSize: '14px',
+                            color: '#666',
+                          }}>
+                            {formatDateTime(booking.start_at)}
+                          </div>
                         </div>
                       </div>
-                      {isPast && (
-                        <span style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#6c757d',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                        }}>
-                          已結束
-                        </span>
-                      )}
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {!selectionMode && isLoadingThis && (
+                          <span style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#007bff',
+                            color: 'white',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                          }}>
+                            載入中...
+                          </span>
+                        )}
+                        {!selectionMode && !isLoadingThis && (
+                          <span style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#e9ecef',
+                            color: '#495057',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                          }}>
+                            ✏️ 編輯
+                          </span>
+                        )}
+                        {isPast && (
+                          <span style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#6c757d',
+                            color: 'white',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                          }}>
+                            已結束
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div style={{
@@ -597,6 +862,28 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       )}
 
       {!isEmbedded && <Footer />}
+
+      {/* 編輯預約對話框 */}
+      {selectedBookingForEdit && user && (
+        <EditBookingDialog
+          isOpen={editDialogOpen}
+          onClose={() => {
+            setEditDialogOpen(false)
+            setSelectedBookingForEdit(null)
+          }}
+          onSuccess={handleEditSuccess}
+          booking={selectedBookingForEdit}
+          user={user}
+        />
+      )}
+
+      {/* 批次編輯對話框 */}
+      <BatchEditBookingDialog
+        isOpen={batchEditDialogOpen}
+        onClose={() => setBatchEditDialogOpen(false)}
+        onSuccess={handleBatchEditSuccess}
+        bookingIds={Array.from(selectedBookingIds)}
+      />
     </div>
   )
 }
