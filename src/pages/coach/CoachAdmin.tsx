@@ -202,8 +202,7 @@ export function CoachAdmin() {
         endOfDay = `${selectedDate}T23:59:59`
       }
 
-      // 1. 載入教學記錄 (只載入已結案的 processed)
-      // 注意：不再過濾 is_teaching，因為「不指定教練」的課程也需要顯示扣款記錄
+      // 1. 載入教學記錄 (只載入已結案的 processed，且 is_teaching = true)
       const { data: participantsData, error: participantsError } = await supabase
         .from('booking_participants')
         .select(`
@@ -217,6 +216,7 @@ export function CoachAdmin() {
           members:member_id(id, name, nickname)
         `)
         .eq('status', 'processed')
+        .eq('is_teaching', true)
         .eq('is_deleted', false)
         .gte('bookings.start_at', startOfDay)
         .lte('bookings.start_at', endOfDay)

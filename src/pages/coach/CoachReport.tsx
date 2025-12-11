@@ -6,7 +6,7 @@ import { Footer } from '../../components/Footer'
 import { CoachReportFormDialog } from '../../components/CoachReportFormDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
-import { getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
+import { getCardStyle } from '../../styles/designSystem'
 import { Button, useToast, ToastContainer } from '../../components/ui'
 import { isFacility } from '../../utils/facility'
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
@@ -794,6 +794,10 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
 
   // 導出當日回報為 CSV
   const exportToCSV = async () => {
+    // 🔍 調試：顯示 allBookings 的內容
+    console.log('📋 準備匯出的預約數量:', allBookings.length)
+    console.log('📋 所有預約 ID:', allBookings.map(b => ({ id: b.id, contact: b.contact_name, coaches: b.coaches?.length || 0, drivers: b.drivers?.length || 0 })))
+    
     if (allBookings.length === 0) {
       toast.warning('沒有資料可以匯出')
       return
@@ -843,7 +847,13 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
       const contactName = booking.contact_name || ''
       const durationMin = booking.duration_min.toString()
       const coachNames = (booking.coaches || []).map(c => c.name).join('、') || ''
+      const driverNames = (booking.drivers || []).map(d => d.name).join('、') || ''
       const notes = (booking.notes || '').replace(/[\n\r]/g, ' ') // 移除換行符
+      
+      // 🔍 調試：純駕駛預約
+      if ((booking.coaches || []).length === 0 && (booking.drivers || []).length > 0) {
+        console.log('🚤 純駕駛預約:', { id: booking.id, contact: contactName, drivers: driverNames, participants: booking.participants?.length || 0 })
+      }
       
       // 獲取所有駕駛的回報時長（只顯示應該回報駕駛的人）
       const driverReports = driverReportsMap.get(booking.id)
@@ -938,13 +948,13 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
         })
       } else {
         // 沒有參與者記錄（未回報或只有駕駛回報）
-        const hasDriverReport = booking.drivers && booking.drivers.length > 0 && 
-          booking.drivers.some(d => {
-            const status = getReportStatus(booking, d.id)
-            return status.hasDriverReport
-          })
+        // 檢查是否有駕駛回報（包括明確駕駛和隱性駕駛）
+        const hasDriverReport = reportedDriverName !== ''
         
         const reportStatus = hasDriverReport ? '已回報駕駛' : '未回報'
+        
+        // 駕駛名稱列表（用於顯示）
+        const driverNames = (booking.drivers || []).map(d => d.name).join('、') || ''
         
         rows.push([
           startTime,
@@ -952,9 +962,9 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
           contactName,
           durationMin,
           coachNames,
-          '',  // 無回報教練，留空
+          reportedDriverName || '',  // 回報人（駕駛）
           reportStatus,
-          reportedDriverName,
+          driverNames || reportedDriverName,  // 駕駛欄位
           reportedDriverDuration,
           notes
         ])
@@ -1082,294 +1092,204 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
         margin: '0 auto',
         width: '100%'
       }}>
-        {/* 標籤頁式視圖切換 */}
+        {/* 篩選區 - 整合為一個卡片 */}
         <div style={{
-          display: 'flex',
-          gap: '4px',
-          marginBottom: '0',
-          borderBottom: '2px solid #e0e0e0'
+          background: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          marginBottom: isMobile ? '16px' : '24px',
+          overflow: 'hidden'
         }}>
+          {/* 標籤頁切換 */}
+          <div style={{
+            display: 'flex',
+            borderBottom: '1px solid #eee',
+            background: '#fafafa'
+          }}>
             <button
               onClick={() => {
-                setBookings([])  // 清空舊資料避免閃爍
+                setBookings([])
                 setViewMode('date')
               }}
               style={{
-              flex: isMobile ? 1 : 'none',
-              padding: isMobile ? '14px 16px' : '14px 32px',
-              background: viewMode === 'date' ? 'white' : 'transparent',
-              color: viewMode === 'date' ? '#2196f3' : '#999',
-              border: 'none',
-              borderBottom: viewMode === 'date' ? '3px solid #2196f3' : '3px solid transparent',
+                flex: 1,
+                padding: isMobile ? '14px 12px' : '18px 24px',
+                background: viewMode === 'date' ? 'white' : 'transparent',
+                color: viewMode === 'date' ? '#1976d2' : '#888',
+                border: 'none',
+                borderBottom: viewMode === 'date' ? '3px solid #1976d2' : '3px solid transparent',
                 cursor: 'pointer',
-              fontSize: isMobile ? '15px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              marginBottom: '-2px'
+                fontSize: isMobile ? '13px' : '15px',
+                fontWeight: '600',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
               }}
             >
-            📅 按日期查看
+              <span style={{ fontSize: isMobile ? '15px' : '18px' }}>📅</span>
+              <span>按日期查看</span>
             </button>
             <button
               onClick={() => {
-                setBookings([])  // 清空舊資料避免閃爍
+                setBookings([])
                 setViewMode('unreported')
               }}
               style={{
-              flex: isMobile ? 1 : 'none',
-              padding: isMobile ? '14px 16px' : '14px 32px',
-              background: viewMode === 'unreported' ? 'white' : 'transparent',
-              color: viewMode === 'unreported' ? '#ff9800' : '#999',
-              border: 'none',
-              borderBottom: viewMode === 'unreported' ? '3px solid #ff9800' : '3px solid transparent',
+                flex: 1,
+                padding: isMobile ? '14px 12px' : '18px 24px',
+                background: viewMode === 'unreported' ? 'white' : 'transparent',
+                color: viewMode === 'unreported' ? '#e65100' : '#888',
+                border: 'none',
+                borderBottom: viewMode === 'unreported' ? '3px solid #e65100' : '3px solid transparent',
                 cursor: 'pointer',
-              fontSize: isMobile ? '15px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              marginBottom: '-2px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px'
+                fontSize: isMobile ? '13px' : '15px',
+                fontWeight: '600',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
               }}
             >
-            ⚠️ 查看全部
-            {viewMode === 'unreported' && bookings.length > 0 && (
-              <span style={{
-                background: '#ff9800',
-                color: 'white',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                fontSize: '13px',
-                fontWeight: 'bold'
-              }}>
-                {bookings.length}
-              </span>
-            )}
+              <span style={{ fontSize: isMobile ? '15px' : '18px' }}>⚠️</span>
+              <span>查看全部</span>
+              {viewMode === 'unreported' && bookings.length > 0 && (
+                <span style={{
+                  background: '#e65100',
+                  color: 'white',
+                  padding: '2px 8px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  marginLeft: '4px'
+                }}>
+                  {bookings.length}
+                </span>
+              )}
             </button>
           </div>
 
-        {/* 統計摘要 - 獨立在外面 */}
-        {viewMode === 'date' && stats.total > 0 && (
-          <>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-              gap: '16px',
-              marginBottom: '16px'
-            }}>
-              <div style={{
-                padding: '20px',
-                background: 'white',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                borderLeft: '4px solid #90caf9'
-              }}>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                  總預約
-                </div>
-                <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
-                  {stats.total}
-                </div>
-              </div>
-
-              <div style={{
-                padding: '20px',
-                background: 'white',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                borderLeft: '4px solid #81c784'
-              }}>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                  已回報
-                </div>
-                <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
-                  {stats.reported}
-                </div>
-              </div>
-
-              <div style={{
-                padding: '20px',
-                background: 'white',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                borderLeft: '4px solid #ffb74d'
-              }}>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                  未回報
-                </div>
-                <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333' }}>
-                  {stats.unreported}
-                </div>
-              </div>
-            </div>
-
-          </>
-        )}
-
-
-        {/* 篩選區 */}
-        <div style={{
-          ...getCardStyle(isMobile),
-          marginBottom: '24px',
-          borderTopLeftRadius: 0,
-          borderTopRightRadius: 0
-        }}>
-          {/* 日期選擇 - 只在按日期模式顯示 */}
+          {/* 日期選擇區 - 只在按日期模式顯示 */}
           {viewMode === 'date' && (
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>日期</label>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => setDateOffset(-2)}
-                  style={{
-                    flex: isMobile ? 1 : 'none',
-                    padding: '10px 20px',
-                    background: 'white',
-                    color: '#666',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#2196f3'
-                    e.currentTarget.style.color = '#2196f3'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e0e0e0'
-                    e.currentTarget.style.color = '#666'
-                  }}
-                >
-                  前天
-                </button>
-                <button
-                  onClick={() => setDateOffset(-1)}
-                  style={{
-                    flex: isMobile ? 1 : 'none',
-                    padding: '10px 20px',
-                    background: 'white',
-                    color: '#666',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#2196f3'
-                    e.currentTarget.style.color = '#2196f3'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e0e0e0'
-                    e.currentTarget.style.color = '#666'
-                  }}
-                >
-                  昨天
-                </button>
-                <button
-                  onClick={() => setDateOffset(0)}
-                  style={{
-                    flex: isMobile ? 1 : 'none',
-                    padding: '10px 20px',
-                    background: selectedDate === getLocalDateString() ? '#2196f3' : 'white',
-                    color: selectedDate === getLocalDateString() ? 'white' : '#666',
-                    border: `2px solid ${selectedDate === getLocalDateString() ? '#2196f3' : '#e0e0e0'}`,
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  今天
-                </button>
+            <div style={{ padding: isMobile ? '14px' : '20px' }}>
+              {/* 快捷日期按鈕 */}
+              <div style={{
+                display: 'flex',
+                gap: isMobile ? '8px' : '10px',
+                marginBottom: isMobile ? '14px' : '16px'
+              }}>
+                {[
+                  { label: '前天', offset: -2 },
+                  { label: '昨天', offset: -1 },
+                  { label: '今天', offset: 0 }
+                ].map(({ label, offset }) => {
+                  const targetDate = new Date()
+                  targetDate.setDate(targetDate.getDate() + offset)
+                  const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
+                  const isSelected = selectedDate === targetDateStr
+                  
+                  return (
+                    <button
+                      key={offset}
+                      onClick={() => setDateOffset(offset)}
+                      style={{
+                        flex: 1,
+                        padding: isMobile ? '12px 8px' : '10px 24px',
+                        background: isSelected ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)' : '#f5f5f5',
+                        color: isSelected ? 'white' : '#555',
+                        border: 'none',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '13px' : '14px',
+                        fontWeight: '600',
+                        transition: 'all 0.2s',
+                        boxShadow: isSelected ? '0 4px 12px rgba(25, 118, 210, 0.3)' : 'none'
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
-              {isMobile ? (
-                // 手機版：徽章在右上角
-                <div style={{ position: 'relative' }}>
-                  <input 
-                    type="date" 
-                    value={selectedDate} 
-                    onChange={(e) => {
-                      const newDate = e.target.value
-                      // 驗證日期格式（必須是 yyyy-MM-dd）
-                      if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                        setSelectedDate(newDate)
-                      }
-                    }} 
-                    style={getInputStyle(isMobile)} 
-                  />
-                  {/* 星期幾徽章 - 右上角 */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    right: '8px',
-                    fontSize: '11px',
-                    color: 'white',
-                    fontWeight: '600',
-                    background: '#5a5a5a',
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                    pointerEvents: 'none',
-                  }}>
-                    {getWeekdayText(selectedDate)}
-                  </div>
-                </div>
-              ) : (
-                // 電腦版：徽章在旁邊
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input 
-                    type="date" 
-                    value={selectedDate} 
-                    onChange={(e) => {
-                      const newDate = e.target.value
-                      // 驗證日期格式（必須是 yyyy-MM-dd）
-                      if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                        setSelectedDate(newDate)
-                      }
-                    }} 
-                    style={getInputStyle(isMobile)} 
-                  />
-                  {/* 星期幾徽章 */}
-                  <span style={{
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    background: '#f8f9fa',
-                    color: '#495057',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    border: '1px solid #dee2e6',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {getWeekdayText(selectedDate)}
-                  </span>
-                </div>
-              )}
+
+              {/* 日期選擇器 + 星期顯示 */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#f8f9fa',
+                borderRadius: '10px',
+                padding: isMobile ? '10px 12px' : '8px 14px'
+              }}>
+                <input 
+                  type="date" 
+                  value={selectedDate} 
+                  onChange={(e) => {
+                    const newDate = e.target.value
+                    if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                      setSelectedDate(newDate)
+                    }
+                  }} 
+                  style={{
+                    padding: '8px',
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: isMobile ? '14px' : '15px',
+                    fontWeight: '500',
+                    color: '#333',
+                    cursor: 'pointer'
+                  }}
+                />
+                <span style={{
+                  padding: isMobile ? '6px 12px' : '8px 14px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #424242 0%, #303030 100%)',
+                  color: 'white',
+                  fontSize: isMobile ? '11px' : '13px',
+                  fontWeight: '600',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                }}>
+                  {getWeekdayText(selectedDate)}
+                </span>
+              </div>
             </div>
           )}
 
-          {/* 教練選擇 - 按鈕組 */}
+          {/* 教練選擇 */}
           {!autoFilterByUser && (
-            <div style={{ marginTop: viewMode === 'date' ? '16px' : 0 }}>
-              <label style={{ ...getLabelStyle(isMobile), marginBottom: '12px' }}>教練</label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{
+              padding: isMobile ? '0 14px 14px' : '0 20px 20px',
+              borderTop: viewMode === 'date' ? '1px solid #eee' : 'none',
+              paddingTop: viewMode === 'date' ? (isMobile ? '14px' : '20px') : (isMobile ? '14px' : '20px')
+            }}>
+              <div style={{
+                fontSize: isMobile ? '12px' : '13px',
+                color: '#888',
+                fontWeight: '600',
+                marginBottom: isMobile ? '10px' : '12px'
+              }}>
+                選擇教練
+              </div>
+              <div style={{
+                display: 'flex',
+                gap: isMobile ? '6px' : '8px',
+                flexWrap: 'wrap'
+              }}>
                 <button
                   onClick={() => setSelectedCoachId('all')}
                   style={{
-                    padding: '10px 20px',
-                    background: selectedCoachId === 'all' ? '#2196f3' : 'white',
-                    color: selectedCoachId === 'all' ? 'white' : '#666',
-                    border: `2px solid ${selectedCoachId === 'all' ? '#2196f3' : '#e0e0e0'}`,
-                    borderRadius: '8px',
+                    padding: isMobile ? '8px 14px' : '10px 24px',
+                    background: selectedCoachId === 'all' ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)' : '#f5f5f5',
+                    color: selectedCoachId === 'all' ? 'white' : '#555',
+                    border: 'none',
+                    borderRadius: '10px',
                     cursor: 'pointer',
-                    fontSize: '14px',
+                    fontSize: isMobile ? '12px' : '14px',
                     fontWeight: '600',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    boxShadow: selectedCoachId === 'all' ? '0 4px 12px rgba(25, 118, 210, 0.3)' : 'none'
                   }}
                 >
                   全部
@@ -1379,15 +1299,16 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
                     key={coach.id}
                     onClick={() => setSelectedCoachId(coach.id)}
                     style={{
-                      padding: '10px 20px',
-                      background: selectedCoachId === coach.id ? '#2196f3' : 'white',
-                      color: selectedCoachId === coach.id ? 'white' : '#666',
-                      border: `2px solid ${selectedCoachId === coach.id ? '#2196f3' : '#e0e0e0'}`,
-                      borderRadius: '8px',
+                      padding: isMobile ? '8px 14px' : '10px 24px',
+                      background: selectedCoachId === coach.id ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)' : '#f5f5f5',
+                      color: selectedCoachId === coach.id ? 'white' : '#555',
+                      border: 'none',
+                      borderRadius: '10px',
                       cursor: 'pointer',
-                      fontSize: '14px',
+                      fontSize: isMobile ? '12px' : '14px',
                       fontWeight: '600',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      boxShadow: selectedCoachId === coach.id ? '0 4px 12px rgba(25, 118, 210, 0.3)' : 'none'
                     }}
                   >
                     {coach.name}
@@ -1396,25 +1317,25 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
               </div>
             </div>
           )}
-          
-          {/* 自動篩選模式提示 */}
 
-          {/* 匯出按鈕 - 在按日期查看模式顯示 */}
+          {/* 匯出按鈕 */}
           {viewMode === 'date' && (
             <div style={{
-              marginTop: '16px',
-              paddingTop: '16px',
-              borderTop: '1px solid #e0e0e0',
+              padding: isMobile ? '12px 14px' : '16px 20px',
+              background: '#fafafa',
+              borderTop: '1px solid #eee',
               display: 'flex',
               justifyContent: 'flex-end'
             }}>
               <Button
                 variant="success"
-                size="medium"
+                size={isMobile ? 'small' : 'medium'}
                 onClick={exportToCSV}
                 icon={<span>📊</span>}
                 style={{
-                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                  background: 'linear-gradient(135deg, #43a047 0%, #388e3c 100%)',
+                  boxShadow: '0 4px 12px rgba(67, 160, 71, 0.3)',
+                  borderRadius: '10px'
                 }}
               >
                 匯出回報記錄
@@ -1423,13 +1344,62 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
           )}
         </div>
 
+        {/* 統計摘要 */}
+        {viewMode === 'date' && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: isMobile ? '8px' : '16px',
+            marginBottom: isMobile ? '16px' : '24px'
+          }}>
+            {[
+              { label: '總預約', value: stats.total, color: '#1976d2', bg: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' },
+              { label: '已回報', value: stats.reported, color: '#388e3c', bg: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)' },
+              { label: '未回報', value: stats.unreported, color: '#f57c00', bg: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)' }
+            ].map(({ label, value, color, bg }) => (
+              <div
+                key={label}
+                style={{
+                  padding: isMobile ? '14px 10px' : '20px',
+                  background: bg,
+                  borderRadius: isMobile ? '12px' : '14px',
+                  textAlign: 'center',
+                  border: `1px solid ${color}20`
+                }}
+              >
+                <div style={{
+                  fontSize: isMobile ? '10px' : '13px',
+                  color: '#666',
+                  fontWeight: '600',
+                  marginBottom: '4px'
+                }}>
+                  {label}
+                </div>
+                <div style={{
+                  fontSize: isMobile ? '24px' : '36px',
+                  fontWeight: 'bold',
+                  color: color
+                }}>
+                  {value}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* 預約列表 */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+          <div style={{ textAlign: 'center', padding: isMobile ? '40px 20px' : '40px', color: '#999' }}>
             載入中...
           </div>
         ) : bookings.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+          <div style={{ 
+            textAlign: 'center', 
+            padding: isMobile ? '40px 20px' : '40px', 
+            color: '#999',
+            background: 'white',
+            borderRadius: '12px'
+          }}>
             {viewMode === 'unreported' ? '沒有未回報的預約' : '沒有預約記錄'}
           </div>
         ) : (
