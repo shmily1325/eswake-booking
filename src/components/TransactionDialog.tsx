@@ -178,9 +178,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       }
 
       // 先計算出原交易對會員資料的影響並還原
+      // 使用 Math.abs 確保數值為正數，避免資料庫中有負數 amount 時計算錯誤
+      const oldAbsValue = Math.abs(editingTransaction.amount || editingTransaction.minutes || 0)
       const oldDelta = editingTransaction.adjust_type === 'increase' 
-        ? (editingTransaction.amount || editingTransaction.minutes || 0)
-        : -(editingTransaction.amount || editingTransaction.minutes || 0)
+        ? oldAbsValue   // 增加的交易，原本加了這麼多
+        : -oldAbsValue  // 減少的交易，原本減了這麼多
       
       // 根據舊的category還原
       switch (editingTransaction.category) {
@@ -293,9 +295,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
     try {
       // 計算需要還原的值
+      // 使用 Math.abs 確保數值為正數，避免資料庫中有負數 amount 時計算錯誤
+      const absValue = Math.abs(tx.amount || tx.minutes || 0)
       const delta = tx.adjust_type === 'increase' 
-        ? -(tx.amount || tx.minutes || 0)
-        : (tx.amount || tx.minutes || 0)
+        ? -absValue  // 增加 → 刪除時要減回來
+        : absValue   // 減少 → 刪除時要加回來
       
       let updates: any = {}
       
@@ -396,8 +400,9 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           else if (cat.value === 'gift_boat_hours') endValue = lastTx.gift_boat_hours_after ?? 0
           
           // 計算本月增加和減少
+          // 使用 Math.abs 確保數值為正數，避免資料庫中有負數時計算錯誤
           txList.forEach(tx => {
-            const value = isAmount ? (tx.amount || 0) : (tx.minutes || 0)
+            const value = Math.abs(isAmount ? (tx.amount || 0) : (tx.minutes || 0))
             if (tx.adjust_type === 'increase') {
               totalIncrease += value
             } else {
@@ -443,16 +448,17 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
             const formattedDate = `${month}/${day}/${year}`
             
             // 分成動詞和數值兩欄
+            // 使用 Math.abs 確保顯示正數
             let action: string
             let amount: string
             if (isAmount) {
               // 金額類別
               action = tx.adjust_type === 'increase' ? '儲值' : '扣除'
-              amount = `${unit}${tx.amount || 0}`
+              amount = `${unit}${Math.abs(tx.amount || 0)}`
             } else {
               // 時數類別
               action = tx.adjust_type === 'increase' ? '增加' : '使用'
-              amount = `${tx.minutes || 0}分`
+              amount = `${Math.abs(tx.minutes || 0)}分`
             }
             
             csvLines.push(`"${formattedDate}","${tx.description || ''}","${action}","${amount}","${tx.notes || ''}"`)
