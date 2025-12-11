@@ -82,29 +82,40 @@ export function MyReport() {
         margin: '0 auto',
         width: '100%'
       }}>
-        {/* Tab 切換 - 三個同層級的 tab */}
-        <div style={{
+        {/* 頁面標題 */}
+        <h1 style={{ 
+          fontSize: isMobile ? '24px' : '32px',
+          fontWeight: 'bold',
+          marginBottom: '24px',
+          color: '#333'
+        }}>
+          📝 教練回報
+        </h1>
+
+        {/* Tab 切換 */}
+        <div style={{ 
           display: 'flex',
-          gap: '0',
-          marginBottom: '0',
-          background: 'white',
-          borderRadius: '12px 12px 0 0',
-          overflow: 'hidden',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+          gap: '8px',
+          marginBottom: '24px',
+          borderBottom: '2px solid #e0e0e0',
+          flexWrap: 'wrap'
         }}>
           <button
             onClick={() => setActiveTab('unreported')}
             style={{
-              flex: 1,
-              padding: isMobile ? '14px 8px' : '16px 24px',
-              background: activeTab === 'unreported' ? 'white' : '#f5f5f5',
-              color: activeTab === 'unreported' ? '#e65100' : '#888',
+              padding: '12px 24px',
+              background: activeTab === 'unreported' ? '#ff9800' : 'transparent',
+              color: activeTab === 'unreported' ? 'white' : '#666',
               border: 'none',
-              borderBottom: activeTab === 'unreported' ? '3px solid #e65100' : '3px solid #e0e0e0',
+              borderBottom: activeTab === 'unreported' ? '3px solid #ff9800' : 'none',
+              borderRadius: '8px 8px 0 0',
               cursor: 'pointer',
-              fontSize: isMobile ? '13px' : '15px',
+              fontSize: isMobile ? '14px' : '16px',
               fontWeight: '600',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
             }}
           >
             ⚠️ 待回報
@@ -112,14 +123,14 @@ export function MyReport() {
           <button
             onClick={() => setActiveTab('date')}
             style={{
-              flex: 1,
-              padding: isMobile ? '14px 8px' : '16px 24px',
-              background: activeTab === 'date' ? 'white' : '#f5f5f5',
-              color: activeTab === 'date' ? '#1976d2' : '#888',
+              padding: '12px 24px',
+              background: activeTab === 'date' ? '#2196f3' : 'transparent',
+              color: activeTab === 'date' ? 'white' : '#666',
               border: 'none',
-              borderBottom: activeTab === 'date' ? '3px solid #1976d2' : '3px solid #e0e0e0',
+              borderBottom: activeTab === 'date' ? '3px solid #2196f3' : 'none',
+              borderRadius: '8px 8px 0 0',
               cursor: 'pointer',
-              fontSize: isMobile ? '13px' : '15px',
+              fontSize: isMobile ? '14px' : '16px',
               fontWeight: '600',
               transition: 'all 0.2s'
             }}
@@ -129,14 +140,14 @@ export function MyReport() {
           <button
             onClick={() => setActiveTab('history')}
             style={{
-              flex: 1,
-              padding: isMobile ? '14px 8px' : '16px 24px',
-              background: activeTab === 'history' ? 'white' : '#f5f5f5',
-              color: activeTab === 'history' ? '#388e3c' : '#888',
+              padding: '12px 24px',
+              background: activeTab === 'history' ? '#4caf50' : 'transparent',
+              color: activeTab === 'history' ? 'white' : '#666',
               border: 'none',
-              borderBottom: activeTab === 'history' ? '3px solid #388e3c' : '3px solid #e0e0e0',
+              borderBottom: activeTab === 'history' ? '3px solid #4caf50' : 'none',
+              borderRadius: '8px 8px 0 0',
               cursor: 'pointer',
-              fontSize: isMobile ? '13px' : '15px',
+              fontSize: isMobile ? '14px' : '16px',
               fontWeight: '600',
               transition: 'all 0.2s'
             }}
@@ -145,49 +156,33 @@ export function MyReport() {
           </button>
         </div>
 
-
-        {/* 待回報 Tab - 顯示未回報的預約 */}
-        {activeTab === 'unreported' && coachId && (
-          <div style={{ 
-            background: 'white',
-            borderRadius: '0 0 12px 12px',
-            padding: isMobile ? '16px' : '20px'
-          }}>
+        {/* Tab 內容區 */}
+        <div>
+          {/* 待回報 Tab */}
+          {activeTab === 'unreported' && coachId && (
             <CoachReport 
               autoFilterByUser={true} 
               embedded={true} 
               defaultViewMode="unreported"
               hideInternalTabs={true}
             />
-          </div>
-        )}
+          )}
 
-        {/* 按日期 Tab - 按日期查看回報 */}
-        {activeTab === 'date' && coachId && (
-          <div style={{ 
-            background: 'white',
-            borderRadius: '0 0 12px 12px',
-            padding: isMobile ? '16px' : '20px'
-          }}>
+          {/* 按日期 Tab */}
+          {activeTab === 'date' && coachId && (
             <CoachReport 
               autoFilterByUser={true} 
               embedded={true} 
               defaultViewMode="date"
               hideInternalTabs={true}
             />
-          </div>
-        )}
+          )}
 
-        {/* 細帳 Tab - 使用 StatisticsTab 組件 */}
-        {activeTab === 'history' && coachId && (
-          <div style={{ 
-            background: 'white',
-            borderRadius: '0 0 12px 12px',
-            padding: isMobile ? '16px' : '20px'
-          }}>
+          {/* 細帳 Tab */}
+          {activeTab === 'history' && coachId && (
             <StatisticsTab isMobile={isMobile} autoFilterCoachId={coachId} />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
     </div>
