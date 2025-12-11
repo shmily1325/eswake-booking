@@ -52,9 +52,16 @@ const LESSON_TYPES = [
 interface CoachReportProps {
   autoFilterByUser?: boolean // 是否自動根據登入用戶篩選教練
   embedded?: boolean // 是否嵌入在其他頁面中（隱藏 PageHeader）
+  defaultViewMode?: 'date' | 'unreported' // 預設視圖模式
+  hideInternalTabs?: boolean // 是否隱藏內部的 tab 切換
 }
 
-export function CoachReport({ autoFilterByUser = false, embedded = false }: CoachReportProps = {}) {
+export function CoachReport({ 
+  autoFilterByUser = false, 
+  embedded = false,
+  defaultViewMode = 'date',
+  hideInternalTabs = false
+}: CoachReportProps = {}) {
   const user = useAuthUser()
   const toast = useToast()
   const { isMobile } = useResponsive()
@@ -64,7 +71,11 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
   const [selectedCoachId, setSelectedCoachId] = useState<string>('all') // 默認顯示"全部"
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [availableCoaches, setAvailableCoaches] = useState<Coach[]>([]) // 當天有預約的教練
-  const [viewMode, setViewMode] = useState<'date' | 'unreported'>('date')
+  const [viewMode, setViewMode] = useState<'date' | 'unreported'>(defaultViewMode)
+  
+  // 保留這些變數以支援未來的內部 tab 切換功能
+  void hideInternalTabs // 用於控制是否顯示內部 tabs
+  void setViewMode // 用於切換 date/unreported 模式
   const [userCoachId, setUserCoachId] = useState<string | null>(null) // 登入用戶對應的教練 ID
   
   // 預約列表
@@ -1000,77 +1011,7 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
     document.body.removeChild(link)
   }
 
-  // 計算統計數據（更細緻的邏輯）
-  const stats = {
-    total: allBookings.length,
-    reported: allBookings.filter(b => {
-      if (selectedCoachId === 'all') {
-        // 檢查所有教練和駕駛是否都已回報
-        const hasCoaches = (b.coaches || []).length > 0
-        const hasDrivers = (b.drivers || []).length > 0
-        
-        if (!hasCoaches && !hasDrivers) return false // 沒有教練也沒有駕駛
-        
-        // 檢查所有教練是否都已回報
-        const allCoachesReported = (b.coaches || []).length === 0 || (b.coaches || []).every((coach: any) => {
-          const type = getReportType(b, coach.id)
-          if (!type) return true
-          const status = getReportStatus(b, coach.id)
-          if (type === 'coach') return status.hasCoachReport
-          if (type === 'driver') return status.hasDriverReport
-          if (type === 'both') return status.hasCoachReport && status.hasDriverReport
-          return true
-        })
-        
-        // 檢查所有駕駛是否都已回報
-        const allDriversReported = (b.drivers || []).length === 0 || (b.drivers || []).every((driver: any) => {
-          const status = getReportStatus(b, driver.id)
-          return status.hasDriverReport
-        })
-        
-        return allCoachesReported && allDriversReported
-      } else {
-        return b.participants && b.participants.some(p => p.coach_id === selectedCoachId)
-      }
-    }).length,
-    unreported: allBookings.filter(b => {
-      if (selectedCoachId !== 'all') {
-        const type = getReportType(b, selectedCoachId)
-        if (!type) return false
-        const status = getReportStatus(b, selectedCoachId)
-        if (type === 'coach') return !status.hasCoachReport
-        if (type === 'driver') return !status.hasDriverReport
-        if (type === 'both') return !status.hasCoachReport || !status.hasDriverReport
-        return false
-      } else {
-        // 檢查是否有任何教練或駕駛未回報
-        const hasCoaches = (b.coaches || []).length > 0
-        const hasDrivers = (b.drivers || []).length > 0
-        
-        if (!hasCoaches && !hasDrivers) return false // 沒有教練也沒有駕駛，不算未回報
-        
-        // 檢查教練是否都已回報
-        const allCoachesReported = (b.coaches || []).length === 0 || (b.coaches || []).every((coach: any) => {
-          const type = getReportType(b, coach.id)
-          if (!type) return true
-          const status = getReportStatus(b, coach.id)
-          if (type === 'coach') return status.hasCoachReport
-          if (type === 'driver') return status.hasDriverReport
-          if (type === 'both') return status.hasCoachReport && status.hasDriverReport
-          return true
-        })
-        
-        // 檢查駕駛是否都已回報
-        const allDriversReported = (b.drivers || []).length === 0 || (b.drivers || []).every((driver: any) => {
-          const status = getReportStatus(b, driver.id)
-          return status.hasDriverReport
-        })
-        
-        // 只要有任何一個未回報，就算未回報
-        return !allCoachesReported || !allDriversReported
-      }
-    }).length
-  }
+  // 統計數據計算已移至需要時再計算（目前 UI 中未顯示）
 
   return (
     <div style={{ minHeight: embedded ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
@@ -1087,141 +1028,71 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
       
       <div style={{ 
         flex: 1, 
-        padding: isMobile ? '16px' : '24px',
+        padding: embedded ? '0' : (isMobile ? '16px' : '24px'),
         maxWidth: '1400px',
         margin: '0 auto',
         width: '100%'
       }}>
-        {/* 篩選區 - 整合為一個卡片 */}
-        <div style={{
-          background: 'white',
-          borderRadius: '16px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-          marginBottom: isMobile ? '16px' : '24px',
-          overflow: 'hidden'
-        }}>
-          {/* 標籤頁切換 */}
+        {/* 篩選區 */}
+        {viewMode === 'date' && (
           <div style={{
-            display: 'flex',
-            borderBottom: '1px solid #eee',
-            background: '#fafafa'
+            ...getCardStyle(isMobile),
+            marginBottom: '16px'
           }}>
-            <button
-              onClick={() => {
-                setBookings([])
-                setViewMode('date')
-              }}
-              style={{
-                flex: 1,
-                padding: isMobile ? '14px 12px' : '18px 24px',
-                background: viewMode === 'date' ? 'white' : 'transparent',
-                color: viewMode === 'date' ? '#1976d2' : '#888',
-                border: 'none',
-                borderBottom: viewMode === 'date' ? '3px solid #1976d2' : '3px solid transparent',
-                cursor: 'pointer',
-                fontSize: isMobile ? '13px' : '15px',
-                fontWeight: '600',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              <span style={{ fontSize: isMobile ? '15px' : '18px' }}>📅</span>
-              <span>按日期查看</span>
-            </button>
-            <button
-              onClick={() => {
-                setBookings([])
-                setViewMode('unreported')
-              }}
-              style={{
-                flex: 1,
-                padding: isMobile ? '14px 12px' : '18px 24px',
-                background: viewMode === 'unreported' ? 'white' : 'transparent',
-                color: viewMode === 'unreported' ? '#e65100' : '#888',
-                border: 'none',
-                borderBottom: viewMode === 'unreported' ? '3px solid #e65100' : '3px solid transparent',
-                cursor: 'pointer',
-                fontSize: isMobile ? '13px' : '15px',
-                fontWeight: '600',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              <span style={{ fontSize: isMobile ? '15px' : '18px' }}>⚠️</span>
-              <span>查看全部</span>
-              {viewMode === 'unreported' && bookings.length > 0 && (
-                <span style={{
-                  background: '#e65100',
-                  color: 'white',
-                  padding: '2px 8px',
-                  borderRadius: '20px',
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  marginLeft: '4px'
-                }}>
-                  {bookings.length}
-                </span>
-              )}
-            </button>
-          </div>
+            {/* 日期選擇標題 */}
+            <div style={{
+              fontSize: isMobile ? '13px' : '14px',
+              color: '#666',
+              fontWeight: '600',
+              marginBottom: '12px'
+            }}>
+              選擇日期
+            </div>
 
-          {/* 日期選擇區 - 只在按日期模式顯示 */}
-          {viewMode === 'date' && (
-            <div style={{ padding: isMobile ? '14px' : '20px' }}>
-              {/* 快捷日期按鈕 */}
-              <div style={{
-                display: 'flex',
-                gap: isMobile ? '8px' : '10px',
-                marginBottom: isMobile ? '14px' : '16px'
-              }}>
-                {[
-                  { label: '前天', offset: -2 },
-                  { label: '昨天', offset: -1 },
-                  { label: '今天', offset: 0 }
-                ].map(({ label, offset }) => {
-                  const targetDate = new Date()
-                  targetDate.setDate(targetDate.getDate() + offset)
-                  const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
-                  const isSelected = selectedDate === targetDateStr
-                  
-                  return (
-                    <button
-                      key={offset}
-                      onClick={() => setDateOffset(offset)}
-                      style={{
-                        flex: 1,
-                        padding: isMobile ? '12px 8px' : '10px 24px',
-                        background: isSelected ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)' : '#f5f5f5',
-                        color: isSelected ? 'white' : '#555',
-                        border: 'none',
-                        borderRadius: '10px',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '13px' : '14px',
-                        fontWeight: '600',
-                        transition: 'all 0.2s',
-                        boxShadow: isSelected ? '0 4px 12px rgba(25, 118, 210, 0.3)' : 'none'
-                      }}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* 日期選擇器 + 星期顯示 */}
+            {/* 快捷日期按鈕 */}
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              flexWrap: 'wrap',
+              marginBottom: '12px'
+            }}>
+              {[
+                { label: '📅 前天', offset: -2 },
+                { label: '📅 昨天', offset: -1 },
+                { label: '📅 今天', offset: 0 }
+              ].map(({ label, offset }) => {
+                const targetDate = new Date()
+                targetDate.setDate(targetDate.getDate() + offset)
+                const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
+                const isSelected = selectedDate === targetDateStr
+                
+                return (
+                  <button
+                    key={offset}
+                    onClick={() => setDateOffset(offset)}
+                    style={{
+                      padding: isMobile ? '10px 16px' : '10px 20px',
+                      background: isSelected ? '#2196f3' : '#e3f2fd',
+                      color: isSelected ? 'white' : '#1976d2',
+                      border: `2px solid ${isSelected ? '#2196f3' : '#90caf9'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: isMobile ? '13px' : '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+              
+              {/* 日期選擇器 */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                background: '#f8f9fa',
-                borderRadius: '10px',
-                padding: isMobile ? '10px 12px' : '8px 14px'
+                gap: '8px',
+                marginLeft: 'auto'
               }}>
                 <input 
                   type="date" 
@@ -1233,96 +1104,87 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
                     }
                   }} 
                   style={{
-                    padding: '8px',
-                    border: 'none',
-                    background: 'transparent',
-                    fontSize: isMobile ? '14px' : '15px',
-                    fontWeight: '500',
+                    padding: '8px 12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: isMobile ? '13px' : '14px',
                     color: '#333',
                     cursor: 'pointer'
                   }}
                 />
                 <span style={{
-                  padding: isMobile ? '6px 12px' : '8px 14px',
+                  padding: '8px 12px',
+                  background: '#f5f5f5',
                   borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #424242 0%, #303030 100%)',
-                  color: 'white',
-                  fontSize: isMobile ? '11px' : '13px',
+                  fontSize: isMobile ? '12px' : '13px',
                   fontWeight: '600',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                  color: '#666'
                 }}>
                   {getWeekdayText(selectedDate)}
                 </span>
               </div>
             </div>
-          )}
 
-          {/* 教練選擇 */}
-          {!autoFilterByUser && (
-            <div style={{
-              padding: isMobile ? '0 14px 14px' : '0 20px 20px',
-              borderTop: viewMode === 'date' ? '1px solid #eee' : 'none',
-              paddingTop: viewMode === 'date' ? (isMobile ? '14px' : '20px') : (isMobile ? '14px' : '20px')
-            }}>
-              <div style={{
-                fontSize: isMobile ? '12px' : '13px',
-                color: '#888',
-                fontWeight: '600',
-                marginBottom: isMobile ? '10px' : '12px'
-              }}>
-                選擇教練
-              </div>
-              <div style={{
-                display: 'flex',
-                gap: isMobile ? '6px' : '8px',
-                flexWrap: 'wrap'
-              }}>
-                <button
-                  onClick={() => setSelectedCoachId('all')}
-                  style={{
-                    padding: isMobile ? '8px 14px' : '10px 24px',
-                    background: selectedCoachId === 'all' ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)' : '#f5f5f5',
-                    color: selectedCoachId === 'all' ? 'white' : '#555',
-                    border: 'none',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    fontSize: isMobile ? '12px' : '14px',
-                    fontWeight: '600',
-                    transition: 'all 0.2s',
-                    boxShadow: selectedCoachId === 'all' ? '0 4px 12px rgba(25, 118, 210, 0.3)' : 'none'
-                  }}
-                >
-                  全部
-                </button>
-                {(viewMode === 'date' ? availableCoaches : coaches).map(coach => (
+            {/* 教練選擇 - 只在非自動篩選模式顯示 */}
+            {!autoFilterByUser && (
+              <>
+                <div style={{
+                  fontSize: isMobile ? '13px' : '14px',
+                  color: '#666',
+                  fontWeight: '600',
+                  marginBottom: '12px',
+                  marginTop: '16px',
+                  paddingTop: '16px',
+                  borderTop: '1px solid #eee'
+                }}>
+                  選擇教練
+                </div>
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  flexWrap: 'wrap'
+                }}>
                   <button
-                    key={coach.id}
-                    onClick={() => setSelectedCoachId(coach.id)}
+                    onClick={() => setSelectedCoachId('all')}
                     style={{
-                      padding: isMobile ? '8px 14px' : '10px 24px',
-                      background: selectedCoachId === coach.id ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)' : '#f5f5f5',
-                      color: selectedCoachId === coach.id ? 'white' : '#555',
+                      padding: isMobile ? '8px 16px' : '10px 20px',
+                      background: selectedCoachId === 'all' ? '#2196f3' : '#f5f5f5',
+                      color: selectedCoachId === 'all' ? 'white' : '#666',
                       border: 'none',
-                      borderRadius: '10px',
+                      borderRadius: '8px',
                       cursor: 'pointer',
-                      fontSize: isMobile ? '12px' : '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      boxShadow: selectedCoachId === coach.id ? '0 4px 12px rgba(25, 118, 210, 0.3)' : 'none'
+                      fontSize: isMobile ? '13px' : '14px',
+                      fontWeight: '600'
                     }}
                   >
-                    {coach.name}
+                    全部
                   </button>
-                ))}
-              </div>
-            </div>
-          )}
+                  {availableCoaches.map(coach => (
+                    <button
+                      key={coach.id}
+                      onClick={() => setSelectedCoachId(coach.id)}
+                      style={{
+                        padding: isMobile ? '8px 16px' : '10px 20px',
+                        background: selectedCoachId === coach.id ? '#2196f3' : '#f5f5f5',
+                        color: selectedCoachId === coach.id ? 'white' : '#666',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '13px' : '14px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {coach.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
-          {/* 匯出按鈕 */}
-          {viewMode === 'date' && (
+            {/* 匯出按鈕 */}
             <div style={{
-              padding: isMobile ? '12px 14px' : '16px 20px',
-              background: '#fafafa',
+              marginTop: '16px',
+              paddingTop: '16px',
               borderTop: '1px solid #eee',
               display: 'flex',
               justifyContent: 'flex-end'
@@ -1332,58 +1194,27 @@ export function CoachReport({ autoFilterByUser = false, embedded = false }: Coac
                 size={isMobile ? 'small' : 'medium'}
                 onClick={exportToCSV}
                 icon={<span>📊</span>}
-                style={{
-                  background: 'linear-gradient(135deg, #43a047 0%, #388e3c 100%)',
-                  boxShadow: '0 4px 12px rgba(67, 160, 71, 0.3)',
-                  borderRadius: '10px'
-                }}
               >
                 匯出回報記錄
               </Button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* 統計摘要 */}
-        {viewMode === 'date' && (
+        {/* 未回報模式 - 顯示待回報數量 */}
+        {viewMode === 'unreported' && bookings.length > 0 && (
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: isMobile ? '8px' : '16px',
-            marginBottom: isMobile ? '16px' : '24px'
+            ...getCardStyle(isMobile),
+            marginBottom: '16px',
+            background: '#fff3e0',
+            borderLeft: '4px solid #f57c00'
           }}>
-            {[
-              { label: '總預約', value: stats.total, color: '#1976d2', bg: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' },
-              { label: '已回報', value: stats.reported, color: '#388e3c', bg: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)' },
-              { label: '未回報', value: stats.unreported, color: '#f57c00', bg: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)' }
-            ].map(({ label, value, color, bg }) => (
-              <div
-                key={label}
-                style={{
-                  padding: isMobile ? '14px 10px' : '20px',
-                  background: bg,
-                  borderRadius: isMobile ? '12px' : '14px',
-                  textAlign: 'center',
-                  border: `1px solid ${color}20`
-                }}
-              >
-                <div style={{
-                  fontSize: isMobile ? '10px' : '13px',
-                  color: '#666',
-                  fontWeight: '600',
-                  marginBottom: '4px'
-                }}>
-                  {label}
-                </div>
-                <div style={{
-                  fontSize: isMobile ? '24px' : '36px',
-                  fontWeight: 'bold',
-                  color: color
-                }}>
-                  {value}
-                </div>
-              </div>
-            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '20px' }}>⚠️</span>
+              <span style={{ fontWeight: '600', color: '#e65100' }}>
+                共 {bookings.length} 筆待回報
+              </span>
+            </div>
           </div>
         )}
 

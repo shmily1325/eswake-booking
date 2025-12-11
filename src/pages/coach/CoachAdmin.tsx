@@ -202,7 +202,8 @@ export function CoachAdmin() {
         endOfDay = `${selectedDate}T23:59:59`
       }
 
-      // 1. 載入教學記錄 (只載入已結案的 processed，且 is_teaching = true)
+      // 1. 載入教學記錄 (只載入已結案的 processed)
+      // 不過濾 is_teaching，讓駕駛回報的「不指定」參與者也能顯示
       const { data: participantsData, error: participantsError } = await supabase
         .from('booking_participants')
         .select(`
@@ -216,7 +217,6 @@ export function CoachAdmin() {
           members:member_id(id, name, nickname)
         `)
         .eq('status', 'processed')
-        .eq('is_teaching', true)
         .eq('is_deleted', false)
         .gte('bookings.start_at', startOfDay)
         .lte('bookings.start_at', endOfDay)
@@ -495,7 +495,10 @@ export function CoachAdmin() {
         }
       }
       stats[bookingId].participants.push(record)
-      stats[bookingId].totalTeachingMinutes += record.duration_min || 0
+      // 只有 is_teaching = true 的記錄才計入教學時數
+      if (record.is_teaching) {
+        stats[bookingId].totalTeachingMinutes += record.duration_min || 0
+      }
     })
     
     completedDriverReports.forEach((record: any) => {
@@ -912,10 +915,10 @@ export function CoachAdmin() {
                       <div>
                         <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>總教學時數</div>
                         <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#333' }}>
-                          {completedReports.reduce((sum, r) => sum + (r.duration_min || 0), 0)} 分
+                          {completedReports.filter((r: any) => r.is_teaching).reduce((sum: number, r: any) => sum + (r.duration_min || 0), 0)} 分
                         </div>
                         <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
-                          ({(completedReports.reduce((sum, r) => sum + (r.duration_min || 0), 0) / 60).toFixed(1)} 小時)
+                          ({(completedReports.filter((r: any) => r.is_teaching).reduce((sum: number, r: any) => sum + (r.duration_min || 0), 0) / 60).toFixed(1)} 小時)
                         </div>
                       </div>
                       <div>
