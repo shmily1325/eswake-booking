@@ -210,7 +210,8 @@ export function CoachAdmin() {
           *,
           bookings!inner(
             id, start_at, duration_min, contact_name, boat_id,
-            boats(name, color)
+            boats(name, color),
+            booking_coaches(coach_id)
           ),
           coaches:coach_id(id, name),
           members:member_id(id, name, nickname)
@@ -1000,12 +1001,17 @@ export function CoachAdmin() {
 
                         {/* 分離教練回報和駕駛回報的參與者 */}
                         {(() => {
-                          // 取得所有駕駛的 coach_id
-                          const driverCoachIds = new Set(stat.driverReports.map((r: any) => r.coach_id))
+                          // 根據預約上的原始角色來判斷（教練優先）
+                          // 取得預約的教練 ID 列表
+                          const bookingCoachIds = new Set(
+                            (stat.booking?.booking_coaches || []).map((bc: any) => bc.coach_id)
+                          )
                           
-                          // 分離：教練回報的參與者 vs 駕駛回報的參與者
-                          const coachParticipants = stat.participants.filter((p: any) => !driverCoachIds.has(p.coach_id))
-                          const driverParticipants = stat.participants.filter((p: any) => driverCoachIds.has(p.coach_id))
+                          // 分離：
+                          // - 如果回報者是預約的教練 → 教練回報
+                          // - 如果回報者不是教練（是駕駛）→ 駕駛回報
+                          const coachParticipants = stat.participants.filter((p: any) => bookingCoachIds.has(p.coach_id))
+                          const driverParticipants = stat.participants.filter((p: any) => !bookingCoachIds.has(p.coach_id))
                           
                           return (
                             <>
