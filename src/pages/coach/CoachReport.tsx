@@ -1033,6 +1033,18 @@ export function CoachReport({
         margin: '0 auto',
         width: '100%'
       }}>
+        {/* 頁面標題 - 只在非嵌入模式顯示 */}
+        {!embedded && (
+          <h1 style={{ 
+            fontSize: isMobile ? '24px' : '32px',
+            fontWeight: 'bold',
+            marginBottom: '24px',
+            color: '#333'
+          }}>
+            📋 {autoFilterByUser ? '我的回報' : '預約回報'}
+          </h1>
+        )}
+
         {/* 篩選區 */}
         {viewMode === 'date' && (
           <div style={{
