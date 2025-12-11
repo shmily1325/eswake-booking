@@ -630,62 +630,46 @@ export function CoachAdmin() {
               ...getCardStyle(isMobile),
               marginBottom: '24px'
             }}>
-              {/* 查看模式切換 */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>查看模式</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => {
-                      setPendingViewMode('date')
-                      setSelectedDate(getLocalDateString())
-                    }}
-                    style={{
-                      flex: isMobile ? 1 : 'none',
-                      padding: '10px 20px',
-                      background: pendingViewMode === 'date' ? '#4caf50' : '#e8f5e9',
-                      color: pendingViewMode === 'date' ? '#fff' : '#2e7d32',
-                      border: `2px solid ${pendingViewMode === 'date' ? '#4caf50' : '#81c784'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      boxShadow: pendingViewMode === 'date' ? '0 2px 8px rgba(76,175,80,0.3)' : 'none'
-                    }}
-                  >
-                    🗓️ 今天
-                  </button>
-                  <button
-                    onClick={() => setPendingViewMode('all')}
-                    style={{
-                      flex: isMobile ? 1 : 'none',
-                      padding: '10px 20px',
-                      background: pendingViewMode === 'all' ? '#ff9800' : '#fff3e0',
-                      color: pendingViewMode === 'all' ? '#fff' : '#e65100',
-                      border: `2px solid ${pendingViewMode === 'all' ? '#ff9800' : '#ffb74d'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      boxShadow: pendingViewMode === 'all' ? '0 2px 8px rgba(255,152,0,0.3)' : 'none'
-                    }}
-                  >
-                    📋 查看全部
-                  </button>
-                </div>
+              {/* 查看模式切換 - 簡化版 */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    setPendingViewMode('date')
+                    setSelectedDate(getLocalDateString())
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    background: pendingViewMode === 'date' ? '#4caf50' : '#e8f5e9',
+                    color: pendingViewMode === 'date' ? '#fff' : '#2e7d32',
+                    border: `2px solid ${pendingViewMode === 'date' ? '#4caf50' : '#81c784'}`,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s',
+                    boxShadow: pendingViewMode === 'date' ? '0 2px 8px rgba(76,175,80,0.3)' : 'none'
+                  }}
+                >
+                  🗓️ 今天
+                </button>
+                <button
+                  onClick={() => setPendingViewMode('all')}
+                  style={{
+                    padding: '10px 20px',
+                    background: pendingViewMode === 'all' ? '#ff9800' : '#fff3e0',
+                    color: pendingViewMode === 'all' ? '#fff' : '#e65100',
+                    border: `2px solid ${pendingViewMode === 'all' ? '#ff9800' : '#ffb74d'}`,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s',
+                    boxShadow: pendingViewMode === 'all' ? '0 2px 8px rgba(255,152,0,0.3)' : 'none'
+                  }}
+                >
+                  📋 全部
+                </button>
               </div>
-
-              {/* 日期選擇（僅在按日期查看時顯示） */}
-              {pendingViewMode === 'date' && (
-                <DateRangePicker
-                  selectedDate={selectedDate}
-                  onDateChange={setSelectedDate}
-                  isMobile={isMobile}
-                  showTodayButton={false}
-                  label="選擇日期或月份"
-                />
-              )}
             </div>
 
             {loading ? (
@@ -843,7 +827,7 @@ export function CoachAdmin() {
               ...getCardStyle(isMobile),
               marginBottom: '24px'
             }}>
-              {/* 月份選擇 */}
+              {/* 查詢期間 - 簡化版 */}
               <div style={{ marginBottom: '16px' }}>
                 <DateRangePicker
                   selectedDate={selectedDate}
@@ -851,14 +835,12 @@ export function CoachAdmin() {
                   isMobile={isMobile}
                   showTodayButton={true}
                   label="查詢期間"
+                  simplified={true}
                 />
               </div>
               
               {/* 查看模式切換 */}
               <div>
-                <label style={{ ...getLabelStyle(isMobile), marginBottom: '8px' }}>
-                  查看模式
-                </label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                   <button
                     onClick={() => setCompletedViewMode('booking')}

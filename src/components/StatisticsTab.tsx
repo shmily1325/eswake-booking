@@ -265,7 +265,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
         marginBottom: '24px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
       }}>
-        {/* 查詢期間 */}
+        {/* 查詢期間 - 簡化版 */}
         <div style={{ marginBottom: '20px' }}>
           <DateRangePicker
             selectedDate={selectedDate}
@@ -273,6 +273,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
             isMobile={isMobile}
             showTodayButton={true}
             label="查詢期間"
+            simplified={true}
           />
         </div>
 
