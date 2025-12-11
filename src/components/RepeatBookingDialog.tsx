@@ -534,20 +534,20 @@ export function RepeatBookingDialog({
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '10px',
+                  gap: '8px',
                 }}>
                   <button
                     type="button"
                     onClick={() => setRepeatCount(Math.max(1, repeatCount - 1))}
                     disabled={repeatCount <= 1}
                     style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '8px',
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '6px',
                       border: 'none',
                       background: repeatCount <= 1 ? '#e0e0e0' : '#007bff',
                       color: 'white',
-                      fontSize: '20px',
+                      fontSize: '18px',
                       fontWeight: 'bold',
                       cursor: repeatCount <= 1 ? 'not-allowed' : 'pointer',
                       display: 'flex',
@@ -558,14 +558,14 @@ export function RepeatBookingDialog({
                     −
                   </button>
                   <div style={{
-                    minWidth: '80px',
+                    minWidth: '60px',
                     textAlign: 'center',
-                    fontSize: '18px',
+                    fontSize: '15px',
                     fontWeight: '600',
                     color: '#333',
-                    padding: '8px 16px',
+                    padding: '8px 12px',
                     background: '#f8f9fa',
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     border: '1px solid #e0e0e0',
                   }}>
                     {repeatCount} 週
@@ -575,13 +575,13 @@ export function RepeatBookingDialog({
                     onClick={() => setRepeatCount(Math.min(52, repeatCount + 1))}
                     disabled={repeatCount >= 52}
                     style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '8px',
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '6px',
                       border: 'none',
                       background: repeatCount >= 52 ? '#e0e0e0' : '#007bff',
                       color: 'white',
-                      fontSize: '20px',
+                      fontSize: '18px',
                       fontWeight: 'bold',
                       cursor: repeatCount >= 52 ? 'not-allowed' : 'pointer',
                       display: 'flex',
