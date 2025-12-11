@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ES Wake - 離線編輯器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', 
+                'Segoe UI', 'Roboto', 'Noto Sans TC', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            color: #213547;
+        }
+        
+        .container {
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .logo {
+            width: 140px;
+            height: 140px;
+            object-fit: contain;
+            margin-bottom: 20px;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .title {
+            margin: 0 0 20px 0;
+            font-size: 42px;
+            font-weight: 800;
+            color: #000;
+            letter-spacing: 2px;
+        }
+        
+        @media (max-width: 768px) {
+            .menu-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .title {
+                font-size: 32px;
+            }
+        }
+        
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .menu-item {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 35px 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 12px;
+            cursor: pointer;
+            border: 1px solid rgba(224, 224, 224, 0.5);
+            text-decoration: none;
+            color: #000;
+        }
+        
+        .menu-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+            border-color: #000;
+        }
+        
+        .menu-icon {
+            font-size: 42px;
+            margin-bottom: 5px;
+        }
+        
+        .menu-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #000;
+            letter-spacing: 0.5px;
+        }
+        
+        @media (max-width: 768px) {
+            .menu-title {
+                font-size: 16px;
+            }
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            background: #f8f9fa;
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        .file-input input {
+            display: none;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <!-- 資料庫載入器 -->
+        <div id="db-loader" class="modal active">
+            <div class="modal-content">
+                <div class="modal-title">💾 載入資料庫</div>
+                <div id="db-alert"></div>
+                <div class="file-input-wrapper">
+                    <label class="file-input" for="sql-file">
+                        <input type="file" id="sql-file" accept=".sql,.txt" style="display: none;">
+                        <span>📁 點擊選擇 SQL 備份檔案</span>
+                    </label>
+                    <div id="file-name" style="margin-top: 10px; font-size: 12px; color: #666; text-align: center;"></div>
+                </div>
+                <button class="btn btn-secondary" onclick="createEmptyDatabase()">🆕 建立空白資料庫</button>
+                <button class="btn btn-secondary" onclick="clearDatabaseAndReload()" style="background: #dc3545;">🗑️ 清空資料庫</button>
+                <div id="db-loading" class="hidden">
+                    <div class="spinner"></div>
+                    <p style="text-align: center; margin-top: 10px;">處理中...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主頁面 -->
+        <div id="main-content" class="hidden">
+            <div class="header">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23000'/%3E%3Ctext x='50' y='65' font-size='40' fill='white' text-anchor='middle' font-weight='bold'%3EES%3C/text%3E%3C/svg%3E" 
+                     alt="ES Wake Logo" class="logo" onerror="this.style.display='none'">
+                <h1 class="title">ES WAKE</h1>
+            </div>
+            
+            <div class="menu-grid" id="menu-grid">
+                <!-- 選單項目將由 JavaScript 動態生成 -->
+            </div>
+            
+            <div class="footer">
+                <p>© 2025 ES Wake. All Rights Reserved.</p>
+                <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">滑水預約管理系統 - 離線模式</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全域變數 - 使用 IndexedDB 作為資料庫
+        let db = null;
+        const DB_NAME = 'eswake-offline';
+        const DB_VERSION = 1;
+        
+        // 選單項目配置
+        const menuItems = [
+            { title: '今日預約', icon: '📅', link: '#', action: 'coach-daily' },
+            { title: '預約表', icon: '📝', link: '#', action: 'day' },
+            { title: '教練回報', icon: '✅', link: '#', action: 'my-report' },
+            { title: '預約查詢', icon: '🔍', link: '#', action: 'search' },
+            { title: '明日提醒', icon: '⏰', link: '#', action: 'tomorrow' },
+            { title: '編輯記錄', icon: '📋', link: '#', action: 'audit-log' },
+            { title: '船隻管理', icon: '🚤', link: '#', action: 'boats' },
+            { title: 'BAO', icon: '🔧', link: '#', action: 'bao' }
+        ];
+        
+        // 顯示訊息
+        function showAlert(message, type = 'success') {
+            const alertDiv = document.getElementById('db-alert');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.style.display = 'block';
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // 初始化 IndexedDB
+        async function initDatabase() {
+            if (db) return db;
+            
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => {
+                    reject(new Error('無法開啟資料庫'));
+                };
+                
+                request.onsuccess = () => {
+                    db = request.result;
+                    console.log('✅ 資料庫已開啟');
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    
+                    // 建立資料表（Object Stores）
+                    if (!database.objectStoreNames.contains('members')) {
+                        database.createObjectStore('members', { keyPath: 'id' });
+                    }
+                    if (!database.objectStoreNames.contains('boats')) {
+                        const boatStore = database.createObjectStore('boats', { keyPath: 'id', autoIncrement: true });
+                        boatStore.createIndex('name', 'name', { unique: true });
+                    }
+                    if (!database.objectStoreNames.contains('coaches')) {
+                        database.createObjectStore('coaches', { keyPath: 'id' });
+                    }
+                if (!database.objectStoreNames.contains('bookings')) {
+                    const bookingStore = database.createObjectStore('bookings', { keyPath: 'id', autoIncrement: true });
+                    bookingStore.createIndex('start_at', 'start_at');
+                }
+                if (!database.objectStoreNames.contains('booking_coaches')) {
+                    database.createObjectStore('booking_coaches', { keyPath: 'id', autoIncrement: true });
+                }
+                if (!database.objectStoreNames.contains('booking_drivers')) {
+                    database.createObjectStore('booking_drivers', { keyPath: 'id', autoIncrement: true });
+                }
+                if (!database.objectStoreNames.contains('booking_members')) {
+                    database.createObjectStore('booking_members', { keyPath: 'id', autoIncrement: true });
+                }
+                    if (!database.objectStoreNames.contains('daily_announcements')) {
+                        database.createObjectStore('daily_announcements', { keyPath: 'id', autoIncrement: true });
+                    }
+                    if (!database.objectStoreNames.contains('audit_log')) {
+                        database.createObjectStore('audit_log', { keyPath: 'id', autoIncrement: true });
+                    }
+                    
+                    console.log('✅ 資料表已建立');
+                };
+            });
+        }
+        
+        // 解析 SQL INSERT 語句並插入到 IndexedDB
+        async function insertFromSQL(tableName, values) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([tableName], 'readwrite');
+                const store = transaction.objectStore(tableName);
+                
+                const record = {};
+                values.forEach((value, index) => {
+                    const column = Object.keys(values)[index] || `column${index}`;
+                    record[column] = value === 'NULL' || value === null ? null : value;
+                });
+                
+                const request = store.add(record);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        
+        // 清空資料庫
+        async function clearDatabase() {
+            if (!db) await initDatabase();
+            
+            const storeNames = ['members', 'boats', 'coaches', 'bookings', 'booking_coaches', 'booking_drivers', 'booking_members', 'daily_announcements', 'audit_log'];
+            
+            for (const storeName of storeNames) {
+                try {
+                    const transaction = db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    await new Promise((resolve, reject) => {
+                        const request = store.clear();
+                        request.onsuccess = () => resolve();
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch (error) {
+                    console.warn('清空 ' + storeName + ' 失敗:', error);
+                }
+            }
+            
+            console.log('✅ 資料庫已清空');
+        }
+        
+        // 載入 SQL 檔案
+        async function loadSQLFile(file) {
+            console.log('開始載入 SQL 檔案:', file.name, '大小:', file.size, 'bytes');
+            
+            const loadingDiv = document.getElementById('db-loading');
+            if (loadingDiv) {
+                loadingDiv.classList.remove('hidden');
+            }
+            
+            try {
+                await initDatabase();
+                console.log('資料庫已初始化');
+                
+                // 詢問是否要清空現有資料
+                const shouldClear = confirm('是否要清空現有資料庫並載入新資料？\n\n點擊「確定」清空並載入\n點擊「取消」追加到現有資料');
+                
+                if (shouldClear) {
+                    await clearDatabase();
+                    console.log('已清空現有資料');
+                }
+                
+                const text = await file.text();
+                console.log('檔案讀取完成，長度:', text.length);
+                
+                // 更好的 SQL 語句分割（處理多行和註解）
+                const statements = [];
+                let currentStatement = '';
+                let inString = false;
+                let stringChar = '';
+                
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    const nextChar = text[i + 1];
+                    
+                    // 處理字串
+                    if ((char === "'" || char === '"') && (i === 0 || text[i - 1] !== '\\')) {
+                        if (!inString) {
+                            inString = true;
+                            stringChar = char;
+                        } else if (char === stringChar) {
+                            inString = false;
+                        }
+                        currentStatement += char;
+                        continue;
+                    }
+                    
+                    // 處理語句結束
+                    if (!inString && char === ';') {
+                        currentStatement += char;
+                        const trimmed = currentStatement.trim();
+                        if (trimmed && !trimmed.startsWith('--') && trimmed.length > 5) {
+                            statements.push(trimmed);
+                        }
+                        currentStatement = '';
+                        continue;
+                    }
+                    
+                    // 跳過註解
+                    if (!inString && char === '-' && nextChar === '-') {
+                        // 跳過到行尾
+                        while (i < text.length && text[i] !== '\n') {
+                            i++;
+                        }
+                        continue;
+                    }
+                    
+                    currentStatement += char;
+                }
+                
+                // 添加最後一個語句（如果有的話）
+                if (currentStatement.trim() && !currentStatement.trim().startsWith('--')) {
+                    statements.push(currentStatement.trim());
+                }
+                
+                console.log('解析出', statements.length, '個 SQL 語句');
+                
+                let successCount = 0;
+                let skipCount = 0;
+                
+                for (const statement of statements) {
+                    const trimmed = statement.trim();
+                    if (!trimmed) continue;
+                    
+                    try {
+                        const upperSql = trimmed.toUpperCase();
+                        
+                        // 跳過不支援的語句
+                        if (upperSql.includes('CREATE TABLE') || 
+                            upperSql.includes('ALTER TABLE') ||
+                            upperSql.includes('CREATE INDEX')) {
+                            skipCount++;
+                            continue;
+                        }
+                        
+                        // 處理 INSERT
+                        if (upperSql.includes('INSERT INTO')) {
+                            const match = trimmed.match(/INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i);
+                            if (match) {
+                                const tableName = match[1];
+                                const columns = match[2].split(',').map(c => c.trim());
+                                const values = match[3].split(',').map(v => {
+                                    v = v.trim();
+                                    if (v === 'NULL' || v === 'null') return null;
+                                    if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
+                                        return v.slice(1, -1).replace(/''/g, "'").replace(/""/g, '"');
+                                    }
+                                    return v;
+                                });
+                                
+                                const record = {};
+                                columns.forEach((col, idx) => {
+                                    record[col] = values[idx] || null;
+                                });
+                                
+                                const transaction = db.transaction([tableName], 'readwrite');
+                                const store = transaction.objectStore(tableName);
+                                await new Promise((resolve, reject) => {
+                                    const request = store.add(record);
+                                    request.onsuccess = () => resolve();
+                                    request.onerror = () => reject(request.error);
+                                });
+                                
+                                successCount++;
+                            } else {
+                                skipCount++;
+                            }
+                        }
+                    } catch (err) {
+                        skipCount++;
+                        console.warn('跳過語句:', trimmed.substring(0, 100), err);
+                    }
+                }
+                
+                console.log(`載入完成：成功 ${successCount} 條，跳過 ${skipCount} 條`);
+                showAlert(`✅ 資料庫載入成功！成功: ${successCount} 條，跳過: ${skipCount} 條`, 'success');
+                
+                // 重置文件輸入框，以便可以再次選擇同一個文件
+                const fileInput = document.getElementById('sql-file');
+                if (fileInput) {
+                    fileInput.value = '';
+                }
+                const fileNameDiv = document.getElementById('file-name');
+                if (fileNameDiv) {
+                    fileNameDiv.textContent = '';
+                }
+                
+                setTimeout(() => {
+                    if (loadingDiv) loadingDiv.classList.add('hidden');
+                    const dbLoader = document.getElementById('db-loader');
+                    if (dbLoader) dbLoader.classList.remove('active');
+                    const mainContent = document.getElementById('main-content');
+                    if (mainContent) {
+                        mainContent.classList.remove('hidden');
+                        renderMenu();
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('載入 SQL 檔案時發生錯誤:', error);
+                if (loadingDiv) loadingDiv.classList.add('hidden');
+                showAlert('❌ 載入失敗: ' + (error.message || '未知錯誤'), 'error');
+                
+                // 重置文件輸入框
+                const fileInput = document.getElementById('sql-file');
+                if (fileInput) {
+                    fileInput.value = '';
+                }
+                const fileNameDiv = document.getElementById('file-name');
+                if (fileNameDiv) {
+                    fileNameDiv.textContent = '';
+                }
+            }
+        }
+        
+        // 清空資料庫並重新載入
+        async function clearDatabaseAndReload() {
+            if (!confirm('確定要清空所有資料嗎？此操作無法復原！')) {
+                return;
+            }
+            
+            const loadingDiv = document.getElementById('db-loading');
+            if (loadingDiv) {
+                loadingDiv.classList.remove('hidden');
+            }
+            
+            try {
+                await initDatabase();
+                await clearDatabase();
+                showAlert('✅ 資料庫已清空！', 'success');
+                
+                setTimeout(() => {
+                    if (loadingDiv) loadingDiv.classList.add('hidden');
+                }, 1000);
+            } catch (error) {
+                if (loadingDiv) loadingDiv.classList.add('hidden');
+                showAlert('❌ 清空失敗: ' + error.message, 'error');
+            }
+        }
+        
+        // 建立空白資料庫
+        async function createEmptyDatabase() {
+            const loadingDiv = document.getElementById('db-loading');
+            loadingDiv.classList.remove('hidden');
+            
+            try {
+                await initDatabase();
+                showAlert('✅ 空白資料庫建立成功！', 'success');
+                
+                setTimeout(() => {
+                    loadingDiv.classList.add('hidden');
+                    document.getElementById('db-loader').classList.remove('active');
+                    document.getElementById('main-content').classList.remove('hidden');
+                    renderMenu();
+                }, 1000);
+            } catch (error) {
+                loadingDiv.classList.add('hidden');
+                showAlert('❌ 建立失敗: ' + error.message, 'error');
+            }
+        }
+        
+        // 渲染選單
+        function renderMenu() {
+            const menuGrid = document.getElementById('menu-grid');
+            menuGrid.innerHTML = menuItems.map(item => `
+                <div class="menu-item" onclick="handleMenuClick('${item.action}')">
+                    <div class="menu-icon">${item.icon}</div>
+                    <h2 class="menu-title">${item.title}</h2>
+                </div>
+            `).join('');
+        }
+        
+        // 處理選單點擊
+        function handleMenuClick(action) {
+            if (action === 'coach-daily') {
+                showCoachDailyView();
+            } else {
+                alert(`功能「${action}」正在開發中\n\n此為離線版本，目前僅提供資料庫載入和今日預約功能。\n完整功能請使用線上版本。`);
+            }
+        }
+        
+        // 顯示今日預約頁面
+        async function showCoachDailyView(dateParam) {
+            const mainContent = document.getElementById('main-content');
+            const selectedDate = dateParam || new Date().toISOString().split('T')[0];
+            
+            mainContent.innerHTML = `
+                <div style="min-height: 100vh; background: #f5f5f5; padding-bottom: 80px;">
+                    <!-- PageHeader (與網頁版完全一致) -->
+                    <div style="
+                        margin-bottom: 20px;
+                        background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%);
+                        padding: 16px;
+                        border-radius: 8px;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                    ">
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                        ">
+                            <h1 style="
+                                font-size: 20px;
+                                font-weight: bold;
+                                color: white;
+                                margin: 0;
+                            ">今日預約</h1>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button onclick="showHomePage()" style="
+                                    padding: 6px 12px;
+                                    background: rgba(255, 255, 255, 0.15);
+                                    color: white;
+                                    text-decoration: none;
+                                    border-radius: 4px;
+                                    font-size: 13px;
+                                    border: 1px solid rgba(255, 255, 255, 0.2);
+                                    white-space: nowrap;
+                                    display: inline-flex;
+                                    align-items: center;
+                                    cursor: pointer;
+                                    font-weight: 500;
+                                ">← HOME</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="coach-daily-content" style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+                        <div class="spinner"></div>
+                        <p style="text-align: center; margin-top: 10px;">載入中...</p>
+                    </div>
+                </div>
+            `;
+            
+            await loadAndDisplayBookings(selectedDate);
+        }
+        
+        // 全域變數：當前選中的日期和教練
+        let currentDate = new Date().toISOString().split('T')[0];
+        let selectedCoachId = '';
+        
+        // 返回首頁
+        function showHomePage() {
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = `
+                <div class="header">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23000'/%3E%3Ctext x='50' y='65' font-size='40' fill='white' text-anchor='middle' font-weight='bold'%3EES%3C/text%3E%3C/svg%3E" 
+                         alt="ES Wake Logo" class="logo" onerror="this.style.display='none'">
+                    <h1 class="title">ES WAKE</h1>
+                </div>
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <button onclick="showDatabaseLoader()" style="
+                        padding: 10px 20px;
+                        background: #667eea;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        font-weight: 600;
+                    ">🔄 重新載入資料庫</button>
+                </div>
+                <div class="menu-grid" id="menu-grid"></div>
+                <div class="footer">
+                    <p>© 2025 ES Wake. All Rights Reserved.</p>
+                    <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">滑水預約管理系統 - 離線模式</p>
+                </div>
+            `;
+            renderMenu();
+        }
+        
+        // 顯示資料庫載入器
+        function showDatabaseLoader() {
+            const mainContent = document.getElementById('main-content');
+            if (mainContent) {
+                mainContent.classList.add('hidden');
+            }
+            const dbLoader = document.getElementById('db-loader');
+            if (dbLoader) {
+                dbLoader.classList.add('active');
+            }
+            
+            // 重置文件輸入框
+            const fileInput = document.getElementById('sql-file');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            const fileNameDiv = document.getElementById('file-name');
+            if (fileNameDiv) {
+                fileNameDiv.textContent = '';
+            }
+            
+            // 清除提示訊息
+            const alertDiv = document.getElementById('db-alert');
+            if (alertDiv) {
+                alertDiv.textContent = '';
+                alertDiv.style.display = 'none';
+            }
+        }
+        
+        // 載入並顯示預約
+        async function loadAndDisplayBookings(dateParam) {
+            try {
+                if (!db) await initDatabase();
+                
+                const selectedDate = dateParam || currentDate;
+                currentDate = selectedDate;
+                
+                // 載入船隻
+                const boats = await getAllFromStore('boats');
+                
+                // 載入教練
+                const coaches = await getAllFromStore('coaches');
+                const activeCoaches = coaches.filter(c => c.status === 'active');
+                
+                // 載入指定日期的預約
+                const startOfDay = `${selectedDate}T00:00:00`;
+                const endOfDay = `${selectedDate}T23:59:59`;
+                
+                const allBookings = await getAllFromStore('bookings');
+                const dateBookings = allBookings.filter(b => {
+                    if (b.status !== 'confirmed') return false;
+                    const startAt = b.start_at;
+                    return startAt >= startOfDay && startAt <= endOfDay;
+                }).sort((a, b) => a.start_at.localeCompare(b.start_at));
+                
+                // 載入關聯資料
+                const bookingIds = dateBookings.map(b => b.id);
+                const bookingCoaches = await getBookingCoaches(bookingIds);
+                const bookingDrivers = await getBookingDrivers(bookingIds);
+                const bookingMembers = await getBookingMembers(bookingIds);
+                
+                // 組合資料
+                let bookingsWithDetails = dateBookings.map(booking => {
+                    const boat = boats.find(b => b.id === booking.boat_id);
+                    const coaches = bookingCoaches.filter(bc => bc.booking_id === booking.id)
+                        .map(bc => activeCoaches.find(c => c.id === bc.coach_id))
+                        .filter(Boolean);
+                    const drivers = bookingDrivers.filter(bd => bd.booking_id === booking.id)
+                        .map(bd => activeCoaches.find(c => c.id === bd.driver_id))
+                        .filter(Boolean);
+                    const members = bookingMembers.filter(bm => bm.booking_id === booking.id)
+                        .map(bm => {
+                            const member = bm.members || null;
+                            return member ? { member_id: bm.member_id, members: member } : null;
+                        })
+                        .filter(Boolean);
+                    
+                    return {
+                        ...booking,
+                        boats: boat || null,
+                        coaches: coaches,
+                        drivers: drivers,
+                        booking_members: members
+                    };
+                });
+                
+                // 篩選教練
+                if (selectedCoachId) {
+                    bookingsWithDetails = bookingsWithDetails.filter(booking => {
+                        const isCoach = booking.coaches?.some(c => c.id === selectedCoachId);
+                        const isDriver = booking.drivers?.some(d => d.id === selectedCoachId);
+                        return isCoach || isDriver;
+                    });
+                }
+                
+                // 排序船隻（與線上版本一致）
+                const boatOrder = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床'];
+                const sortedBoats = boats.sort((a, b) => {
+                    const indexA = boatOrder.indexOf(a.name);
+                    const indexB = boatOrder.indexOf(b.name);
+                    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+                });
+                
+                // 生成時間槽（每15分鐘一個）
+                const timeSlots = generateTimeSlots();
+                
+                // 過濾時間槽（顯示有預約的時間範圍）
+                const filteredTimeSlots = filterTimeSlots(timeSlots, bookingsWithDetails);
+                
+                // 渲染頁面
+                renderCoachDailyView({
+                    boats: sortedBoats,
+                    coaches: activeCoaches,
+                    bookings: bookingsWithDetails,
+                    timeSlots: filteredTimeSlots,
+                    date: selectedDate
+                });
+                
+            } catch (error) {
+                console.error('載入預約失敗:', error);
+                document.getElementById('coach-daily-content').innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ 載入失敗: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // 獲取預約的駕駛
+        async function getBookingDrivers(bookingIds) {
+            try {
+                const all = await getAllFromStore('booking_drivers');
+                return all.filter(function(bd) { return bookingIds.indexOf(bd.booking_id) !== -1; });
+            } catch {
+                return [];
+            }
+        }
+        
+        // 獲取預約的會員
+        async function getBookingMembers(bookingIds) {
+            try {
+                const all = await getAllFromStore('booking_members');
+                const filtered = all.filter(function(bm) { return bookingIds.indexOf(bm.booking_id) !== -1; });
+                
+                // 載入會員資料
+                const memberIds = filtered.map(function(bm) { return bm.member_id; }).filter(function(id) { return id; });
+                const allMembers = await getAllFromStore('members');
+                const membersMap = {};
+                allMembers.forEach(function(member) {
+                    membersMap[member.id] = member;
+                });
+                
+                // 組合會員資料
+                return filtered.map(function(bm) {
+                    return {
+                        booking_id: bm.booking_id,
+                        member_id: bm.member_id,
+                        members: membersMap[bm.member_id] || null
+                    };
+                });
+            } catch {
+                return [];
+            }
+        }
+        
+        // 改變日期
+        function handleDateChange(days) {
+            const currentDateObj = new Date(currentDate);
+            currentDateObj.setDate(currentDateObj.getDate() + days);
+            const newDate = currentDateObj.toISOString().split('T')[0];
+            loadAndDisplayBookings(newDate);
+        }
+        
+        // 跳轉到今天
+        function goToToday() {
+            const today = new Date().toISOString().split('T')[0];
+            loadAndDisplayBookings(today);
+        }
+        
+        // 格式化日期顯示
+        function formatDisplayDate(dateStr) {
+            const date = new Date(dateStr);
+            const days = ['日', '一', '二', '三', '四', '五', '六'];
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            const weekday = days[date.getDay()];
+            return { dateText: month + '月' + day + '日', weekday: '星期' + weekday };
+        }
+        
+        // 獲取本地日期字串
+        function getLocalDateString(date) {
+            const d = date || new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return year + '-' + month + '-' + day;
+        }
+        
+        // 獲取顯示名稱（與網頁版一致）
+        function getDisplayContactName(booking) {
+            // 如果有關聯的會員，優先顯示暱稱
+            if (booking.booking_members && booking.booking_members.length > 0) {
+                const memberDisplayNames = booking.booking_members
+                    .map(function(bm) {
+                        if (!bm.members) return null;
+                        return bm.members.nickname || bm.members.name;
+                    })
+                    .filter(function(name) { return name; });
+                
+                // 如果有重複的暱稱，只顯示一個
+                const uniqueNames = [];
+                memberDisplayNames.forEach(function(name) {
+                    if (uniqueNames.indexOf(name) === -1) {
+                        uniqueNames.push(name);
+                    }
+                });
+                
+                // 如果沒有任何有效的會員名稱，回退到 contact_name
+                if (uniqueNames.length === 0) {
+                    return booking.contact_name || '未命名';
+                }
+                
+                // 如果只有會員，且數量吻合 contact_name 中的名字數量，直接返回
+                const contactNameParts = booking.contact_name ? booking.contact_name.split(',').map(function(n) { return n.trim(); }).filter(function(n) { return n; }) : [];
+                
+                // 如果會員數量等於 contact_name 中的名字數量，說明都是會員
+                if (uniqueNames.length === contactNameParts.length) {
+                    return uniqueNames.join(', ');
+                }
+                
+                // 否則，直接返回第一個會員的暱稱/姓名
+                return uniqueNames[0] || booking.contact_name || '未命名';
+            }
+            
+            // 沒有關聯會員，直接使用 contact_name
+            return booking.contact_name || '未命名';
+        }
+        
+        // 從 IndexedDB 獲取所有資料
+        function getAllFromStore(storeName) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
+                
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        // 獲取預約的教練
+        async function getBookingCoaches(bookingIds) {
+            // 簡化版：假設 booking_coaches 表存在
+            try {
+                const all = await getAllFromStore('booking_coaches');
+                return all.filter(bc => bookingIds.includes(bc.booking_id));
+            } catch {
+                return [];
+            }
+        }
+        
+        // 獲取預約的船隻（已包含在 bookings 中）
+        async function getBookingBoats(bookingIds) {
+            return [];
+        }
+        
+        // 生成時間槽
+        function generateTimeSlots() {
+            const slots = [];
+            for (let hour = 0; hour < 24; hour++) {
+                for (let minute = 0; minute < 60; minute += 15) {
+                    slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                }
+            }
+            return slots;
+        }
+        
+        // 過濾時間槽
+        function filterTimeSlots(slots, bookings) {
+            if (bookings.length === 0) {
+                // 沒有預約時，顯示 04:30-18:00
+                return slots.filter(slot => {
+                    const [hour, minute] = slot.split(':').map(Number);
+                    const slotMinutes = hour * 60 + minute;
+                    const startMinutes = 4 * 60 + 30;
+                    const endMinutes = 18 * 60;
+                    return slotMinutes >= startMinutes && slotMinutes <= endMinutes;
+                });
+            }
+            
+            // 找出最早和最晚的預約時間
+            let earliestMinutes = Infinity;
+            let latestMinutes = -Infinity;
+            
+            bookings.forEach(booking => {
+                const start = new Date(booking.start_at);
+                const end = new Date(start.getTime() + (booking.duration_min + 15) * 60000);
+                const startMinutes = start.getHours() * 60 + start.getMinutes();
+                const endMinutes = end.getHours() * 60 + end.getMinutes();
+                earliestMinutes = Math.min(earliestMinutes, startMinutes);
+                latestMinutes = Math.max(latestMinutes, endMinutes);
+            });
+            
+            // 前後各多顯示 30 分鐘
+            earliestMinutes = Math.max(0, earliestMinutes - 30);
+            latestMinutes = Math.min(24 * 60, latestMinutes + 30);
+            
+            // 至少顯示 04:30-18:00
+            const defaultStart = 4 * 60 + 30;
+            const defaultEnd = 18 * 60;
+            earliestMinutes = Math.min(earliestMinutes, defaultStart);
+            latestMinutes = Math.max(latestMinutes, defaultEnd);
+            
+            return slots.filter(slot => {
+                const [hour, minute] = slot.split(':').map(Number);
+                const slotMinutes = hour * 60 + minute;
+                return slotMinutes >= earliestMinutes && slotMinutes <= latestMinutes;
+            });
+        }
+        
+        // 渲染今日預約頁面
+        function renderCoachDailyView({ boats, coaches, bookings, timeSlots, date }) {
+            const content = document.getElementById('coach-daily-content');
+            // 固定使用桌面版樣式（與網頁版一致）
+            const isMobile = false;
+            const today = getLocalDateString();
+            const dateDisplay = formatDisplayDate(date);
+            
+            // 獲取某個時間點的預約
+            const getBookingForCell = (boatId, timeSlot) => {
+                return bookings.find(b => {
+                    if (b.boat_id !== boatId) return false;
+                    const bookingStart = new Date(b.start_at);
+                    const bookingStartTime = bookingStart.getHours().toString().padStart(2, '0') + ':' + bookingStart.getMinutes().toString().padStart(2, '0');
+                    return bookingStartTime === timeSlot;
+                }) || null;
+            };
+            
+            // 判斷是否在預約時間內
+            const isInBookingRange = (boatId, timeSlot) => {
+                const parts = timeSlot.split(':');
+                const hour = parseInt(parts[0]);
+                const minute = parseInt(parts[1]);
+                const slotTime = new Date(date);
+                slotTime.setHours(hour, minute, 0, 0);
+                
+                return bookings.some(booking => {
+                    if (booking.boat_id !== boatId) return false;
+                    const start = new Date(booking.start_at);
+                    const end = new Date(start.getTime() + booking.duration_min * 60000);
+                    return slotTime > start && slotTime < end;
+                });
+            };
+            
+            // 判斷是否是預約的開始時間格
+            const isBookingStart = (boatId, timeSlot) => {
+                return getBookingForCell(boatId, timeSlot) !== null;
+            };
+            
+            // 生成表格行
+            const tableRows = [];
+            const renderedBookings = new Set();
+            
+            timeSlots.forEach(timeSlot => {
+                const cells = [];
+                
+                boats.forEach(boat => {
+                    const booking = getBookingForCell(boat.id, timeSlot);
+                    const isStart = booking !== null && !renderedBookings.has(booking.id);
+                    const isInRange = isInBookingRange(boat.id, timeSlot);
+                    
+                    if (isStart) {
+                        renderedBookings.add(booking.id);
+                        const start = new Date(booking.start_at);
+                        const end = new Date(start.getTime() + booking.duration_min * 60000);
+                        const startTime = start.getHours().toString().padStart(2, '0') + ':' + start.getMinutes().toString().padStart(2, '0');
+                        const endTime = end.getHours().toString().padStart(2, '0') + ':' + end.getMinutes().toString().padStart(2, '0');
+                        const slots = Math.ceil(booking.duration_min / 15);
+                        const coachNames = booking.coaches ? booking.coaches.map(function(c) { return c.name; }).join(', ') : '';
+                        const driverNames = booking.drivers ? booking.drivers.map(function(d) { return d.name; }).join(', ') : '';
+                        const boatColor = booking.boats && booking.boats.color ? booking.boats.color : '#1976d2';
+                        
+                        // 獲取顯示名稱（與網頁版一致）
+                        const displayContactName = getDisplayContactName(booking);
+                        
+                        // 構建卡片 HTML（與網頁版樣式一致）
+                        // 使用桌面版樣式（與網頁版一致）
+                        const cardStyle = 'padding: 14px 12px; background: linear-gradient(135deg, ' + boatColor + '08 0%, ' + boatColor + '15 100%); border: 2px solid ' + boatColor + '; vertical-align: top; position: relative; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
+                        
+                        const timeRangeHtml = '<div style="font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; text-align: center; line-height: 1.3; letter-spacing: 0.5px;">' + startTime + ' - ' + endTime + '</div>';
+                        const contactNameHtml = '<div style="font-size: 16px; font-weight: 700; margin-bottom: 6px; text-align: center; color: #1a1a1a;">' + displayContactName + '</div>';
+                        const notesHtml = booking.notes ? '<div style="font-size: 12px; color: #666; margin-bottom: 4px; text-align: center; font-style: italic;">' + booking.notes + '</div>' : '';
+                        const scheduleNotesHtml = booking.schedule_notes ? '<div style="font-size: 12px; color: #e65100; margin-bottom: 4px; text-align: center; font-weight: 500;">📝 ' + booking.schedule_notes + '</div>' : '';
+                        const coachHtml = coachNames ? '<div style="font-size: 12px; color: ' + boatColor + '; font-weight: 600; text-align: center;">🎓 ' + coachNames + '</div>' : '';
+                        const driverHtml = driverNames ? '<div style="font-size: 12px; color: ' + boatColor + '; font-weight: 600; text-align: center; margin-top: 2px;">🚤 ' + driverNames + '</div>' : '';
+                        
+                        cells.push({
+                            html: '<td rowspan="' + slots + '" style="' + cardStyle + '">' + timeRangeHtml + contactNameHtml + notesHtml + scheduleNotesHtml + coachHtml + driverHtml + '</td>',
+                            skip: false
+                        });
+                    } else if (isInRange) {
+                        cells.push({ html: '', skip: true });
+                    } else {
+                        cells.push({
+                            html: '<td style="padding: 10px 8px; border-bottom: 1px solid #e9ecef; border-right: 1px solid #e9ecef; background: white;"></td>',
+                            skip: false
+                        });
+                    }
+                });
+                
+                const cellsHtml = cells.filter(function(cell) { return !cell.skip; }).map(function(cell) { return cell.html; }).join('');
+                tableRows.push('<tr><td style="position: sticky; left: 0; z-index: 10; background: white; padding: 6px 8px; border-bottom: 1px solid #e9ecef; font-size: 13px; font-weight: 500; text-align: center; color: #666; line-height: 1.5;">' + timeSlot + '</td>' + cellsHtml + '</tr>');
+            });
+            
+            content.innerHTML = `
+                <!-- 日期和教練篩選 -->
+                <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <!-- 日期切換 -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 10px;">
+                        <button onclick="handleDateChange(-1)" style="padding: 8px 16px; background: white; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; font-size: 16px; color: #666; font-weight: 600;">
+                            ← 前一天
+                        </button>
+                        
+                        <div style="flex: 1; text-align: center;">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
+                                <div style="font-size: 20px; font-weight: bold; color: #333;">
+                                    ${dateDisplay.dateText}
+                                </div>
+                                <div style="font-size: 14px; font-weight: 600; color: #495057; background: #f8f9fa; padding: 4px 12px; border-radius: 12px; border: 1px solid #dee2e6;">
+                                    ${dateDisplay.weekday}
+                                </div>
+                            </div>
+                            ${date !== today ? '<button onclick="goToToday()" style="padding: 4px 12px; background: #2196f3; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">回到今天</button>' : ''}
+                        </div>
+                        
+                        <button onclick="handleDateChange(1)" style="padding: 8px 16px; background: white; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; font-size: 16px; color: #666; font-weight: 600;">
+                            後一天 →
+                        </button>
+                    </div>
+                    
+                    <!-- 教練篩選 -->
+                    <div style="display: flex; align-items: center; gap: 12px; padding-top: 16px; border-top: 1px solid #e0e0e0;">
+                        <label style="font-size: 14px; color: #666; font-weight: 600;">篩選教練：</label>
+                        <select id="coach-filter" onchange="handleCoachFilterChange(this.value)" style="flex: 1; padding: 8px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: white; cursor: pointer;">
+                            <option value="">所有教練</option>
+                            ${coaches.map(function(coach) {
+                                return '<option value="' + coach.id + '"' + (selectedCoachId === coach.id ? ' selected' : '') + '>' + coach.name + '</option>';
+                            }).join('')}
+                        </select>
+                    </div>
+                    
+                    <!-- 最後更新時間 -->
+                    <div style="padding-top: 12px; font-size: 12px; color: #999; text-align: right;">
+                        最後更新：${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}
+                    </div>
+                </div>
+                
+                <!-- 時間軸表格 -->
+                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <table style="width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 80px;">
+                            ${boats.map(function() {
+                                return '<col style="width: 120px;">';
+                            }).join('')}
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th style="position: sticky; top: 0; left: 0; z-index: 12; padding: 12px; border-bottom: 2px solid #dee2e6; background-color: #5a5a5a; color: white; font-size: 14px; font-weight: 600;">
+                                    時間
+                                </th>
+                                ${boats.map(function(boat) {
+                                    const count = bookings.filter(function(b) { return b.boat_id === boat.id; }).length;
+                                    return '<th style="position: sticky; top: 0; z-index: 11; padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6; background-color: #5a5a5a; color: white; font-size: 14px; font-weight: 600;"><div style="font-size: 13px;">' + boat.name + '</div><div style="font-size: 11px; font-weight: 400; margin-top: 2px; opacity: 0.8;">' + count + '筆</div></th>';
+                                }).join('')}
+                            </tr>
+                        </thead>
+                        <tbody style="position: relative;">
+                            ${tableRows.join('')}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="margin-top: 20px; text-align: center; color: #666; font-size: 12px;">
+                    共 ${bookings.length} 筆預約
+                </div>
+            `;
+        }
+        
+        // 處理教練篩選變更
+        function handleCoachFilterChange(coachId) {
+            selectedCoachId = coachId;
+            loadAndDisplayBookings(currentDate);
+        }
+        
+        // 檔案選擇事件 - 使用事件委派確保元素存在
+        function setupFileInput() {
+            const fileInput = document.getElementById('sql-file');
+            if (fileInput) {
+                // 移除舊的事件監聽器（如果有的話）
+                const newInput = fileInput.cloneNode(true);
+                fileInput.parentNode.replaceChild(newInput, fileInput);
+                
+                // 添加新的事件監聽器
+                newInput.addEventListener('change', function(e) {
+                    const file = e.target.files?.[0];
+                    const fileNameDiv = document.getElementById('file-name');
+                    
+                    if (file) {
+                        console.log('選擇了檔案:', file.name, '大小:', file.size, 'bytes');
+                        if (fileNameDiv) {
+                            fileNameDiv.textContent = `已選擇: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+                            fileNameDiv.style.color = '#667eea';
+                        }
+                        loadSQLFile(file);
+                    } else {
+                        console.log('未選擇檔案');
+                        if (fileNameDiv) {
+                            fileNameDiv.textContent = '';
+                        }
+                    }
+                });
+                
+                // 也為 label 添加點擊事件（確保可以觸發）
+                const label = newInput.closest('label');
+                if (label) {
+                    label.addEventListener('click', function(e) {
+                        if (e.target === label || e.target.tagName === 'SPAN') {
+                            newInput.click();
+                        }
+                    });
+                }
+                
+                console.log('✅ 檔案輸入事件監聽器已設置');
+            } else {
+                console.warn('⚠️ 找不到 sql-file 元素，稍後重試');
+                setTimeout(setupFileInput, 100);
+            }
+        }
+        
+        // 檢查是否有已載入的資料庫
+        window.addEventListener('load', async () => {
+            try {
+                // 設置檔案輸入事件監聽器
+                setupFileInput();
+                
+                await initDatabase();
+                // 檢查是否有資料
+                const transaction = db.transaction(['members'], 'readonly');
+                const store = transaction.objectStore('members');
+                const countRequest = store.count();
+                
+                countRequest.onsuccess = () => {
+                    if (countRequest.result > 0) {
+                        // 有資料，直接顯示主頁面
+                        document.getElementById('db-loader').classList.remove('active');
+                        document.getElementById('main-content').classList.remove('hidden');
+                        renderMenu();
+                    }
+                    // 沒有資料，顯示載入器讓用戶選擇
+                };
+            } catch (error) {
+                console.error('初始化資料庫失敗:', error);
+            }
+        });
+        
+        // 如果 DOM 已經載入，立即設置
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupFileInput);
+        } else {
+            setupFileInput();
+        }
+    </script>
+</body>
+</html>
+
