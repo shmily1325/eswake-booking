@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString } from '../utils/date'
+import { getLocalDateString, getLocalTimestamp } from '../utils/date'
 import type { Member } from '../types/booking'
 import { useToast } from './ui'
 
@@ -570,7 +570,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
       if (updateError) throw updateError
 
-      // 記錄交易（created_at 由資料庫自動生成）
+      // 記錄交易
       const categoryConfig = CATEGORIES.find(c => c.value === category)
       
       const transactionData: any = {
@@ -583,6 +583,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         description: description.trim(),
         notes: notes.trim() || null,
         transaction_date: transactionDate,
+        created_at: getLocalTimestamp(),
         ...afterValues
       }
 

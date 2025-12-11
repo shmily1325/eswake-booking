@@ -76,7 +76,7 @@ export function CoachAdmin() {
     // 默認為今天 (YYYY-MM-DD 格式)
     return getLocalDateString()
   })
-  const [pendingViewMode, setPendingViewMode] = useState<'date' | 'all'>('date') // 默認：按日期查看（今天）
+  const [pendingViewMode, setPendingViewMode] = useState<'date' | 'all'>('all') // 默認：查看全部
   const [loading, setLoading] = useState(false)
 
   // Tab 1: 待處理記錄 (合併會員 + 非會員)
