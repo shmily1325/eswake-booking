@@ -156,8 +156,14 @@ export function MyReport() {
           </button>
         </div>
 
-        {/* Tab 內容區 */}
-        <div>
+        {/* Tab 內容區 - 固定白色背景防止閃爍 */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: isMobile ? '16px' : '24px',
+          minHeight: '300px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+        }}>
           {/* 待回報 Tab */}
           {activeTab === 'unreported' && coachId && (
             <CoachReport 
