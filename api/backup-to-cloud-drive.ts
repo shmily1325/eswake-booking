@@ -16,7 +16,6 @@ const TABLES_TO_BACKUP = [
   'coach_reports',
   'booking_participants',
   'transactions',
-  'daily_tasks',
   'daily_announcements',
   'audit_log',
   'system_settings',
