@@ -205,41 +205,6 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                     </div>
                                                 </div>
 
-                                                {/* 複製按鈕 */}
-                                                <button
-                                                    onClick={(e) => handleCopyBooking(e, booking)}
-                                                    title="複製預約資訊"
-                                                    style={{
-                                                        width: isMobile ? '32px' : '36px',
-                                                        height: isMobile ? '32px' : '36px',
-                                                        borderRadius: '6px',
-                                                        border: copiedBookingId === booking.id ? '1px solid #22c55e' : '1px solid #e9ecef',
-                                                        background: copiedBookingId === booking.id ? '#dcfce7' : '#f8f9fa',
-                                                        color: copiedBookingId === booking.id ? '#16a34a' : '#6b7280',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        fontSize: isMobile ? '14px' : '16px',
-                                                        flexShrink: 0,
-                                                        transition: 'all 0.2s',
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        if (copiedBookingId !== booking.id) {
-                                                            e.currentTarget.style.background = '#e5e7eb'
-                                                            e.currentTarget.style.borderColor = '#d1d5db'
-                                                        }
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        if (copiedBookingId !== booking.id) {
-                                                            e.currentTarget.style.background = '#f8f9fa'
-                                                            e.currentTarget.style.borderColor = '#e9ecef'
-                                                        }
-                                                    }}
-                                                >
-                                                    {copiedBookingId === booking.id ? '✓' : '📋'}
-                                                </button>
-
                                                 {/* 預約內容 */}
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     {/* 教練練習標識 */}
@@ -327,6 +292,41 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                         </div>
                                                     )}
                                                 </div>
+
+                                                {/* 複製按鈕 - 靠右 */}
+                                                <button
+                                                    onClick={(e) => handleCopyBooking(e, booking)}
+                                                    title="複製預約資訊"
+                                                    style={{
+                                                        width: isMobile ? '32px' : '36px',
+                                                        height: isMobile ? '32px' : '36px',
+                                                        borderRadius: '6px',
+                                                        border: copiedBookingId === booking.id ? '1px solid #22c55e' : '1px solid #e9ecef',
+                                                        background: copiedBookingId === booking.id ? '#dcfce7' : '#f8f9fa',
+                                                        color: copiedBookingId === booking.id ? '#16a34a' : '#6b7280',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontSize: isMobile ? '14px' : '16px',
+                                                        flexShrink: 0,
+                                                        transition: 'all 0.2s',
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        if (copiedBookingId !== booking.id) {
+                                                            e.currentTarget.style.background = '#e5e7eb'
+                                                            e.currentTarget.style.borderColor = '#d1d5db'
+                                                        }
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        if (copiedBookingId !== booking.id) {
+                                                            e.currentTarget.style.background = '#f8f9fa'
+                                                            e.currentTarget.style.borderColor = '#e9ecef'
+                                                        }
+                                                    }}
+                                                >
+                                                    {copiedBookingId === booking.id ? '✓' : '📋'}
+                                                </button>
                                             </div>
                                         )
                                     })}
