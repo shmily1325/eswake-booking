@@ -1040,7 +1040,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                           display: 'flex', 
                           flexDirection: 'column', 
                           gap: '10px',
-                          maxHeight: '300px',
+                          maxHeight: '500px',
                           overflowY: 'auto'
                         }}>
                           {memberNotes.map((note) => {
