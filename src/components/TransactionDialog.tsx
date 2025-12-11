@@ -709,7 +709,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
         {/* 記帳 Tab */}
         {activeTab === 'transaction' && (
-          <div style={{ padding: '20px' }}>
+          <div style={{ 
+            padding: '20px', 
+            paddingBottom: isMobile ? '100px' : '20px',  // 為底部按鈕留空間
+          }}>
             {/* 會員餘額顯示 */}
             <div style={{
               background: '#f8f9fa',
@@ -883,38 +886,84 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 />
               </div>
 
-              {/* 提交按鈕 */}
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  background: loading ? '#ccc' : '#424242',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  if (!loading) e.currentTarget.style.background = '#212121'
-                }}
-                onMouseLeave={(e) => {
-                  if (!loading) e.currentTarget.style.background = '#424242'
-                }}
-              >
-                {loading ? '處理中...' : '確認記帳'}
-              </button>
+              {/* 桌面版提交按鈕 */}
+              {!isMobile && (
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: loading ? '#ccc' : '#424242',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!loading) e.currentTarget.style.background = '#212121'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!loading) e.currentTarget.style.background = '#424242'
+                  }}
+                >
+                  {loading ? '處理中...' : '確認記帳'}
+                </button>
+              )}
             </form>
+          </div>
+        )}
+
+        {/* 手機版固定底部提交按鈕 */}
+        {activeTab === 'transaction' && isMobile && (
+          <div style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '16px 20px',
+            paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+            background: 'white',
+            borderTop: '1px solid #e0e0e0',
+            zIndex: 1002,
+          }}>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={(e) => {
+                e.preventDefault()
+                const form = document.querySelector('form')
+                if (form) {
+                  form.requestSubmit()
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: loading ? '#ccc' : '#424242',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              {loading ? '處理中...' : '確認記帳'}
+            </button>
           </div>
         )}
 
         {/* 查帳 Tab */}
         {activeTab === 'history' && (
-          <div style={{ padding: '20px' }}>
+          <div style={{ 
+            padding: '20px',
+            paddingBottom: isMobile ? '40px' : '20px',  // 手機版增加底部留白，確保最後一筆可以完整顯示
+          }}>
             {/* 月份選擇和匯出按鈕 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>

@@ -56,20 +56,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     for (const tableName of KEY_TABLES) {
       try {
-        const { data, error } = await supabase
-          .from(tableName)
-          .select('*')
-          .order('id', { ascending: true });
+        // 使用分頁查詢取得所有資料（Supabase 預設限制 1000 筆）
+        const PAGE_SIZE = 1000;
+        let allData: any[] = [];
+        let offset = 0;
+        let hasMore = true;
 
-        if (error) {
-          console.error(`查询表 ${tableName} 失败:`, error);
-          backupData[tableName] = [];
-          backupStats[tableName] = 0;
-          continue;
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from(tableName)
+            .select('*')
+            .order('id', { ascending: true })
+            .range(offset, offset + PAGE_SIZE - 1);
+
+          if (error) {
+            console.error(`查询表 ${tableName} 失败:`, error);
+            hasMore = false;
+            break;
+          }
+
+          if (data && data.length > 0) {
+            allData = allData.concat(data);
+            offset += PAGE_SIZE;
+            hasMore = data.length === PAGE_SIZE;
+          } else {
+            hasMore = false;
+          }
         }
 
-        backupData[tableName] = data || [];
-        backupStats[tableName] = (data || []).length;
+        backupData[tableName] = allData;
+        backupStats[tableName] = allData.length;
         console.log(`✓ 表 ${tableName}: ${backupStats[tableName]} 条记录`);
       } catch (error: any) {
         console.error(`备份表 ${tableName} 时出错:`, error);

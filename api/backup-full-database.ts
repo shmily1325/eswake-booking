@@ -64,17 +64,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     for (const tableName of TABLES_TO_BACKUP) {
       try {
-        // 查询表的所有数据
-        const { data, error } = await supabase
-          .from(tableName)
-          .select('*')
-          .order('id', { ascending: true });
+        // 使用分頁查詢取得所有資料（Supabase 預設限制 1000 筆）
+        const PAGE_SIZE = 1000;
+        let allData: any[] = [];
+        let offset = 0;
+        let hasMore = true;
 
-        if (error) {
-          console.error(`查询表 ${tableName} 失败:`, error);
-          sqlContent += `-- ⚠️ 表 ${tableName} 备份失败: ${error.message}\n`;
-          continue;
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from(tableName)
+            .select('*')
+            .order('id', { ascending: true })
+            .range(offset, offset + PAGE_SIZE - 1);
+
+          if (error) {
+            console.error(`查询表 ${tableName} 失败:`, error);
+            sqlContent += `-- ⚠️ 表 ${tableName} 备份失败: ${error.message}\n`;
+            hasMore = false;
+            break;
+          }
+
+          if (data && data.length > 0) {
+            allData = allData.concat(data);
+            offset += PAGE_SIZE;
+            hasMore = data.length === PAGE_SIZE; // 如果取得的資料少於 PAGE_SIZE，表示沒有更多資料了
+          } else {
+            hasMore = false;
+          }
         }
+
+        const data = allData;
 
         if (!data || data.length === 0) {
           sqlContent += `-- 表 ${tableName} 无数据\n\n`;
