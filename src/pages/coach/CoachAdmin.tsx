@@ -998,86 +998,131 @@ export function CoachAdmin() {
                           </div>
                         </div>
 
-                        {/* 教練回報 */}
-                        {stat.participants.length > 0 && (
-                          <div style={{ marginBottom: stat.driverReports.length > 0 ? '16px' : 0 }}>
-                            <h4 style={{ 
-                              margin: '0 0 12px 0', 
-                              fontSize: '15px', 
-                              color: '#4caf50',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px'
-                            }}>
-                              🎓 教練回報
-                            </h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {stat.participants.map((record: any) => (
-                                <div
-                                  key={record.id}
-                                  style={{
-                                    padding: '10px',
-                                    background: '#f1f8e9',
-                                    borderRadius: '6px',
-                                    fontSize: '13px'
-                                  }}
-                                >
-                                  <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                    教練：{record.coaches?.name || '未知'}
+                        {/* 分離教練回報和駕駛回報的參與者 */}
+                        {(() => {
+                          // 取得所有駕駛的 coach_id
+                          const driverCoachIds = new Set(stat.driverReports.map((r: any) => r.coach_id))
+                          
+                          // 分離：教練回報的參與者 vs 駕駛回報的參與者
+                          const coachParticipants = stat.participants.filter((p: any) => !driverCoachIds.has(p.coach_id))
+                          const driverParticipants = stat.participants.filter((p: any) => driverCoachIds.has(p.coach_id))
+                          
+                          return (
+                            <>
+                              {/* 教練回報 */}
+                              {coachParticipants.length > 0 && (
+                                <div style={{ marginBottom: (stat.driverReports.length > 0 || driverParticipants.length > 0) ? '16px' : 0 }}>
+                                  <h4 style={{ 
+                                    margin: '0 0 12px 0', 
+                                    fontSize: '15px', 
+                                    color: '#4caf50',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                  }}>
+                                    🎓 教練回報
+                                  </h4>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {coachParticipants.map((record: any) => (
+                                      <div
+                                        key={record.id}
+                                        style={{
+                                          padding: '10px',
+                                          background: '#f1f8e9',
+                                          borderRadius: '6px',
+                                          fontSize: '13px'
+                                        }}
+                                      >
+                                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                                          教練：{record.coaches?.name || '未知'}
+                                        </div>
+                                        <div style={{ color: '#666' }}>
+                                          學員：{record.members?.nickname || record.members?.name || record.participant_name}
+                                          {!record.member_id && <span style={{ color: '#ff9800' }}> (非會員)</span>}
+                                          {' • '}{record.duration_min}分
+                                          {' • '}{LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}
+                                          {' • '}{PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}
+                                        </div>
+                                        <DeductionDetails 
+                                          transactions={record.transactions || []}
+                                          paymentMethod={record.payment_method}
+                                          notes={record.notes}
+                                        />
+                                      </div>
+                                    ))}
                                   </div>
-                                  <div style={{ color: '#666' }}>
-                                    學員：{record.members?.nickname || record.members?.name || record.participant_name}
-                                    {!record.member_id && <span style={{ color: '#ff9800' }}> (非會員)</span>}
-                                    {' • '}{record.duration_min}分
-                                    {' • '}{LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}
-                                    {' • '}{PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}
-                                  </div>
-                                  <DeductionDetails 
-                                    transactions={record.transactions || []}
-                                    paymentMethod={record.payment_method}
-                                    notes={record.notes}
-                                  />
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                              )}
 
-                        {/* 駕駛回報 */}
-                        {stat.driverReports.length > 0 && (
-                          <div>
-                            <h4 style={{ 
-                              margin: '0 0 12px 0', 
-                              fontSize: '15px', 
-                              color: '#2196f3',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px'
-                            }}>
-                              🚤 駕駛回報
-                            </h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {stat.driverReports.map((record: any) => (
-                                <div
-                                  key={record.id}
-                                  style={{
-                                    padding: '10px',
-                                    background: '#e3f2fd',
-                                    borderRadius: '6px',
-                                    fontSize: '13px'
-                                  }}
-                                >
-                                  <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                    駕駛：{record.coaches?.name || '未知'}
-                                  </div>
-                                  <div style={{ color: '#666' }}>
-                                    駕駛時數：{record.driver_duration_min}分
+                              {/* 駕駛回報 */}
+                              {(stat.driverReports.length > 0 || driverParticipants.length > 0) && (
+                                <div>
+                                  <h4 style={{ 
+                                    margin: '0 0 12px 0', 
+                                    fontSize: '15px', 
+                                    color: '#2196f3',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                  }}>
+                                    🚤 駕駛回報
+                                  </h4>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {stat.driverReports.map((record: any) => {
+                                      // 找出這個駕駛回報的參與者記錄
+                                      const relatedParticipants = driverParticipants.filter((p: any) => p.coach_id === record.coach_id)
+                                      
+                                      return (
+                                        <div
+                                          key={record.id}
+                                          style={{
+                                            padding: '10px',
+                                            background: '#e3f2fd',
+                                            borderRadius: '6px',
+                                            fontSize: '13px'
+                                          }}
+                                        >
+                                          <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                                            駕駛：{record.coaches?.name || '未知'}
+                                          </div>
+                                          <div style={{ color: '#666', marginBottom: relatedParticipants.length > 0 ? '8px' : 0 }}>
+                                            駕駛時數：{record.driver_duration_min}分
+                                          </div>
+                                          
+                                          {/* 顯示駕駛回報的參與者（含扣款資訊） */}
+                                          {relatedParticipants.length > 0 && (
+                                            <div style={{ 
+                                              marginTop: '8px', 
+                                              paddingTop: '8px', 
+                                              borderTop: '1px dashed #90caf9'
+                                            }}>
+                                              {relatedParticipants.map((p: any) => (
+                                                <div key={p.id} style={{ marginBottom: '8px' }}>
+                                                  <div style={{ color: '#666' }}>
+                                                    學員：{p.members?.nickname || p.members?.name || p.participant_name}
+                                                    {!p.member_id && <span style={{ color: '#ff9800' }}> (非會員)</span>}
+                                                    {' • '}{p.duration_min}分
+                                                    {' • '}{LESSON_TYPES.find(lt => lt.value === p.lesson_type)?.label || '不指定'}
+                                                    {' • '}{PAYMENT_METHODS.find(m => m.value === p.payment_method)?.label}
+                                                  </div>
+                                                  <DeductionDetails 
+                                                    transactions={p.transactions || []}
+                                                    paymentMethod={p.payment_method}
+                                                    notes={p.notes}
+                                                  />
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )
+                                    })}
                                   </div>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                              )}
+                            </>
+                          )
+                        })()}
                       </div>
                     ))}
 

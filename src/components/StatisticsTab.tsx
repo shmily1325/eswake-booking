@@ -23,6 +23,7 @@ interface BookingDetail {
   duration: number
   participants: ParticipantInfo[]
   driverDuration?: number
+  contactName?: string
 }
 
 interface ParticipantInfo {
@@ -90,7 +91,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
         .select(`
           *,
           bookings!inner(
-            id, start_at, duration_min, boat_id,
+            id, start_at, duration_min, boat_id, contact_name,
             boats(name)
           ),
           coaches:coach_id(id, name),
@@ -110,7 +111,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
         .select(`
           *,
           bookings!inner(
-            id, start_at, duration_min, boat_id,
+            id, start_at, duration_min, boat_id, contact_name,
             boats(name)
           ),
           coaches:coach_id(id, name)
@@ -155,7 +156,8 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
             time: extractTime(record.bookings.start_at),
             boatName: record.bookings.boats?.name || '未知',
             duration: record.bookings.duration_min || 0,
-            participants: []
+            participants: [],
+            contactName: record.bookings.contact_name || ''
           }
           stats.details.push(detail)
         }
@@ -200,7 +202,8 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
             time: extractTime(record.bookings.start_at),
             boatName: record.bookings.boats?.name || '未知',
             duration: record.bookings.duration_min || 0,
-            participants: []
+            participants: [],
+            contactName: record.bookings.contact_name || ''
           }
           stats.details.push(detail)
         }
@@ -634,6 +637,9 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                             <td style={{ padding: '10px', whiteSpace: 'nowrap' }}>
                               <div style={{ fontWeight: '600', color: '#333' }}>{detail.date}</div>
                               <div style={{ color: '#999', fontSize: '12px' }}>{detail.time}</div>
+                              {detail.contactName && (
+                                <div style={{ color: '#888', fontSize: '12px', marginTop: '2px' }}>{detail.contactName}</div>
+                              )}
                             </td>
                             <td style={{ padding: '10px' }}>
                               <div style={{ color: '#666' }}>{detail.boatName}</div>
