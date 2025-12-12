@@ -76,7 +76,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
   }
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = '#667eea'
+    e.currentTarget.style.borderColor = '#5a5a5a'
   }
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

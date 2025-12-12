@@ -998,9 +998,9 @@ export function MemberManagement() {
                 setDetailDialogOpen(true)
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#667eea'
+                e.currentTarget.style.borderColor = '#5a5a5a'
                 e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.2)'
+                e.currentTarget.style.boxShadow = '0 4px 16px rgba(90, 90, 90, 0.2)'
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = 'transparent'
@@ -1124,7 +1124,21 @@ export function MemberManagement() {
                         <div>🎂 {formatDate(member.birthday)}</div>
                       )}
                       {member.partner && (
-                        <div style={{ color: '#2196F3' }}>
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedMemberId(member.partner!.id)
+                            setDetailDialogOpen(true)
+                          }}
+                          style={{ 
+                            color: '#2196F3', 
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            textDecorationStyle: 'dotted',
+                            textUnderlineOffset: '2px'
+                          }}
+                          title={`點擊查看 ${member.partner.nickname || member.partner.name} 的資料`}
+                        >
                           🔗 配對：{member.partner.nickname || member.partner.name}
                         </div>
                       )}
@@ -1294,6 +1308,7 @@ export function MemberManagement() {
           setSelectedMemberId(null)
         }}
         onUpdate={() => loadMembers(true)}
+        onSwitchMember={(memberId) => setSelectedMemberId(memberId)}
       />
       
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />

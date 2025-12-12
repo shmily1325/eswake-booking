@@ -105,7 +105,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   }
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = '#667eea'
+    e.currentTarget.style.borderColor = '#5a5a5a'
   }
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -671,7 +671,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                 padding: isMobile ? '16px' : '14px',
                 border: 'none',
                 borderRadius: '10px',
-                background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
                 color: 'white',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontSize: isMobile ? '16px' : '15px',

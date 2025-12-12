@@ -68,9 +68,10 @@ interface MemberDetailDialogProps {
   memberId: string | null
   onClose: () => void
   onUpdate: () => void
+  onSwitchMember?: (memberId: string) => void  // 切換到另一個會員
 }
 
-export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: MemberDetailDialogProps) {
+export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitchMember }: MemberDetailDialogProps) {
   const { isMobile } = useResponsive()
   const toast = useToast()
   const [member, setMember] = useState<Member | null>(null)
@@ -770,7 +771,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                                 padding: '2px 6px',
                                 cursor: 'pointer',
                                 fontSize: '14px',
-                                color: '#667eea',
+                                color: '#5a5a5a',
                                 flexShrink: 0,
                               }}
                               title="修改手機號碼"
@@ -815,7 +816,19 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                             }
                           </div>
                           {member.membership_type === 'dual' && member.partner && (
-                            <div style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>
+                            <div 
+                              onClick={() => onSwitchMember?.(member.partner!.id)}
+                              style={{ 
+                                fontSize: '13px', 
+                                color: onSwitchMember ? '#2196F3' : '#666', 
+                                marginBottom: '12px',
+                                cursor: onSwitchMember ? 'pointer' : 'default',
+                                textDecoration: onSwitchMember ? 'underline' : 'none',
+                                textDecorationStyle: 'dotted',
+                                textUnderlineOffset: '2px'
+                              }}
+                              title={onSwitchMember ? `點擊查看 ${member.partner.nickname || member.partner.name} 的資料` : undefined}
+                            >
                               🔗 配對：{member.partner.nickname || member.partner.name}
                             </div>
                           )}
@@ -1812,7 +1825,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                   fontSize: '16px',
                   boxSizing: 'border-box',
                 }}
-                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                onFocus={(e) => e.target.style.borderColor = '#5a5a5a'}
                 onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -1851,7 +1864,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                   padding: '12px',
                   border: 'none',
                   borderRadius: '8px',
-                  background: savingPhone ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: savingPhone ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
                   color: 'white',
                   cursor: savingPhone ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
