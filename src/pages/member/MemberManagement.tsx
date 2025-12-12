@@ -62,6 +62,7 @@ export function MemberManagement() {
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 'all', 'general', 'dual', 'guest'
   const [expiringFilter, setExpiringFilter] = useState<string>('none') // 'none', 'membership', 'board'
   const [showExpiringDetails, setShowExpiringDetails] = useState(false) // 收合/展開到期詳情
+  const [sortBy, setSortBy] = useState<string>('nickname') // 'nickname', 'balance', 'membership_end_date'
 
   useEffect(() => {
     loadMembers()
@@ -160,8 +161,11 @@ export function MemberManagement() {
     }
   }
 
-  const loadMembers = async () => {
-    setLoading(true)
+  const loadMembers = async (silent = false) => {
+    // silent 模式：不顯示 loading，用於更新後的靜默刷新，保持滾動位置
+    if (!silent) {
+      setLoading(true)
+    }
     try {
       // 並行查詢會員資料、置板資料和備忘錄
       const [membersResult, boardResult, notesResult] = await Promise.all([
@@ -316,7 +320,7 @@ export function MemberManagement() {
       }])
 
       toast.success('已隱藏會員')
-      await loadMembers()
+      await loadMembers(true)
     } catch (err: any) {
       console.error('隱藏會員失敗:', err)
       toast.error('隱藏會員失敗')
@@ -343,7 +347,7 @@ export function MemberManagement() {
       }])
 
       toast.success('已恢復會員')
-      await loadMembers()
+      await loadMembers(true)
     } catch (err: any) {
       console.error('恢復會員失敗:', err)
       toast.error('恢復會員失敗')
@@ -524,9 +528,30 @@ export function MemberManagement() {
         expiringBoardMemberNames.has(member.nickname)
       )
     }
+
+    // 排序
+    result = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'balance':
+          // 餘額高到低
+          return (b.balance || 0) - (a.balance || 0)
+        case 'membership_end_date':
+          // 會籍到期日近到遠（空值排最後）
+          if (!a.membership_end_date && !b.membership_end_date) return 0
+          if (!a.membership_end_date) return 1
+          if (!b.membership_end_date) return -1
+          return a.membership_end_date.localeCompare(b.membership_end_date)
+        case 'nickname':
+        default:
+          // 暱稱 A-Z
+          const nameA = (a.nickname || a.name || '').toLowerCase()
+          const nameB = (b.nickname || b.name || '').toLowerCase()
+          return nameA.localeCompare(nameB, 'zh-TW')
+      }
+    })
     
     return result
-  }, [members, searchTerm, membershipTypeFilter, expiringFilter, expiringMemberships, expiringBoards])
+  }, [members, searchTerm, membershipTypeFilter, expiringFilter, expiringMemberships, expiringBoards, sortBy])
 
 
   if (loading) {
@@ -778,6 +803,28 @@ export function MemberManagement() {
           🏄 置板到期 ({expiringBoards.length})
         </button>
         
+        {/* 分隔線 */}
+        <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+
+        {/* 排序選擇 */}
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          style={{
+            padding: '6px 10px',
+            border: '1px solid #ddd',
+            borderRadius: '6px',
+            fontSize: '13px',
+            background: 'white',
+            cursor: 'pointer',
+            color: '#666'
+          }}
+        >
+          <option value="nickname">按暱稱</option>
+          <option value="balance">按餘額</option>
+          <option value="membership_end_date">按會籍到期</option>
+        </select>
+        
         {/* 包含已隱藏 */}
         <label style={{
           display: 'flex',
@@ -797,6 +844,21 @@ export function MemberManagement() {
           包含已隱藏
         </label>
       </div>
+
+      {/* 搜尋結果數量提示 */}
+      {searchTerm && (
+        <div style={{
+          fontSize: '13px',
+          color: '#666',
+          marginBottom: '12px',
+          padding: '8px 12px',
+          background: '#f0f7ff',
+          borderRadius: '6px',
+          border: '1px solid #d0e3ff'
+        }}>
+          🔍 搜尋「{searchTerm}」找到 <strong>{filteredMembers.length}</strong> 位會員
+        </div>
+      )}
 
       {/* 到期詳情（收合式） */}
       {(expiringMemberships.length > 0 || expiringBoards.length > 0) && (
@@ -1220,7 +1282,7 @@ export function MemberManagement() {
       <AddMemberDialog
         open={addDialogOpen}
         onClose={() => setAddDialogOpen(false)}
-        onSuccess={loadMembers}
+        onSuccess={() => loadMembers(true)}
       />
 
       {/* 會員詳情彈窗 */}
@@ -1231,7 +1293,7 @@ export function MemberManagement() {
           setDetailDialogOpen(false)
           setSelectedMemberId(null)
         }}
-        onUpdate={loadMembers}
+        onUpdate={() => loadMembers(true)}
       />
       
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
