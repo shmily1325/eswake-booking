@@ -334,7 +334,6 @@ export function NewBookingDialog({
         padding: isMobile ? '0' : '16px',
         overflowY: isMobile ? 'hidden' : 'auto',
       }}
-      onClick={loading ? undefined : handleClose}
     >
       <div
         style={{
@@ -350,7 +349,6 @@ export function NewBookingDialog({
           overflow: 'hidden',
           boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* 標題欄 - Sticky */}
         <div style={{

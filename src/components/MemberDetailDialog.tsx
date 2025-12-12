@@ -1771,7 +1771,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
       {/* 快速編輯手機號碼彈出框 */}
       {quickEditPhoneOpen && (
         <div
-          onClick={() => setQuickEditPhoneOpen(false)}
           style={{
             position: 'fixed',
             top: 0,
@@ -1787,7 +1786,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
           }}
         >
           <div
-            onClick={(e) => e.stopPropagation()}
             style={{
               background: 'white',
               borderRadius: '12px',
@@ -1819,6 +1817,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate }: Member
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleQuickSavePhone()
+                  } else if (e.key === 'Escape') {
+                    setQuickEditPhoneOpen(false)
                   }
                 }}
               />

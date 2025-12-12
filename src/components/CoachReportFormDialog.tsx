@@ -70,10 +70,8 @@ export function CoachReportFormDialog({
         zIndex: 1000,
         padding: isMobile ? '0' : '20px'
       }}
-      onClick={onCancel}
     >
       <div
-        onClick={(e) => e.stopPropagation()}
         style={{
           background: 'white',
           borderRadius: isMobile ? '0' : '12px',

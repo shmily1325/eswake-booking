@@ -371,10 +371,8 @@ export function RepeatBookingDialog({
         padding: isMobile ? '0' : '20px',
         overflowY: isMobile ? 'hidden' : 'auto',
       }}
-      onClick={loading ? undefined : handleClose}
     >
       <div
-        onClick={(e) => e.stopPropagation()}
         style={{
           background: 'white',
           borderRadius: isMobile ? '16px 16px 0 0' : '12px',
