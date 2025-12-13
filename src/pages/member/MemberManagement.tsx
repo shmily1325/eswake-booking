@@ -805,32 +805,28 @@ export function MemberManagement() {
                     fontWeight: (membershipTypeFilter !== 'all' || expiringFilter !== 'none') ? '500' : 'normal',
                   }}
                 >
-                  <option value="all">👥 全部 ({members.length})</option>
-                  <option value="member">✨ 會員 ({members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length})</option>
-                  <option value="general">👤 一般 ({members.filter(m => m.membership_type === 'general').length})</option>
-                  <option value="dual">👥 雙人 ({members.filter(m => m.membership_type === 'dual').length})</option>
-                  <option value="guest">🎫 非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
-                  <option value="es">🏠 ES ({members.filter(m => m.membership_type === 'es').length})</option>
+                  <option value="all">全部 ({members.length})</option>
+                  <option value="member">會員 ({members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length})</option>
+                  <option value="general">一般 ({members.filter(m => m.membership_type === 'general').length})</option>
+                  <option value="dual">雙人 ({members.filter(m => m.membership_type === 'dual').length})</option>
+                  <option value="guest">非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
+                  <option value="es">ES ({members.filter(m => m.membership_type === 'es').length})</option>
                   {expiringMemberships.length > 0 && (
-                    <option value="expiring-membership">⚠️ 會籍到期 ({expiringMemberships.length})</option>
+                    <option value="expiring-membership">會籍到期 ({expiringMemberships.length})</option>
                   )}
                   {expiringBoards.length > 0 && (
-                    <option value="expiring-board">🏄 置板到期 ({expiringBoards.length})</option>
+                    <option value="expiring-board">置板到期 ({expiringBoards.length})</option>
                   )}
                 </select>
               </div>
 
-              {/* 排序下拉選單 */}
-              <div style={{ flex: '1 1 calc(50% - 5px)' }}>
+              {/* 排序下拉選單 + 方向按鈕 */}
+              <div style={{ flex: '1 1 calc(50% - 5px)', display: 'flex', gap: '6px' }}>
                 <select
-                  value={`${sortBy}-${sortOrder}`}
-                  onChange={(e) => {
-                    const [newSortBy, newSortOrder] = e.target.value.split('-') as [string, 'asc' | 'desc']
-                    setSortBy(newSortBy)
-                    setSortOrder(newSortOrder)
-                  }}
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
                   style={{
-                    width: '100%',
+                    flex: 1,
                     padding: '10px 12px',
                     paddingRight: '32px',
                     border: '1px solid #dee2e6',
@@ -846,15 +842,31 @@ export function MemberManagement() {
                     color: '#333',
                   }}
                 >
-                  <option value="nickname-asc">📝 暱稱 A→Z</option>
-                  <option value="nickname-desc">📝 暱稱 Z→A</option>
-                  <option value="updated_at-desc">🕐 更新 新→舊</option>
-                  <option value="updated_at-asc">🕐 更新 舊→新</option>
-                  <option value="membership_end_date-asc">🎫 會籍 近→遠</option>
-                  <option value="membership_end_date-desc">🎫 會籍 遠→近</option>
-                  <option value="board_expiry-asc">🏄 置板 近→遠</option>
-                  <option value="board_expiry-desc">🏄 置板 遠→近</option>
+                  <option value="nickname">暱稱</option>
+                  <option value="updated_at">更新日期</option>
+                  <option value="membership_end_date">會籍到期</option>
+                  <option value="board_expiry">置板到期</option>
                 </select>
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  style={{
+                    padding: '10px 14px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    color: '#333',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '44px',
+                  }}
+                  title={sortOrder === 'asc' ? '升序（點擊切換）' : '降序（點擊切換）'}
+                >
+                  {sortOrder === 'asc' ? '▲' : '▼'}
+                </button>
               </div>
 
               {/* 包含已隱藏 checkbox */}

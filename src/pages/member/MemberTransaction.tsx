@@ -767,26 +767,22 @@ export function MemberTransaction() {
                     fontWeight: membershipTypeFilter !== 'all' ? '500' : 'normal',
                   }}
                 >
-                  <option value="all">👥 全部 ({members.length})</option>
-                  <option value="member">✨ 會員 ({members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length})</option>
-                  <option value="general">👤 一般 ({members.filter(m => m.membership_type === 'general').length})</option>
-                  <option value="dual">👥 雙人 ({members.filter(m => m.membership_type === 'dual').length})</option>
-                  <option value="guest">🎫 非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
-                  <option value="es">🏠 ES ({members.filter(m => m.membership_type === 'es').length})</option>
+                  <option value="all">全部 ({members.length})</option>
+                  <option value="member">會員 ({members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length})</option>
+                  <option value="general">一般 ({members.filter(m => m.membership_type === 'general').length})</option>
+                  <option value="dual">雙人 ({members.filter(m => m.membership_type === 'dual').length})</option>
+                  <option value="guest">非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
+                  <option value="es">ES ({members.filter(m => m.membership_type === 'es').length})</option>
                 </select>
               </div>
 
-              {/* 排序下拉選單 */}
-              <div style={{ flex: 1 }}>
+              {/* 排序下拉選單 + 方向按鈕 */}
+              <div style={{ flex: 1, display: 'flex', gap: '6px' }}>
                 <select
-                  value={`${sortBy}-${sortOrder}`}
-                  onChange={(e) => {
-                    const [newSortBy, newSortOrder] = e.target.value.split('-') as [typeof sortBy, typeof sortOrder]
-                    setSortBy(newSortBy)
-                    setSortOrder(newSortOrder)
-                  }}
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                   style={{
-                    width: '100%',
+                    flex: 1,
                     padding: '10px 12px',
                     paddingRight: '32px',
                     border: '1px solid #dee2e6',
@@ -802,19 +798,33 @@ export function MemberTransaction() {
                     color: '#333',
                   }}
                 >
-                  <option value="nickname-asc">📝 暱稱 A→Z</option>
-                  <option value="nickname-desc">📝 暱稱 Z→A</option>
-                  <option value="balance-desc">💰 儲值 高→低</option>
-                  <option value="balance-asc">💰 儲值 低→高</option>
-                  <option value="vip-desc">💎 VIP 高→低</option>
-                  <option value="vip-asc">💎 VIP 低→高</option>
-                  <option value="g23-desc">🚤 G23 高→低</option>
-                  <option value="g23-asc">🚤 G23 低→高</option>
-                  <option value="g21-desc">⛵ 黑豹/G21 高→低</option>
-                  <option value="g21-asc">⛵ 黑豹/G21 低→高</option>
-                  <option value="lastTransaction-desc">📅 交易 新→舊</option>
-                  <option value="lastTransaction-asc">📅 交易 舊→新</option>
+                  <option value="nickname">暱稱</option>
+                  <option value="balance">儲值</option>
+                  <option value="vip">VIP</option>
+                  <option value="g23">G23</option>
+                  <option value="g21">黑豹/G21</option>
+                  <option value="lastTransaction">交易日期</option>
                 </select>
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  style={{
+                    padding: '10px 14px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    color: '#333',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '44px',
+                  }}
+                  title={sortOrder === 'asc' ? '升序（點擊切換）' : '降序（點擊切換）'}
+                >
+                  {sortOrder === 'asc' ? '▲' : '▼'}
+                </button>
               </div>
             </div>
 
