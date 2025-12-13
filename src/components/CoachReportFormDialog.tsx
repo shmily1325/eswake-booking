@@ -20,6 +20,7 @@ interface CoachReportFormDialogProps {
   lessonTypes: Array<{ value: string; label: string }>
   paymentMethods: Array<{ value: string; label: string }>
   isSubmitting?: boolean  // 新增：提交中狀態
+  activeSearchIndex?: number | null  // 正在搜尋的參與者索引
   onDriverDurationChange: (value: number) => void
   onParticipantUpdate: (index: number, field: keyof Participant, value: any) => void
   onParticipantAdd: () => void
@@ -29,6 +30,8 @@ interface CoachReportFormDialogProps {
   onMemberSelect: (index: number, member: Member) => void
   onSubmit: () => void
   onCancel: () => void
+  onSearchFocus?: (index: number) => void
+  onSearchBlur?: (index: number) => void
 }
 
 export function CoachReportFormDialog({
@@ -43,6 +46,7 @@ export function CoachReportFormDialog({
   lessonTypes,
   paymentMethods,
   isSubmitting = false,  // 新增：預設為 false
+  activeSearchIndex = null,  // 正在搜尋的參與者索引
   onDriverDurationChange,
   onParticipantUpdate,
   onParticipantAdd,
@@ -51,7 +55,9 @@ export function CoachReportFormDialog({
   onMemberSearch,
   onMemberSelect,
   onSubmit,
-  onCancel
+  onCancel,
+  onSearchFocus,
+  onSearchBlur
 }: CoachReportFormDialogProps) {
   if (!booking) return null
 
@@ -139,7 +145,7 @@ export function CoachReportFormDialog({
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={driverDuration || ''}
+                  value={driverDuration === 0 ? '0' : (driverDuration || '')}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, '') // 只允許數字
                     onDriverDurationChange(parseInt(value) || 0)
@@ -209,11 +215,14 @@ export function CoachReportFormDialog({
                         filteredMembers={filteredMembers}
                         lessonTypes={lessonTypes}
                         paymentMethods={paymentMethods}
+                        isSearchActive={activeSearchIndex === index}
                         onUpdate={onParticipantUpdate}
                         onRemove={onParticipantRemove}
                         onClearMember={onClearMember}
                         onSearchChange={onMemberSearch}
                         onSelectMember={onMemberSelect}
+                        onSearchFocus={onSearchFocus}
+                        onSearchBlur={onSearchBlur}
                       />
                     ))}
                   </div>

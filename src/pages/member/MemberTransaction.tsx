@@ -409,13 +409,13 @@ export function MemberTransaction() {
         return ''
       }
 
-      // 根據類別獲取對應的交易後餘額
+      // 根據類別獲取對應的交易後餘額（不用 toLocaleString 避免逗號問題）
       const getAfterValue = (t: any) => {
         switch (t.category) {
           case 'balance':
-            return t.balance_after != null ? `$${t.balance_after.toLocaleString()}` : ''
+            return t.balance_after != null ? `$${t.balance_after}` : ''
           case 'vip_voucher':
-            return t.vip_voucher_amount_after != null ? `$${t.vip_voucher_amount_after.toLocaleString()}` : ''
+            return t.vip_voucher_amount_after != null ? `$${t.vip_voucher_amount_after}` : ''
           case 'designated_lesson':
             return t.designated_lesson_minutes_after != null ? `${t.designated_lesson_minutes_after}分` : ''
           case 'boat_voucher_g23':
@@ -430,7 +430,7 @@ export function MemberTransaction() {
         }
       }
 
-      // 格式化變動數值（含正負號）
+      // 格式化變動數值（含正負號，不用 toLocaleString 避免逗號問題）
       const getChangeValue = (t: any) => {
         const isAmount = t.category === 'balance' || t.category === 'vip_voucher'
         const value = isAmount ? (t.amount || 0) : (t.minutes || 0)
@@ -445,7 +445,7 @@ export function MemberTransaction() {
         }
         
         if (isAmount) {
-          return `${sign}$${absValue.toLocaleString()}`
+          return `${sign}$${absValue}`
         } else {
           return `${sign}${absValue}分`
         }

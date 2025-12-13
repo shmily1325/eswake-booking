@@ -93,6 +93,7 @@ export function CoachReport({
   
   // 會員搜尋
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
+  const [activeSearchIndex, setActiveSearchIndex] = useState<number | null>(null)  // 追蹤正在搜尋的參與者索引
   const { 
     filteredMembers,
     handleSearchChange 
@@ -1385,6 +1386,7 @@ export function CoachReport({
         lessonTypes={LESSON_TYPES}
         paymentMethods={PAYMENT_METHODS}
         isSubmitting={isSubmitting}
+        activeSearchIndex={activeSearchIndex}
         onDriverDurationChange={setDriverDuration}
         onParticipantUpdate={updateParticipant}
         onParticipantAdd={addParticipant}
@@ -1397,6 +1399,8 @@ export function CoachReport({
         onMemberSelect={selectMember}
         onSubmit={submitReport}
         onCancel={() => setReportingBookingId(null)}
+        onSearchFocus={(index) => setActiveSearchIndex(index)}
+        onSearchBlur={() => setActiveSearchIndex(null)}
       />
 
       <Footer />

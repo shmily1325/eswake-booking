@@ -15,11 +15,14 @@ interface ParticipantFormItemProps {
   filteredMembers: Member[]
   lessonTypes: Array<{ value: string; label: string }>
   paymentMethods: Array<{ value: string; label: string }>
+  isSearchActive?: boolean  // 是否顯示搜尋結果（避免所有參與者同時顯示下拉選單）
   onUpdate: (index: number, field: keyof Participant, value: any) => void
   onRemove: (index: number) => void
   onClearMember: (index: number) => void
   onSearchChange: (value: string, index: number) => void
   onSelectMember: (index: number, member: Member) => void
+  onSearchFocus?: (index: number) => void  // 輸入框獲得焦點時通知父組件
+  onSearchBlur?: (index: number) => void   // 輸入框失去焦點時通知父組件
 }
 
 export function ParticipantFormItem({
@@ -31,11 +34,14 @@ export function ParticipantFormItem({
   filteredMembers,
   lessonTypes,
   paymentMethods,
+  isSearchActive = true,  // 預設顯示搜尋結果（向後兼容）
   onUpdate,
   onRemove,
   onClearMember,
   onSearchChange,
-  onSelectMember
+  onSelectMember,
+  onSearchFocus,
+  onSearchBlur
 }: ParticipantFormItemProps) {
   return (
     <div
@@ -128,6 +134,11 @@ export function ParticipantFormItem({
             onUpdate(index, 'participant_name', e.target.value)
             onSearchChange(e.target.value, index)
           }}
+          onFocus={() => onSearchFocus?.(index)}
+          onBlur={() => {
+            // 延遲關閉以便用戶可以點擊搜尋結果
+            setTimeout(() => onSearchBlur?.(index), 200)
+          }}
           readOnly={!!participant.member_id}
           style={{
             ...getInputStyle(isMobile),
@@ -137,8 +148,8 @@ export function ParticipantFormItem({
           placeholder="搜尋會員或輸入姓名"
         />
 
-        {/* 会员搜索结果 */}
-        {memberSearchTerm && filteredMembers.length > 0 && (
+        {/* 会员搜索结果 - 只在此參與者正在搜尋時顯示 */}
+        {isSearchActive && memberSearchTerm && filteredMembers.length > 0 && (
           <div
             style={{
               position: 'absolute',
@@ -193,7 +204,7 @@ export function ParticipantFormItem({
         <input
           type="text"
           inputMode="numeric"
-          value={participant.duration_min || ''}
+          value={participant.duration_min === 0 ? '0' : (participant.duration_min || '')}
           onChange={(e) => {
             const value = e.target.value.replace(/\D/g, '') // 只允許數字
             onUpdate(index, 'duration_min', parseInt(value) || 0)
