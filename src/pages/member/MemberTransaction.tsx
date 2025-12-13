@@ -525,14 +525,7 @@ export function MemberTransaction() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      <PageHeader 
-        title="💰 會員儲值" 
-        user={user} 
-        showBaoLink={true}
-        extraLinks={[{ label: '👥 會員管理', link: '/members' }]}
-      />
-
-      {/* 上方控制區（電腦版 sticky） */}
+      {/* 電腦版：PageHeader + 控制區一起 sticky */}
       <div style={{
         position: isMobile ? 'static' : 'sticky',
         top: 0,
@@ -542,9 +535,14 @@ export function MemberTransaction() {
         marginRight: isMobile ? 0 : '-20px',
         paddingLeft: isMobile ? 0 : '20px',
         paddingRight: isMobile ? 0 : '20px',
-        paddingTop: isMobile ? 0 : '8px',
         paddingBottom: isMobile ? 0 : '12px',
       }}>
+        <PageHeader 
+          title="💰 會員儲值" 
+          user={user} 
+          showBaoLink={true}
+          extraLinks={[{ label: '👥 會員管理', link: '/members' }]}
+        />
         {/* 數據總覽 */}
         <div style={{
           background: 'white',

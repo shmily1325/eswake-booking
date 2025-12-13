@@ -665,26 +665,24 @@ export function MemberManagement() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      <PageHeader 
-        title="👥 會員管理" 
-        user={user} 
-        showBaoLink={true} 
-        extraLinks={[{ label: '💰 會員儲值', link: '/member-transaction' }]}
-      />
-
-      {/* 搜尋欄 + 篩選列（電腦版 sticky） */}
+      {/* 電腦版：PageHeader + 篩選列一起 sticky */}
       <div style={{
         position: isMobile ? 'static' : 'sticky',
         top: 0,
         zIndex: 100,
         background: '#f5f5f5',
-        paddingTop: isMobile ? 0 : '8px',
-        paddingBottom: isMobile ? 0 : '12px',
         marginLeft: isMobile ? 0 : '-20px',
         marginRight: isMobile ? 0 : '-20px',
         paddingLeft: isMobile ? 0 : '20px',
         paddingRight: isMobile ? 0 : '20px',
+        paddingBottom: isMobile ? 0 : '12px',
       }}>
+        <PageHeader 
+          title="👥 會員管理" 
+          user={user} 
+          showBaoLink={true} 
+          extraLinks={[{ label: '💰 會員儲值', link: '/member-transaction' }]}
+        />
         {/* 搜尋欄 + 新增會員按鈕 */}
         <div style={{
           display: 'flex',

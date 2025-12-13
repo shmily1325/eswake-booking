@@ -1286,88 +1286,119 @@ export function CoachReport({
 
                   {/* 教練列表 */}
                   {displayCoaches && displayCoaches.length > 0 && (
-                    <div style={{ marginBottom: (displayDrivers && displayDrivers.length > 0) ? '12px' : '0' }}>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                        <span style={{ fontSize: '20px', marginTop: '6px' }}>🎓</span>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {displayCoaches.map(coach => {
-                          const reportType = getReportType(booking, coach.id)
-                          const reportStatus = getReportStatus(booking, coach.id)
-                          const isReported = reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
-                          
-                          return (
-                            <div
-                              key={coach.id}
-                              style={{
-                                  padding: '8px 12px',
-                                background: isReported ? '#e8f5e9' : '#f5f5f5',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                gap: '8px',
-                                border: isReported ? '1px solid #a5d6a7' : 'none'
-                              }}
-                            >
-                                <span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  {isReported && <span style={{ color: '#4caf50' }}>✓</span>}
-                                  {coach.name}
-                                </span>
-                              <Button
-                                variant={isReported ? 'outline' : 'primary'}
-                                size="small"
-                                onClick={() => startReportWithCoach(booking, coach.id)}
-                              >
-                                {isReported ? '📝 修改' : '回報'}
-                              </Button>
-                            </div>
-                          )
-                        })}
-                        </div>
-                      </div>
+                    <div style={{ 
+                      marginBottom: (displayDrivers && displayDrivers.length > 0) ? '10px' : '0',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      alignItems: 'center'
+                    }}>
+                      <span style={{ fontSize: '18px', opacity: 0.7 }}>🎓</span>
+                      {displayCoaches.map(coach => {
+                        const reportType = getReportType(booking, coach.id)
+                        const reportStatus = getReportStatus(booking, coach.id)
+                        const isReported = reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
+                        
+                        return (
+                          <button
+                            key={coach.id}
+                            onClick={() => startReportWithCoach(booking, coach.id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '6px 12px',
+                              background: isReported 
+                                ? 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)' 
+                                : 'linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)',
+                              border: 'none',
+                              borderRadius: '20px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: isReported ? '#2e7d32' : '#555',
+                              boxShadow: isReported 
+                                ? '0 2px 8px rgba(76, 175, 80, 0.25)' 
+                                : '0 1px 3px rgba(0,0,0,0.08)',
+                              transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-1px)'
+                              e.currentTarget.style.boxShadow = isReported 
+                                ? '0 4px 12px rgba(76, 175, 80, 0.35)' 
+                                : '0 3px 8px rgba(0,0,0,0.15)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)'
+                              e.currentTarget.style.boxShadow = isReported 
+                                ? '0 2px 8px rgba(76, 175, 80, 0.25)' 
+                                : '0 1px 3px rgba(0,0,0,0.08)'
+                            }}
+                          >
+                            {isReported && <span style={{ fontSize: '12px' }}>✓</span>}
+                            <span>{coach.name}</span>
+                            {!isReported && <span style={{ fontSize: '11px', opacity: 0.6 }}>回報</span>}
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
 
                   {/* 駕駛列表 */}
                   {displayDrivers && displayDrivers.length > 0 && (
-                    <div>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                        <span style={{ fontSize: '20px', marginTop: '6px' }}>🚤</span>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {displayDrivers.map(driver => {
-                          const reportStatus = getReportStatus(booking, driver.id)
-                          const isReported = reportStatus.hasDriverReport
-                          
-                          return (
-                            <div
-                              key={driver.id}
-                              style={{
-                                  padding: '8px 12px',
-                                background: isReported ? '#e3f2fd' : '#f5f5f5',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                gap: '8px',
-                                border: isReported ? '1px solid #90caf9' : 'none'
-                              }}
-                            >
-                                <span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  {isReported && <span style={{ color: '#2196f3' }}>✓</span>}
-                                  {driver.name}
-                                </span>
-                              <Button
-                                variant={isReported ? 'outline' : 'primary'}
-                                size="small"
-                                onClick={() => startReportWithCoach(booking, driver.id)}
-                              >
-                                {isReported ? '📝 修改' : '回報'}
-                              </Button>
-                            </div>
-                          )
-                        })}
-                        </div>
-                      </div>
+                    <div style={{ 
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      alignItems: 'center'
+                    }}>
+                      <span style={{ fontSize: '18px', opacity: 0.7 }}>🚤</span>
+                      {displayDrivers.map(driver => {
+                        const reportStatus = getReportStatus(booking, driver.id)
+                        const isReported = reportStatus.hasDriverReport
+                        
+                        return (
+                          <button
+                            key={driver.id}
+                            onClick={() => startReportWithCoach(booking, driver.id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '6px 12px',
+                              background: isReported 
+                                ? 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' 
+                                : 'linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)',
+                              border: 'none',
+                              borderRadius: '20px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: isReported ? '#1565c0' : '#555',
+                              boxShadow: isReported 
+                                ? '0 2px 8px rgba(33, 150, 243, 0.25)' 
+                                : '0 1px 3px rgba(0,0,0,0.08)',
+                              transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-1px)'
+                              e.currentTarget.style.boxShadow = isReported 
+                                ? '0 4px 12px rgba(33, 150, 243, 0.35)' 
+                                : '0 3px 8px rgba(0,0,0,0.15)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)'
+                              e.currentTarget.style.boxShadow = isReported 
+                                ? '0 2px 8px rgba(33, 150, 243, 0.25)' 
+                                : '0 1px 3px rgba(0,0,0,0.08)'
+                            }}
+                          >
+                            {isReported && <span style={{ fontSize: '12px' }}>✓</span>}
+                            <span>{driver.name}</span>
+                            {!isReported && <span style={{ fontSize: '11px', opacity: 0.6 }}>回報</span>}
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
