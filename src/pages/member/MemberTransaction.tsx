@@ -379,25 +379,15 @@ export function MemberTransaction() {
         return
       }
 
-      const getTypeLabel = (type: string) => {
-        const labels: Record<string, string> = {
-          charge: '儲值',
-          purchase: '購買',
-          payment: '付款',
-          refund: '退款',
-          adjust: '調整',
-        }
-        return labels[type] || type
-      }
-
+      // 類別對應的中文標籤
       const getCategoryLabel = (category: string) => {
         const labels: Record<string, string> = {
           balance: '儲值',
           vip_voucher: 'VIP票券',
           designated_lesson: '指定課',
           boat_voucher_g23: 'G23船券',
-          boat_voucher_g21: 'G21/黑豹船券',
-          boat_voucher_g21_panther: 'G21/黑豹船券',
+          boat_voucher_g21: '黑豹/G21船券',
+          boat_voucher_g21_panther: '黑豹/G21船券',
           gift_boat_hours: '贈送大船',
           free_hours: '贈送時數',
           membership: '會籍',
@@ -406,21 +396,75 @@ export function MemberTransaction() {
         return labels[category] || category
       }
 
+      // 根據類別和操作類型生成易懂的操作說明
+      const getActionLabel = (t: any) => {
+        const category = t.category
+        const adjustType = t.adjust_type
+        const transactionType = t.transaction_type
+        
+        // 金額類（儲值、VIP票券）
+        if (category === 'balance' || category === 'vip_voucher') {
+          if (adjustType === 'increase') return '儲值'
+          if (adjustType === 'decrease') return '扣款'
+          if (transactionType === 'charge') return '儲值'
+          if (transactionType === 'refund') return '退款'
+          return '調整'
+        }
+        
+        // 時數類
+        if (adjustType === 'increase') return '購買'
+        if (adjustType === 'decrease') return '使用'
+        if (transactionType === 'consume') return '使用'
+        if (transactionType === 'plan') return '方案'
+        return '調整'
+      }
+
+      // 根據類別獲取對應的交易後餘額
+      const getAfterValue = (t: any) => {
+        switch (t.category) {
+          case 'balance':
+            return t.balance_after != null ? `$${t.balance_after.toLocaleString()}` : ''
+          case 'vip_voucher':
+            return t.vip_voucher_amount_after != null ? `$${t.vip_voucher_amount_after.toLocaleString()}` : ''
+          case 'designated_lesson':
+            return t.designated_lesson_minutes_after != null ? `${t.designated_lesson_minutes_after}分` : ''
+          case 'boat_voucher_g23':
+            return t.boat_voucher_g23_minutes_after != null ? `${t.boat_voucher_g23_minutes_after}分` : ''
+          case 'boat_voucher_g21':
+          case 'boat_voucher_g21_panther':
+            return t.boat_voucher_g21_panther_minutes_after != null ? `${t.boat_voucher_g21_panther_minutes_after}分` : ''
+          case 'gift_boat_hours':
+            return t.gift_boat_hours_after != null ? `${t.gift_boat_hours_after}分` : ''
+          default:
+            return ''
+        }
+      }
+
+      // 格式化變動數值（含正負號）
+      const getChangeValue = (t: any) => {
+        const isAmount = t.category === 'balance' || t.category === 'vip_voucher'
+        const value = isAmount ? (t.amount || 0) : (t.minutes || 0)
+        const absValue = Math.abs(value)
+        const sign = t.adjust_type === 'increase' ? '+' : '-'
+        
+        if (isAmount) {
+          return `${sign}$${absValue.toLocaleString()}`
+        } else {
+          return `${sign}${absValue}分`
+        }
+      }
+
       const csv = [
-        ['會員', '日期', '交易類型', '類別', '金額', '分鐘數', '說明', '備註', '餘額', '指定課', 'G23船券', 'G21船券'].join(','),
+        ['會員', '日期', '項目', '操作', '變動', '交易後餘額', '說明', '備註'].join(','),
         ...data.map((t: any) => [
           `"${(t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'}"`,
           t.transaction_date || t.created_at?.split('T')[0] || '',
-          getTypeLabel(t.transaction_type),
           getCategoryLabel(t.category),
-          t.amount || '',
-          t.minutes || '',
+          getActionLabel(t),
+          getChangeValue(t),
+          getAfterValue(t),
           `"${t.description || ''}"`,
           `"${t.notes || ''}"`,
-          t.balance_after || '',
-          t.designated_lesson_minutes_after || '',
-          t.boat_voucher_g23_minutes_after || '',
-          t.boat_voucher_g21_minutes_after || ''
         ].join(','))
       ].join('\n')
 
@@ -557,25 +601,6 @@ export function MemberTransaction() {
               overflow: 'hidden',
             }}>
               <button
-                onClick={() => { setShowFinanceImport(true); setShowMoreMenu(false) }}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  background: 'transparent',
-                  border: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                📥 匯入儲值
-              </button>
-              <button
                 onClick={() => { handleExportFinance(); setShowMoreMenu(false) }}
                 style={{
                   width: '100%',
@@ -592,7 +617,7 @@ export function MemberTransaction() {
                 onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
-                📤 匯出儲值
+                📤 匯出金流
               </button>
               <button
                 onClick={() => { setShowExportDialog(true); setShowMoreMenu(false) }}
