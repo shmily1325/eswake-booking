@@ -396,32 +396,18 @@ export function MemberTransaction() {
         return labels[category] || category
       }
 
-      // 根據類別和操作類型生成易懂的操作說明
+      // 根據金額正負判斷是增加還是減少
       const getActionLabel = (t: any) => {
-        const category = t.category
         const adjustType = t.adjust_type
-        const transactionType = t.transaction_type
-        
-        // 判斷是增加還是減少（優先用 adjust_type，沒有的話看金額正負）
         const value = t.amount || t.minutes || 0
-        const isIncrease = adjustType === 'increase' || (!adjustType && value > 0)
-        const isDecrease = adjustType === 'decrease' || (!adjustType && value < 0)
         
-        // 金額類（儲值、VIP票券）
-        if (category === 'balance' || category === 'vip_voucher') {
-          if (transactionType === 'charge') return '儲值'
-          if (transactionType === 'refund') return '退款'
-          if (isIncrease) return '儲值'
-          if (isDecrease) return '扣款'
-          return '調整'
+        // 優先用 adjust_type，沒有的話看金額正負
+        if (adjustType === 'increase' || (!adjustType && value > 0)) {
+          return '增加'
+        } else if (adjustType === 'decrease' || (!adjustType && value < 0)) {
+          return '減少'
         }
-        
-        // 時數類
-        if (transactionType === 'consume') return '使用'
-        if (transactionType === 'plan') return '方案'
-        if (isIncrease) return '購買'
-        if (isDecrease) return '使用'
-        return '調整'
+        return ''
       }
 
       // 根據類別獲取對應的交易後餘額
