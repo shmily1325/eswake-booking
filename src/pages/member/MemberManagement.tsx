@@ -672,18 +672,18 @@ export function MemberManagement() {
         extraLinks={[{ label: '💰 會員儲值', link: '/member-transaction' }]}
       />
 
-      {/* 搜尋欄 + 篩選列（sticky 固定） */}
+      {/* 搜尋欄 + 篩選列（電腦版 sticky） */}
       <div style={{
-        position: 'sticky',
+        position: isMobile ? 'static' : 'sticky',
         top: 0,
         zIndex: 100,
         background: '#f5f5f5',
-        paddingTop: '8px',
-        paddingBottom: '12px',
-        marginLeft: isMobile ? '-16px' : '-20px',
-        marginRight: isMobile ? '-16px' : '-20px',
-        paddingLeft: isMobile ? '16px' : '20px',
-        paddingRight: isMobile ? '16px' : '20px',
+        paddingTop: isMobile ? 0 : '8px',
+        paddingBottom: isMobile ? 0 : '12px',
+        marginLeft: isMobile ? 0 : '-20px',
+        marginRight: isMobile ? 0 : '-20px',
+        paddingLeft: isMobile ? 0 : '20px',
+        paddingRight: isMobile ? 0 : '20px',
       }}>
         {/* 搜尋欄 + 新增會員按鈕 */}
         <div style={{

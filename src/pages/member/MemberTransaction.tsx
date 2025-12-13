@@ -532,152 +532,152 @@ export function MemberTransaction() {
         extraLinks={[{ label: '👥 會員管理', link: '/members' }]}
       />
 
-      {/* 數據總覽 */}
+      {/* 上方控制區（電腦版 sticky） */}
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: isMobile ? '16px' : '20px',
-        marginBottom: '16px',
-        border: '1px solid #e0e0e0',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        position: isMobile ? 'static' : 'sticky',
+        top: 0,
+        zIndex: 100,
+        background: '#f5f5f5',
+        marginLeft: isMobile ? 0 : '-20px',
+        marginRight: isMobile ? 0 : '-20px',
+        paddingLeft: isMobile ? 0 : '20px',
+        paddingRight: isMobile ? 0 : '20px',
+        paddingTop: isMobile ? 0 : '8px',
+        paddingBottom: isMobile ? 0 : '12px',
       }}>
+        {/* 數據總覽 */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-          gap: isMobile ? '12px' : '16px',
-          textAlign: 'center'
-        }}>
-          <div>
-            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💰 總儲值</div>
-            <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
-              ${stats.totalBalance.toLocaleString()}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💎 總VIP票券</div>
-            <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
-              ${stats.totalVipVoucher.toLocaleString()}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>🚤 總G23船券</div>
-            <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
-              {stats.totalG23.toLocaleString()}分
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>⛵ 總G21/黑豹</div>
-            <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
-              {stats.totalG21.toLocaleString()}分
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 操作按鈕區（簡化版） */}
-      <div style={{
-        display: 'flex',
-        gap: '12px',
-        marginBottom: '16px',
-        alignItems: 'center',
-        position: 'relative',
-      }}>
-        {/* 使用說明按鈕 */}
-        <button
-          onClick={() => setShowHelp(!showHelp)}
-          style={{
-            padding: '8px 14px',
-            background: showHelp ? '#e3f2fd' : 'white',
-            color: showHelp ? '#1976d2' : '#666',
-            border: `1px solid ${showHelp ? '#1976d2' : '#ddd'}`,
-            borderRadius: '6px',
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          💡 說明 {showHelp ? '▲' : '▼'}
-        </button>
-
-        {/* 匯出按鈕 */}
-        <button
-          onClick={handleExportFinance}
-          style={{
-            padding: '8px 14px',
-            background: 'white',
-            color: '#666',
-            border: '1px solid #ddd',
-            borderRadius: '6px',
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          📤 匯出金流
-        </button>
-        <button
-          onClick={() => setShowExportDialog(true)}
-          style={{
-            padding: '8px 14px',
-            background: 'white',
-            color: '#666',
-            border: '1px solid #ddd',
-            borderRadius: '6px',
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          📋 匯出總帳
-        </button>
-      </div>
-
-      {/* 使用說明（可收合） */}
-      {showHelp && (
-        <div style={{
-          background: '#f8f9fa',
+          background: 'white',
           borderRadius: '12px',
           padding: isMobile ? '16px' : '20px',
           marginBottom: '16px',
           border: '1px solid #e0e0e0',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
         }}>
           <div style={{
-            fontSize: isMobile ? '12px' : '13px',
-            lineHeight: '1.6',
-            color: '#666',
             display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-            gap: '8px',
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            gap: isMobile ? '12px' : '16px',
+            textAlign: 'center'
           }}>
-            <div><strong style={{ color: '#333' }}>💰 儲值</strong>：會員儲值餘額</div>
-            <div><strong style={{ color: '#333' }}>💎 VIP票券</strong>：VIP專用票券餘額</div>
-            <div><strong style={{ color: '#333' }}>📚 指定課</strong>：指定教練課程時數（分鐘）</div>
-            <div><strong style={{ color: '#333' }}>🚤 G23船券</strong>：G23船隻使用時數（分鐘）</div>
-            <div><strong style={{ color: '#333' }}>⛵ G21/黑豹</strong>：G21與黑豹船隻共通時數（分鐘）</div>
-            <div><strong style={{ color: '#333' }}>🎁 贈送大船</strong>：贈送的大船使用時數（分鐘）</div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💰 總儲值</div>
+              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
+                ${stats.totalBalance.toLocaleString()}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💎 總VIP票券</div>
+              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
+                ${stats.totalVipVoucher.toLocaleString()}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>🚤 總G23船券</div>
+              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
+                {stats.totalG23.toLocaleString()}分
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>⛵ 總G21/黑豹</div>
+              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
+                {stats.totalG21.toLocaleString()}分
+              </div>
+            </div>
           </div>
         </div>
-      )}
 
-      {/* 搜尋欄 + 篩選列（sticky 固定） */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        background: '#f5f5f5',
-        paddingTop: '8px',
-        paddingBottom: '12px',
-        marginLeft: isMobile ? '-12px' : '-20px',
-        marginRight: isMobile ? '-12px' : '-20px',
-        paddingLeft: isMobile ? '12px' : '20px',
-        paddingRight: isMobile ? '12px' : '20px',
-      }}>
+        {/* 操作按鈕區（簡化版） */}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          marginBottom: '16px',
+          alignItems: 'center',
+          position: 'relative',
+        }}>
+          {/* 使用說明按鈕 */}
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            style={{
+              padding: '8px 14px',
+              background: showHelp ? '#e3f2fd' : 'white',
+              color: showHelp ? '#1976d2' : '#666',
+              border: `1px solid ${showHelp ? '#1976d2' : '#ddd'}`,
+              borderRadius: '6px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            💡 說明 {showHelp ? '▲' : '▼'}
+          </button>
+
+          {/* 匯出按鈕 */}
+          <button
+            onClick={handleExportFinance}
+            style={{
+              padding: '8px 14px',
+              background: 'white',
+              color: '#666',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            📤 匯出金流
+          </button>
+          <button
+            onClick={() => setShowExportDialog(true)}
+            style={{
+              padding: '8px 14px',
+              background: 'white',
+              color: '#666',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            📋 匯出總帳
+          </button>
+        </div>
+
+        {/* 使用說明（可收合） */}
+        {showHelp && (
+          <div style={{
+            background: '#f8f9fa',
+            borderRadius: '12px',
+            padding: isMobile ? '16px' : '20px',
+            marginBottom: '16px',
+            border: '1px solid #e0e0e0',
+          }}>
+            <div style={{
+              fontSize: isMobile ? '12px' : '13px',
+              lineHeight: '1.6',
+              color: '#666',
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+              gap: '8px',
+            }}>
+              <div><strong style={{ color: '#333' }}>💰 儲值</strong>：會員儲值餘額</div>
+              <div><strong style={{ color: '#333' }}>💎 VIP票券</strong>：VIP專用票券餘額</div>
+              <div><strong style={{ color: '#333' }}>📚 指定課</strong>：指定教練課程時數（分鐘）</div>
+              <div><strong style={{ color: '#333' }}>🚤 G23船券</strong>：G23船隻使用時數（分鐘）</div>
+              <div><strong style={{ color: '#333' }}>⛵ G21/黑豹</strong>：G21與黑豹船隻共通時數（分鐘）</div>
+              <div><strong style={{ color: '#333' }}>🎁 贈送大船</strong>：贈送的大船使用時數（分鐘）</div>
+            </div>
+          </div>
+        )}
+
         {/* 搜尋欄 */}
         <div style={{
           display: 'flex',
