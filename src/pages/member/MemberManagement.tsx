@@ -1282,6 +1282,23 @@ export function MemberManagement() {
                         已隱藏
                       </span>
                     )}
+                    {/* 本月壽星標記 */}
+                    {member.birthday && (() => {
+                      const today = new Date()
+                      const birthMonth = new Date(member.birthday).getMonth()
+                      return birthMonth === today.getMonth()
+                    })() && (
+                      <span style={{ 
+                        fontSize: '12px', 
+                        color: '#fff',
+                        background: 'linear-gradient(135deg, #ff6b9d, #ffa726)',
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        fontWeight: '600'
+                      }}>
+                        🎂 本月壽星
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ 

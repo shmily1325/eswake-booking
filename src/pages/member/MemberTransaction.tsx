@@ -1054,6 +1054,60 @@ export function MemberTransaction() {
                             ({member.name})
                           </span>
                         )}
+                        {/* 會員類型標籤 */}
+                        {member.membership_type !== 'es' && (
+                          <span style={{ 
+                            background: member.membership_type === 'guest' ? '#fff9e6' : '#e3f2fd',
+                            color: member.membership_type === 'guest' ? '#856404' : '#1976d2',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontWeight: 'bold',
+                            fontSize: '12px'
+                          }}>
+                            {member.membership_type === 'guest' ? '🎫 非會員' : '👤 會員'}
+                          </span>
+                        )}
+                        {member.membership_type === 'dual' && (
+                          <span style={{ 
+                            fontSize: '12px', 
+                            color: '#fff',
+                            background: '#2196F3',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontWeight: '600'
+                          }}>
+                            雙人會籍
+                          </span>
+                        )}
+                        {member.membership_type === 'es' && (
+                          <span style={{ 
+                            fontSize: '12px', 
+                            color: '#fff',
+                            background: '#888',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontWeight: '600'
+                          }}>
+                            ES
+                          </span>
+                        )}
+                        {/* 本月壽星標記 */}
+                        {member.birthday && (() => {
+                          const today = new Date()
+                          const birthMonth = new Date(member.birthday).getMonth()
+                          return birthMonth === today.getMonth()
+                        })() && (
+                          <span style={{ 
+                            fontSize: '12px', 
+                            color: '#fff',
+                            background: 'linear-gradient(135deg, #ff6b9d, #ffa726)',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontWeight: '600'
+                          }}>
+                            🎂 本月壽星
+                          </span>
+                        )}
                         {member.phone && (
                           <span style={{
                             fontSize: '13px',

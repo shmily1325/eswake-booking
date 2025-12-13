@@ -702,15 +702,32 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                   color: 'white',
                   fontWeight: '600',
                   fontSize: '14px',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   opacity: loading ? 0.6 : 1,
                   boxShadow: isTrampolineFreeLesson 
                     ? '0 2px 8px rgba(34,197,94,0.3)'
                     : '0 2px 8px rgba(14,165,233,0.3)',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
                 }}
               >
-                {loading ? '處理中...' : '✅ 確認結清'}
+                {loading ? (
+                  <>
+                    <span style={{
+                      display: 'inline-block',
+                      width: '14px',
+                      height: '14px',
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      borderTopColor: 'white',
+                      borderRadius: '50%',
+                      animation: 'spin 0.8s linear infinite'
+                    }} />
+                    處理中...
+                  </>
+                ) : '✅ 確認結清'}
               </button>
             </div>
           )}
@@ -937,11 +954,28 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
                     borderRadius: '8px',
                     color: 'white',
                     fontWeight: '600',
-                    cursor: report.member_id ? 'pointer' : 'not-allowed',
-                    opacity: loading ? 0.6 : 1
+                    cursor: (loading || !report.member_id) ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.6 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
                   }}
                 >
-                  {loading ? '處理中...' : '✅ 確認扣款'}
+                  {loading ? (
+                    <>
+                      <span style={{
+                        display: 'inline-block',
+                        width: '14px',
+                        height: '14px',
+                        border: '2px solid rgba(255,255,255,0.3)',
+                        borderTopColor: 'white',
+                        borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite'
+                      }} />
+                      處理中...
+                    </>
+                  ) : '✅ 確認扣款'}
                 </button>
               </div>
 
@@ -959,6 +993,13 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
             </>
           </div>
         )}
+        
+        {/* Spinner 動畫的 CSS */}
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     )
   }

@@ -81,7 +81,7 @@ export function CoachReport({
   // 預約列表
   const [bookings, setBookings] = useState<Booking[]>([])
   const [allBookings, setAllBookings] = useState<Booking[]>([]) // 用於統計
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // 初始為 true 避免閃爍
   
   // 回報表單
   const [reportingBookingId, setReportingBookingId] = useState<number | null>(null)
@@ -186,10 +186,11 @@ export function CoachReport({
           .gte('start_at', startOfDay)
           .lte('start_at', endOfDay)
       } else {
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-        const thirtyDaysAgoStr = getLocalDateString(thirtyDaysAgo) + 'T00:00:00'
-        bookingsQuery = bookingsQuery.gte('start_at', thirtyDaysAgoStr)
+        // 待回報模式：顯示過去 90 天內未回報的預約
+        const ninetyDaysAgo = new Date()
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+        const ninetyDaysAgoStr = getLocalDateString(ninetyDaysAgo) + 'T00:00:00'
+        bookingsQuery = bookingsQuery.gte('start_at', ninetyDaysAgoStr)
       }
 
       const { data: bookingsData, error: bookingsError } = await bookingsQuery
@@ -1233,7 +1234,13 @@ export function CoachReport({
 
         {/* 預約列表 */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: isMobile ? '40px 20px' : '40px', color: '#999' }}>
+          <div style={{ 
+            textAlign: 'center', 
+            padding: isMobile ? '40px 20px' : '40px', 
+            color: '#999',
+            background: 'white',
+            borderRadius: '12px'
+          }}>
             載入中...
           </div>
         ) : bookings.length === 0 ? (
