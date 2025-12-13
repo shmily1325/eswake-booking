@@ -1287,13 +1287,13 @@ export function CoachReport({
                   {/* 教練列表 */}
                   {displayCoaches && displayCoaches.length > 0 && (
                     <div style={{ 
-                      marginBottom: (displayDrivers && displayDrivers.length > 0) ? '10px' : '0',
+                      marginBottom: (displayDrivers && displayDrivers.length > 0) ? '8px' : '0',
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: '8px',
+                      gap: '12px',
                       alignItems: 'center'
                     }}>
-                      <span style={{ fontSize: '18px', opacity: 0.7 }}>🎓</span>
+                      <span style={{ fontSize: '16px', opacity: 0.5 }}>🎓</span>
                       {displayCoaches.map(coach => {
                         const reportType = getReportType(booking, coach.id)
                         const reportStatus = getReportStatus(booking, coach.id)
@@ -1307,37 +1307,31 @@ export function CoachReport({
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '6px',
-                              padding: '6px 12px',
-                              background: isReported 
-                                ? 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)' 
-                                : 'linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)',
+                              padding: '4px 0',
+                              background: 'transparent',
                               border: 'none',
-                              borderRadius: '20px',
                               cursor: 'pointer',
-                              fontSize: '13px',
+                              fontSize: '14px',
                               fontWeight: '500',
-                              color: isReported ? '#2e7d32' : '#555',
-                              boxShadow: isReported 
-                                ? '0 2px 8px rgba(76, 175, 80, 0.25)' 
-                                : '0 1px 3px rgba(0,0,0,0.08)',
-                              transition: 'all 0.2s ease',
+                              color: isReported ? '#2e7d32' : '#666',
+                              transition: 'all 0.15s ease',
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-1px)'
-                              e.currentTarget.style.boxShadow = isReported 
-                                ? '0 4px 12px rgba(76, 175, 80, 0.35)' 
-                                : '0 3px 8px rgba(0,0,0,0.15)'
+                              e.currentTarget.style.opacity = '0.7'
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'translateY(0)'
-                              e.currentTarget.style.boxShadow = isReported 
-                                ? '0 2px 8px rgba(76, 175, 80, 0.25)' 
-                                : '0 1px 3px rgba(0,0,0,0.08)'
+                              e.currentTarget.style.opacity = '1'
                             }}
                           >
-                            {isReported && <span style={{ fontSize: '12px' }}>✓</span>}
+                            <span style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              background: isReported ? '#4caf50' : '#e0e0e0',
+                              boxShadow: isReported ? '0 0 0 2px rgba(76, 175, 80, 0.2)' : 'none',
+                              transition: 'all 0.15s ease',
+                            }} />
                             <span>{coach.name}</span>
-                            {!isReported && <span style={{ fontSize: '11px', opacity: 0.6 }}>回報</span>}
                           </button>
                         )
                       })}
@@ -1349,10 +1343,10 @@ export function CoachReport({
                     <div style={{ 
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: '8px',
+                      gap: '12px',
                       alignItems: 'center'
                     }}>
-                      <span style={{ fontSize: '18px', opacity: 0.7 }}>🚤</span>
+                      <span style={{ fontSize: '16px', opacity: 0.5 }}>🚤</span>
                       {displayDrivers.map(driver => {
                         const reportStatus = getReportStatus(booking, driver.id)
                         const isReported = reportStatus.hasDriverReport
@@ -1365,37 +1359,31 @@ export function CoachReport({
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '6px',
-                              padding: '6px 12px',
-                              background: isReported 
-                                ? 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' 
-                                : 'linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)',
+                              padding: '4px 0',
+                              background: 'transparent',
                               border: 'none',
-                              borderRadius: '20px',
                               cursor: 'pointer',
-                              fontSize: '13px',
+                              fontSize: '14px',
                               fontWeight: '500',
-                              color: isReported ? '#1565c0' : '#555',
-                              boxShadow: isReported 
-                                ? '0 2px 8px rgba(33, 150, 243, 0.25)' 
-                                : '0 1px 3px rgba(0,0,0,0.08)',
-                              transition: 'all 0.2s ease',
+                              color: isReported ? '#1565c0' : '#666',
+                              transition: 'all 0.15s ease',
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-1px)'
-                              e.currentTarget.style.boxShadow = isReported 
-                                ? '0 4px 12px rgba(33, 150, 243, 0.35)' 
-                                : '0 3px 8px rgba(0,0,0,0.15)'
+                              e.currentTarget.style.opacity = '0.7'
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'translateY(0)'
-                              e.currentTarget.style.boxShadow = isReported 
-                                ? '0 2px 8px rgba(33, 150, 243, 0.25)' 
-                                : '0 1px 3px rgba(0,0,0,0.08)'
+                              e.currentTarget.style.opacity = '1'
                             }}
                           >
-                            {isReported && <span style={{ fontSize: '12px' }}>✓</span>}
+                            <span style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              background: isReported ? '#2196f3' : '#e0e0e0',
+                              boxShadow: isReported ? '0 0 0 2px rgba(33, 150, 243, 0.2)' : 'none',
+                              transition: 'all 0.15s ease',
+                            }} />
                             <span>{driver.name}</span>
-                            {!isReported && <span style={{ fontSize: '11px', opacity: 0.6 }}>回報</span>}
                           </button>
                         )
                       })}
