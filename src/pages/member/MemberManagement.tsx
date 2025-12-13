@@ -672,243 +672,372 @@ export function MemberManagement() {
         extraLinks={[{ label: '💰 會員儲值', link: '/member-transaction' }]}
       />
 
-      {/* 搜尋欄 + 新增會員按鈕 */}
+      {/* 搜尋欄 + 篩選列（sticky 固定） */}
       <div style={{
-        display: 'flex',
-        gap: '12px',
-        marginBottom: '12px',
-        alignItems: 'center'
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        background: '#f5f5f5',
+        paddingTop: '8px',
+        paddingBottom: '12px',
+        marginLeft: isMobile ? '-16px' : '-20px',
+        marginRight: isMobile ? '-16px' : '-20px',
+        paddingLeft: isMobile ? '16px' : '20px',
+        paddingRight: isMobile ? '16px' : '20px',
       }}>
-        <div style={{ flex: 1, position: 'relative' }}>
-          <input
-            type="text"
-            placeholder="搜尋會員（姓名、暱稱）"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value)
-              if (e.target.value && membershipTypeFilter !== 'all') {
-                setMembershipTypeFilter('all')
-              }
-            }}
+        {/* 搜尋欄 + 新增會員按鈕 */}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          marginBottom: '12px',
+          alignItems: 'center'
+        }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="🔍 搜尋會員（姓名、暱稱）"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                if (e.target.value && membershipTypeFilter !== 'all') {
+                  setMembershipTypeFilter('all')
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: isMobile ? '12px 14px' : '12px 16px',
+                paddingRight: searchTerm ? '40px' : '16px',
+                border: '1px solid #dee2e6',
+                borderRadius: '8px',
+                fontSize: '15px',
+                outline: 'none',
+                background: 'white',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+              }}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: '#999',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '24px',
+                  height: '24px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setAddDialogOpen(true)}
             style={{
-              width: '100%',
-              padding: isMobile ? '10px 14px' : '12px 16px',
-              paddingRight: searchTerm ? '40px' : '16px',
-              border: '1px solid #dee2e6',
+              padding: isMobile ? '12px 16px' : '12px 20px',
+              background: '#5a5a5a',
+              color: 'white',
+              border: 'none',
               borderRadius: '8px',
               fontSize: '14px',
-              outline: 'none',
-              background: 'white',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            }}
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              style={{
-                position: 'absolute',
-                right: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: '#999',
-                color: 'white',
-                border: 'none',
-                borderRadius: '50%',
-                width: '20px',
-                height: '20px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-        <button
-          onClick={() => setAddDialogOpen(true)}
-          style={{
-            padding: isMobile ? '10px 16px' : '12px 20px',
-            background: '#5a5a5a',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          + 新增會員
-        </button>
-      </div>
-
-      {/* 統一篩選列 */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '8px', 
-        flexWrap: 'wrap',
-        marginBottom: '16px',
-        alignItems: 'center'
-      }}>
-        {/* 會員類型篩選 */}
-        {[
-          { value: 'all', label: '全部', count: members.length },
-          { value: 'member', label: '會員', count: members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length },
-          { value: 'general', label: '一般會員', count: members.filter(m => m.membership_type === 'general').length },
-          { value: 'dual', label: '雙人會員', count: members.filter(m => m.membership_type === 'dual').length },
-          { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length },
-          { value: 'es', label: 'ES', count: members.filter(m => m.membership_type === 'es').length }
-        ].map(type => (
-          <button
-            key={type.value}
-            onClick={() => {
-              setMembershipTypeFilter(type.value)
-              setExpiringFilter('none')
-            }}
-            style={{
-              padding: '6px 12px',
-              background: membershipTypeFilter === type.value && expiringFilter === 'none' ? '#5a5a5a' : 'white',
-              color: membershipTypeFilter === type.value && expiringFilter === 'none' ? 'white' : '#666',
-              border: `1px solid ${membershipTypeFilter === type.value && expiringFilter === 'none' ? '#5a5a5a' : '#ddd'}`,
-              borderRadius: '6px',
-              fontSize: '13px',
+              fontWeight: '600',
               cursor: 'pointer',
-              fontWeight: membershipTypeFilter === type.value && expiringFilter === 'none' ? '600' : 'normal'
-            }}
-          >
-            {type.label} ({type.count})
-          </button>
-        ))}
-
-        {/* 分隔線 */}
-        <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
-
-        {/* 到期篩選 */}
-        <button
-          onClick={() => {
-            setExpiringFilter(expiringFilter === 'membership' ? 'none' : 'membership')
-            if (expiringFilter !== 'membership') setMembershipTypeFilter('all')
-          }}
-          disabled={expiringMemberships.length === 0}
-          style={{
-            padding: '6px 12px',
-            background: expiringFilter === 'membership' ? '#ff9800' : 'white',
-            color: expiringFilter === 'membership' ? 'white' : (expiringMemberships.length > 0 ? '#ff9800' : '#ccc'),
-            border: `1px solid ${expiringFilter === 'membership' ? '#ff9800' : (expiringMemberships.length > 0 ? '#ff9800' : '#ddd')}`,
-            borderRadius: '6px',
-            fontSize: '13px',
-            cursor: expiringMemberships.length > 0 ? 'pointer' : 'default',
-            fontWeight: expiringFilter === 'membership' ? '600' : 'normal',
-            opacity: expiringMemberships.length === 0 ? 0.5 : 1
-          }}
-        >
-          ⚠️ 會籍到期 ({expiringMemberships.length})
-        </button>
-
-        <button
-          onClick={() => {
-            setExpiringFilter(expiringFilter === 'board' ? 'none' : 'board')
-            if (expiringFilter !== 'board') setMembershipTypeFilter('all')
-          }}
-          disabled={expiringBoards.length === 0}
-          style={{
-            padding: '6px 12px',
-            background: expiringFilter === 'board' ? '#2196F3' : 'white',
-            color: expiringFilter === 'board' ? 'white' : (expiringBoards.length > 0 ? '#2196F3' : '#ccc'),
-            border: `1px solid ${expiringFilter === 'board' ? '#2196F3' : (expiringBoards.length > 0 ? '#2196F3' : '#ddd')}`,
-            borderRadius: '6px',
-            fontSize: '13px',
-            cursor: expiringBoards.length > 0 ? 'pointer' : 'default',
-            fontWeight: expiringFilter === 'board' ? '600' : 'normal',
-            opacity: expiringBoards.length === 0 ? 0.5 : 1
-          }}
-        >
-          🏄 置板到期 ({expiringBoards.length})
-        </button>
-        
-        {/* 分隔線 */}
-        <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
-
-        {/* 排序按鈕 */}
-        {[
-          { key: 'nickname', label: '暱稱' },
-          { key: 'updated_at', label: '最近更新' },
-          { key: 'membership_end_date', label: '會籍到期' },
-          { key: 'board_expiry', label: '置板到期' }
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => {
-              if (sortBy === key) {
-                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-              } else {
-                setSortBy(key)
-                setSortOrder('asc')
-              }
-            }}
-            style={{
-              padding: '6px 10px',
-              border: sortBy === key ? '1px solid #1976d2' : '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '13px',
-              background: sortBy === key ? '#e3f2fd' : 'white',
-              cursor: 'pointer',
-              color: sortBy === key ? '#1976d2' : '#666',
+              whiteSpace: 'nowrap',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              fontWeight: sortBy === key ? '500' : '400'
+              gap: '6px',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
             }}
           >
-            {label}
-            {sortBy === key && (
-              <span style={{ fontSize: '11px' }}>
-                {sortOrder === 'asc' ? '▲' : '▼'}
-              </span>
-            )}
+            + {isMobile ? '新增' : '新增會員'}
           </button>
-        ))}
-        
-        {/* 包含已隱藏 */}
-        <label style={{
-          display: 'flex',
-          alignItems: 'center',
-          cursor: 'pointer',
-          gap: '6px',
-          marginLeft: 'auto',
-          fontSize: '13px',
-          color: '#666'
-        }}>
-          <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
-            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-          />
-          包含已隱藏
-        </label>
-      </div>
-
-      {/* 搜尋結果數量提示 */}
-      {searchTerm && (
-        <div style={{
-          fontSize: '13px',
-          color: '#666',
-          marginBottom: '12px',
-          padding: '8px 12px',
-          background: '#f0f7ff',
-          borderRadius: '6px',
-          border: '1px solid #d0e3ff'
-        }}>
-          🔍 搜尋「{searchTerm}」找到 <strong>{filteredMembers.length}</strong> 位會員
         </div>
-      )}
+
+        {/* 篩選列 - 手機版用下拉選單，桌面版用按鈕 */}
+        {isMobile ? (
+          /* 手機版：下拉選單 */
+          <>
+            <div style={{ 
+              display: 'flex', 
+              gap: '10px',
+              alignItems: 'center',
+              flexWrap: 'wrap'
+            }}>
+              {/* 會員類型下拉選單 */}
+              <div style={{ flex: '1 1 calc(50% - 5px)' }}>
+                <select
+                  value={expiringFilter !== 'none' ? `expiring-${expiringFilter}` : membershipTypeFilter}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val.startsWith('expiring-')) {
+                      const filter = val.replace('expiring-', '') as 'membership' | 'board'
+                      setExpiringFilter(filter)
+                      setMembershipTypeFilter('all')
+                    } else {
+                      setMembershipTypeFilter(val)
+                      setExpiringFilter('none')
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    paddingRight: '32px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    color: '#333',
+                    fontWeight: (membershipTypeFilter !== 'all' || expiringFilter !== 'none') ? '500' : 'normal',
+                  }}
+                >
+                  <option value="all">👥 全部 ({members.length})</option>
+                  <option value="member">✨ 會員 ({members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length})</option>
+                  <option value="general">👤 一般 ({members.filter(m => m.membership_type === 'general').length})</option>
+                  <option value="dual">👥 雙人 ({members.filter(m => m.membership_type === 'dual').length})</option>
+                  <option value="guest">🎫 非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
+                  <option value="es">🏠 ES ({members.filter(m => m.membership_type === 'es').length})</option>
+                  {expiringMemberships.length > 0 && (
+                    <option value="expiring-membership">⚠️ 會籍到期 ({expiringMemberships.length})</option>
+                  )}
+                  {expiringBoards.length > 0 && (
+                    <option value="expiring-board">🏄 置板到期 ({expiringBoards.length})</option>
+                  )}
+                </select>
+              </div>
+
+              {/* 排序下拉選單 */}
+              <div style={{ flex: '1 1 calc(50% - 5px)' }}>
+                <select
+                  value={`${sortBy}-${sortOrder}`}
+                  onChange={(e) => {
+                    const [newSortBy, newSortOrder] = e.target.value.split('-') as [string, 'asc' | 'desc']
+                    setSortBy(newSortBy)
+                    setSortOrder(newSortOrder)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    paddingRight: '32px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    color: '#333',
+                  }}
+                >
+                  <option value="nickname-asc">📝 暱稱 A→Z</option>
+                  <option value="nickname-desc">📝 暱稱 Z→A</option>
+                  <option value="updated_at-desc">🕐 更新 新→舊</option>
+                  <option value="updated_at-asc">🕐 更新 舊→新</option>
+                  <option value="membership_end_date-asc">🎫 會籍 近→遠</option>
+                  <option value="membership_end_date-desc">🎫 會籍 遠→近</option>
+                  <option value="board_expiry-asc">🏄 置板 近→遠</option>
+                  <option value="board_expiry-desc">🏄 置板 遠→近</option>
+                </select>
+              </div>
+
+              {/* 包含已隱藏 checkbox */}
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                gap: '6px',
+                fontSize: '13px',
+                color: '#666',
+                whiteSpace: 'nowrap',
+                padding: '8px 0',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={showInactive}
+                  onChange={(e) => setShowInactive(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                包含已隱藏
+              </label>
+            </div>
+
+            {/* 手機版結果數量 */}
+            {(searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none') && (
+              <div style={{
+                fontSize: '13px',
+                color: '#666',
+                marginTop: '8px',
+                textAlign: 'center',
+              }}>
+                {searchTerm ? `🔍 「${searchTerm}」` : ''} 找到 <strong>{filteredMembers.length}</strong> 位會員
+              </div>
+            )}
+          </>
+        ) : (
+          /* 桌面版：按鈕群組 */
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            flexWrap: 'wrap',
+            alignItems: 'center'
+          }}>
+            {/* 會員類型篩選按鈕 */}
+            {[
+              { value: 'all', label: '全部', count: members.length },
+              { value: 'member', label: '會員', count: members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length },
+              { value: 'general', label: '一般會員', count: members.filter(m => m.membership_type === 'general').length },
+              { value: 'dual', label: '雙人會員', count: members.filter(m => m.membership_type === 'dual').length },
+              { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length },
+              { value: 'es', label: 'ES', count: members.filter(m => m.membership_type === 'es').length }
+            ].map(type => (
+              <button
+                key={type.value}
+                onClick={() => {
+                  setMembershipTypeFilter(type.value)
+                  setExpiringFilter('none')
+                }}
+                style={{
+                  padding: '6px 12px',
+                  background: membershipTypeFilter === type.value && expiringFilter === 'none' ? '#5a5a5a' : 'white',
+                  color: membershipTypeFilter === type.value && expiringFilter === 'none' ? 'white' : '#666',
+                  border: `1px solid ${membershipTypeFilter === type.value && expiringFilter === 'none' ? '#5a5a5a' : '#ddd'}`,
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  fontWeight: membershipTypeFilter === type.value && expiringFilter === 'none' ? '600' : 'normal'
+                }}
+              >
+                {type.label} ({type.count})
+              </button>
+            ))}
+
+            {/* 分隔線 */}
+            <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+
+            {/* 到期篩選按鈕 */}
+            <button
+              onClick={() => {
+                setExpiringFilter(expiringFilter === 'membership' ? 'none' : 'membership')
+                if (expiringFilter !== 'membership') setMembershipTypeFilter('all')
+              }}
+              disabled={expiringMemberships.length === 0}
+              style={{
+                padding: '6px 12px',
+                background: expiringFilter === 'membership' ? '#ff9800' : 'white',
+                color: expiringFilter === 'membership' ? 'white' : (expiringMemberships.length > 0 ? '#ff9800' : '#ccc'),
+                border: `1px solid ${expiringFilter === 'membership' ? '#ff9800' : (expiringMemberships.length > 0 ? '#ff9800' : '#ddd')}`,
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: expiringMemberships.length > 0 ? 'pointer' : 'default',
+                fontWeight: expiringFilter === 'membership' ? '600' : 'normal',
+                opacity: expiringMemberships.length === 0 ? 0.5 : 1
+              }}
+            >
+              ⚠️ 會籍到期 ({expiringMemberships.length})
+            </button>
+
+            <button
+              onClick={() => {
+                setExpiringFilter(expiringFilter === 'board' ? 'none' : 'board')
+                if (expiringFilter !== 'board') setMembershipTypeFilter('all')
+              }}
+              disabled={expiringBoards.length === 0}
+              style={{
+                padding: '6px 12px',
+                background: expiringFilter === 'board' ? '#2196F3' : 'white',
+                color: expiringFilter === 'board' ? 'white' : (expiringBoards.length > 0 ? '#2196F3' : '#ccc'),
+                border: `1px solid ${expiringFilter === 'board' ? '#2196F3' : (expiringBoards.length > 0 ? '#2196F3' : '#ddd')}`,
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: expiringBoards.length > 0 ? 'pointer' : 'default',
+                fontWeight: expiringFilter === 'board' ? '600' : 'normal',
+                opacity: expiringBoards.length === 0 ? 0.5 : 1
+              }}
+            >
+              🏄 置板到期 ({expiringBoards.length})
+            </button>
+            
+            {/* 分隔線 */}
+            <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+
+            {/* 排序按鈕 */}
+            {[
+              { key: 'nickname', label: '暱稱' },
+              { key: 'updated_at', label: '最近更新' },
+              { key: 'membership_end_date', label: '會籍到期' },
+              { key: 'board_expiry', label: '置板到期' }
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => {
+                  if (sortBy === key) {
+                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                  } else {
+                    setSortBy(key)
+                    setSortOrder('asc')
+                  }
+                }}
+                style={{
+                  padding: '6px 10px',
+                  border: sortBy === key ? '1px solid #1976d2' : '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  background: sortBy === key ? '#e3f2fd' : 'white',
+                  cursor: 'pointer',
+                  color: sortBy === key ? '#1976d2' : '#666',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontWeight: sortBy === key ? '500' : '400'
+                }}
+              >
+                {label}
+                {sortBy === key && (
+                  <span style={{ fontSize: '11px' }}>
+                    {sortOrder === 'asc' ? '▲' : '▼'}
+                  </span>
+                )}
+              </button>
+            ))}
+            
+            {/* 包含已隱藏 */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              gap: '6px',
+              marginLeft: 'auto',
+              fontSize: '13px',
+              color: '#666'
+            }}>
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              包含已隱藏
+            </label>
+          </div>
+        )}
+      </div>
 
       {/* 到期詳情（收合式） */}
       {(expiringMemberships.length > 0 || expiringBoards.length > 0) && (

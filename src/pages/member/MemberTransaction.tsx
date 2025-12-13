@@ -472,7 +472,7 @@ export function MemberTransaction() {
       let filename: string
 
       if (exportFormat === 'text') {
-        // 文字好讀版
+        // 文字版
         csv = [
           ['會員', '日期', '項目', '變動', '交易後餘額', '說明', '備註'].join(','),
           ...data.map((t: any) => [
@@ -665,142 +665,252 @@ export function MemberTransaction() {
         </div>
       )}
 
-      {/* 搜尋欄 */}
+      {/* 搜尋欄 + 篩選列（sticky 固定） */}
       <div style={{
-        display: 'flex',
-        gap: '12px',
-        marginBottom: '12px',
-        alignItems: 'center'
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        background: '#f5f5f5',
+        paddingTop: '8px',
+        paddingBottom: '12px',
+        marginLeft: isMobile ? '-12px' : '-20px',
+        marginRight: isMobile ? '-12px' : '-20px',
+        paddingLeft: isMobile ? '12px' : '20px',
+        paddingRight: isMobile ? '12px' : '20px',
       }}>
-        <div style={{ flex: 1, position: 'relative' }}>
-          <input
-            type="text"
-            placeholder="搜尋會員（姓名、暱稱）"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value)
-              if (e.target.value && membershipTypeFilter !== 'all') {
-                setMembershipTypeFilter('all')
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: isMobile ? '10px 14px' : '12px 16px',
-              paddingRight: searchTerm ? '40px' : '16px',
-              border: '1px solid #dee2e6',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              background: 'white',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            }}
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              style={{
-                position: 'absolute',
-                right: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: '#999',
-                color: 'white',
-                border: 'none',
-                borderRadius: '50%',
-                width: '20px',
-                height: '20px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+        {/* 搜尋欄 */}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          marginBottom: '12px',
+          alignItems: 'center'
+        }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="🔍 搜尋會員（姓名、暱稱）"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                if (e.target.value && membershipTypeFilter !== 'all') {
+                  setMembershipTypeFilter('all')
+                }
               }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* 統一篩選列 */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '8px', 
-        flexWrap: 'wrap',
-        marginBottom: '16px',
-        alignItems: 'center'
-      }}>
-        {/* 會員類型篩選 */}
-        {[
-          { value: 'all', label: '全部', count: members.length },
-          { value: 'member', label: '會員', count: members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length },
-          { value: 'general', label: '一般會員', count: members.filter(m => m.membership_type === 'general').length },
-          { value: 'dual', label: '雙人會員', count: members.filter(m => m.membership_type === 'dual').length },
-          { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length },
-          { value: 'es', label: 'ES', count: members.filter(m => m.membership_type === 'es').length }
-        ].map(type => (
-          <button
-            key={type.value}
-            onClick={() => setMembershipTypeFilter(type.value)}
-            style={{
-              padding: '6px 12px',
-              background: membershipTypeFilter === type.value ? '#5a5a5a' : 'white',
-              color: membershipTypeFilter === type.value ? 'white' : '#666',
-              border: `1px solid ${membershipTypeFilter === type.value ? '#5a5a5a' : '#ddd'}`,
-              borderRadius: '6px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              fontWeight: membershipTypeFilter === type.value ? '600' : 'normal'
-            }}
-          >
-            {type.label} ({type.count})
-          </button>
-        ))}
-
-        {/* 分隔線 */}
-        <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
-
-        {/* 排序按鈕 */}
-        {[
-          { key: 'nickname' as const, label: '暱稱' },
-          { key: 'balance' as const, label: '儲值' },
-          { key: 'vip' as const, label: 'VIP' },
-          { key: 'g23' as const, label: 'G23' },
-          { key: 'g21' as const, label: '黑豹/G21' },
-          { key: 'lastTransaction' as const, label: '交易日期' }
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => {
-              if (sortBy === key) {
-                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-              } else {
-                setSortBy(key)
-                setSortOrder(key === 'nickname' ? 'asc' : 'desc')
-              }
-            }}
-            style={{
-              padding: '6px 10px',
-              border: sortBy === key ? '1px solid #1976d2' : '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '13px',
-              background: sortBy === key ? '#e3f2fd' : 'white',
-              cursor: 'pointer',
-              color: sortBy === key ? '#1976d2' : '#666',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontWeight: sortBy === key ? '500' : '400'
-            }}
-          >
-            {label}
-            {sortBy === key && (
-              <span style={{ fontSize: '11px' }}>
-                {sortOrder === 'asc' ? '▲' : '▼'}
-              </span>
+              style={{
+                width: '100%',
+                padding: isMobile ? '12px 14px' : '12px 16px',
+                paddingRight: searchTerm ? '40px' : '16px',
+                border: '1px solid #dee2e6',
+                borderRadius: '8px',
+                fontSize: '15px',
+                outline: 'none',
+                background: 'white',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+              }}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: '#999',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '24px',
+                  height: '24px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
             )}
-          </button>
-        ))}
+          </div>
+        </div>
+
+        {/* 篩選列 - 手機版用下拉選單，桌面版用按鈕 */}
+        {isMobile ? (
+          /* 手機版：下拉選單 */
+          <>
+            <div style={{ 
+              display: 'flex', 
+              gap: '10px',
+              alignItems: 'center'
+            }}>
+              {/* 會員類型下拉選單 */}
+              <div style={{ flex: 1 }}>
+                <select
+                  value={membershipTypeFilter}
+                  onChange={(e) => setMembershipTypeFilter(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    paddingRight: '32px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    color: '#333',
+                    fontWeight: membershipTypeFilter !== 'all' ? '500' : 'normal',
+                  }}
+                >
+                  <option value="all">👥 全部 ({members.length})</option>
+                  <option value="member">✨ 會員 ({members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length})</option>
+                  <option value="general">👤 一般 ({members.filter(m => m.membership_type === 'general').length})</option>
+                  <option value="dual">👥 雙人 ({members.filter(m => m.membership_type === 'dual').length})</option>
+                  <option value="guest">🎫 非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
+                  <option value="es">🏠 ES ({members.filter(m => m.membership_type === 'es').length})</option>
+                </select>
+              </div>
+
+              {/* 排序下拉選單 */}
+              <div style={{ flex: 1 }}>
+                <select
+                  value={`${sortBy}-${sortOrder}`}
+                  onChange={(e) => {
+                    const [newSortBy, newSortOrder] = e.target.value.split('-') as [typeof sortBy, typeof sortOrder]
+                    setSortBy(newSortBy)
+                    setSortOrder(newSortOrder)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    paddingRight: '32px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    color: '#333',
+                  }}
+                >
+                  <option value="nickname-asc">📝 暱稱 A→Z</option>
+                  <option value="nickname-desc">📝 暱稱 Z→A</option>
+                  <option value="balance-desc">💰 儲值 高→低</option>
+                  <option value="balance-asc">💰 儲值 低→高</option>
+                  <option value="vip-desc">💎 VIP 高→低</option>
+                  <option value="vip-asc">💎 VIP 低→高</option>
+                  <option value="g23-desc">🚤 G23 高→低</option>
+                  <option value="g23-asc">🚤 G23 低→高</option>
+                  <option value="g21-desc">⛵ 黑豹/G21 高→低</option>
+                  <option value="g21-asc">⛵ 黑豹/G21 低→高</option>
+                  <option value="lastTransaction-desc">📅 交易 新→舊</option>
+                  <option value="lastTransaction-asc">📅 交易 舊→新</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 手機版結果數量 */}
+            {(searchTerm || membershipTypeFilter !== 'all') && (
+              <div style={{
+                fontSize: '13px',
+                color: '#666',
+                marginTop: '8px',
+                textAlign: 'center',
+              }}>
+                {searchTerm ? `🔍 「${searchTerm}」` : ''} 找到 <strong>{filteredMembers.length}</strong> 位會員
+              </div>
+            )}
+          </>
+        ) : (
+          /* 桌面版：按鈕群組 */
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            flexWrap: 'wrap',
+            alignItems: 'center'
+          }}>
+            {/* 會員類型篩選按鈕 */}
+            {[
+              { value: 'all', label: '全部', count: members.length },
+              { value: 'member', label: '會員', count: members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length },
+              { value: 'general', label: '一般會員', count: members.filter(m => m.membership_type === 'general').length },
+              { value: 'dual', label: '雙人會員', count: members.filter(m => m.membership_type === 'dual').length },
+              { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length },
+              { value: 'es', label: 'ES', count: members.filter(m => m.membership_type === 'es').length }
+            ].map(type => (
+              <button
+                key={type.value}
+                onClick={() => setMembershipTypeFilter(type.value)}
+                style={{
+                  padding: '6px 12px',
+                  background: membershipTypeFilter === type.value ? '#5a5a5a' : 'white',
+                  color: membershipTypeFilter === type.value ? 'white' : '#666',
+                  border: `1px solid ${membershipTypeFilter === type.value ? '#5a5a5a' : '#ddd'}`,
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  fontWeight: membershipTypeFilter === type.value ? '600' : 'normal'
+                }}
+              >
+                {type.label} ({type.count})
+              </button>
+            ))}
+
+            {/* 分隔線 */}
+            <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+
+            {/* 排序按鈕 */}
+            {[
+              { key: 'nickname' as const, label: '暱稱' },
+              { key: 'balance' as const, label: '儲值' },
+              { key: 'vip' as const, label: 'VIP' },
+              { key: 'g23' as const, label: 'G23' },
+              { key: 'g21' as const, label: '黑豹/G21' },
+              { key: 'lastTransaction' as const, label: '交易日期' }
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => {
+                  if (sortBy === key) {
+                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                  } else {
+                    setSortBy(key)
+                    setSortOrder(key === 'nickname' ? 'asc' : 'desc')
+                  }
+                }}
+                style={{
+                  padding: '6px 10px',
+                  border: sortBy === key ? '1px solid #1976d2' : '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  background: sortBy === key ? '#e3f2fd' : 'white',
+                  cursor: 'pointer',
+                  color: sortBy === key ? '#1976d2' : '#666',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontWeight: sortBy === key ? '500' : '400'
+                }}
+              >
+                {label}
+                {sortBy === key && (
+                  <span style={{ fontSize: '11px' }}>
+                    {sortOrder === 'asc' ? '▲' : '▼'}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 搜尋結果數量提示 */}
@@ -1135,7 +1245,7 @@ export function MemberTransaction() {
                     }}
                   >
                     <div style={{ fontWeight: '500', marginBottom: '4px', color: exportFormat === 'text' ? '#1976d2' : '#333' }}>
-                      📖 文字好讀版
+                      📖 文字版
                     </div>
                     <div style={{ fontSize: '12px', color: '#666' }}>
                       -$500, +30分
