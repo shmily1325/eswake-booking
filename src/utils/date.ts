@@ -11,6 +11,44 @@ export function getLocalDateString(date: Date = new Date()): string {
 }
 
 /**
+ * 標準化日期格式為 YYYY-MM-DD
+ * 支援 YYYY-MM-DD 和 MM/DD/YYYY 格式
+ * @param dateStr - 日期字串
+ * @returns YYYY-MM-DD 格式的日期字串，或 null
+ */
+export function normalizeDate(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null
+  
+  // 格式 1: YYYY-MM-DD (已經是標準格式)
+  if (dateStr.includes('-') && dateStr.split('-').length === 3) {
+    const [year, month, day] = dateStr.split('-')
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+  // 格式 2: MM/DD/YYYY (轉換為 YYYY-MM-DD)
+  else if (dateStr.includes('/')) {
+    const parts = dateStr.split('/')
+    if (parts.length === 3) {
+      const [month, day, year] = parts
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    }
+  }
+  
+  return dateStr
+}
+
+/**
+ * 檢查日期是否已過期（早於今天）
+ * @param dateStr - 日期字串（支援 YYYY-MM-DD 或 MM/DD/YYYY 格式）
+ * @returns true 如果日期已過期
+ */
+export function isDateExpired(dateStr: string | null | undefined): boolean {
+  if (!dateStr) return false
+  const normalized = normalizeDate(dateStr)
+  if (!normalized) return false
+  return normalized < getLocalDateString()
+}
+
+/**
  * 獲取日期的星期幾
  * @param dateString - 日期字串 (YYYY-MM-DD)
  * @returns 星期幾的中文表示 (星期一、星期二...星期日)

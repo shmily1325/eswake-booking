@@ -4,6 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { EditMemberDialog } from './EditMemberDialog'
 import { TransactionDialog } from './TransactionDialog'
 import { useToast } from './ui'
+import { normalizeDate } from '../utils/date'
 
 interface Member {
   id: string
@@ -1900,21 +1901,6 @@ function isExpired(dateString: string): boolean {
 
 // 統一日期格式為 YYYY-MM-DD
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return ''
-  
-  // 格式 1: YYYY-MM-DD (已經是標準格式)
-  if (dateStr.includes('-') && dateStr.split('-').length === 3) {
-    const [year, month, day] = dateStr.split('-')
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-  }
-  // 格式 2: MM/DD/YYYY (轉換為 YYYY-MM-DD)
-  else if (dateStr.includes('/')) {
-    const parts = dateStr.split('/')
-    if (parts.length === 3) {
-      const [month, day, year] = parts
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-    }
-  }
-  return dateStr
+  return normalizeDate(dateStr) || ''
 }
 

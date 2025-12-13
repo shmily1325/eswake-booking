@@ -8,7 +8,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useToast, ToastContainer } from '../../components/ui'
-import { getLocalDateString } from '../../utils/date'
+import { getLocalDateString, normalizeDate, isDateExpired } from '../../utils/date'
 
 interface Member {
   id: string
@@ -76,25 +76,9 @@ export function MemberManagement() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 格式化日期為 YYYY-MM-DD
+  // 格式化日期為 YYYY-MM-DD（顯示用）
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return ''
-    
-    // 格式 1: YYYY-MM-DD (已經是標準格式)
-    if (dateStr.includes('-') && dateStr.split('-').length === 3) {
-      const [year, month, day] = dateStr.split('-')
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-    }
-    // 格式 2: MM/DD/YYYY (轉換為 YYYY-MM-DD)
-    else if (dateStr.includes('/')) {
-      const parts = dateStr.split('/')
-      if (parts.length === 3) {
-        const [month, day, year] = parts
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-      }
-    }
-    
-    return dateStr
+    return normalizeDate(dateStr) || ''
   }
 
   const loadExpiringData = async () => {
@@ -125,16 +109,9 @@ export function MemberManagement() {
       // 在客戶端過濾：所有已過期 + 未來30天內到期
       const filtered = membershipResult.data.filter((m: any) => {
         if (!m.membership_end_date) return false
-        
-        // 轉換日期格式：MM/DD/YYYY -> YYYY-MM-DD
-        let normalizedDate = m.membership_end_date
-        if (m.membership_end_date.includes('/')) {
-          const [month, day, year] = m.membership_end_date.split('/')
-          normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-        }
-        
+        const normalized = normalizeDate(m.membership_end_date)
         // 只顯示 <= 今天+30天 的（包含所有已過期和即將到期）
-        return normalizedDate <= thirtyDaysLaterStr
+        return normalized && normalized <= thirtyDaysLaterStr
       })
       
       setExpiringMemberships(filtered)
@@ -182,9 +159,7 @@ export function MemberManagement() {
             board_slot_number, board_expiry_date,
             status, created_at, updated_at
           `)
-          .in('status', showInactive ? ['active', 'inactive'] : ['active'])
-          .order('nickname', { ascending: true, nullsFirst: false })
-          .limit(200),  // 限制最多 200 筆，避免一次載入太多
+          .in('status', showInactive ? ['active', 'inactive'] : ['active']),
         
         supabase
           .from('board_storage')
@@ -537,18 +512,34 @@ export function MemberManagement() {
       let comparison = 0
       switch (sortBy) {
         case 'updated_at':
+          // 取 updated_at 和 member_notes 最新日期中較新的
+          const getLatestDate = (member: Member) => {
+            const dates: string[] = []
+            if (member.updated_at) dates.push(member.updated_at)
+            if (member.member_notes && member.member_notes.length > 0) {
+              const latestNote = member.member_notes
+                .filter(n => n.event_date)
+                .sort((x, y) => (y.event_date || '').localeCompare(x.event_date || ''))[0]
+              if (latestNote?.event_date) dates.push(latestNote.event_date)
+            }
+            return dates.length > 0 ? dates.sort((x, y) => y.localeCompare(x))[0] : null
+          }
+          const dateA = getLatestDate(a)
+          const dateB = getLatestDate(b)
           // 空值永遠排最後
-          if (!a.updated_at && !b.updated_at) return 0
-          if (!a.updated_at) return 1
-          if (!b.updated_at) return -1
-          comparison = a.updated_at.localeCompare(b.updated_at)
+          if (!dateA && !dateB) return 0
+          if (!dateA) return 1
+          if (!dateB) return -1
+          comparison = dateA.localeCompare(dateB)
           break
         case 'membership_end_date':
-          // 空值永遠排最後
-          if (!a.membership_end_date && !b.membership_end_date) return 0
-          if (!a.membership_end_date) return 1
-          if (!b.membership_end_date) return -1
-          comparison = a.membership_end_date.localeCompare(b.membership_end_date)
+          const dateA_end = normalizeDate(a.membership_end_date)
+          const dateB_end = normalizeDate(b.membership_end_date)
+          // 空值永遠排最後（沒有會籍的排最後）
+          if (!dateA_end && !dateB_end) return 0
+          if (!dateA_end) return 1
+          if (!dateB_end) return -1
+          comparison = dateA_end.localeCompare(dateB_end)
           break
         case 'nickname':
         default:
@@ -571,7 +562,12 @@ export function MemberManagement() {
         minHeight: '100vh',
         background: '#f5f5f5'
       }}>
-        <PageHeader title="👥 會員管理" user={user} showBaoLink={true} />
+        <PageHeader 
+          title="👥 會員管理" 
+          user={user} 
+          showBaoLink={true} 
+          extraLinks={[{ label: '💰 會員儲值', link: '/member-transaction' }]}
+        />
 
         {/* 搜尋框骨架屏 */}
         <div style={{ 
@@ -651,7 +647,12 @@ export function MemberManagement() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      <PageHeader title="👥 會員管理" user={user} showBaoLink={true} />
+      <PageHeader 
+        title="👥 會員管理" 
+        user={user} 
+        showBaoLink={true} 
+        extraLinks={[{ label: '💰 會員儲值', link: '/member-transaction' }]}
+      />
 
       {/* 搜尋欄 + 新增會員按鈕 */}
       <div style={{
@@ -923,23 +924,8 @@ export function MemberManagement() {
           {showExpiringDetails && (
             <div style={{ padding: '0 16px 16px', borderTop: '1px solid #eee' }}>
               {expiringMemberships.length > 0 && (() => {
-                const today = getLocalDateString()
-                const expired = expiringMemberships.filter((m: any) => {
-                  let normalizedDate = m.membership_end_date
-                  if (m.membership_end_date.includes('/')) {
-                    const [month, day, year] = m.membership_end_date.split('/')
-                    normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-                  }
-                  return normalizedDate < today
-                })
-                const upcoming = expiringMemberships.filter((m: any) => {
-                  let normalizedDate = m.membership_end_date
-                  if (m.membership_end_date.includes('/')) {
-                    const [month, day, year] = m.membership_end_date.split('/')
-                    normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-                  }
-                  return normalizedDate >= today
-                })
+                const expired = expiringMemberships.filter((m: any) => isDateExpired(m.membership_end_date))
+                const upcoming = expiringMemberships.filter((m: any) => !isDateExpired(m.membership_end_date))
                 return (
                   <div style={{ marginTop: '12px' }}>
                     {expired.length > 0 && (
@@ -1175,24 +1161,24 @@ export function MemberManagement() {
                     </div>
                     {(member.membership_start_date || member.membership_end_date) && (
                       <div style={{ 
-                        color: member.membership_end_date && new Date(member.membership_end_date) < new Date() ? '#f44336' : '#666'
+                        color: isDateExpired(member.membership_end_date) ? '#f44336' : '#666'
                       }}>
                         🎫 會籍：{member.membership_start_date ? formatDate(member.membership_start_date) : '?'} → {member.membership_end_date ? formatDate(member.membership_end_date) : '?'}
-                        {member.membership_end_date && new Date(member.membership_end_date) < new Date() && ' (已過期)'}
+                        {isDateExpired(member.membership_end_date) && ' (已過期)'}
                       </div>
                     )}
                     {/* 置板資訊 */}
                     {member.board_slots && member.board_slots.length > 0 && (
                       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
                         {member.board_slots.map((slot, index) => {
-                          const isExpired = slot.expires_at && new Date(slot.expires_at) < new Date()
+                          const slotExpired = isDateExpired(slot.expires_at)
                           return (
                             <div key={index} style={{ 
-                              color: isExpired ? '#f44336' : '#2e7d32',
+                              color: slotExpired ? '#f44336' : '#2e7d32',
                               fontSize: '13px'
                             }}>
                               🏄 置板 #{slot.slot_number}：{slot.start_date ? formatDate(slot.start_date) : '?'} → {slot.expires_at ? formatDate(slot.expires_at) : '?'}
-                              {isExpired && ' (已過期)'}
+                              {slotExpired && ' (已過期)'}
                             </div>
                           )
                         })}

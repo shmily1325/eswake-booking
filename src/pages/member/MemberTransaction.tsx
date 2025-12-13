@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -7,16 +7,18 @@ import { TransactionDialog } from '../../components/TransactionDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import type { Member } from '../../types/booking'
 import { handleError } from '../../utils/errorHandler'
-import { Button, useToast } from '../../components/ui'
+import { useToast } from '../../components/ui'
 
-// Member interface removed as it is now imported from types/booking
+// 擴展 Member 類型，加入最後交易日期
+interface MemberWithLastTransaction extends Member {
+  lastTransactionDate?: string | null
+}
 
 export function MemberTransaction() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
   const toast = useToast()
-  const [members, setMembers] = useState<Member[]>([])
-  const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
+  const [members, setMembers] = useState<MemberWithLastTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [showTransactionDialog, setShowTransactionDialog] = useState(false)
@@ -30,20 +32,50 @@ export function MemberTransaction() {
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
   const [importSuccess, setImportSuccess] = useState('')
+  
+  // 新增的 state
+  const [showHelp, setShowHelp] = useState(false) // 使用說明預設收合
+  const [sortBy, setSortBy] = useState<'nickname' | 'balance' | 'vip' | 'g23' | 'g21' | 'lastTransaction'>('nickname')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
 
-  // 載入會員列表
+  // 載入會員列表（含最後交易日期）
   const loadMembers = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .eq('status', 'active')
-        .order('name')
+      // 並行載入會員和最後交易日期
+      const [membersResult, transactionsResult] = await Promise.all([
+        supabase
+          .from('members')
+          .select('*')
+          .eq('status', 'active')
+          .order('name'),
+        supabase
+          .from('transactions')
+          .select('member_id, transaction_date')
+          .order('transaction_date', { ascending: false })
+      ])
 
-      if (error) throw error
-      setMembers(data || [])
-      setFilteredMembers(data || [])
+      if (membersResult.error) throw membersResult.error
+
+      // 整理每個會員的最後交易日期
+      const lastTransactionMap: Record<string, string> = {}
+      if (transactionsResult.data) {
+        for (const t of transactionsResult.data) {
+          if (t.member_id && !lastTransactionMap[t.member_id]) {
+            lastTransactionMap[t.member_id] = t.transaction_date
+          }
+        }
+      }
+
+      // 合併資料
+      const membersWithLastTransaction = (membersResult.data || []).map(m => ({
+        ...m,
+        lastTransactionDate: lastTransactionMap[m.id] || null
+      }))
+
+      setMembers(membersWithLastTransaction)
     } catch (error) {
       console.error('載入會員失敗:', error)
       toast.error('載入會員列表失敗')
@@ -56,20 +88,78 @@ export function MemberTransaction() {
     loadMembers()
   }, [])
 
-  // 搜尋過濾
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredMembers(members)
-    } else {
+  // 使用 useMemo 計算過濾和排序後的會員列表
+  const filteredMembers = useMemo(() => {
+    let result = members
+
+    // 會員種類篩選
+    if (membershipTypeFilter !== 'all') {
+      result = result.filter(member => {
+        if (membershipTypeFilter === 'member') {
+          return member.membership_type === 'general' || member.membership_type === 'dual'
+        }
+        return member.membership_type === membershipTypeFilter
+      })
+    }
+
+    // 搜尋過濾
+    if (searchTerm.trim() !== '') {
       const lowerSearch = searchTerm.toLowerCase()
-      const filtered = members.filter(m =>
+      result = result.filter(m =>
         (m.name || '').toLowerCase().includes(lowerSearch) ||
         m.nickname?.toLowerCase().includes(lowerSearch) ||
         m.phone?.includes(searchTerm)
       )
-      setFilteredMembers(filtered)
     }
-  }, [searchTerm, members])
+
+    // 排序
+    result = [...result].sort((a, b) => {
+      let comparison = 0
+      switch (sortBy) {
+        case 'balance':
+          comparison = (a.balance || 0) - (b.balance || 0)
+          break
+        case 'vip':
+          comparison = (a.vip_voucher_amount || 0) - (b.vip_voucher_amount || 0)
+          break
+        case 'g23':
+          comparison = (a.boat_voucher_g23_minutes || 0) - (b.boat_voucher_g23_minutes || 0)
+          break
+        case 'g21':
+          comparison = (a.boat_voucher_g21_panther_minutes || 0) - (b.boat_voucher_g21_panther_minutes || 0)
+          break
+        case 'lastTransaction':
+          // 空值排最後
+          if (!a.lastTransactionDate && !b.lastTransactionDate) return 0
+          if (!a.lastTransactionDate) return 1
+          if (!b.lastTransactionDate) return -1
+          comparison = a.lastTransactionDate.localeCompare(b.lastTransactionDate)
+          break
+        case 'nickname':
+        default:
+          const nameA = (a.nickname || a.name || '').toLowerCase()
+          const nameB = (b.nickname || b.name || '').toLowerCase()
+          comparison = nameA.localeCompare(nameB, 'zh-TW')
+          break
+      }
+      return sortOrder === 'desc' ? -comparison : comparison
+    })
+
+    return result
+  }, [members, searchTerm, sortBy, sortOrder, membershipTypeFilter])
+
+  // 計算統計數據
+  const stats = useMemo(() => {
+    return {
+      totalBalance: members.reduce((sum, m) => sum + (m.balance || 0), 0),
+      totalVipVoucher: members.reduce((sum, m) => sum + (m.vip_voucher_amount || 0), 0),
+      totalDesignatedLesson: members.reduce((sum, m) => sum + (m.designated_lesson_minutes || 0), 0),
+      totalG23: members.reduce((sum, m) => sum + (m.boat_voucher_g23_minutes || 0), 0),
+      totalG21: members.reduce((sum, m) => sum + (m.boat_voucher_g21_panther_minutes || 0), 0),
+      totalGiftBoat: members.reduce((sum, m) => sum + (m.gift_boat_hours || 0), 0),
+      memberCount: members.length
+    }
+  }, [members])
 
   const handleMemberClick = (member: Member) => {
     setSelectedMember(member)
@@ -356,150 +446,357 @@ export function MemberTransaction() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      <PageHeader title="💰 會員儲值" user={user} showBaoLink={true} />
+      <PageHeader 
+        title="💰 會員儲值" 
+        user={user} 
+        showBaoLink={true}
+        extraLinks={[{ label: '👥 會員管理', link: '/members' }]}
+      />
 
-      {/* 操作按鈕區 */}
+      {/* 數據總覽 */}
       <div style={{
-        display: 'flex',
-        gap: isMobile ? '10px' : '12px',
-        marginBottom: isMobile ? '16px' : '20px',
-        flexWrap: 'wrap',
-      }}>
-        <Button
-          variant="outline"
-          size="medium"
-          onClick={() => setShowFinanceImport(true)}
-          icon={<span>📥</span>}
-          style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
-        >
-          匯入
-        </Button>
-
-        <Button
-          variant="outline"
-          size="medium"
-          onClick={handleExportFinance}
-          icon={<span>📤</span>}
-          style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
-        >
-          匯出
-        </Button>
-
-        <button
-          onClick={() => setShowExportDialog(true)}
-          style={{
-            flex: isMobile ? '1 1 100%' : '0 0 auto',
-            padding: isMobile ? '12px 16px' : '10px 20px',
-            background: 'white',
-            color: '#666',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            fontSize: isMobile ? '14px' : '15px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          <span>📋</span>
-          <span>匯出總帳</span>
-        </button>
-      </div>
-
-      {/* 使用說明 */}
-      <div style={{
-        background: '#f8f9fa',
+        background: 'white',
         borderRadius: '12px',
         padding: isMobile ? '16px' : '20px',
         marginBottom: '16px',
         border: '1px solid #e0e0e0',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
       }}>
         <div style={{
-          fontSize: isMobile ? '14px' : '15px',
-          fontWeight: '600',
-          marginBottom: '8px',
-          color: '#333',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+          gap: isMobile ? '12px' : '16px',
+          textAlign: 'center'
         }}>
-          💡 使用說明
-        </div>
-        <div style={{
-          fontSize: isMobile ? '12px' : '13px',
-          lineHeight: '1.6',
-          color: '#666',
-        }}>
-          <div style={{ marginBottom: '4px' }}>
-            <strong style={{ color: '#333' }}>💰 儲值</strong>：會員儲值餘額
-          </div>
-          <div style={{ marginBottom: '4px' }}>
-            <strong style={{ color: '#333' }}>💎 VIP票券</strong>：VIP專用票券餘額
-          </div>
-          <div style={{ marginBottom: '4px' }}>
-            <strong style={{ color: '#333' }}>📚 指定課</strong>：指定教練課程時數（分鐘）
-          </div>
-          <div style={{ marginBottom: '4px' }}>
-            <strong style={{ color: '#333' }}>🚤 G23船券</strong>：G23船隻使用時數（分鐘）
-          </div>
-          <div style={{ marginBottom: '4px' }}>
-            <strong style={{ color: '#333' }}>⛵ G21/黑豹</strong>：G21與黑豹船隻共通時數（分鐘）
+          <div>
+            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💰 總儲值</div>
+            <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
+              ${stats.totalBalance.toLocaleString()}
+            </div>
           </div>
           <div>
-            <strong style={{ color: '#333' }}>🎁 贈送大船</strong>：贈送的大船使用時數（分鐘）
+            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💎 總VIP票券</div>
+            <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
+              ${stats.totalVipVoucher.toLocaleString()}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>📚 總指定課</div>
+            <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
+              {stats.totalDesignatedLesson.toLocaleString()}分
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>👥 會員數</div>
+            <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
+              {stats.memberCount}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* 操作按鈕區（簡化版） */}
+      <div style={{
+        display: 'flex',
+        gap: '12px',
+        marginBottom: '16px',
+        alignItems: 'center',
+        position: 'relative',
+      }}>
+        {/* 使用說明按鈕 */}
+        <button
+          onClick={() => setShowHelp(!showHelp)}
+          style={{
+            padding: '8px 14px',
+            background: showHelp ? '#e3f2fd' : 'white',
+            color: showHelp ? '#1976d2' : '#666',
+            border: `1px solid ${showHelp ? '#1976d2' : '#ddd'}`,
+            borderRadius: '6px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          💡 說明 {showHelp ? '▲' : '▼'}
+        </button>
+
+        {/* 更多選單 */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowMoreMenu(!showMoreMenu)}
+            style={{
+              padding: '8px 14px',
+              background: showMoreMenu ? '#f5f5f5' : 'white',
+              color: '#666',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            ⚙️ 更多 {showMoreMenu ? '▲' : '▼'}
+          </button>
+          
+          {showMoreMenu && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: '4px',
+              background: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              border: '1px solid #e0e0e0',
+              zIndex: 100,
+              minWidth: '160px',
+              overflow: 'hidden',
+            }}>
+              <button
+                onClick={() => { setShowFinanceImport(true); setShowMoreMenu(false) }}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: 'transparent',
+                  border: 'none',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                📥 匯入儲值
+              </button>
+              <button
+                onClick={() => { handleExportFinance(); setShowMoreMenu(false) }}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: 'transparent',
+                  border: 'none',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                📤 匯出儲值
+              </button>
+              <button
+                onClick={() => { setShowExportDialog(true); setShowMoreMenu(false) }}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: 'transparent',
+                  border: 'none',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                📋 匯出總帳
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 使用說明（可收合） */}
+      {showHelp && (
+        <div style={{
+          background: '#f8f9fa',
+          borderRadius: '12px',
+          padding: isMobile ? '16px' : '20px',
+          marginBottom: '16px',
+          border: '1px solid #e0e0e0',
+        }}>
+          <div style={{
+            fontSize: isMobile ? '12px' : '13px',
+            lineHeight: '1.6',
+            color: '#666',
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+            gap: '8px',
+          }}>
+            <div><strong style={{ color: '#333' }}>💰 儲值</strong>：會員儲值餘額</div>
+            <div><strong style={{ color: '#333' }}>💎 VIP票券</strong>：VIP專用票券餘額</div>
+            <div><strong style={{ color: '#333' }}>📚 指定課</strong>：指定教練課程時數（分鐘）</div>
+            <div><strong style={{ color: '#333' }}>🚤 G23船券</strong>：G23船隻使用時數（分鐘）</div>
+            <div><strong style={{ color: '#333' }}>⛵ G21/黑豹</strong>：G21與黑豹船隻共通時數（分鐘）</div>
+            <div><strong style={{ color: '#333' }}>🎁 贈送大船</strong>：贈送的大船使用時數（分鐘）</div>
+          </div>
+        </div>
+      )}
 
       {/* 搜尋欄 */}
       <div style={{
-        background: 'white',
-        padding: isMobile ? '16px' : '20px',
-        borderRadius: '12px',
-        marginBottom: '20px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        display: 'flex',
+        gap: '12px',
+        marginBottom: '12px',
+        alignItems: 'center'
       }}>
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{
-            fontSize: '16px',
-            fontWeight: 'bold',
-            color: '#333',
-            marginBottom: '8px',
-          }}>
-            🔍 搜尋會員
-          </div>
+        <div style={{ flex: 1, position: 'relative' }}>
           <input
             type="text"
-            placeholder="輸入會員暱稱/姓名/電話搜尋..."
+            placeholder="搜尋會員（姓名、暱稱）"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              if (e.target.value && membershipTypeFilter !== 'all') {
+                setMembershipTypeFilter('all')
+              }
+            }}
             style={{
               width: '100%',
-              padding: isMobile ? '14px' : '12px',
-              border: '2px solid #e0e0e0',
+              padding: isMobile ? '10px 14px' : '12px 16px',
+              paddingRight: searchTerm ? '40px' : '16px',
+              border: '1px solid #dee2e6',
               borderRadius: '8px',
-              fontSize: isMobile ? '16px' : '14px',
-              transition: 'border-color 0.2s',
+              fontSize: '14px',
+              outline: 'none',
+              background: 'white',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             }}
-            onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
-            onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: '#999',
+                color: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: '20px',
+                height: '20px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
+      </div>
 
+      {/* 統一篩選列 */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '8px', 
+        flexWrap: 'wrap',
+        marginBottom: '16px',
+        alignItems: 'center'
+      }}>
+        {/* 會員類型篩選 */}
+        {[
+          { value: 'all', label: '全部', count: members.length },
+          { value: 'member', label: '會員', count: members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length },
+          { value: 'general', label: '一般會員', count: members.filter(m => m.membership_type === 'general').length },
+          { value: 'dual', label: '雙人會員', count: members.filter(m => m.membership_type === 'dual').length },
+          { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length },
+          { value: 'es', label: 'ES', count: members.filter(m => m.membership_type === 'es').length }
+        ].map(type => (
+          <button
+            key={type.value}
+            onClick={() => setMembershipTypeFilter(type.value)}
+            style={{
+              padding: '6px 12px',
+              background: membershipTypeFilter === type.value ? '#5a5a5a' : 'white',
+              color: membershipTypeFilter === type.value ? 'white' : '#666',
+              border: `1px solid ${membershipTypeFilter === type.value ? '#5a5a5a' : '#ddd'}`,
+              borderRadius: '6px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              fontWeight: membershipTypeFilter === type.value ? '600' : 'normal'
+            }}
+          >
+            {type.label} ({type.count})
+          </button>
+        ))}
+
+        {/* 分隔線 */}
+        <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+
+        {/* 排序按鈕 */}
+        {[
+          { key: 'nickname' as const, label: '暱稱' },
+          { key: 'balance' as const, label: '💰儲值' },
+          { key: 'vip' as const, label: '💎VIP' },
+          { key: 'g23' as const, label: '🚤G23' },
+          { key: 'g21' as const, label: '⛵G21' },
+          { key: 'lastTransaction' as const, label: '📅交易' }
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => {
+              if (sortBy === key) {
+                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+              } else {
+                setSortBy(key)
+                setSortOrder(key === 'nickname' ? 'asc' : 'desc')
+              }
+            }}
+            style={{
+              padding: '6px 10px',
+              border: sortBy === key ? '1px solid #1976d2' : '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '13px',
+              background: sortBy === key ? '#e3f2fd' : 'white',
+              cursor: 'pointer',
+              color: sortBy === key ? '#1976d2' : '#666',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: sortBy === key ? '500' : '400'
+            }}
+          >
+            {label}
+            {sortBy === key && (
+              <span style={{ fontSize: '11px' }}>
+                {sortOrder === 'asc' ? '▲' : '▼'}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* 搜尋結果數量提示 */}
+      {searchTerm && (
         <div style={{
           fontSize: '13px',
           color: '#666',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '8px',
+          marginBottom: '12px',
+          padding: '8px 12px',
+          background: '#f0f7ff',
+          borderRadius: '6px',
+          border: '1px solid #d0e3ff'
         }}>
-          <span>找到 {filteredMembers.length} 位會員</span>
+          🔍 搜尋「{searchTerm}」找到 <strong>{filteredMembers.length}</strong> 位會員
         </div>
-      </div>
+      )}
 
       {/* 會員列表 */}
       <div style={{ 
@@ -507,16 +804,44 @@ export function MemberTransaction() {
         gap: '15px'
       }}>
         {loading ? (
-          <div style={{
-            background: 'white',
-            padding: '40px',
-            borderRadius: '12px',
-            textAlign: 'center',
-            color: '#999',
-            fontSize: '16px'
-          }}>
-            載入中...
-          </div>
+          // 骨架屏
+          <>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+              >
+                <div style={{
+                  background: '#f0f0f0',
+                  padding: '14px 16px',
+                  borderRadius: '8px',
+                  marginBottom: '12px',
+                }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div style={{ width: '100px', height: '20px', background: '#e0e0e0', borderRadius: '4px' }} />
+                    <div style={{ width: '60px', height: '16px', background: '#e8e8e8', borderRadius: '4px' }} />
+                  </div>
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                  gap: '10px',
+                }}>
+                  {Array.from({ length: 6 }).map((_, j) => (
+                    <div key={j} style={{ textAlign: 'center' }}>
+                      <div style={{ width: '60px', height: '12px', background: '#f0f0f0', borderRadius: '4px', margin: '0 auto 6px' }} />
+                      <div style={{ width: '50px', height: '18px', background: '#e8e8e8', borderRadius: '4px', margin: '0 auto' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
         ) : filteredMembers.length === 0 ? (
           <div style={{
             background: 'white',
@@ -599,6 +924,16 @@ export function MemberTransaction() {
                           </span>
                         )}
                       </div>
+                      {/* 最後交易日期 */}
+                      {member.lastTransactionDate && (
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#999',
+                          marginTop: '4px',
+                        }}>
+                          📅 最後交易：{member.lastTransactionDate}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -618,42 +953,66 @@ export function MemberTransaction() {
                   }}>
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💰 儲值餘額</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: 'bold', 
+                        color: (member.balance || 0) > 0 ? '#333' : '#ccc' 
+                      }}>
                         ${(member.balance || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💎 VIP票券</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: 'bold', 
+                        color: (member.vip_voucher_amount || 0) > 0 ? '#333' : '#ccc' 
+                      }}>
                         ${(member.vip_voucher_amount || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>📚 指定課</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: 'bold', 
+                        color: (member.designated_lesson_minutes || 0) > 0 ? '#333' : '#ccc' 
+                      }}>
                         {(member.designated_lesson_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🚤 G23船券</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: 'bold', 
+                        color: (member.boat_voucher_g23_minutes || 0) > 0 ? '#333' : '#ccc' 
+                      }}>
                         {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>⛵ G21/黑豹</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: 'bold', 
+                        color: (member.boat_voucher_g21_panther_minutes || 0) > 0 ? '#333' : '#ccc' 
+                      }}>
                         {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                      <div style={{ 
+                        fontSize: '16px', 
+                        fontWeight: 'bold', 
+                        color: (member.gift_boat_hours || 0) > 0 ? '#333' : '#ccc' 
+                      }}>
                         {(member.gift_boat_hours || 0).toLocaleString()}分
                       </div>
                     </div>
