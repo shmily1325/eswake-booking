@@ -402,20 +402,25 @@ export function MemberTransaction() {
         const adjustType = t.adjust_type
         const transactionType = t.transaction_type
         
+        // 判斷是增加還是減少（優先用 adjust_type，沒有的話看金額正負）
+        const value = t.amount || t.minutes || 0
+        const isIncrease = adjustType === 'increase' || (!adjustType && value > 0)
+        const isDecrease = adjustType === 'decrease' || (!adjustType && value < 0)
+        
         // 金額類（儲值、VIP票券）
         if (category === 'balance' || category === 'vip_voucher') {
-          if (adjustType === 'increase') return '儲值'
-          if (adjustType === 'decrease') return '扣款'
           if (transactionType === 'charge') return '儲值'
           if (transactionType === 'refund') return '退款'
+          if (isIncrease) return '儲值'
+          if (isDecrease) return '扣款'
           return '調整'
         }
         
         // 時數類
-        if (adjustType === 'increase') return '購買'
-        if (adjustType === 'decrease') return '使用'
         if (transactionType === 'consume') return '使用'
         if (transactionType === 'plan') return '方案'
+        if (isIncrease) return '購買'
+        if (isDecrease) return '使用'
         return '調整'
       }
 
@@ -445,7 +450,14 @@ export function MemberTransaction() {
         const isAmount = t.category === 'balance' || t.category === 'vip_voucher'
         const value = isAmount ? (t.amount || 0) : (t.minutes || 0)
         const absValue = Math.abs(value)
-        const sign = t.adjust_type === 'increase' ? '+' : '-'
+        
+        // 判斷正負號（優先用 adjust_type，沒有的話看數值本身）
+        let sign = ''
+        if (t.adjust_type === 'increase' || (!t.adjust_type && value > 0)) {
+          sign = '+'
+        } else if (t.adjust_type === 'decrease' || (!t.adjust_type && value < 0)) {
+          sign = '-'
+        }
         
         if (isAmount) {
           return `${sign}$${absValue.toLocaleString()}`
