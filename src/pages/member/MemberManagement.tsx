@@ -31,6 +31,7 @@ interface Member {
   notes: string | null
   status: string
   created_at: string
+  updated_at: string | null
   board_count?: number  // 置板數量（從 board_storage 計算）
   board_slots?: Array<{ slot_number: number; start_date: string | null; expires_at: string | null }>  // 置板詳細資訊
   partner?: Member | null  // 配對會員資料
@@ -63,6 +64,7 @@ export function MemberManagement() {
   const [expiringFilter, setExpiringFilter] = useState<string>('none') // 'none', 'membership', 'board'
   const [showExpiringDetails, setShowExpiringDetails] = useState(false) // 收合/展開到期詳情
   const [sortBy, setSortBy] = useState<string>('nickname') // 'nickname', 'balance', 'membership_end_date'
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc') // 升冪/降冪
 
   useEffect(() => {
     loadMembers()
@@ -366,7 +368,8 @@ export function MemberManagement() {
             boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, 
             gift_boat_hours, membership_end_date, membership_start_date,
             membership_type, membership_partner_id,
-            status, created_at
+            board_slot_number, board_expiry_date,
+            status, created_at, updated_at
           `)
           .order('created_at', { ascending: false }),
         // @ts-ignore
@@ -531,27 +534,34 @@ export function MemberManagement() {
 
     // 排序
     result = [...result].sort((a, b) => {
+      let comparison = 0
       switch (sortBy) {
-        case 'balance':
-          // 餘額高到低
-          return (b.balance || 0) - (a.balance || 0)
+        case 'updated_at':
+          // 空值永遠排最後
+          if (!a.updated_at && !b.updated_at) return 0
+          if (!a.updated_at) return 1
+          if (!b.updated_at) return -1
+          comparison = a.updated_at.localeCompare(b.updated_at)
+          break
         case 'membership_end_date':
-          // 會籍到期日近到遠（空值排最後）
+          // 空值永遠排最後
           if (!a.membership_end_date && !b.membership_end_date) return 0
           if (!a.membership_end_date) return 1
           if (!b.membership_end_date) return -1
-          return a.membership_end_date.localeCompare(b.membership_end_date)
+          comparison = a.membership_end_date.localeCompare(b.membership_end_date)
+          break
         case 'nickname':
         default:
-          // 暱稱 A-Z
           const nameA = (a.nickname || a.name || '').toLowerCase()
           const nameB = (b.nickname || b.name || '').toLowerCase()
-          return nameA.localeCompare(nameB, 'zh-TW')
+          comparison = nameA.localeCompare(nameB, 'zh-TW')
+          break
       }
+      return sortOrder === 'desc' ? -comparison : comparison
     })
     
     return result
-  }, [members, searchTerm, membershipTypeFilter, expiringFilter, expiringMemberships, expiringBoards, sortBy])
+  }, [members, searchTerm, membershipTypeFilter, expiringFilter, expiringMemberships, expiringBoards, sortBy, sortOrder])
 
 
   if (loading) {
@@ -806,24 +816,44 @@ export function MemberManagement() {
         {/* 分隔線 */}
         <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
 
-        {/* 排序選擇 */}
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          style={{
-            padding: '6px 10px',
-            border: '1px solid #ddd',
-            borderRadius: '6px',
-            fontSize: '13px',
-            background: 'white',
-            cursor: 'pointer',
-            color: '#666'
-          }}
-        >
-          <option value="nickname">按暱稱</option>
-          <option value="balance">按餘額</option>
-          <option value="membership_end_date">按會籍到期</option>
-        </select>
+        {/* 排序按鈕 */}
+        {[
+          { key: 'nickname', label: '暱稱' },
+          { key: 'updated_at', label: '最近更新' },
+          { key: 'membership_end_date', label: '會籍到期' }
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => {
+              if (sortBy === key) {
+                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+              } else {
+                setSortBy(key)
+                setSortOrder('asc')
+              }
+            }}
+            style={{
+              padding: '6px 10px',
+              border: sortBy === key ? '1px solid #1976d2' : '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '13px',
+              background: sortBy === key ? '#e3f2fd' : 'white',
+              cursor: 'pointer',
+              color: sortBy === key ? '#1976d2' : '#666',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: sortBy === key ? '500' : '400'
+            }}
+          >
+            {label}
+            {sortBy === key && (
+              <span style={{ fontSize: '11px' }}>
+                {sortOrder === 'asc' ? '▲' : '▼'}
+              </span>
+            )}
+          </button>
+        ))}
         
         {/* 包含已隱藏 */}
         <label style={{
