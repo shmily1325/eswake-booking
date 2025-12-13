@@ -1290,8 +1290,8 @@ export function MemberManagement() {
                     })() && (
                       <span style={{ 
                         fontSize: '12px', 
-                        color: '#fff',
-                        background: 'linear-gradient(135deg, #ff6b9d, #ffa726)',
+                        color: '#d63384',
+                        background: '#ffe4ec',
                         padding: '3px 10px',
                         borderRadius: '12px',
                         fontWeight: '600'
