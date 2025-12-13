@@ -11,8 +11,8 @@ interface BookingFormatData {
 
 /**
  * 格式化單個預約為 LINE 訊息格式（不含人名）
- * 格式：月/日 抵達時間 抵達 下水時間 下水 時長分 船名 教練名教練 活動類型
- * 範例：12/12 13:00 抵達 13:30 下水 30分 G21 阿寶教練 WB
+ * 格式：月/日 抵達時間抵達, 下水時間下水, 預約X分鐘, 船名, 教練名教練
+ * 範例：12/12 13:00抵達, 13:30下水, 預約30分鐘, G21, 阿寶教練
  */
 export function formatBookingForLine(booking: BookingFormatData): string {
   const datetime = booking.start_at.substring(0, 16)
@@ -31,15 +31,10 @@ export function formatBookingForLine(booking: BookingFormatData): string {
 
   // 教練（只有指定教練時才顯示）
   const coachPart = booking.coaches && booking.coaches.length > 0
-    ? ` ${booking.coaches.filter(c => c && c.name).map(c => c.name + '教練').join('/')}`
+    ? `, ${booking.coaches.filter(c => c && c.name).map(c => c.name + '教練').join('/')}`
     : ''
 
-  // 活動類型
-  const activityPart = booking.activity_types && booking.activity_types.length > 0
-    ? ` ${booking.activity_types.join('+')}`
-    : ''
-
-  return `${month}/${day} ${arrivalTimeStr} 抵達 ${timeStr} 下水 ${booking.duration_min}分 ${boatName}${coachPart}${activityPart}`
+  return `${month}/${day} ${arrivalTimeStr}抵達, ${timeStr}下水, 預約${booking.duration_min}分鐘, ${boatName}${coachPart}`
 }
 
 /**
@@ -145,12 +140,13 @@ interface BookingCopyData {
 
 /**
  * 格式化預約資訊為複製格式
- * 格式：MM/DD 姓名 抵達時間 抵達 下水時間 下水 時長分 船名 教練名教練 活動類型
- * 範例：12/12 小王 13:00 抵達 13:30 下水 30分 G21 阿寶教練 WB
+ * 格式：MM/DD 姓名, 抵達時間抵達, 下水時間下水, 預約X分鐘, 船名, 教練名教練
+ * 範例：12/12 小王, 13:00抵達, 13:30下水, 預約30分鐘, G21, 阿寶教練
  * 
  * 備註：
  * - 如果未指定教練，則不顯示教練資訊
  * - 抵達時間 = 下水時間 - 30 分鐘
+ * - 不顯示活動類型
  */
 export function formatBookingForCopy(booking: BookingCopyData): string {
   const datetime = booking.start_at.substring(0, 16)
@@ -172,13 +168,8 @@ export function formatBookingForCopy(booking: BookingCopyData): string {
   
   // 教練（只有指定教練時才顯示）
   const coachPart = booking.coaches && booking.coaches.length > 0
-    ? ` ${booking.coaches.filter(c => c && c.name).map(c => c.name + '教練').join('/')}`
+    ? `, ${booking.coaches.filter(c => c && c.name).map(c => c.name + '教練').join('/')}`
     : ''
   
-  // 活動類型
-  const activityPart = booking.activity_types && booking.activity_types.length > 0
-    ? ` ${booking.activity_types.join('+')}`
-    : ''
-  
-  return `${month}/${day} ${displayName} ${arrivalTimeStr} 抵達 ${timeStr} 下水 ${booking.duration_min}分 ${boatName}${coachPart}${activityPart}`
+  return `${month}/${day} ${displayName}, ${arrivalTimeStr}抵達, ${timeStr}下水, 預約${booking.duration_min}分鐘, ${boatName}${coachPart}`
 }

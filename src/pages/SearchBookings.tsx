@@ -335,31 +335,31 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     return formatBookingsForLine(bookings, `${searchName}的預約`)
   }
 
-  // 生成單筆預約的 LINE 格式
+  // 生成單筆預約的 LINE 格式（單行格式）
   const generateSingleBookingMessage = (booking: Booking) => {
     const datetime = booking.start_at.substring(0, 16)
     const [dateStr, timeStr] = datetime.split('T')
-    const [year, month, day] = dateStr.split('-')
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-    const weekday = weekdays[date.getDay()]
+    const [, month, day] = dateStr.split('-')
     
-    const lines = [
-      `📅 ${month}/${day}(${weekday}) ${timeStr}`,
-      `👤 ${getDisplayContactName(booking)}`,
-      `🚤 ${booking.boats?.name || '未指定'}`,
-      `🎓 ${booking.coaches?.map(c => c.name).join(' / ') || '未指定'}`,
-      `⏱️ ${booking.duration_min}分`,
-    ]
+    // 計算抵達時間（提前 30 分鐘）
+    const [hour, minute] = timeStr.split(':').map(Number)
+    const arrivalMinutes = hour * 60 + minute - 30
+    const arrivalHour = Math.floor(arrivalMinutes / 60)
+    const arrivalMin = arrivalMinutes % 60
+    const arrivalTimeStr = `${String(arrivalHour).padStart(2, '0')}:${String(arrivalMin).padStart(2, '0')}`
     
-    if (booking.activity_types && booking.activity_types.length > 0) {
-      lines.push(`🏄 ${booking.activity_types.join(' + ')}`)
-    }
-    if (booking.notes) {
-      lines.push(`📝 ${booking.notes}`)
-    }
+    // 取得顯示名稱
+    const displayName = getDisplayContactName(booking)
     
-    return lines.join('\n')
+    // 船名
+    const boatName = booking.boats?.name || '?'
+    
+    // 教練（只有指定教練時才顯示）
+    const coachPart = booking.coaches && booking.coaches.length > 0
+      ? `, ${booking.coaches.filter(c => c && c.name).map(c => c.name + '教練').join('/')}`
+      : ''
+    
+    return `${month}/${day} ${displayName}, ${arrivalTimeStr}抵達, ${timeStr}下水, 預約${booking.duration_min}分鐘, ${boatName}${coachPart}`
   }
 
   // 複製單筆預約

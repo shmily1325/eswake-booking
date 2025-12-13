@@ -1297,7 +1297,7 @@ export function CoachReport({
                       marginBottom: (displayDrivers && displayDrivers.length > 0) ? '8px' : '0',
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: '12px',
+                      gap: '8px',
                       alignItems: 'center'
                     }}>
                       <span style={{ fontSize: '16px', opacity: 0.5 }}>🎓</span>
@@ -1314,31 +1314,28 @@ export function CoachReport({
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '6px',
-                              padding: '4px 0',
-                              background: 'transparent',
-                              border: 'none',
+                              padding: '6px 12px',
+                              background: isReported ? 'transparent' : '#e8f5e9',
+                              border: isReported ? '2px solid #4caf50' : '2px solid transparent',
+                              borderRadius: '20px',
                               cursor: 'pointer',
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              color: isReported ? '#2e7d32' : '#666',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              color: '#2e7d32',
                               transition: 'all 0.15s ease',
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.opacity = '0.7'
+                              e.currentTarget.style.transform = 'translateY(-1px)'
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.25)'
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.opacity = '1'
+                              e.currentTarget.style.transform = 'translateY(0)'
+                              e.currentTarget.style.boxShadow = 'none'
                             }}
                           >
-                            <span style={{
-                              width: '8px',
-                              height: '8px',
-                              borderRadius: '50%',
-                              background: isReported ? '#4caf50' : '#e0e0e0',
-                              boxShadow: isReported ? '0 0 0 2px rgba(76, 175, 80, 0.2)' : 'none',
-                              transition: 'all 0.15s ease',
-                            }} />
+                            {isReported && <span>✓</span>}
                             <span>{coach.name}</span>
+                            {!isReported && <span style={{ opacity: 0.7 }}>· 回報</span>}
                           </button>
                         )
                       })}
@@ -1350,7 +1347,7 @@ export function CoachReport({
                     <div style={{ 
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: '12px',
+                      gap: '8px',
                       alignItems: 'center'
                     }}>
                       <span style={{ fontSize: '16px', opacity: 0.5 }}>🚤</span>
@@ -1366,31 +1363,28 @@ export function CoachReport({
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '6px',
-                              padding: '4px 0',
-                              background: 'transparent',
-                              border: 'none',
+                              padding: '6px 12px',
+                              background: isReported ? 'transparent' : '#e3f2fd',
+                              border: isReported ? '2px solid #2196f3' : '2px solid transparent',
+                              borderRadius: '20px',
                               cursor: 'pointer',
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              color: isReported ? '#1565c0' : '#666',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              color: '#1565c0',
                               transition: 'all 0.15s ease',
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.opacity = '0.7'
+                              e.currentTarget.style.transform = 'translateY(-1px)'
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(33, 150, 243, 0.25)'
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.opacity = '1'
+                              e.currentTarget.style.transform = 'translateY(0)'
+                              e.currentTarget.style.boxShadow = 'none'
                             }}
                           >
-                            <span style={{
-                              width: '8px',
-                              height: '8px',
-                              borderRadius: '50%',
-                              background: isReported ? '#2196f3' : '#e0e0e0',
-                              boxShadow: isReported ? '0 0 0 2px rgba(33, 150, 243, 0.2)' : 'none',
-                              transition: 'all 0.15s ease',
-                            }} />
+                            {isReported && <span>✓</span>}
                             <span>{driver.name}</span>
+                            {!isReported && <span style={{ opacity: 0.7 }}>· 回報</span>}
                           </button>
                         )
                       })}
