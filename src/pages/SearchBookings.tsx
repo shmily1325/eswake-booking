@@ -56,6 +56,12 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   
+  // 排序選項
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  
+  // 過去預約顯示
+  const [showPastBookings, setShowPastBookings] = useState(true)
+  
   const [members, setMembers] = useState<Member[]>([])
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
   const [showMemberDropdown, setShowMemberDropdown] = useState(false)
@@ -99,6 +105,56 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     if (data) {
       setMembers(data)
     }
+  }
+
+  // 快速日期選擇輔助函數
+  const formatDate = (date: Date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  }
+
+  const setQuickDateRange = (type: 'today' | 'tomorrow' | 'thisWeek' | 'nextWeek' | 'thisMonth') => {
+    const today = new Date()
+    let start: Date
+    let end: Date
+
+    switch (type) {
+      case 'today':
+        start = today
+        end = today
+        break
+      case 'tomorrow':
+        start = new Date(today)
+        start.setDate(today.getDate() + 1)
+        end = start
+        break
+      case 'thisWeek': {
+        // 本週（週一到週日）
+        const dayOfWeek = today.getDay()
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+        start = new Date(today)
+        start.setDate(today.getDate() + diffToMonday)
+        end = new Date(start)
+        end.setDate(start.getDate() + 6)
+        break
+      }
+      case 'nextWeek': {
+        // 下週（下週一到下週日）
+        const dayOfWeek2 = today.getDay()
+        const diffToNextMonday = dayOfWeek2 === 0 ? 1 : 8 - dayOfWeek2
+        start = new Date(today)
+        start.setDate(today.getDate() + diffToNextMonday)
+        end = new Date(start)
+        end.setDate(start.getDate() + 6)
+        break
+      }
+      case 'thisMonth':
+        start = new Date(today.getFullYear(), today.getMonth(), 1)
+        end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+        break
+    }
+
+    setStartDate(formatDate(start))
+    setEndDate(formatDate(end))
   }
 
   useEffect(() => {
@@ -278,6 +334,54 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     // 直接使用搜尋的名字作為標題
     return formatBookingsForLine(bookings, `${searchName}的預約`)
   }
+
+  // 生成單筆預約的 LINE 格式
+  const generateSingleBookingMessage = (booking: Booking) => {
+    const datetime = booking.start_at.substring(0, 16)
+    const [dateStr, timeStr] = datetime.split('T')
+    const [year, month, day] = dateStr.split('-')
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+    const weekday = weekdays[date.getDay()]
+    
+    const lines = [
+      `📅 ${month}/${day}(${weekday}) ${timeStr}`,
+      `👤 ${getDisplayContactName(booking)}`,
+      `🚤 ${booking.boats?.name || '未指定'}`,
+      `🎓 ${booking.coaches?.map(c => c.name).join(' / ') || '未指定'}`,
+      `⏱️ ${booking.duration_min}分`,
+    ]
+    
+    if (booking.activity_types && booking.activity_types.length > 0) {
+      lines.push(`🏄 ${booking.activity_types.join(' + ')}`)
+    }
+    if (booking.notes) {
+      lines.push(`📝 ${booking.notes}`)
+    }
+    
+    return lines.join('\n')
+  }
+
+  // 複製單筆預約
+  const handleCopySingleBooking = async (booking: Booking, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const message = generateSingleBookingMessage(booking)
+    try {
+      await navigator.clipboard.writeText(message)
+      toast.success('已複製預約資訊')
+    } catch (err) {
+      console.error('Failed to copy:', err)
+      toast.error('複製失敗')
+    }
+  }
+
+  // 清除搜尋
+  const handleClearSearch = () => {
+    setSearchName('')
+    setSelectedMemberId(null)
+    setBookings([])
+    setHasSearched(false)
+  }
   
   const handleCopyToClipboard = async () => {
     const message = generateLineMessage()
@@ -417,36 +521,69 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             }}>
               預約人
             </label>
-            <input
-              type="text"
-              value={searchName}
-              onChange={(e) => {
-                setSearchName(e.target.value)
-                setSelectedMemberId(null)
-              }}
-              onFocus={(e) => {
-                if (filteredMembers.length > 0) {
-                  setShowMemberDropdown(true)
-                }
-                e.target.style.borderColor = '#007bff'
-              }}
-              onBlur={(e) => {
-                setTimeout(() => setShowMemberDropdown(false), 200)
-                e.target.style.borderColor = '#e0e0e0'
-              }}
-              placeholder="搜尋會員或直接輸入姓名"
-              required
-              style={{
-                width: '100%',
-                padding: '14px 16px',
-                fontSize: isMobile ? '16px' : '15px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                outline: 'none',
-                boxSizing: 'border-box',
-                transition: 'border-color 0.2s'
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={searchName}
+                onChange={(e) => {
+                  setSearchName(e.target.value)
+                  setSelectedMemberId(null)
+                }}
+                onFocus={(e) => {
+                  if (filteredMembers.length > 0) {
+                    setShowMemberDropdown(true)
+                  }
+                  e.target.style.borderColor = '#007bff'
+                }}
+                onBlur={(e) => {
+                  setTimeout(() => setShowMemberDropdown(false), 200)
+                  e.target.style.borderColor = '#e0e0e0'
+                }}
+                placeholder="搜尋會員或直接輸入姓名"
+                required
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  paddingRight: searchName ? '44px' : '16px',
+                  fontSize: isMobile ? '16px' : '15px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.2s'
+                }}
+              />
+              {/* 清除按鈕 */}
+              {searchName && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '24px',
+                    height: '24px',
+                    padding: 0,
+                    border: 'none',
+                    background: '#dee2e6',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    color: '#495057',
+                    transition: 'background 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#adb5bd'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#dee2e6'}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
             
             {showMemberDropdown && filteredMembers.length > 0 && (
               <div style={{
@@ -528,6 +665,51 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   清除
                 </button>
               )}
+            </div>
+            
+            {/* 快速日期選擇按鈕 */}
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '6px',
+              marginBottom: '12px'
+            }}>
+              {[
+                { label: '今天', value: 'today' as const },
+                { label: '明天', value: 'tomorrow' as const },
+                { label: '本週', value: 'thisWeek' as const },
+                { label: '下週', value: 'nextWeek' as const },
+                { label: '本月', value: 'thisMonth' as const },
+              ].map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setQuickDateRange(value)}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #dee2e6',
+                    background: 'white',
+                    borderRadius: '16px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: '#495057',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#007bff'
+                    e.currentTarget.style.color = 'white'
+                    e.currentTarget.style.borderColor = '#007bff'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white'
+                    e.currentTarget.style.color = '#495057'
+                    e.currentTarget.style.borderColor = '#dee2e6'
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             <div style={{ 
               display: 'flex', 
@@ -662,24 +844,30 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           {!loading && (
             <div style={{
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              flexDirection: 'column',
+              gap: '12px',
               marginBottom: '16px',
-              flexWrap: 'wrap',
-              gap: '12px'
             }}>
+              {/* 第一行：結果統計 + 操作按鈕 */}
               <div style={{
-                fontSize: '16px',
-                color: '#666',
-                fontWeight: '500',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px'
               }}>
-                找到 {bookings.length} 筆預約
-                {selectionMode && selectedBookingIds.size > 0 && (
-                  <span style={{ color: '#007bff', marginLeft: '8px' }}>
-                    （已選 {selectedBookingIds.size} 筆）
-                  </span>
-                )}
-              </div>
+                <div style={{
+                  fontSize: '16px',
+                  color: '#666',
+                  fontWeight: '500',
+                }}>
+                  找到 {bookings.length} 筆預約
+                  {selectionMode && selectedBookingIds.size > 0 && (
+                    <span style={{ color: '#007bff', marginLeft: '8px' }}>
+                      （已選 {selectedBookingIds.size} 筆）
+                    </span>
+                  )}
+                </div>
               
               {bookings.length > 0 && (
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -795,21 +983,140 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   )}
                 </div>
               )}
+              </div>
+
+              {/* 第二行：排序 + 過去預約切換 */}
+              {bookings.length > 0 && !selectionMode && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  padding: '12px',
+                  background: '#f8f9fa',
+                  borderRadius: '8px',
+                }}>
+                  {/* 排序選項 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', color: '#666' }}>排序：</span>
+                    <button
+                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                      style={{
+                        padding: '6px 12px',
+                        border: '1px solid #dee2e6',
+                        background: 'white',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: '#495057',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {sortOrder === 'asc' ? '⬆️ 時間近→遠' : '⬇️ 時間遠→近'}
+                    </button>
+                  </div>
+
+                  {/* 過去預約切換 */}
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    color: '#666',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={showPastBookings}
+                      onChange={(e) => setShowPastBookings(e.target.checked)}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    顯示已結束預約
+                  </label>
+                </div>
+              )}
             </div>
           )}
 
-          {/* 加载状态显示 */}
+          {/* Loading Skeleton */}
           {loading && (
-            <div style={{
-              padding: '40px',
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              textAlign: 'center',
-              color: '#666',
-              fontSize: '16px',
-              marginBottom: '16px',
-            }}>
-              🔍 搜尋中...
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: '16px',
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    borderLeft: '4px solid #e9ecef',
+                  }}
+                >
+                  {/* 標題骨架 */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div>
+                      <div
+                        style={{
+                          width: '120px',
+                          height: '20px',
+                          backgroundColor: '#e9ecef',
+                          borderRadius: '4px',
+                          marginBottom: '8px',
+                          animation: 'pulse 1.5s ease-in-out infinite',
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: '180px',
+                          height: '16px',
+                          backgroundColor: '#e9ecef',
+                          borderRadius: '4px',
+                          animation: 'pulse 1.5s ease-in-out infinite',
+                        }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        width: '50px',
+                        height: '24px',
+                        backgroundColor: '#e9ecef',
+                        borderRadius: '4px',
+                        animation: 'pulse 1.5s ease-in-out infinite',
+                      }}
+                    />
+                  </div>
+                  {/* 內容骨架 */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                    {[1, 2, 3, 4].map((j) => (
+                      <div
+                        key={j}
+                        style={{
+                          width: '100px',
+                          height: '14px',
+                          backgroundColor: '#e9ecef',
+                          borderRadius: '4px',
+                          animation: 'pulse 1.5s ease-in-out infinite',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <style>{`
+                @keyframes pulse {
+                  0%, 100% { opacity: 1; }
+                  50% { opacity: 0.5; }
+                }
+              `}</style>
             </div>
           )}
 
@@ -826,7 +1133,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </div>
           ) : bookings.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {bookings.map((booking) => {
+              {bookings
+                // 過濾過去預約
+                .filter(booking => showPastBookings || !isPastBooking(booking.start_at))
+                // 排序
+                .sort((a, b) => {
+                  const comparison = a.start_at.localeCompare(b.start_at)
+                  return sortOrder === 'asc' ? comparison : -comparison
+                })
+                .map((booking) => {
                 const isPast = isPastBooking(booking.start_at)
                 const isLoadingThis = loadingBookingId === booking.id
                 const isSelected = selectedBookingIds.has(booking.id)
@@ -916,6 +1231,38 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {/* 單筆複製按鈕 */}
+                        {!selectionMode && (
+                          <button
+                            onClick={(e) => handleCopySingleBooking(booking, e)}
+                            style={{
+                              padding: '4px 8px',
+                              backgroundColor: 'white',
+                              color: '#495057',
+                              border: '1px solid #dee2e6',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'all 0.2s',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#007bff'
+                              e.currentTarget.style.color = 'white'
+                              e.currentTarget.style.borderColor = '#007bff'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'white'
+                              e.currentTarget.style.color = '#495057'
+                              e.currentTarget.style.borderColor = '#dee2e6'
+                            }}
+                          >
+                            📋
+                          </button>
+                        )}
                         {/* 所有人都可以看到編輯標籤 */}
                         {!selectionMode && isLoadingThis && (
                           <span style={{

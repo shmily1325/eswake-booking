@@ -1293,31 +1293,32 @@ export function CoachReport({
                         {displayCoaches.map(coach => {
                           const reportType = getReportType(booking, coach.id)
                           const reportStatus = getReportStatus(booking, coach.id)
+                          const isReported = reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
                           
                           return (
                             <div
                               key={coach.id}
                               style={{
                                   padding: '8px 12px',
-                                background: '#f5f5f5',
+                                background: isReported ? '#e8f5e9' : '#f5f5f5',
                                 borderRadius: '6px',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
-                                gap: '8px'
+                                gap: '8px',
+                                border: isReported ? '1px solid #a5d6a7' : 'none'
                               }}
                             >
-                                <span style={{ fontWeight: '500' }}>
+                                <span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {isReported && <span style={{ color: '#4caf50' }}>✓</span>}
                                   {coach.name}
                                 </span>
                               <Button
-                                variant="primary"
+                                variant={isReported ? 'outline' : 'primary'}
                                 size="small"
                                 onClick={() => startReportWithCoach(booking, coach.id)}
                               >
-                                {reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
-                                  ? '修改回報'
-                                  : '回報'}
+                                {isReported ? '📝 修改' : '回報'}
                               </Button>
                             </div>
                           )
@@ -1335,29 +1336,32 @@ export function CoachReport({
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {displayDrivers.map(driver => {
                           const reportStatus = getReportStatus(booking, driver.id)
+                          const isReported = reportStatus.hasDriverReport
                           
                           return (
                             <div
                               key={driver.id}
                               style={{
                                   padding: '8px 12px',
-                                background: '#f5f5f5',
+                                background: isReported ? '#e3f2fd' : '#f5f5f5',
                                 borderRadius: '6px',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
-                                gap: '8px'
+                                gap: '8px',
+                                border: isReported ? '1px solid #90caf9' : 'none'
                               }}
                             >
-                                <span style={{ fontWeight: '500' }}>
+                                <span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {isReported && <span style={{ color: '#2196f3' }}>✓</span>}
                                   {driver.name}
                                 </span>
                               <Button
-                                variant="primary"
+                                variant={isReported ? 'outline' : 'primary'}
                                 size="small"
                                 onClick={() => startReportWithCoach(booking, driver.id)}
                               >
-                                {reportStatus.hasDriverReport ? '修改回報' : '回報'}
+                                {isReported ? '📝 修改' : '回報'}
                               </Button>
                             </div>
                           )

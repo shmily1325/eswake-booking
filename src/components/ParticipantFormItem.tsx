@@ -52,7 +52,7 @@ export function ParticipantFormItem({
         position: 'relative'
       }}
     >
-      {/* 刪除按鈕 */}
+      {/* 刪除按鈕 - 淺色背景，hover 變紅 */}
       {showRemoveButton && (
         <button
           onClick={() => onRemove(index)}
@@ -61,15 +61,30 @@ export function ParticipantFormItem({
             top: '8px',
             right: '8px',
             padding: '4px 8px',
-            background: '#f44336',
-            color: 'white',
-            border: 'none',
+            background: '#f5f5f5',
+            color: '#999',
+            border: '1px solid #e0e0e0',
             borderRadius: '4px',
             cursor: 'pointer',
-            fontSize: '12px'
+            fontSize: '12px',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#ffebee'
+            e.currentTarget.style.color = '#f44336'
+            e.currentTarget.style.borderColor = '#ffcdd2'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#f5f5f5'
+            e.currentTarget.style.color = '#999'
+            e.currentTarget.style.borderColor = '#e0e0e0'
           }}
         >
-          刪除
+          <span style={{ fontSize: '14px', lineHeight: 1 }}>×</span>
+          <span>移除</span>
         </button>
       )}
 

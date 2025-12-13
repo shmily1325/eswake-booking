@@ -26,6 +26,7 @@ export function MemberTransaction() {
   const [showExportDialog, setShowExportDialog] = useState(false)
   const [exportStartDate, setExportStartDate] = useState('')
   const [exportEndDate, setExportEndDate] = useState('')
+  const [exportFormat, setExportFormat] = useState<'text' | 'number'>('text') // 匯出格式
   const [exporting, setExporting] = useState(false)
   const [showFinanceImport, setShowFinanceImport] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -395,54 +396,57 @@ export function MemberTransaction() {
         return labels[category] || category
       }
 
-      // 根據金額正負判斷是增加還是減少
-      const getActionLabel = (t: any) => {
-        const adjustType = t.adjust_type
-        const value = t.amount || t.minutes || 0
-        
-        // 優先用 adjust_type，沒有的話看金額正負
-        if (adjustType === 'increase' || (!adjustType && value > 0)) {
-          return '增加'
-        } else if (adjustType === 'decrease' || (!adjustType && value < 0)) {
-          return '減少'
+      // CSV 欄位轉義：處理逗號、雙引號、換行符
+      const csvEscape = (str: string) => {
+        if (!str) return ''
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`
         }
-        return ''
+        return str
       }
 
-      // 根據類別獲取對應的交易後餘額（不用 toLocaleString 避免逗號問題）
-      const getAfterValue = (t: any) => {
+      // 取得變動的數值（正負號）
+      const getChangeNumber = (t: any) => {
+        const isAmount = t.category === 'balance' || t.category === 'vip_voucher'
+        const value = isAmount ? (t.amount || 0) : (t.minutes || 0)
+        const absValue = Math.abs(value)
+        
+        // 判斷正負（優先用 adjust_type）
+        if (t.adjust_type === 'increase' || (!t.adjust_type && value > 0)) {
+          return absValue
+        } else if (t.adjust_type === 'decrease' || (!t.adjust_type && value < 0)) {
+          return -absValue
+        }
+        return 0
+      }
+
+      // 取得交易後餘額的數值
+      const getAfterNumber = (t: any) => {
         switch (t.category) {
           case 'balance':
-            return t.balance_after != null ? `$${t.balance_after}` : ''
+            return t.balance_after ?? ''
           case 'vip_voucher':
-            return t.vip_voucher_amount_after != null ? `$${t.vip_voucher_amount_after}` : ''
+            return t.vip_voucher_amount_after ?? ''
           case 'designated_lesson':
-            return t.designated_lesson_minutes_after != null ? `${t.designated_lesson_minutes_after}分` : ''
+            return t.designated_lesson_minutes_after ?? ''
           case 'boat_voucher_g23':
-            return t.boat_voucher_g23_minutes_after != null ? `${t.boat_voucher_g23_minutes_after}分` : ''
+            return t.boat_voucher_g23_minutes_after ?? ''
           case 'boat_voucher_g21':
           case 'boat_voucher_g21_panther':
-            return t.boat_voucher_g21_panther_minutes_after != null ? `${t.boat_voucher_g21_panther_minutes_after}分` : ''
+            return t.boat_voucher_g21_panther_minutes_after ?? ''
           case 'gift_boat_hours':
-            return t.gift_boat_hours_after != null ? `${t.gift_boat_hours_after}分` : ''
+            return t.gift_boat_hours_after ?? ''
           default:
             return ''
         }
       }
 
-      // 格式化變動數值（含正負號，不用 toLocaleString 避免逗號問題）
-      const getChangeValue = (t: any) => {
+      // 格式化變動（文字版：-$500, +30分）
+      const getChangeText = (t: any) => {
         const isAmount = t.category === 'balance' || t.category === 'vip_voucher'
-        const value = isAmount ? (t.amount || 0) : (t.minutes || 0)
-        const absValue = Math.abs(value)
-        
-        // 判斷正負號（優先用 adjust_type，沒有的話看數值本身）
-        let sign = ''
-        if (t.adjust_type === 'increase' || (!t.adjust_type && value > 0)) {
-          sign = '+'
-        } else if (t.adjust_type === 'decrease' || (!t.adjust_type && value < 0)) {
-          sign = '-'
-        }
+        const num = getChangeNumber(t)
+        const sign = num >= 0 ? '+' : '-'
+        const absValue = Math.abs(num)
         
         if (isAmount) {
           return `${sign}$${absValue}`
@@ -451,34 +455,58 @@ export function MemberTransaction() {
         }
       }
 
-      // CSV 欄位轉義：處理逗號、雙引號、換行符
-      const csvEscape = (str: string) => {
-        if (!str) return ''
-        // 如果包含逗號、雙引號或換行，需要用雙引號包裹，並將內部雙引號轉義
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-          return `"${str.replace(/"/g, '""')}"`
+      // 格式化交易後餘額（文字版：$26066, 30分）
+      const getAfterText = (t: any) => {
+        const isAmount = t.category === 'balance' || t.category === 'vip_voucher'
+        const num = getAfterNumber(t)
+        if (num === '') return ''
+        
+        if (isAmount) {
+          return `$${num}`
+        } else {
+          return `${num}分`
         }
-        return str
       }
 
-      const csv = [
-        ['會員', '日期', '項目', '操作', '變動', '交易後餘額', '說明', '備註'].join(','),
-        ...data.map((t: any) => [
-          csvEscape((t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'),
-          t.transaction_date || t.created_at?.split('T')[0] || '',
-          getCategoryLabel(t.category),
-          getActionLabel(t),
-          `"${getChangeValue(t)}"`,  // 用雙引號包裹，讓 Excel 當成文字
-          `"${getAfterValue(t)}"`,   // 用雙引號包裹，讓 Excel 當成文字
-          csvEscape(t.description || ''),
-          csvEscape(t.notes || ''),
-        ].join(','))
-      ].join('\n')
+      let csv: string
+      let filename: string
+
+      if (exportFormat === 'text') {
+        // 文字好讀版
+        csv = [
+          ['會員', '日期', '項目', '變動', '交易後餘額', '說明', '備註'].join(','),
+          ...data.map((t: any) => [
+            csvEscape((t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'),
+            t.transaction_date || t.created_at?.split('T')[0] || '',
+            getCategoryLabel(t.category),
+            `"${getChangeText(t)}"`,
+            `"${getAfterText(t)}"`,
+            csvEscape(t.description || ''),
+            csvEscape(t.notes || ''),
+          ].join(','))
+        ].join('\n')
+        filename = `總帳_文字版_${exportStartDate}_至_${exportEndDate}.csv`
+      } else {
+        // 數字篩選版
+        csv = [
+          ['會員', '日期', '項目', '變動', '交易後餘額', '說明', '備註'].join(','),
+          ...data.map((t: any) => [
+            csvEscape((t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'),
+            t.transaction_date || t.created_at?.split('T')[0] || '',
+            getCategoryLabel(t.category),
+            getChangeNumber(t),
+            getAfterNumber(t),
+            csvEscape(t.description || ''),
+            csvEscape(t.notes || ''),
+          ].join(','))
+        ].join('\n')
+        filename = `總帳_數字版_${exportStartDate}_至_${exportEndDate}.csv`
+      }
 
       const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
-      link.download = `總帳_${exportStartDate}_至_${exportEndDate}.csv`
+      link.download = filename
       link.click()
 
       setShowExportDialog(false)
@@ -1087,6 +1115,52 @@ export function MemberTransaction() {
                     fontSize: '14px',
                   }}
                 />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  匯出格式
+                </label>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => setExportFormat('text')}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      border: exportFormat === 'text' ? '2px solid #1976d2' : '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      background: exportFormat === 'text' ? '#e3f2fd' : 'white',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ fontWeight: '500', marginBottom: '4px', color: exportFormat === 'text' ? '#1976d2' : '#333' }}>
+                      📖 文字好讀版
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      -$500, +30分
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setExportFormat('number')}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      border: exportFormat === 'number' ? '2px solid #1976d2' : '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      background: exportFormat === 'number' ? '#e3f2fd' : 'white',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ fontWeight: '500', marginBottom: '4px', color: exportFormat === 'number' ? '#1976d2' : '#333' }}>
+                      📊 數字篩選版
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      -500, 30（可排序篩選）
+                    </div>
+                  </button>
+                </div>
               </div>
 
               <div style={{
