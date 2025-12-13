@@ -525,23 +525,24 @@ export function MemberTransaction() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      {/* 電腦版：PageHeader + 控制區一起 sticky */}
+      {/* PageHeader + 控制區一起 sticky */}
       <div style={{
-        position: isMobile ? 'static' : 'sticky',
-        top: 0,
+        position: 'sticky',
+        top: isMobile ? '-12px' : 0,
         zIndex: 100,
         background: '#f5f5f5',
-        marginLeft: isMobile ? 0 : '-20px',
-        marginRight: isMobile ? 0 : '-20px',
-        paddingLeft: isMobile ? 0 : '20px',
-        paddingRight: isMobile ? 0 : '20px',
-        paddingBottom: isMobile ? 0 : '12px',
+        marginLeft: isMobile ? '-12px' : '-20px',
+        marginRight: isMobile ? '-12px' : '-20px',
+        paddingLeft: isMobile ? '12px' : '20px',
+        paddingRight: isMobile ? '12px' : '20px',
+        paddingTop: isMobile ? '12px' : 0,
+        paddingBottom: '12px',
       }}>
         <PageHeader 
-          title="💰 會員儲值" 
+          title={isMobile ? '會員儲值' : '💰 會員儲值'} 
           user={user} 
           showBaoLink={true}
-          extraLinks={[{ label: '👥 會員管理', link: '/members' }]}
+          extraLinks={[{ label: isMobile ? '👥' : '👥 會員管理', link: '/members' }]}
         />
         {/* 數據總覽 */}
         <div style={{

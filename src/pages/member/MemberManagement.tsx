@@ -581,10 +581,10 @@ export function MemberManagement() {
         background: '#f5f5f5'
       }}>
         <PageHeader 
-          title="👥 會員管理" 
+          title="會員管理" 
           user={user} 
           showBaoLink={true} 
-          extraLinks={[{ label: '💰 會員儲值', link: '/member-transaction' }]}
+          extraLinks={[{ label: '💰', link: '/member-transaction' }]}
         />
 
         {/* 搜尋框骨架屏 */}
@@ -665,23 +665,24 @@ export function MemberManagement() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      {/* 電腦版：PageHeader + 篩選列一起 sticky */}
+      {/* PageHeader + 篩選列一起 sticky */}
       <div style={{
-        position: isMobile ? 'static' : 'sticky',
-        top: 0,
+        position: 'sticky',
+        top: isMobile ? '-12px' : 0,
         zIndex: 100,
         background: '#f5f5f5',
-        marginLeft: isMobile ? 0 : '-20px',
-        marginRight: isMobile ? 0 : '-20px',
-        paddingLeft: isMobile ? 0 : '20px',
-        paddingRight: isMobile ? 0 : '20px',
-        paddingBottom: isMobile ? 0 : '12px',
+        marginLeft: isMobile ? '-16px' : '-20px',
+        marginRight: isMobile ? '-16px' : '-20px',
+        paddingLeft: isMobile ? '16px' : '20px',
+        paddingRight: isMobile ? '16px' : '20px',
+        paddingTop: isMobile ? '12px' : 0,
+        paddingBottom: '12px',
       }}>
         <PageHeader 
-          title="👥 會員管理" 
+          title={isMobile ? '會員管理' : '👥 會員管理'} 
           user={user} 
           showBaoLink={true} 
-          extraLinks={[{ label: '💰 會員儲值', link: '/member-transaction' }]}
+          extraLinks={[{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }]}
         />
         {/* 搜尋欄 + 新增會員按鈕 */}
         <div style={{
