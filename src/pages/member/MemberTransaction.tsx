@@ -37,7 +37,6 @@ export function MemberTransaction() {
   const [showHelp, setShowHelp] = useState(false) // 使用說明預設收合
   const [sortBy, setSortBy] = useState<'nickname' | 'balance' | 'vip' | 'g23' | 'g21' | 'lastTransaction'>('nickname')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
 
   // 載入會員列表（含最後交易日期）
@@ -452,17 +451,27 @@ export function MemberTransaction() {
         }
       }
 
+      // CSV 欄位轉義：處理逗號、雙引號、換行符
+      const csvEscape = (str: string) => {
+        if (!str) return ''
+        // 如果包含逗號、雙引號或換行，需要用雙引號包裹，並將內部雙引號轉義
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`
+        }
+        return str
+      }
+
       const csv = [
         ['會員', '日期', '項目', '操作', '變動', '交易後餘額', '說明', '備註'].join(','),
         ...data.map((t: any) => [
-          `"${(t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'}"`,
+          csvEscape((t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'),
           t.transaction_date || t.created_at?.split('T')[0] || '',
           getCategoryLabel(t.category),
           getActionLabel(t),
           getChangeValue(t),
           getAfterValue(t),
-          `"${t.description || ''}"`,
-          `"${t.notes || ''}"`,
+          csvEscape(t.description || ''),
+          csvEscape(t.notes || ''),
         ].join(','))
       ].join('\n')
 
@@ -564,81 +573,41 @@ export function MemberTransaction() {
           💡 說明 {showHelp ? '▲' : '▼'}
         </button>
 
-        {/* 更多選單 */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setShowMoreMenu(!showMoreMenu)}
-            style={{
-              padding: '8px 14px',
-              background: showMoreMenu ? '#f5f5f5' : 'white',
-              color: '#666',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            ⚙️ 更多 {showMoreMenu ? '▲' : '▼'}
-          </button>
-          
-          {showMoreMenu && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              marginTop: '4px',
-              background: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              border: '1px solid #e0e0e0',
-              zIndex: 100,
-              minWidth: '160px',
-              overflow: 'hidden',
-            }}>
-              <button
-                onClick={() => { handleExportFinance(); setShowMoreMenu(false) }}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  background: 'transparent',
-                  border: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                📤 匯出金流
-              </button>
-              <button
-                onClick={() => { setShowExportDialog(true); setShowMoreMenu(false) }}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  background: 'transparent',
-                  border: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                📋 匯出總帳
-              </button>
-            </div>
-          )}
-        </div>
+        {/* 匯出按鈕 */}
+        <button
+          onClick={handleExportFinance}
+          style={{
+            padding: '8px 14px',
+            background: 'white',
+            color: '#666',
+            border: '1px solid #ddd',
+            borderRadius: '6px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          📤 匯出金流
+        </button>
+        <button
+          onClick={() => setShowExportDialog(true)}
+          style={{
+            padding: '8px 14px',
+            background: 'white',
+            color: '#666',
+            border: '1px solid #ddd',
+            borderRadius: '6px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          📋 匯出總帳
+        </button>
       </div>
 
       {/* 使用說明（可收合） */}
