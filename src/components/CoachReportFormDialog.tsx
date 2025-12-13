@@ -83,10 +83,12 @@ export function CoachReportFormDialog({
           borderRadius: isMobile ? '0' : '12px',
           width: '100%',
           maxWidth: '800px',
+          height: isMobile ? '100%' : 'auto',
           maxHeight: isMobile ? '100%' : '90vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          overflow: 'hidden'  // 確保子元素不會溢出
         }}
       >
         {/* 标题 */}
@@ -232,16 +234,15 @@ export function CoachReportFormDialog({
           )}
         </div>
 
-        {/* 底部按钮 */}
+        {/* 底部按钮 - 不使用 sticky 避免手機鍵盤問題 */}
         <div
           style={{
             padding: '20px',
             borderTop: '1px solid #e0e0e0',
             display: 'flex',
             gap: '12px',
-            position: 'sticky',
-            bottom: 0,
-            background: 'white'
+            background: 'white',
+            flexShrink: 0  // 防止被壓縮
           }}
         >
           <button
@@ -263,12 +264,40 @@ export function CoachReportFormDialog({
               ...getButtonStyle('primary'),
               flex: 2,
               opacity: isSubmitting ? 0.7 : 1,
-              cursor: isSubmitting ? 'not-allowed' : 'pointer'
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
             }}
           >
-            {isSubmitting ? '提交中...' : '提交回報'}
+            {isSubmitting ? (
+              <>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderTopColor: 'white',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite'
+                  }}
+                />
+                提交中...
+              </>
+            ) : (
+              '提交回報'
+            )}
           </button>
         </div>
+        
+        {/* Spinner 動畫的 CSS */}
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     </div>
   )

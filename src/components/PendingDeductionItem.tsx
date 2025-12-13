@@ -1351,15 +1351,15 @@ function DeductionItemRow({
               
               {/* 自訂輸入框（當選擇自訂或金額不在列表中時顯示） */}
               {(item.amount !== undefined && item.amount !== null && !commonAmounts.concat(vipVoucherAmounts).concat(getDesignatedLessonAmounts()).includes(item.amount)) && (
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="請輸入金額"
-                  value={item.amount || ''}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '') // 只允許數字
-                    onUpdate({ amount: parseInt(value) || 0 })
-                  }}
+                              <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="請輸入金額"
+                                  value={item.amount === 0 ? '0' : (item.amount || '')}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '') // 只允許數字
+                                    onUpdate({ amount: parseInt(value) || 0 })
+                                  }}
                   style={{
                     padding: '10px 12px',
                     border: '2px solid #f59e0b',
@@ -1418,17 +1418,17 @@ function DeductionItemRow({
                 <option value="custom">✏️ 自訂時數</option>
               </select>
               
-              {/* 自訂輸入框 */}
-              {(item.minutes !== undefined && item.minutes !== null && ![20, 30, 40, 60, 90].includes(item.minutes)) && (
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="請輸入分鐘數"
-                  value={item.minutes || ''}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '') // 只允許數字
-                    onUpdate({ minutes: parseInt(value) || 0 })
-                  }}
+                              {/* 自訂輸入框 */}
+                              {(item.minutes !== undefined && item.minutes !== null && ![20, 30, 40, 60, 90].includes(item.minutes)) && (
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="請輸入分鐘數"
+                                  value={item.minutes === 0 ? '0' : (item.minutes || '')}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '') // 只允許數字
+                                    onUpdate({ minutes: parseInt(value) || 0 })
+                                  }}
                   style={{
                     padding: '10px 12px',
                     border: '2px solid #f59e0b',

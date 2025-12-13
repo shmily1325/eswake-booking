@@ -468,8 +468,8 @@ export function MemberTransaction() {
           t.transaction_date || t.created_at?.split('T')[0] || '',
           getCategoryLabel(t.category),
           getActionLabel(t),
-          getChangeValue(t),
-          getAfterValue(t),
+          `"${getChangeValue(t)}"`,  // 用雙引號包裹，讓 Excel 當成文字
+          `"${getAfterValue(t)}"`,   // 用雙引號包裹，讓 Excel 當成文字
           csvEscape(t.description || ''),
           csvEscape(t.notes || ''),
         ].join(','))
