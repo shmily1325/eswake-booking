@@ -541,6 +541,24 @@ export function MemberManagement() {
           if (!dateB_end) return -1
           comparison = dateA_end.localeCompare(dateB_end)
           break
+        case 'board_expiry':
+          // 取會員最早的置板到期日
+          const getEarliestBoardExpiry = (member: Member) => {
+            if (!member.board_slots || member.board_slots.length === 0) return null
+            const expiryDates = member.board_slots
+              .map(slot => normalizeDate(slot.expires_at))
+              .filter((d): d is string => d !== null)
+            if (expiryDates.length === 0) return null
+            return expiryDates.sort()[0] // 取最早的到期日
+          }
+          const boardA = getEarliestBoardExpiry(a)
+          const boardB = getEarliestBoardExpiry(b)
+          // 空值永遠排最後（沒有置板的排最後）
+          if (!boardA && !boardB) return 0
+          if (!boardA) return 1
+          if (!boardB) return -1
+          comparison = boardA.localeCompare(boardB)
+          break
         case 'nickname':
         default:
           const nameA = (a.nickname || a.name || '').toLowerCase()
@@ -821,7 +839,8 @@ export function MemberManagement() {
         {[
           { key: 'nickname', label: '暱稱' },
           { key: 'updated_at', label: '最近更新' },
-          { key: 'membership_end_date', label: '會籍到期' }
+          { key: 'membership_end_date', label: '會籍到期' },
+          { key: 'board_expiry', label: '置板到期' }
         ].map(({ key, label }) => (
           <button
             key={key}

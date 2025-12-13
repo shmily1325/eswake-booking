@@ -481,15 +481,15 @@ export function MemberTransaction() {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>📚 總指定課</div>
+            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>🚤 總G23船券</div>
             <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
-              {stats.totalDesignatedLesson.toLocaleString()}分
+              {stats.totalG23.toLocaleString()}分
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>👥 會員數</div>
+            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>⛵ 總G21/黑豹</div>
             <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
-              {stats.memberCount}
+              {stats.totalG21.toLocaleString()}分
             </div>
           </div>
         </div>
@@ -743,11 +743,11 @@ export function MemberTransaction() {
         {/* 排序按鈕 */}
         {[
           { key: 'nickname' as const, label: '暱稱' },
-          { key: 'balance' as const, label: '💰儲值' },
-          { key: 'vip' as const, label: '💎VIP' },
-          { key: 'g23' as const, label: '🚤G23' },
-          { key: 'g21' as const, label: '⛵G21' },
-          { key: 'lastTransaction' as const, label: '📅交易' }
+          { key: 'balance' as const, label: '儲值' },
+          { key: 'vip' as const, label: 'VIP' },
+          { key: 'g23' as const, label: 'G23' },
+          { key: 'g21' as const, label: '黑豹/G21' },
+          { key: 'lastTransaction' as const, label: '交易日期' }
         ].map(({ key, label }) => (
           <button
             key={key}
@@ -953,66 +953,42 @@ export function MemberTransaction() {
                   }}>
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💰 儲值餘額</div>
-                      <div style={{ 
-                        fontSize: '16px', 
-                        fontWeight: 'bold', 
-                        color: (member.balance || 0) > 0 ? '#333' : '#ccc' 
-                      }}>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         ${(member.balance || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💎 VIP票券</div>
-                      <div style={{ 
-                        fontSize: '16px', 
-                        fontWeight: 'bold', 
-                        color: (member.vip_voucher_amount || 0) > 0 ? '#333' : '#ccc' 
-                      }}>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         ${(member.vip_voucher_amount || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>📚 指定課</div>
-                      <div style={{ 
-                        fontSize: '16px', 
-                        fontWeight: 'bold', 
-                        color: (member.designated_lesson_minutes || 0) > 0 ? '#333' : '#ccc' 
-                      }}>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         {(member.designated_lesson_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🚤 G23船券</div>
-                      <div style={{ 
-                        fontSize: '16px', 
-                        fontWeight: 'bold', 
-                        color: (member.boat_voucher_g23_minutes || 0) > 0 ? '#333' : '#ccc' 
-                      }}>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>⛵ G21/黑豹</div>
-                      <div style={{ 
-                        fontSize: '16px', 
-                        fontWeight: 'bold', 
-                        color: (member.boat_voucher_g21_panther_minutes || 0) > 0 ? '#333' : '#ccc' 
-                      }}>
+                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>⛵ 黑豹/G21</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
-                      <div style={{ 
-                        fontSize: '16px', 
-                        fontWeight: 'bold', 
-                        color: (member.gift_boat_hours || 0) > 0 ? '#333' : '#ccc' 
-                      }}>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         {(member.gift_boat_hours || 0).toLocaleString()}分
                       </div>
                     </div>
