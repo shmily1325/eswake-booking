@@ -61,90 +61,112 @@ export function assembleBookingsWithRelations(
   if (!relations || typeof relations !== 'object') {
     throw new TypeError('relations 必須是物件')
   }
-  return bookings.map(booking => {
-    const bookingCoaches = (relations.coaches || [])
-      .filter(bc => bc.booking_id === booking.id)
-      .map(bc => ({ 
-        id: bc.coach_id, 
-        name: bc.coaches?.name || '',
-        status: bc.coaches?.status || null,
-        notes: bc.coaches?.notes || null,
-        created_at: bc.coaches?.created_at || null,
-        updated_at: bc.coaches?.updated_at || null,
-        user_email: bc.coaches?.user_email || null,
-        designated_lesson_price_30min: bc.coaches?.designated_lesson_price_30min || null
-      }))
 
-    const bookingDrivers = (relations.drivers || [])
-      .filter(bd => bd.booking_id === booking.id)
-      .map(bd => ({ 
-        id: bd.driver_id, 
-        name: bd.coaches?.name || '',
-        status: bd.coaches?.status || null,
-        notes: bd.coaches?.notes || null,
-        created_at: bd.coaches?.created_at || null,
-        updated_at: bd.coaches?.updated_at || null,
-        user_email: bd.coaches?.user_email || null,
-        designated_lesson_price_30min: bd.coaches?.designated_lesson_price_30min || null
-      }))
-
-    const coachReport = (relations.reports || []).find(
-      r => r.booking_id === booking.id
-    )
-
-    const bookingParticipants = (relations.participants || [])
-      .filter(p => p.booking_id === booking.id)
-      .map(p => {
-        // 如果有 member_id，優先使用 members 表的最新資料
-        let displayName = p.participant_name
-        if (p.member_id && p.members) {
-          displayName = p.members.nickname || p.members.name
-        }
-
-        return {
-          id: p.id,
-          booking_id: p.booking_id,
-          coach_id: p.coach_id,
-          member_id: p.member_id,
-          participant_name: displayName,
-          duration_min: p.duration_min,
-          payment_method: p.payment_method,
-          lesson_type: p.lesson_type || 'undesignated',
-          notes: p.notes,
-          status: p.status,
-          is_deleted: p.is_deleted,
-          is_teaching: p.is_teaching,
-          transaction_id: p.transaction_id,
-          replaces_id: p.replaces_id,
-          replaced_by_id: p.replaced_by_id,
-          created_at: p.created_at,
-          updated_at: p.updated_at,
-          deleted_at: p.deleted_at,
-          reported_at: p.reported_at
-        }
-      })
-
-    // 更新 contact_name - 從 booking_members 取得最新會員名字
-    let updatedContactName = booking.contact_name
-    const bookingMembers = (relations.bookingMembers || []).filter(
-      bm => bm.booking_id === booking.id
-    )
-    if (bookingMembers.length > 0) {
-      const memberNames = bookingMembers
-        .map(bm => bm.members?.nickname || bm.members?.name)
-        .filter(Boolean)
-      if (memberNames.length > 0) {
-        updatedContactName = memberNames.join(', ')
-      }
+  // 🚀 優化：預先建立 Map，避免每個預約都重複遍歷關聯陣列
+  // 複雜度從 O(bookings × relations) 降到 O(bookings + relations)
+  
+  // 教練 Map
+  const coachesMap = new Map<number, Coach[]>()
+  ;(relations.coaches || []).forEach(bc => {
+    if (!coachesMap.has(bc.booking_id)) {
+      coachesMap.set(bc.booking_id, [])
     }
+    coachesMap.get(bc.booking_id)!.push({
+      id: bc.coach_id,
+      name: bc.coaches?.name || '',
+      status: bc.coaches?.status || null,
+      notes: bc.coaches?.notes || null,
+      created_at: bc.coaches?.created_at || null,
+      updated_at: bc.coaches?.updated_at || null,
+      user_email: bc.coaches?.user_email || null,
+      designated_lesson_price_30min: bc.coaches?.designated_lesson_price_30min || null
+    })
+  })
+
+  // 駕駛 Map
+  const driversMap = new Map<number, Coach[]>()
+  ;(relations.drivers || []).forEach(bd => {
+    if (!driversMap.has(bd.booking_id)) {
+      driversMap.set(bd.booking_id, [])
+    }
+    driversMap.get(bd.booking_id)!.push({
+      id: bd.driver_id,
+      name: bd.coaches?.name || '',
+      status: bd.coaches?.status || null,
+      notes: bd.coaches?.notes || null,
+      created_at: bd.coaches?.created_at || null,
+      updated_at: bd.coaches?.updated_at || null,
+      user_email: bd.coaches?.user_email || null,
+      designated_lesson_price_30min: bd.coaches?.designated_lesson_price_30min || null
+    })
+  })
+
+  // 回報 Map
+  const reportsMap = new Map<number, CoachReport>()
+  ;(relations.reports || []).forEach(r => {
+    reportsMap.set(r.booking_id, r)
+  })
+
+  // 參與者 Map
+  const participantsMap = new Map<number, Participant[]>()
+  ;(relations.participants || []).forEach(p => {
+    if (!participantsMap.has(p.booking_id)) {
+      participantsMap.set(p.booking_id, [])
+    }
+    
+    // 如果有 member_id，優先使用 members 表的最新資料
+    let displayName = p.participant_name
+    if (p.member_id && p.members) {
+      displayName = p.members.nickname || p.members.name
+    }
+
+    participantsMap.get(p.booking_id)!.push({
+      id: p.id,
+      booking_id: p.booking_id,
+      coach_id: p.coach_id,
+      member_id: p.member_id,
+      participant_name: displayName,
+      duration_min: p.duration_min,
+      payment_method: p.payment_method,
+      lesson_type: p.lesson_type || 'undesignated',
+      notes: p.notes,
+      status: p.status,
+      is_deleted: p.is_deleted,
+      is_teaching: p.is_teaching,
+      transaction_id: p.transaction_id,
+      replaces_id: p.replaces_id,
+      replaced_by_id: p.replaced_by_id,
+      created_at: p.created_at,
+      updated_at: p.updated_at,
+      deleted_at: p.deleted_at,
+      reported_at: p.reported_at
+    })
+  })
+
+  // 預約會員 Map
+  const bookingMembersMap = new Map<number, string>()
+  ;(relations.bookingMembers || []).forEach(bm => {
+    const name = bm.members?.nickname || bm.members?.name
+    if (name) {
+      const existing = bookingMembersMap.get(bm.booking_id)
+      bookingMembersMap.set(
+        bm.booking_id,
+        existing ? `${existing}, ${name}` : name
+      )
+    }
+  })
+
+  // 組裝預約資料 - 現在每個查找都是 O(1)
+  return bookings.map(booking => {
+    const updatedContactName = bookingMembersMap.get(booking.id) || booking.contact_name
 
     return {
       ...booking,
       contact_name: updatedContactName,
-      coaches: bookingCoaches,
-      drivers: bookingDrivers,
-      coach_report: coachReport,
-      participants: bookingParticipants
+      coaches: coachesMap.get(booking.id) || [],
+      drivers: driversMap.get(booking.id) || [],
+      coach_report: reportsMap.get(booking.id),
+      participants: participantsMap.get(booking.id) || []
     }
   })
 }

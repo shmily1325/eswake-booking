@@ -174,23 +174,42 @@ export function CoachReportFormDialog({
                 <button
                   onClick={onParticipantAdd}
                   style={{
-                    padding: '8px 16px',
+                    padding: '10px 18px',
                     background: 'white',
                     color: '#2196f3',
-                    border: '1px solid #2196f3',
-                    borderRadius: '6px',
+                    border: '2px solid #2196f3',
+                    borderRadius: '8px',
                     fontSize: '14px',
-                    fontWeight: '500',
+                    fontWeight: '600',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.2s'
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = '#e3f2fd'
                   }}
                   onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white'
+                    e.currentTarget.style.transform = 'scale(1)'
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = 'scale(0.95)'
+                    e.currentTarget.style.background = '#bbdefb'
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)'
+                    e.currentTarget.style.background = '#e3f2fd'
+                  }}
+                  onTouchStart={(e) => {
+                    e.currentTarget.style.transform = 'scale(0.95)'
+                    e.currentTarget.style.background = '#bbdefb'
+                  }}
+                  onTouchEnd={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)'
                     e.currentTarget.style.background = 'white'
                   }}
                 >
