@@ -1383,6 +1383,13 @@ function DeductionItemRow({
                 onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
               >
                 <option value="">請選擇金額</option>
+                {/* 如果當前金額不在標準列表中，顯示為選項 */}
+                {item.amount !== undefined && item.amount !== null && item.amount > 0 && 
+                  !(isDesignatedLesson || isDesignatedLessonFromBalance ? getDesignatedLessonAmounts() : (isVipVoucher ? vipVoucherAmounts : commonAmounts)).includes(item.amount) && (
+                  <option value={item.amount}>
+                    📝 {defaultMinutes}分 - ${item.amount.toLocaleString()}（自動計算）
+                  </option>
+                )}
                 {(isDesignatedLesson || isDesignatedLessonFromBalance ? getDesignatedLessonAmounts() : (isVipVoucher ? vipVoucherAmounts : commonAmounts)).map((amount, idx) => {
                   // 計算對應的分鐘數
                   let minutes = 0
