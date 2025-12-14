@@ -147,10 +147,11 @@ export function CoachReportFormDialog({
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={driverDuration === 0 ? '0' : (driverDuration || '')}
+                  value={driverDuration ?? ''}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, '') // 只允許數字
-                    onDriverDurationChange(parseInt(value) || 0)
+                    // 允許空值，避免清空時自動填 0 導致無法重打
+                    onDriverDurationChange(value === '' ? 0 : parseInt(value))
                   }}
                   style={getInputStyle(isMobile)}
                   placeholder="60"

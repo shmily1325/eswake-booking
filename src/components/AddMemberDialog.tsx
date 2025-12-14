@@ -466,26 +466,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               </div>
             )}
 
-            {/* 贈送時數 */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#ff9800' }}>
-                ⏱️ 贈送時數（分鐘） <span style={{ fontSize: '13px' }}>（選填）</span>
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formData.free_hours}
-                onChange={(e) => {
-                  const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
-                  setFormData({ ...formData, free_hours: parseInt(numValue) || 0 })
-                }}
-                placeholder="0"
-                style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
-            </div>
-
             {/* 置板服務 */}
             <div style={{ 
               marginBottom: '16px',

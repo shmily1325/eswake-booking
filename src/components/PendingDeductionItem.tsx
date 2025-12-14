@@ -1396,10 +1396,11 @@ function DeductionItemRow({
                                   type="text"
                                   inputMode="numeric"
                                   placeholder="請輸入金額"
-                                  value={item.amount === 0 ? '0' : (item.amount || '')}
+                                  value={item.amount ?? ''}
                                   onChange={(e) => {
                                     const value = e.target.value.replace(/\D/g, '') // 只允許數字
-                                    onUpdate({ amount: parseInt(value) || 0 })
+                                    // 允許空值，避免清空時自動填 0 導致無法重打
+                                    onUpdate({ amount: value === '' ? 0 : parseInt(value) })
                                   }}
                   style={{
                     padding: '10px 12px',
@@ -1465,10 +1466,11 @@ function DeductionItemRow({
                                   type="text"
                                   inputMode="numeric"
                                   placeholder="請輸入分鐘數"
-                                  value={item.minutes === 0 ? '0' : (item.minutes || '')}
+                                  value={item.minutes ?? ''}
                                   onChange={(e) => {
                                     const value = e.target.value.replace(/\D/g, '') // 只允許數字
-                                    onUpdate({ minutes: parseInt(value) || 0 })
+                                    // 允許空值，避免清空時自動填 0 導致無法重打
+                                    onUpdate({ minutes: value === '' ? 0 : parseInt(value) })
                                   }}
                   style={{
                     padding: '10px 12px',

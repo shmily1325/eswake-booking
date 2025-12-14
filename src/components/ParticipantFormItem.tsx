@@ -219,10 +219,17 @@ export function ParticipantFormItem({
         <input
           type="text"
           inputMode="numeric"
-          value={participant.duration_min === 0 ? '0' : (participant.duration_min || '')}
+          value={participant.duration_min ?? ''}
           onChange={(e) => {
             const value = e.target.value.replace(/\D/g, '') // 只允許數字
-            onUpdate(index, 'duration_min', parseInt(value) || 0)
+            // 允許空值，避免清空時自動填 0 導致無法重打
+            onUpdate(index, 'duration_min', value === '' ? '' : parseInt(value))
+          }}
+          onBlur={(e) => {
+            // 失焦時若為空，設為預設值 0
+            if (e.target.value === '') {
+              onUpdate(index, 'duration_min', 0)
+            }
           }}
           style={getInputStyle(isMobile)}
           placeholder="60"
