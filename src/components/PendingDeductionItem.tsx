@@ -137,12 +137,9 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   
   const defaultCategory = getDefaultCategory()
   
-  // 計算金額：每 5 分鐘價格（無條件捨去）× 5 分鐘數
-  // 例如：每小時 2500 元，25 分鐘 = floor(2500/12) × 5 = 208 × 5 = 1040 元
+  // 計算金額：每小時價格 × 時數 / 60（無條件捨去）
   const calculatePriceByDuration = (pricePerHour: number, durationMin: number): number => {
-    const pricePerFiveMin = Math.floor(pricePerHour / 12)  // 每 5 分鐘價格（無條件捨去）
-    const fiveMinUnits = Math.floor(durationMin / 5)       // 有幾個 5 分鐘
-    return pricePerFiveMin * fiveMinUnits
+    return Math.floor(pricePerHour * durationMin / 60)
   }
 
   // 取得預設金額（根據時長和動態價格計算）
@@ -1053,11 +1050,9 @@ function DeductionItemRow({
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [showNotes, setShowNotes] = useState(!!item.notes)
 
-  // 計算金額：每 5 分鐘價格（無條件捨去）× 5 分鐘數
+  // 計算金額：每小時價格 × 時數 / 60（無條件捨去）
   const calculatePriceByDuration = (pricePerHour: number, durationMin: number): number => {
-    const pricePerFiveMin = Math.floor(pricePerHour / 12)  // 每 5 分鐘價格（無條件捨去）
-    const fiveMinUnits = Math.floor(durationMin / 5)       // 有幾個 5 分鐘
-    return pricePerFiveMin * fiveMinUnits
+    return Math.floor(pricePerHour * durationMin / 60)
   }
 
   // 計算當前時數對應的金額（用於「自訂」選項）
