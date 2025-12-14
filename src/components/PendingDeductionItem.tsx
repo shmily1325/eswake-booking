@@ -1087,6 +1087,10 @@ function DeductionItemRow({
   const isDesignatedLessonFromBalance = isBalance && (item.description?.includes('【指定課】') || false)
   const currentCategory = categories.find(c => c.value === item.category)
   
+  // 判斷是否為非標準時數（不在 20/30/40/60/90 分鐘列表中）
+  const standardMinutes = [20, 30, 40, 60, 90]
+  const isNonStandardDuration = !standardMinutes.includes(defaultMinutes)
+  
   // 指定課的常用金額（根據教練價格計算，無條件捨去）
   const getDesignatedLessonAmounts = (): number[] => {
     if (!coachPrice30min) return []
@@ -1354,102 +1358,137 @@ function DeductionItemRow({
             }}>
               扣款金額：
             </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              {/* 下拉選單 */}
-              <select
-                value={item.amount || ''}
-                onChange={(e) => {
-                  const value = e.target.value
-                  if (value === 'custom') {
-                    // 切換到自訂模式，自動計算當前時數對應的金額
-                    const calculatedAmount = calculateAmountForDuration(item.category)
-                    onUpdate({ amount: calculatedAmount })
-                  } else {
-                    onUpdate({ amount: parseInt(value) })
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  padding: '10px 12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  background: 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
-              >
-                <option value="">請選擇金額</option>
-                {/* 如果當前金額不在標準列表中，顯示為選項 */}
-                {item.amount !== undefined && item.amount !== null && item.amount > 0 && 
-                  !(isDesignatedLesson || isDesignatedLessonFromBalance ? getDesignatedLessonAmounts() : (isVipVoucher ? vipVoucherAmounts : commonAmounts)).includes(item.amount) && (
-                  <option value={item.amount}>
-                    📝 {defaultMinutes}分 - ${item.amount.toLocaleString()}（自動計算）
-                  </option>
-                )}
-                {(isDesignatedLesson || isDesignatedLessonFromBalance ? getDesignatedLessonAmounts() : (isVipVoucher ? vipVoucherAmounts : commonAmounts)).map((amount, idx) => {
-                  // 計算對應的分鐘數
-                  let minutes = 0
-                  if ((isDesignatedLesson || isDesignatedLessonFromBalance) && coachPrice30min) {
-                    const minutesOptions = [20, 30, 40, 60, 90]
-                    minutes = minutesOptions[idx] || 0
-                  } else if (isBalance) {
-                    if (boatName.includes('G23')) {
-                      const map: Record<number, number> = { 5400: 30, 7200: 40, 10800: 60, 16200: 90 }
-                      minutes = map[amount] || 0
-                    } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
-                      const map: Record<number, number> = { 2000: 20, 3000: 30, 4000: 40, 6000: 60, 9000: 90 }
-                      minutes = map[amount] || 0
-                    } else if (boatName.includes('粉紅') || boatName.includes('200')) {
-                      const map: Record<number, number> = { 1200: 20, 1800: 30, 2400: 40, 3600: 60, 5400: 90 }
-                      minutes = map[amount] || 0
-                    }
-                  } else if (isVipVoucher) {
-                    if (boatName.includes('G23')) {
-                      const map: Record<number, number> = { 4250: 30, 5666: 40, 8500: 60, 12750: 90 }
-                      minutes = map[amount] || 0
-                    } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
-                      const map: Record<number, number> = { 1666: 20, 2500: 30, 3333: 40, 5000: 60, 7500: 90 }
-                      minutes = map[amount] || 0
-                    }
-                  }
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* 非標準時數：直接顯示自訂輸入框 + 計算說明 */}
+              {isNonStandardDuration && (isBalance || isVipVoucher) && !isDesignatedLessonFromBalance ? (
+                <div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '14px', color: '#666' }}>$</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="請輸入金額"
+                      value={item.amount ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '')
+                        onUpdate({ amount: value === '' ? 0 : parseInt(value) })
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        border: '2px solid #667eea',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        background: '#f8f9ff'
+                      }}
+                    />
+                  </div>
+                  {/* 計算說明 */}
+                  <div style={{ 
+                    marginTop: '6px',
+                    fontSize: '12px', 
+                    color: '#666',
+                    background: '#f5f5f5',
+                    padding: '6px 10px',
+                    borderRadius: '4px'
+                  }}>
+                    📝 {defaultMinutes}分鐘 × ${isBalance 
+                      ? (boatData?.balance_price_per_hour?.toLocaleString() || '?') 
+                      : (boatData?.vip_price_per_hour?.toLocaleString() || '?')}/小時 
+                    = <strong>${item.amount?.toLocaleString() || '?'}</strong>
+                    <span style={{ marginLeft: '8px', color: '#999' }}>（可修改）</span>
+                  </div>
+                </div>
+              ) : (
+                /* 標準時數：顯示下拉選單 */
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <select
+                    value={item.amount || ''}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (value === 'custom') {
+                        const calculatedAmount = calculateAmountForDuration(item.category)
+                        onUpdate({ amount: calculatedAmount })
+                      } else {
+                        onUpdate({ amount: parseInt(value) })
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      background: 'white',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+                  >
+                    <option value="">請選擇金額</option>
+                    {(isDesignatedLesson || isDesignatedLessonFromBalance ? getDesignatedLessonAmounts() : (isVipVoucher ? vipVoucherAmounts : commonAmounts)).map((amount, idx) => {
+                      let minutes = 0
+                      if ((isDesignatedLesson || isDesignatedLessonFromBalance) && coachPrice30min) {
+                        const minutesOptions = [20, 30, 40, 60, 90]
+                        minutes = minutesOptions[idx] || 0
+                      } else if (isBalance) {
+                        if (boatName.includes('G23')) {
+                          const map: Record<number, number> = { 5400: 30, 7200: 40, 10800: 60, 16200: 90 }
+                          minutes = map[amount] || 0
+                        } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
+                          const map: Record<number, number> = { 2000: 20, 3000: 30, 4000: 40, 6000: 60, 9000: 90 }
+                          minutes = map[amount] || 0
+                        } else if (boatName.includes('粉紅') || boatName.includes('200')) {
+                          const map: Record<number, number> = { 1200: 20, 1800: 30, 2400: 40, 3600: 60, 5400: 90 }
+                          minutes = map[amount] || 0
+                        }
+                      } else if (isVipVoucher) {
+                        if (boatName.includes('G23')) {
+                          const map: Record<number, number> = { 4250: 30, 5666: 40, 8500: 60, 12750: 90 }
+                          minutes = map[amount] || 0
+                        } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
+                          const map: Record<number, number> = { 1666: 20, 2500: 30, 3333: 40, 5000: 60, 7500: 90 }
+                          minutes = map[amount] || 0
+                        }
+                      }
+                      
+                      return (
+                        <option key={amount} value={amount}>
+                          {minutes > 0 ? `${minutes}分 - $${amount.toLocaleString()}` : `$${amount.toLocaleString()}`}
+                        </option>
+                      )
+                    })}
+                    <option value="custom">✏️ 自訂金額</option>
+                  </select>
                   
-                  return (
-                    <option key={amount} value={amount}>
-                      {minutes > 0 ? `${minutes}分 - $${amount.toLocaleString()}` : `$${amount.toLocaleString()}`}
-                    </option>
-                  )
-                })}
-                <option value="custom">✏️ 自訂金額</option>
-              </select>
-              
-              {/* 自訂輸入框（當選擇自訂或金額不在列表中時顯示） */}
-              {(item.amount !== undefined && item.amount !== null && !commonAmounts.concat(vipVoucherAmounts).concat(getDesignatedLessonAmounts()).includes(item.amount)) && (
-                              <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  placeholder="請輸入金額"
-                                  value={item.amount ?? ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '') // 只允許數字
-                                    // 允許空值，避免清空時自動填 0 導致無法重打
-                                    onUpdate({ amount: value === '' ? 0 : parseInt(value) })
-                                  }}
-                  style={{
-                    padding: '10px 12px',
-                    border: '2px solid #f59e0b',
-                    borderRadius: '8px',
-                    width: '150px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    background: 'white'
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#f59e0b'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#f59e0b'}
-                />
+                  {/* 自訂輸入框（當選擇自訂或金額不在列表中時顯示） */}
+                  {(item.amount !== undefined && item.amount !== null && !commonAmounts.concat(vipVoucherAmounts).concat(getDesignatedLessonAmounts()).includes(item.amount)) && (
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="請輸入金額"
+                      value={item.amount ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '')
+                        onUpdate({ amount: value === '' ? 0 : parseInt(value) })
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        border: '2px solid #f59e0b',
+                        borderRadius: '8px',
+                        width: '150px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        background: 'white'
+                      }}
+                      onFocus={(e) => e.currentTarget.style.borderColor = '#f59e0b'}
+                      onBlur={(e) => e.currentTarget.style.borderColor = '#f59e0b'}
+                    />
+                  )}
+                </div>
               )}
             </div>
           </div>
