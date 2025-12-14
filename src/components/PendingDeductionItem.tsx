@@ -1337,7 +1337,7 @@ function DeductionItemRow({
               </div>
             </div>
           </div>
-        ) : isBalance || isVipVoucher || (isDesignatedLesson && coachPrice30min) || isDesignatedLessonFromBalance ? (
+        ) : isBalance || isVipVoucher || isDesignatedLessonFromBalance ? (
           <div>
             <div style={{ 
               fontSize: '13px', 
@@ -1381,20 +1381,20 @@ function DeductionItemRow({
                 borderRadius: '6px',
                 lineHeight: 1.5
               }}>
-                {(isDesignatedLessonFromBalance || isDesignatedLesson) ? (
+                {isDesignatedLessonFromBalance ? (
                   coachPrice30min 
-                    ? <>📝 ${coachPrice30min.toLocaleString()}/30分 ÷ 30 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去，可修改)</span></>
-                    : <>📝 指定課費用 <span style={{ color: '#999' }}>(可修改)</span></>
+                    ? <>📝 ${coachPrice30min.toLocaleString()}/30分 ÷ 30 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去) → 可修改</span></>
+                    : <>📝 指定課費用 <span style={{ color: '#999' }}>→ 可修改</span></>
                 ) : isBalance ? (
                   boatData?.balance_price_per_hour 
-                    ? <>📝 ${boatData.balance_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去，可修改)</span></>
-                    : <>📝 儲值扣款 <span style={{ color: '#999' }}>(可修改)</span></>
+                    ? <>📝 ${boatData.balance_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去) → 可修改</span></>
+                    : <>📝 儲值扣款 <span style={{ color: '#999' }}>→ 可修改</span></>
                 ) : isVipVoucher ? (
                   boatData?.vip_price_per_hour 
-                    ? <>📝 ${boatData.vip_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去，可修改)</span></>
-                    : <>📝 VIP 票券扣款 <span style={{ color: '#999' }}>(可修改)</span></>
+                    ? <>📝 ${boatData.vip_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去) → 可修改</span></>
+                    : <>📝 VIP 票券扣款 <span style={{ color: '#999' }}>→ 可修改</span></>
                 ) : (
-                  <>📝 扣款金額 <span style={{ color: '#999' }}>(可修改)</span></>
+                  <>📝 扣款金額 <span style={{ color: '#999' }}>→ 可修改</span></>
                 )}
               </div>
             </div>
@@ -1409,64 +1409,41 @@ function DeductionItemRow({
             }}>
               扣款時數：
             </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              {/* 下拉選單 */}
-              <select
-                value={item.minutes || ''}
-                onChange={(e) => {
-                  const value = e.target.value
-                  if (value === 'custom') {
-                    onUpdate({ minutes: 0 })
-                  } else {
-                    onUpdate({ minutes: parseInt(value) })
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  padding: '10px 12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  background: 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
-              >
-                <option value="">請選擇時數</option>
-                {[20, 30, 40, 60, 90].map(minutes => (
-                  <option key={minutes} value={minutes}>{minutes}分鐘</option>
-                ))}
-                <option value="custom">✏️ 自訂時數</option>
-              </select>
-              
-                              {/* 自訂輸入框 */}
-                              {(item.minutes !== undefined && item.minutes !== null && ![20, 30, 40, 60, 90].includes(item.minutes)) && (
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  placeholder="請輸入分鐘數"
-                                  value={item.minutes ?? ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '') // 只允許數字
-                                    // 允許空值，避免清空時自動填 0 導致無法重打
-                                    onUpdate({ minutes: value === '' ? 0 : parseInt(value) })
-                                  }}
-                  style={{
-                    padding: '10px 12px',
-                    border: '2px solid #f59e0b',
-                    borderRadius: '8px',
-                    width: '150px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    background: 'white'
+            {/* 統一設計：直接顯示時數輸入框 */}
+            <div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="請輸入分鐘數"
+                  value={item.minutes ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '')
+                    onUpdate({ minutes: value === '' ? 0 : parseInt(value) })
                   }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#f59e0b'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#f59e0b'}
+                  style={{
+                    flex: 1,
+                    padding: '12px 14px',
+                    border: '2px solid #667eea',
+                    borderRadius: '8px',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    background: '#f8f9ff'
+                  }}
                 />
-              )}
+                <span style={{ fontSize: '14px', color: '#666' }}>分鐘</span>
+              </div>
+              {/* 說明 */}
+              <div style={{ 
+                marginTop: '8px',
+                fontSize: '13px', 
+                color: '#666',
+                background: '#f5f5f5',
+                padding: '8px 12px',
+                borderRadius: '6px'
+              }}>
+                📝 依教練回報 {defaultMinutes} 分鐘帶入{isDesignatedLesson ? '（扣指定課時數）' : ''} <span style={{ color: '#999' }}>→ 可修改</span>
+              </div>
             </div>
           </div>
         )}
