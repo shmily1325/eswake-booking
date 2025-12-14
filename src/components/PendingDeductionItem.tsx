@@ -1233,6 +1233,11 @@ function DeductionItemRow({
               }
               // 如果不是標準時數，自動計算金額
               updates.amount = standardAmount ?? calculateAmountForDuration('vip_voucher')
+            } else if (newCategory === 'plan') {
+              // 方案：帶入預設方案名稱
+              updates.minutes = undefined
+              updates.amount = undefined
+              updates.planName = '暢滑方案9999'
             } else {
               // 時數類別
               updates.minutes = defaultMinutes
