@@ -481,6 +481,11 @@ export function CoachReport({
       return
     }
     
+    // 先收起手機鍵盤，避免畫面跳動
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+    
     setIsSubmitting(true)
     try {
       if (reportType === 'driver' || reportType === 'both') {
@@ -493,10 +498,24 @@ export function CoachReport({
       
       toast.success('回報成功！')
       setReportingBookingId(null)
-      loadBookings()
+      
+      // 稍微延遲載入，確保對話框先關閉
+      setTimeout(() => {
+        loadBookings()
+        // 捲動到頂部
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }, 100)
     } catch (error) {
-      // 錯誤已在子函數中處理，這裡不再重複顯示
       console.error('提交回報失敗:', error)
+      // 顯示錯誤訊息給用戶
+      if (error instanceof Error) {
+        // 用戶主動取消不需要顯示錯誤
+        if (error.message !== '用戶取消操作') {
+          toast.error(`提交失敗：${error.message}`)
+        }
+      } else {
+        toast.error('提交失敗，請重試')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -574,9 +593,14 @@ export function CoachReport({
       // 只過濾掉空名字的參與者，不強制要求至少一個
       const validParticipants = participants.filter(p => p.participant_name.trim())
       
-      // 驗證時數
-      if (validParticipants.some(p => p.duration_min <= 0)) {
-        throw new Error('時數必須大於 0')
+      // 驗證時數（允許空值，但不能是 0 或負數）
+      const invalidDuration = validParticipants.find(p => {
+        const duration = Number(p.duration_min)
+        return isNaN(duration) || duration <= 0
+      })
+      if (invalidDuration) {
+        toast.warning(`「${invalidDuration.participant_name || '未命名'}」的時數必須大於 0`)
+        return
       }
       
       // 檢查：如果是「會員」狀態但沒有選擇具體會員，提示用戶
