@@ -1047,6 +1047,7 @@ function DeductionItemRow({
 }: DeductionItemRowProps) {
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [showNotes, setShowNotes] = useState(!!item.notes)
+  const [isAmountFocused, setIsAmountFocused] = useState(false)
 
   // 計算金額：每小時價格 × 時數 / 60（無條件捨去）
   const calculatePriceByDuration = (pricePerHour: number, durationMin: number): number => {
@@ -1079,7 +1080,6 @@ function DeductionItemRow({
   const isBalance = item.category === 'balance'
   const isVipVoucher = item.category === 'vip_voucher'
   const isPlan = item.category === 'plan'
-  const isDesignatedLesson = item.category === 'designated_lesson'
   const isDirectSettlement = item.category === 'direct_settlement'
   // 判斷是否為指定課扣款（從儲值扣）：category 是 balance 且 description 包含【指定課】
   const isDesignatedLessonFromBalance = isBalance && (item.description?.includes('【指定課】') || false)
@@ -1355,11 +1355,15 @@ function DeductionItemRow({
                   type="text"
                   inputMode="numeric"
                   placeholder="請輸入金額"
-                  value={item.amount ?? ''}
+                  value={isAmountFocused 
+                    ? (item.amount || '') 
+                    : (item.amount ? item.amount.toLocaleString() : '')}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, '')
                     onUpdate({ amount: value === '' ? 0 : parseInt(value) })
                   }}
+                  onFocus={() => setIsAmountFocused(true)}
+                  onBlur={() => setIsAmountFocused(false)}
                   style={{
                     flex: 1,
                     padding: '12px 14px',
@@ -1442,7 +1446,7 @@ function DeductionItemRow({
                 padding: '8px 12px',
                 borderRadius: '6px'
               }}>
-                📝 依教練回報 {defaultMinutes} 分鐘帶入{isDesignatedLesson ? '（扣指定課時數）' : ''} <span style={{ color: '#999' }}>→ 可修改</span>
+                📝 依教練回報 {defaultMinutes} 分鐘帶入 <span style={{ color: '#999' }}>→ 可修改</span>
               </div>
             </div>
           </div>
