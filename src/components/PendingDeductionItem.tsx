@@ -137,18 +137,26 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
   
   const defaultCategory = getDefaultCategory()
   
+  // 計算金額：每 5 分鐘價格（無條件捨去）× 5 分鐘數
+  // 例如：每小時 2500 元，25 分鐘 = floor(2500/12) × 5 = 208 × 5 = 1040 元
+  const calculatePriceByDuration = (pricePerHour: number, durationMin: number): number => {
+    const pricePerFiveMin = Math.floor(pricePerHour / 12)  // 每 5 分鐘價格（無條件捨去）
+    const fiveMinUnits = Math.floor(durationMin / 5)       // 有幾個 5 分鐘
+    return pricePerFiveMin * fiveMinUnits
+  }
+
   // 取得預設金額（根據時長和動態價格計算）
   const getDefaultAmount = (): number | undefined => {
     const duration = report.duration_min
     
     if (defaultCategory === 'balance') {
       if (!boatData?.balance_price_per_hour) return undefined
-      return Math.floor(boatData.balance_price_per_hour * duration / 60)
+      return calculatePriceByDuration(boatData.balance_price_per_hour, duration)
     }
     
     if (defaultCategory === 'vip_voucher') {
       if (!boatData?.vip_price_per_hour) return undefined
-      return Math.floor(boatData.vip_price_per_hour * duration / 60)
+      return calculatePriceByDuration(boatData.vip_price_per_hour, duration)
     }
     
     return undefined
@@ -290,13 +298,13 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
             // 如果是儲值類別且有價格，計算金額
             if (item.category === 'balance' && boatResult.data.balance_price_per_hour) {
               const duration = report.duration_min
-              const amount = Math.floor(boatResult.data.balance_price_per_hour * duration / 60)
+              const amount = calculatePriceByDuration(boatResult.data.balance_price_per_hour, duration)
               return { ...item, amount }
             }
             // 如果是VIP票券類別且有價格，計算金額
             if (item.category === 'vip_voucher' && boatResult.data.vip_price_per_hour) {
               const duration = report.duration_min
-              const amount = Math.floor(boatResult.data.vip_price_per_hour * duration / 60)
+              const amount = calculatePriceByDuration(boatResult.data.vip_price_per_hour, duration)
               return { ...item, amount }
             }
             return item
@@ -1034,7 +1042,7 @@ function DeductionItemRow({
   defaultDescription,
   boatName,
   coachPrice30min,
-  boatData: _boatData,
+  boatData,
   validationErrors,
   itemIndex,
   onUpdate, 
@@ -1044,6 +1052,25 @@ function DeductionItemRow({
 }: DeductionItemRowProps) {
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [showNotes, setShowNotes] = useState(!!item.notes)
+
+  // 計算金額：每 5 分鐘價格（無條件捨去）× 5 分鐘數
+  const calculatePriceByDuration = (pricePerHour: number, durationMin: number): number => {
+    const pricePerFiveMin = Math.floor(pricePerHour / 12)  // 每 5 分鐘價格（無條件捨去）
+    const fiveMinUnits = Math.floor(durationMin / 5)       // 有幾個 5 分鐘
+    return pricePerFiveMin * fiveMinUnits
+  }
+
+  // 計算當前時數對應的金額（用於「自訂」選項）
+  const calculateAmountForDuration = (category: string): number => {
+    const duration = defaultMinutes
+    if (category === 'balance' && boatData?.balance_price_per_hour) {
+      return calculatePriceByDuration(boatData.balance_price_per_hour, duration)
+    }
+    if (category === 'vip_voucher' && boatData?.vip_price_per_hour) {
+      return calculatePriceByDuration(boatData.vip_price_per_hour, duration)
+    }
+    return 0
+  }
 
   const categories = [
     { value: 'balance', label: '💰 儲值', emoji: '💰' },
@@ -1192,26 +1219,32 @@ function DeductionItemRow({
             if (newCategory === 'balance') {
               // 扣儲值：根據教練回報的分鐘數自動選中對應金額
               updates.minutes = undefined
+              let standardAmount: number | undefined
               if (boatName.includes('G23')) {
                 const map: Record<number, number> = { 30: 5400, 40: 7200, 60: 10800, 90: 16200 }
-                updates.amount = map[duration]
+                standardAmount = map[duration]
               } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
                 const map: Record<number, number> = { 20: 2000, 30: 3000, 40: 4000, 60: 6000, 90: 9000 }
-                updates.amount = map[duration]
+                standardAmount = map[duration]
               } else if (boatName.includes('粉紅') || boatName.includes('200')) {
                 const map: Record<number, number> = { 20: 1200, 30: 1800, 40: 2400, 60: 3600, 90: 5400 }
-                updates.amount = map[duration]
+                standardAmount = map[duration]
               }
+              // 如果不是標準時數，自動計算金額
+              updates.amount = standardAmount ?? calculateAmountForDuration('balance')
             } else if (newCategory === 'vip_voucher') {
               // VIP票券：根據教練回報的分鐘數自動選中對應金額（無條件捨去）
               updates.minutes = undefined
+              let standardAmount: number | undefined
               if (boatName.includes('G23')) {
                 const map: Record<number, number> = { 30: 4250, 40: 5666, 60: 8500, 90: 12750 }
-                updates.amount = map[duration]
+                standardAmount = map[duration]
               } else if (boatName.includes('G21') || boatName.includes('黑豹')) {
                 const map: Record<number, number> = { 20: 1666, 30: 2500, 40: 3333, 60: 5000, 90: 7500 }
-                updates.amount = map[duration]
+                standardAmount = map[duration]
               }
+              // 如果不是標準時數，自動計算金額
+              updates.amount = standardAmount ?? calculateAmountForDuration('vip_voucher')
             } else {
               // 時數類別
               updates.minutes = defaultMinutes
@@ -1333,8 +1366,9 @@ function DeductionItemRow({
                 onChange={(e) => {
                   const value = e.target.value
                   if (value === 'custom') {
-                    // 切換到自訂模式
-                    onUpdate({ amount: 0 })
+                    // 切換到自訂模式，自動計算當前時數對應的金額
+                    const calculatedAmount = calculateAmountForDuration(item.category)
+                    onUpdate({ amount: calculatedAmount })
                   } else {
                     onUpdate({ amount: parseInt(value) })
                   }

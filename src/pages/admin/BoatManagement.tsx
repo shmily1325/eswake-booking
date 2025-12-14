@@ -289,10 +289,18 @@ export function BoatManagement() {
         }
     }
 
-    // 計算預覽價格（無條件捨去）
+    // 計算預覽價格：每 5 分鐘價格（無條件捨去）× 5 分鐘數
     const calculatePrice = (pricePerHour: number | null, minutes: number): string => {
         if (!pricePerHour) return '-'
-        return `$${Math.floor(pricePerHour * minutes / 60).toLocaleString()}`
+        const pricePerFiveMin = Math.floor(pricePerHour / 12)  // 每 5 分鐘價格（無條件捨去）
+        const fiveMinUnits = Math.floor(minutes / 5)           // 有幾個 5 分鐘
+        return `$${(pricePerFiveMin * fiveMinUnits).toLocaleString()}`
+    }
+    
+    // 計算每 5 分鐘價格（用於顯示）
+    const getPricePerFiveMin = (pricePerHour: number | null): string => {
+        if (!pricePerHour) return '-'
+        return `$${Math.floor(pricePerHour / 12).toLocaleString()}`
     }
 
     if (loading || !hasAccess) {
@@ -805,8 +813,29 @@ export function BoatManagement() {
                                             color: '#666'
                                         }}>
                                             <div style={{ fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-                                                價格預覽
+                                                價格預覽（每 5 分鐘價格 × 5 分鐘數）
                                             </div>
+                                            
+                                            {/* 每 5 分鐘價格 */}
+                                            <div style={{
+                                                display: 'flex',
+                                                gap: '24px',
+                                                marginBottom: '12px',
+                                                padding: '8px 12px',
+                                                background: '#e3f2fd',
+                                                borderRadius: '6px',
+                                                fontSize: '13px'
+                                            }}>
+                                                <div>
+                                                    <span style={{ color: '#666' }}>儲值每 5 分鐘：</span>
+                                                    <span style={{ fontWeight: '600', color: '#1976d2' }}>{getPricePerFiveMin(balancePrice)}</span>
+                                                </div>
+                                                <div>
+                                                    <span style={{ color: '#666' }}>VIP 每 5 分鐘：</span>
+                                                    <span style={{ fontWeight: '600', color: '#7b1fa2' }}>{getPricePerFiveMin(vipPrice)}</span>
+                                                </div>
+                                            </div>
+                                            
                                             <div style={{
                                                 display: 'grid',
                                                 gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
@@ -815,6 +844,7 @@ export function BoatManagement() {
                                                 <div>
                                                     <div style={{ fontWeight: '600', marginBottom: '4px' }}>儲值價格</div>
                                                     <div>20分: {calculatePrice(balancePrice, 20)}</div>
+                                                    <div>25分: {calculatePrice(balancePrice, 25)}</div>
                                                     <div>30分: {calculatePrice(balancePrice, 30)}</div>
                                                     <div>40分: {calculatePrice(balancePrice, 40)}</div>
                                                     <div>60分: {calculatePrice(balancePrice, 60)}</div>
@@ -823,6 +853,7 @@ export function BoatManagement() {
                                                 <div>
                                                     <div style={{ fontWeight: '600', marginBottom: '4px' }}>VIP 票券價格</div>
                                                     <div>20分: {calculatePrice(vipPrice, 20)}</div>
+                                                    <div>25分: {calculatePrice(vipPrice, 25)}</div>
                                                     <div>30分: {calculatePrice(vipPrice, 30)}</div>
                                                     <div>40分: {calculatePrice(vipPrice, 40)}</div>
                                                     <div>60分: {calculatePrice(vipPrice, 60)}</div>
