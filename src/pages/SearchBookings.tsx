@@ -359,7 +359,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       ? `, ${booking.coaches.filter(c => c && c.name).map(c => c.name + '教練').join('/')}`
       : ''
     
-    return `${month}/${day} ${displayName}, ${arrivalTimeStr}抵達, ${timeStr}下水, 預約${booking.duration_min}分鐘, ${boatName}${coachPart}`
+    return `${month}/${day} ${displayName}, ${arrivalTimeStr}抵達, ${timeStr}下水, ${booking.duration_min}分鐘, ${boatName}${coachPart}`
   }
 
   // 複製單筆預約
