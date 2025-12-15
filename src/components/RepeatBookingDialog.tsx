@@ -13,6 +13,7 @@ import { MemberSelector } from './booking/MemberSelector'
 import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
 import { getLocalTimestamp } from '../utils/date'
+import { BatchResultDialog } from './BatchResultDialog'
 
 
 interface RepeatBookingDialogProps {
@@ -50,6 +51,13 @@ export function RepeatBookingDialog({
   const [repeatMode, setRepeatMode] = useState<'count' | 'endDate'>('count')
   const [repeatCount, setRepeatCount] = useState(8)
   const [repeatEndDate, setRepeatEndDate] = useState('')
+
+  // 結果對話框
+  const [showResultDialog, setShowResultDialog] = useState(false)
+  const [resultData, setResultData] = useState<{
+    successCount: number
+    skippedItems: Array<{ label: string; reason: string }>
+  }>({ successCount: 0, skippedItems: [] })
 
   const {
     // State
@@ -317,21 +325,24 @@ export function RepeatBookingDialog({
 
       // 顯示結果
       if (results.success.length > 0 && results.skipped.length === 0) {
+        // 全部成功：用簡短 toast
         toast.success(`成功建立 ${results.success.length} 個重複預約！`)
         resetForm()
         onSuccess()
         onClose()
-      } else if (results.success.length > 0 && results.skipped.length > 0) {
-        toast.warning(
-          `⚠️ 部分成功：\n` +
-          `✅ 成功：${results.success.length} 個\n` +
-          `❌ 跳過：${results.skipped.length} 個\n\n` +
-          `跳過的日期：\n${results.skipped.map(s => `${s.date}: ${s.reason}`).join('\n')}`
-        )
-        onSuccess()
-        onClose()
-      } else {
-        setError(`所有預約都失敗：\n${results.skipped.map(s => s.reason).join('\n')}`)
+      } else if (results.skipped.length > 0) {
+        // 有跳過的：用結果對話框顯示詳情
+        setResultData({
+          successCount: results.success.length,
+          skippedItems: results.skipped.map(s => ({
+            label: s.date,
+            reason: s.reason,
+          })),
+        })
+        setShowResultDialog(true)
+        if (results.success.length > 0) {
+          onSuccess()
+        }
       }
     } catch (err: any) {
       setError(err.message || '建立失敗')
@@ -341,6 +352,13 @@ export function RepeatBookingDialog({
   }
 
   const handleClose = () => {
+    resetForm()
+    onClose()
+  }
+
+  // 關閉結果對話框
+  const handleResultClose = () => {
+    setShowResultDialog(false)
     resetForm()
     onClose()
   }
@@ -743,6 +761,17 @@ export function RepeatBookingDialog({
           </button>
         </div>
       </div>
+      
+      {/* 結果對話框 */}
+      <BatchResultDialog
+        isOpen={showResultDialog}
+        onClose={handleResultClose}
+        title="重複預約結果"
+        successCount={resultData.successCount}
+        skippedItems={resultData.skippedItems}
+        successLabel="成功建立"
+        skippedLabel="跳過"
+      />
     </div>
   )
 }

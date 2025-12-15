@@ -4,9 +4,16 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
 import { logAction } from '../utils/auditLog'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
-import { checkBoatConflict, checkCoachesConflictBatch } from '../utils/bookingConflict'
-import { checkBoatUnavailable } from '../utils/availability'
+import { 
+  prefetchConflictData, 
+  checkBoatUnavailableFromCache, 
+  checkBoatConflictFromCache, 
+  checkCoachConflictFromCache,
+  calculateTimeSlot,
+  checkTimeSlotConflict
+} from '../utils/bookingConflict'
 import { isFacility } from '../utils/facility'
+import { BatchResultDialog } from './BatchResultDialog'
 
 interface Coach {
   id: string
@@ -119,7 +126,14 @@ export function BatchEditBookingDialog({
   
   
   
-  // 執行批次更新
+  // 結果對話框狀態
+  const [showResultDialog, setShowResultDialog] = useState(false)
+  const [resultData, setResultData] = useState<{
+    successCount: number
+    skippedItems: Array<{ label: string; reason: string }>
+  }>({ successCount: 0, skippedItems: [] })
+  
+  // 執行批次更新（優化版：使用批量預查詢）
   const handleSubmit = async () => {
     console.log('[批次修改] 開始執行', { fieldsToEdit: Array.from(fieldsToEdit), bookingIds, selectedBoatId, durationMin })
     
@@ -141,11 +155,9 @@ export function BatchEditBookingDialog({
     setLoading(true)
     
     try {
+      const skippedItems: Array<{ label: string; reason: string }> = []
       let successCount = 0
       let errorCount = 0
-      let skippedBoat = 0
-      let skippedCoach = 0
-      let skippedDuration = 0
       
       // 準備變更描述
       const changes: string[] = []
@@ -164,10 +176,10 @@ export function BatchEditBookingDialog({
         changes.push(`備註→${notes.trim() || '清空'}`)
       }
       
-      // 優化：一次查詢所有預約的完整資訊
+      // 1️⃣ 查詢所有預約的完整資訊（包含教練）
       const { data: bookingsData } = await supabase
         .from('bookings')
-        .select('id, start_at, duration_min, boat_id, boats:boat_id(name)')
+        .select('id, start_at, duration_min, boat_id, contact_name, boats:boat_id(name), booking_coaches(coach_id)')
         .in('id', bookingIds)
       
       if (!bookingsData) {
@@ -177,7 +189,50 @@ export function BatchEditBookingDialog({
       // 建立 coachesMap
       const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
       
-      // 追蹤已成功更新的預約，用於檢查批次內部衝突
+      // 提取每個預約的原有教練 ID
+      const getOriginalCoachIds = (booking: typeof bookingsData[0]): string[] => {
+        const bookingCoaches = (booking as any).booking_coaches as Array<{ coach_id: string }> | null
+        return bookingCoaches?.map(bc => bc.coach_id) || []
+      }
+      
+      // 2️⃣ 準備批量衝突檢查的資料
+      const bookingsForCheck = bookingsData.map(booking => {
+        const dateStr = booking.start_at.split('T')[0]
+        const startTime = booking.start_at.split('T')[1].substring(0, 5)
+        const originalCoachIds = getOriginalCoachIds(booking)
+        const actualDuration = fieldsToEdit.has('duration') ? durationMin : booking.duration_min
+        const actualBoatId = fieldsToEdit.has('boat') && selectedBoatId ? selectedBoatId : booking.boat_id
+        const actualBoatName = fieldsToEdit.has('boat') && targetBoat ? targetBoat.name : (booking.boats as any)?.name || ''
+        const actualCoachIds = fieldsToEdit.has('coaches') ? selectedCoaches : originalCoachIds
+        
+        return {
+          id: booking.id,
+          dateStr,
+          startTime,
+          durationMin: actualDuration,
+          boatId: actualBoatId,
+          boatName: actualBoatName,
+          coachIds: actualCoachIds,
+          originalCoachIds,
+          contactName: booking.contact_name,
+          hour: parseInt(startTime.split(':')[0])
+        }
+      })
+      
+      // 3️⃣ 批量預查詢所有衝突檢查需要的數據（只需 4 個 DB 查詢）
+      console.log('[批次修改] 開始預查詢衝突數據...')
+      const conflictData = await prefetchConflictData(
+        bookingsForCheck,
+        fieldsToEdit.has('boat') && selectedBoatId ? selectedBoatId : undefined
+      )
+      console.log('[批次修改] 預查詢完成:', {
+        unavailable: conflictData.unavailableRecords.length,
+        boatBookings: conflictData.boatBookings.length,
+        coachBookings: conflictData.coachBookings.length,
+        driverBookings: conflictData.driverBookings.length
+      })
+      
+      // 4️⃣ 追蹤已成功更新的預約，用於檢查批次內部衝突
       const updatedBookings: Array<{
         id: number
         boatId: number
@@ -187,139 +242,140 @@ export function BatchEditBookingDialog({
         coachIds: string[]
       }> = []
       
-      // 輔助函數：檢查與已更新預約的時間衝突
+      // 輔助函數：使用 calculateTimeSlot 和 checkTimeSlotConflict 檢查內部衝突
       const checkInternalConflict = (
         boatId: number,
+        boatName: string,
         dateStr: string,
         startTime: string,
         duration: number,
-        coachIds: string[]
-      ): { hasConflict: boolean; type: 'boat' | 'coach' | null } => {
-        const newStart = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1])
-        const newEnd = newStart + duration
-        const newCleanupEnd = newEnd + 15 // 清理時間
+        coachIds: string[],
+        isFacility: boolean
+      ): { hasConflict: boolean; type: 'boat' | 'coach' | null; reason: string } => {
+        const cleanupMinutes = isFacility ? 0 : 15
+        const newSlot = calculateTimeSlot(startTime, duration, cleanupMinutes)
         
         for (const updated of updatedBookings) {
           if (updated.dateStr !== dateStr) continue
           
-          const existStart = parseInt(updated.startTime.split(':')[0]) * 60 + parseInt(updated.startTime.split(':')[1])
-          const existEnd = existStart + updated.duration
-          const existCleanupEnd = existEnd + 15
+          const updatedIsFacility = isFacility // 假設同批次的設施類型相同
+          const updatedCleanup = updatedIsFacility ? 0 : 15
+          const existSlot = calculateTimeSlot(updated.startTime, updated.duration, updatedCleanup)
           
           // 檢查船隻衝突
           if (updated.boatId === boatId) {
-            // 時間重疊檢查（包含清理時間）
-            const hasOverlap = !(newEnd <= existStart || newStart >= existCleanupEnd) ||
-                              !(existEnd <= newStart || existStart >= newCleanupEnd)
-            if (hasOverlap) {
-              return { hasConflict: true, type: 'boat' }
+            if (checkTimeSlotConflict(newSlot, existSlot)) {
+              return { 
+                hasConflict: true, 
+                type: 'boat',
+                reason: `${boatName} 與本批次其他預約時間衝突`
+              }
             }
           }
           
           // 檢查教練衝突
           if (coachIds.length > 0 && updated.coachIds.length > 0) {
-            const sharedCoach = coachIds.some(c => updated.coachIds.includes(c))
-            if (sharedCoach) {
-              const hasOverlap = !(newEnd <= existStart || newStart >= existEnd)
-              if (hasOverlap) {
-                return { hasConflict: true, type: 'coach' }
+            const sharedCoachIds = coachIds.filter(c => updated.coachIds.includes(c))
+            if (sharedCoachIds.length > 0) {
+              // 教練不需要清理時間
+              const newCoachSlot = calculateTimeSlot(startTime, duration, 0)
+              const existCoachSlot = calculateTimeSlot(updated.startTime, updated.duration, 0)
+              if (checkTimeSlotConflict(newCoachSlot, existCoachSlot)) {
+                const coachName = coachesMap.get(sharedCoachIds[0])?.name || '教練'
+                return { 
+                  hasConflict: true, 
+                  type: 'coach',
+                  reason: `${coachName} 與本批次其他預約時間衝突`
+                }
               }
             }
           }
         }
-        return { hasConflict: false, type: null }
+        return { hasConflict: false, type: null, reason: '' }
       }
       
-      for (const booking of bookingsData) {
+      // 5️⃣ 逐個預約進行衝突檢查（純內存計算，無額外 DB 查詢）
+      for (const booking of bookingsForCheck) {
+        const { id, dateStr, startTime, durationMin: actualDuration, boatId: actualBoatId, boatName: actualBoatName, coachIds: actualCoachIds, originalCoachIds, contactName, hour } = booking
+        const isBoatFacility = isFacility(actualBoatName)
+        const bookingLabel = `${contactName} (${dateStr} ${startTime})`
+        
+        // 0. 檢查與本批次內已更新預約的衝突
+        if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration') || fieldsToEdit.has('coaches')) {
+          const internalConflict = checkInternalConflict(
+            actualBoatId,
+            actualBoatName,
+            dateStr,
+            startTime,
+            actualDuration,
+            actualCoachIds,
+            isBoatFacility
+          )
+          if (internalConflict.hasConflict) {
+            skippedItems.push({ label: bookingLabel, reason: internalConflict.reason })
+            continue
+          }
+        }
+        
+        // 1. 檢查船隻維修/停用（改船或改時長都要檢查）
+        if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration')) {
+          const availability = checkBoatUnavailableFromCache(
+            actualBoatId, dateStr, startTime, actualDuration,
+            conflictData.unavailableRecords
+          )
+          if (availability.isUnavailable) {
+            skippedItems.push({ 
+              label: bookingLabel, 
+              reason: `${actualBoatName} 維修中：${availability.reason || '不可用'}` 
+            })
+            continue
+          }
+        }
+        
+        // 2. 檢查船隻時間衝突（改船或改時長都要檢查）
+        if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration')) {
+          const boatConflict = checkBoatConflictFromCache(
+            actualBoatId, dateStr, startTime, actualDuration,
+            isBoatFacility, id, actualBoatName,
+            conflictData.boatBookings
+          )
+          if (boatConflict.hasConflict) {
+            skippedItems.push({ label: bookingLabel, reason: boatConflict.reason })
+            continue
+          }
+        }
+        
+        // 3. 檢查 08:00 規則
+        if (fieldsToEdit.has('coaches') && selectedCoaches.length === 0) {
+          if (hour < EARLY_BOOKING_HOUR_LIMIT) {
+            skippedItems.push({ 
+              label: bookingLabel, 
+              reason: `${EARLY_BOOKING_HOUR_LIMIT}:00 前的預約必須指定教練` 
+            })
+            continue
+          }
+        }
+        
+        // 4. 檢查教練衝突（改教練或改時長都要檢查）
+        const needCheckCoachConflict = 
+          (fieldsToEdit.has('coaches') && selectedCoaches.length > 0) ||
+          (fieldsToEdit.has('duration') && originalCoachIds.length > 0)
+        
+        if (needCheckCoachConflict && actualCoachIds.length > 0) {
+          const coachConflict = checkCoachConflictFromCache(
+            actualCoachIds, dateStr, startTime, actualDuration, id,
+            conflictData.coachBookings, conflictData.driverBookings,
+            coachesMap
+          )
+          if (coachConflict.hasConflict) {
+            const reasons = coachConflict.conflictCoaches.map(c => `${c.coachName}${c.reason}`).join('、')
+            skippedItems.push({ label: bookingLabel, reason: `教練衝突：${reasons}` })
+            continue
+          }
+        }
+        
+        // ✅ 通過所有檢查，執行更新
         try {
-          const dateStr = booking.start_at.split('T')[0]
-          const startTime = booking.start_at.split('T')[1].substring(0, 5)
-          const hour = parseInt(startTime.split(':')[0])
-          const actualDuration = fieldsToEdit.has('duration') ? durationMin : booking.duration_min
-          const actualBoatId = fieldsToEdit.has('boat') && selectedBoatId ? selectedBoatId : booking.boat_id
-          const actualBoatName = fieldsToEdit.has('boat') && targetBoat ? targetBoat.name : (booking.boats as any)?.name || ''
-          const isBoatFacility = isFacility(actualBoatName)
-          const actualCoachIds = fieldsToEdit.has('coaches') ? selectedCoaches : []
-          
-          console.log(`[批次修改] 檢查預約 ${booking.id}:`, { dateStr, startTime, actualDuration, actualBoatId, actualBoatName })
-          
-          // 0. 檢查與本批次內已更新預約的衝突
-          if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration') || fieldsToEdit.has('coaches')) {
-            const internalConflict = checkInternalConflict(
-              actualBoatId,
-              dateStr,
-              startTime,
-              actualDuration,
-              actualCoachIds
-            )
-            if (internalConflict.hasConflict) {
-              console.log(`[批次修改] 預約 ${booking.id} 內部衝突:`, internalConflict)
-              if (internalConflict.type === 'boat') {
-                if (fieldsToEdit.has('boat')) skippedBoat++
-                else skippedDuration++
-              } else {
-                skippedCoach++
-              }
-              continue
-            }
-          }
-          
-          // 1. 檢查船隻維修/停用（不管改船還是改時長都要檢查）
-          if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration')) {
-            const availability = await checkBoatUnavailable(actualBoatId, dateStr, startTime, undefined, actualDuration)
-            console.log(`[批次修改] 預約 ${booking.id} 維修檢查:`, availability)
-            if (availability.isUnavailable) {
-              skippedBoat++
-              continue
-            }
-          }
-          
-          // 2. 檢查船隻時間衝突（使用原本的完整檢查，包含清理時間）
-          if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration')) {
-            const boatConflict = await checkBoatConflict(
-              actualBoatId,
-              dateStr,
-              startTime,
-              actualDuration,
-              isBoatFacility,
-              booking.id,
-              actualBoatName
-            )
-            console.log(`[批次修改] 預約 ${booking.id} 船隻衝突檢查:`, boatConflict)
-            if (boatConflict.hasConflict) {
-              if (fieldsToEdit.has('boat')) skippedBoat++
-              else skippedDuration++
-              continue
-            }
-          }
-          
-          // 3. 檢查 08:00 規則
-          if (fieldsToEdit.has('coaches') && selectedCoaches.length === 0) {
-            if (hour < EARLY_BOOKING_HOUR_LIMIT) {
-              console.log(`[批次修改] 預約 ${booking.id} 08:00規則跳過`)
-              skippedCoach++
-              continue
-            }
-          }
-          
-          // 4. 檢查教練衝突（使用原本的完整檢查）
-          if (fieldsToEdit.has('coaches') && selectedCoaches.length > 0) {
-            const coachConflict = await checkCoachesConflictBatch(
-              selectedCoaches,
-              dateStr,
-              startTime,
-              actualDuration,
-              coachesMap,
-              booking.id
-            )
-            console.log(`[批次修改] 預約 ${booking.id} 教練衝突檢查:`, coachConflict)
-            if (coachConflict.hasConflict) {
-              skippedCoach++
-              continue
-            }
-          }
-          
-          // 通過所有檢查，執行更新
           const updateData: Record<string, any> = {}
           
           if (fieldsToEdit.has('boat') && selectedBoatId) {
@@ -336,7 +392,7 @@ export function BatchEditBookingDialog({
             const { error } = await supabase
               .from('bookings')
               .update(updateData)
-              .eq('id', booking.id)
+              .eq('id', id)
             
             if (error) throw error
           }
@@ -346,11 +402,11 @@ export function BatchEditBookingDialog({
             await supabase
               .from('booking_coaches')
               .delete()
-              .eq('booking_id', booking.id)
+              .eq('booking_id', id)
             
             if (selectedCoaches.length > 0) {
               const coachInserts = selectedCoaches.map(coachId => ({
-                booking_id: booking.id,
+                booking_id: id,
                 coach_id: coachId,
               }))
               await supabase.from('booking_coaches').insert(coachInserts)
@@ -359,7 +415,7 @@ export function BatchEditBookingDialog({
           
           // 記錄已更新的預約，用於檢查批次內部衝突
           updatedBookings.push({
-            id: booking.id,
+            id,
             boatId: actualBoatId,
             dateStr,
             startTime,
@@ -369,7 +425,8 @@ export function BatchEditBookingDialog({
           
           successCount++
         } catch (err) {
-          console.error(`更新預約 ${booking.id} 失敗:`, err)
+          console.error(`更新預約 ${id} 失敗:`, err)
+          skippedItems.push({ label: bookingLabel, reason: '資料庫更新失敗' })
           errorCount++
         }
       }
@@ -380,32 +437,19 @@ export function BatchEditBookingDialog({
         await logAction(user.email, 'update', 'bookings', details)
       }
       
-      const totalSkipped = skippedBoat + skippedCoach + skippedDuration
-      console.log('[批次修改] 結果:', { successCount, errorCount, skippedBoat, skippedCoach, skippedDuration, totalSkipped })
+      console.log('[批次修改] 結果:', { successCount, skipped: skippedItems.length, errorCount })
       
-      if (errorCount === 0 && totalSkipped === 0) {
+      // 顯示結果
+      if (skippedItems.length === 0) {
         toast.success(`成功更新 ${successCount} 筆預約`)
         onSuccess()
         handleClose()
-      } else if (totalSkipped > 0) {
-        const skipReasons: string[] = []
-        if (skippedBoat > 0) skipReasons.push(`${skippedBoat}筆船隻衝突/維修`)
-        if (skippedCoach > 0) skipReasons.push(`${skippedCoach}筆教練衝突或08:00規則`)
-        if (skippedDuration > 0) skipReasons.push(`${skippedDuration}筆時長衝突`)
-        
-        if (successCount === 0) {
-          // 全部都被跳過
-          toast.error(`⚠️ 全部預約都因衝突被跳過：${skipReasons.join('、')}`)
-        } else {
-          toast.warning(`更新完成：${successCount} 筆成功，跳過 ${skipReasons.join('、')}`)
-          onSuccess()
-          handleClose()
-        }
       } else {
-        toast.warning(`更新完成：${successCount} 筆成功，${errorCount} 筆失敗`)
+        // 有跳過的：用結果對話框顯示詳情
+        setResultData({ successCount, skippedItems })
+        setShowResultDialog(true)
         if (successCount > 0) {
           onSuccess()
-          handleClose()
         }
       }
     } catch (err) {
@@ -413,6 +457,14 @@ export function BatchEditBookingDialog({
       toast.error('批次更新失敗')
     } finally {
       setLoading(false)
+    }
+  }
+  
+  // 關閉結果對話框
+  const handleResultClose = () => {
+    setShowResultDialog(false)
+    if (resultData.successCount > 0) {
+      handleClose()
     }
   }
   
@@ -862,6 +914,17 @@ export function BatchEditBookingDialog({
           </button>
         </div>
       </div>
+      
+      {/* 結果對話框 */}
+      <BatchResultDialog
+        isOpen={showResultDialog}
+        onClose={handleResultClose}
+        title="批次修改結果"
+        successCount={resultData.successCount}
+        skippedItems={resultData.skippedItems}
+        successLabel="成功更新"
+        skippedLabel="跳過"
+      />
     </div>
   )
 }

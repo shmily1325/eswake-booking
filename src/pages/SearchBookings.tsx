@@ -35,21 +35,32 @@ interface Member {
   phone: string | null
 }
 
+interface Boat {
+  id: number
+  name: string
+  color: string
+}
+
 interface SearchBookingsProps {
   isEmbedded?: boolean
 }
+
+type SearchTab = 'member' | 'boat'
 
 export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
   const toast = useToast()
+  
+  // Tab 切換
+  const [activeTab, setActiveTab] = useState<SearchTab>('member')
+  
+  // 會員搜尋相關狀態
   const [searchName, setSearchName] = useState('')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   
-  // 篩選選項
-  const [onlyToday, setOnlyToday] = useState(false) // 是否只顯示今日新增
   const [copySuccess, setCopySuccess] = useState(false)
   
   // 日期區間篩選
@@ -66,6 +77,12 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
   const [showMemberDropdown, setShowMemberDropdown] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  
+  // 船隻搜尋相關狀態
+  const [boats, setBoats] = useState<Boat[]>([])
+  const [selectedBoatId, setSelectedBoatId] = useState<number | null>(null)
+  const [boatStartDate, setBoatStartDate] = useState('')
+  const [boatEndDate, setBoatEndDate] = useState('')
   
   // 編輯對話框狀態
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -93,6 +110,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
   useEffect(() => {
     loadMembers()
+    loadBoats()
   }, [])
 
   const loadMembers = async () => {
@@ -107,54 +125,58 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     }
   }
 
+  const loadBoats = async () => {
+    const { data } = await supabase
+      .from('boats')
+      .select('id, name, color')
+      .eq('status', 'active')
+      .order('sort_order')
+    
+    if (data) {
+      setBoats(data)
+    }
+  }
+
   // 快速日期選擇輔助函數
   const formatDate = (date: Date) => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
   }
 
-  const setQuickDateRange = (type: 'today' | 'tomorrow' | 'thisWeek' | 'nextWeek' | 'thisMonth') => {
+  const setQuickDateRange = (type: 'today' | 'tomorrow') => {
     const today = new Date()
     let start: Date
-    let end: Date
 
     switch (type) {
       case 'today':
         start = today
-        end = today
         break
       case 'tomorrow':
         start = new Date(today)
         start.setDate(today.getDate() + 1)
-        end = start
-        break
-      case 'thisWeek': {
-        // 本週（週一到週日）
-        const dayOfWeek = today.getDay()
-        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-        start = new Date(today)
-        start.setDate(today.getDate() + diffToMonday)
-        end = new Date(start)
-        end.setDate(start.getDate() + 6)
-        break
-      }
-      case 'nextWeek': {
-        // 下週（下週一到下週日）
-        const dayOfWeek2 = today.getDay()
-        const diffToNextMonday = dayOfWeek2 === 0 ? 1 : 8 - dayOfWeek2
-        start = new Date(today)
-        start.setDate(today.getDate() + diffToNextMonday)
-        end = new Date(start)
-        end.setDate(start.getDate() + 6)
-        break
-      }
-      case 'thisMonth':
-        start = new Date(today.getFullYear(), today.getMonth(), 1)
-        end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
         break
     }
 
     setStartDate(formatDate(start))
-    setEndDate(formatDate(end))
+    setEndDate(formatDate(start))
+  }
+
+  // 船隻搜尋的快速日期選擇
+  const setBoatQuickDateRange = (type: 'today' | 'tomorrow') => {
+    const today = new Date()
+    let start: Date
+
+    switch (type) {
+      case 'today':
+        start = today
+        break
+      case 'tomorrow':
+        start = new Date(today)
+        start.setDate(today.getDate() + 1)
+        break
+    }
+
+    setBoatStartDate(formatDate(start))
+    setBoatEndDate(formatDate(start))
   }
 
   useEffect(() => {
@@ -182,125 +204,213 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     setLoading(true)
     setHasSearched(true)
     setCopySuccess(false)
-    // 不要在這裡清空 bookings，避免顯示「沒有找到」的閃爍
 
     try {
       const now = new Date()
       const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
+      const searchTerm = searchName.trim()
       
-      // 步驟 1: 從多個來源查詢匹配的預約 ID
-      // 1.1 從 booking_members 查詢會員名稱
-      const memberQuery = supabase
-        .from('booking_members')
-        .select('booking_id, members:member_id!inner(name)')
-        .ilike('members.name', `%${searchName.trim()}%`)
+      // 最大返回數量限制，避免返回過多資料造成卡頓
+      const MAX_RESULTS = 100
       
-      // 1.2 從 bookings 表查詢 contact_name（備選方案）
-      const bookingQuery = supabase
-        .from('bookings')
-        .select('id')
-        .ilike('contact_name', `%${searchName.trim()}%`)
-      
+      // 步驟 1: 並行查詢匹配的預約 ID（從兩個來源）
       const [memberResult, bookingResult] = await Promise.all([
-        memberQuery,
-        bookingQuery
+        // 從 booking_members 查詢會員名稱
+        supabase
+          .from('booking_members')
+          .select('booking_id, members:member_id!inner(name)')
+          .ilike('members.name', `%${searchTerm}%`),
+        // 從 bookings 表查詢 contact_name
+        supabase
+          .from('bookings')
+          .select('id')
+          .ilike('contact_name', `%${searchTerm}%`)
       ])
-      
-      console.log('搜尋結果 - 會員:', memberResult.data)
-      console.log('搜尋結果 - contact_name:', bookingResult.data)
       
       // 合併找到的預約 ID
       const bookingIds = new Set<number>()
       memberResult.data?.forEach(item => bookingIds.add(item.booking_id))
       bookingResult.data?.forEach(item => bookingIds.add(item.id))
       
-      console.log('找到的預約 IDs:', Array.from(bookingIds))
-      
       if (bookingIds.size === 0) {
-        console.log('沒有找到任何預約 ID')
         setBookings([])
         setLoading(false)
         return
       }
       
-      // 步驟 2: 查詢這些預約的詳細資訊
-      let query = supabase
+      // 步驟 2: 建構詳細查詢（帶日期篩選）
+      let detailQuery = supabase
         .from('bookings')
-        .select('*, boats:boat_id(name, color), booking_members(member_id, members:member_id(id, name, nickname))')
+        .select('id, start_at, duration_min, contact_name, notes, activity_types, status, boats:boat_id(name, color)')
         .in('id', Array.from(bookingIds))
       
       // 日期區間篩選
       if (startDate) {
-        query = query.gte('start_at', `${startDate}T00:00:00`)
+        detailQuery = detailQuery.gte('start_at', `${startDate}T00:00:00`)
       } else {
-        // 沒設日期區間時，預設只顯示未來預約
-        query = query.gte('start_at', nowStr)
+        detailQuery = detailQuery.gte('start_at', nowStr)
       }
       
       if (endDate) {
-        query = query.lte('start_at', `${endDate}T23:59:59`)
+        detailQuery = detailQuery.lte('start_at', `${endDate}T23:59:59`)
       }
       
-      // 如果勾選「只顯示今日新增」
-      if (onlyToday) {
-        const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-        const tomorrow = new Date(now)
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        const tomorrowDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
-        
-        // 篩選今日創建的預約（created_at 不為空且在今天範圍內）
-        query = query
-          .not('created_at', 'is', null)
-          .gte('created_at', `${todayDate}T00:00:00`)
-          .lt('created_at', `${tomorrowDate}T00:00:00`)
-      }
+      // 步驟 3: 並行執行三個查詢（預約詳情 + 教練 + 會員）
+      // 這是主要優化點：原本是順序執行，現在改為並行
+      const idsArray = Array.from(bookingIds)
       
-      // 執行預約查詢（未來預約按時間升序排列）
-      const bookingsResult = await query.order('start_at', { ascending: true })
-
-      console.log('預約詳細查詢結果:', bookingsResult.data)
-      console.log('查詢錯誤:', bookingsResult.error)
+      const [bookingsResult, coachesResult, membersResult] = await Promise.all([
+        detailQuery.order('start_at', { ascending: true }).limit(MAX_RESULTS),
+        supabase
+          .from('booking_coaches')
+          .select('booking_id, coaches:coach_id(id, name)')
+          .in('booking_id', idsArray),
+        supabase
+          .from('booking_members')
+          .select('booking_id, member_id, members:member_id(id, name, nickname)')
+          .in('booking_id', idsArray)
+      ])
 
       if (bookingsResult.error) {
         console.error('Error fetching bookings:', bookingsResult.error)
-        console.error('Error details:', bookingsResult.error.details, bookingsResult.error.hint)
         setBookings([])
-      } else if (bookingsResult.data && bookingsResult.data.length > 0) {
-        // 同時查詢教練信息（重要：立即發起查詢而不是等待）
-        const bookingIds = bookingsResult.data.map(b => b.id)
-        const coachesResult = await supabase
-          .from('booking_coaches')
-          .select('booking_id, coaches:coach_id(id, name)')
-          .in('booking_id', bookingIds)
-
-        if (coachesResult.error) {
-          console.error('Error fetching coaches:', coachesResult.error)
-        }
-
-        // 合併教練信息
-        const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
-        for (const item of coachesResult.data || []) {
-          const bookingId = item.booking_id
-          const coach = (item as any).coaches
-          if (coach) {
-            if (!coachesByBooking[bookingId]) {
-              coachesByBooking[bookingId] = []
-            }
-            coachesByBooking[bookingId].push(coach)
-          }
-        }
-
-        const bookingsWithCoaches = bookingsResult.data.map(booking => ({
-          ...booking,
-          coaches: coachesByBooking[booking.id] || []
-        }))
-
-        setBookings(bookingsWithCoaches as Booking[])
-      } else {
-        setBookings([])
+        return
       }
+      
+      if (!bookingsResult.data || bookingsResult.data.length === 0) {
+        setBookings([])
+        return
+      }
+
+      // 建構教練對照表
+      const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
+      for (const item of coachesResult.data || []) {
+        const bookingId = item.booking_id
+        const coach = (item as any).coaches
+        if (coach) {
+          if (!coachesByBooking[bookingId]) {
+            coachesByBooking[bookingId] = []
+          }
+          coachesByBooking[bookingId].push(coach)
+        }
+      }
+      
+      // 建構會員對照表
+      const membersByBooking: { [key: number]: any[] } = {}
+      for (const item of membersResult.data || []) {
+        const bookingId = item.booking_id
+        if (!membersByBooking[bookingId]) {
+          membersByBooking[bookingId] = []
+        }
+        membersByBooking[bookingId].push(item)
+      }
+
+      // 合併所有資料
+      const finalBookings = bookingsResult.data.map(booking => ({
+        ...booking,
+        coaches: coachesByBooking[booking.id] || [],
+        booking_members: membersByBooking[booking.id] || []
+      }))
+
+      setBookings(finalBookings as Booking[])
     } catch (err) {
       console.error('Search error:', err)
+      setBookings([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 船隻預約搜尋
+  const handleBoatSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!selectedBoatId) {
+      toast.error('請選擇船隻')
+      return
+    }
+    
+    if (!boatStartDate || !boatEndDate) {
+      toast.error('請選擇日期區間')
+      return
+    }
+
+    setLoading(true)
+    setHasSearched(true)
+    setCopySuccess(false)
+
+    try {
+      const MAX_RESULTS = 100
+      
+      // 步驟 1: 查詢該船在指定日期區間的所有預約
+      let detailQuery = supabase
+        .from('bookings')
+        .select('id, start_at, duration_min, contact_name, notes, activity_types, status, boats:boat_id(name, color)')
+        .eq('boat_id', selectedBoatId)
+        .gte('start_at', `${boatStartDate}T00:00:00`)
+        .lte('start_at', `${boatEndDate}T23:59:59`)
+      
+      const bookingsResult = await detailQuery.order('start_at', { ascending: true }).limit(MAX_RESULTS)
+
+      if (bookingsResult.error) {
+        console.error('Error fetching bookings:', bookingsResult.error)
+        setBookings([])
+        return
+      }
+      
+      if (!bookingsResult.data || bookingsResult.data.length === 0) {
+        setBookings([])
+        return
+      }
+
+      const bookingIds = bookingsResult.data.map(b => b.id)
+      
+      // 步驟 2: 並行查詢教練和會員資訊
+      const [coachesResult, membersResult] = await Promise.all([
+        supabase
+          .from('booking_coaches')
+          .select('booking_id, coaches:coach_id(id, name)')
+          .in('booking_id', bookingIds),
+        supabase
+          .from('booking_members')
+          .select('booking_id, member_id, members:member_id(id, name, nickname)')
+          .in('booking_id', bookingIds)
+      ])
+
+      // 建構教練對照表
+      const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
+      for (const item of coachesResult.data || []) {
+        const bookingId = item.booking_id
+        const coach = (item as any).coaches
+        if (coach) {
+          if (!coachesByBooking[bookingId]) {
+            coachesByBooking[bookingId] = []
+          }
+          coachesByBooking[bookingId].push(coach)
+        }
+      }
+      
+      // 建構會員對照表
+      const membersByBooking: { [key: number]: any[] } = {}
+      for (const item of membersResult.data || []) {
+        const bookingId = item.booking_id
+        if (!membersByBooking[bookingId]) {
+          membersByBooking[bookingId] = []
+        }
+        membersByBooking[bookingId].push(item)
+      }
+
+      // 合併所有資料
+      const finalBookings = bookingsResult.data.map(booking => ({
+        ...booking,
+        coaches: coachesByBooking[booking.id] || [],
+        booking_members: membersByBooking[booking.id] || []
+      }))
+
+      setBookings(finalBookings as Booking[])
+    } catch (err) {
+      console.error('Search error:', err)
+      setBookings([])
     } finally {
       setLoading(false)
     }
@@ -331,48 +441,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const generateLineMessage = () => {
     if (bookings.length === 0) return ''
     
-    // 直接使用搜尋的名字作為標題
-    return formatBookingsForLine(bookings, `${searchName}的預約`)
-  }
-
-  // 生成單筆預約的 LINE 格式（單行格式）
-  const generateSingleBookingMessage = (booking: Booking) => {
-    const datetime = booking.start_at.substring(0, 16)
-    const [dateStr, timeStr] = datetime.split('T')
-    const [, month, day] = dateStr.split('-')
-    
-    // 計算抵達時間（提前 30 分鐘）
-    const [hour, minute] = timeStr.split(':').map(Number)
-    const arrivalMinutes = hour * 60 + minute - 30
-    const arrivalHour = Math.floor(arrivalMinutes / 60)
-    const arrivalMin = arrivalMinutes % 60
-    const arrivalTimeStr = `${String(arrivalHour).padStart(2, '0')}:${String(arrivalMin).padStart(2, '0')}`
-    
-    // 取得顯示名稱
-    const displayName = getDisplayContactName(booking)
-    
-    // 船名
-    const boatName = booking.boats?.name || '?'
-    
-    // 教練（只有指定教練時才顯示）
-    const coachPart = booking.coaches && booking.coaches.length > 0
-      ? `, ${booking.coaches.filter(c => c && c.name).map(c => c.name + '教練').join('/')}`
-      : ''
-    
-    return `${month}/${day} ${displayName}, ${arrivalTimeStr}抵達, ${timeStr}下水, ${booking.duration_min}分鐘, ${boatName}${coachPart}`
-  }
-
-  // 複製單筆預約
-  const handleCopySingleBooking = async (booking: Booking, e: React.MouseEvent) => {
-    e.stopPropagation()
-    const message = generateSingleBookingMessage(booking)
-    try {
-      await navigator.clipboard.writeText(message)
-      toast.success('已複製預約資訊')
-    } catch (err) {
-      console.error('Failed to copy:', err)
-      toast.error('複製失敗')
+    // 根據搜尋模式決定標題
+    if (activeTab === 'boat') {
+      const boatName = boats.find(b => b.id === selectedBoatId)?.name || '船隻'
+      const dateRange = boatStartDate === boatEndDate 
+        ? boatStartDate 
+        : `${boatStartDate} ~ ${boatEndDate}`
+      return formatBookingsForLine(bookings, `${boatName} ${dateRange}`)
     }
+    return formatBookingsForLine(bookings, `${searchName}的預約`)
   }
 
   // 清除搜尋
@@ -445,9 +522,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     setEditDialogOpen(false)
     setSelectedBookingForEdit(null)
     // 重新執行搜尋
-    if (searchName.trim()) {
-      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+    const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+    if (activeTab === 'member' && searchName.trim()) {
       handleSearch(fakeEvent)
+    } else if (activeTab === 'boat' && selectedBoatId) {
+      handleBoatSearch(fakeEvent)
     }
   }
 
@@ -486,9 +565,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     setSelectedBookingIds(new Set())
     setSelectionMode(false)
     // 重新執行搜尋
-    if (searchName.trim()) {
-      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+    const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+    if (activeTab === 'member' && searchName.trim()) {
       handleSearch(fakeEvent)
+    } else if (activeTab === 'boat' && selectedBoatId) {
+      handleBoatSearch(fakeEvent)
     }
   }
 
@@ -502,6 +583,66 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     }}>
       {!isEmbedded && <PageHeader title="🔍 預約查詢" user={user} />}
 
+      {/* Tab 切換 */}
+      <div style={{
+        display: 'flex',
+        gap: '0',
+        marginBottom: '15px',
+        background: 'white',
+        borderRadius: '12px',
+        padding: '4px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+      }}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('member')
+            setBookings([])
+            setHasSearched(false)
+            setSelectionMode(false)
+            setSelectedBookingIds(new Set())
+          }}
+          style={{
+            flex: 1,
+            padding: '12px 16px',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            background: activeTab === 'member' ? '#007bff' : 'transparent',
+            color: activeTab === 'member' ? 'white' : '#666',
+          }}
+        >
+          👤 預約人查詢
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('boat')
+            setBookings([])
+            setHasSearched(false)
+            setSelectionMode(false)
+            setSelectedBookingIds(new Set())
+          }}
+          style={{
+            flex: 1,
+            padding: '12px 16px',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            background: activeTab === 'boat' ? '#007bff' : 'transparent',
+            color: activeTab === 'boat' ? 'white' : '#666',
+          }}
+        >
+          🚤 船隻查詢
+        </button>
+      </div>
+
       {/* Search Form */}
       <div style={{
         background: 'white',
@@ -510,6 +651,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         marginBottom: '15px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
       }}>
+        {/* 會員搜尋表單 */}
+        {activeTab === 'member' && (
         <form onSubmit={handleSearch}>
           <div style={{ marginBottom: '20px', position: 'relative' }}>
             <label style={{
@@ -677,9 +820,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               {[
                 { label: '今天', value: 'today' as const },
                 { label: '明天', value: 'tomorrow' as const },
-                { label: '本週', value: 'thisWeek' as const },
-                { label: '下週', value: 'nextWeek' as const },
-                { label: '本月', value: 'thisMonth' as const },
               ].map(({ label, value }) => (
                 <button
                   key={value}
@@ -778,40 +918,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </div>
           </div>
 
-          {/* 篩選選項 */}
-          <div style={{ marginBottom: '20px' }}>
-            {/* 今日新增 checkbox */}
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '12px',
-              backgroundColor: onlyToday ? '#d4edda' : '#f8f9fa',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              border: onlyToday ? '2px solid #28a745' : '1px solid #e9ecef',
-              transition: 'all 0.2s',
-            }}>
-              <input
-                type="checkbox"
-                checked={onlyToday}
-                onChange={(e) => setOnlyToday(e.target.checked)}
-                style={{
-                  width: '18px',
-                  height: '18px',
-                  cursor: 'pointer',
-                }}
-              />
-              <span style={{
-                fontSize: '14px',
-                fontWeight: '500',
-                color: onlyToday ? '#28a745' : '#495057',
-              }}>
-                只顯示今日新增
-              </span>
-            </label>
-          </div>
-
           {/* 搜尋按鈕 */}
           <button
             type="submit"
@@ -835,6 +941,232 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             {loading ? '搜尋中...' : '🔍 搜尋'}
           </button>
         </form>
+        )}
+
+        {/* 船隻搜尋表單 */}
+        {activeTab === 'boat' && (
+        <form onSubmit={handleBoatSearch}>
+          {/* 船隻選擇 */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '13px',
+              color: '#868e96',
+              fontWeight: '500'
+            }}>
+              選擇船隻
+            </label>
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              overflowX: 'auto',
+              paddingBottom: '8px',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}>
+              {boats.map(boat => (
+                <button
+                  key={boat.id}
+                  type="button"
+                  onClick={() => setSelectedBoatId(boat.id)}
+                  style={{
+                    padding: '10px 16px',
+                    border: selectedBoatId === boat.id ? '2px solid #007bff' : '2px solid #e0e0e0',
+                    borderRadius: '20px',
+                    background: selectedBoatId === boat.id ? '#e7f3ff' : 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    backgroundColor: boat.color || '#ccc',
+                    flexShrink: 0
+                  }} />
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: selectedBoatId === boat.id ? '600' : '500',
+                    color: selectedBoatId === boat.id ? '#007bff' : '#333'
+                  }}>
+                    {boat.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 日期區間篩選 */}
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ 
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '8px'
+            }}>
+              <span style={{ 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: '#495057',
+              }}>
+                📅 日期區間 <span style={{ color: '#dc3545' }}>*</span>
+                {(boatStartDate || boatEndDate) && <span style={{ color: '#007bff', marginLeft: '4px' }}>(已設定)</span>}
+              </span>
+              {(boatStartDate || boatEndDate) && (
+                <button
+                  type="button"
+                  onClick={() => { setBoatStartDate(''); setBoatEndDate(''); }}
+                  style={{
+                    padding: '4px 10px',
+                    border: 'none',
+                    background: '#dc3545',
+                    color: 'white',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                  }}
+                >
+                  清除
+                </button>
+              )}
+            </div>
+            
+            {/* 快速日期選擇按鈕 */}
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '6px',
+              marginBottom: '12px'
+            }}>
+              {[
+                { label: '今天', value: 'today' as const },
+                { label: '明天', value: 'tomorrow' as const },
+              ].map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setBoatQuickDateRange(value)}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #dee2e6',
+                    background: 'white',
+                    borderRadius: '16px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: '#495057',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#007bff'
+                    e.currentTarget.style.color = 'white'
+                    e.currentTarget.style.borderColor = '#007bff'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white'
+                    e.currentTarget.style.color = '#495057'
+                    e.currentTarget.style.borderColor = '#dee2e6'
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: '8px',
+              alignItems: isMobile ? 'stretch' : 'center',
+              width: '100%',
+            }}>
+              <div style={{ 
+                flex: 1, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                minWidth: 0,
+              }}>
+                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>從</span>
+                <input
+                  type="date"
+                  value={boatStartDate}
+                  onChange={(e) => setBoatStartDate(e.target.value)}
+                  required
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    width: '100%',
+                    padding: '10px',
+                    border: boatStartDate ? '2px solid #007bff' : '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: boatStartDate ? '#f0f7ff' : 'white',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div style={{ 
+                flex: 1, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                minWidth: 0,
+              }}>
+                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>到</span>
+                <input
+                  type="date"
+                  value={boatEndDate}
+                  onChange={(e) => setBoatEndDate(e.target.value)}
+                  required
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    width: '100%',
+                    padding: '10px',
+                    border: boatEndDate ? '2px solid #007bff' : '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: boatEndDate ? '#f0f7ff' : 'white',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 搜尋按鈕 */}
+          <button
+            type="submit"
+            disabled={loading || !selectedBoatId}
+            style={{
+              width: '100%',
+              padding: '12px',
+              fontSize: '16px',
+              fontWeight: '600',
+              background: (!loading && selectedBoatId) ? 'white' : '#f5f5f5',
+              color: (!loading && selectedBoatId) ? '#666' : '#999',
+              border: (!loading && selectedBoatId) ? '2px solid #e0e0e0' : '2px solid #ddd',
+              borderRadius: '8px',
+              cursor: (!loading && selectedBoatId) ? 'pointer' : 'not-allowed',
+              touchAction: 'manipulation',
+              transition: 'transform 0.1s'
+            }}
+            onTouchStart={(e) => !loading && selectedBoatId && (e.currentTarget.style.transform = 'scale(0.98)')}
+            onTouchEnd={(e) => !loading && selectedBoatId && (e.currentTarget.style.transform = 'scale(1)')}
+          >
+            {loading ? '搜尋中...' : '🔍 搜尋'}
+          </button>
+        </form>
+        )}
       </div>
 
       {/* Results */}
@@ -1231,39 +1563,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {/* 單筆複製按鈕 */}
-                        {!selectionMode && (
-                          <button
-                            onClick={(e) => handleCopySingleBooking(booking, e)}
-                            style={{
-                              padding: '4px 8px',
-                              backgroundColor: 'white',
-                              color: '#495057',
-                              border: '1px solid #dee2e6',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              fontWeight: '500',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              transition: 'all 0.2s',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#007bff'
-                              e.currentTarget.style.color = 'white'
-                              e.currentTarget.style.borderColor = '#007bff'
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'white'
-                              e.currentTarget.style.color = '#495057'
-                              e.currentTarget.style.borderColor = '#dee2e6'
-                            }}
-                          >
-                            📋
-                          </button>
-                        )}
-                        {/* 所有人都可以看到編輯標籤 */}
+                        {/* 載入中提示 */}
                         {!selectionMode && isLoadingThis && (
                           <span style={{
                             padding: '4px 8px',
@@ -1274,18 +1574,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                             fontWeight: '500',
                           }}>
                             載入中...
-                          </span>
-                        )}
-                        {!selectionMode && !isLoadingThis && (
-                          <span style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#e9ecef',
-                            color: '#495057',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: '500',
-                          }}>
-                            ✏️ 編輯
                           </span>
                         )}
                         {isPast && (

@@ -300,6 +300,253 @@ export async function checkDriverConflict(
  * }
  * ```
  */
+// ==================== 批次修改專用優化函數 ====================
+
+interface BatchBookingInfo {
+  id: number
+  dateStr: string
+  startTime: string
+  durationMin: number
+  boatId: number
+  boatName: string
+  coachIds: string[]
+}
+
+/**
+ * 批量預查詢所有需要的衝突檢查數據
+ * 只需 4 個數據庫查詢就能獲取所有需要的資料
+ */
+export async function prefetchConflictData(
+  bookings: BatchBookingInfo[],
+  newBoatId?: number
+) {
+  // 收集所有涉及的日期
+  const allDates = [...new Set(bookings.map(b => b.dateStr))]
+  
+  // 收集所有涉及的船隻 ID（包含要更改的新船隻）
+  const allBoatIds = [...new Set([
+    ...bookings.map(b => b.boatId),
+    ...(newBoatId ? [newBoatId] : [])
+  ])]
+  
+  // 收集所有涉及的教練 ID
+  const allCoachIds = [...new Set(bookings.flatMap(b => b.coachIds))]
+  
+  // 並行查詢所有需要的數據
+  const [
+    unavailableResult,
+    boatBookingsResult,
+    coachBookingsResult,
+    driverBookingsResult
+  ] = await Promise.all([
+    // 1. 查詢船隻維修記錄
+    supabase
+      .from('boat_unavailable_dates')
+      .select('*')
+      .in('boat_id', allBoatIds)
+      .eq('is_active', true)
+      .or(allDates.map(d => `and(start_date.lte.${d},end_date.gte.${d})`).join(',')),
+    
+    // 2. 查詢所有船隻在這些日期的預約
+    allDates.length > 0 ? supabase
+      .from('bookings')
+      .select('id, boat_id, start_at, duration_min, cleanup_minutes, contact_name')
+      .in('boat_id', allBoatIds)
+      .or(allDates.map(d => `and(start_at.gte.${d}T00:00:00,start_at.lte.${d}T23:59:59)`).join(','))
+      : Promise.resolve({ data: [] }),
+    
+    // 3. 查詢所有教練的預約
+    allCoachIds.length > 0 && allDates.length > 0 ? supabase
+      .from('booking_coaches')
+      .select(`coach_id, bookings!inner(id, start_at, duration_min, contact_name)`)
+      .in('coach_id', allCoachIds)
+      .or(allDates.map(d => `bookings.and(start_at.gte.${d}T00:00:00,start_at.lte.${d}T23:59:59)`).join(','))
+      : Promise.resolve({ data: [] }),
+    
+    // 4. 查詢所有駕駛的預約
+    allCoachIds.length > 0 && allDates.length > 0 ? supabase
+      .from('booking_drivers')
+      .select(`driver_id, bookings!inner(id, start_at, duration_min, contact_name)`)
+      .in('driver_id', allCoachIds)
+      .or(allDates.map(d => `bookings.and(start_at.gte.${d}T00:00:00,start_at.lte.${d}T23:59:59)`).join(','))
+      : Promise.resolve({ data: [] })
+  ])
+  
+  return {
+    unavailableRecords: unavailableResult.data || [],
+    boatBookings: boatBookingsResult.data || [],
+    coachBookings: coachBookingsResult.data || [],
+    driverBookings: driverBookingsResult.data || []
+  }
+}
+
+/**
+ * 使用預查詢的數據進行船隻維修檢查（純內存計算）
+ */
+export function checkBoatUnavailableFromCache(
+  boatId: number,
+  dateStr: string,
+  startTime: string,
+  durationMin: number,
+  unavailableRecords: any[]
+): { isUnavailable: boolean; reason?: string } {
+  const [startHour, startMinute] = startTime.split(':').map(Number)
+  const startMinutes = startHour * 60 + startMinute
+  const endMinutes = startMinutes + durationMin
+  
+  const relevantRecords = unavailableRecords.filter(r => 
+    r.boat_id === boatId &&
+    r.start_date <= dateStr &&
+    r.end_date >= dateStr
+  )
+  
+  for (const record of relevantRecords) {
+    // 全天停用
+    if (!record.start_time && !record.end_time) {
+      return { isUnavailable: true, reason: record.reason }
+    }
+    
+    let recordStartMinutes = 0
+    let recordEndMinutes = 24 * 60
+    
+    if (record.start_date === dateStr && record.start_time) {
+      const [h, m] = record.start_time.split(':').map(Number)
+      recordStartMinutes = h * 60 + m
+    }
+    
+    if (record.end_date === dateStr && record.end_time) {
+      const [h, m] = record.end_time.split(':').map(Number)
+      recordEndMinutes = h * 60 + m
+    }
+    
+    if (!(endMinutes <= recordStartMinutes || startMinutes >= recordEndMinutes)) {
+      return { isUnavailable: true, reason: record.reason }
+    }
+  }
+  
+  return { isUnavailable: false }
+}
+
+/**
+ * 使用預查詢的數據進行船隻預約衝突檢查（純內存計算）
+ */
+export function checkBoatConflictFromCache(
+  boatId: number,
+  dateStr: string,
+  startTime: string,
+  durationMin: number,
+  isFacility: boolean,
+  excludeBookingId: number,
+  boatName: string,
+  boatBookings: any[]
+): ConflictResult {
+  const cleanupMinutes = isFacility ? 0 : 15
+  const newSlot = calculateTimeSlot(startTime, durationMin, cleanupMinutes)
+  
+  const relevantBookings = boatBookings.filter(b => 
+    b.boat_id === boatId &&
+    b.id !== excludeBookingId &&
+    b.start_at.startsWith(dateStr)
+  )
+  
+  for (const existing of relevantBookings) {
+    const existingTime = existing.start_at.substring(11, 16)
+    const existingCleanupMinutes = existing.cleanup_minutes ?? 15
+    const existingSlot = calculateTimeSlot(existingTime, existing.duration_min, existingCleanupMinutes)
+    
+    if (checkTimeSlotConflict(newSlot, existingSlot)) {
+      if (newSlot.startMinutes >= existingSlot.endMinutes && newSlot.startMinutes < existingSlot.cleanupEndMinutes) {
+        return {
+          hasConflict: true,
+          reason: `${boatName} 與 ${existing.contact_name} 的預約衝突：需要接船時間`
+        }
+      }
+      if (existingSlot.startMinutes >= newSlot.endMinutes && existingSlot.startMinutes < newSlot.cleanupEndMinutes) {
+        return {
+          hasConflict: true,
+          reason: `${boatName} 與 ${existing.contact_name} 的預約衝突：需要接船時間`
+        }
+      }
+      return {
+        hasConflict: true,
+        reason: `${boatName} 與 ${existing.contact_name} 的預約時間重疊`
+      }
+    }
+  }
+  
+  return { hasConflict: false, reason: '' }
+}
+
+/**
+ * 使用預查詢的數據進行教練衝突檢查（純內存計算）
+ */
+export function checkCoachConflictFromCache(
+  coachIds: string[],
+  dateStr: string,
+  startTime: string,
+  durationMin: number,
+  excludeBookingId: number,
+  coachBookings: any[],
+  driverBookings: any[],
+  coachesMap: Map<string, { name: string }>
+): { hasConflict: boolean; conflictCoaches: Array<{ coachId: string; coachName: string; reason: string }> } {
+  if (coachIds.length === 0) {
+    return { hasConflict: false, conflictCoaches: [] }
+  }
+  
+  const newSlot = calculateTimeSlot(startTime, durationMin)
+  const conflictCoaches: Array<{ coachId: string; coachName: string; reason: string }> = []
+  
+  // 整理教練預約
+  const coachBookingsMap = new Map<string, any[]>()
+  
+  for (const item of coachBookings) {
+    if (!coachIds.includes(item.coach_id)) continue
+    const booking = item.bookings
+    if (booking.id === excludeBookingId) continue
+    if (!booking.start_at.startsWith(dateStr)) continue
+    
+    const list = coachBookingsMap.get(item.coach_id) || []
+    list.push(booking)
+    coachBookingsMap.set(item.coach_id, list)
+  }
+  
+  for (const item of driverBookings) {
+    if (!coachIds.includes(item.driver_id)) continue
+    const booking = item.bookings
+    if (booking.id === excludeBookingId) continue
+    if (!booking.start_at.startsWith(dateStr)) continue
+    
+    const list = coachBookingsMap.get(item.driver_id) || []
+    list.push(booking)
+    coachBookingsMap.set(item.driver_id, list)
+  }
+  
+  for (const coachId of coachIds) {
+    const bookings = coachBookingsMap.get(coachId) || []
+    
+    for (const booking of bookings) {
+      const existingTime = booking.start_at.substring(11, 16)
+      const existingSlot = calculateTimeSlot(existingTime, booking.duration_min)
+      
+      if (checkTimeSlotConflict(newSlot, existingSlot)) {
+        const coachInfo = coachesMap.get(coachId)
+        conflictCoaches.push({
+          coachId,
+          coachName: coachInfo?.name || '未知教練',
+          reason: `與 ${booking.contact_name} 的預約時間衝突 (${existingTime}-${minutesToTime(existingSlot.endMinutes)})`
+        })
+        break
+      }
+    }
+  }
+  
+  return {
+    hasConflict: conflictCoaches.length > 0,
+    conflictCoaches
+  }
+}
+
 export async function checkCoachesConflictBatch(
   coachIds: string[],
   dateStr: string,

@@ -1392,18 +1392,18 @@ function DeductionItemRow({
               }}>
                 {isDesignatedLessonFromBalance ? (
                   coachPrice30min 
-                    ? <>📝 ${coachPrice30min.toLocaleString()}/30分 ÷ 30 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去) → 可修改</span></>
-                    : <>📝 指定課費用 <span style={{ color: '#999' }}>→ 可修改</span></>
+                    ? <>📝 ${coachPrice30min.toLocaleString()}/30分 ÷ 30 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去)</span></>
+                    : <>📝 指定課費用 <span style={{ color: '#999' }}></span></>
                 ) : isBalance ? (
                   boatData?.balance_price_per_hour 
-                    ? <>📝 ${boatData.balance_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去) → 可修改</span></>
-                    : <>📝 儲值扣款 <span style={{ color: '#999' }}>→ 可修改</span></>
+                    ? <>📝 ${boatData.balance_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去)</span></>
+                    : <>📝 儲值扣款 <span style={{ color: '#999' }}></span></>
                 ) : isVipVoucher ? (
                   boatData?.vip_price_per_hour 
-                    ? <>📝 ${boatData.vip_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去) → 可修改</span></>
-                    : <>📝 VIP 票券扣款 <span style={{ color: '#999' }}>→ 可修改</span></>
+                    ? <>📝 ${boatData.vip_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去)</span></>
+                    : <>📝 VIP 票券扣款 <span style={{ color: '#999' }}></span></>
                 ) : (
-                  <>📝 扣款金額 <span style={{ color: '#999' }}>→ 可修改</span></>
+                  <>📝 扣款金額 <span style={{ color: '#999' }}></span></>
                 )}
               </div>
             </div>
@@ -1451,7 +1451,7 @@ function DeductionItemRow({
                 padding: '8px 12px',
                 borderRadius: '6px'
               }}>
-                📝 依教練回報 {defaultMinutes} 分鐘帶入 <span style={{ color: '#999' }}>→ 可修改</span>
+                📝 依教練回報 {defaultMinutes} 分鐘帶入 <span style={{ color: '#999' }}></span>
               </div>
             </div>
           </div>
