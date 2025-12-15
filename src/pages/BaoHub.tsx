@@ -38,6 +38,11 @@ export function BaoHub() {
             title: '回報管理',
             icon: '💼',
             link: '/coach-admin'
+          },
+          {
+            title: '回報記錄',
+            icon: '📊',
+            link: '/coach-report-logs'
           }
         ]
       },

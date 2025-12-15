@@ -844,11 +844,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   交易日期 *
                 </label>
                 <input
-                  type="text"
+                  type="date"
                   value={transactionDate}
                   onChange={(e) => setTransactionDate(e.target.value)}
                   style={inputStyle}
-                  placeholder="YYYY-MM-DD"
                   required
                 />
               </div>
@@ -1224,11 +1223,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                 交易日期 *
                               </label>
                               <input
-                                type="text"
+                                type="date"
                                 value={editTransactionDate}
                                 onChange={(e) => setEditTransactionDate(e.target.value)}
                                 style={{ ...inputStyle, fontSize: '14px' }}
-                                placeholder="YYYY-MM-DD"
                               />
                             </div>
 

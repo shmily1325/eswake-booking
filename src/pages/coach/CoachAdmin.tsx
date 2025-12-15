@@ -530,7 +530,8 @@ export function CoachAdmin() {
         title="💼 回報管理"
         showBaoLink={true}
         extraLinks={[
-          { label: '← 預約回報', link: '/coach-report' }
+          { label: '← 預約回報', link: '/coach-report' },
+          { label: '回報記錄 →', link: '/coach-report-logs' }
         ]}
       />
       

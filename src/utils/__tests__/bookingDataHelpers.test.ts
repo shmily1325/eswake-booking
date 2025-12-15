@@ -88,7 +88,7 @@ describe('bookingDataHelpers.ts - 預約資料輔助函數', () => {
         designated_lesson_price_30min: null,
         user_email: null
       }])
-      expect(result[0].coach_report).toEqual(relations.reports[0])
+      expect(result[0].coach_reports).toEqual([relations.reports[0]])
       expect(result[0].participants).toHaveLength(1)
       expect(result[0].contact_name).toBe('David')
     })
@@ -117,7 +117,7 @@ describe('bookingDataHelpers.ts - 預約資料輔助函數', () => {
       expect(result).toHaveLength(1)
       expect(result[0].coaches).toEqual([])
       expect(result[0].drivers).toEqual([])
-      expect(result[0].coach_report).toBeUndefined()
+      expect(result[0].coach_reports).toEqual([])
       expect(result[0].participants).toEqual([])
     })
 

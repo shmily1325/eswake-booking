@@ -51,7 +51,7 @@ interface BookingRelations {
  * ```
  */
 export function assembleBookingsWithRelations(
-  bookings: Omit<Booking, 'coaches' | 'drivers' | 'coach_report' | 'participants'>[],
+  bookings: Omit<Booking, 'coaches' | 'drivers' | 'coach_reports' | 'participants'>[],
   relations: BookingRelations
 ): Booking[] {
   if (!bookings || !Array.isArray(bookings)) {
@@ -101,10 +101,13 @@ export function assembleBookingsWithRelations(
     })
   })
 
-  // 回報 Map
-  const reportsMap = new Map<number, CoachReport>()
+  // 回報 Map - 支援多個駕駛回報
+  const reportsMap = new Map<number, CoachReport[]>()
   ;(relations.reports || []).forEach(r => {
-    reportsMap.set(r.booking_id, r)
+    if (!reportsMap.has(r.booking_id)) {
+      reportsMap.set(r.booking_id, [])
+    }
+    reportsMap.get(r.booking_id)!.push(r)
   })
 
   // 參與者 Map
@@ -165,7 +168,7 @@ export function assembleBookingsWithRelations(
       contact_name: updatedContactName,
       coaches: coachesMap.get(booking.id) || [],
       drivers: driversMap.get(booking.id) || [],
-      coach_report: reportsMap.get(booking.id),
+      coach_reports: reportsMap.get(booking.id) || [],
       participants: participantsMap.get(booking.id) || []
     }
   })

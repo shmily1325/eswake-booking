@@ -22,6 +22,7 @@ import {
   filterUnreportedBookings,
   fetchBookingRelations
 } from '../../utils/bookingDataHelpers'
+import { logCoachReport, logParticipantDeletion } from '../../utils/coachReportLog'
 import type {
   Coach,
   Booking,
@@ -306,9 +307,14 @@ export function CoachReport({
     const type = getReportType(booking, coachId)
     if (!type) return { hasCoachReport: false, hasDriverReport: false }
     
-    const hasCoachReport = !!(booking.participants && booking.participants.length > 0 && 
-      (booking.coaches || []).some(c => c.id === coachId))
-    const hasDriverReport = !!booking.coach_report
+    // 業務邏輯：每個教練必須分別提交回報
+    // 檢查這個特定教練是否在 coach_reports 中有記錄（無論是否有參與者）
+    const hasCoachReport = !!(booking.coach_reports && 
+      booking.coach_reports.some(r => r.coach_id === coachId))
+    
+    // 駕駛時數：檢查這個特定教練是否回報過駕駛時數
+    const hasDriverReport = !!(booking.coach_reports && 
+      booking.coach_reports.some(r => r.coach_id === coachId && r.driver_duration_min !== null))
     
     return { hasCoachReport, hasDriverReport }
   }
@@ -325,8 +331,10 @@ export function CoachReport({
     setReportingCoachId(coachId)
     setReportingCoachName(coachName)
     
-    if (booking.coach_report) {
-      setDriverDuration(booking.coach_report.driver_duration_min || 0)
+    // 找到這個教練的駕駛回報記錄
+    const myDriverReport = booking.coach_reports?.find(r => r.coach_id === coachId)
+    if (myDriverReport) {
+      setDriverDuration(myDriverReport.driver_duration_min || 0)
     } else {
       setDriverDuration(booking.duration_min)
     }
@@ -669,6 +677,24 @@ export function CoachReport({
           console.error('刪除記錄失敗:', deleteError)
           throw new Error(`刪除記錄失敗: ${deleteError.message}`)
         }
+
+        // 記錄刪除日誌
+        const booking = bookings.find(b => b.id === reportingBookingId)
+        if (booking && reportingCoachId) {
+          logParticipantDeletion({
+            coachId: reportingCoachId,
+            coachEmail: user?.email,
+            coachName: reportingCoachName,
+            bookingId: reportingBookingId!,
+            bookingStartAt: booking.start_at,
+            contactName: booking.contact_name,
+            boatName: booking.boats?.name || '',
+            deletedParticipants: participantsToDelete.map(p => ({
+              name: p.participant_name,
+              durationMin: p.duration_min
+            }))
+          })
+        }
       }
 
       // 步驟 3 & 4: 更新現有記錄 + 插入新記錄
@@ -681,39 +707,50 @@ export function CoachReport({
       validParticipants.forEach((p: Participant) => {
         // 使用工具函数计算 is_teaching 和 status
         const isTeaching = calculateIsTeaching(p.lesson_type || 'undesignated')
-        const status = calculateParticipantStatus(p.member_id)
+        const calculatedStatus = calculateParticipantStatus(p.member_id)
         
         console.log(`參與者 ${p.participant_name}:`, {
           member_id: p.member_id,
-          status: status,
+          existing_status: p.status,
+          calculated_status: calculatedStatus,
           is_teaching: isTeaching,
           is_會員: !!p.member_id
         })
-        
-        const recordData = {
-          booking_id: reportingBookingId,
-          coach_id: reportingCoachId,
-          member_id: p.member_id,
-          participant_name: p.participant_name,
-          duration_min: p.duration_min,
-          payment_method: p.payment_method,
-          lesson_type: p.lesson_type,
-          notes: p.notes || null,
-          status: status,
-          reported_at: getLocalTimestamp(),
-          is_teaching: isTeaching
-        }
 
         if (p.id) {
           // 現有記錄：更新
+          // 如果已經處理過 (processed)，教練修改內容後需要重新處理
+          // 所以這裡使用新計算的 status（會員 → pending，非會員 → not_applicable）
           participantsToUpdate.push({
-            ...recordData,
+            booking_id: reportingBookingId,
+            coach_id: reportingCoachId,
+            member_id: p.member_id,
+            participant_name: p.participant_name,
+            duration_min: p.duration_min,
+            payment_method: p.payment_method,
+            lesson_type: p.lesson_type,
+            notes: p.notes || null,
+            status: calculatedStatus,
+            reported_at: getLocalTimestamp(),
+            is_teaching: isTeaching,
             id: p.id,
             updated_at: getLocalTimestamp()
           })
         } else {
           // 新記錄：插入
-          participantsToInsert.push(recordData)
+          participantsToInsert.push({
+            booking_id: reportingBookingId,
+            coach_id: reportingCoachId,
+            member_id: p.member_id,
+            participant_name: p.participant_name,
+            duration_min: p.duration_min,
+            payment_method: p.payment_method,
+            lesson_type: p.lesson_type,
+            notes: p.notes || null,
+            status: calculatedStatus,
+            reported_at: getLocalTimestamp(),
+            is_teaching: isTeaching
+          })
         }
       })
 
@@ -744,6 +781,54 @@ export function CoachReport({
         if (insertError) {
           console.error('插入新記錄失敗:', insertError)
           throw new Error(`插入新記錄失敗: ${insertError.message}`)
+        }
+      }
+
+      // 記錄回報日誌
+      const booking = bookings.find(b => b.id === reportingBookingId)
+      if (booking && reportingCoachId) {
+        const hasNewParticipants = participantsToInsert.length > 0
+        const hasUpdatedParticipants = participantsToUpdate.length > 0
+        
+        logCoachReport({
+          coachId: reportingCoachId,
+          coachEmail: user?.email,
+          coachName: reportingCoachName,
+          bookingId: reportingBookingId!,
+          bookingStartAt: booking.start_at,
+          contactName: booking.contact_name,
+          boatName: booking.boats?.name || '',
+          actionType: hasNewParticipants && !hasUpdatedParticipants ? 'create' : 'update',
+          participants: validParticipants.map(p => ({
+            name: p.participant_name,
+            durationMin: p.duration_min,
+            paymentMethod: p.payment_method,
+            lessonType: p.lesson_type || undefined,
+            memberId: p.member_id,
+            isNew: !p.id
+          })),
+          driverDurationMin: (reportType === 'driver' || reportType === 'both') ? driverDuration : undefined
+        })
+      }
+
+      // 確保在 coach_reports 中有記錄，用於追蹤教練是否已提交回報
+      // 注意：如果是 'both' 或 'driver' 類型，submitDriverReport 已經處理了
+      // 這裡只處理純 'coach' 類型的情況
+      if (reportType === 'coach') {
+        const { error: upsertError } = await supabase
+          .from('coach_reports')
+          .upsert({
+            booking_id: reportingBookingId,
+            coach_id: reportingCoachId,
+            driver_duration_min: null, // 純教練不回報駕駛時數
+            reported_at: getLocalTimestamp()
+          }, {
+            onConflict: 'booking_id,coach_id'
+          })
+
+        if (upsertError) {
+          console.error('記錄教練回報狀態失敗:', upsertError)
+          // 不拋出錯誤，因為參與者已經成功提交
         }
       }
     } catch (error) {
@@ -1047,7 +1132,8 @@ export function CoachReport({
           title={autoFilterByUser ? "我的回報" : "預約回報"}
           showBaoLink={!autoFilterByUser}
           extraLinks={autoFilterByUser ? undefined : [
-            { label: '回報管理 →', link: '/coach-admin' }
+            { label: '回報管理 →', link: '/coach-admin' },
+            { label: '回報記錄', link: '/coach-report-logs' }
           ]}
         />
       )}

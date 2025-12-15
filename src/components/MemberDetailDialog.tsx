@@ -47,7 +47,7 @@ interface BoardStorage {
 interface MemberNote {
   id: number
   member_id: string
-  event_date: string
+  event_date: string | null
   event_type: string
   description: string
   created_at: string | null
@@ -306,7 +306,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
   const handleEditNote = (note: MemberNote) => {
     setEditingNote(note)
     setNoteFormData({
-      event_date: note.event_date,
+      event_date: note.event_date || '',
       event_type: note.event_type,
       description: note.description
     })

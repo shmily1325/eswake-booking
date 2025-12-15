@@ -28,7 +28,7 @@ export interface Booking extends BookingRow {
   boats: Boat | null
   coaches?: Coach[]
   drivers?: Coach[]
-  coach_report?: CoachReport
+  coach_reports?: CoachReport[]  // 支援多個駕駛回報
   participants?: Participant[]
   booking_members?: { member_id: string }[]
   // 確保兼容舊代碼的屬性 (如果 Supabase 類型中是 null 但前端預期是 undefined)
