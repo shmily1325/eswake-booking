@@ -129,7 +129,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     const { data } = await supabase
       .from('boats')
       .select('id, name, color')
-      .eq('status', 'active')
+      .eq('is_active', true)
       .order('sort_order')
     
     if (data) {
@@ -611,7 +611,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            background: activeTab === 'member' ? '#007bff' : 'transparent',
+            background: activeTab === 'member' ? '#4a4a4a' : 'transparent',
             color: activeTab === 'member' ? 'white' : '#666',
           }}
         >
@@ -635,7 +635,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            background: activeTab === 'boat' ? '#007bff' : 'transparent',
+            background: activeTab === 'boat' ? '#4a4a4a' : 'transparent',
             color: activeTab === 'boat' ? 'white' : '#666',
           }}
         >
@@ -676,7 +676,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   if (filteredMembers.length > 0) {
                     setShowMemberDropdown(true)
                   }
-                  e.target.style.borderColor = '#007bff'
+                  e.target.style.borderColor = '#4a4a4a'
                 }}
                 onBlur={(e) => {
                   setTimeout(() => setShowMemberDropdown(false), 200)
@@ -788,7 +788,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 fontWeight: '500', 
                 color: '#495057',
               }}>
-                📅 日期區間 {(startDate || endDate) && <span style={{ color: '#007bff' }}>(已設定)</span>}
+                📅 日期區間 {(startDate || endDate) && <span style={{ color: '#4a4a4a' }}>(已設定)</span>}
               </span>
               {(startDate || endDate) && (
                 <button
@@ -837,9 +837,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#007bff'
+                    e.currentTarget.style.background = '#4a4a4a'
                     e.currentTarget.style.color = 'white'
-                    e.currentTarget.style.borderColor = '#007bff'
+                    e.currentTarget.style.borderColor = '#4a4a4a'
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'white'
@@ -875,7 +875,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     minWidth: 0,
                     width: '100%',
                     padding: '10px',
-                    border: startDate ? '2px solid #007bff' : '1px solid #e0e0e0',
+                    border: startDate ? '2px solid #4a4a4a' : '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
                     backgroundColor: startDate ? '#f0f7ff' : 'white',
@@ -900,7 +900,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     minWidth: 0,
                     width: '100%',
                     padding: '10px',
-                    border: endDate ? '2px solid #007bff' : '1px solid #e0e0e0',
+                    border: endDate ? '2px solid #4a4a4a' : '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
                     backgroundColor: endDate ? '#f0f7ff' : 'white',
@@ -973,9 +973,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   onClick={() => setSelectedBoatId(boat.id)}
                   style={{
                     padding: '10px 16px',
-                    border: selectedBoatId === boat.id ? '2px solid #007bff' : '2px solid #e0e0e0',
+                    border: selectedBoatId === boat.id ? '2px solid #4a4a4a' : '2px solid #e0e0e0',
                     borderRadius: '20px',
-                    background: selectedBoatId === boat.id ? '#e7f3ff' : 'white',
+                    background: selectedBoatId === boat.id ? '#f0f0f0' : 'white',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     display: 'flex',
@@ -995,7 +995,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   <span style={{
                     fontSize: '14px',
                     fontWeight: selectedBoatId === boat.id ? '600' : '500',
-                    color: selectedBoatId === boat.id ? '#007bff' : '#333'
+                    color: selectedBoatId === boat.id ? '#4a4a4a' : '#333'
                   }}>
                     {boat.name}
                   </span>
@@ -1018,7 +1018,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 color: '#495057',
               }}>
                 📅 日期區間 <span style={{ color: '#dc3545' }}>*</span>
-                {(boatStartDate || boatEndDate) && <span style={{ color: '#007bff', marginLeft: '4px' }}>(已設定)</span>}
+                {(boatStartDate || boatEndDate) && <span style={{ color: '#4a4a4a', marginLeft: '4px' }}>(已設定)</span>}
               </span>
               {(boatStartDate || boatEndDate) && (
                 <button
@@ -1067,9 +1067,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#007bff'
+                    e.currentTarget.style.background = '#4a4a4a'
                     e.currentTarget.style.color = 'white'
-                    e.currentTarget.style.borderColor = '#007bff'
+                    e.currentTarget.style.borderColor = '#4a4a4a'
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'white'
@@ -1106,7 +1106,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     minWidth: 0,
                     width: '100%',
                     padding: '10px',
-                    border: boatStartDate ? '2px solid #007bff' : '1px solid #e0e0e0',
+                    border: boatStartDate ? '2px solid #4a4a4a' : '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
                     backgroundColor: boatStartDate ? '#f0f7ff' : 'white',
@@ -1132,7 +1132,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     minWidth: 0,
                     width: '100%',
                     padding: '10px',
-                    border: boatEndDate ? '2px solid #007bff' : '1px solid #e0e0e0',
+                    border: boatEndDate ? '2px solid #4a4a4a' : '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
                     backgroundColor: boatEndDate ? '#f0f7ff' : 'white',
@@ -1195,7 +1195,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 }}>
                   找到 {bookings.length} 筆預約
                   {selectionMode && selectedBookingIds.size > 0 && (
-                    <span style={{ color: '#007bff', marginLeft: '8px' }}>
+                    <span style={{ color: '#4a4a4a', marginLeft: '8px' }}>
                       （已選 {selectedBookingIds.size} 筆）
                     </span>
                   )}
@@ -1299,7 +1299,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         padding: '8px 16px',
                         fontSize: '14px',
                         fontWeight: '500',
-                        background: copySuccess ? '#28a745' : '#007bff',
+                        background: copySuccess ? '#28a745' : '#4a4a4a',
                         color: 'white',
                         border: 'none',
                         borderRadius: '6px',
@@ -1490,10 +1490,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     }}
                     style={{
                       padding: '16px',
-                      backgroundColor: isSelected ? '#e3f2fd' : (isLoadingThis ? '#f8f9fa' : 'white'),
+                      backgroundColor: isSelected ? '#f5f5f5' : (isLoadingThis ? '#f8f9fa' : 'white'),
                       borderRadius: '8px',
-                      boxShadow: isSelected ? '0 2px 8px rgba(0,123,255,0.25)' : '0 2px 4px rgba(0,0,0,0.1)',
-                      borderLeft: `4px solid ${isSelected ? '#007bff' : (booking.boats?.color || '#ccc')}`,
+                      boxShadow: isSelected ? '0 2px 8px rgba(74,74,74,0.25)' : '0 2px 4px rgba(0,0,0,0.1)',
+                      borderLeft: `4px solid ${isSelected ? '#4a4a4a' : (booking.boats?.color || '#ccc')}`,
                       opacity: isPast ? 0.7 : 1,
                       cursor: isLoadingThis ? 'wait' : 'pointer',
                       transition: 'all 0.2s',
@@ -1508,7 +1508,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     onMouseLeave={(e) => {
                       if (!selectionMode) {
                         e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = isSelected ? '0 2px 8px rgba(0,123,255,0.25)' : '0 2px 4px rgba(0,0,0,0.1)'
+                        e.currentTarget.style.boxShadow = isSelected ? '0 2px 8px rgba(74,74,74,0.25)' : '0 2px 4px rgba(0,0,0,0.1)'
                       }
                     }}
                   >
@@ -1530,7 +1530,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                               height: '24px',
                               borderRadius: '4px',
                               border: isSelected ? 'none' : '2px solid #dee2e6',
-                              backgroundColor: isSelected ? '#007bff' : 'white',
+                              backgroundColor: isSelected ? '#4a4a4a' : 'white',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1567,7 +1567,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         {!selectionMode && isLoadingThis && (
                           <span style={{
                             padding: '4px 8px',
-                            backgroundColor: '#007bff',
+                            backgroundColor: '#4a4a4a',
                             color: 'white',
                             borderRadius: '4px',
                             fontSize: '12px',
