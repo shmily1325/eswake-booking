@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString, getLocalTimestamp } from '../utils/date'
+import { getLocalDateString, getLocalTimestamp, normalizeDate } from '../utils/date'
 import type { Member } from '../types/booking'
 import { useToast } from './ui'
 
@@ -266,7 +266,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           minutes: categoryConfig?.type === 'minutes' ? numValue : null,
           description: editDescription.trim(),
           notes: editNotes.trim() || null,
-          transaction_date: editTransactionDate,
+          transaction_date: normalizeDate(editTransactionDate) || editTransactionDate,
           ...afterValues
         })
         .eq('id', editingTransaction.id)
@@ -582,7 +582,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         minutes: categoryConfig?.type === 'minutes' ? numValue : null,
         description: description.trim(),
         notes: notes.trim() || null,
-        transaction_date: transactionDate,
+        transaction_date: normalizeDate(transactionDate) || transactionDate,
         created_at: getLocalTimestamp(),
         ...afterValues
       }

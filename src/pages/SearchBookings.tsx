@@ -126,11 +126,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   }
 
   const loadBoats = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('boats')
       .select('id, name, color')
       .eq('is_active', true)
-      .order('sort_order')
+      .order('name')
+    
+    if (error) {
+      console.error('載入船隻失敗:', error)
+    }
     
     if (data) {
       setBoats(data)

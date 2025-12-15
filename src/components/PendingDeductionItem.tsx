@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from './ui'
+import { normalizeDate } from '../utils/date'
 
 // 扣款類別
 type DeductionCategory = 
@@ -538,8 +539,8 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
         throw new Error('無法取得操作者資訊')
       }
 
-      // ✅ 取得預約日期作為交易日期
-      const bookingDate = report.bookings.start_at.split('T')[0] // "YYYY-MM-DD"
+      // ✅ 取得預約日期作為交易日期（正規化確保格式正確）
+      const bookingDate = normalizeDate(report.bookings.start_at.split('T')[0]) || report.bookings.start_at.split('T')[0]
       
       // 準備扣款資料（轉換為 JSONB 格式）
       const deductionsData = deductionItems.map(item => ({

@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getButtonStyle, getCardStyle } from '../../styles/designSystem'
+import { normalizeDate } from '../../utils/date'
 
 interface ParsedNote {
   member_name: string
@@ -72,7 +73,7 @@ export function MemberNotesImport() {
             .filter((row: any) => row.member_name && row.member_name.trim() && row.description && row.description.trim())
             .map((row: any) => ({
               member_name: row.member_name.trim(),
-              event_date: row.event_date || new Date().toISOString().split('T')[0],
+              event_date: normalizeDate(row.event_date) || new Date().toISOString().split('T')[0],
               event_type: EVENT_TYPES.includes(row.event_type) ? row.event_type : '備註',
               description: row.description.trim()
             }))
