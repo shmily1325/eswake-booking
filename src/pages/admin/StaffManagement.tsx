@@ -1400,14 +1400,18 @@ export function StaffManagement() {
                       目前開放的功能：
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <span>📆</span>
+                      <span><strong>排班</strong> - 分配教練、駕駛，填寫排班備註</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                       <span>🚤</span>
                       <span><strong>船隻管理</strong> - 管理船隻狀態、設定維修/停用時段、調整價格</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                       <span>🔍</span>
                       <span><strong>批次修改</strong> - 在預約查詢中批次修改多筆預約</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span>🔄</span>
                       <span><strong>重複預約</strong> - 在預約表中將預約重複到多個日期</span>
                     </div>

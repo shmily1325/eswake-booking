@@ -6,7 +6,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { designSystem, getButtonStyle, getInputStyle, getLabelStyle, getTextStyle } from '../../styles/designSystem'
-import { useRequireAdmin, isAdmin } from '../../utils/auth'
+import { isAdmin, isEditorAsync } from '../../utils/auth'
 import { isFacility } from '../../utils/facility'
 import { logCoachAssignment } from '../../utils/auditLog'
 import { getDisplayContactName } from '../../utils/bookingFormat'
@@ -55,8 +55,18 @@ export function CoachAssignment() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   
-  // 權限檢查：只有管理員可以進入排班管理
-  useRequireAdmin(user)
+  // 權限檢查：管理員和小編可以進入排班管理
+  useEffect(() => {
+    const checkPermission = async () => {
+      if (!user) return
+      const hasPermission = await isEditorAsync(user)
+      if (!hasPermission) {
+        toast.error('您沒有權限訪問此頁面')
+        navigate('/')
+      }
+    }
+    checkPermission()
+  }, [user, navigate, toast])
   
   // 從 URL 參數獲取日期，如果沒有則使用明天
   const dateFromUrl = searchParams.get('date') || getTomorrowDate()

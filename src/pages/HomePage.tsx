@@ -105,6 +105,12 @@ export function HomePage() {
       link: '/audit-log'
     },
     {
+      title: '排班',
+      icon: '📆',
+      link: '/coach-assignment',
+      isEditor: true
+    },
+    {
       title: '船隻管理',
       icon: '🚤',
       link: '/boats',
