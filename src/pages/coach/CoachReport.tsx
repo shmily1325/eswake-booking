@@ -312,7 +312,7 @@ export function CoachReport({
     const hasCoachReport = !!(booking.coach_reports && 
       booking.coach_reports.some(r => r.coach_id === coachId))
     
-    // 駕駛時數：檢查這個特定教練是否回報過駕駛時數
+    // 駕駛時數：檢查這個特定教練是否回報過駕駛時數（driver_duration_min 有值）
     const hasDriverReport = !!(booking.coach_reports && 
       booking.coach_reports.some(r => r.coach_id === coachId && r.driver_duration_min !== null))
     

@@ -283,7 +283,9 @@ export function CoachAdmin() {
         setCompletedReports([])
       }
 
-      setCompletedDriverReports(driverData || [])
+      // 過濾掉 driver_duration_min 為 null 的記錄（純教練的追蹤記錄）
+      const actualDriverReports = (driverData || []).filter((r: any) => r.driver_duration_min !== null)
+      setCompletedDriverReports(actualDriverReports)
     } catch (error) {
       console.error('載入已結案記錄失敗:', error)
     } finally {
