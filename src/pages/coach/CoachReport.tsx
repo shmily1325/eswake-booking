@@ -91,7 +91,9 @@ export function CoachReport({
   const [reportingCoachId, setReportingCoachId] = useState<string | null>(null)
   const [reportingCoachName, setReportingCoachName] = useState<string>('')
   const [driverDuration, setDriverDuration] = useState<number>(0)
+  const [originalDriverDuration, setOriginalDriverDuration] = useState<number | null>(null) // 用於比較是否有變更
   const [participants, setParticipants] = useState<Participant[]>([])
+  const [originalParticipants, setOriginalParticipants] = useState<Participant[]>([]) // 用於比較是否有變更
   
   // 會員搜尋
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
@@ -348,15 +350,21 @@ export function CoachReport({
     // 找到這個教練的駕駛回報記錄
     const myDriverReport = booking.coach_reports?.find(r => r.coach_id === coachId)
     if (myDriverReport) {
-      setDriverDuration(myDriverReport.driver_duration_min || 0)
+      const duration = myDriverReport.driver_duration_min || 0
+      setDriverDuration(duration)
+      setOriginalDriverDuration(duration) // 保存原始值用於比較
     } else {
       setDriverDuration(booking.duration_min)
+      setOriginalDriverDuration(null) // 沒有舊記錄
     }
     
     if (booking.participants && booking.participants.length > 0) {
       const existingParticipants = booking.participants.filter(p => p.coach_id === coachId)
       setParticipants(existingParticipants)
+      // 深拷貝保存原始資料，用於比較是否有變更
+      setOriginalParticipants(JSON.parse(JSON.stringify(existingParticipants)))
     } else {
+      setOriginalParticipants([]) // 新回報沒有原始資料
       loadBookingMembers(booking.id, booking.duration_min)
     }
   }
@@ -578,11 +586,22 @@ export function CoachReport({
       return
     }
 
+    // 檢查駕駛時數是否有變更
+    const driverDurationChanged = originalDriverDuration === null || originalDriverDuration !== driverDuration
+    
     console.log('提交駕駛回報:', {
       booking_id: reportingBookingId,
       coach_id: reportingCoachId,
-      driver_duration_min: driverDuration
+      driver_duration_min: driverDuration,
+      original_duration: originalDriverDuration,
+      has_changes: driverDurationChanged
     })
+
+    // 如果沒有變更，跳過更新
+    if (!driverDurationChanged) {
+      console.log('駕駛時數沒有變更，跳過更新')
+      return
+    }
 
     const { error } = await supabase
       .from('coach_reports')
@@ -739,8 +758,22 @@ export function CoachReport({
 
         if (p.id) {
           // 現有記錄：更新
-          // 如果已經處理過 (processed)，教練修改內容後需要重新處理
-          // 所以這裡使用新計算的 status（會員 → pending，非會員 → not_applicable）
+          // 檢查關鍵欄位是否有變更
+          const original = originalParticipants.find(op => op.id === p.id)
+          const hasChanges = !original || 
+            original.participant_name !== p.participant_name ||
+            original.duration_min !== p.duration_min ||
+            original.payment_method !== p.payment_method ||
+            original.lesson_type !== p.lesson_type ||
+            original.member_id !== p.member_id ||
+            (original.notes || '') !== (p.notes || '')
+          
+          // 如果有變更，使用新計算的 status（會員 → pending，非會員 → not_applicable）
+          // 如果沒有變更，保留原狀態（避免 processed 變回 pending）
+          const finalStatus = hasChanges ? calculatedStatus : (p.status || calculatedStatus)
+          
+          console.log(`  → 有變更: ${hasChanges}, 最終狀態: ${finalStatus}`)
+          
           participantsToUpdate.push({
             booking_id: reportingBookingId,
             coach_id: reportingCoachId,
@@ -750,7 +783,7 @@ export function CoachReport({
             payment_method: p.payment_method,
             lesson_type: p.lesson_type,
             notes: p.notes || null,
-            status: calculatedStatus,
+            status: finalStatus,
             reported_at: getLocalTimestamp(),
             is_teaching: isTeaching,
             id: p.id,
