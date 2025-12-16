@@ -823,15 +823,22 @@ export function BatchEditBookingDialog({
                 }}>
                   <span style={{ fontSize: '14px', color: '#7b1fa2', fontWeight: '500' }}>自訂：</span>
                   <input
-                    type="number"
-                    min="15"
-                    max="480"
-                    step="5"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={durationMin}
                     onChange={(e) => {
                       const val = parseInt(e.target.value)
-                      if (!isNaN(val) && val >= 15 && val <= 480) {
+                      if (!isNaN(val) && val >= 1 && val <= 480) {
                         setDurationMin(val)
+                      } else if (e.target.value === '') {
+                        setDurationMin(30)
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const val = parseInt(e.target.value)
+                      if (isNaN(val) || val < 15) {
+                        setDurationMin(30)
                       }
                     }}
                     style={{
