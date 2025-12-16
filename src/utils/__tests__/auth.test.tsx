@@ -15,7 +15,10 @@ import {
 } from '../auth'
 import { supabase } from '../../lib/supabase'
 
-// Mock Supabase
+// ============================================================================
+// Mocks
+// ============================================================================
+
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: vi.fn(() => ({
@@ -24,15 +27,13 @@ vi.mock('../../lib/supabase', () => ({
   }
 }))
 
-// Mock logger
 vi.mock('../logger', () => ({
-  logger: {
-    error: vi.fn()
-  }
+  logger: { error: vi.fn() }
 }))
 
-// Mock useNavigate
 const mockNavigate = vi.fn()
+const mockToastError = vi.fn()
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
   return {
@@ -41,24 +42,43 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-// Mock alert
-global.alert = vi.fn()
+vi.mock('../../components/ui', () => ({
+  useToast: () => ({ error: mockToastError })
+}))
 
-  describe('auth.ts - 權限驗證', () => {
+// ============================================================================
+// Helpers
+// ============================================================================
+
+const createMockUser = (email: string): User => ({
+  id: 'test-id',
+  email,
+  aud: 'authenticated',
+  role: 'authenticated',
+  created_at: new Date().toISOString(),
+  app_metadata: {},
+  user_metadata: {}
+} as User)
+
+const mockSupabaseResponse = (data: { email: string }[] | null, error: { message: string } | null = null) => {
+  vi.mocked(supabase.from).mockImplementation(vi.fn(() => ({
+    select: vi.fn(() => Promise.resolve({ data, error }))
+  })) as any)
+}
+
+const TestWrapper = ({ children }: { children: ReactNode }) => (
+  <BrowserRouter>{children}</BrowserRouter>
+)
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+describe('auth.ts - 權限驗證', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     clearPermissionCache()
   })
-
-  const createMockUser = (email: string): User => ({
-    id: 'test-id',
-    email,
-    aud: 'authenticated',
-    role: 'authenticated',
-    created_at: new Date().toISOString(),
-    app_metadata: {},
-    user_metadata: {}
-  } as User)
 
   describe('SUPER_ADMINS', () => {
     it('應該包含超級管理員的電子郵件', () => {
@@ -102,13 +122,7 @@ global.alert = vi.fn()
     })
 
     it('白名單中的用戶應該被允許', async () => {
-      const mockFrom = vi.fn(() => ({
-        select: vi.fn(() => Promise.resolve({
-          data: [{ email: 'allowed@example.com' }],
-          error: null
-        }))
-      }))
-      vi.mocked(supabase.from).mockImplementation(mockFrom as any)
+      mockSupabaseResponse([{ email: 'allowed@example.com' }])
 
       const user = createMockUser('allowed@example.com')
       const result = await isAllowedUser(user)
@@ -116,13 +130,7 @@ global.alert = vi.fn()
     })
 
     it('不在白名單中的用戶應該不被允許', async () => {
-      const mockFrom = vi.fn(() => ({
-        select: vi.fn(() => Promise.resolve({
-          data: [{ email: 'other@example.com' }],
-          error: null
-        }))
-      }))
-      vi.mocked(supabase.from).mockImplementation(mockFrom as any)
+      mockSupabaseResponse([{ email: 'other@example.com' }])
 
       const user = createMockUser('notallowed@example.com')
       const result = await isAllowedUser(user)
@@ -130,26 +138,13 @@ global.alert = vi.fn()
     })
 
     it('資料庫錯誤時應該只允許超級管理員', async () => {
-      const mockFrom = vi.fn(() => ({
-        select: vi.fn(() => Promise.resolve({
-          data: null,
-          error: { message: 'Database error' }
-        }))
-      }))
-      vi.mocked(supabase.from).mockImplementation(mockFrom as any)
+      mockSupabaseResponse(null, { message: 'Database error' })
 
       const superAdmin = createMockUser('callumbao1122@gmail.com')
       expect(await isAllowedUser(superAdmin)).toBe(true)
 
       const regularUser = createMockUser('regular@example.com')
       expect(await isAllowedUser(regularUser)).toBe(false)
-    })
-
-    // 跳過緩存測試，因為它依賴於時間（60秒緩存）
-    // 在 beforeEach 中我們總是清除緩存，所以測試不適用
-    it.skip('應該使用緩存避免重複查詢', async () => {
-      // 此測試在實際環境中有效，但在單元測試中難以驗證
-      // 因為緩存持續時間為 60 秒，且 beforeEach 會清除緩存
     })
   })
 
@@ -161,13 +156,7 @@ global.alert = vi.fn()
     })
 
     it('資料庫中的管理員應該是管理員', async () => {
-      const mockFrom = vi.fn(() => ({
-        select: vi.fn(() => Promise.resolve({
-          data: [{ email: 'admin@example.com' }],
-          error: null
-        }))
-      }))
-      vi.mocked(supabase.from).mockImplementation(mockFrom as any)
+      mockSupabaseResponse([{ email: 'admin@example.com' }])
 
       const user = createMockUser('admin@example.com')
       const result = await isAdminAsync(user)
@@ -175,13 +164,7 @@ global.alert = vi.fn()
     })
 
     it('非管理員應該不是管理員', async () => {
-      const mockFrom = vi.fn(() => ({
-        select: vi.fn(() => Promise.resolve({
-          data: [{ email: 'other@example.com' }],
-          error: null
-        }))
-      }))
-      vi.mocked(supabase.from).mockImplementation(mockFrom as any)
+      mockSupabaseResponse([{ email: 'other@example.com' }])
 
       const user = createMockUser('notadmin@example.com')
       const result = await isAdminAsync(user)
@@ -196,26 +179,20 @@ global.alert = vi.fn()
 
   describe('clearPermissionCache', () => {
     it('應該清除緩存', async () => {
-      const mockFrom = vi.fn(() => ({
-        select: vi.fn(() => Promise.resolve({
-          data: [{ email: 'test@example.com' }],
-          error: null
-        }))
-      }))
-      vi.mocked(supabase.from).mockImplementation(mockFrom as any)
+      mockSupabaseResponse([{ email: 'test@example.com' }])
 
       const user = createMockUser('test@example.com')
-      
+
       // 第一次查詢
       await isAllowedUser(user)
-      expect(mockFrom).toHaveBeenCalledTimes(1)
-      
+      expect(supabase.from).toHaveBeenCalledTimes(1)
+
       // 清除緩存
       clearPermissionCache()
-      
+
       // 再次查詢應該重新從資料庫載入
       await isAllowedUser(user)
-      expect(mockFrom).toHaveBeenCalledTimes(2)
+      expect(supabase.from).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -248,36 +225,32 @@ global.alert = vi.fn()
   })
 
   describe('useRequireAdmin', () => {
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <BrowserRouter>{children}</BrowserRouter>
-    )
-
     it('管理員應該不被重定向', () => {
       const user = createMockUser('callumbao1122@gmail.com')
-      const { result } = renderHook(() => useRequireAdmin(user), { wrapper })
-      
+      const { result } = renderHook(() => useRequireAdmin(user), { wrapper: TestWrapper })
+
       expect(result.current).toBe(true)
       expect(mockNavigate).not.toHaveBeenCalled()
-      expect(global.alert).not.toHaveBeenCalled()
+      expect(mockToastError).not.toHaveBeenCalled()
     })
 
     it('非管理員應該被重定向到首頁並顯示警告', async () => {
       const user = createMockUser('regular@example.com')
-      const { result } = renderHook(() => useRequireAdmin(user), { wrapper })
-      
+      const { result } = renderHook(() => useRequireAdmin(user), { wrapper: TestWrapper })
+
       expect(result.current).toBe(false)
-      
+
       await waitFor(() => {
-        expect(global.alert).toHaveBeenCalledWith('您沒有權限訪問此頁面')
+        expect(mockToastError).toHaveBeenCalledWith('您沒有權限訪問此頁面')
         expect(mockNavigate).toHaveBeenCalledWith('/')
       })
     })
 
     it('null 用戶應該被重定向', async () => {
-      renderHook(() => useRequireAdmin(null), { wrapper })
-      
+      renderHook(() => useRequireAdmin(null), { wrapper: TestWrapper })
+
       await waitFor(() => {
-        expect(global.alert).toHaveBeenCalled()
+        expect(mockToastError).toHaveBeenCalled()
         expect(mockNavigate).toHaveBeenCalledWith('/')
       })
     })
@@ -287,17 +260,16 @@ global.alert = vi.fn()
     it('應該始終返回允許（白名單已關閉）', () => {
       const user = createMockUser('anyone@example.com')
       const { result } = renderHook(() => useCheckAllowedUser(user))
-      
+
       expect(result.current.isAllowed).toBe(true)
       expect(result.current.checking).toBe(false)
     })
 
     it('null 用戶也應該返回允許', () => {
       const { result } = renderHook(() => useCheckAllowedUser(null))
-      
+
       expect(result.current.isAllowed).toBe(true)
       expect(result.current.checking).toBe(false)
     })
   })
 })
-

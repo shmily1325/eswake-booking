@@ -39,11 +39,6 @@ export function BaoHub() {
             icon: '💼',
             link: '/coach-admin'
           },
-          {
-            title: '回報記錄',
-            icon: '📊',
-            link: '/coach-report-logs'
-          }
         ]
       },
       {

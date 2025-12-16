@@ -92,6 +92,9 @@ export function CoachAdmin() {
   const [completedDriverReports, setCompletedDriverReports] = useState<any[]>([])
   const [completedViewMode, setCompletedViewMode] = useState<CompletedViewMode>('booking')
   
+  // Email 到名字的映射（用於顯示提交者）
+  const [emailToNameMap, setEmailToNameMap] = useState<Record<string, string>>({})
+  
   // 會員搜尋
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
   const { 
@@ -100,6 +103,34 @@ export function CoachAdmin() {
   } = useMemberSearch()
 
   // ============ 資料載入 ============
+
+  // 載入 email 到名字的映射
+  const loadEmailToNameMap = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('coaches')
+        .select('name, user_email')
+        .not('user_email', 'is', null)
+      
+      if (error) throw error
+      
+      const map: Record<string, string> = {}
+      data?.forEach(coach => {
+        if (coach.user_email) {
+          map[coach.user_email] = coach.name
+        }
+      })
+      setEmailToNameMap(map)
+    } catch (error) {
+      console.error('載入 email 映射失敗:', error)
+    }
+  }
+
+  // 根據 email 取得顯示名稱
+  const getSubmitterName = (email: string | null | undefined): string | null => {
+    if (!email) return null
+    return emailToNameMap[email] || email.split('@')[0]
+  }
 
   // 載入待處理記錄 (會員)
   const loadPendingReports = async () => {
@@ -383,6 +414,11 @@ export function CoachAdmin() {
 
   // ============ Effects ============
 
+  // 載入 email 到名字的映射
+  useEffect(() => {
+    loadEmailToNameMap()
+  }, [])
+
   useEffect(() => {
     handleSearchChange(memberSearchTerm)
   }, [memberSearchTerm, handleSearchChange])
@@ -532,8 +568,7 @@ export function CoachAdmin() {
         title="💼 回報管理"
         showBaoLink={true}
         extraLinks={[
-          { label: '← 預約回報', link: '/coach-report' },
-          { label: '回報記錄 →', link: '/coach-report-logs' }
+          { label: '← 預約回報', link: '/coach-report' }
         ]}
       />
       
@@ -704,6 +739,10 @@ export function CoachAdmin() {
                             loadPendingReports()
                             loadNonMemberReports()
                           }}
+                          submitterInfo={{
+                            createdBy: getSubmitterName((report as any).created_by_email),
+                            updatedBy: getSubmitterName((report as any).updated_by_email)
+                          }}
                         />
                       ))}
                     </div>
@@ -778,6 +817,23 @@ export function CoachAdmin() {
                                     {report.duration_min}分 • {PAYMENT_METHODS.find(m => m.value === report.payment_method)?.label}
                                     {report.coaches && ` • ${report.coaches.name}`}
                                   </div>
+                                  {/* 提交者資訊 */}
+                                  {(() => {
+                                    const createdBy = getSubmitterName((report as any).created_by_email)
+                                    const updatedBy = getSubmitterName((report as any).updated_by_email)
+                                    if (!createdBy && !updatedBy) return null
+                                    return (
+                                      <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                                        {createdBy && updatedBy && createdBy !== updatedBy ? (
+                                          <>📤 由 {createdBy} 回報，{updatedBy} 修改</>
+                                        ) : createdBy ? (
+                                          <>📤 由 {createdBy} 回報</>
+                                        ) : updatedBy ? (
+                                          <>📝 由 {updatedBy} 修改</>
+                                        ) : null}
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
                                   <button

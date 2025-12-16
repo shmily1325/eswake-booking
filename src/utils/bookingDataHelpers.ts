@@ -142,7 +142,9 @@ export function assembleBookingsWithRelations(
       created_at: p.created_at,
       updated_at: p.updated_at,
       deleted_at: p.deleted_at,
-      reported_at: p.reported_at
+      reported_at: p.reported_at,
+      created_by_email: p.created_by_email,
+      updated_by_email: p.updated_by_email
     })
   })
 

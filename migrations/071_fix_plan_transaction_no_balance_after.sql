@@ -241,3 +241,5 @@ BEGIN
   RAISE NOTICE '📝 變更：plan 類型的交易所有 *_after 欄位將為 NULL';
 END $$;
 
+
+

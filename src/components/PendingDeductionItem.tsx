@@ -36,6 +36,8 @@ interface Props {
     lesson_type?: string | null  // 教學方式：undesignated/designated_paid/designated_free
     member_id: string | null
     notes?: string | null
+    created_by_email?: string | null  // 原始回報者 email
+    updated_by_email?: string | null  // 最後修改者 email
     bookings: {
       start_at: string
       contact_name: string
@@ -44,9 +46,14 @@ interface Props {
     coaches: { id: string; name: string } | null
   }
   onComplete: () => void
+  // 提交者資訊（由父組件傳入，已轉換成名字）
+  submitterInfo?: {
+    createdBy: string | null  // 原始回報者名字
+    updatedBy: string | null  // 最後修改者名字
+  }
 }
 
-export function PendingDeductionItem({ report, onComplete }: Props) {
+export function PendingDeductionItem({ report, onComplete, submitterInfo }: Props) {
   const toast = useToast()
   const [isExpanded, setIsExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -616,6 +623,21 @@ export function PendingDeductionItem({ report, onComplete }: Props) {
               return datePart
             })()} • {formatTime(report.bookings.start_at)} • {report.bookings.boats?.name || '未知'} • {report.coaches?.name || '未知'} ({report.duration_min}分)
           </div>
+          {/* 提交者資訊 */}
+          {submitterInfo && (submitterInfo.createdBy || submitterInfo.updatedBy) && (
+            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>
+              {submitterInfo.createdBy && submitterInfo.updatedBy && submitterInfo.createdBy !== submitterInfo.updatedBy ? (
+                // 有修改者且與回報者不同
+                <>📤 由 {submitterInfo.createdBy} 回報，{submitterInfo.updatedBy} 修改</>
+              ) : submitterInfo.createdBy ? (
+                // 只有回報者（或修改者與回報者相同）
+                <>📤 由 {submitterInfo.createdBy} 回報</>
+              ) : submitterInfo.updatedBy ? (
+                // 只有修改者（舊資料可能沒有 createdBy）
+                <>📝 由 {submitterInfo.updatedBy} 修改</>
+              ) : null}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {/* 收款方式 */}
             <span style={{

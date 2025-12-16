@@ -16,7 +16,6 @@ import { CoachReport } from './pages/coach/CoachReport'
 import { MyReport } from './pages/coach/MyReport'
 import { CoachAdmin } from './pages/coach/CoachAdmin'
 import { CoachAssignment } from './pages/coach/CoachAssignment'
-import { CoachReportLogs } from './pages/coach/CoachReportLogs'
 import { MemberImport } from './pages/member/MemberImport'
 import { AuditLog } from './pages/admin/AuditLog'
 import { TomorrowReminder } from './pages/TomorrowReminder'
@@ -72,7 +71,6 @@ function AppContent() {
           <Route path="/my-report" element={<MyReport />} />
           <Route path="/my-report-detail" element={<CoachReport autoFilterByUser={true} />} />
           <Route path="/coach-admin" element={<CoachAdmin />} />
-          <Route path="/coach-report-logs" element={<CoachReportLogs />} />
           <Route path="/coach-assignment" element={<CoachAssignment />} />
           <Route path="/member-import" element={<MemberImport />} />
           <Route path="/audit-log" element={<AuditLog />} />
