@@ -61,7 +61,8 @@ export function BatchEditBookingDialog({
   const [selectedBoatId, setSelectedBoatId] = useState<number | null>(null)
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
   const [notes, setNotes] = useState('')
-  const [durationMin, setDurationMin] = useState<number>(30)
+  const [durationMin, setDurationMin] = useState<number>(60)
+  const [durationInput, setDurationInput] = useState<string>('60')  // 用於輸入框顯示
   const [filledBy, setFilledBy] = useState('')
   
   
@@ -74,6 +75,7 @@ export function BatchEditBookingDialog({
       setSelectedCoaches([])
       setNotes('')
       setDurationMin(60)  // 預設60分鐘更合理
+      setDurationInput('60')
       setFilledBy('')
       loadData()
     }
@@ -474,7 +476,8 @@ export function BatchEditBookingDialog({
     setSelectedBoatId(null)
     setSelectedCoaches([])
     setNotes('')
-    setDurationMin(30)
+    setDurationMin(60)
+    setDurationInput('60')
     setFilledBy('')
   }
   
@@ -796,7 +799,10 @@ export function BatchEditBookingDialog({
                     <button
                       key={duration}
                       type="button"
-                      onClick={() => setDurationMin(duration)}
+                      onClick={() => {
+                        setDurationMin(duration)
+                        setDurationInput(String(duration))
+                      }}
                       style={{
                         padding: '10px 16px',
                         borderRadius: '8px',
@@ -826,19 +832,40 @@ export function BatchEditBookingDialog({
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    value={durationMin}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value)
-                      if (!isNaN(val) && val >= 1 && val <= 480) {
-                        setDurationMin(val)
-                      } else if (e.target.value === '') {
-                        setDurationMin(30)
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    lang="en"
+                    value={durationInput}
+                    onKeyDown={(e) => {
+                      // 只允許數字鍵、方向鍵、刪除鍵、Tab
+                      const allowedKeys = ['0','1','2','3','4','5','6','7','8','9','Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End']
+                      if (!allowedKeys.includes(e.key) && !e.ctrlKey && !e.metaKey) {
+                        e.preventDefault()
                       }
                     }}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value)
+                    onChange={(e) => {
+                      // 允許輸入任何數字，包括空字串
+                      const value = e.target.value.replace(/[^0-9]/g, '')
+                      setDurationInput(value)
+                      const val = parseInt(value)
+                      if (!isNaN(val) && val >= 1 && val <= 480) {
+                        setDurationMin(val)
+                      }
+                    }}
+                    onBlur={() => {
+                      // 離開輸入框時驗證
+                      const val = parseInt(durationInput)
                       if (isNaN(val) || val < 15) {
-                        setDurationMin(30)
+                        setDurationMin(60)
+                        setDurationInput('60')
+                      } else if (val > 480) {
+                        setDurationMin(480)
+                        setDurationInput('480')
+                      } else {
+                        setDurationMin(val)
+                        setDurationInput(String(val))
                       }
                     }}
                     style={{
@@ -850,7 +877,8 @@ export function BatchEditBookingDialog({
                       fontWeight: '600',
                       textAlign: 'center',
                       color: '#7b1fa2',
-                    }}
+                      imeMode: 'disabled',
+                    } as React.CSSProperties}
                   />
                   <span style={{ fontSize: '14px', color: '#7b1fa2' }}>分鐘</span>
                 </div>
