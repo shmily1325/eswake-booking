@@ -754,7 +754,8 @@ export function CoachReport({
             reported_at: getLocalTimestamp(),
             is_teaching: isTeaching,
             id: p.id,
-            updated_at: getLocalTimestamp()
+            updated_at: getLocalTimestamp(),
+            updated_by_email: user?.email || null
           })
         } else {
           // 新記錄：插入
@@ -769,7 +770,9 @@ export function CoachReport({
             notes: p.notes || null,
             status: calculatedStatus,
             reported_at: getLocalTimestamp(),
-            is_teaching: isTeaching
+            is_teaching: isTeaching,
+            created_by_email: user?.email || null,
+            updated_by_email: user?.email || null
           })
         }
       })
@@ -1154,8 +1157,7 @@ export function CoachReport({
           title={autoFilterByUser ? "我的回報" : "預約回報"}
           showBaoLink={!autoFilterByUser}
           extraLinks={autoFilterByUser ? undefined : [
-            { label: '回報管理 →', link: '/coach-admin' },
-            { label: '回報記錄', link: '/coach-report-logs' }
+            { label: '回報管理 →', link: '/coach-admin' }
           ]}
         />
       )}

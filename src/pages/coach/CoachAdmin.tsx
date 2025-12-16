@@ -356,7 +356,8 @@ export function CoachAdmin() {
           participant_name: member.nickname || member.name,
           status: 'pending',
           notes: newNotes,
-          updated_at: getLocalTimestamp()
+          updated_at: getLocalTimestamp(),
+          updated_by_email: user?.email || null
         })
         .eq('id', report.id)
         .select()
@@ -396,7 +397,8 @@ export function CoachAdmin() {
         .from('booking_participants')
         .update({
           status: 'processed',
-          updated_at: getLocalTimestamp()
+          updated_at: getLocalTimestamp(),
+          updated_by_email: user?.email || null
         })
         .eq('id', report.id)
 

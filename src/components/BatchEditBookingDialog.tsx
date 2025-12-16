@@ -791,7 +791,7 @@ export function BatchEditBookingDialog({
                 }}>
                   ⚠️ 若修改後與其他預約時間衝突，該筆會被跳過
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                   {DURATION_OPTIONS.map(duration => (
                     <button
                       key={duration}
@@ -812,6 +812,40 @@ export function BatchEditBookingDialog({
                       {duration}分鐘
                     </button>
                   ))}
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                  borderTop: '1px dashed #ce93d8'
+                }}>
+                  <span style={{ fontSize: '14px', color: '#7b1fa2', fontWeight: '500' }}>自訂：</span>
+                  <input
+                    type="number"
+                    min="15"
+                    max="480"
+                    step="5"
+                    value={durationMin}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value)
+                      if (!isNaN(val) && val >= 15 && val <= 480) {
+                        setDurationMin(val)
+                      }
+                    }}
+                    style={{
+                      width: '80px',
+                      padding: '8px 12px',
+                      border: '2px solid #9c27b0',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      textAlign: 'center',
+                      color: '#7b1fa2',
+                    }}
+                  />
+                  <span style={{ fontSize: '14px', color: '#7b1fa2' }}>分鐘</span>
                 </div>
               </div>
             )}

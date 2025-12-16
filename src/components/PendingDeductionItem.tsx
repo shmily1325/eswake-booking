@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from './ui'
+import { useAuthUser } from '../contexts/AuthContext'
 import { normalizeDate } from '../utils/date'
 
 // 扣款類別
@@ -54,6 +55,7 @@ interface Props {
 }
 
 export function PendingDeductionItem({ report, onComplete, submitterInfo }: Props) {
+  const user = useAuthUser()
   const toast = useToast()
   const [isExpanded, setIsExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -406,7 +408,8 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo }: Prop
         .from('booking_participants')
         .update({ 
           status: 'processed',
-          notes: report.notes ? `${report.notes} [${settlementLabel}]` : `[${settlementLabel}]`
+          notes: report.notes ? `${report.notes} [${settlementLabel}]` : `[${settlementLabel}]`,
+          updated_by_email: user?.email || null
         })
         .eq('id', report.id)
 
