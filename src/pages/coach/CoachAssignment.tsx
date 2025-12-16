@@ -1519,7 +1519,7 @@ export function CoachAssignment() {
                                 borderRadius: '4px',
                                 zIndex: 10,
                               }}>
-                                🏄 教練團練
+                                🏄 教練練習
                               </div>
                             )}
                             

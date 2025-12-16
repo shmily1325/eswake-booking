@@ -418,7 +418,9 @@ export function CoachReport({
           lesson_type: 'undesignated',  // 默认不指定
           status: 'pending',
           created_at: null,
+          created_by_email: null,
           updated_at: null,
+          updated_by_email: null,
           deleted_at: null,
           is_deleted: null,
           is_teaching: null,
@@ -451,7 +453,9 @@ export function CoachReport({
                 lesson_type: 'undesignated',  // 默认不指定
                 status: 'not_applicable',
                 created_at: null,
+                created_by_email: null,
                 updated_at: null,
+                updated_by_email: null,
                 deleted_at: null,
                 is_deleted: null,
                 is_teaching: null,
@@ -478,7 +482,9 @@ export function CoachReport({
           lesson_type: 'undesignated',  // 默认不指定
           status: 'pending',
           created_at: null,
+          created_by_email: null,
           updated_at: null,
+          updated_by_email: null,
           deleted_at: null,
           is_deleted: null,
           is_teaching: null,
@@ -867,7 +873,9 @@ export function CoachReport({
         lesson_type: 'undesignated',
         status: 'not_applicable',  // 默認非會員
         created_at: null,
+        created_by_email: null,
         updated_at: null,
+        updated_by_email: null,
         deleted_at: null,
         is_deleted: null,
         is_teaching: null,
