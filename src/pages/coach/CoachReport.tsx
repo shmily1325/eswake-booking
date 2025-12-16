@@ -358,12 +358,16 @@ export function CoachReport({
       setOriginalDriverDuration(null) // 沒有舊記錄
     }
     
-    if (booking.participants && booking.participants.length > 0) {
-      const existingParticipants = booking.participants.filter(p => p.coach_id === coachId)
+    // 檢查這個教練是否已有回報記錄
+    const existingParticipants = booking.participants?.filter(p => p.coach_id === coachId) || []
+    
+    if (existingParticipants.length > 0) {
+      // 這個教練已有回報，載入現有記錄
       setParticipants(existingParticipants)
       // 深拷貝保存原始資料，用於比較是否有變更
       setOriginalParticipants(JSON.parse(JSON.stringify(existingParticipants)))
     } else {
+      // 這個教練尚未回報，自動帶入會員（排除其他教練已回報的）
       setOriginalParticipants([]) // 新回報沒有原始資料
       loadBookingMembers(booking.id, booking.duration_min)
     }
