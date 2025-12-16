@@ -83,6 +83,7 @@ export function CoachReport({
   const [bookings, setBookings] = useState<Booking[]>([])
   const [allBookings, setAllBookings] = useState<Booking[]>([]) // 用於統計
   const [loading, setLoading] = useState(true) // 初始為 true 避免閃爍
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null) // 最後刷新時間
   
   // 回報表單
   const [reportingBookingId, setReportingBookingId] = useState<number | null>(null)
@@ -276,6 +277,7 @@ export function CoachReport({
       }
 
       setBookings(filteredBookings)
+      setLastRefreshTime(new Date()) // 記錄刷新時間
     } catch (error) {
       console.error('載入預約失敗:', error)
     } finally {
@@ -1159,14 +1161,34 @@ export function CoachReport({
       }}>
         {/* 頁面標題 - 只在非嵌入模式顯示 */}
         {!embedded && (
-          <h1 style={{ 
-            fontSize: isMobile ? '24px' : '32px',
-            fontWeight: 'bold',
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
             marginBottom: '24px',
-            color: '#333'
+            flexWrap: 'wrap',
+            gap: '8px'
           }}>
-            📋 {autoFilterByUser ? '我的回報' : '預約回報'}
-          </h1>
+            <h1 style={{ 
+              fontSize: isMobile ? '24px' : '32px',
+              fontWeight: 'bold',
+              margin: 0,
+              color: '#333'
+            }}>
+              📋 {autoFilterByUser ? '我的回報' : '預約回報'}
+            </h1>
+            {lastRefreshTime && (
+              <div style={{
+                fontSize: '12px',
+                color: '#888',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                🔄 已更新 {lastRefreshTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* 篩選區 */}
