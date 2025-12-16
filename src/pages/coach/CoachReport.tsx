@@ -124,6 +124,18 @@ export function CoachReport({
     loadBookings()
   }, [selectedDate, selectedCoachId, viewMode, autoFilterByUser, userCoachId])
 
+  // 自動刷新：每 30 秒重新載入列表（只在沒開對話框時）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // 只有在對話框關閉時才刷新，避免打擾正在填表單的人
+      if (!reportingBookingId) {
+        loadBookings(true) // 靜默刷新，不顯示 loading
+      }
+    }, 30000) // 30秒
+    
+    return () => clearInterval(interval)
+  }, [reportingBookingId, selectedDate, selectedCoachId, viewMode, autoFilterByUser, userCoachId])
+
   useEffect(() => {
     handleSearchChange(memberSearchTerm)
   }, [memberSearchTerm, handleSearchChange])
@@ -167,8 +179,8 @@ export function CoachReport({
     }
   }
 
-  const loadBookings = async () => {
-    setLoading(true)
+  const loadBookings = async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       let bookingsQuery = supabase
         .from('bookings')
@@ -267,7 +279,7 @@ export function CoachReport({
     } catch (error) {
       console.error('載入預約失敗:', error)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
