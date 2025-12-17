@@ -130,7 +130,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       .from('boats')
       .select('id, name, color')
       .eq('is_active', true)
-      .order('name')
+      .order('id')
     
     if (error) {
       console.error('載入船隻失敗:', error)
@@ -146,41 +146,20 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
   }
 
-  const setQuickDateRange = (type: 'today' | 'tomorrow') => {
-    const today = new Date()
-    let start: Date
-
-    switch (type) {
-      case 'today':
-        start = today
-        break
-      case 'tomorrow':
-        start = new Date(today)
-        start.setDate(today.getDate() + 1)
-        break
-    }
-
-    setStartDate(formatDate(start))
-    setEndDate(formatDate(start))
-  }
-
-  // 船隻搜尋的快速日期選擇
+  // 船隻查詢的快速日期選擇
   const setBoatQuickDateRange = (type: 'today' | 'tomorrow') => {
     const today = new Date()
-    let start: Date
+    let targetDate: Date
 
-    switch (type) {
-      case 'today':
-        start = today
-        break
-      case 'tomorrow':
-        start = new Date(today)
-        start.setDate(today.getDate() + 1)
-        break
+    if (type === 'today') {
+      targetDate = today
+    } else {
+      targetDate = new Date(today)
+      targetDate.setDate(today.getDate() + 1)
     }
 
-    setBoatStartDate(formatDate(start))
-    setBoatEndDate(formatDate(start))
+    setBoatStartDate(formatDate(targetDate))
+    setBoatEndDate(formatDate(targetDate))
   }
 
   useEffect(() => {
@@ -334,11 +313,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       return
     }
     
-    if (!boatStartDate || !boatEndDate) {
-      toast.error('請選擇日期區間')
-      return
-    }
-
     setLoading(true)
     setHasSearched(true)
     setCopySuccess(false)
@@ -346,13 +320,23 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     try {
       const MAX_RESULTS = 100
       
-      // 步驟 1: 查詢該船在指定日期區間的所有預約
+      // 步驟 1: 查詢該船的預約（如有日期區間則篩選，否則只顯示未來預約）
       let detailQuery = supabase
         .from('bookings')
         .select('id, start_at, duration_min, contact_name, notes, activity_types, status, boats:boat_id(name, color)')
         .eq('boat_id', selectedBoatId)
-        .gte('start_at', `${boatStartDate}T00:00:00`)
-        .lte('start_at', `${boatEndDate}T23:59:59`)
+      
+      if (boatStartDate && boatEndDate) {
+        // 有設定日期區間
+        detailQuery = detailQuery
+          .gte('start_at', `${boatStartDate}T00:00:00`)
+          .lte('start_at', `${boatEndDate}T23:59:59`)
+      } else {
+        // 沒有設定日期區間，預設只顯示未來預約
+        const today = new Date()
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+        detailQuery = detailQuery.gte('start_at', `${todayStr}T00:00:00`)
+      }
       
       const bookingsResult = await detailQuery.order('start_at', { ascending: true }).limit(MAX_RESULTS)
 
@@ -783,8 +767,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           <div style={{ marginBottom: '16px' }}>
             <div style={{ 
               display: 'flex',
+              flexWrap: 'wrap',
               justifyContent: 'space-between',
               alignItems: 'center',
+              gap: '8px',
               marginBottom: '8px'
             }}>
               <span style={{ 
@@ -792,7 +778,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 fontWeight: '500', 
                 color: '#495057',
               }}>
-                📅 日期區間 {(startDate || endDate) && <span style={{ color: '#5a5a5a' }}>(已設定)</span>}
+                📅 日期區間
+                {(startDate || endDate) 
+                  ? <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>(已設定)</span>
+                  : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>(不設定則顯示未來預約)</span>
+                }
               </span>
               {(startDate || endDate) && (
                 <button
@@ -803,7 +793,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     border: 'none',
                     background: '#dc3545',
                     color: 'white',
-                    borderRadius: '6px',
+                    borderRadius: '12px',
                     cursor: 'pointer',
                     fontSize: '12px',
                     fontWeight: '600',
@@ -814,47 +804,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               )}
             </div>
             
-            {/* 快速日期選擇按鈕 */}
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '6px',
-              marginBottom: '12px'
-            }}>
-              {[
-                { label: '今天', value: 'today' as const },
-                { label: '明天', value: 'tomorrow' as const },
-              ].map(({ label, value }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setQuickDateRange(value)}
-                  style={{
-                    padding: '6px 12px',
-                    border: '1px solid #dee2e6',
-                    background: 'white',
-                    borderRadius: '16px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: '#495057',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#5a5a5a'
-                    e.currentTarget.style.color = 'white'
-                    e.currentTarget.style.borderColor = '#5a5a5a'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'white'
-                    e.currentTarget.style.color = '#495057'
-                    e.currentTarget.style.borderColor = '#dee2e6'
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
             <div style={{ 
               display: 'flex', 
               flexDirection: isMobile ? 'column' : 'row',
@@ -913,13 +862,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 />
               </div>
             </div>
-            <div style={{ 
-              fontSize: '12px', 
-              color: '#888',
-              marginTop: '6px'
-            }}>
-              {(!startDate && !endDate) ? '不設定日期區間時，預設只顯示未來預約' : ''}
-            </div>
           </div>
 
           {/* 搜尋按鈕 */}
@@ -963,12 +905,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </label>
             <div style={{
               display: 'flex',
+              flexWrap: 'wrap',
               gap: '8px',
-              overflowX: 'auto',
-              paddingBottom: '8px',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
             }}>
               {boats.map(boat => (
                 <button
@@ -985,8 +923,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    flexShrink: 0,
-                    whiteSpace: 'nowrap',
                   }}
                 >
                   <span style={{
@@ -1012,8 +948,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           <div style={{ marginBottom: '16px' }}>
             <div style={{ 
               display: 'flex',
+              flexWrap: 'wrap',
               justifyContent: 'space-between',
               alignItems: 'center',
+              gap: '8px',
               marginBottom: '8px'
             }}>
               <span style={{ 
@@ -1021,70 +959,66 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 fontWeight: '500', 
                 color: '#495057',
               }}>
-                📅 日期區間 <span style={{ color: '#dc3545' }}>*</span>
-                {(boatStartDate || boatEndDate) && <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>(已設定)</span>}
+                📅 日期區間
+                {(boatStartDate || boatEndDate) 
+                  ? <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>(已設定)</span>
+                  : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>(不設定則顯示未來預約)</span>
+                }
               </span>
-              {(boatStartDate || boatEndDate) && (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={() => { setBoatStartDate(''); setBoatEndDate(''); }}
+                  onClick={() => setBoatQuickDateRange('today')}
                   style={{
                     padding: '4px 10px',
-                    border: 'none',
-                    background: '#dc3545',
-                    color: 'white',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                  }}
-                >
-                  清除
-                </button>
-              )}
-            </div>
-            
-            {/* 快速日期選擇按鈕 */}
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '6px',
-              marginBottom: '12px'
-            }}>
-              {[
-                { label: '今天', value: 'today' as const },
-                { label: '明天', value: 'tomorrow' as const },
-              ].map(({ label, value }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setBoatQuickDateRange(value)}
-                  style={{
-                    padding: '6px 12px',
                     border: '1px solid #dee2e6',
                     background: 'white',
-                    borderRadius: '16px',
+                    borderRadius: '12px',
                     cursor: 'pointer',
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: '500',
                     color: '#495057',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#5a5a5a'
-                    e.currentTarget.style.color = 'white'
-                    e.currentTarget.style.borderColor = '#5a5a5a'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'white'
-                    e.currentTarget.style.color = '#495057'
-                    e.currentTarget.style.borderColor = '#dee2e6'
                   }}
                 >
-                  {label}
+                  今天
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setBoatQuickDateRange('tomorrow')}
+                  style={{
+                    padding: '4px 10px',
+                    border: '1px solid #dee2e6',
+                    background: 'white',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    color: '#495057',
+                  }}
+                >
+                  明天
+                </button>
+                {(boatStartDate || boatEndDate) && (
+                  <button
+                    type="button"
+                    onClick={() => { setBoatStartDate(''); setBoatEndDate(''); }}
+                    style={{
+                      padding: '4px 10px',
+                      border: 'none',
+                      background: '#dc3545',
+                      color: 'white',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
             </div>
+            
             <div style={{ 
               display: 'flex', 
               flexDirection: isMobile ? 'column' : 'row',
