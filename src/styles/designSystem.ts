@@ -371,6 +371,7 @@ export const getCardStyle = (isMobile: boolean = false): React.CSSProperties => 
   boxShadow: designSystem.shadows.elevation[2],
   marginBottom: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
   transition: designSystem.transitions.normal,
+  overflow: 'hidden', // 防止內容超出卡片邊界
 })
 
 // 卡片變體

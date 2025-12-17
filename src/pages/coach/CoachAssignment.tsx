@@ -1005,10 +1005,11 @@ export function CoachAssignment() {
           padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
           borderRadius: designSystem.borderRadius.md,
           marginBottom: designSystem.spacing.md,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          overflow: 'hidden'
         }}>
           <div style={{ display: 'flex', gap: designSystem.spacing.md, alignItems: 'end', flexWrap: 'wrap' }}>
-            <div style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
+            <div style={{ flex: isMobile ? '1 1 100%' : '0 0 auto', minWidth: 0 }}>
               <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px', display: 'block' }}>
                 選擇日期
               </label>

@@ -144,8 +144,8 @@ export function DateRangePicker({
 
       {/* 日期/月份選擇器 - 簡化模式需要點擊展開 */}
       {(!simplified || showDatePicker) && (
-        <div style={{ display: 'grid', gap: '8px', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
-          <div>
+        <div style={{ display: 'grid', gap: '8px', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', overflow: 'hidden' }}>
+          <div style={{ minWidth: 0 }}>
             <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
               選擇月份
             </label>
@@ -158,6 +158,7 @@ export function DateRangePicker({
               }}
               style={{
                 width: '100%',
+                maxWidth: '100%',
                 padding: isMobile ? '10px 12px' : '8px 12px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
@@ -168,7 +169,7 @@ export function DateRangePicker({
               }}
             />
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
               選擇特定日期
             </label>
@@ -181,6 +182,7 @@ export function DateRangePicker({
               }}
               style={{
                 width: '100%',
+                maxWidth: '100%',
                 padding: isMobile ? '10px 12px' : '8px 12px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
