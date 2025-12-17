@@ -597,7 +597,8 @@ export function CoachAdmin() {
         maxWidth: '1400px', 
         width: '100%',
         margin: '0 auto',
-        padding: isMobile ? '16px' : '32px'
+        padding: isMobile ? '16px' : '32px',
+        overflow: 'hidden'
       }}>
         <div style={{ 
           display: 'flex', 

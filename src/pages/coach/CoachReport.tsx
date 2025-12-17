@@ -1204,7 +1204,8 @@ export function CoachReport({
         padding: embedded ? '0' : (isMobile ? '16px' : '24px'),
         maxWidth: '1400px',
         margin: '0 auto',
-        width: '100%'
+        width: '100%',
+        overflow: 'hidden'
       }}>
         {/* 頁面標題 - 只在非嵌入模式顯示 */}
         {!embedded && (

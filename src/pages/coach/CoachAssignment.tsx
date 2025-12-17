@@ -1027,8 +1027,12 @@ export function CoachAssignment() {
                       }
                     }}
                     style={{
-                      ...getInputStyle(isMobile),
-                      width: '100%'
+                      padding: '8px 12px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      color: '#333',
+                      cursor: 'pointer'
                     }}
                   />
                   {/* 星期幾徽章 - 右上角 */}

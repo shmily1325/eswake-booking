@@ -157,15 +157,14 @@ export function DateRangePicker({
                 if (simplified) setShowDatePicker(false)
               }}
               style={{
-                width: '100%',
-                maxWidth: '100%',
-                padding: isMobile ? '10px 12px' : '8px 12px',
+                padding: '8px 12px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
                 fontSize: '16px', // 16px 防止 iOS 縮放
                 fontWeight: '500',
                 outline: 'none',
-                transition: 'border-color 0.2s'
+                color: '#333',
+                cursor: 'pointer'
               }}
             />
           </div>
@@ -181,15 +180,14 @@ export function DateRangePicker({
                 if (simplified) setShowDatePicker(false)
               }}
               style={{
-                width: '100%',
-                maxWidth: '100%',
-                padding: isMobile ? '10px 12px' : '8px 12px',
+                padding: '8px 12px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
                 fontSize: '16px', // 16px 防止 iOS 縮放
                 fontWeight: '500',
                 outline: 'none',
-                transition: 'border-color 0.2s'
+                color: '#333',
+                cursor: 'pointer'
               }}
             />
             {/* 星期幾顯示 - 只在選擇特定日期時顯示 */}
