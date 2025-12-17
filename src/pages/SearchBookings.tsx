@@ -779,7 +779,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             color: activeTab === 'member' ? 'white' : '#666',
           }}
         >
-          👤 預約人
+          {isMobile ? '預約人' : '👤 預約人'}
         </button>
         <button
           type="button"
@@ -803,7 +803,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             color: activeTab === 'boat' ? 'white' : '#666',
           }}
         >
-          🚤 船隻
+          {isMobile ? '船隻' : '🚤 船隻'}
         </button>
         <button
           type="button"
@@ -827,7 +827,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             color: activeTab === 'coach' ? 'white' : '#666',
           }}
         >
-          🏄 教練
+          {isMobile ? '教練' : '🎓 教練'}
         </button>
       </div>
 
