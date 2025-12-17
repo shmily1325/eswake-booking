@@ -654,7 +654,6 @@ export function LineSettings() {
                 borderRadius: '6px',
                 fontSize: '16px', // 16px 防止 iOS 縮放
                 resize: 'vertical',
-                boxSizing: 'border-box',
                 opacity: includeWeatherWarning ? 1 : 0.5
               }}
             />

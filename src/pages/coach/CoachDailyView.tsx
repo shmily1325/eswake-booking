@@ -406,14 +406,12 @@ export function CoachDailyView() {
               fontSize: '11px',
               fontWeight: '600',
               padding: '3px 8px',
-              background: '#ff9800',
-              color: 'white',
-              borderRadius: '10px',
-              textAlign: 'center',
-              lineHeight: '1.2',
+              background: '#fff3e0',
+              color: '#e65100',
+              borderRadius: '4px',
+              border: '1px solid #ff9800',
             }}>
-              <span style={{ fontSize: '9px', display: 'block' }}>教練</span>
-              練習
+              教練練習
             </span>
           )}
         </div>
@@ -500,20 +498,13 @@ export function CoachDailyView() {
             fontSize: isMobile ? '11px' : '12px',
             fontWeight: '600',
             padding: '3px 8px',
-            background: isMobile ? '#ff9800' : '#fff3e0',
-            color: isMobile ? 'white' : '#e65100',
-            borderRadius: isMobile ? '10px' : '4px',
+            background: '#fff3e0',
+            color: '#e65100',
+            borderRadius: '4px',
             marginBottom: '6px',
-            border: isMobile ? 'none' : '1px solid #ff9800',
-            textAlign: isMobile ? 'center' : undefined,
-            lineHeight: isMobile ? '1.2' : undefined,
+            border: '1px solid #ff9800',
           }}>
-            {isMobile ? (
-              <>
-                <span style={{ fontSize: '9px', display: 'block' }}>教練</span>
-                練習
-              </>
-            ) : '🏄 教練練習'}
+            {isMobile ? '教練練習' : '🏄 教練練習'}
           </div>
         )}
 

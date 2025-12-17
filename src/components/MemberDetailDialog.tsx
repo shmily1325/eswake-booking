@@ -1824,7 +1824,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                   border: '2px solid #e0e0e0',
                   borderRadius: '8px',
                   fontSize: '16px',
-                  boxSizing: 'border-box',
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#5a5a5a'}
                 onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}

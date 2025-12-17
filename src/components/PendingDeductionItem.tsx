@@ -1602,8 +1602,7 @@ function DeductionItemRow({
               color: '#495057',
               minHeight: '80px',
               resize: 'vertical',
-              fontFamily: 'inherit',
-              boxSizing: 'border-box'
+              fontFamily: 'inherit'
             }}
             onFocus={(e) => e.currentTarget.style.borderColor = '#4a90e2'}
             onBlur={(e) => e.currentTarget.style.borderColor = validationErrors[`item-${itemIndex}-description`] ? '#dc2626' : '#e9ecef'}

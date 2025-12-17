@@ -432,7 +432,6 @@ export const getInputStyle = (
     outline: 'none',
     transition: designSystem.transitions.normal,
     boxShadow,
-    boxSizing: 'border-box' as const, // 確保 padding 和 border 不會超出寬度
   }
 }
 

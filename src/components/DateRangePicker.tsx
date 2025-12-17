@@ -34,7 +34,7 @@ export function DateRangePicker({
   const isCustomDate = !isToday && !isCurrentMonth && !isLastMonth
 
   return (
-    <div style={{ width: '100%', boxSizing: 'border-box' }}>
+    <div style={{ width: '100%' }}>
       {label && (
         <label style={{ 
           display: 'block', 
@@ -164,8 +164,7 @@ export function DateRangePicker({
                 fontSize: '16px', // 16px 防止 iOS 縮放
                 fontWeight: '500',
                 outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box'
+                transition: 'border-color 0.2s'
               }}
             />
           </div>
@@ -188,8 +187,7 @@ export function DateRangePicker({
                 fontSize: '16px', // 16px 防止 iOS 縮放
                 fontWeight: '500',
                 outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box'
+                transition: 'border-color 0.2s'
               }}
             />
             {/* 星期幾顯示 - 只在選擇特定日期時顯示 */}
