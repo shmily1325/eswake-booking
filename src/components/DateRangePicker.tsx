@@ -144,52 +144,68 @@ export function DateRangePicker({
 
       {/* 日期/月份選擇器 - 簡化模式需要點擊展開 */}
       {(!simplified || showDatePicker) && (
-        <div style={{ display: 'grid', gap: '8px', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', overflow: 'hidden' }}>
-          <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div>
             <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
               選擇月份
             </label>
-            <input
-              type="month"
-              value={selectedDate.length === 7 ? selectedDate : ''}
-              onChange={(e) => {
-                onDateChange(e.target.value)
-                if (simplified) setShowDatePicker(false)
-              }}
-              style={{
-                padding: '8px 12px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '16px', // 16px 防止 iOS 縮放
-                fontWeight: '500',
-                outline: 'none',
-                color: '#333',
-                cursor: 'pointer'
-              }}
-            />
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '10px 12px',
+              border: '1px solid #dee2e6',
+              borderRadius: '8px',
+              background: '#f8f9fa'
+            }}>
+              <input
+                type="month"
+                value={selectedDate.length === 7 ? selectedDate : ''}
+                onChange={(e) => {
+                  onDateChange(e.target.value)
+                  if (simplified) setShowDatePicker(false)
+                }}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: '16px',
+                  color: '#333',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              />
+            </div>
           </div>
-          <div style={{ minWidth: 0 }}>
+          <div>
             <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
               選擇特定日期
             </label>
-            <input
-              type="date"
-              value={selectedDate.length === 10 ? selectedDate : ''}
-              onChange={(e) => {
-                onDateChange(e.target.value)
-                if (simplified) setShowDatePicker(false)
-              }}
-              style={{
-                padding: '8px 12px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '16px', // 16px 防止 iOS 縮放
-                fontWeight: '500',
-                outline: 'none',
-                color: '#333',
-                cursor: 'pointer'
-              }}
-            />
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '10px 12px',
+              border: '1px solid #dee2e6',
+              borderRadius: '8px',
+              background: '#f8f9fa'
+            }}>
+              <input
+                type="date"
+                value={selectedDate.length === 10 ? selectedDate : ''}
+                onChange={(e) => {
+                  onDateChange(e.target.value)
+                  if (simplified) setShowDatePicker(false)
+                }}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: '16px',
+                  color: '#333',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              />
+            </div>
             {/* 星期幾顯示 - 只在選擇特定日期時顯示 */}
             {selectedDate.length === 10 && (
               <div style={{
