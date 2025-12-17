@@ -1253,13 +1253,14 @@ export function CoachReport({
             選擇日期
           </div>
 
-          {/* 全部未回報按鈕 */}
+          {/* 快捷按鈕 */}
           <div style={{
             display: 'flex',
             gap: '8px',
             flexWrap: 'wrap',
             marginBottom: '12px'
           }}>
+            {/* 全部未回報按鈕 */}
             <button
               onClick={() => setViewMode('unreported')}
               style={{
@@ -1276,26 +1277,13 @@ export function CoachReport({
             >
               ⚠️ 全部未回報
             </button>
-          </div>
 
-          {/* 分隔線 */}
-          <div style={{ 
-            borderTop: '1px solid #eee', 
-            marginBottom: '12px' 
-          }} />
-
-            {/* 快捷日期按鈕 */}
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              flexWrap: 'wrap',
-              marginBottom: '12px'
-            }}>
-              {[
-                { label: '今天', offset: 0 },
-                { label: '昨天', offset: -1 },
-                { label: '前天', offset: -2 }
-              ].map(({ label, offset }) => {
+            {/* 日期按鈕 */}
+            {[
+              { label: '今天', offset: 0 },
+              { label: '昨天', offset: -1 },
+              { label: '前天', offset: -2 }
+            ].map(({ label, offset }) => {
                 const targetDate = new Date()
                 targetDate.setDate(targetDate.getDate() + offset)
                 const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
@@ -1362,7 +1350,7 @@ export function CoachReport({
                   {getWeekdayText(selectedDate)}
                 </span>
               </div>
-            </div>
+          </div>
 
           {/* 教練選擇 - 只在非自動篩選模式顯示 */}
           {!autoFilterByUser && (

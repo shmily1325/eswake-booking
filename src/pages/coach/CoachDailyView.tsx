@@ -388,7 +388,7 @@ export function CoachDailyView() {
             marginBottom: '10px',
             border: '1px solid #ff9800',
           }}>
-            🏄 教練練習
+            教練練習
           </div>
         )}
 
