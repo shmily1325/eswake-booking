@@ -520,10 +520,10 @@ export function AuditLog() {
                   padding: '8px 14px',
                   fontSize: '13px',
                   fontWeight: '500',
-                  border: 'none',
+                  border: isActive ? '2px solid #4a90d9' : '1px solid #dee2e6',
                   borderRadius: '20px',
-                  background: isActive ? '#5a5a5a' : '#f0f0f0',
-                  color: isActive ? 'white' : '#666',
+                  background: isActive ? '#e8f4fd' : 'white',
+                  color: isActive ? '#2171b5' : '#666',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
@@ -679,12 +679,13 @@ export function AuditLog() {
                   alignItems: 'center',
                   gap: '8px',
                   padding: '8px 16px',
-                  background: '#5a5a5a',
+                  background: '#e8f4fd',
+                  border: '2px solid #4a90d9',
                   borderRadius: '20px',
                 }}>
                   <span style={{ fontSize: '14px' }}>📅</span>
                   <span style={{ 
-                    color: 'white', 
+                    color: '#2171b5', 
                     fontWeight: '600',
                     fontSize: '14px',
                   }}>
@@ -829,16 +830,20 @@ export function AuditLog() {
                             {highlightText(summary, searchQuery)}
                           </span>
 
-                          {/* 填表人 */}
-                          {parsed.filledBy && (
+                          {/* 填表人 / 操作者 */}
+                          {(parsed.filledBy || log.table_name === 'coach_assignment') && (
                             <span style={{
                               fontSize: '12px',
                               color: '#999',
                               padding: '2px 6px',
                               background: '#f5f5f5',
                               borderRadius: '4px',
+                              maxWidth: '80px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
                             }}>
-                              {parsed.filledBy}
+                              {parsed.filledBy || (log.user_email?.split('@')[0]?.slice(0, 8) || '?')}
                             </span>
                           )}
 
