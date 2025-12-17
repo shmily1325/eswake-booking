@@ -673,45 +673,60 @@ export function CoachAdmin() {
               ...getCardStyle(isMobile),
               marginBottom: '24px'
             }}>
-              {/* 查看模式切換 - 簡化版 */}
+              {/* 查看模式切換 */}
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => {
-                    setPendingViewMode('date')
-                    setSelectedDate(getLocalDateString())
-                  }}
-                  style={{
-                    padding: '10px 20px',
-                    background: pendingViewMode === 'date' ? '#4caf50' : '#e8f5e9',
-                    color: pendingViewMode === 'date' ? '#fff' : '#2e7d32',
-                    border: `2px solid ${pendingViewMode === 'date' ? '#4caf50' : '#81c784'}`,
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    transition: 'all 0.2s',
-                    boxShadow: pendingViewMode === 'date' ? '0 2px 8px rgba(76,175,80,0.3)' : 'none'
-                  }}
-                >
-                  🗓️ 今天
-                </button>
+                {/* 全部待處理按鈕 */}
                 <button
                   onClick={() => setPendingViewMode('all')}
                   style={{
                     padding: '10px 20px',
-                    background: pendingViewMode === 'all' ? '#ff9800' : '#fff3e0',
-                    color: pendingViewMode === 'all' ? '#fff' : '#e65100',
-                    border: `2px solid ${pendingViewMode === 'all' ? '#ff9800' : '#ffb74d'}`,
+                    background: pendingViewMode === 'all' ? '#f57c00' : '#fff3e0',
+                    color: pendingViewMode === 'all' ? 'white' : '#e65100',
+                    border: `2px solid ${pendingViewMode === 'all' ? '#f57c00' : '#ffcc80'}`,
                     borderRadius: '8px',
                     cursor: 'pointer',
                     fontSize: '14px',
                     fontWeight: '600',
-                    transition: 'all 0.2s',
-                    boxShadow: pendingViewMode === 'all' ? '0 2px 8px rgba(255,152,0,0.3)' : 'none'
+                    transition: 'all 0.2s'
                   }}
                 >
-                  📋 全部
+                  ⚠️ 全部待處理
                 </button>
+
+                {/* 日期按鈕 */}
+                {[
+                  { label: '今天', offset: 0 },
+                  { label: '昨天', offset: -1 },
+                  { label: '前天', offset: -2 }
+                ].map(({ label, offset }) => {
+                  const targetDate = new Date()
+                  targetDate.setDate(targetDate.getDate() + offset)
+                  const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
+                  const isSelected = pendingViewMode === 'date' && selectedDate === targetDateStr
+                  
+                  return (
+                    <button
+                      key={offset}
+                      onClick={() => {
+                        setPendingViewMode('date')
+                        setSelectedDate(targetDateStr)
+                      }}
+                      style={{
+                        padding: '10px 20px',
+                        background: isSelected ? '#2196f3' : '#e3f2fd',
+                        color: isSelected ? 'white' : '#1976d2',
+                        border: `2px solid ${isSelected ? '#2196f3' : '#90caf9'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
