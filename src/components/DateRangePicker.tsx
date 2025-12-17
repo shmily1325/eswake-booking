@@ -161,7 +161,7 @@ export function DateRangePicker({
                 padding: isMobile ? '10px 12px' : '8px 12px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
-                fontSize: '14px',
+                fontSize: '16px', // 16px 防止 iOS 縮放
                 fontWeight: '500',
                 outline: 'none',
                 transition: 'border-color 0.2s'
@@ -184,7 +184,7 @@ export function DateRangePicker({
                 padding: isMobile ? '10px 12px' : '8px 12px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
-                fontSize: '14px',
+                fontSize: '16px', // 16px 防止 iOS 縮放
                 fontWeight: '500',
                 outline: 'none',
                 transition: 'border-color 0.2s'

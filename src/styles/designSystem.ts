@@ -426,7 +426,7 @@ export const getInputStyle = (
   return {
     width: '100%',
     padding: isMobile ? '10px 12px' : '12px 14px',
-    fontSize: designSystem.fontSize.body[isMobile ? 'mobile' : 'desktop'],
+    fontSize: '16px', // 固定 16px 防止 iOS 縮放
     border: `2px solid ${borderColor}`,
     borderRadius: designSystem.borderRadius.md,
     outline: 'none',

@@ -12,7 +12,7 @@ export function MyReport() {
   const { isMobile } = useResponsive()
   const toast = useToast()
   
-  const [activeTab, setActiveTab] = useState<'unreported' | 'date' | 'history'>('unreported')
+  const [activeTab, setActiveTab] = useState<'report' | 'history'>('report')
   const [coachId, setCoachId] = useState<string | null>(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
 
@@ -101,13 +101,13 @@ export function MyReport() {
           flexWrap: 'wrap'
         }}>
           <button
-            onClick={() => setActiveTab('unreported')}
+            onClick={() => setActiveTab('report')}
             style={{
               padding: '12px 24px',
-              background: activeTab === 'unreported' ? '#ff9800' : 'transparent',
-              color: activeTab === 'unreported' ? 'white' : '#666',
+              background: activeTab === 'report' ? '#2196f3' : 'transparent',
+              color: activeTab === 'report' ? 'white' : '#666',
               border: 'none',
-              borderBottom: activeTab === 'unreported' ? '3px solid #ff9800' : 'none',
+              borderBottom: activeTab === 'report' ? '3px solid #2196f3' : 'none',
               borderRadius: '8px 8px 0 0',
               cursor: 'pointer',
               fontSize: isMobile ? '14px' : '16px',
@@ -118,24 +118,7 @@ export function MyReport() {
               gap: '8px'
             }}
           >
-            ⚠️ 待回報
-          </button>
-          <button
-            onClick={() => setActiveTab('date')}
-            style={{
-              padding: '12px 24px',
-              background: activeTab === 'date' ? '#2196f3' : 'transparent',
-              color: activeTab === 'date' ? 'white' : '#666',
-              border: 'none',
-              borderBottom: activeTab === 'date' ? '3px solid #2196f3' : 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s'
-            }}
-          >
-            📅 按日期
+            📝 回報
           </button>
           <button
             onClick={() => setActiveTab('history')}
@@ -158,22 +141,12 @@ export function MyReport() {
 
         {/* Tab 內容區 */}
         <div>
-          {/* 待回報 Tab */}
-          {activeTab === 'unreported' && coachId && (
+          {/* 回報 Tab */}
+          {activeTab === 'report' && coachId && (
             <CoachReport 
               autoFilterByUser={true} 
               embedded={true} 
               defaultViewMode="unreported"
-              hideInternalTabs={true}
-            />
-          )}
-
-          {/* 按日期 Tab */}
-          {activeTab === 'date' && coachId && (
-            <CoachReport 
-              autoFilterByUser={true} 
-              embedded={true} 
-              defaultViewMode="date"
               hideInternalTabs={true}
             />
           )}

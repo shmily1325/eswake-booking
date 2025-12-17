@@ -504,7 +504,7 @@ export function CoachDailyView() {
             marginBottom: '6px',
             border: '1px solid #ff9800',
           }}>
-            🏄 教練練習
+            {isMobile ? '教練練習' : '🏄 教練練習'}
           </div>
         )}
 

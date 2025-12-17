@@ -1598,7 +1598,7 @@ function DeductionItemRow({
               background: 'white',
               border: validationErrors[`item-${itemIndex}-description`] ? '2px solid #dc2626' : '2px solid #e9ecef',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: '16px', // 16px 防止 iOS 縮放
               color: '#495057',
               minHeight: '80px',
               resize: 'vertical',

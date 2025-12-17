@@ -652,7 +652,7 @@ export function LineSettings() {
                 padding: '10px',
                 border: `1px solid ${designSystem.colors.border.main}`,
                 borderRadius: '6px',
-                fontSize: '14px',
+                fontSize: '16px', // 16px 防止 iOS 縮放
                 resize: 'vertical',
                 boxSizing: 'border-box',
                 opacity: includeWeatherWarning ? 1 : 0.5

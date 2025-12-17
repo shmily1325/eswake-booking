@@ -90,7 +90,7 @@ export function BookingDetails({
                         borderRadius: '8px',
                         border: '1px solid #ccc',
                         boxSizing: 'border-box',
-                        fontSize: '15px',
+                        fontSize: '16px', // 16px 防止 iOS 縮放
                         fontFamily: 'inherit',
                         touchAction: 'manipulation',
                     }}
@@ -182,7 +182,7 @@ export function BookingDetails({
                         borderRadius: '8px',
                         border: '1px solid #ccc',
                         boxSizing: 'border-box',
-                        fontSize: '15px',
+                        fontSize: '16px', // 16px 防止 iOS 縮放
                         fontFamily: 'inherit',
                         resize: 'vertical',
                         touchAction: 'manipulation',

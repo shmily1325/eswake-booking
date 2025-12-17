@@ -1334,7 +1334,7 @@ export function CoachReport({
                     padding: '8px 12px',
                     border: '2px solid #e0e0e0',
                     borderRadius: '8px',
-                    fontSize: isMobile ? '13px' : '14px',
+                    fontSize: '16px', // 16px 防止 iOS 縮放
                     color: '#333',
                     cursor: 'pointer'
                   }}

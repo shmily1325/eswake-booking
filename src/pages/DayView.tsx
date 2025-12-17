@@ -557,7 +557,7 @@ export function DayView() {
                 padding: '8px 12px',
                 borderRadius: '6px',
                 border: '1px solid #dee2e6',
-                fontSize: '14px',
+                fontSize: '16px', // 16px 防止 iOS 縮放
               }}
             />
             {/* 星期幾顯示 - 獨立顯示 */}
