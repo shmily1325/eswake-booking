@@ -78,6 +78,7 @@ export function CoachAdmin() {
   })
   const [pendingViewMode, setPendingViewMode] = useState<'date' | 'all'>('all') // 默認：查看全部
   const [loading, setLoading] = useState(false)
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null) // 最後刷新時間
 
   // Tab 1: 待處理記錄 (合併會員 + 非會員)
   const [pendingReports, setPendingReports] = useState<PendingReport[]>([]) // status = 'pending'
@@ -427,11 +428,28 @@ export function CoachAdmin() {
 
   useEffect(() => {
     if (activeTab === 'pending') {
-      Promise.all([loadPendingReports(), loadNonMemberReports()])
+      Promise.all([loadPendingReports(), loadNonMemberReports()]).then(() => {
+        setLastRefreshTime(new Date())
+      })
     } else if (activeTab === 'completed' && selectedDate) {
-      loadCompletedReports()
+      loadCompletedReports().then(() => {
+        setLastRefreshTime(new Date())
+      })
     }
   }, [selectedDate, activeTab, pendingViewMode])
+
+  // 自動刷新：每 30 秒重新載入列表（只在待處理 tab 且沒開對話框時）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (activeTab === 'pending' && !showMemberSearchDialog) {
+        Promise.all([loadPendingReports(), loadNonMemberReports()]).then(() => {
+          setLastRefreshTime(new Date())
+        })
+      }
+    }, 30000) // 30秒
+    
+    return () => clearInterval(interval)
+  }, [activeTab, showMemberSearchDialog, selectedDate, pendingViewMode])
 
   // ============ 資料處理 ============
 
@@ -581,14 +599,34 @@ export function CoachAdmin() {
         margin: '0 auto',
         padding: isMobile ? '16px' : '32px'
       }}>
-        <h1 style={{ 
-          fontSize: isMobile ? '24px' : '32px',
-          fontWeight: 'bold',
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
           marginBottom: '24px',
-          color: '#333'
+          flexWrap: 'wrap',
+          gap: '8px'
         }}>
-          💼 回報管理
-        </h1>
+          <h1 style={{ 
+            fontSize: isMobile ? '24px' : '32px',
+            fontWeight: 'bold',
+            margin: 0,
+            color: '#333'
+          }}>
+            💼 回報管理
+          </h1>
+          {lastRefreshTime && (
+            <div style={{
+              fontSize: '12px',
+              color: '#888',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              🔄 已更新 {lastRefreshTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
+          )}
+        </div>
 
         {/* Tab 切換 */}
         <div style={{ 
