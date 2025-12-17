@@ -41,11 +41,16 @@ interface Boat {
   color: string
 }
 
+interface Coach {
+  id: string
+  name: string
+}
+
 interface SearchBookingsProps {
   isEmbedded?: boolean
 }
 
-type SearchTab = 'member' | 'boat'
+type SearchTab = 'member' | 'boat' | 'coach'
 
 export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const user = useAuthUser()
@@ -84,6 +89,12 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const [boatStartDate, setBoatStartDate] = useState('')
   const [boatEndDate, setBoatEndDate] = useState('')
   
+  // 教練搜尋相關狀態
+  const [coaches, setCoaches] = useState<Coach[]>([])
+  const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null)
+  const [coachStartDate, setCoachStartDate] = useState('')
+  const [coachEndDate, setCoachEndDate] = useState('')
+  
   // 編輯對話框狀態
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBookingForEdit, setSelectedBookingForEdit] = useState<FullBooking | null>(null)
@@ -111,6 +122,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   useEffect(() => {
     loadMembers()
     loadBoats()
+    loadCoaches()
   }, [])
 
   const loadMembers = async () => {
@@ -141,6 +153,22 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     }
   }
 
+  const loadCoaches = async () => {
+    const { data, error } = await supabase
+      .from('coaches')
+      .select('id, name')
+      .eq('status', 'active')
+      .order('name')
+    
+    if (error) {
+      console.error('載入教練失敗:', error)
+    }
+    
+    if (data) {
+      setCoaches(data)
+    }
+  }
+
   // 快速日期選擇輔助函數
   const formatDate = (date: Date) => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -160,6 +188,22 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
     setBoatStartDate(formatDate(targetDate))
     setBoatEndDate(formatDate(targetDate))
+  }
+
+  // 教練查詢的快速日期選擇
+  const setCoachQuickDateRange = (type: 'today' | 'tomorrow') => {
+    const today = new Date()
+    let targetDate: Date
+
+    if (type === 'today') {
+      targetDate = today
+    } else {
+      targetDate = new Date(today)
+      targetDate.setDate(today.getDate() + 1)
+    }
+
+    setCoachStartDate(formatDate(targetDate))
+    setCoachEndDate(formatDate(targetDate))
   }
 
   useEffect(() => {
@@ -404,6 +448,127 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     }
   }
 
+  // 教練預約搜尋
+  const handleCoachSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!selectedCoachId) {
+      toast.error('請選擇教練')
+      return
+    }
+    
+    setLoading(true)
+    setHasSearched(true)
+    setCopySuccess(false)
+
+    try {
+      const MAX_RESULTS = 100
+      
+      // 步驟 1: 查詢該教練的預約（透過 booking_coaches 表）
+      let bookingCoachesQuery = supabase
+        .from('booking_coaches')
+        .select('booking_id')
+        .eq('coach_id', selectedCoachId)
+      
+      const bookingCoachesResult = await bookingCoachesQuery
+
+      if (bookingCoachesResult.error) {
+        console.error('Error fetching booking coaches:', bookingCoachesResult.error)
+        setBookings([])
+        return
+      }
+
+      if (!bookingCoachesResult.data || bookingCoachesResult.data.length === 0) {
+        setBookings([])
+        return
+      }
+
+      const bookingIds = bookingCoachesResult.data.map(bc => bc.booking_id)
+
+      // 步驟 2: 查詢這些預約的詳細資料
+      let detailQuery = supabase
+        .from('bookings')
+        .select('id, start_at, duration_min, contact_name, notes, activity_types, status, boats:boat_id(name, color)')
+        .in('id', bookingIds)
+      
+      if (coachStartDate && coachEndDate) {
+        // 有設定日期區間
+        detailQuery = detailQuery
+          .gte('start_at', `${coachStartDate}T00:00:00`)
+          .lte('start_at', `${coachEndDate}T23:59:59`)
+      } else {
+        // 沒有設定日期區間，預設只顯示未來預約
+        const today = new Date()
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+        detailQuery = detailQuery.gte('start_at', `${todayStr}T00:00:00`)
+      }
+      
+      const bookingsResult = await detailQuery.order('start_at', { ascending: true }).limit(MAX_RESULTS)
+
+      if (bookingsResult.error) {
+        console.error('Error fetching bookings:', bookingsResult.error)
+        setBookings([])
+        return
+      }
+      
+      if (!bookingsResult.data || bookingsResult.data.length === 0) {
+        setBookings([])
+        return
+      }
+
+      const finalBookingIds = bookingsResult.data.map(b => b.id)
+
+      // 步驟 3: 並行查詢教練和會員資訊
+      const [coachesResult, membersResult] = await Promise.all([
+        supabase
+          .from('booking_coaches')
+          .select('booking_id, coaches:coach_id(id, name)')
+          .in('booking_id', finalBookingIds),
+        supabase
+          .from('booking_members')
+          .select('booking_id, member_id, members:member_id(id, name, nickname)')
+          .in('booking_id', finalBookingIds)
+      ])
+
+      // 建構教練對照表
+      const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
+      for (const item of coachesResult.data || []) {
+        const bookingId = item.booking_id
+        const coach = (item as any).coaches
+        if (coach) {
+          if (!coachesByBooking[bookingId]) {
+            coachesByBooking[bookingId] = []
+          }
+          coachesByBooking[bookingId].push(coach)
+        }
+      }
+      
+      // 建構會員對照表
+      const membersByBooking: { [key: number]: any[] } = {}
+      for (const item of membersResult.data || []) {
+        const bookingId = item.booking_id
+        if (!membersByBooking[bookingId]) {
+          membersByBooking[bookingId] = []
+        }
+        membersByBooking[bookingId].push(item)
+      }
+
+      // 合併所有資料
+      const finalBookings = bookingsResult.data.map(booking => ({
+        ...booking,
+        coaches: coachesByBooking[booking.id] || [],
+        booking_members: membersByBooking[booking.id] || []
+      }))
+
+      setBookings(finalBookings as Booking[])
+    } catch (err) {
+      console.error('Search error:', err)
+      setBookings([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const formatDateTime = (isoString: string) => {
     // 純字符串處理（避免時區問題）
     const datetime = isoString.substring(0, 16) // "2025-11-01T13:55"
@@ -436,6 +601,13 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         ? boatStartDate 
         : `${boatStartDate} ~ ${boatEndDate}`
       return formatBookingsForLine(bookings, `${boatName} ${dateRange}`)
+    }
+    if (activeTab === 'coach') {
+      const coachName = coaches.find(c => c.id === selectedCoachId)?.name || '教練'
+      const dateRange = coachStartDate === coachEndDate 
+        ? coachStartDate 
+        : `${coachStartDate} ~ ${coachEndDate}`
+      return formatBookingsForLine(bookings, `${coachName} ${dateRange}`)
     }
     return formatBookingsForLine(bookings, `${searchName}的預約`)
   }
@@ -515,6 +687,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       handleSearch(fakeEvent)
     } else if (activeTab === 'boat' && selectedBoatId) {
       handleBoatSearch(fakeEvent)
+    } else if (activeTab === 'coach' && selectedCoachId) {
+      handleCoachSearch(fakeEvent)
     }
   }
 
@@ -558,6 +732,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       handleSearch(fakeEvent)
     } else if (activeTab === 'boat' && selectedBoatId) {
       handleBoatSearch(fakeEvent)
+    } else if (activeTab === 'coach' && selectedCoachId) {
+      handleCoachSearch(fakeEvent)
     }
   }
 
@@ -592,10 +768,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           }}
           style={{
             flex: 1,
-            padding: '12px 16px',
+            padding: '12px 10px',
             border: 'none',
             borderRadius: '8px',
-            fontSize: '15px',
+            fontSize: '14px',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
@@ -603,7 +779,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             color: activeTab === 'member' ? 'white' : '#666',
           }}
         >
-          👤 預約人查詢
+          👤 預約人
         </button>
         <button
           type="button"
@@ -616,10 +792,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           }}
           style={{
             flex: 1,
-            padding: '12px 16px',
+            padding: '12px 10px',
             border: 'none',
             borderRadius: '8px',
-            fontSize: '15px',
+            fontSize: '14px',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
@@ -627,7 +803,31 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             color: activeTab === 'boat' ? 'white' : '#666',
           }}
         >
-          🚤 船隻查詢
+          🚤 船隻
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('coach')
+            setBookings([])
+            setHasSearched(false)
+            setSelectionMode(false)
+            setSelectedBookingIds(new Set())
+          }}
+          style={{
+            flex: 1,
+            padding: '12px 10px',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            background: activeTab === 'coach' ? '#5a5a5a' : 'transparent',
+            color: activeTab === 'coach' ? 'white' : '#666',
+          }}
+        >
+          🏄 教練
         </button>
       </div>
 
@@ -1098,6 +1298,214 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             }}
             onTouchStart={(e) => !loading && selectedBoatId && (e.currentTarget.style.transform = 'scale(0.98)')}
             onTouchEnd={(e) => !loading && selectedBoatId && (e.currentTarget.style.transform = 'scale(1)')}
+          >
+            {loading ? '搜尋中...' : '🔍 搜尋'}
+          </button>
+        </form>
+        )}
+
+        {/* 教練搜尋表單 */}
+        {activeTab === 'coach' && (
+        <form onSubmit={handleCoachSearch}>
+          {/* 教練選擇 */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '13px',
+              color: '#868e96',
+              fontWeight: '500'
+            }}>
+              選擇教練
+            </label>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+            }}>
+              {coaches.map(coach => (
+                <button
+                  key={coach.id}
+                  type="button"
+                  onClick={() => setSelectedCoachId(coach.id)}
+                  style={{
+                    padding: '10px 16px',
+                    border: selectedCoachId === coach.id ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
+                    borderRadius: '20px',
+                    background: selectedCoachId === coach.id ? '#f0f0f0' : 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: selectedCoachId === coach.id ? '600' : '500',
+                    color: selectedCoachId === coach.id ? '#5a5a5a' : '#333'
+                  }}>
+                    {coach.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 日期區間篩選 */}
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ 
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '8px'
+            }}>
+              <span style={{ 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: '#495057',
+              }}>
+                📅 日期區間
+                {(coachStartDate || coachEndDate) 
+                  ? <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>(已設定)</span>
+                  : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>(不設定則顯示未來預約)</span>
+                }
+              </span>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setCoachQuickDateRange('today')}
+                  style={{
+                    padding: '4px 10px',
+                    border: '1px solid #dee2e6',
+                    background: 'white',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    color: '#495057',
+                  }}
+                >
+                  今天
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCoachQuickDateRange('tomorrow')}
+                  style={{
+                    padding: '4px 10px',
+                    border: '1px solid #dee2e6',
+                    background: 'white',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    color: '#495057',
+                  }}
+                >
+                  明天
+                </button>
+                {(coachStartDate || coachEndDate) && (
+                  <button
+                    type="button"
+                    onClick={() => { setCoachStartDate(''); setCoachEndDate(''); }}
+                    style={{
+                      padding: '4px 10px',
+                      border: 'none',
+                      background: '#dc3545',
+                      color: 'white',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: '8px',
+              alignItems: isMobile ? 'stretch' : 'center',
+              width: '100%',
+            }}>
+              <div style={{ 
+                flex: 1, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                minWidth: 0,
+              }}>
+                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>從</span>
+                <input
+                  type="date"
+                  value={coachStartDate}
+                  onChange={(e) => setCoachStartDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    width: '100%',
+                    padding: '10px',
+                    border: coachStartDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: coachStartDate ? '#f0f7ff' : 'white',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div style={{ 
+                flex: 1, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                minWidth: 0,
+              }}>
+                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>到</span>
+                <input
+                  type="date"
+                  value={coachEndDate}
+                  onChange={(e) => setCoachEndDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    width: '100%',
+                    padding: '10px',
+                    border: coachEndDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: coachEndDate ? '#f0f7ff' : 'white',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 搜尋按鈕 */}
+          <button
+            type="submit"
+            disabled={loading || !selectedCoachId}
+            style={{
+              width: '100%',
+              padding: '12px',
+              fontSize: '16px',
+              fontWeight: '600',
+              background: (!loading && selectedCoachId) ? 'white' : '#f5f5f5',
+              color: (!loading && selectedCoachId) ? '#666' : '#999',
+              border: (!loading && selectedCoachId) ? '2px solid #e0e0e0' : '2px solid #ddd',
+              borderRadius: '8px',
+              cursor: (!loading && selectedCoachId) ? 'pointer' : 'not-allowed',
+              touchAction: 'manipulation',
+              transition: 'transform 0.1s'
+            }}
+            onTouchStart={(e) => !loading && selectedCoachId && (e.currentTarget.style.transform = 'scale(0.98)')}
+            onTouchEnd={(e) => !loading && selectedCoachId && (e.currentTarget.style.transform = 'scale(1)')}
           >
             {loading ? '搜尋中...' : '🔍 搜尋'}
           </button>
