@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { NewBookingDialog } from '../components/NewBookingDialog'
 import { RepeatBookingDialog } from '../components/RepeatBookingDialog'
 import { EditBookingDialog } from '../components/EditBookingDialog'
-import { UserMenu } from '../components/UserMenu'
+import { PageHeader } from '../components/PageHeader'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getWeekdayText } from '../utils/date'
 import { Footer } from '../components/Footer'
@@ -478,45 +478,10 @@ export function DayView() {
           flexDirection: isMobile ? undefined : 'column',
         }}
       >
-        <div style={{
-          background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-          borderRadius: '8px',
-          padding: '15px',
-          marginBottom: '15px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '10px',
-          flexWrap: 'wrap'
-        }}>
-          <h1 style={{
-            margin: 0,
-            fontSize: isMobile ? '18px' : '20px',
-            fontWeight: '600',
-            color: 'white'
-          }}>
-            📅 {viewMode === 'list' ? '預約列表' : '預約時間軸'}
-          </h1>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <Link
-              to="/"
-              style={{
-                padding: '6px 12px',
-                background: 'rgba(255, 255, 255, 0.15)',
-                color: 'white',
-                textDecoration: 'none',
-                borderRadius: '4px',
-                fontSize: '13px',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              ← HOME
-            </Link>
-            <UserMenu user={user} />
-          </div>
-        </div>
+        <PageHeader 
+          title={viewMode === 'list' ? '📅 預約列表' : '📅 預約時間軸'} 
+          user={user} 
+        />
 
 
         {/* 手機版：兩行佈局 */}
