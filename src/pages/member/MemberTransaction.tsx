@@ -1132,14 +1132,22 @@ export function MemberTransaction() {
                           </span>
                         )}
                       </div>
-                      {/* 最後交易日期 */}
-                      {member.lastTransactionDate && (
+                      {/* 最後交易日期和更新日期 */}
+                      {(member.lastTransactionDate || member.lastTransactionCreatedAt) && (
                         <div style={{
                           fontSize: '12px',
                           color: '#999',
                           marginTop: '4px',
+                          display: 'flex',
+                          gap: '12px',
+                          flexWrap: 'wrap'
                         }}>
-                          📅 最後交易：{member.lastTransactionDate}
+                          {member.lastTransactionDate && (
+                            <span>📅 交易：{member.lastTransactionDate}</span>
+                          )}
+                          {member.lastTransactionCreatedAt && (
+                            <span>🕐 更新：{member.lastTransactionCreatedAt.split('T')[0]}</span>
+                          )}
                         </div>
                       )}
                     </div>
