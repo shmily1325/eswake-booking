@@ -9,9 +9,10 @@ import type { Member } from '../../types/booking'
 import { handleError } from '../../utils/errorHandler'
 import { useToast } from '../../components/ui'
 
-// 擴展 Member 類型，加入最後交易日期
+// 擴展 Member 類型，加入最後交易日期和更新日期
 interface MemberWithLastTransaction extends Member {
   lastTransactionDate?: string | null
+  lastTransactionCreatedAt?: string | null  // 最新交易的 created_at
 }
 
 export function MemberTransaction() {
@@ -36,8 +37,8 @@ export function MemberTransaction() {
   
   // 新增的 state
   const [showHelp, setShowHelp] = useState(false) // 使用說明預設收合
-  const [sortBy, setSortBy] = useState<'nickname' | 'balance' | 'vip' | 'g23' | 'g21' | 'lastTransaction'>('nickname')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [sortBy, setSortBy] = useState<'nickname' | 'balance' | 'vip' | 'g23' | 'g21' | 'lastTransaction' | 'updatedAt'>('updatedAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
 
   // 載入會員列表（含最後交易日期）
@@ -53,18 +54,21 @@ export function MemberTransaction() {
           .order('name'),
         supabase
           .from('transactions')
-          .select('member_id, transaction_date')
-          .order('transaction_date', { ascending: false })
+          .select('member_id, transaction_date, created_at')
+          .order('created_at', { ascending: false })
       ])
 
       if (membersResult.error) throw membersResult.error
 
-      // 整理每個會員的最後交易日期
-      const lastTransactionMap: Record<string, string> = {}
+      // 整理每個會員的最後交易日期和 created_at
+      const lastTransactionMap: Record<string, { date: string; createdAt: string }> = {}
       if (transactionsResult.data) {
         for (const t of transactionsResult.data) {
           if (t.member_id && !lastTransactionMap[t.member_id]) {
-            lastTransactionMap[t.member_id] = t.transaction_date
+            lastTransactionMap[t.member_id] = {
+              date: t.transaction_date,
+              createdAt: t.created_at || t.transaction_date
+            }
           }
         }
       }
@@ -72,7 +76,8 @@ export function MemberTransaction() {
       // 合併資料
       const membersWithLastTransaction = (membersResult.data || []).map(m => ({
         ...m,
-        lastTransactionDate: lastTransactionMap[m.id] || null
+        lastTransactionDate: lastTransactionMap[m.id]?.date || null,
+        lastTransactionCreatedAt: lastTransactionMap[m.id]?.createdAt || null
       }))
 
       setMembers(membersWithLastTransaction)
@@ -134,6 +139,13 @@ export function MemberTransaction() {
           if (!a.lastTransactionDate) return 1
           if (!b.lastTransactionDate) return -1
           comparison = a.lastTransactionDate.localeCompare(b.lastTransactionDate)
+          break
+        case 'updatedAt':
+          // 用最新交易的 created_at 排序，空值排最後
+          if (!a.lastTransactionCreatedAt && !b.lastTransactionCreatedAt) return 0
+          if (!a.lastTransactionCreatedAt) return 1
+          if (!b.lastTransactionCreatedAt) return -1
+          comparison = a.lastTransactionCreatedAt.localeCompare(b.lastTransactionCreatedAt)
           break
         case 'nickname':
         default:
@@ -804,6 +816,7 @@ export function MemberTransaction() {
                   <option value="g23">G23</option>
                   <option value="g21">黑豹/G21</option>
                   <option value="lastTransaction">交易日期</option>
+                  <option value="updatedAt">更新日期</option>
                 </select>
                 <button
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -885,7 +898,8 @@ export function MemberTransaction() {
               { key: 'vip' as const, label: 'VIP' },
               { key: 'g23' as const, label: 'G23' },
               { key: 'g21' as const, label: '黑豹/G21' },
-              { key: 'lastTransaction' as const, label: '交易日期' }
+              { key: 'lastTransaction' as const, label: '交易日期' },
+              { key: 'updatedAt' as const, label: '更新日期' }
             ].map(({ key, label }) => (
               <button
                 key={key}
