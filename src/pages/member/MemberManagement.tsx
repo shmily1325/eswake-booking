@@ -580,14 +580,15 @@ export function MemberManagement() {
         minHeight: '100vh',
         background: '#f5f5f5'
       }}>
-        <PageHeader 
-          title="會員管理" 
-          user={user} 
-          showBaoLink={true} 
-          extraLinks={[{ label: '💰', link: '/member-transaction' }]}
-        />
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <PageHeader 
+            title="會員管理" 
+            user={user} 
+            showBaoLink={true} 
+            extraLinks={[{ label: '💰', link: '/member-transaction' }]}
+          />
 
-        {/* 搜尋框骨架屏 */}
+          {/* 搜尋框骨架屏 */}
         <div style={{ 
           marginTop: '20px',
           marginBottom: '20px',
@@ -651,10 +652,11 @@ export function MemberManagement() {
                 borderRadius: '6px'
               }} />
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <Footer />
+          <Footer />
+        </div>
       </div>
     )
   }

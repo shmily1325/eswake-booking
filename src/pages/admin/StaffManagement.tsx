@@ -525,13 +525,12 @@ export function StaffManagement() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
-      <PageHeader user={user} title="人員管理" showBaoLink={true} />
-
       <div style={{
         maxWidth: '1000px',
         margin: '0 auto',
         padding: isMobile ? '20px 16px' : '40px 20px'
       }}>
+        <PageHeader user={user} title="人員管理" showBaoLink={true} />
         {/* 標題與操作按鈕 */}
         <div style={{
           display: 'flex',

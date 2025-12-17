@@ -478,9 +478,8 @@ export function LineSettings() {
       background: designSystem.colors.background.main,
       padding: isMobile ? '12px' : '20px'
     }}>
-      <PageHeader title="LINE 提醒中心" user={user} showBaoLink={true} />
-
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <PageHeader title="LINE 提醒中心" user={user} showBaoLink={true} />
         {/* 綁定統計 - 簡化版 */}
         <div style={getCardStyle(isMobile)}>
           <div style={{ 

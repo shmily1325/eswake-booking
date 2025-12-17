@@ -555,13 +555,12 @@ export function CoachDailyView() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-        <PageHeader user={user} title="今日預約" />
-        
         <div style={{ 
           maxWidth: '1400px', 
           margin: '0 auto',
           padding: isMobile ? '16px' : '20px' 
         }}>
+          <PageHeader user={user} title="今日預約" />
           {/* 日期選擇器骨架屏 */}
           <div style={{
             background: 'white',
@@ -601,13 +600,12 @@ export function CoachDailyView() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
-      <PageHeader user={user} title="今日預約" />
-
       <div style={{
         maxWidth: '1400px',
         margin: '0 auto',
         padding: isMobile ? '16px' : '20px'
       }}>
+        <PageHeader user={user} title="今日預約" />
         {/* 日期和教練篩選 */}
         <div style={{
           background: 'white',

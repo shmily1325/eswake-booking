@@ -583,15 +583,6 @@ export function CoachAdmin() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
-      <PageHeader 
-        user={user!} 
-        title="💼 回報管理"
-        showBaoLink={true}
-        extraLinks={[
-          { label: '← 預約回報', link: '/coach-report' }
-        ]}
-      />
-      
       <div style={{ 
         flex: 1,
         maxWidth: '1400px', 
@@ -600,6 +591,14 @@ export function CoachAdmin() {
         padding: isMobile ? '16px' : '32px',
         overflow: 'hidden'
       }}>
+        <PageHeader 
+          user={user!} 
+          title="💼 回報管理"
+          showBaoLink={true}
+          extraLinks={[
+            { label: '← 預約回報', link: '/coach-report' }
+          ]}
+        />
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 

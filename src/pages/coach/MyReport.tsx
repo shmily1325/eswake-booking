@@ -48,20 +48,25 @@ export function MyReport() {
   if (checkingAuth) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
-        <PageHeader 
-          user={user} 
-          title="教練回報"
-          showBaoLink={false}
-        />
         <div style={{ 
           flex: 1, 
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '16px',
-          color: '#999'
+          padding: isMobile ? '16px' : '24px',
         }}>
-          檢查權限中...
+          <PageHeader 
+            user={user} 
+            title="教練回報"
+            showBaoLink={false}
+          />
+          <div style={{ 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '16px',
+            color: '#999',
+            marginTop: '100px'
+          }}>
+            檢查權限中...
+          </div>
         </div>
       </div>
     )
@@ -69,12 +74,6 @@ export function MyReport() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
-      <PageHeader 
-        user={user} 
-        title="教練回報"
-        showBaoLink={false}
-      />
-      
       <div style={{ 
         flex: 1, 
         padding: isMobile ? '16px' : '24px',
@@ -82,6 +81,12 @@ export function MyReport() {
         margin: '0 auto',
         width: '100%'
       }}>
+        <PageHeader 
+          user={user} 
+          title="教練回報"
+          showBaoLink={false}
+        />
+        
         {/* 頁面標題 */}
         <h1 style={{ 
           fontSize: isMobile ? '24px' : '32px',

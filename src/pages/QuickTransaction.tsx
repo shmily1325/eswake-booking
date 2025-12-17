@@ -13,9 +13,10 @@ export function QuickTransaction() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      <PageHeader title="💳 會員儲值" user={user} showBaoLink={true} />
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <PageHeader title="💳 會員儲值" user={user} showBaoLink={true} />
 
-      {/* 即將推出提示 */}
+        {/* 即將推出提示 */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
@@ -52,22 +53,23 @@ export function QuickTransaction() {
         }}>
           此功能為未來擴展預留
         </p>
+        </div>
+
+        <Footer />
+
+        <style>{`
+          @keyframes pulse {
+            0%, 100% {
+              transform: scale(1);
+              opacity: 1;
+            }
+            50% {
+              transform: scale(1.05);
+              opacity: 0.8;
+            }
+          }
+        `}</style>
       </div>
-
-      <Footer />
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-          50% {
-            transform: scale(1.05);
-            opacity: 0.8;
-          }
-        }
-      `}</style>
     </div>
   )
 }

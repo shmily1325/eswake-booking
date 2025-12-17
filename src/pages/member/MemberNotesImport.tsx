@@ -189,9 +189,10 @@ export function MemberNotesImport() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      <PageHeader title="📝 備忘錄匯入" user={user} showBaoLink={true} />
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <PageHeader title="📝 備忘錄匯入" user={user} showBaoLink={true} />
 
-      <div style={{
+        <div style={{
         ...getCardStyle(),
         marginBottom: '20px',
         padding: isMobile ? '16px' : '24px',
@@ -347,9 +348,10 @@ export function MemberNotesImport() {
             {importing ? '匯入中...' : `✅ 確認匯入 ${preview.length} 筆備忘錄`}
           </button>
         )}
-      </div>
+        </div>
 
-      <Footer />
+        <Footer />
+      </div>
     </div>
   )
 }

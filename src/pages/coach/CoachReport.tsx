@@ -1188,25 +1188,25 @@ export function CoachReport({
 
   return (
     <div style={{ minHeight: embedded ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
-      {!embedded && (
-        <PageHeader 
-          user={user} 
-          title={autoFilterByUser ? "我的回報" : "預約回報"}
-          showBaoLink={!autoFilterByUser}
-          extraLinks={autoFilterByUser ? undefined : [
-            { label: '回報管理 →', link: '/coach-admin' }
-          ]}
-        />
-      )}
-      
-      <div style={{ 
-        flex: 1, 
+      <div style={{
+        flex: 1,
         padding: embedded ? '0' : (isMobile ? '16px' : '24px'),
         maxWidth: '1400px',
         margin: '0 auto',
         width: '100%',
         overflow: 'hidden'
       }}>
+        {!embedded && (
+          <PageHeader 
+            user={user} 
+            title={autoFilterByUser ? "我的回報" : "預約回報"}
+            showBaoLink={!autoFilterByUser}
+            extraLinks={autoFilterByUser ? undefined : [
+              { label: '回報管理 →', link: '/coach-admin' }
+            ]}
+          />
+        )}
+        
         {/* 頁面標題 - 只在非嵌入模式顯示 */}
         {!embedded && (
           <div style={{ 

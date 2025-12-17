@@ -714,9 +714,10 @@ export function BoardManagement() {
       minHeight: '100vh',
       background: '#f5f5f5'
     }}>
-      <PageHeader title="🏄 置板區管理" user={user} showBaoLink={true} />
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        <PageHeader title="🏄 置板區管理" user={user} showBaoLink={true} />
 
-      {/* 操作按鈕區 */}
+        {/* 操作按鈕區 */}
       <div style={{
         display: 'flex',
         gap: isMobile ? '10px' : '12px',
@@ -1481,9 +1482,10 @@ export function BoardManagement() {
         </div>
       )}
 
-      {/* Footer */}
-      <Footer />
-      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
+        {/* Footer */}
+        <Footer />
+        <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
+      </div>
     </div>
   )
 }
