@@ -1014,52 +1014,98 @@ export function CoachAssignment() {
                 選擇日期
               </label>
               {isMobile ? (
-                // 手機版：徽章在右上角（與預約表統一）
+                // 手機版：箭頭 + 日期 + 星期（佔滿寬度）
                 <div style={{ 
-                  position: 'relative',
                   display: 'flex',
                   alignItems: 'center',
-                  padding: '10px 16px',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  background: '#f8f9fa'
+                  gap: '8px'
                 }}>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => {
-                      const newDate = e.target.value
-                      // 驗證日期格式（必須是 yyyy-MM-dd）
-                      if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                        setSelectedDate(newDate)
-                      }
+                  {/* 向前箭頭 */}
+                  <button
+                    onClick={() => {
+                      const currentDate = new Date(selectedDate)
+                      currentDate.setDate(currentDate.getDate() - 1)
+                      const newDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
+                      setSelectedDate(newDate)
                     }}
                     style={{
-                      flex: 1,
-                      border: 'none',
-                      background: 'transparent',
-                      fontSize: '16px',
-                      color: '#333',
+                      padding: '10px 14px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '8px',
+                      background: '#f8f9fa',
                       cursor: 'pointer',
-                      outline: 'none'
+                      fontSize: '16px',
+                      color: '#495057'
                     }}
-                  />
-                  {/* 星期幾徽章 - 右上角 */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    right: '8px',
-                    fontSize: '11px',
-                    color: 'white',
+                  >
+                    ←
+                  </button>
+                  
+                  {/* 日期選擇器 */}
+                  <div style={{ 
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '10px 12px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    background: '#f8f9fa'
+                  }}>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => {
+                        const newDate = e.target.value
+                        if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                          setSelectedDate(newDate)
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        background: 'transparent',
+                        fontSize: '16px',
+                        color: '#333',
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                  
+                  {/* 星期幾 */}
+                  <span style={{
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    background: '#f8f9fa',
+                    color: '#495057',
+                    fontSize: '14px',
                     fontWeight: '600',
-                    background: '#5a5a5a',
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                    pointerEvents: 'none',
+                    border: '1px solid #dee2e6',
+                    whiteSpace: 'nowrap'
                   }}>
                     {getWeekdayText(selectedDate)}
-                  </div>
+                  </span>
+                  
+                  {/* 向後箭頭 */}
+                  <button
+                    onClick={() => {
+                      const currentDate = new Date(selectedDate)
+                      currentDate.setDate(currentDate.getDate() + 1)
+                      const newDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
+                      setSelectedDate(newDate)
+                    }}
+                    style={{
+                      padding: '10px 14px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '8px',
+                      background: '#f8f9fa',
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                      color: '#495057'
+                    }}
+                  >
+                    →
+                  </button>
                 </div>
               ) : (
                 // 電腦版：徽章在旁邊
