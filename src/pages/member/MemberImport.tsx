@@ -609,10 +609,7 @@ export function MemberImport() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
       <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl, maxWidth: '900px', margin: '0 auto', width: '100%' }}>
-        <PageHeader user={user} title="會員批量導入" showBaoLink={true} />
-        <h1 style={{ ...getTextStyle('h1', isMobile), marginBottom: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl }}>
-          📥 會員批量導入
-        </h1>
+        <PageHeader user={user} title="📥 會員批量導入" showBaoLink={true} />
 
         {/* 電腦使用提示 */}
         <div style={{ 

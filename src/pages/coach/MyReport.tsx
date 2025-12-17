@@ -54,7 +54,7 @@ export function MyReport() {
         }}>
           <PageHeader 
             user={user} 
-            title="教練回報"
+            title="📝 教練回報"
             showBaoLink={false}
           />
           <div style={{ 
@@ -83,19 +83,9 @@ export function MyReport() {
       }}>
         <PageHeader 
           user={user} 
-          title="教練回報"
+          title="📝 教練回報"
           showBaoLink={false}
         />
-        
-        {/* 頁面標題 */}
-        <h1 style={{ 
-          fontSize: isMobile ? '24px' : '32px',
-          fontWeight: 'bold',
-          marginBottom: '24px',
-          color: '#333'
-        }}>
-          📝 教練回報
-        </h1>
 
         {/* Tab 切換 */}
         <div style={{ 

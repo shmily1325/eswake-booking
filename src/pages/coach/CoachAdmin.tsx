@@ -599,34 +599,19 @@ export function CoachAdmin() {
             { label: '← 預約回報', link: '/coach-report' }
           ]}
         />
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          marginBottom: '24px',
-          flexWrap: 'wrap',
-          gap: '8px'
-        }}>
-          <h1 style={{ 
-            fontSize: isMobile ? '24px' : '32px',
-            fontWeight: 'bold',
-            margin: 0,
-            color: '#333'
+        {/* 最後更新時間 */}
+        {lastRefreshTime && (
+          <div style={{
+            fontSize: '12px',
+            color: '#888',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            marginBottom: '16px'
           }}>
-            💼 回報管理
-          </h1>
-          {lastRefreshTime && (
-            <div style={{
-              fontSize: '12px',
-              color: '#888',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              🔄 已更新 {lastRefreshTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </div>
-          )}
-        </div>
+            🔄 已更新 {lastRefreshTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </div>
+        )}
 
         {/* Tab 切換 */}
         <div style={{ 

@@ -1199,7 +1199,7 @@ export function CoachReport({
         {!embedded && (
           <PageHeader 
             user={user} 
-            title={autoFilterByUser ? "我的回報" : "預約回報"}
+            title={autoFilterByUser ? "📋 我的回報" : "📋 預約回報"}
             showBaoLink={!autoFilterByUser}
             extraLinks={autoFilterByUser ? undefined : [
               { label: '回報管理 →', link: '/coach-admin' }
@@ -1207,35 +1207,17 @@ export function CoachReport({
           />
         )}
         
-        {/* 頁面標題 - 只在非嵌入模式顯示 */}
-        {!embedded && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between',
-            marginBottom: '24px',
-            flexWrap: 'wrap',
-            gap: '8px'
+        {/* 最後更新時間 - 只在非嵌入模式顯示 */}
+        {!embedded && lastRefreshTime && (
+          <div style={{
+            fontSize: '12px',
+            color: '#888',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            marginBottom: '16px'
           }}>
-            <h1 style={{ 
-              fontSize: isMobile ? '24px' : '32px',
-              fontWeight: 'bold',
-              margin: 0,
-              color: '#333'
-            }}>
-              📋 {autoFilterByUser ? '我的回報' : '預約回報'}
-            </h1>
-            {lastRefreshTime && (
-              <div style={{
-                fontSize: '12px',
-                color: '#888',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}>
-                🔄 已更新 {lastRefreshTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </div>
-            )}
+            🔄 已更新 {lastRefreshTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
         )}
 

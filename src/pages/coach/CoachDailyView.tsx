@@ -560,7 +560,7 @@ export function CoachDailyView() {
           margin: '0 auto',
           padding: isMobile ? '16px' : '20px' 
         }}>
-          <PageHeader user={user} title="今日預約" />
+          <PageHeader user={user} title="📋 今日預約" />
           {/* 日期選擇器骨架屏 */}
           <div style={{
             background: 'white',
@@ -605,7 +605,7 @@ export function CoachDailyView() {
         margin: '0 auto',
         padding: isMobile ? '16px' : '20px'
       }}>
-        <PageHeader user={user} title="今日預約" />
+        <PageHeader user={user} title="📋 今日預約" />
         {/* 日期和教練篩選 */}
         <div style={{
           background: 'white',

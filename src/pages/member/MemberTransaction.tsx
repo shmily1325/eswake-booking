@@ -539,7 +539,7 @@ export function MemberTransaction() {
         paddingBottom: '12px',
       }}>
         <PageHeader 
-          title={isMobile ? '會員儲值' : '💰 會員儲值'} 
+          title="💰 會員儲值" 
           user={user} 
           showBaoLink={true}
           extraLinks={[{ label: isMobile ? '👥' : '👥 會員管理', link: '/members' }]}

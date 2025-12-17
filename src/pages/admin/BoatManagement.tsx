@@ -310,26 +310,11 @@ export function BoatManagement() {
                 margin: '0 auto',
                 padding: isMobile ? '20px 16px' : '40px 20px'
             }}>
-                <PageHeader user={user!} title="船隻管理" showBaoLink={true} />
-                {/* 標題與操作按鈕 */}
-                <div style={{
-                    display: 'flex',
-                    flexDirection: isMobile ? 'column' : 'row',
-                    justifyContent: 'space-between',
-                    alignItems: isMobile ? 'stretch' : 'center',
-                    gap: '16px',
-                    marginBottom: '30px'
-                }}>
-                    <h1 style={{
-                        margin: 0,
-                        fontSize: isMobile ? '24px' : '32px',
-                        color: '#333',
-                        fontWeight: 'bold'
-                    }}>
-                        🚤 船隻管理
-                    </h1>
-
-                    {activeTab === 'boats' && (
+                <PageHeader user={user!} title="🚤 船隻管理" showBaoLink={true} />
+                
+                {/* 操作按鈕 */}
+                {activeTab === 'boats' && (
+                    <div style={{ marginBottom: '20px' }}>
                         <Button
                             variant="outline"
                             size="medium"
@@ -338,8 +323,8 @@ export function BoatManagement() {
                         >
                             新增船隻
                         </Button>
-                    )}
-                </div>
+                    </div>
+                )}
 
                 {/* Tab 切換 */}
                 <div style={{

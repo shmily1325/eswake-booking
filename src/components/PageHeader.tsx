@@ -16,6 +16,11 @@ interface PageHeaderProps {
 export function PageHeader({ title, user, showBaoLink = false, showHomeLink = true, breadcrumbs, extraLinks }: PageHeaderProps) {
   const { isMobile } = useResponsive()
 
+  // 手機版移除開頭的 emoji，節省空間
+  const displayTitle = isMobile 
+    ? title.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, '').trim()
+    : title
+
   const navButtonStyle: React.CSSProperties = {
     padding: isMobile ? '6px 10px' : '6px 12px',
     background: 'rgba(255, 255, 255, 0.15)',
@@ -66,7 +71,7 @@ export function PageHeader({ title, user, showBaoLink = false, showHomeLink = tr
             </span>
           ))}
           <span style={{ opacity: 0.5 }}>›</span>
-          <span style={{ color: 'white' }}>{title}</span>
+          <span style={{ color: 'white' }}>{displayTitle}</span>
         </div>
       )}
       
@@ -82,7 +87,7 @@ export function PageHeader({ title, user, showBaoLink = false, showHomeLink = tr
           color: 'white',
           margin: 0
         }}>
-          {title}
+          {displayTitle}
         </h1>
         <div style={{ display: 'flex', gap: designSystem.spacing.sm, alignItems: 'center' }}>
           {extraLinks && extraLinks.map((link, index) => (

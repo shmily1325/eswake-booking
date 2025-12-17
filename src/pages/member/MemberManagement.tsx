@@ -582,7 +582,7 @@ export function MemberManagement() {
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <PageHeader 
-            title="會員管理" 
+            title="👥 會員管理" 
             user={user} 
             showBaoLink={true} 
             extraLinks={[{ label: '💰', link: '/member-transaction' }]}
@@ -681,7 +681,7 @@ export function MemberManagement() {
         paddingBottom: '12px',
       }}>
         <PageHeader 
-          title={isMobile ? '會員管理' : '👥 會員管理'} 
+          title="👥 會員管理" 
           user={user} 
           showBaoLink={true} 
           extraLinks={[{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }]}
