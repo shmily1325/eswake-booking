@@ -21,6 +21,7 @@ interface ParsedDetails {
   time?: string
   duration?: string
   filledBy?: string
+  changeSummary?: string  // 修改預約的變更摘要
   rawText: string
 }
 
@@ -94,14 +95,61 @@ function parseDetails(details: string): ParsedDetails {
     }
     
   } else if (isUpdate) {
-    const boatChangeMatch = details.match(/船隻[:：]\s*[^→]*→\s*([^，\s]+)/)
-    if (boatChangeMatch) {
-      info.boat = boatChangeMatch[1].trim()
+    // 格式：修改預約：2025/11/20 14:45 小楊，變更：時間: 14:00 → 14:45、船隻: G21 → G23
+    
+    // 提取會員名稱（在時間和「，變更」之間）
+    const memberMatch = details.match(/\d{2}:\d{2}\s+([^，]+?)，變更/)
+    if (memberMatch) {
+      info.member = memberMatch[1].trim()
     }
     
-    const contactChangeMatch = details.match(/聯絡[:：]\s*[^→]*→\s*([^，\s]+)/)
-    if (contactChangeMatch) {
-      info.member = contactChangeMatch[1].trim()
+    // 提取變更內容摘要
+    const changesMatch = details.match(/變更[:：]\s*(.+?)(?:\s*\(填表人|$)/)
+    if (changesMatch) {
+      const changesText = changesMatch[1].trim()
+      // 提取所有變更項目
+      const changeItems: string[] = []
+      
+      // 時間變更
+      if (changesText.includes('時間:') || changesText.includes('時間：')) {
+        changeItems.push('時間')
+      }
+      // 船隻變更
+      const boatChange = changesText.match(/船隻[:：]\s*([^→]+)\s*→\s*([^，、]+)/)
+      if (boatChange) {
+        info.boat = boatChange[2].trim()
+        changeItems.push(`船 ${boatChange[1].trim()}→${boatChange[2].trim()}`)
+      }
+      // 教練變更
+      if (changesText.includes('教練:') || changesText.includes('教練：')) {
+        changeItems.push('教練')
+      }
+      // 駕駛變更
+      if (changesText.includes('駕駛:') || changesText.includes('駕駛：')) {
+        changeItems.push('駕駛')
+      }
+      // 聯絡人變更
+      const contactChange = changesText.match(/聯絡[:：]\s*([^→]+)\s*→\s*([^，、]+)/)
+      if (contactChange) {
+        info.member = contactChange[2].trim()
+        changeItems.push('聯絡人')
+      }
+      // 備註變更
+      if (changesText.includes('備註:') || changesText.includes('備註：')) {
+        changeItems.push('備註')
+      }
+      // 時長變更
+      if (changesText.includes('時長:') || changesText.includes('時長：')) {
+        changeItems.push('時長')
+      }
+      // 活動變更
+      if (changesText.includes('活動:') || changesText.includes('活動：')) {
+        changeItems.push('活動')
+      }
+      
+      if (changeItems.length > 0) {
+        info.changeSummary = changeItems.join('、')
+      }
     }
     
   } else if (isDelete) {
@@ -527,11 +575,11 @@ export function AuditLog() {
           alignItems: 'center',
         }}>
           {[
-            { key: 'all', label: '全部', icon: '📋' },
-            { key: 'add', label: '新增', icon: '➕' },
-            { key: 'edit', label: '修改', icon: '✏️' },
-            { key: 'delete', label: '刪除', icon: '🗑️' },
-          ].map(({ key, label, icon }) => (
+            { key: 'all', label: '全部', icon: '📋', color: '#5a5a5a', bgColor: '#f0f0f0' },
+            { key: 'add', label: '新增', icon: '➕', color: '#28a745', bgColor: '#d4edda' },
+            { key: 'edit', label: '修改', icon: '✏️', color: '#007bff', bgColor: '#d1ecf1' },
+            { key: 'delete', label: '刪除', icon: '🗑️', color: '#dc3545', bgColor: '#f8d7da' },
+          ].map(({ key, label, icon, color, bgColor }) => (
             <button
               key={key}
               onClick={() => setFilter(key as any)}
@@ -539,10 +587,10 @@ export function AuditLog() {
                 padding: '8px 12px',
                 fontSize: '13px',
                 fontWeight: '500',
-                border: filter === key ? '2px solid #5a5a5a' : '1px solid #dee2e6',
+                border: filter === key ? `2px solid ${color}` : '1px solid #dee2e6',
                 borderRadius: '8px',
-                background: filter === key ? '#5a5a5a' : 'white',
-                color: filter === key ? 'white' : '#666',
+                background: filter === key ? bgColor : 'white',
+                color: filter === key ? color : '#666',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
               }}
@@ -682,6 +730,15 @@ export function AuditLog() {
                     if (log.table_name === 'coach_assignment') {
                       return log.details?.replace('教練排班: ', '') || '排班調整'
                     }
+                    
+                    // 修改預約：顯示會員 + 變更摘要
+                    if (log.action === 'update' && parsed.changeSummary) {
+                      const parts: string[] = []
+                      if (parsed.member) parts.push(parsed.member)
+                      parts.push(`改${parsed.changeSummary}`)
+                      return parts.join(' · ')
+                    }
+                    
                     const parts: string[] = []
                     if (parsed.boat) parts.push(parsed.boat)
                     if (parsed.member) parts.push(parsed.member)
