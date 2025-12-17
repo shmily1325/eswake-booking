@@ -1207,8 +1207,8 @@ export function CoachReport({
           />
         )}
         
-        {/* 最後更新時間 - 只在非嵌入模式顯示 */}
-        {!embedded && lastRefreshTime && (
+        {/* 最後更新時間 */}
+        {lastRefreshTime && (
           <div style={{
             fontSize: '12px',
             color: '#888',

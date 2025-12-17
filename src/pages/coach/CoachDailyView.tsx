@@ -403,15 +403,22 @@ export function CoachDailyView() {
           {/* 教練練習標識 */}
           {booking.is_coach_practice && (
             <span style={{
+              display: 'inline-flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
               fontSize: '11px',
               fontWeight: '600',
-              padding: '3px 8px',
+              padding: '4px 10px',
               background: '#fff3e0',
               color: '#e65100',
-              borderRadius: '4px',
+              borderRadius: '6px',
               border: '1px solid #ff9800',
+              lineHeight: '1.4',
+              minWidth: '42px',
             }}>
-              教練練習
+              <span>教練</span>
+              <span>練習</span>
             </span>
           )}
         </div>
@@ -494,17 +501,27 @@ export function CoachDailyView() {
         {/* 教練練習標識 */}
         {booking.is_coach_practice && (
           <div style={{
-            display: 'inline-block',
+            display: 'inline-flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
             fontSize: isMobile ? '11px' : '12px',
             fontWeight: '600',
-            padding: '3px 8px',
+            padding: isMobile ? '4px 10px' : '3px 8px',
             background: '#fff3e0',
             color: '#e65100',
-            borderRadius: '4px',
+            borderRadius: '6px',
             marginBottom: '6px',
             border: '1px solid #ff9800',
+            lineHeight: '1.4',
+            minWidth: isMobile ? '42px' : undefined,
           }}>
-            {isMobile ? '教練練習' : '🏄 教練練習'}
+            {isMobile ? (
+              <>
+                <span>教練</span>
+                <span>練習</span>
+              </>
+            ) : '🏄 教練練習'}
           </div>
         )}
 
