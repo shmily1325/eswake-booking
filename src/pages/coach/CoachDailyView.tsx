@@ -371,103 +371,97 @@ export function CoachDailyView() {
         key={booking.id}
         style={{
           ...getBookingCardStyle(boat.color, true, false),
-          marginBottom: index < total - 1 ? '16px' : '0',
-          padding: '14px 16px',
+          marginBottom: index < total - 1 ? '12px' : '0',
+          padding: '12px 14px',
         }}
       >
-        {/* 教練練習標識 */}
-        {booking.is_coach_practice && (
-          <div style={{
-            display: 'inline-block',
-            fontSize: '12px',
-            fontWeight: '600',
-            padding: '4px 10px',
-            background: '#fff3e0',
-            color: '#e65100',
-            borderRadius: '4px',
-            marginBottom: '10px',
-            border: '1px solid #ff9800',
-          }}>
-            教練練習
-          </div>
-        )}
-
-        {/* 第一行：船隻 + 角色 + 時間 */}
+        {/* 第一行：船隻 + 角色 + 教練練習標識 */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '10px',
-          flexWrap: 'wrap',
-          gap: '6px'
+          marginBottom: '8px',
+          gap: '8px'
         }}>
           <div style={{
-            fontSize: '15px',
+            fontSize: '14px',
             fontWeight: '700',
             color: boat.color,
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '4px'
           }}>
             🚤 {boat.name}
-            {roleLabel && (
-              <span style={{
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#555',
-                marginLeft: '4px'
-              }}>
-                · {roleLabel}
-              </span>
-            )}
+            <span style={{
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#666',
+            }}>
+              · {roleLabel || '🎓 教練'}
+            </span>
           </div>
+          {/* 教練練習標識 */}
+          {booking.is_coach_practice && (
+            <span style={{
+              fontSize: '11px',
+              fontWeight: '600',
+              padding: '2px 8px',
+              background: '#ff9800',
+              color: 'white',
+              borderRadius: '10px',
+              whiteSpace: 'nowrap',
+            }}>
+              練習
+            </span>
+          )}
         </div>
 
-        {/* 第二行：時間範圍 */}
+        {/* 第二行：時間 + 聯絡人 */}
         <div style={{
-          fontSize: '14px',
-          fontWeight: '600',
-          color: '#333',
-          marginBottom: '8px',
-          textAlign: 'left',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: booking.notes || booking.schedule_notes ? '8px' : '0',
         }}>
-          {startTime} - {endTimeStr}
-        </div>
-
-        {/* 第三行：聯絡人姓名 */}
-        <div style={{
-          fontSize: '15px',
-          fontWeight: '600',
-          color: '#1976d2',
-          marginBottom: '6px',
-          textAlign: 'left',
-        }}>
-          {getDisplayContactName(booking)}
+          <div style={{
+            fontSize: '14px',
+            fontWeight: '700',
+            color: '#333',
+            whiteSpace: 'nowrap',
+          }}>
+            {startTime} - {endTimeStr}
+          </div>
+          <div style={{
+            fontSize: '14px',
+            fontWeight: '600',
+            color: '#1976d2',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {getDisplayContactName(booking)}
+          </div>
         </div>
 
         {/* 註解 */}
         {booking.notes && (
           <div style={{
-            fontSize: '13px',
+            fontSize: '12px',
             color: '#666',
             fontStyle: 'italic',
-            marginTop: '8px',
-            marginBottom: '4px',
-            textAlign: 'left',
+            marginBottom: booking.schedule_notes ? '4px' : '0',
             lineHeight: '1.4'
           }}>
-            {booking.notes}
+            💬 {booking.notes}
           </div>
         )}
 
         {/* 排班註解 */}
         {booking.schedule_notes && (
           <div style={{
-            fontSize: '13px',
+            fontSize: '12px',
             color: '#e65100',
             fontWeight: '500',
-            marginTop: '8px',
-            textAlign: 'left',
             lineHeight: '1.4'
           }}>
             📝 {booking.schedule_notes}
@@ -770,7 +764,7 @@ export function CoachDailyView() {
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
           <table style={{
-            width: isMobile ? 'auto' : '100%',
+            width: (isMobile && selectedCoachId) ? '100%' : (isMobile ? 'auto' : '100%'),
             borderCollapse: 'separate',
             borderSpacing: 0
           }}>
@@ -781,13 +775,14 @@ export function CoachDailyView() {
                   top: 0,
                   left: 0,
                   zIndex: 12,
-                  padding: isMobile ? '8px 4px' : '12px',
+                  padding: isMobile ? '8px 6px' : '12px',
                   borderBottom: '2px solid #dee2e6',
                   backgroundColor: '#5a5a5a',
                   color: 'white',
                   fontSize: isMobile ? '11px' : '14px',
                   fontWeight: '600',
-                  width: isMobile ? '60px' : '80px',
+                  width: (isMobile && selectedCoachId) ? '55px' : (isMobile ? '60px' : '80px'),
+                  minWidth: (isMobile && selectedCoachId) ? '55px' : undefined,
                 }}>
                   時間
                 </th>
@@ -798,25 +793,33 @@ export function CoachDailyView() {
                       position: 'sticky',
                       top: 0,
                       zIndex: 11,
-                      padding: '12px',
-                      textAlign: 'center',
+                      padding: '10px 12px',
+                      textAlign: 'left',
                       borderBottom: '2px solid #dee2e6',
                       backgroundColor: '#5a5a5a',
                       color: 'white',
                       fontSize: '14px',
                       fontWeight: '600',
+                      width: '100%',
                     }}
                   >
-                    <div style={{ fontSize: '13px' }}>
-                      🎓 {coaches.find(c => c.id === selectedCoachId)?.name || '教練'}
-                    </div>
-                    <div style={{
-                      fontSize: '11px',
-                      fontWeight: '400',
-                      marginTop: '2px',
-                      opacity: 0.8,
+                    <div style={{ 
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                     }}>
-                      {filteredBookings.length}筆
+                      <span>🎓 {coaches.find(c => c.id === selectedCoachId)?.name || '教練'}</span>
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: '400',
+                        opacity: 0.8,
+                        background: 'rgba(255,255,255,0.2)',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                      }}>
+                        {filteredBookings.length}筆
+                      </span>
                     </div>
                   </th>
                 ) : (
@@ -927,10 +930,10 @@ export function CoachDailyView() {
                             <td
                               key="single-column"
                               style={{
-                                padding: '8px 4px',
+                                padding: '6px 8px',
                                 borderBottom: '1px solid #e9ecef',
-                                borderRight: '1px solid #e9ecef',
                                 backgroundColor: 'white',
+                                height: '32px',
                               }}
                             />
                           )
@@ -943,9 +946,8 @@ export function CoachDailyView() {
                             key="single-column"
                             rowSpan={maxSlots}
                             style={{
-                              padding: '8px',
+                              padding: '6px 8px',
                               borderBottom: '1px solid #e9ecef',
-                              borderRight: '1px solid #e9ecef',
                               backgroundColor: 'white',
                               verticalAlign: 'top',
                             }}

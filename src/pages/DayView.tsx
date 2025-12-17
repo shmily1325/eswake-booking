@@ -603,7 +603,7 @@ export function DayView() {
                 boxSizing: 'border-box'
               }}
             >
-              排班管理
+              排班
             </Link>
 
             <div style={{
