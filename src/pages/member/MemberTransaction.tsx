@@ -160,18 +160,18 @@ export function MemberTransaction() {
     return result
   }, [members, searchTerm, sortBy, sortOrder, membershipTypeFilter])
 
-  // 計算統計數據
+  // 計算統計數據（根據篩選結果動態計算）
   const stats = useMemo(() => {
     return {
-      totalBalance: members.reduce((sum, m) => sum + (m.balance || 0), 0),
-      totalVipVoucher: members.reduce((sum, m) => sum + (m.vip_voucher_amount || 0), 0),
-      totalDesignatedLesson: members.reduce((sum, m) => sum + (m.designated_lesson_minutes || 0), 0),
-      totalG23: members.reduce((sum, m) => sum + (m.boat_voucher_g23_minutes || 0), 0),
-      totalG21: members.reduce((sum, m) => sum + (m.boat_voucher_g21_panther_minutes || 0), 0),
-      totalGiftBoat: members.reduce((sum, m) => sum + (m.gift_boat_hours || 0), 0),
-      memberCount: members.length
+      totalBalance: filteredMembers.reduce((sum, m) => sum + (m.balance || 0), 0),
+      totalVipVoucher: filteredMembers.reduce((sum, m) => sum + (m.vip_voucher_amount || 0), 0),
+      totalDesignatedLesson: filteredMembers.reduce((sum, m) => sum + (m.designated_lesson_minutes || 0), 0),
+      totalG23: filteredMembers.reduce((sum, m) => sum + (m.boat_voucher_g23_minutes || 0), 0),
+      totalG21: filteredMembers.reduce((sum, m) => sum + (m.boat_voucher_g21_panther_minutes || 0), 0),
+      totalGiftBoat: filteredMembers.reduce((sum, m) => sum + (m.gift_boat_hours || 0), 0),
+      memberCount: filteredMembers.length
     }
-  }, [members])
+  }, [filteredMembers])
 
   const handleMemberClick = (member: Member) => {
     setSelectedMember(member)
