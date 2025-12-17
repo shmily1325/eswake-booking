@@ -1257,6 +1257,7 @@ export function CoachAssignment() {
                   backgroundColor: '#f0f9ff',
                   borderRadius: '8px',
                   border: '1px solid #bae6fd',
+                  gridColumn: isMobile ? 'span 2' : 'auto',
                 }}>
                   <div style={{ fontSize: '11px', color: '#0369a1', marginBottom: '4px' }}>總預約數</div>
                   <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#0c4a6e' }}>
@@ -1271,6 +1272,7 @@ export function CoachAssignment() {
                     backgroundColor: '#fef2f2',
                     borderRadius: '8px',
                     border: '1px solid #fecaca',
+                    gridColumn: isMobile ? 'span 2' : 'auto',
                   }}>
                     <div style={{ fontSize: '11px', color: '#991b1b', marginBottom: '4px' }}>⚠️ 未排班</div>
                     <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#7f1d1d' }}>
