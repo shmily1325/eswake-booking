@@ -1038,7 +1038,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   type="date"
                   value={boatStartDate}
                   onChange={(e) => setBoatStartDate(e.target.value)}
-                  required
                   style={{
                     flex: 1,
                     minWidth: 0,
@@ -1064,7 +1063,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   type="date"
                   value={boatEndDate}
                   onChange={(e) => setBoatEndDate(e.target.value)}
-                  required
                   style={{
                     flex: 1,
                     minWidth: 0,
