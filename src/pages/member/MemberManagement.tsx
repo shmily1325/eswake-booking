@@ -670,14 +670,15 @@ export function MemberManagement() {
       {/* PageHeader + 篩選列一起 sticky */}
       <div style={{
         position: 'sticky',
-        top: isMobile ? '-12px' : 0,
+        top: 0,
         zIndex: 100,
         background: '#f5f5f5',
         marginLeft: isMobile ? '-16px' : '-20px',
         marginRight: isMobile ? '-16px' : '-20px',
+        marginTop: isMobile ? '-12px' : '-20px',
         paddingLeft: isMobile ? '16px' : '20px',
         paddingRight: isMobile ? '16px' : '20px',
-        paddingTop: isMobile ? '12px' : 0,
+        paddingTop: isMobile ? '12px' : '20px',
         paddingBottom: '12px',
       }}>
         <PageHeader 

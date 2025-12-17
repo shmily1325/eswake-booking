@@ -32,13 +32,13 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip; /* Use clip instead of hidden to preserve sticky */
 }
 
 #root {
   width: 100%;
   min-height: 100vh;
-  overflow-x: hidden; /* Prevent horizontal scroll on mobile */
+  overflow-x: clip; /* Prevent horizontal scroll on mobile - use clip instead of hidden to preserve sticky */
 }
 
 h1 {
