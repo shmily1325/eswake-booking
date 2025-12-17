@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
 import { logAction } from '../utils/auditLog'
+import { getFilledByName } from '../utils/filledByHelper'
 
 interface BatchDeleteConfirmDialogProps {
   isOpen: boolean
@@ -29,13 +30,13 @@ export function BatchDeleteConfirmDialog({
   // 每次打開時重置表單
   useEffect(() => {
     if (isOpen) {
-      setFilledBy('')
+      setFilledBy(getFilledByName(user?.email))  // 自動填入對應的填表人姓名
       setConfirmed(false)
     }
-  }, [isOpen])
+  }, [isOpen, user?.email])
   
   const handleClose = () => {
-    setFilledBy('')
+    setFilledBy(getFilledByName(user?.email))  // 重置時也使用自動填入
     setConfirmed(false)
     onClose()
   }

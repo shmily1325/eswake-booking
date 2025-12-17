@@ -101,7 +101,8 @@ export function NewBookingDialog({
     resetForm
   } = useBookingForm({
     defaultBoatId,
-    defaultDate: defaultStartTime
+    defaultDate: defaultStartTime,
+    userEmail: user.email || undefined
   })
 
   // 即時衝突檢查狀態

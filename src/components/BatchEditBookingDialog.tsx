@@ -14,6 +14,7 @@ import {
 } from '../utils/bookingConflict'
 import { isFacility } from '../utils/facility'
 import { BatchResultDialog } from './BatchResultDialog'
+import { getFilledByName } from '../utils/filledByHelper'
 
 interface Coach {
   id: string
@@ -76,7 +77,7 @@ export function BatchEditBookingDialog({
       setNotes('')
       setDurationMin(60)  // 預設60分鐘更合理
       setDurationInput('60')
-      setFilledBy('')
+      setFilledBy(getFilledByName(user?.email))  // 自動填入對應的填表人姓名
       loadData()
     }
   }, [isOpen])
@@ -478,7 +479,7 @@ export function BatchEditBookingDialog({
     setNotes('')
     setDurationMin(60)
     setDurationInput('60')
-    setFilledBy('')
+    setFilledBy(getFilledByName(user?.email))  // 重置時也使用自動填入
   }
   
   // 關閉時重置

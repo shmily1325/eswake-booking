@@ -117,7 +117,8 @@ export function RepeatBookingDialog({
     resetForm
   } = useBookingForm({
     defaultBoatId,
-    defaultDate: defaultStartTime
+    defaultDate: defaultStartTime,
+    userEmail: user.email || undefined
   })
 
   useEffect(() => {

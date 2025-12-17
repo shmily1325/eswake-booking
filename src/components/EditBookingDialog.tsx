@@ -111,7 +111,8 @@ export function EditBookingDialog({
     performConflictCheck,
     resetForm
   } = useBookingForm({
-    initialBooking: booking
+    initialBooking: booking,
+    userEmail: user.email || undefined
   })
 
   // 複製功能專用的衝突檢查

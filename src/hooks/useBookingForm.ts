@@ -5,14 +5,16 @@ import { filterMembers, composeFinalStudentName, toggleSelection } from '../util
 import { MEMBER_SEARCH_DEBOUNCE_MS } from '../constants/booking'
 import type { Booking, Boat, Coach, Member } from '../types/booking'
 import { isFacility } from '../utils/facility'
+import { getFilledByName } from '../utils/filledByHelper'
 
 interface UseBookingFormProps {
     initialBooking?: Booking
     defaultDate?: string
     defaultBoatId?: number
+    userEmail?: string  // 操作者的 email，用於自動填入填表人
 }
 
-export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: UseBookingFormProps = {}) {
+export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, userEmail }: UseBookingFormProps = {}) {
     const { checkConflict } = useBookingConflict()
 
     // --- State ---
@@ -39,7 +41,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
     const [activityTypes, setActivityTypes] = useState<string[]>(initialBooking?.activity_types || [])
     const [notes, setNotes] = useState(initialBooking?.notes || '')
     const [requiresDriver, setRequiresDriver] = useState(initialBooking?.requires_driver || false)
-    const [filledBy, setFilledBy] = useState(initialBooking?.filled_by || '')
+    // 填表人：優先使用 email 對應的姓名（如有），否則為空（用戶自行輸入）
+    const [filledBy, setFilledBy] = useState(() => getFilledByName(userEmail))
     const [isCoachPractice, setIsCoachPractice] = useState(initialBooking?.is_coach_practice || false)
 
     // Status
@@ -87,8 +90,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
             setRequiresDriver(initialBooking.requires_driver || false)
             setActivityTypes(initialBooking.activity_types || [])
             setIsCoachPractice(initialBooking.is_coach_practice || false)
-            // 編輯模式下清空填表人，讓編輯者重新填寫
-            setFilledBy('')
+            // 編輯模式下：如果有對應的填表人姓名就自動填入，否則清空讓編輯者重新填寫
+            setFilledBy(getFilledByName(userEmail))
 
             const datetime = initialBooking.start_at.substring(0, 16)
             const [date, time] = datetime.split('T')
@@ -248,7 +251,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId }: U
         setActivityTypes([])
         setNotes('')
         setRequiresDriver(false)
-        setFilledBy('')
+        setFilledBy(getFilledByName(userEmail))  // 重置時也使用自動填入
         setIsCoachPractice(false)
         setError('')
 
