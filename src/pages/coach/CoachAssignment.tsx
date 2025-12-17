@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { designSystem, getButtonStyle, getInputStyle, getLabelStyle, getTextStyle } from '../../styles/designSystem'
+import { designSystem, getButtonStyle, getLabelStyle, getTextStyle } from '../../styles/designSystem'
 import { isAdmin, isEditorAsync } from '../../utils/auth'
 import { isFacility } from '../../utils/facility'
 import { logCoachAssignment } from '../../utils/auditLog'
@@ -1008,12 +1008,15 @@ export function CoachAssignment() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           overflow: 'hidden'
         }}>
-          <div style={{ display: 'flex', gap: designSystem.spacing.md, alignItems: 'end', flexWrap: 'wrap' }}>
-            <div style={{ flex: isMobile ? '1 1 100%' : '0 0 auto', minWidth: 0 }}>
-              <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px', display: 'block' }}>
-                選擇日期
-              </label>
-              {isMobile ? (
+          <div style={{ display: 'flex', gap: isMobile ? designSystem.spacing.md : '10px', alignItems: isMobile ? 'end' : 'center', flexWrap: 'wrap' }}>
+            {isMobile && (
+              <div style={{ flex: '1 1 100%', minWidth: 0 }}>
+                <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px', display: 'block' }}>
+                  選擇日期
+                </label>
+              </div>
+            )}
+            {isMobile ? (
                 // 手機版：箭頭 + 日期 + 星期（佔滿寬度）
                 <div style={{ 
                   display: 'flex',
@@ -1108,8 +1111,29 @@ export function CoachAssignment() {
                   </button>
                 </div>
               ) : (
-                // 電腦版：徽章在旁邊
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                // 電腦版：箭頭 + 日期 + 星期 + 箭頭 + 儲存 + 回預約表（全部同一行，跟預約列表一樣）
+                <>
+                  {/* 向前箭頭 */}
+                  <button
+                    onClick={() => {
+                      const currentDate = new Date(selectedDate)
+                      currentDate.setDate(currentDate.getDate() - 1)
+                      const newDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
+                      setSelectedDate(newDate)
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '6px',
+                      background: '#f8f9fa',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#495057'
+                    }}
+                  >
+                    ←
+                  </button>
+                  
                   <input
                     type="date"
                     value={selectedDate}
@@ -1121,10 +1145,14 @@ export function CoachAssignment() {
                       }
                     }}
                     style={{
-                      ...getInputStyle(isMobile),
-                      minWidth: '200px'
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #dee2e6',
+                      fontSize: '16px',
+                      minWidth: '180px'
                     }}
                   />
+                  
                   {/* 星期幾徽章 */}
                   <span style={{
                     padding: '8px 12px',
@@ -1138,32 +1166,91 @@ export function CoachAssignment() {
                   }}>
                     {getWeekdayText(selectedDate)}
                   </span>
-                </div>
+                  
+                  {/* 向後箭頭 */}
+                  <button
+                    onClick={() => {
+                      const currentDate = new Date(selectedDate)
+                      currentDate.setDate(currentDate.getDate() + 1)
+                      const newDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
+                      setSelectedDate(newDate)
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '6px',
+                      background: '#f8f9fa',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#495057'
+                    }}
+                  >
+                    →
+                  </button>
+                  
+                  {/* 儲存按鈕 */}
+                  <button
+                    onClick={handleSaveAll}
+                    disabled={saving || loading}
+                    style={{
+                      padding: '8px 16px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '6px',
+                      background: '#f8f9fa',
+                      cursor: (saving || loading) ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      color: '#495057',
+                      opacity: (saving || loading) ? 0.5 : 1
+                    }}
+                  >
+                    {saving ? '儲存中...' : '💾'}
+                  </button>
+                  
+                  {/* 回預約表 */}
+                  <button
+                    onClick={() => navigate(`/day?date=${selectedDate}`)}
+                    style={{
+                      padding: '8px 16px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '6px',
+                      background: '#f8f9fa',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#495057'
+                    }}
+                  >
+                    回預約表
+                  </button>
+                </>
               )}
-            </div>
 
-            <button
-              onClick={handleSaveAll}
-              disabled={saving || loading}
-              style={{
-                ...getButtonStyle('secondary', 'large', isMobile),
-                flex: isMobile ? '1 1 100%' : '0 0 auto',
-                opacity: (saving || loading) ? 0.5 : 1,
-                cursor: (saving || loading) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {saving ? '儲存中...' : '💾'}
-            </button>
+            {/* 手機版：儲存和回預約表按鈕獨立一行 */}
+            {isMobile && (
+              <>
+                <button
+                  onClick={handleSaveAll}
+                  disabled={saving || loading}
+                  style={{
+                    ...getButtonStyle('secondary', 'large', isMobile),
+                    flex: '1 1 100%',
+                    opacity: (saving || loading) ? 0.5 : 1,
+                    cursor: (saving || loading) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {saving ? '儲存中...' : '💾'}
+                </button>
 
-            <button
-              onClick={() => navigate(`/day?date=${selectedDate}`)}
-              style={{
-                ...getButtonStyle('secondary', 'large', isMobile),
-                flex: isMobile ? '1 1 100%' : '0 0 auto'
-              }}
-            >
-              ← 回預約表
-            </button>
+                <button
+                  onClick={() => navigate(`/day?date=${selectedDate}`)}
+                  style={{
+                    ...getButtonStyle('secondary', 'large', isMobile),
+                    flex: '1 1 100%'
+                  }}
+                >
+                  ← 回預約表
+                </button>
+              </>
+            )}
           </div>
 
           {success && (
