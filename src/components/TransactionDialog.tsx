@@ -58,10 +58,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   
   // 交易記錄相關
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [selectedMonth, setSelectedMonth] = useState(() => {
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const today = getLocalDateString() // YYYY-MM-DD
     return today.substring(0, 7) // YYYY-MM
-  })
+  }) // 空字串 '' 代表「全部」
   const [categoryFilter, setCategoryFilter] = useState<string>('all') // 類別篩選
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
@@ -104,23 +104,25 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
   // 加載交易記錄
   const loadTransactions = async () => {
-    if (!selectedMonth) return
-    
     setLoadingHistory(true)
     try {
-      const [year, month] = selectedMonth.split('-')
-      const startDate = `${year}-${month}-01`
-      const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
-      const endDateStr = `${year}-${month}-${String(endDate).padStart(2, '0')}`
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('transactions')
         .select('*')
         .eq('member_id', member.id)
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDateStr)
         .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })
+
+      // 如果有選擇月份，加上日期範圍篩選；空字串代表「全部」
+      if (selectedMonth) {
+        const [year, month] = selectedMonth.split('-')
+        const startDate = `${year}-${month}-01`
+        const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
+        const endDateStr = `${year}-${month}-${String(endDate).padStart(2, '0')}`
+        query = query.gte('transaction_date', startDate).lte('transaction_date', endDateStr)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
       setTransactions(data || [])
@@ -359,13 +361,42 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   }
 
   // 匯出交易記錄
-  const handleExportTransactions = () => {
+  const handleExportTransactions = async () => {
     if (transactions.length === 0) {
       toast.warning('本月無交易記錄可匯出')
       return
     }
 
+    if (!selectedMonth) {
+      toast.warning('請先選擇月份才能匯出')
+      return
+    }
+
     try {
+      const [year, month] = selectedMonth.split('-')
+      const startDate = `${year}-${month}-01`
+      
+      // 查詢該月第一天之前的最後一筆交易，以取得期初值
+      const { data: prevTx } = await supabase
+        .from('transactions')
+        .select('balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after')
+        .eq('member_id', member.id)
+        .lt('transaction_date', startDate)
+        .order('transaction_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      // 期初值（如果沒有上月交易則為 0）
+      const initialValues = {
+        balance: prevTx?.balance_after ?? 0,
+        vip_voucher: prevTx?.vip_voucher_amount_after ?? 0,
+        designated_lesson: prevTx?.designated_lesson_minutes_after ?? 0,
+        boat_voucher_g23: prevTx?.boat_voucher_g23_minutes_after ?? 0,
+        boat_voucher_g21_panther: prevTx?.boat_voucher_g21_panther_minutes_after ?? 0,
+        gift_boat_hours: prevTx?.gift_boat_hours_after ?? 0,
+      }
+
       // 按類別分組
       const groupedByCategory: Record<string, Transaction[]> = {}
       CATEGORIES.forEach(cat => {
@@ -385,19 +416,22 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         const isAmount = cat.type === 'amount'
         const unit = isAmount ? '$' : '分'
         
-        let endValue = 0
+        // 期初值從查詢結果取得
+        const startValue = initialValues[cat.value as keyof typeof initialValues] ?? 0
+        
+        let endValue = startValue
         let totalIncrease = 0
         let totalDecrease = 0
         
         if (txList.length > 0) {
           // 有交易：期末值取最後一筆交易的 after 值
           const lastTx = txList[0] // transactions 已經按時間倒序排列
-          if (cat.value === 'balance') endValue = lastTx.balance_after ?? 0
-          else if (cat.value === 'vip_voucher') endValue = lastTx.vip_voucher_amount_after ?? 0
-          else if (cat.value === 'designated_lesson') endValue = lastTx.designated_lesson_minutes_after ?? 0
-          else if (cat.value === 'boat_voucher_g23') endValue = lastTx.boat_voucher_g23_minutes_after ?? 0
-          else if (cat.value === 'boat_voucher_g21_panther') endValue = lastTx.boat_voucher_g21_panther_minutes_after ?? 0
-          else if (cat.value === 'gift_boat_hours') endValue = lastTx.gift_boat_hours_after ?? 0
+          if (cat.value === 'balance') endValue = lastTx.balance_after ?? startValue
+          else if (cat.value === 'vip_voucher') endValue = lastTx.vip_voucher_amount_after ?? startValue
+          else if (cat.value === 'designated_lesson') endValue = lastTx.designated_lesson_minutes_after ?? startValue
+          else if (cat.value === 'boat_voucher_g23') endValue = lastTx.boat_voucher_g23_minutes_after ?? startValue
+          else if (cat.value === 'boat_voucher_g21_panther') endValue = lastTx.boat_voucher_g21_panther_minutes_after ?? startValue
+          else if (cat.value === 'gift_boat_hours') endValue = lastTx.gift_boat_hours_after ?? startValue
           
           // 計算本月增加和減少
           // 使用 Math.abs 確保數值為正數，避免資料庫中有負數時計算錯誤
@@ -409,18 +443,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               totalDecrease += value
             }
           })
-        } else {
-          // 沒有交易：期末值=當前會員餘額
-          if (cat.value === 'balance') endValue = member.balance ?? 0
-          else if (cat.value === 'vip_voucher') endValue = member.vip_voucher_amount ?? 0
-          else if (cat.value === 'designated_lesson') endValue = member.designated_lesson_minutes ?? 0
-          else if (cat.value === 'boat_voucher_g23') endValue = member.boat_voucher_g23_minutes ?? 0
-          else if (cat.value === 'boat_voucher_g21_panther') endValue = member.boat_voucher_g21_panther_minutes ?? 0
-          else if (cat.value === 'gift_boat_hours') endValue = member.gift_boat_hours ?? 0
         }
-        
-        // 計算期初值
-        const startValue = endValue - totalIncrease + totalDecrease
+        // 如果該月沒有交易，期末值 = 期初值（已在上面設定）
         
         // 跳過空的類別（期初期末都是0且沒有交易）
         if (startValue === 0 && endValue === 0 && txList.length === 0) {
@@ -444,8 +468,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           sortedTxList.forEach(tx => {
             const date = tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : '')
             // 轉換日期格式為 MM/DD/YYYY
-            const [year, month, day] = date.split('-')
-            const formattedDate = `${month}/${day}/${year}`
+            const [y, m, d] = date.split('-')
+            const formattedDate = `${m}/${d}/${y}`
             
             // 分成動詞和數值兩欄
             // 使用 Math.abs 確保顯示正數
@@ -475,7 +499,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       const url = URL.createObjectURL(blob)
       link.setAttribute('href', url)
       
-      const [year, month] = selectedMonth.split('-')
       const fileName = `${member.nickname || member.name}_交易記錄_${year}年${month}月.csv`
       link.setAttribute('download', fileName)
       
@@ -968,7 +991,24 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
                 選擇月份
               </label>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  onClick={() => setSelectedMonth('')}
+                  style={{
+                    padding: '10px 16px',
+                    background: selectedMonth === '' ? '#424242' : 'white',
+                    color: selectedMonth === '' ? 'white' : '#666',
+                    border: selectedMonth === '' ? '2px solid #424242' : '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: selectedMonth === '' ? '600' : 'normal',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  全部
+                </button>
                 <input
                   type="month"
                   value={selectedMonth}
@@ -977,24 +1017,25 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 />
                 <button
                   onClick={() => handleExportTransactions()}
-                  disabled={transactions.length === 0}
+                  disabled={transactions.length === 0 || selectedMonth === ''}
+                  title={selectedMonth === '' ? '請先選擇月份才能匯出' : ''}
                   style={{
                     padding: '10px 20px',
-                    background: transactions.length === 0 ? '#ccc' : '#4caf50',
+                    background: (transactions.length === 0 || selectedMonth === '') ? '#ccc' : '#4caf50',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
                     fontSize: '14px',
                     fontWeight: '600',
-                    cursor: transactions.length === 0 ? 'not-allowed' : 'pointer',
+                    cursor: (transactions.length === 0 || selectedMonth === '') ? 'not-allowed' : 'pointer',
                     whiteSpace: 'nowrap',
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    if (transactions.length > 0) e.currentTarget.style.background = '#388e3c'
+                    if (transactions.length > 0 && selectedMonth !== '') e.currentTarget.style.background = '#388e3c'
                   }}
                   onMouseLeave={(e) => {
-                    if (transactions.length > 0) e.currentTarget.style.background = '#4caf50'
+                    if (transactions.length > 0 && selectedMonth !== '') e.currentTarget.style.background = '#4caf50'
                   }}
                 >
                   📥 匯出
@@ -1085,7 +1126,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               </div>
             ) : transactions.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                本月無交易記錄
+                {selectedMonth === '' ? '無交易記錄' : '本月無交易記錄'}
               </div>
             ) : (() => {
               // 篩選交易記錄

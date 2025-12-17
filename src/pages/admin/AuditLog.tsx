@@ -20,7 +20,7 @@ interface ParsedDetails {
   coach?: string
   time?: string
   duration?: string
-  filledBy?: string  // 填表人
+  filledBy?: string
   rawText: string
 }
 
@@ -141,7 +141,7 @@ function highlightText(text: string, query: string): React.ReactNode {
   
   return parts.map((part, i) => 
     part.toLowerCase() === query.toLowerCase() 
-      ? <mark key={i} style={{ background: '#fef08a', padding: '0 2px', borderRadius: '2px' }}>{part}</mark>
+      ? <mark key={i} style={{ background: '#ffeb3b', padding: '0 2px', borderRadius: '2px' }}>{part}</mark>
       : part
   )
 }
@@ -177,23 +177,23 @@ const OPERATION_CONFIG = {
   create: { 
     icon: '➕', 
     label: '新增', 
-    color: '#059669', 
-    bgColor: '#d1fae5',
-    dotColor: '#10b981'
+    color: '#28a745', 
+    bgColor: '#d4edda',
+    dotColor: '#28a745'
   },
   update: { 
     icon: '✏️', 
     label: '修改', 
-    color: '#2563eb', 
-    bgColor: '#dbeafe',
-    dotColor: '#3b82f6'
+    color: '#007bff', 
+    bgColor: '#d1ecf1',
+    dotColor: '#007bff'
   },
   delete: { 
     icon: '🗑️', 
     label: '刪除', 
-    color: '#dc2626', 
-    bgColor: '#fee2e2',
-    dotColor: '#ef4444'
+    color: '#dc3545', 
+    bgColor: '#f8d7da',
+    dotColor: '#dc3545'
   },
 } as const
 
@@ -217,7 +217,6 @@ export function AuditLog() {
   })
   
   const [selectedFilledBy, setSelectedFilledBy] = useState<string>('all')
-  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     fetchLogs()
@@ -339,7 +338,7 @@ export function AuditLog() {
   const getTimeOnly = (dateString: string) => {
     if (!dateString) return ''
     try {
-      return dateString.substring(11, 16) // HH:MM
+      return dateString.substring(11, 16)
     } catch {
       return ''
     }
@@ -392,727 +391,581 @@ export function AuditLog() {
     }
   }
 
-  // 計算篩選條件數量
-  const activeFilterCount = [
-    filter !== 'all',
-    selectedFilledBy !== 'all',
-  ].filter(Boolean).length
-
   return (
     <div style={{
+      padding: isMobile ? '10px' : '15px',
+      maxWidth: '900px',
+      margin: '0 auto',
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+      backgroundColor: '#f5f5f5',
     }}>
-      {/* Header */}
-      <div style={{
-        background: 'rgba(30, 41, 59, 0.95)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}>
-        <div style={{
-          maxWidth: '900px',
-          margin: '0 auto',
-          padding: isMobile ? '12px 16px' : '16px 24px',
-        }}>
-          <PageHeader title="📋 編輯記錄" user={user} />
-        </div>
-      </div>
+      <PageHeader title="📝 編輯記錄" user={user} />
 
-      {/* Main Content */}
+      {/* 搜尋與篩選區 - 合併成一個卡片 */}
       <div style={{
-        maxWidth: '900px',
-        margin: '0 auto',
-        padding: isMobile ? '16px' : '24px',
+        background: 'white',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '15px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
       }}>
-        
-        {/* 搜尋與篩選區 */}
-        <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          borderRadius: '16px',
-          border: '1px solid rgba(255,255,255,0.08)',
-          padding: '16px',
-          marginBottom: '20px',
+        {/* 搜尋框 */}
+        <div style={{ marginBottom: '12px' }}>
+          <input
+            type="text"
+            placeholder="🔍 搜尋會員、船隻、填表人..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              fontSize: isMobile ? '16px' : '14px',
+              border: '2px solid #e0e0e0',
+              borderRadius: '8px',
+              outline: 'none',
+              boxSizing: 'border-box',
+              transition: 'border-color 0.2s',
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = '#5a5a5a'}
+            onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+          />
+        </div>
+
+        {/* 日期快選 + 自訂日期 */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '8px', 
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          marginBottom: '12px',
         }}>
-          {/* 搜尋框 */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px',
-            marginBottom: '16px',
-          }}>
-            <div style={{ 
-              flex: 1, 
-              position: 'relative',
-            }}>
-              <input
-                type="text"
-                placeholder="搜尋會員、船隻、填表人..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+          {[
+            { key: 'today', label: '今天' },
+            { key: '7days', label: '7天' },
+            { key: '30days', label: '30天' },
+            { key: '90days', label: '90天' },
+          ].map(({ key, label }) => {
+            const isActive = (() => {
+              const end = getLocalDateString()
+              const start = new Date()
+              if (key === 'today') return startDate === end && endDate === end
+              if (key === '7days') {
+                start.setDate(start.getDate() - 7)
+                return startDate === getLocalDateString(start) && endDate === end
+              }
+              if (key === '30days') {
+                start.setDate(start.getDate() - 30)
+                return startDate === getLocalDateString(start) && endDate === end
+              }
+              if (key === '90days') {
+                start.setDate(start.getDate() - 90)
+                return startDate === getLocalDateString(start) && endDate === end
+              }
+              return false
+            })()
+            
+            return (
+              <button
+                key={key}
+                onClick={() => setQuickDateRange(key as any)}
                 style={{
-                  width: '100%',
-                  padding: '12px 16px 12px 44px',
-                  fontSize: '15px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px',
-                  color: '#f1f5f9',
-                  outline: 'none',
+                  padding: '8px 14px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  border: 'none',
+                  borderRadius: '20px',
+                  background: isActive ? '#5a5a5a' : '#f0f0f0',
+                  color: isActive ? 'white' : '#666',
+                  cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)'
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
-                }}
-              />
-              <span style={{
-                position: 'absolute',
-                left: '16px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                fontSize: '18px',
-                opacity: 0.5,
-              }}>🔍</span>
-            </div>
-            
-            {/* 篩選按鈕 */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
+              >
+                {label}
+              </button>
+            )
+          })}
+          
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px',
+            marginLeft: 'auto',
+          }}>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
               style={{
-                padding: '12px 16px',
-                background: showFilters ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${showFilters ? 'rgba(59, 130, 246, 0.5)' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: '12px',
-                color: '#f1f5f9',
+                padding: '6px 10px',
+                fontSize: '13px',
+                border: '1px solid #dee2e6',
+                borderRadius: '6px',
+                outline: 'none',
+              }}
+            />
+            <span style={{ color: '#999', fontSize: '13px' }}>→</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{
+                padding: '6px 10px',
+                fontSize: '13px',
+                border: '1px solid #dee2e6',
+                borderRadius: '6px',
+                outline: 'none',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 操作類型 + 填表人篩選 */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '8px', 
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}>
+          {[
+            { key: 'all', label: '全部', icon: '📋' },
+            { key: 'add', label: '新增', icon: '➕' },
+            { key: 'edit', label: '修改', icon: '✏️' },
+            { key: 'delete', label: '刪除', icon: '🗑️' },
+          ].map(({ key, label, icon }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key as any)}
+              style={{
+                padding: '8px 12px',
+                fontSize: '13px',
+                fontWeight: '500',
+                border: filter === key ? '2px solid #5a5a5a' : '1px solid #dee2e6',
+                borderRadius: '8px',
+                background: filter === key ? '#5a5a5a' : 'white',
+                color: filter === key ? 'white' : '#666',
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '14px',
                 transition: 'all 0.2s',
               }}
             >
-              <span>⚙️</span>
-              {activeFilterCount > 0 && (
-                <span style={{
-                  background: '#3b82f6',
-                  color: 'white',
-                  borderRadius: '10px',
-                  padding: '2px 8px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                }}>
-                  {activeFilterCount}
-                </span>
-              )}
+              {icon} {label}
             </button>
-          </div>
-
-          {/* 快速日期選擇 */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            flexWrap: 'wrap',
-          }}>
-            {[
-              { key: 'today', label: '今天' },
-              { key: '7days', label: '7天' },
-              { key: '30days', label: '30天' },
-              { key: '90days', label: '90天' },
-            ].map(({ key, label }) => {
-              const isActive = (() => {
-                const end = getLocalDateString()
-                const start = new Date()
-                if (key === 'today') return startDate === end && endDate === end
-                if (key === '7days') {
-                  start.setDate(start.getDate() - 7)
-                  return startDate === getLocalDateString(start) && endDate === end
-                }
-                if (key === '30days') {
-                  start.setDate(start.getDate() - 30)
-                  return startDate === getLocalDateString(start) && endDate === end
-                }
-                if (key === '90days') {
-                  start.setDate(start.getDate() - 90)
-                  return startDate === getLocalDateString(start) && endDate === end
-                }
-                return false
-              })()
-              
-              return (
-                <button
-                  key={key}
-                  onClick={() => setQuickDateRange(key as any)}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    border: 'none',
-                    borderRadius: '20px',
-                    background: isActive 
-                      ? 'linear-gradient(135deg, #3b82f6, #2563eb)' 
-                      : 'rgba(255,255,255,0.08)',
-                    color: isActive ? 'white' : 'rgba(255,255,255,0.7)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {label}
-                </button>
-              )
-            })}
-            
-            {/* 自訂日期 */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px',
+          ))}
+          
+          <select
+            value={selectedFilledBy}
+            onChange={(e) => setSelectedFilledBy(e.target.value)}
+            style={{
               marginLeft: 'auto',
-            }}>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={{
-                  padding: '6px 10px',
-                  fontSize: '13px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  color: '#f1f5f9',
-                  outline: 'none',
-                }}
-              />
-              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>→</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                style={{
-                  padding: '6px 10px',
-                  fontSize: '13px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  color: '#f1f5f9',
-                  outline: 'none',
-                }}
-              />
-            </div>
-          </div>
+              padding: '8px 12px',
+              fontSize: '13px',
+              border: '1px solid #dee2e6',
+              borderRadius: '8px',
+              outline: 'none',
+              cursor: 'pointer',
+              background: 'white',
+            }}
+          >
+            <option value="all">📝 全部填表人</option>
+            {filledByList.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-          {/* 展開的篩選區 */}
-          {showFilters && (
-            <div style={{
-              marginTop: '16px',
-              paddingTop: '16px',
-              borderTop: '1px solid rgba(255,255,255,0.08)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-            }}>
-              {/* 操作類型篩選 */}
-              <div>
-                <div style={{ 
-                  fontSize: '12px', 
-                  color: 'rgba(255,255,255,0.5)', 
-                  marginBottom: '8px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }}>
-                  操作類型
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {[
-                    { key: 'all', label: '全部', icon: '📋' },
-                    { key: 'add', label: '新增', icon: '➕', color: '#10b981' },
-                    { key: 'edit', label: '修改', icon: '✏️', color: '#3b82f6' },
-                    { key: 'delete', label: '刪除', icon: '🗑️', color: '#ef4444' },
-                  ].map(({ key, label, icon, color }) => (
-                    <button
-                      key={key}
-                      onClick={() => setFilter(key as any)}
-                      style={{
-                        padding: '8px 14px',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        border: filter === key 
-                          ? `1px solid ${color || 'rgba(255,255,255,0.3)'}` 
-                          : '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '8px',
-                        background: filter === key 
-                          ? `${color || 'rgba(255,255,255,0.1)'}20` 
-                          : 'transparent',
-                        color: filter === key ? (color || '#f1f5f9') : 'rgba(255,255,255,0.6)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      <span>{icon}</span>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 填表人篩選 */}
-              <div>
-                <div style={{ 
-                  fontSize: '12px', 
-                  color: 'rgba(255,255,255,0.5)', 
-                  marginBottom: '8px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }}>
-                  填表人
-                </div>
-                <select
-                  value={selectedFilledBy}
-                  onChange={(e) => setSelectedFilledBy(e.target.value)}
-                  style={{
-                    padding: '10px 14px',
-                    fontSize: '14px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    color: '#f1f5f9',
-                    outline: 'none',
-                    cursor: 'pointer',
-                    minWidth: '180px',
-                  }}
-                >
-                  <option value="all">全部填表人</option>
-                  {filledByList.map(name => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+      {/* 結果統計 */}
+      {!loading && logs.length > 0 && (
+        <div style={{
+          marginBottom: '12px',
+          fontSize: '14px',
+          color: '#666',
+          padding: '0 4px',
+        }}>
+          {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' ? (
+            <>找到 <strong style={{ color: '#5a5a5a' }}>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）</>
+          ) : (
+            <>共 <strong style={{ color: '#5a5a5a' }}>{logs.length}</strong> 筆記錄</>
           )}
         </div>
+      )}
 
-        {/* 結果統計 */}
-        {!loading && logs.length > 0 && (
-          <div style={{
-            marginBottom: '16px',
-            fontSize: '14px',
-            color: 'rgba(255,255,255,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}>
-            {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' ? (
-              <>
-                找到 <span style={{ color: '#3b82f6', fontWeight: '600' }}>{displayedLogs.length}</span> 筆記錄
-                <span style={{ opacity: 0.5 }}>（共 {logs.length} 筆）</span>
-              </>
-            ) : (
-              <>共 <span style={{ color: '#3b82f6', fontWeight: '600' }}>{logs.length}</span> 筆記錄</>
-            )}
-          </div>
-        )}
-
-        {/* 記錄列表 */}
-        {loading ? (
-          <div style={{
-            padding: '60px 20px',
-            textAlign: 'center',
-            color: 'rgba(255,255,255,0.5)',
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              border: '3px solid rgba(255,255,255,0.1)',
-              borderTopColor: '#3b82f6',
-              borderRadius: '50%',
-              margin: '0 auto 16px',
-              animation: 'spin 1s linear infinite',
-            }} />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            載入中...
-          </div>
-        ) : displayedLogs.length === 0 ? (
-          <div style={{
-            padding: '60px 20px',
-            textAlign: 'center',
-            color: 'rgba(255,255,255,0.4)',
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>📭</div>
-            {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' 
-              ? '沒有符合的記錄' 
-              : '沒有記錄'}
-          </div>
-        ) : (
-          // 時間軸列表
-          <div>
-            {groupedLogs.map(([date, logsInDate]) => (
-              <div key={date} style={{ marginBottom: '32px' }}>
-                {/* 日期標題 - Sticky */}
+      {/* 記錄列表 */}
+      {loading ? (
+        <div style={{
+          padding: '40px',
+          textAlign: 'center',
+          background: 'white',
+          borderRadius: '12px',
+          color: '#666',
+        }}>
+          載入中...
+        </div>
+      ) : displayedLogs.length === 0 ? (
+        <div style={{
+          padding: '40px',
+          textAlign: 'center',
+          background: 'white',
+          borderRadius: '12px',
+          color: '#999',
+        }}>
+          {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' 
+            ? '沒有符合的記錄' 
+            : '沒有記錄'}
+        </div>
+      ) : (
+        // 時間軸列表
+        <div>
+          {groupedLogs.map(([date, logsInDate]) => (
+            <div key={date} style={{ marginBottom: '24px' }}>
+              {/* 日期標題 */}
+              <div style={{
+                position: 'sticky',
+                top: isMobile ? '0' : '0',
+                zIndex: 10,
+                background: '#f5f5f5',
+                paddingTop: '4px',
+                paddingBottom: '8px',
+              }}>
                 <div style={{
-                  position: 'sticky',
-                  top: isMobile ? '60px' : '70px',
-                  zIndex: 10,
-                  background: 'linear-gradient(180deg, rgba(15, 23, 42, 1) 0%, rgba(15, 23, 42, 0.95) 80%, rgba(15, 23, 42, 0) 100%)',
-                  paddingTop: '8px',
-                  paddingBottom: '16px',
-                  marginBottom: '-8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  background: '#5a5a5a',
+                  borderRadius: '20px',
                 }}>
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '8px 16px',
-                    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-                    borderRadius: '20px',
-                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                  <span style={{ fontSize: '14px' }}>📅</span>
+                  <span style={{ 
+                    color: 'white', 
+                    fontWeight: '600',
+                    fontSize: '14px',
                   }}>
-                    <span style={{ fontSize: '14px' }}>📅</span>
-                    <span style={{ 
-                      color: 'white', 
-                      fontWeight: '600',
-                      fontSize: '14px',
-                    }}>
-                      {formatDateHeader(date)}
-                    </span>
-                    <span style={{
-                      background: 'rgba(255,255,255,0.2)',
-                      padding: '2px 8px',
-                      borderRadius: '10px',
-                      fontSize: '12px',
-                      color: 'white',
-                    }}>
-                      {logsInDate.length}
-                    </span>
-                  </div>
+                    {formatDateHeader(date)}
+                  </span>
+                  <span style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    fontSize: '12px',
+                    color: 'white',
+                  }}>
+                    {logsInDate.length}
+                  </span>
                 </div>
+              </div>
 
-                {/* 時間軸 */}
-                <div style={{ 
-                  position: 'relative',
-                  paddingLeft: '32px',
-                }}>
-                  {/* 垂直線 */}
-                  <div style={{
-                    position: 'absolute',
-                    left: '11px',
-                    top: '24px',
-                    bottom: '24px',
-                    width: '2px',
-                    background: 'linear-gradient(180deg, rgba(59, 130, 246, 0.3), rgba(59, 130, 246, 0.1))',
-                    borderRadius: '1px',
-                  }} />
+              {/* 時間軸 */}
+              <div style={{ 
+                position: 'relative',
+                paddingLeft: '28px',
+              }}>
+                {/* 垂直線 */}
+                <div style={{
+                  position: 'absolute',
+                  left: '9px',
+                  top: '20px',
+                  bottom: '20px',
+                  width: '2px',
+                  background: 'linear-gradient(180deg, #dee2e6, #f0f0f0)',
+                  borderRadius: '1px',
+                }} />
 
-                  {/* 記錄卡片 */}
-                  {logsInDate.map((log, idx) => {
-                    const parsed = parseDetails(log.details || '')
-                    const config = getOperationConfig(log.action)
-                    const isExpanded = expandedIds.has(log.id)
-                    const isLast = idx === logsInDate.length - 1
-                    
-                    // 生成摘要
-                    const summary = (() => {
-                      if (log.table_name === 'coach_assignment') {
-                        return log.details?.replace('教練排班: ', '') || '排班調整'
-                      }
-                      const parts: string[] = []
-                      if (parsed.boat) parts.push(parsed.boat)
-                      if (parsed.member) parts.push(parsed.member)
-                      if (parsed.coach) parts.push(parsed.coach + '教練')
-                      return parts.join(' · ') || getOperationText(log.action, log.table_name || '', log.details || '')
-                    })()
-                    
-                    return (
+                {/* 記錄卡片 */}
+                {logsInDate.map((log, idx) => {
+                  const parsed = parseDetails(log.details || '')
+                  const config = getOperationConfig(log.action)
+                  const isExpanded = expandedIds.has(log.id)
+                  const isLast = idx === logsInDate.length - 1
+                  
+                  // 生成摘要
+                  const summary = (() => {
+                    if (log.table_name === 'coach_assignment') {
+                      return log.details?.replace('教練排班: ', '') || '排班調整'
+                    }
+                    const parts: string[] = []
+                    if (parsed.boat) parts.push(parsed.boat)
+                    if (parsed.member) parts.push(parsed.member)
+                    if (parsed.coach) parts.push(parsed.coach + '教練')
+                    return parts.join(' · ') || getOperationText(log.action, log.table_name || '', log.details || '')
+                  })()
+                  
+                  return (
+                    <div
+                      key={log.id}
+                      style={{
+                        position: 'relative',
+                        marginBottom: isLast ? 0 : '8px',
+                      }}
+                    >
+                      {/* 時間軸圓點 */}
+                      <div style={{
+                        position: 'absolute',
+                        left: '-23px',
+                        top: '16px',
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '50%',
+                        background: config.dotColor,
+                        border: '2px solid white',
+                        boxShadow: '0 0 0 2px #f5f5f5',
+                        zIndex: 1,
+                      }} />
+
+                      {/* 卡片 */}
                       <div
-                        key={log.id}
+                        onClick={() => toggleExpand(log.id)}
                         style={{
-                          position: 'relative',
-                          marginBottom: isLast ? 0 : '12px',
+                          background: 'white',
+                          borderRadius: '10px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          transition: 'box-shadow 0.2s',
+                          border: '1px solid #f0f0f0',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'
                         }}
                       >
-                        {/* 時間軸圓點 */}
+                        {/* 摘要行 */}
                         <div style={{
-                          position: 'absolute',
-                          left: '-26px',
-                          top: '18px',
-                          width: '12px',
-                          height: '12px',
-                          borderRadius: '50%',
-                          background: config.dotColor,
-                          border: '2px solid #0f172a',
-                          boxShadow: `0 0 0 3px ${config.dotColor}30`,
-                          zIndex: 1,
-                        }} />
-
-                        {/* 卡片 */}
-                        <div
-                          onClick={() => toggleExpand(log.id)}
-                          style={{
-                            background: 'rgba(255,255,255,0.03)',
-                            borderRadius: '12px',
-                            border: '1px solid rgba(255,255,255,0.06)',
-                            overflow: 'hidden',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
-                          }}
-                        >
-                          {/* 摘要行 */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '14px 16px',
-                            gap: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '12px 14px',
+                          gap: '10px',
+                        }}>
+                          {/* 時間 */}
+                          <span style={{
+                            fontSize: '13px',
+                            fontFamily: 'ui-monospace, monospace',
+                            color: '#999',
+                            minWidth: '42px',
                           }}>
-                            {/* 時間 */}
-                            <span style={{
-                              fontSize: '13px',
-                              fontFamily: 'ui-monospace, monospace',
-                              color: 'rgba(255,255,255,0.4)',
-                              minWidth: '45px',
-                            }}>
-                              {getTimeOnly(log.created_at || '')}
-                            </span>
+                            {getTimeOnly(log.created_at || '')}
+                          </span>
 
-                            {/* 操作標籤 */}
-                            <span style={{
-                              padding: '4px 10px',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              borderRadius: '6px',
-                              background: config.bgColor,
-                              color: config.color,
-                              whiteSpace: 'nowrap',
-                            }}>
-                              {config.icon} {getOperationText(log.action, log.table_name || '', log.details || '')}
-                            </span>
+                          {/* 操作標籤 */}
+                          <span style={{
+                            padding: '3px 8px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            borderRadius: '4px',
+                            background: config.bgColor,
+                            color: config.color,
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {config.icon} {getOperationText(log.action, log.table_name || '', log.details || '')}
+                          </span>
 
-                            {/* 摘要內容 */}
-                            <span style={{
-                              flex: 1,
-                              fontSize: '14px',
-                              color: '#e2e8f0',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}>
-                              {highlightText(summary, searchQuery)}
-                            </span>
+                          {/* 摘要內容 */}
+                          <span style={{
+                            flex: 1,
+                            fontSize: '14px',
+                            color: '#333',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {highlightText(summary, searchQuery)}
+                          </span>
 
-                            {/* 填表人 */}
-                            {parsed.filledBy && (
-                              <span style={{
-                                fontSize: '12px',
-                                color: 'rgba(255,255,255,0.4)',
-                                padding: '2px 8px',
-                                background: 'rgba(255,255,255,0.05)',
-                                borderRadius: '4px',
-                              }}>
-                                {parsed.filledBy}
-                              </span>
-                            )}
-
-                            {/* 展開指示器 */}
+                          {/* 填表人 */}
+                          {parsed.filledBy && (
                             <span style={{
                               fontSize: '12px',
-                              color: 'rgba(255,255,255,0.3)',
-                              transition: 'transform 0.2s',
-                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                              color: '#999',
+                              padding: '2px 6px',
+                              background: '#f5f5f5',
+                              borderRadius: '4px',
                             }}>
-                              ▼
+                              {parsed.filledBy}
                             </span>
-                          </div>
+                          )}
 
-                          {/* 展開詳情 */}
-                          <div style={{
-                            maxHeight: isExpanded ? '500px' : '0',
-                            overflow: 'hidden',
-                            transition: 'max-height 0.3s ease-out',
+                          {/* 展開指示器 */}
+                          <span style={{
+                            fontSize: '10px',
+                            color: '#ccc',
+                            transition: 'transform 0.2s',
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                           }}>
-                            <div style={{
-                              padding: '0 16px 16px',
-                              borderTop: '1px solid rgba(255,255,255,0.06)',
-                            }}>
-                              {/* 標籤區 */}
-                              {(parsed.member || parsed.boat || parsed.coach || parsed.time || parsed.duration) && (
-                                <div style={{ 
-                                  display: 'flex', 
-                                  gap: '8px', 
-                                  flexWrap: 'wrap', 
-                                  marginTop: '12px',
-                                  marginBottom: '12px',
-                                }}>
-                                  {parsed.boat && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.boat!) }}
-                                      style={{
-                                        padding: '6px 12px',
-                                        fontSize: '13px',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        background: 'rgba(168, 85, 247, 0.15)',
-                                        color: '#c084fc',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                      }}
-                                    >
-                                      🚤 {parsed.boat}
-                                    </button>
-                                  )}
-                                  {parsed.member && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.member!) }}
-                                      style={{
-                                        padding: '6px 12px',
-                                        fontSize: '13px',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        background: 'rgba(59, 130, 246, 0.15)',
-                                        color: '#60a5fa',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                      }}
-                                    >
-                                      👤 {parsed.member}
-                                    </button>
-                                  )}
-                                  {parsed.coach && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.coach!) }}
-                                      style={{
-                                        padding: '6px 12px',
-                                        fontSize: '13px',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        background: 'rgba(251, 146, 60, 0.15)',
-                                        color: '#fb923c',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                      }}
-                                    >
-                                      🎓 {parsed.coach}
-                                    </button>
-                                  )}
-                                  {parsed.time && (
-                                    <span style={{
-                                      padding: '6px 12px',
-                                      fontSize: '13px',
-                                      borderRadius: '6px',
-                                      background: 'rgba(34, 197, 94, 0.15)',
-                                      color: '#4ade80',
-                                    }}>
-                                      🕐 {parsed.time}
-                                    </span>
-                                  )}
-                                  {parsed.duration && (
-                                    <span style={{
-                                      padding: '6px 12px',
-                                      fontSize: '13px',
-                                      borderRadius: '6px',
-                                      background: 'rgba(236, 72, 153, 0.15)',
-                                      color: '#f472b6',
-                                    }}>
-                                      ⏱️ {parsed.duration}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
+                            ▼
+                          </span>
+                        </div>
 
-                              {/* 填表人/操作者資訊 */}
+                        {/* 展開詳情 */}
+                        <div style={{
+                          maxHeight: isExpanded ? '400px' : '0',
+                          overflow: 'hidden',
+                          transition: 'max-height 0.3s ease-out',
+                        }}>
+                          <div style={{
+                            padding: '0 14px 14px',
+                            borderTop: '1px solid #f0f0f0',
+                          }}>
+                            {/* 標籤區 */}
+                            {(parsed.member || parsed.boat || parsed.coach || parsed.time || parsed.duration) && (
                               <div style={{ 
-                                fontSize: '13px', 
-                                color: 'rgba(255,255,255,0.5)',
-                                marginBottom: '12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                flexWrap: 'wrap',
+                                display: 'flex', 
+                                gap: '6px', 
+                                flexWrap: 'wrap', 
+                                marginTop: '12px',
+                                marginBottom: '10px',
                               }}>
-                                {log.table_name === 'coach_assignment' ? (
-                                  <>
-                                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>操作者：</span>
-                                    <span>{log.user_email || '未知'}</span>
-                                  </>
-                                ) : parsed.filledBy ? (
-                                  <>
-                                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>填表人：</span>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setSelectedFilledBy(parsed.filledBy!) }}
-                                      style={{
-                                        padding: '4px 10px',
-                                        fontSize: '12px',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        background: 'rgba(59, 130, 246, 0.15)',
-                                        color: '#60a5fa',
-                                        cursor: 'pointer',
-                                      }}
-                                    >
-                                      📝 {parsed.filledBy}
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>操作者：</span>
-                                    <span>{log.user_email || '未知'}</span>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setSelectedFilledBy('（無填表人）') }}
-                                      style={{
-                                        padding: '2px 8px',
-                                        fontSize: '11px',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '4px',
-                                        background: 'transparent',
-                                        color: 'rgba(255,255,255,0.4)',
-                                        cursor: 'pointer',
-                                      }}
-                                    >
-                                      舊資料
-                                    </button>
-                                  </>
+                                {parsed.boat && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.boat!) }}
+                                    style={{
+                                      padding: '5px 10px',
+                                      fontSize: '12px',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      background: '#f3e5f5',
+                                      color: '#7b1fa2',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    🚤 {parsed.boat}
+                                  </button>
+                                )}
+                                {parsed.member && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.member!) }}
+                                    style={{
+                                      padding: '5px 10px',
+                                      fontSize: '12px',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      background: '#e3f2fd',
+                                      color: '#1976d2',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    👤 {parsed.member}
+                                  </button>
+                                )}
+                                {parsed.coach && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.coach!) }}
+                                    style={{
+                                      padding: '5px 10px',
+                                      fontSize: '12px',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      background: '#fff3e0',
+                                      color: '#e65100',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    🎓 {parsed.coach}
+                                  </button>
+                                )}
+                                {parsed.time && (
+                                  <span style={{
+                                    padding: '5px 10px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    background: '#e8f5e9',
+                                    color: '#2e7d32',
+                                  }}>
+                                    🕐 {parsed.time}
+                                  </span>
+                                )}
+                                {parsed.duration && (
+                                  <span style={{
+                                    padding: '5px 10px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    background: '#fce4ec',
+                                    color: '#c2185b',
+                                  }}>
+                                    ⏱️ {parsed.duration}
+                                  </span>
                                 )}
                               </div>
+                            )}
 
-                              {/* 完整記錄 */}
-                              <div style={{
-                                padding: '12px',
-                                background: 'rgba(0,0,0,0.2)',
-                                borderRadius: '8px',
-                                fontSize: '13px',
-                                color: 'rgba(255,255,255,0.7)',
-                                whiteSpace: 'pre-wrap',
-                                lineHeight: '1.6',
-                                fontFamily: 'ui-monospace, monospace',
-                              }}>
-                                {highlightText(log.details || '', searchQuery)}
-                              </div>
+                            {/* 填表人/操作者資訊 */}
+                            <div style={{ 
+                              fontSize: '13px', 
+                              color: '#666',
+                              marginBottom: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              flexWrap: 'wrap',
+                            }}>
+                              {log.table_name === 'coach_assignment' ? (
+                                <>
+                                  <span style={{ color: '#999' }}>操作者：</span>
+                                  <span>{log.user_email || '未知'}</span>
+                                </>
+                              ) : parsed.filledBy ? (
+                                <>
+                                  <span style={{ color: '#999' }}>填表人：</span>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setSelectedFilledBy(parsed.filledBy!) }}
+                                    style={{
+                                      padding: '3px 8px',
+                                      fontSize: '12px',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      background: '#e3f2fd',
+                                      color: '#1565c0',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    📝 {parsed.filledBy}
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <span style={{ color: '#999' }}>操作者：</span>
+                                  <span>{log.user_email || '未知'}</span>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setSelectedFilledBy('（無填表人）') }}
+                                    style={{
+                                      padding: '2px 6px',
+                                      fontSize: '11px',
+                                      border: '1px solid #e0e0e0',
+                                      borderRadius: '4px',
+                                      background: 'white',
+                                      color: '#999',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    舊資料
+                                  </button>
+                                </>
+                              )}
+                            </div>
+
+                            {/* 完整記錄 */}
+                            <div style={{
+                              padding: '10px 12px',
+                              background: '#f8f9fa',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                              color: '#333',
+                              whiteSpace: 'pre-wrap',
+                              lineHeight: '1.6',
+                            }}>
+                              {highlightText(log.details || '', searchQuery)}
                             </div>
                           </div>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
+                    </div>
+                  )
+                })}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
