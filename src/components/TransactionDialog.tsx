@@ -63,7 +63,9 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     return today.substring(0, 7) // YYYY-MM
   }) // 空字串 '' 代表「全部」
   const [categoryFilter, setCategoryFilter] = useState<string>('all') // 類別篩選
+  const [searchTerm, setSearchTerm] = useState('') // 搜尋關鍵字
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [exporting, setExporting] = useState(false) // 匯出中狀態
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [editCategory, setEditCategory] = useState('')
   const [editAdjustType, setEditAdjustType] = useState<'increase' | 'decrease'>('increase')
@@ -372,6 +374,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       return
     }
 
+    setExporting(true)
     try {
       const [year, month] = selectedMonth.split('-')
       const startDate = `${year}-${month}-01`
@@ -506,9 +509,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+      
+      toast.success('匯出成功')
     } catch (error: any) {
       console.error('匯出失敗:', error)
       toast.error('匯出失敗，請稍後再試')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -615,6 +622,25 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         .insert([transactionData])
 
       if (transactionError) throw transactionError
+
+      // 顯示詳細的成功訊息
+      const catConfig = CATEGORIES.find(c => c.value === category)
+      const isAmount = catConfig?.type === 'amount'
+      const unit = isAmount ? '$' : '分'
+      const changeText = adjustType === 'increase' ? `+${unit}${numValue.toLocaleString()}` : `-${unit}${numValue.toLocaleString()}`
+      const newBalance = (() => {
+        switch (category) {
+          case 'balance': return afterValues.balance_after
+          case 'vip_voucher': return afterValues.vip_voucher_amount_after
+          case 'designated_lesson': return afterValues.designated_lesson_minutes_after
+          case 'boat_voucher_g23': return afterValues.boat_voucher_g23_minutes_after
+          case 'boat_voucher_g21_panther': return afterValues.boat_voucher_g21_panther_minutes_after
+          case 'gift_boat_hours': return afterValues.gift_boat_hours_after
+          default: return 0
+        }
+      })()
+      const balanceText = isAmount ? `$${newBalance.toLocaleString()}` : `${newBalance.toLocaleString()}分`
+      toast.success(`${catConfig?.label} ${changeText}，餘額 ${balanceText}`)
 
       resetForm()
       onSuccess()
@@ -908,6 +934,72 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 />
               </div>
 
+              {/* 確認前預覽 */}
+              {value && parseFloat(value) > 0 && (() => {
+                const numValue = parseFloat(value)
+                const isAmount = selectedCategory?.type === 'amount'
+                const unit = isAmount ? '$' : '分'
+                const currentValue = (() => {
+                  switch (category) {
+                    case 'balance': return member.balance ?? 0
+                    case 'vip_voucher': return member.vip_voucher_amount ?? 0
+                    case 'designated_lesson': return member.designated_lesson_minutes ?? 0
+                    case 'boat_voucher_g23': return member.boat_voucher_g23_minutes ?? 0
+                    case 'boat_voucher_g21_panther': return member.boat_voucher_g21_panther_minutes ?? 0
+                    case 'gift_boat_hours': return member.gift_boat_hours ?? 0
+                    default: return 0
+                  }
+                })()
+                const newValue = adjustType === 'increase' 
+                  ? currentValue + numValue 
+                  : currentValue - numValue
+                const changeText = adjustType === 'increase' ? `+${unit}${numValue.toLocaleString()}` : `-${unit}${numValue.toLocaleString()}`
+                
+                return (
+                  <div style={{
+                    background: adjustType === 'increase' ? '#e8f5e9' : '#fff3e0',
+                    border: `1px solid ${adjustType === 'increase' ? '#a5d6a7' : '#ffcc80'}`,
+                    borderRadius: '8px',
+                    padding: '14px 16px',
+                    marginBottom: '20px',
+                  }}>
+                    <div style={{ 
+                      fontSize: '13px', 
+                      color: '#666', 
+                      marginBottom: '8px',
+                      fontWeight: '600',
+                    }}>
+                      📋 預覽變動
+                    </div>
+                    <div style={{ 
+                      fontSize: '15px', 
+                      color: '#333',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      flexWrap: 'wrap',
+                    }}>
+                      <span>{selectedCategory?.label}</span>
+                      <span style={{ 
+                        fontWeight: 'bold',
+                        color: adjustType === 'increase' ? '#2e7d32' : '#e65100',
+                      }}>
+                        {changeText}
+                      </span>
+                      <span style={{ color: '#999' }}>→</span>
+                      <span>
+                        餘額 {isAmount ? '$' : ''}{currentValue.toLocaleString()}{!isAmount ? '分' : ''}
+                        {' → '}
+                        <strong style={{ color: newValue < 0 ? '#d32f2f' : '#333' }}>
+                          {isAmount ? '$' : ''}{newValue.toLocaleString()}{!isAmount ? '分' : ''}
+                        </strong>
+                        {newValue < 0 && <span style={{ color: '#d32f2f', marginLeft: '4px' }}>⚠️</span>}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })()}
+
               {/* 桌面版提交按鈕 */}
               {!isMobile && (
                 <button
@@ -1017,28 +1109,28 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 />
                 <button
                   onClick={() => handleExportTransactions()}
-                  disabled={transactions.length === 0 || selectedMonth === ''}
+                  disabled={transactions.length === 0 || selectedMonth === '' || exporting}
                   title={selectedMonth === '' ? '請先選擇月份才能匯出' : ''}
                   style={{
                     padding: '10px 20px',
-                    background: (transactions.length === 0 || selectedMonth === '') ? '#ccc' : '#4caf50',
+                    background: (transactions.length === 0 || selectedMonth === '' || exporting) ? '#ccc' : '#4caf50',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
                     fontSize: '14px',
                     fontWeight: '600',
-                    cursor: (transactions.length === 0 || selectedMonth === '') ? 'not-allowed' : 'pointer',
+                    cursor: (transactions.length === 0 || selectedMonth === '' || exporting) ? 'not-allowed' : 'pointer',
                     whiteSpace: 'nowrap',
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    if (transactions.length > 0 && selectedMonth !== '') e.currentTarget.style.background = '#388e3c'
+                    if (transactions.length > 0 && selectedMonth !== '' && !exporting) e.currentTarget.style.background = '#388e3c'
                   }}
                   onMouseLeave={(e) => {
-                    if (transactions.length > 0 && selectedMonth !== '') e.currentTarget.style.background = '#4caf50'
+                    if (transactions.length > 0 && selectedMonth !== '' && !exporting) e.currentTarget.style.background = '#4caf50'
                   }}
                 >
-                  📥 匯出
+                  {exporting ? '匯出中...' : '📥 匯出'}
                 </button>
               </div>
             </div>
@@ -1119,6 +1211,129 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               </div>
             </div>
 
+            {/* 搜尋框 */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="🔍 搜尋說明或備註..."
+                  style={{
+                    ...inputStyle,
+                    paddingRight: searchTerm ? '36px' : '12px',
+                  }}
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: '#999',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '22px',
+                      height: '22px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 統計摘要 */}
+            {transactions.length > 0 && (() => {
+              // 根據篩選計算統計
+              let filteredTxForStats = transactions
+              if (categoryFilter !== 'all') {
+                filteredTxForStats = transactions.filter(tx => tx.category === categoryFilter)
+              }
+              if (searchTerm.trim()) {
+                const lowerSearch = searchTerm.toLowerCase()
+                filteredTxForStats = filteredTxForStats.filter(tx => 
+                  tx.description?.toLowerCase().includes(lowerSearch) ||
+                  tx.notes?.toLowerCase().includes(lowerSearch)
+                )
+              }
+              
+              // 計算金額類統計
+              const amountStats = { increase: 0, decrease: 0 }
+              // 計算時數類統計
+              const minutesStats = { increase: 0, decrease: 0 }
+              
+              filteredTxForStats.forEach(tx => {
+                const cat = CATEGORIES.find(c => c.value === tx.category)
+                if (cat?.type === 'amount') {
+                  const val = Math.abs(tx.amount || 0)
+                  if (tx.adjust_type === 'increase') amountStats.increase += val
+                  else amountStats.decrease += val
+                } else {
+                  const val = Math.abs(tx.minutes || 0)
+                  if (tx.adjust_type === 'increase') minutesStats.increase += val
+                  else minutesStats.decrease += val
+                }
+              })
+              
+              const hasAmountChanges = amountStats.increase > 0 || amountStats.decrease > 0
+              const hasMinutesChanges = minutesStats.increase > 0 || minutesStats.decrease > 0
+              
+              if (!hasAmountChanges && !hasMinutesChanges) return null
+              
+              return (
+                <div style={{
+                  background: '#f0f7ff',
+                  border: '1px solid #bbdefb',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  marginBottom: '16px',
+                  fontSize: '13px',
+                }}>
+                  <div style={{ fontWeight: '600', marginBottom: '8px', color: '#1976d2' }}>
+                    📊 {selectedMonth ? `${selectedMonth.split('-')[1]}月` : '全部'}統計
+                    {searchTerm && <span style={{ fontWeight: 'normal', color: '#666' }}> (搜尋結果)</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', color: '#333' }}>
+                    {hasAmountChanges && (
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <span style={{ color: '#666' }}>💰</span>
+                        <span style={{ color: '#2e7d32' }}>+${amountStats.increase.toLocaleString()}</span>
+                        <span style={{ color: '#c62828' }}>-${amountStats.decrease.toLocaleString()}</span>
+                        <span style={{ 
+                          fontWeight: '600',
+                          color: (amountStats.increase - amountStats.decrease) >= 0 ? '#2e7d32' : '#c62828'
+                        }}>
+                          = {(amountStats.increase - amountStats.decrease) >= 0 ? '+' : ''}${(amountStats.increase - amountStats.decrease).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                    {hasMinutesChanges && (
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <span style={{ color: '#666' }}>⏱️</span>
+                        <span style={{ color: '#2e7d32' }}>+{minutesStats.increase.toLocaleString()}分</span>
+                        <span style={{ color: '#c62828' }}>-{minutesStats.decrease.toLocaleString()}分</span>
+                        <span style={{ 
+                          fontWeight: '600',
+                          color: (minutesStats.increase - minutesStats.decrease) >= 0 ? '#2e7d32' : '#c62828'
+                        }}>
+                          = {(minutesStats.increase - minutesStats.decrease) >= 0 ? '+' : ''}{(minutesStats.increase - minutesStats.decrease).toLocaleString()}分
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* 交易記錄列表 */}
             {loadingHistory ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
@@ -1130,14 +1345,23 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               </div>
             ) : (() => {
               // 篩選交易記錄
-              const filteredTransactions = categoryFilter === 'all' 
+              let filteredTransactions = categoryFilter === 'all' 
                 ? transactions 
                 : transactions.filter(tx => tx.category === categoryFilter)
+              
+              // 搜尋篩選
+              if (searchTerm.trim()) {
+                const lowerSearch = searchTerm.toLowerCase()
+                filteredTransactions = filteredTransactions.filter(tx => 
+                  tx.description?.toLowerCase().includes(lowerSearch) ||
+                  tx.notes?.toLowerCase().includes(lowerSearch)
+                )
+              }
               
               if (filteredTransactions.length === 0) {
                 return (
                   <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                    此類別無交易記錄
+                    {searchTerm ? '找不到符合的交易記錄' : '此類別無交易記錄'}
                   </div>
                 )
               }

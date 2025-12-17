@@ -1067,22 +1067,22 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           {/* 搜尋按鈕 */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !searchName.trim()}
             style={{
               width: '100%',
               padding: '12px',
               fontSize: '16px',
               fontWeight: '600',
-              background: !loading ? 'white' : '#f5f5f5',
-              color: !loading ? '#666' : '#999',
-              border: !loading ? '2px solid #e0e0e0' : '2px solid #ddd',
+              background: (!loading && searchName.trim()) ? 'white' : '#f5f5f5',
+              color: (!loading && searchName.trim()) ? '#666' : '#999',
+              border: (!loading && searchName.trim()) ? '2px solid #e0e0e0' : '2px solid #ddd',
               borderRadius: '8px',
-              cursor: !loading ? 'pointer' : 'not-allowed',
+              cursor: (!loading && searchName.trim()) ? 'pointer' : 'not-allowed',
               touchAction: 'manipulation',
               transition: 'transform 0.1s'
             }}
-            onTouchStart={(e) => !loading && (e.currentTarget.style.transform = 'scale(0.98)')}
-            onTouchEnd={(e) => !loading && (e.currentTarget.style.transform = 'scale(1)')}
+            onTouchStart={(e) => !loading && searchName.trim() && (e.currentTarget.style.transform = 'scale(0.98)')}
+            onTouchEnd={(e) => !loading && searchName.trim() && (e.currentTarget.style.transform = 'scale(1)')}
           >
             {loading ? '搜尋中...' : '🔍 搜尋'}
           </button>
@@ -1165,19 +1165,20 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>(不設定則顯示未來預約)</span>
                 }
               </span>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => setBoatQuickDateRange('today')}
                   style={{
-                    padding: '4px 10px',
+                    padding: '8px 16px',
                     border: '1px solid #dee2e6',
                     background: 'white',
-                    borderRadius: '12px',
+                    borderRadius: '20px',
                     cursor: 'pointer',
-                    fontSize: '12px',
+                    fontSize: '14px',
                     fontWeight: '500',
                     color: '#495057',
+                    minHeight: '36px',
                   }}
                 >
                   今天
@@ -1186,14 +1187,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   type="button"
                   onClick={() => setBoatQuickDateRange('tomorrow')}
                   style={{
-                    padding: '4px 10px',
+                    padding: '8px 16px',
                     border: '1px solid #dee2e6',
                     background: 'white',
-                    borderRadius: '12px',
+                    borderRadius: '20px',
                     cursor: 'pointer',
-                    fontSize: '12px',
+                    fontSize: '14px',
                     fontWeight: '500',
                     color: '#495057',
+                    minHeight: '36px',
                   }}
                 >
                   明天
@@ -1203,14 +1205,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     type="button"
                     onClick={() => { setBoatStartDate(''); setBoatEndDate(''); }}
                     style={{
-                      padding: '4px 10px',
+                      padding: '8px 16px',
                       border: 'none',
                       background: '#dc3545',
                       color: 'white',
-                      borderRadius: '12px',
+                      borderRadius: '20px',
                       cursor: 'pointer',
-                      fontSize: '12px',
+                      fontSize: '14px',
                       fontWeight: '600',
+                      minHeight: '36px',
                     }}
                   >
                     清除
@@ -1221,61 +1224,41 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             
             <div style={{ 
               display: 'flex', 
-              flexDirection: isMobile ? 'column' : 'row',
               gap: '8px',
-              alignItems: isMobile ? 'stretch' : 'center',
+              alignItems: 'center',
               width: '100%',
             }}>
-              <div style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                minWidth: 0,
-              }}>
-                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>從</span>
-                <input
-                  type="date"
-                  value={boatStartDate}
-                  onChange={(e) => setBoatStartDate(e.target.value)}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    width: '100%',
-                    padding: '10px',
-                    border: boatStartDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    backgroundColor: boatStartDate ? '#f0f7ff' : 'white',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                minWidth: 0,
-              }}>
-                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>到</span>
-                <input
-                  type="date"
-                  value={boatEndDate}
-                  onChange={(e) => setBoatEndDate(e.target.value)}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    width: '100%',
-                    padding: '10px',
-                    border: boatEndDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    backgroundColor: boatEndDate ? '#f0f7ff' : 'white',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
+              <input
+                type="date"
+                value={boatStartDate}
+                onChange={(e) => setBoatStartDate(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: '12px 10px',
+                  border: boatStartDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  backgroundColor: boatStartDate ? '#f0f7ff' : 'white',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <span style={{ fontSize: '14px', color: '#999', flexShrink: 0 }}>→</span>
+              <input
+                type="date"
+                value={boatEndDate}
+                onChange={(e) => setBoatEndDate(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: '12px 10px',
+                  border: boatEndDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  backgroundColor: boatEndDate ? '#f0f7ff' : 'white',
+                  boxSizing: 'border-box',
+                }}
+              />
             </div>
           </div>
 
@@ -1373,19 +1356,20 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>(不設定則顯示未來預約)</span>
                 }
               </span>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => setCoachQuickDateRange('today')}
                   style={{
-                    padding: '4px 10px',
+                    padding: '8px 16px',
                     border: '1px solid #dee2e6',
                     background: 'white',
-                    borderRadius: '12px',
+                    borderRadius: '20px',
                     cursor: 'pointer',
-                    fontSize: '12px',
+                    fontSize: '14px',
                     fontWeight: '500',
                     color: '#495057',
+                    minHeight: '36px',
                   }}
                 >
                   今天
@@ -1394,14 +1378,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   type="button"
                   onClick={() => setCoachQuickDateRange('tomorrow')}
                   style={{
-                    padding: '4px 10px',
+                    padding: '8px 16px',
                     border: '1px solid #dee2e6',
                     background: 'white',
-                    borderRadius: '12px',
+                    borderRadius: '20px',
                     cursor: 'pointer',
-                    fontSize: '12px',
+                    fontSize: '14px',
                     fontWeight: '500',
                     color: '#495057',
+                    minHeight: '36px',
                   }}
                 >
                   明天
@@ -1411,14 +1396,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     type="button"
                     onClick={() => { setCoachStartDate(''); setCoachEndDate(''); }}
                     style={{
-                      padding: '4px 10px',
+                      padding: '8px 16px',
                       border: 'none',
                       background: '#dc3545',
                       color: 'white',
-                      borderRadius: '12px',
+                      borderRadius: '20px',
                       cursor: 'pointer',
-                      fontSize: '12px',
+                      fontSize: '14px',
                       fontWeight: '600',
+                      minHeight: '36px',
                     }}
                   >
                     清除
@@ -1429,61 +1415,41 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             
             <div style={{ 
               display: 'flex', 
-              flexDirection: isMobile ? 'column' : 'row',
               gap: '8px',
-              alignItems: isMobile ? 'stretch' : 'center',
+              alignItems: 'center',
               width: '100%',
             }}>
-              <div style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                minWidth: 0,
-              }}>
-                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>從</span>
-                <input
-                  type="date"
-                  value={coachStartDate}
-                  onChange={(e) => setCoachStartDate(e.target.value)}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    width: '100%',
-                    padding: '10px',
-                    border: coachStartDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    backgroundColor: coachStartDate ? '#f0f7ff' : 'white',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                minWidth: 0,
-              }}>
-                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>到</span>
-                <input
-                  type="date"
-                  value={coachEndDate}
-                  onChange={(e) => setCoachEndDate(e.target.value)}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    width: '100%',
-                    padding: '10px',
-                    border: coachEndDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    backgroundColor: coachEndDate ? '#f0f7ff' : 'white',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
+              <input
+                type="date"
+                value={coachStartDate}
+                onChange={(e) => setCoachStartDate(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: '12px 10px',
+                  border: coachStartDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  backgroundColor: coachStartDate ? '#f0f7ff' : 'white',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <span style={{ fontSize: '14px', color: '#999', flexShrink: 0 }}>→</span>
+              <input
+                type="date"
+                value={coachEndDate}
+                onChange={(e) => setCoachEndDate(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: '12px 10px',
+                  border: coachEndDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  backgroundColor: coachEndDate ? '#f0f7ff' : 'white',
+                  boxSizing: 'border-box',
+                }}
+              />
             </div>
           </div>
 
