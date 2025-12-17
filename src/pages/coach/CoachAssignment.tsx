@@ -992,9 +992,9 @@ export function CoachAssignment() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
-      <PageHeader user={user} title="排班" showBaoLink={isAdmin(user)} />
-      
       <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl, maxWidth: '100%', margin: '0 auto', width: '100%' }}>
+        <PageHeader user={user} title="📅 排班" showBaoLink={isAdmin(user)} />
+        
         {/* 日期選擇和保存 */}
         <div style={{ 
           display: 'flex', 
@@ -1116,13 +1116,9 @@ export function CoachAssignment() {
                       setSelectedDate(newDate)
                     }}
                     style={{
+                      ...getButtonStyle('outline', 'medium', false),
                       padding: '8px 12px',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '6px',
-                      background: '#f8f9fa',
-                      cursor: 'pointer',
                       fontSize: '14px',
-                      color: '#495057'
                     }}
                   >
                     ←
@@ -1133,7 +1129,6 @@ export function CoachAssignment() {
                     value={selectedDate}
                     onChange={(e) => {
                       const newDate = e.target.value
-                      // 驗證日期格式（必須是 yyyy-MM-dd）
                       if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
                         setSelectedDate(newDate)
                       }
@@ -1143,7 +1138,6 @@ export function CoachAssignment() {
                       borderRadius: '6px',
                       border: '1px solid #dee2e6',
                       fontSize: '16px',
-                      minWidth: '180px'
                     }}
                   />
                   
@@ -1170,13 +1164,9 @@ export function CoachAssignment() {
                       setSelectedDate(newDate)
                     }}
                     style={{
+                      ...getButtonStyle('outline', 'medium', false),
                       padding: '8px 12px',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '6px',
-                      background: '#f8f9fa',
-                      cursor: 'pointer',
                       fontSize: '14px',
-                      color: '#495057'
                     }}
                   >
                     →
@@ -1187,14 +1177,10 @@ export function CoachAssignment() {
                     onClick={handleSaveAll}
                     disabled={saving || loading}
                     style={{
-                      padding: '8px 16px',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '6px',
-                      background: '#f8f9fa',
-                      cursor: (saving || loading) ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      color: '#495057',
-                      opacity: (saving || loading) ? 0.5 : 1
+                      ...getButtonStyle('secondary', 'medium', false),
+                      minWidth: '100px',
+                      opacity: (saving || loading) ? 0.5 : 1,
+                      cursor: (saving || loading) ? 'not-allowed' : 'pointer'
                     }}
                   >
                     {saving ? '儲存中...' : '💾'}
@@ -1204,16 +1190,11 @@ export function CoachAssignment() {
                   <button
                     onClick={() => navigate(`/day?date=${selectedDate}`)}
                     style={{
-                      padding: '8px 16px',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '6px',
-                      background: '#f8f9fa',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      color: '#495057'
+                      ...getButtonStyle('secondary', 'medium', false),
+                      minWidth: '100px',
                     }}
                   >
-                    回預約表
+                    預約表
                   </button>
                 </>
               )}
