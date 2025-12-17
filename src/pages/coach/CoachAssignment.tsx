@@ -997,14 +997,12 @@ export function CoachAssignment() {
       <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl, maxWidth: '100%', margin: '0 auto', width: '100%' }}>
         {/* 日期選擇和保存 */}
         <div style={{ 
-          background: 'white',
-          padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
-          borderRadius: designSystem.borderRadius.md,
-          marginBottom: designSystem.spacing.md,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          overflow: 'hidden'
+          display: 'flex', 
+          gap: isMobile ? designSystem.spacing.md : '10px', 
+          alignItems: isMobile ? 'end' : 'center', 
+          flexWrap: 'wrap',
+          marginBottom: designSystem.spacing.md
         }}>
-          <div style={{ display: 'flex', gap: isMobile ? designSystem.spacing.md : '10px', alignItems: isMobile ? 'end' : 'center', flexWrap: 'wrap' }}>
             {isMobile && (
               <div style={{ flex: '1 1 100%', minWidth: 0 }}>
                 <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px', display: 'block' }}>
@@ -1247,36 +1245,37 @@ export function CoachAssignment() {
                 </button>
               </>
             )}
-          </div>
-
-          {success && (
-            <div style={{
-              marginTop: designSystem.spacing.md,
-              padding: designSystem.spacing.md,
-              background: '#e8f5e9',
-              color: designSystem.colors.success[500],
-              borderRadius: designSystem.borderRadius.sm,
-              fontWeight: '600',
-              fontSize: isMobile ? '14px' : '15px'
-            }}>
-              {success}
-            </div>
-          )}
-
-          {error && (
-            <div style={{
-              marginTop: designSystem.spacing.md,
-              padding: designSystem.spacing.md,
-              background: '#ffebee',
-              color: designSystem.colors.danger[500],
-              borderRadius: designSystem.borderRadius.sm,
-              fontWeight: '600',
-              fontSize: isMobile ? '14px' : '15px'
-            }}>
-              {error}
-            </div>
-          )}
         </div>
+
+        {success && (
+          <div style={{
+            marginTop: designSystem.spacing.sm,
+            marginBottom: designSystem.spacing.md,
+            padding: designSystem.spacing.md,
+            background: '#e8f5e9',
+            color: designSystem.colors.success[500],
+            borderRadius: designSystem.borderRadius.sm,
+            fontWeight: '600',
+            fontSize: isMobile ? '14px' : '15px'
+          }}>
+            {success}
+          </div>
+        )}
+
+        {error && (
+          <div style={{
+            marginTop: designSystem.spacing.sm,
+            marginBottom: designSystem.spacing.md,
+            padding: designSystem.spacing.md,
+            background: '#ffebee',
+            color: designSystem.colors.danger[500],
+            borderRadius: designSystem.borderRadius.sm,
+            fontWeight: '600',
+            fontSize: isMobile ? '14px' : '15px'
+          }}>
+            {error}
+          </div>
+        )}
 
         {/* 今日總覽卡片 */}
         {!loading && bookings.length > 0 && (() => {
