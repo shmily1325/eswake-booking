@@ -981,14 +981,16 @@ export function CoachAdmin() {
                     👤 按教練統計
                   </button>
                   
-                  {/* 匯出報表按鈕 */}
-                  <div style={{ marginLeft: isMobile ? '0' : 'auto', width: isMobile ? '100%' : 'auto' }}>
-                    <ExportReportButton 
-                      records={completedReports}
-                      dateRange={selectedDate.length === 7 ? selectedDate : selectedDate}
-                      isMobile={isMobile}
-                    />
-                  </div>
+                  {/* 匯出報表按鈕 - 只在桌面版顯示 */}
+                  {!isMobile && (
+                    <div style={{ marginLeft: 'auto' }}>
+                      <ExportReportButton 
+                        records={completedReports}
+                        dateRange={selectedDate.length === 7 ? selectedDate : selectedDate}
+                        isMobile={isMobile}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

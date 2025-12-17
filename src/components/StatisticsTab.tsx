@@ -271,7 +271,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             isMobile={isMobile}
-            showTodayButton={true}
+            showTodayButton={!isMobile}
             label="查詢期間"
             simplified={true}
           />
