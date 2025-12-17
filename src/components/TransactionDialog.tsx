@@ -938,7 +938,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               {value && parseFloat(value) > 0 && (() => {
                 const numValue = parseFloat(value)
                 const isAmount = selectedCategory?.type === 'amount'
-                const unit = isAmount ? '$' : '分'
                 const currentValue = (() => {
                   switch (category) {
                     case 'balance': return member.balance ?? 0
@@ -953,49 +952,36 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 const newValue = adjustType === 'increase' 
                   ? currentValue + numValue 
                   : currentValue - numValue
-                const changeText = adjustType === 'increase' ? `+${unit}${numValue.toLocaleString()}` : `-${unit}${numValue.toLocaleString()}`
+                const changeText = adjustType === 'increase' 
+                  ? `+${isAmount ? '$' : ''}${numValue.toLocaleString()}${!isAmount ? '分' : ''}` 
+                  : `-${isAmount ? '$' : ''}${numValue.toLocaleString()}${!isAmount ? '分' : ''}`
+                const newValueText = `${isAmount ? '$' : ''}${newValue.toLocaleString()}${!isAmount ? '分' : ''}`
                 
                 return (
                   <div style={{
                     background: adjustType === 'increase' ? '#e8f5e9' : '#fff3e0',
                     border: `1px solid ${adjustType === 'increase' ? '#a5d6a7' : '#ffcc80'}`,
                     borderRadius: '8px',
-                    padding: '14px 16px',
+                    padding: '12px 16px',
                     marginBottom: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                    fontSize: '14px',
                   }}>
-                    <div style={{ 
-                      fontSize: '13px', 
-                      color: '#666', 
-                      marginBottom: '8px',
-                      fontWeight: '600',
+                    <span>{selectedCategory?.label}</span>
+                    <span style={{ 
+                      fontWeight: 'bold',
+                      color: adjustType === 'increase' ? '#2e7d32' : '#e65100',
                     }}>
-                      📋 預覽變動
-                    </div>
-                    <div style={{ 
-                      fontSize: '15px', 
-                      color: '#333',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      flexWrap: 'wrap',
-                    }}>
-                      <span>{selectedCategory?.label}</span>
-                      <span style={{ 
-                        fontWeight: 'bold',
-                        color: adjustType === 'increase' ? '#2e7d32' : '#e65100',
-                      }}>
-                        {changeText}
-                      </span>
-                      <span style={{ color: '#999' }}>→</span>
-                      <span>
-                        餘額 {isAmount ? '$' : ''}{currentValue.toLocaleString()}{!isAmount ? '分' : ''}
-                        {' → '}
-                        <strong style={{ color: newValue < 0 ? '#d32f2f' : '#333' }}>
-                          {isAmount ? '$' : ''}{newValue.toLocaleString()}{!isAmount ? '分' : ''}
-                        </strong>
-                        {newValue < 0 && <span style={{ color: '#d32f2f', marginLeft: '4px' }}>⚠️</span>}
-                      </span>
-                    </div>
+                      {changeText}
+                    </span>
+                    <span style={{ color: '#999' }}>→</span>
+                    <strong style={{ color: newValue < 0 ? '#d32f2f' : '#333' }}>
+                      {newValueText}
+                    </strong>
+                    {newValue < 0 && <span style={{ color: '#d32f2f' }}>⚠️</span>}
                   </div>
                 )
               })()}
@@ -1251,13 +1237,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               </div>
             </div>
 
-            {/* 統計摘要 */}
-            {transactions.length > 0 && (() => {
-              // 根據篩選計算統計
-              let filteredTxForStats = transactions
-              if (categoryFilter !== 'all') {
-                filteredTxForStats = transactions.filter(tx => tx.category === categoryFilter)
-              }
+            {/* 統計摘要 - 只在選擇特定月份且篩選特定類別時顯示 */}
+            {transactions.length > 0 && selectedMonth && categoryFilter !== 'all' && (() => {
+              const catConfig = CATEGORIES.find(c => c.value === categoryFilter)
+              if (!catConfig) return null
+              
+              // 篩選當前類別的交易
+              let filteredTxForStats = transactions.filter(tx => tx.category === categoryFilter)
               if (searchTerm.trim()) {
                 const lowerSearch = searchTerm.toLowerCase()
                 filteredTxForStats = filteredTxForStats.filter(tx => 
@@ -1266,70 +1252,45 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 )
               }
               
-              // 計算金額類統計
-              const amountStats = { increase: 0, decrease: 0 }
-              // 計算時數類統計
-              const minutesStats = { increase: 0, decrease: 0 }
+              if (filteredTxForStats.length === 0) return null
+              
+              // 計算統計
+              const isAmount = catConfig.type === 'amount'
+              let increase = 0
+              let decrease = 0
               
               filteredTxForStats.forEach(tx => {
-                const cat = CATEGORIES.find(c => c.value === tx.category)
-                if (cat?.type === 'amount') {
-                  const val = Math.abs(tx.amount || 0)
-                  if (tx.adjust_type === 'increase') amountStats.increase += val
-                  else amountStats.decrease += val
-                } else {
-                  const val = Math.abs(tx.minutes || 0)
-                  if (tx.adjust_type === 'increase') minutesStats.increase += val
-                  else minutesStats.decrease += val
-                }
+                const val = Math.abs(isAmount ? (tx.amount || 0) : (tx.minutes || 0))
+                if (tx.adjust_type === 'increase') increase += val
+                else decrease += val
               })
               
-              const hasAmountChanges = amountStats.increase > 0 || amountStats.decrease > 0
-              const hasMinutesChanges = minutesStats.increase > 0 || minutesStats.decrease > 0
-              
-              if (!hasAmountChanges && !hasMinutesChanges) return null
+              const net = increase - decrease
               
               return (
                 <div style={{
                   background: '#f0f7ff',
                   border: '1px solid #bbdefb',
                   borderRadius: '8px',
-                  padding: '12px 16px',
+                  padding: '10px 16px',
                   marginBottom: '16px',
                   fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  flexWrap: 'wrap',
                 }}>
-                  <div style={{ fontWeight: '600', marginBottom: '8px', color: '#1976d2' }}>
-                    📊 {selectedMonth ? `${selectedMonth.split('-')[1]}月` : '全部'}統計
-                    {searchTerm && <span style={{ fontWeight: 'normal', color: '#666' }}> (搜尋結果)</span>}
-                  </div>
-                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', color: '#333' }}>
-                    {hasAmountChanges && (
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <span style={{ color: '#666' }}>💰</span>
-                        <span style={{ color: '#2e7d32' }}>+${amountStats.increase.toLocaleString()}</span>
-                        <span style={{ color: '#c62828' }}>-${amountStats.decrease.toLocaleString()}</span>
-                        <span style={{ 
-                          fontWeight: '600',
-                          color: (amountStats.increase - amountStats.decrease) >= 0 ? '#2e7d32' : '#c62828'
-                        }}>
-                          = {(amountStats.increase - amountStats.decrease) >= 0 ? '+' : ''}${(amountStats.increase - amountStats.decrease).toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-                    {hasMinutesChanges && (
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <span style={{ color: '#666' }}>⏱️</span>
-                        <span style={{ color: '#2e7d32' }}>+{minutesStats.increase.toLocaleString()}分</span>
-                        <span style={{ color: '#c62828' }}>-{minutesStats.decrease.toLocaleString()}分</span>
-                        <span style={{ 
-                          fontWeight: '600',
-                          color: (minutesStats.increase - minutesStats.decrease) >= 0 ? '#2e7d32' : '#c62828'
-                        }}>
-                          = {(minutesStats.increase - minutesStats.decrease) >= 0 ? '+' : ''}{(minutesStats.increase - minutesStats.decrease).toLocaleString()}分
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  <span style={{ fontWeight: '600', color: '#1976d2' }}>
+                    {selectedMonth.split('-')[1]}月 {catConfig.label}
+                  </span>
+                  <span style={{ color: '#2e7d32' }}>+{isAmount ? '$' : ''}{increase.toLocaleString()}{!isAmount ? '分' : ''}</span>
+                  <span style={{ color: '#c62828' }}>-{isAmount ? '$' : ''}{decrease.toLocaleString()}{!isAmount ? '分' : ''}</span>
+                  <span style={{ 
+                    fontWeight: '600',
+                    color: net >= 0 ? '#2e7d32' : '#c62828'
+                  }}>
+                    = {net >= 0 ? '+' : ''}{isAmount ? '$' : ''}{net.toLocaleString()}{!isAmount ? '分' : ''}
+                  </span>
                 </div>
               )
             })()}
