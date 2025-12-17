@@ -1015,7 +1015,15 @@ export function CoachAssignment() {
               </label>
               {isMobile ? (
                 // 手機版：徽章在右上角（與預約表統一）
-                <div style={{ position: 'relative' }}>
+                <div style={{ 
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '10px 16px',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  background: '#f8f9fa'
+                }}>
                   <input
                     type="date"
                     value={selectedDate}
@@ -1027,12 +1035,13 @@ export function CoachAssignment() {
                       }
                     }}
                     style={{
-                      padding: '8px 12px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
+                      flex: 1,
+                      border: 'none',
+                      background: 'transparent',
                       fontSize: '16px',
                       color: '#333',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      outline: 'none'
                     }}
                   />
                   {/* 星期幾徽章 - 右上角 */}
