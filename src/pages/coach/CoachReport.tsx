@@ -747,9 +747,13 @@ export function CoachReport({
       const participantsToUpdate: ParticipantUpdate[] = []
       const participantsToInsert: ParticipantInsert[] = []
 
+      // 取得船隻名稱（彈簧床特殊處理：不管指定不指定都算教學時數）
+      const currentBooking = bookings.find(b => b.id === reportingBookingId)
+      const boatName = currentBooking?.boats?.name || ''
+
       validParticipants.forEach((p: Participant) => {
         // 使用工具函数计算 is_teaching 和 status
-        const isTeaching = calculateIsTeaching(p.lesson_type || 'undesignated')
+        const isTeaching = calculateIsTeaching(p.lesson_type || 'undesignated', boatName)
         const calculatedStatus = calculateParticipantStatus(p.member_id)
         
         console.log(`參與者 ${p.participant_name}:`, {

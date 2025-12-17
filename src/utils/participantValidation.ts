@@ -149,22 +149,30 @@ export function confirmPossibleMembers(possibleMembers: PossibleMember[]): boole
  * 計算 is_teaching 值
  * 
  * 判斷該參與者是否計入教學時數。
- * 只有選擇「指定教練」（需收費或不需收費）的課程才計入教學時數。
+ * - 彈簧床：不管指定還是不指定，都算教學時數
+ * - 其他船隻：只有選擇「指定教練」（需收費或不需收費）才計入教學時數
  * 
  * @param lessonType - 課程類型 ('undesignated' | 'designated_paid' | 'designated_free')
+ * @param boatName - 船隻名稱（可選）
  * @returns 是否計入教學時數
  * 
  * @throws {TypeError} 如果 lessonType 不是字串
  * 
  * @example
  * ```typescript
- * calculateIsTeaching('designated_paid')  // true
- * calculateIsTeaching('undesignated')     // false
+ * calculateIsTeaching('designated_paid')           // true
+ * calculateIsTeaching('undesignated')              // false
+ * calculateIsTeaching('undesignated', '彈簧床')     // true (彈簧床特例)
  * ```
  */
-export function calculateIsTeaching(lessonType: string): boolean {
+export function calculateIsTeaching(lessonType: string, boatName?: string): boolean {
   if (typeof lessonType !== 'string') {
     throw new TypeError('lessonType 必須是字串')
+  }
+  
+  // 彈簧床：不管指定還是不指定，都算教學時數
+  if (boatName && boatName.includes('彈簧床')) {
+    return true
   }
   
   return lessonType === 'designated_paid' || lessonType === 'designated_free'
