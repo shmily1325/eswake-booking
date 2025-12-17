@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { designSystem, getButtonStyle, getLabelStyle, getTextStyle } from '../../styles/designSystem'
+import { designSystem, getButtonStyle, getLabelStyle } from '../../styles/designSystem'
 import { isAdmin, isEditorAsync } from '../../utils/auth'
 import { isFacility } from '../../utils/facility'
 import { logCoachAssignment } from '../../utils/auditLog'
@@ -995,10 +995,6 @@ export function CoachAssignment() {
       <PageHeader user={user} title="排班" showBaoLink={isAdmin(user)} />
       
       <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl, maxWidth: '100%', margin: '0 auto', width: '100%' }}>
-        <h1 style={{ ...getTextStyle('h1', isMobile), marginBottom: isMobile ? designSystem.spacing.md : designSystem.spacing.lg }}>
-          📅 排班
-        </h1>
-
         {/* 日期選擇和保存 */}
         <div style={{ 
           background: 'white',
