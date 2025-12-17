@@ -663,18 +663,22 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo }: Prop
                '💰 扣儲值'}
             </span>
             {/* 教學方式 */}
-            {report.lesson_type && report.lesson_type !== 'undesignated' && (
-              <span style={{
-                padding: '2px 8px',
-                background: report.lesson_type === 'designated_paid' ? '#fff9e6' : '#e8f5e9',
-                color: report.lesson_type === 'designated_paid' ? '#f57c00' : '#388e3c',
-                fontSize: '11px',
-                borderRadius: '4px',
-                fontWeight: '500'
-              }}>
-                {report.lesson_type === 'designated_paid' ? '🎓 指定（需收費）' : '🎓 指定（不收費）'}
-              </span>
-            )}
+            <span style={{
+              padding: '2px 8px',
+              background: report.lesson_type === 'designated_paid' ? '#fff9e6' : 
+                         report.lesson_type === 'designated_free' ? '#e8f5e9' :
+                         '#f5f5f5',
+              color: report.lesson_type === 'designated_paid' ? '#f57c00' : 
+                     report.lesson_type === 'designated_free' ? '#388e3c' :
+                     '#999',
+              fontSize: '11px',
+              borderRadius: '4px',
+              fontWeight: '500'
+            }}>
+              {report.lesson_type === 'designated_paid' ? '指定（需收費）' : 
+               report.lesson_type === 'designated_free' ? '指定（不收費）' :
+               '不指定'}
+            </span>
           </div>
         </div>
         {!isExpanded && (
