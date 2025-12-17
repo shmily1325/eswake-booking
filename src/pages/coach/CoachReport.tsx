@@ -1241,7 +1241,8 @@ export function CoachReport({
             display: 'flex',
             gap: '8px',
             flexWrap: 'wrap',
-            marginBottom: '12px'
+            marginBottom: isMobile ? '0' : '12px',
+            alignItems: 'center'
           }}>
             {/* 全部未回報按鈕 */}
             <button
@@ -1261,8 +1262,8 @@ export function CoachReport({
               ⚠️ 全部未回報
             </button>
 
-            {/* 日期按鈕 */}
-            {[
+            {/* 日期按鈕 - 只在桌面版顯示 */}
+            {!isMobile && [
               { label: '今天', offset: 0 },
               { label: '昨天', offset: -1 },
               { label: '前天', offset: -2 }
@@ -1280,13 +1281,13 @@ export function CoachReport({
                       setDateOffset(offset)
                     }}
                     style={{
-                      padding: isMobile ? '10px 16px' : '10px 20px',
+                      padding: '10px 20px',
                       background: isSelected ? '#2196f3' : '#e3f2fd',
                       color: isSelected ? 'white' : '#1976d2',
                       border: `2px solid ${isSelected ? '#2196f3' : '#90caf9'}`,
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      fontSize: isMobile ? '13px' : '14px',
+                      fontSize: '14px',
                       fontWeight: '600',
                       transition: 'all 0.2s'
                     }}
@@ -1296,12 +1297,13 @@ export function CoachReport({
                 )
               })}
               
-              {/* 日期選擇器 */}
+              {/* 日期選擇器 + 星期幾 */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                marginLeft: 'auto'
+                marginLeft: isMobile ? '0' : 'auto',
+                ...(isMobile ? { marginTop: '8px', width: '100%', justifyContent: 'space-between' } : {})
               }}>
                 <input 
                   type="date" 
@@ -1319,27 +1321,29 @@ export function CoachReport({
                     borderRadius: '8px',
                     fontSize: '16px', // 16px 防止 iOS 縮放
                     color: '#333',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    flex: isMobile ? '1' : 'none'
                   }}
                 />
                 <span style={{
                   padding: '8px 12px',
                   background: '#f5f5f5',
                   borderRadius: '8px',
-                  fontSize: isMobile ? '12px' : '13px',
+                  fontSize: isMobile ? '13px' : '13px',
                   fontWeight: '600',
-                  color: '#666'
+                  color: '#666',
+                  whiteSpace: 'nowrap'
                 }}>
                   {getWeekdayText(selectedDate)}
                 </span>
               </div>
           </div>
 
-          {/* 教練選擇 - 只在非自動篩選模式顯示 */}
-          {!autoFilterByUser && (
+          {/* 教練選擇 - 只在非自動篩選模式且桌面版顯示 */}
+          {!autoFilterByUser && !isMobile && (
             <>
               <div style={{
-                fontSize: isMobile ? '13px' : '14px',
+                fontSize: '14px',
                 color: '#666',
                 fontWeight: '600',
                 marginBottom: '12px',
@@ -1357,13 +1361,13 @@ export function CoachReport({
                 <button
                   onClick={() => setSelectedCoachId('all')}
                   style={{
-                    padding: isMobile ? '8px 16px' : '10px 20px',
+                    padding: '10px 20px',
                     background: selectedCoachId === 'all' ? '#2196f3' : '#f5f5f5',
                     color: selectedCoachId === 'all' ? 'white' : '#666',
                     border: 'none',
                     borderRadius: '8px',
                     cursor: 'pointer',
-                    fontSize: isMobile ? '13px' : '14px',
+                    fontSize: '14px',
                     fontWeight: '600'
                   }}
                 >
@@ -1374,13 +1378,13 @@ export function CoachReport({
                     key={coach.id}
                     onClick={() => setSelectedCoachId(coach.id)}
                     style={{
-                      padding: isMobile ? '8px 16px' : '10px 20px',
+                      padding: '10px 20px',
                       background: selectedCoachId === coach.id ? '#2196f3' : '#f5f5f5',
                       color: selectedCoachId === coach.id ? 'white' : '#666',
                       border: 'none',
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      fontSize: isMobile ? '13px' : '14px',
+                      fontSize: '14px',
                       fontWeight: '600'
                     }}
                   >
@@ -1391,8 +1395,8 @@ export function CoachReport({
             </>
           )}
 
-          {/* 匯出按鈕 - 只在日期模式顯示 */}
-          {viewMode === 'date' && (
+          {/* 匯出按鈕 - 只在日期模式且桌面版顯示 */}
+          {viewMode === 'date' && !isMobile && (
             <div style={{
               marginTop: '16px',
               paddingTop: '16px',
@@ -1402,7 +1406,7 @@ export function CoachReport({
             }}>
               <Button
                 variant="success"
-                size={isMobile ? 'small' : 'medium'}
+                size="medium"
                 onClick={exportToCSV}
                 icon={<span>📊</span>}
               >
