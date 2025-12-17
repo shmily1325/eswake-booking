@@ -1227,7 +1227,7 @@ export function CoachAssignment() {
           </div>
         )}
 
-        {/* 手機版：儲存和回預約表按鈕 - 使用與預約列表一致的樣式 */}
+        {/* 手機版：儲存和回預約表按鈕 - 各占一半寬度 */}
         {isMobile && (
           <div style={{ 
             display: 'flex', 
@@ -1239,6 +1239,7 @@ export function CoachAssignment() {
               onClick={handleSaveAll}
               disabled={saving || loading}
               style={{
+                flex: 1,
                 textDecoration: 'none',
                 height: '48px',
                 padding: '0 16px',
@@ -1264,6 +1265,7 @@ export function CoachAssignment() {
             <button
               onClick={() => navigate(`/day?date=${selectedDate}`)}
               style={{
+                flex: 1,
                 textDecoration: 'none',
                 height: '48px',
                 padding: '0 16px',
