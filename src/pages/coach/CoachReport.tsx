@@ -60,7 +60,7 @@ interface CoachReportProps {
 export function CoachReport({ 
   autoFilterByUser = false, 
   embedded = false,
-  defaultViewMode = 'date',
+  defaultViewMode = 'unreported',
   hideInternalTabs = false
 }: CoachReportProps = {}) {
   const user = useAuthUser()
@@ -1239,20 +1239,50 @@ export function CoachReport({
         )}
 
         {/* 篩選區 */}
-        {viewMode === 'date' && (
+        <div style={{
+          ...getCardStyle(isMobile),
+          marginBottom: '16px'
+        }}>
+          {/* 日期選擇標題 */}
           <div style={{
-            ...getCardStyle(isMobile),
-            marginBottom: '16px'
+            fontSize: isMobile ? '13px' : '14px',
+            color: '#666',
+            fontWeight: '600',
+            marginBottom: '12px'
           }}>
-            {/* 日期選擇標題 */}
-            <div style={{
-              fontSize: isMobile ? '13px' : '14px',
-              color: '#666',
-              fontWeight: '600',
-              marginBottom: '12px'
-            }}>
-              選擇日期
-            </div>
+            選擇日期
+          </div>
+
+          {/* 全部未回報按鈕 */}
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            flexWrap: 'wrap',
+            marginBottom: '12px'
+          }}>
+            <button
+              onClick={() => setViewMode('unreported')}
+              style={{
+                padding: isMobile ? '10px 16px' : '10px 20px',
+                background: viewMode === 'unreported' ? '#f57c00' : '#fff3e0',
+                color: viewMode === 'unreported' ? 'white' : '#e65100',
+                border: `2px solid ${viewMode === 'unreported' ? '#f57c00' : '#ffcc80'}`,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: isMobile ? '13px' : '14px',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+            >
+              ⚠️ 全部未回報
+            </button>
+          </div>
+
+          {/* 分隔線 */}
+          <div style={{ 
+            borderTop: '1px solid #eee', 
+            marginBottom: '12px' 
+          }} />
 
             {/* 快捷日期按鈕 */}
             <div style={{
@@ -1262,19 +1292,22 @@ export function CoachReport({
               marginBottom: '12px'
             }}>
               {[
-                { label: '📅 前天', offset: -2 },
-                { label: '📅 昨天', offset: -1 },
-                { label: '📅 今天', offset: 0 }
+                { label: '今天', offset: 0 },
+                { label: '昨天', offset: -1 },
+                { label: '前天', offset: -2 }
               ].map(({ label, offset }) => {
                 const targetDate = new Date()
                 targetDate.setDate(targetDate.getDate() + offset)
                 const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
-                const isSelected = selectedDate === targetDateStr
+                const isSelected = viewMode === 'date' && selectedDate === targetDateStr
                 
                 return (
                   <button
                     key={offset}
-                    onClick={() => setDateOffset(offset)}
+                    onClick={() => {
+                      setViewMode('date')
+                      setDateOffset(offset)
+                    }}
                     style={{
                       padding: isMobile ? '10px 16px' : '10px 20px',
                       background: isSelected ? '#2196f3' : '#e3f2fd',
@@ -1305,6 +1338,7 @@ export function CoachReport({
                   onChange={(e) => {
                     const newDate = e.target.value
                     if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                      setViewMode('date')
                       setSelectedDate(newDate)
                     }
                   }} 
@@ -1330,31 +1364,48 @@ export function CoachReport({
               </div>
             </div>
 
-            {/* 教練選擇 - 只在非自動篩選模式顯示 */}
-            {!autoFilterByUser && (
-              <>
-                <div style={{
-                  fontSize: isMobile ? '13px' : '14px',
-                  color: '#666',
-                  fontWeight: '600',
-                  marginBottom: '12px',
-                  marginTop: '16px',
-                  paddingTop: '16px',
-                  borderTop: '1px solid #eee'
-                }}>
-                  選擇教練
-                </div>
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  flexWrap: 'wrap'
-                }}>
+          {/* 教練選擇 - 只在非自動篩選模式顯示 */}
+          {!autoFilterByUser && (
+            <>
+              <div style={{
+                fontSize: isMobile ? '13px' : '14px',
+                color: '#666',
+                fontWeight: '600',
+                marginBottom: '12px',
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '1px solid #eee'
+              }}>
+                選擇教練
+              </div>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  onClick={() => setSelectedCoachId('all')}
+                  style={{
+                    padding: isMobile ? '8px 16px' : '10px 20px',
+                    background: selectedCoachId === 'all' ? '#2196f3' : '#f5f5f5',
+                    color: selectedCoachId === 'all' ? 'white' : '#666',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: isMobile ? '13px' : '14px',
+                    fontWeight: '600'
+                  }}
+                >
+                  全部
+                </button>
+                {availableCoaches.map(coach => (
                   <button
-                    onClick={() => setSelectedCoachId('all')}
+                    key={coach.id}
+                    onClick={() => setSelectedCoachId(coach.id)}
                     style={{
                       padding: isMobile ? '8px 16px' : '10px 20px',
-                      background: selectedCoachId === 'all' ? '#2196f3' : '#f5f5f5',
-                      color: selectedCoachId === 'all' ? 'white' : '#666',
+                      background: selectedCoachId === coach.id ? '#2196f3' : '#f5f5f5',
+                      color: selectedCoachId === coach.id ? 'white' : '#666',
                       border: 'none',
                       borderRadius: '8px',
                       cursor: 'pointer',
@@ -1362,31 +1413,15 @@ export function CoachReport({
                       fontWeight: '600'
                     }}
                   >
-                    全部
+                    {coach.name}
                   </button>
-                  {availableCoaches.map(coach => (
-                    <button
-                      key={coach.id}
-                      onClick={() => setSelectedCoachId(coach.id)}
-                      style={{
-                        padding: isMobile ? '8px 16px' : '10px 20px',
-                        background: selectedCoachId === coach.id ? '#2196f3' : '#f5f5f5',
-                        color: selectedCoachId === coach.id ? 'white' : '#666',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '13px' : '14px',
-                        fontWeight: '600'
-                      }}
-                    >
-                      {coach.name}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+                ))}
+              </div>
+            </>
+          )}
 
-            {/* 匯出按鈕 */}
+          {/* 匯出按鈕 - 只在日期模式顯示 */}
+          {viewMode === 'date' && (
             <div style={{
               marginTop: '16px',
               paddingTop: '16px',
@@ -1403,25 +1438,9 @@ export function CoachReport({
                 匯出回報記錄
               </Button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* 未回報模式 - 顯示待回報數量 */}
-        {viewMode === 'unreported' && bookings.length > 0 && (
-          <div style={{
-            ...getCardStyle(isMobile),
-            marginBottom: '16px',
-            background: '#fff3e0',
-            borderLeft: '4px solid #f57c00'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '20px' }}>⚠️</span>
-              <span style={{ fontWeight: '600', color: '#e65100' }}>
-                共 {bookings.length} 筆待回報
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* 預約列表 */}
         {loading ? (

@@ -32,6 +32,7 @@ interface Booking {
   drivers?: Coach[]
   schedule_notes?: string | null
   notes?: string | null
+  is_coach_practice?: boolean
   booking_members?: { member_id: string; members?: { id: string; name: string; nickname?: string | null } | null }[]
 }
 
@@ -152,7 +153,8 @@ export function CoachDailyView() {
           duration_min,
           status,
           schedule_notes,
-          notes
+          notes,
+          is_coach_practice
         `)
         .gte('start_at', startOfDay)
         .lte('start_at', endOfDay)
@@ -293,10 +295,10 @@ export function CoachDailyView() {
     })
   }
 
-  // 過濾時間槽：只顯示有預約的時間範圍（最少顯示 04:30-18:00）
+  // 過濾時間槽：只顯示有預約的時間範圍（最少顯示 08:00-18:00）
   const filteredTimeSlots = useMemo(() => {
-    // 設定預設顯示範圍：04:30-18:00
-    const defaultStartMinutes = 4 * 60 + 30  // 04:30
+    // 設定預設顯示範圍：08:00-18:00
+    const defaultStartMinutes = 8 * 60       // 08:00
     const defaultEndMinutes = 18 * 60        // 18:00
 
     if (filteredBookings.length === 0) {
@@ -373,6 +375,23 @@ export function CoachDailyView() {
           padding: '14px 16px',
         }}
       >
+        {/* 教練練習標識 */}
+        {booking.is_coach_practice && (
+          <div style={{
+            display: 'inline-block',
+            fontSize: '12px',
+            fontWeight: '600',
+            padding: '4px 10px',
+            background: '#fff3e0',
+            color: '#e65100',
+            borderRadius: '4px',
+            marginBottom: '10px',
+            border: '1px solid #ff9800',
+          }}>
+            🏄 教練練習
+          </div>
+        )}
+
         {/* 第一行：船隻 + 角色 + 時間 */}
         <div style={{
           display: 'flex',
@@ -478,6 +497,23 @@ export function CoachDailyView() {
         rowSpan={slots}
         style={getBookingCardStyle(boat.color, isMobile, false)}
       >
+        {/* 教練練習標識 */}
+        {booking.is_coach_practice && (
+          <div style={{
+            display: 'inline-block',
+            fontSize: isMobile ? '11px' : '12px',
+            fontWeight: '600',
+            padding: '3px 8px',
+            background: '#fff3e0',
+            color: '#e65100',
+            borderRadius: '4px',
+            marginBottom: '6px',
+            border: '1px solid #ff9800',
+          }}>
+            🏄 教練練習
+          </div>
+        )}
+
         {/* 時間範圍 */}
         <div style={bookingCardContentStyles.timeRange(isMobile)}>
           {startTime} - {endTimeStr}
