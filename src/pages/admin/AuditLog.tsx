@@ -45,6 +45,16 @@ function parseDetails(details: string): ParsedDetails {
   const isCreate = details.startsWith('新增預約')
   const isUpdate = details.startsWith('修改預約')
   const isDelete = details.startsWith('刪除預約')
+  const isBatchEdit = details.startsWith('批次修改')
+  const isBatchDelete = details.startsWith('批次刪除')
+  
+  // 批次操作：直接返回原始文字，不需要解析
+  if (isBatchEdit || isBatchDelete) {
+    // 提取填表人
+    const filledByMatch = details.match(/填表人[:：]\s*([^)]+)/)
+    if (filledByMatch) info.filledBy = filledByMatch[1].trim()
+    return info
+  }
   
   // 1. 提取時間（支援新舊格式）
   // 新格式：2025/12/31 09:00（含年份）
@@ -396,8 +406,12 @@ export function AuditLog() {
     }
   }
 
-  const getOperationText = (action: string, tableName: string) => {
+  const getOperationText = (action: string, tableName: string, details?: string) => {
     if (tableName === 'coach_assignment') return '排班'
+    
+    // 檢查是否為批次操作
+    if (details?.startsWith('批次修改')) return '批次修改'
+    if (details?.startsWith('批次刪除')) return '批次刪除'
     
     switch (action) {
       case 'create': return '新增預約'
@@ -728,7 +742,7 @@ export function AuditLog() {
                             fontWeight: '600',
                             color: getOperationColor(log.action),
                           }}>
-                            {getOperationText(log.action, log.table_name || '')}
+                            {getOperationText(log.action, log.table_name || '', log.details || '')}
                           </span>
                         </div>
                         <div style={{ fontSize: '13px', color: '#666' }}>
