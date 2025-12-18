@@ -247,11 +247,22 @@ export async function logAction(
   details: string
 ): Promise<void> {
   try {
+    // 使用本地時間格式（與其他 log 函數一致）
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hour = String(now.getHours()).padStart(2, '0')
+    const minute = String(now.getMinutes()).padStart(2, '0')
+    const second = String(now.getSeconds()).padStart(2, '0')
+    const created_at = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+    
     const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
       action,
       table_name: tableName,
-      details
+      details,
+      created_at
     })
     if (error) {
       console.error('審計日誌記錄失敗:', error)
