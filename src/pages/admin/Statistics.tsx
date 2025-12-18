@@ -503,7 +503,6 @@ export function Statistics() {
         id, start_at, boat_id, duration_min,
         boats:boat_id(id, name)
       `)
-      .eq('is_deleted', false)
       .gte('start_at', `${startDate}T00:00:00`)
       .lte('start_at', `${endDateStr}T23:59:59`)
     
