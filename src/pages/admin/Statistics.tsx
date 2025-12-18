@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { PageHeader } from '../../components/PageHeader'
@@ -7,8 +7,8 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { getCardStyle } from '../../styles/designSystem'
 import { getLocalDateString } from '../../utils/date'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line
 } from 'recharts'
 
 interface MonthlyStats {
@@ -32,17 +32,6 @@ interface CoachFutureBooking {
   totalMinutes: number
 }
 
-interface FutureMonthData {
-  month: string
-  label: string
-  [coachName: string]: string | number
-}
-
-const CHART_COLORS = [
-  '#4a90e2', '#50c878', '#ff6b6b', '#ffd93d', '#6c5ce7',
-  '#a29bfe', '#fd79a8', '#00b894', '#e17055', '#0984e3'
-]
-
 export function Statistics() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
@@ -54,7 +43,6 @@ export function Statistics() {
   
   // 未來預約數據
   const [futureBookings, setFutureBookings] = useState<CoachFutureBooking[]>([])
-  const [futureMonths, setFutureMonths] = useState<string[]>([])
   
   // 教練時數數據
   const [coachStats, setCoachStats] = useState<{
@@ -134,7 +122,6 @@ export function Statistics() {
       const date = new Date(now.getFullYear(), now.getMonth() + i, 1)
       futureMonthsList.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`)
     }
-    setFutureMonths(futureMonthsList)
     
     // 載入未來的預約
     const endDate = new Date(now.getFullYear(), now.getMonth() + 3, 0)
@@ -301,34 +288,6 @@ export function Statistics() {
     setCoachStats(sorted)
   }
 
-  // 計算未來預約的圖表數據
-  const futureChartData = useMemo((): FutureMonthData[] => {
-    if (futureMonths.length === 0) return []
-    
-    return futureMonths.map(month => {
-      const data: FutureMonthData = {
-        month,
-        label: `${parseInt(month.split('-')[1])}月`
-      }
-      
-      futureBookings.forEach(coach => {
-        const monthData = coach.bookings.find(b => b.month === month)
-        data[coach.coachName] = monthData?.count || 0
-      })
-      
-      return data
-    })
-  }, [futureMonths, futureBookings])
-
-  // 計算教練時數圓餅圖數據
-  const coachPieData = useMemo(() => {
-    return coachStats.map((coach, index) => ({
-      name: coach.coachName,
-      value: coach.teachingMinutes + coach.drivingMinutes,
-      color: CHART_COLORS[index % CHART_COLORS.length]
-    })).filter(d => d.value > 0)
-  }, [coachStats])
-
   const totalFutureBookings = futureBookings.reduce((sum, c) => sum + c.totalCount, 0)
   const totalFutureMinutes = futureBookings.reduce((sum, c) => sum + c.totalMinutes, 0)
 
@@ -372,16 +331,16 @@ export function Statistics() {
             📈 預約趨勢
           </button>
           <button
+            onClick={() => setActiveTab('coach')}
+            style={tabStyle(activeTab === 'coach')}
+          >
+            🎓 教練時數
+          </button>
+          <button
             onClick={() => setActiveTab('future')}
             style={tabStyle(activeTab === 'future')}
           >
             📅 未來預約
-          </button>
-          <button
-            onClick={() => setActiveTab('coach')}
-            style={tabStyle(activeTab === 'coach')}
-          >
-            👨‍🏫 教練時數
           </button>
         </div>
 
@@ -609,11 +568,8 @@ export function Statistics() {
                   </div>
                 </div>
 
-                {/* 未來預約柱狀圖 */}
-                <div style={{
-                  ...getCardStyle(isMobile),
-                  marginBottom: '24px'
-                }}>
+                {/* 教練未來預約列表 */}
+                <div style={getCardStyle(isMobile)}>
                   <h3 style={{ 
                     margin: '0 0 20px 0', 
                     fontSize: '17px', 
@@ -629,112 +585,40 @@ export function Statistics() {
                       borderRadius: '2px',
                       display: 'inline-block'
                     }}></span>
-                    未來3個月預約分佈（按教練）
+                    各教練未來預約
                   </h3>
-                  <div style={{ width: '100%', height: isMobile ? 300 : 350 }}>
-                    <ResponsiveContainer>
-                      <BarChart data={futureChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                        <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip 
-                          contentStyle={{ 
-                            borderRadius: '8px', 
-                            border: 'none',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                          }}
-                        />
-                        <Legend />
-                        {futureBookings.slice(0, 8).map((coach, index) => (
-                          <Bar 
-                            key={coach.coachId}
-                            dataKey={coach.coachName}
-                            fill={CHART_COLORS[index % CHART_COLORS.length]}
-                            stackId="a"
-                            radius={index === futureBookings.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                          />
-                        ))}
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* 教練未來預約列表 */}
-                <div style={getCardStyle(isMobile)}>
-                  <h3 style={{ 
-                    margin: '0 0 20px 0', 
-                    fontSize: '17px', 
-                    fontWeight: '700',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <span style={{ 
-                      width: '4px', 
-                      height: '20px', 
-                      background: '#50c878', 
-                      borderRadius: '2px',
-                      display: 'inline-block'
-                    }}></span>
-                    各教練未來預約統計
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {futureBookings.map((coach, index) => (
-                      <div key={coach.coachId} style={{
-                        padding: '16px',
-                        background: '#f8f9fa',
-                        borderRadius: '10px',
-                        borderLeft: `4px solid ${CHART_COLORS[index % CHART_COLORS.length]}`
-                      }}>
-                        <div style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          marginBottom: '12px'
-                        }}>
-                          <span style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
-                            {coach.coachName}
-                          </span>
-                          <span style={{ 
-                            fontSize: '14px', 
-                            fontWeight: '600',
-                            color: CHART_COLORS[index % CHART_COLORS.length]
-                          }}>
-                            共 {coach.totalCount} 筆 / {Math.round(coach.totalMinutes / 60 * 10) / 10} 小時
-                          </span>
-                        </div>
-                        <div style={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: 'repeat(3, 1fr)', 
-                          gap: '8px' 
-                        }}>
-                          {coach.bookings.map(b => (
-                            <div key={b.month} style={{
-                              padding: '10px',
-                              background: 'white',
-                              borderRadius: '8px',
-                              textAlign: 'center'
-                            }}>
-                              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>
-                                {b.label}
-                              </div>
-                              <div style={{ fontSize: '18px', fontWeight: '600', color: '#333' }}>
-                                {b.count}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#666' }}>
-                                {Math.round(b.minutes / 60 * 10) / 10}hr
-                              </div>
-                            </div>
+                  {futureBookings.length > 0 ? (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                        <thead>
+                          <tr style={{ background: '#f8f9fa' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600' }}>教練</th>
+                            <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', fontWeight: '600' }}>預約數</th>
+                            <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', fontWeight: '600' }}>時數</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {futureBookings.map((coach) => (
+                            <tr key={coach.coachId} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <td style={{ padding: '12px', fontWeight: '500' }}>
+                                {coach.coachName}
+                              </td>
+                              <td style={{ padding: '12px', textAlign: 'right', color: '#4a90e2', fontWeight: '600' }}>
+                                {coach.totalCount} 筆
+                              </td>
+                              <td style={{ padding: '12px', textAlign: 'right', color: '#50c878', fontWeight: '600' }}>
+                                {Math.round(coach.totalMinutes / 60 * 10) / 10} 小時
+                              </td>
+                            </tr>
                           ))}
-                        </div>
-                      </div>
-                    ))}
-                    {futureBookings.length === 0 && (
-                      <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                        目前沒有未來預約
-                      </div>
-                    )}
-                  </div>
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                      目前沒有未來預約
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -771,7 +655,7 @@ export function Statistics() {
 
                 {coachStats.length > 0 ? (
                   <>
-                    {/* 圓餅圖 */}
+                    {/* 教學時數排行 */}
                     <div style={{
                       ...getCardStyle(isMobile),
                       marginBottom: '24px'
@@ -787,43 +671,59 @@ export function Statistics() {
                         <span style={{ 
                           width: '4px', 
                           height: '20px', 
-                          background: '#6c5ce7', 
+                          background: '#4a90e2', 
                           borderRadius: '2px',
                           display: 'inline-block'
                         }}></span>
-                        時數佔比
+                        🎓 教學時數排行
                       </h3>
-                      <div style={{ width: '100%', height: isMobile ? 280 : 320 }}>
-                        <ResponsiveContainer>
-                          <PieChart>
-                            <Pie
-                              data={coachPieData}
-                              cx="50%"
-                              cy="50%"
-                              outerRadius={isMobile ? 80 : 100}
-                              innerRadius={isMobile ? 40 : 50}
-                              dataKey="value"
-                              label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                              labelLine={{ stroke: '#999', strokeWidth: 1 }}
-                            >
-                              {coachPieData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip 
-                              formatter={(value) => [`${value} 分鐘`, '總時數']}
-                              contentStyle={{ 
-                                borderRadius: '8px', 
-                                border: 'none',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                              }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {coachStats
+                          .filter(c => c.teachingMinutes > 0)
+                          .sort((a, b) => b.teachingMinutes - a.teachingMinutes)
+                          .map((coach, index) => {
+                            const maxTeaching = Math.max(...coachStats.map(c => c.teachingMinutes))
+                            return (
+                              <div key={`teaching-${coach.coachId}`}>
+                                <div style={{ 
+                                  display: 'flex', 
+                                  justifyContent: 'space-between', 
+                                  marginBottom: '6px' 
+                                }}>
+                                  <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
+                                    {index + 1}. {coach.coachName}
+                                  </span>
+                                  <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
+                                    {coach.teachingMinutes} 分 ({Math.round(coach.teachingMinutes / 60 * 10) / 10} 小時)
+                                  </span>
+                                </div>
+                                <div style={{
+                                  width: '100%',
+                                  height: '24px',
+                                  background: '#e3f2fd',
+                                  borderRadius: '6px',
+                                  overflow: 'hidden'
+                                }}>
+                                  <div style={{
+                                    width: `${(coach.teachingMinutes / maxTeaching) * 100}%`,
+                                    height: '100%',
+                                    background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
+                                    borderRadius: '6px',
+                                    transition: 'width 0.3s'
+                                  }} />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        {coachStats.filter(c => c.teachingMinutes > 0).length === 0 && (
+                          <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                            本月無教學時數記錄
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* 教練排行 */}
+                    {/* 駕駛時數排行 */}
                     <div style={getCardStyle(isMobile)}>
                       <h3 style={{ 
                         margin: '0 0 20px 0', 
@@ -836,68 +736,55 @@ export function Statistics() {
                         <span style={{ 
                           width: '4px', 
                           height: '20px', 
-                          background: '#ff6b6b', 
+                          background: '#50c878', 
                           borderRadius: '2px',
                           display: 'inline-block'
                         }}></span>
-                        教練時數排行
+                        🚤 駕駛時數排行
                       </h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {coachStats.map((coach, index) => {
-                          const total = coach.teachingMinutes + coach.drivingMinutes
-                          const maxTotal = Math.max(...coachStats.map(c => c.teachingMinutes + c.drivingMinutes))
-                          
-                          return (
-                            <div key={coach.coachId}>
-                              <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                marginBottom: '8px' 
-                              }}>
-                                <span style={{ fontWeight: '600', color: '#333' }}>
-                                  {index + 1}. {coach.coachName}
-                                </span>
-                                <span style={{ color: '#666', fontSize: '14px' }}>
-                                  共 {total} 分 ({Math.round(total / 60 * 10) / 10} 小時)
-                                </span>
-                              </div>
-                              <div style={{
-                                display: 'flex',
-                                height: '28px',
-                                borderRadius: '6px',
-                                overflow: 'hidden',
-                                background: '#f0f0f0'
-                              }}>
-                                <div style={{
-                                  width: `${(coach.teachingMinutes / maxTotal) * 100}%`,
-                                  background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: 'white',
-                                  fontSize: '11px',
-                                  fontWeight: '600',
-                                  minWidth: coach.teachingMinutes > 0 ? '40px' : '0'
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {coachStats
+                          .filter(c => c.drivingMinutes > 0)
+                          .sort((a, b) => b.drivingMinutes - a.drivingMinutes)
+                          .map((coach, index) => {
+                            const maxDriving = Math.max(...coachStats.map(c => c.drivingMinutes))
+                            return (
+                              <div key={`driving-${coach.coachId}`}>
+                                <div style={{ 
+                                  display: 'flex', 
+                                  justifyContent: 'space-between', 
+                                  marginBottom: '6px' 
                                 }}>
-                                  {coach.teachingMinutes > 0 && `教 ${coach.teachingMinutes}`}
+                                  <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
+                                    {index + 1}. {coach.coachName}
+                                  </span>
+                                  <span style={{ color: '#50c878', fontSize: '14px', fontWeight: '600' }}>
+                                    {coach.drivingMinutes} 分 ({Math.round(coach.drivingMinutes / 60 * 10) / 10} 小時)
+                                  </span>
                                 </div>
                                 <div style={{
-                                  width: `${(coach.drivingMinutes / maxTotal) * 100}%`,
-                                  background: 'linear-gradient(90deg, #50c878, #2e7d32)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: 'white',
-                                  fontSize: '11px',
-                                  fontWeight: '600',
-                                  minWidth: coach.drivingMinutes > 0 ? '40px' : '0'
+                                  width: '100%',
+                                  height: '24px',
+                                  background: '#e8f5e9',
+                                  borderRadius: '6px',
+                                  overflow: 'hidden'
                                 }}>
-                                  {coach.drivingMinutes > 0 && `駕 ${coach.drivingMinutes}`}
+                                  <div style={{
+                                    width: `${(coach.drivingMinutes / maxDriving) * 100}%`,
+                                    height: '100%',
+                                    background: 'linear-gradient(90deg, #50c878, #2e7d32)',
+                                    borderRadius: '6px',
+                                    transition: 'width 0.3s'
+                                  }} />
                                 </div>
                               </div>
-                            </div>
-                          )
-                        })}
+                            )
+                          })}
+                        {coachStats.filter(c => c.drivingMinutes > 0).length === 0 && (
+                          <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                            本月無駕駛時數記錄
+                          </div>
+                        )}
                       </div>
                     </div>
                   </>
