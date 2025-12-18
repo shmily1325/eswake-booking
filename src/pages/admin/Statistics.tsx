@@ -66,6 +66,7 @@ export function Statistics() {
       memberId: string
       memberName: string
       minutes: number
+      boatMinutes: { boatName: string; minutes: number }[]
     }[]
   }[]>([])
   const [expandedTeachingCoachId, setExpandedTeachingCoachId] = useState<string | null>(null)
@@ -257,14 +258,14 @@ export function Statistics() {
     const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
     const endDateStr = `${selectedPeriod}-${String(endDate).padStart(2, '0')}`
     
-    // 載入教學記錄
+    // 載入教學記錄（包含船隻資訊）
     const { data: teachingData } = await supabase
       .from('booking_participants')
       .select(`
         coach_id, duration_min, lesson_type, member_id,
         coaches:coach_id(id, name),
         members:member_id(id, name, nickname),
-        bookings!inner(start_at)
+        bookings!inner(start_at, boats(id, name))
       `)
       .eq('status', 'processed')
       .eq('is_teaching', true)
@@ -289,7 +290,12 @@ export function Statistics() {
       coachName: string
       teachingMinutes: number
       drivingMinutes: number
-      designatedStudents: Map<string, { memberId: string; memberName: string; minutes: number }>
+      designatedStudents: Map<string, { 
+        memberId: string
+        memberName: string
+        minutes: number
+        boatMinutes: Map<string, number>
+      }>
     }>()
     
     teachingData?.forEach((record: any) => {
@@ -313,11 +319,20 @@ export function Statistics() {
       if (isDesignated && record.member_id && record.members) {
         const memberId = record.member_id
         const memberName = record.members.nickname || record.members.name || '未知'
+        const boatName = record.bookings?.boats?.name || '未知船'
+        const duration = record.duration_min || 0
         
         if (!stats.designatedStudents.has(memberId)) {
-          stats.designatedStudents.set(memberId, { memberId, memberName, minutes: 0 })
+          stats.designatedStudents.set(memberId, { 
+            memberId, 
+            memberName, 
+            minutes: 0,
+            boatMinutes: new Map()
+          })
         }
-        stats.designatedStudents.get(memberId)!.minutes += record.duration_min || 0
+        const student = stats.designatedStudents.get(memberId)!
+        student.minutes += duration
+        student.boatMinutes.set(boatName, (student.boatMinutes.get(boatName) || 0) + duration)
       }
     })
     
@@ -342,6 +357,12 @@ export function Statistics() {
       .map(stats => ({
         ...stats,
         designatedStudents: Array.from(stats.designatedStudents.values())
+          .map(student => ({
+            ...student,
+            boatMinutes: Array.from(student.boatMinutes.entries())
+              .map(([boatName, minutes]) => ({ boatName, minutes }))
+              .sort((a, b) => b.minutes - a.minutes)
+          }))
           .sort((a, b) => b.minutes - a.minutes)
       }))
       .sort((a, b) => (b.teachingMinutes + b.drivingMinutes) - (a.teachingMinutes + a.drivingMinutes))
@@ -916,17 +937,6 @@ export function Statistics() {
                                       <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
                                         {index + 1}. {coach.coachName}
                                       </span>
-                                      {hasDesignatedStudents && (
-                                        <span style={{ 
-                                          fontSize: '11px', 
-                                          color: '#ff9800',
-                                          background: '#fff3e0',
-                                          padding: '2px 6px',
-                                          borderRadius: '4px'
-                                        }}>
-                                          ⭐ {coach.designatedStudents.length} 位指定
-                                        </span>
-                                      )}
                                     </div>
                                     <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
                                       {coach.teachingMinutes} 分 ({Math.round(coach.teachingMinutes / 60 * 10) / 10} 小時)
@@ -971,24 +981,41 @@ export function Statistics() {
                                         <div 
                                           key={student.memberId}
                                           style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
                                             padding: '8px 12px',
                                             background: '#fafafa',
                                             borderRadius: '6px'
                                           }}
                                         >
-                                          <span style={{ fontSize: '13px', color: '#333' }}>
-                                            {sIdx + 1}. {student.memberName}
-                                          </span>
-                                          <span style={{ 
-                                            fontSize: '13px', 
-                                            color: '#ff9800',
-                                            fontWeight: '600'
+                                          <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
                                           }}>
-                                            {student.minutes} 分
-                                          </span>
+                                            <span style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>
+                                              {sIdx + 1}. {student.memberName}
+                                            </span>
+                                            <span style={{ 
+                                              fontSize: '13px', 
+                                              color: '#ff9800',
+                                              fontWeight: '600'
+                                            }}>
+                                              {student.minutes} 分
+                                            </span>
+                                          </div>
+                                          {student.boatMinutes.length > 0 && (
+                                            <div style={{ 
+                                              marginTop: '4px',
+                                              fontSize: '11px',
+                                              color: '#888'
+                                            }}>
+                                              {student.boatMinutes.map((b, idx) => (
+                                                <span key={b.boatName}>
+                                                  {b.boatName}: {b.minutes}分
+                                                  {idx < student.boatMinutes.length - 1 && ', '}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          )}
                                         </div>
                                       ))}
                                     </div>
