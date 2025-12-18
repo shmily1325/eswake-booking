@@ -62,7 +62,13 @@ export function Statistics() {
     coachName: string
     teachingMinutes: number
     drivingMinutes: number
+    designatedStudents: {
+      memberId: string
+      memberName: string
+      minutes: number
+    }[]
   }[]>([])
+  const [expandedTeachingCoachId, setExpandedTeachingCoachId] = useState<string | null>(null)
   const [selectedPeriod, setSelectedPeriod] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -255,8 +261,9 @@ export function Statistics() {
     const { data: teachingData } = await supabase
       .from('booking_participants')
       .select(`
-        coach_id, duration_min,
+        coach_id, duration_min, lesson_type, member_id,
         coaches:coach_id(id, name),
+        members:member_id(id, name, nickname),
         bookings!inner(start_at)
       `)
       .eq('status', 'processed')
@@ -282,6 +289,7 @@ export function Statistics() {
       coachName: string
       teachingMinutes: number
       drivingMinutes: number
+      designatedStudents: Map<string, { memberId: string; memberName: string; minutes: number }>
     }>()
     
     teachingData?.forEach((record: any) => {
@@ -293,10 +301,24 @@ export function Statistics() {
           coachId,
           coachName: record.coaches?.name || '未知',
           teachingMinutes: 0,
-          drivingMinutes: 0
+          drivingMinutes: 0,
+          designatedStudents: new Map()
         })
       }
-      statsMap.get(coachId)!.teachingMinutes += record.duration_min || 0
+      const stats = statsMap.get(coachId)!
+      stats.teachingMinutes += record.duration_min || 0
+      
+      // 統計指定學生（只計算有指定的，且有會員資料的）
+      const isDesignated = record.lesson_type === 'designated_paid' || record.lesson_type === 'designated_free'
+      if (isDesignated && record.member_id && record.members) {
+        const memberId = record.member_id
+        const memberName = record.members.nickname || record.members.name || '未知'
+        
+        if (!stats.designatedStudents.has(memberId)) {
+          stats.designatedStudents.set(memberId, { memberId, memberName, minutes: 0 })
+        }
+        stats.designatedStudents.get(memberId)!.minutes += record.duration_min || 0
+      }
     })
     
     drivingData?.forEach((record: any) => {
@@ -308,13 +330,20 @@ export function Statistics() {
           coachId,
           coachName: record.coaches?.name || '未知',
           teachingMinutes: 0,
-          drivingMinutes: 0
+          drivingMinutes: 0,
+          designatedStudents: new Map()
         })
       }
       statsMap.get(coachId)!.drivingMinutes += record.driver_duration_min || 0
     })
     
+    // 轉換為陣列並排序
     const sorted = Array.from(statsMap.values())
+      .map(stats => ({
+        ...stats,
+        designatedStudents: Array.from(stats.designatedStudents.values())
+          .sort((a, b) => b.minutes - a.minutes)
+      }))
       .sort((a, b) => (b.teachingMinutes + b.drivingMinutes) - (a.teachingMinutes + a.drivingMinutes))
     
     setCoachStats(sorted)
@@ -841,42 +870,130 @@ export function Statistics() {
                           display: 'inline-block'
                         }}></span>
                         🎓 教學時數排行
+                        <span style={{ fontSize: '13px', color: '#999', fontWeight: '400' }}>
+                          （點擊查看指定學生）
+                        </span>
                       </h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {coachStats
                           .filter(c => c.teachingMinutes > 0)
                           .sort((a, b) => b.teachingMinutes - a.teachingMinutes)
                           .map((coach, index) => {
                             const maxTeaching = Math.max(...coachStats.map(c => c.teachingMinutes))
+                            const isExpanded = expandedTeachingCoachId === coach.coachId
+                            const hasDesignatedStudents = coach.designatedStudents.length > 0
+                            
                             return (
                               <div key={`teaching-${coach.coachId}`}>
-                                <div style={{ 
-                                  display: 'flex', 
-                                  justifyContent: 'space-between', 
-                                  marginBottom: '6px' 
-                                }}>
-                                  <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
-                                    {index + 1}. {coach.coachName}
-                                  </span>
-                                  <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
-                                    {coach.teachingMinutes} 分 ({Math.round(coach.teachingMinutes / 60 * 10) / 10} 小時)
-                                  </span>
-                                </div>
-                                <div style={{
-                                  width: '100%',
-                                  height: '24px',
-                                  background: '#e3f2fd',
-                                  borderRadius: '6px',
-                                  overflow: 'hidden'
-                                }}>
+                                {/* 教練列 */}
+                                <div
+                                  onClick={() => hasDesignatedStudents && setExpandedTeachingCoachId(isExpanded ? null : coach.coachId)}
+                                  style={{
+                                    padding: '12px',
+                                    background: isExpanded ? '#e3f2fd' : '#f8f9fa',
+                                    borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
+                                    cursor: hasDesignatedStudents ? 'pointer' : 'default',
+                                    transition: 'background 0.2s'
+                                  }}
+                                >
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'center',
+                                    marginBottom: '8px'
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      {hasDesignatedStudents && (
+                                        <span style={{ 
+                                          fontSize: '12px', 
+                                          color: isExpanded ? '#4a90e2' : '#999',
+                                          transition: 'transform 0.2s',
+                                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+                                        }}>
+                                          ▶
+                                        </span>
+                                      )}
+                                      <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
+                                        {index + 1}. {coach.coachName}
+                                      </span>
+                                      {hasDesignatedStudents && (
+                                        <span style={{ 
+                                          fontSize: '11px', 
+                                          color: '#ff9800',
+                                          background: '#fff3e0',
+                                          padding: '2px 6px',
+                                          borderRadius: '4px'
+                                        }}>
+                                          ⭐ {coach.designatedStudents.length} 位指定
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
+                                      {coach.teachingMinutes} 分 ({Math.round(coach.teachingMinutes / 60 * 10) / 10} 小時)
+                                    </span>
+                                  </div>
                                   <div style={{
-                                    width: `${(coach.teachingMinutes / maxTeaching) * 100}%`,
-                                    height: '100%',
-                                    background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
+                                    width: '100%',
+                                    height: '20px',
+                                    background: '#e3f2fd',
                                     borderRadius: '6px',
-                                    transition: 'width 0.3s'
-                                  }} />
+                                    overflow: 'hidden'
+                                  }}>
+                                    <div style={{
+                                      width: `${(coach.teachingMinutes / maxTeaching) * 100}%`,
+                                      height: '100%',
+                                      background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
+                                      borderRadius: '6px',
+                                      transition: 'width 0.3s'
+                                    }} />
+                                  </div>
                                 </div>
+                                
+                                {/* 展開的指定學生列表 */}
+                                {isExpanded && hasDesignatedStudents && (
+                                  <div style={{
+                                    background: 'white',
+                                    border: '1px solid #e3f2fd',
+                                    borderTop: 'none',
+                                    borderRadius: '0 0 8px 8px',
+                                    padding: '12px'
+                                  }}>
+                                    <div style={{ 
+                                      fontSize: '13px', 
+                                      color: '#666', 
+                                      marginBottom: '10px',
+                                      fontWeight: '500'
+                                    }}>
+                                      ⭐ 指定 {coach.coachName} 的學生：
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                      {coach.designatedStudents.map((student, sIdx) => (
+                                        <div 
+                                          key={student.memberId}
+                                          style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '8px 12px',
+                                            background: '#fafafa',
+                                            borderRadius: '6px'
+                                          }}
+                                        >
+                                          <span style={{ fontSize: '13px', color: '#333' }}>
+                                            {sIdx + 1}. {student.memberName}
+                                          </span>
+                                          <span style={{ 
+                                            fontSize: '13px', 
+                                            color: '#ff9800',
+                                            fontWeight: '600'
+                                          }}>
+                                            {student.minutes} 分
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )
                           })}
