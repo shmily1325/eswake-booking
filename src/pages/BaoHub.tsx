@@ -39,6 +39,11 @@ export function BaoHub() {
             icon: '💼',
             link: '/coach-admin'
           },
+          {
+            title: 'Dashboard',
+            icon: '📊',
+            link: '/statistics'
+          },
         ]
       },
       {
