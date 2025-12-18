@@ -90,8 +90,7 @@ export function Statistics() {
     boatName: string
     totalMinutes: number
     bookingCount: number
-    coaches: { coachName: string; count: number }[]
-    timeSlots: { slot: string; count: number }[]
+    coaches: { coachName: string; minutes: number }[]
   }[]>([])
   
   const [selectedPeriod, setSelectedPeriod] = useState(() => {
@@ -509,12 +508,12 @@ export function Statistics() {
       .gte('start_at', `${startDate}T00:00:00`)
       .lte('start_at', `${endDateStr}T23:59:59`)
     
-    // 載入教練資料
+    // 載入教練資料（含時數）
     const bookingIds = bookingData?.map(b => b.id) || []
     const { data: participantData } = await supabase
       .from('booking_participants')
       .select(`
-        booking_id, coach_id,
+        booking_id, coach_id, duration_min,
         coaches:coach_id(name)
       `)
       .in('booking_id', bookingIds.length > 0 ? bookingIds : [-1])
@@ -526,17 +525,19 @@ export function Statistics() {
       totalMinutes: number
       bookingCount: number
       coaches: Map<string, number>
-      timeSlots: Map<string, number>
     }>()
     
-    // 建立 booking -> coaches 的對應
-    const bookingCoachMap = new Map<number, string[]>()
+    // 建立 booking -> 教練時數 的對應
+    const bookingCoachMinutesMap = new Map<number, { coachName: string; minutes: number }[]>()
     participantData?.forEach((p: any) => {
       if (p.coaches?.name) {
-        if (!bookingCoachMap.has(p.booking_id)) {
-          bookingCoachMap.set(p.booking_id, [])
+        if (!bookingCoachMinutesMap.has(p.booking_id)) {
+          bookingCoachMinutesMap.set(p.booking_id, [])
         }
-        bookingCoachMap.get(p.booking_id)!.push(p.coaches.name)
+        bookingCoachMinutesMap.get(p.booking_id)!.push({
+          coachName: p.coaches.name,
+          minutes: p.duration_min || 0
+        })
       }
     })
     
@@ -552,8 +553,7 @@ export function Statistics() {
           boatName,
           totalMinutes: 0,
           bookingCount: 0,
-          coaches: new Map(),
-          timeSlots: new Map()
+          coaches: new Map()
         })
       }
       
@@ -561,18 +561,11 @@ export function Statistics() {
       stats.totalMinutes += booking.duration_min || 0
       stats.bookingCount += 1
       
-      // 統計教練
-      const coachNames = bookingCoachMap.get(booking.id) || []
-      coachNames.forEach(coachName => {
-        stats.coaches.set(coachName, (stats.coaches.get(coachName) || 0) + 1)
+      // 統計教練時數
+      const coachData = bookingCoachMinutesMap.get(booking.id) || []
+      coachData.forEach(({ coachName, minutes }) => {
+        stats.coaches.set(coachName, (stats.coaches.get(coachName) || 0) + minutes)
       })
-      
-      // 統計時段
-      const hour = new Date(booking.start_at).getHours()
-      let slot = '上午 (6-12)'
-      if (hour >= 12 && hour < 17) slot = '下午 (12-17)'
-      else if (hour >= 17) slot = '傍晚 (17+)'
-      stats.timeSlots.set(slot, (stats.timeSlots.get(slot) || 0) + 1)
     })
     
     // 轉換為陣列並排序
@@ -580,11 +573,8 @@ export function Statistics() {
       .map(boat => ({
         ...boat,
         coaches: Array.from(boat.coaches.entries())
-          .map(([coachName, count]) => ({ coachName, count }))
-          .sort((a, b) => b.count - a.count),
-        timeSlots: Array.from(boat.timeSlots.entries())
-          .map(([slot, count]) => ({ slot, count }))
-          .sort((a, b) => b.count - a.count)
+          .map(([coachName, minutes]) => ({ coachName, minutes }))
+          .sort((a, b) => b.minutes - a.minutes)
       }))
       .sort((a, b) => b.totalMinutes - a.totalMinutes)
     
@@ -1393,7 +1383,7 @@ export function Statistics() {
                                     }}
                                   >
                                     <span>{cIdx + 1}. {coach.coachName}</span>
-                                    <span style={{ color: '#4a90e2' }}>{coach.count} 次</span>
+                                    <span style={{ color: '#4a90e2' }}>{coach.minutes} 分</span>
                                   </div>
                                 ))}
                               </div>

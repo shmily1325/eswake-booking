@@ -140,8 +140,14 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   const handleEditTransaction = (tx: Transaction) => {
     setEditingTransaction(tx)
     setEditCategory(tx.category)
-    setEditAdjustType(tx.adjust_type as 'increase' | 'decrease')
-    setEditValue(tx.amount ? tx.amount.toString() : tx.minutes ? tx.minutes.toString() : '')
+    
+    // 直接從金額正負推斷調整類型（最可靠，因為 adjust_type 可能與實際金額不一致）
+    const rawValue = tx.amount || tx.minutes || 0
+    const inferredAdjustType = rawValue >= 0 ? 'increase' : 'decrease'
+    setEditAdjustType(inferredAdjustType)
+    
+    // 使用絕對值，因為 adjust_type 已經決定了增減方向
+    setEditValue(Math.abs(rawValue).toString())
     setEditDescription(tx.description)
     setEditNotes(tx.notes || '')
     setEditTransactionDate(tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : ''))
