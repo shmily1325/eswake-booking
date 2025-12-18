@@ -38,6 +38,16 @@ function parseDetails(details: string): ParsedDetails {
   const isBatchDelete = details.startsWith('批次刪除')
   
   if (isBatchEdit || isBatchDelete) {
+    // 提取筆數
+    const countMatch = details.match(/(\d+)\s*筆/)
+    if (countMatch) info.member = `${countMatch[1]}筆`
+    
+    // 提取變更內容（批次修改 X 筆預約：船隻→黑豹、教練→阿寶）
+    const changesMatch = details.match(/預約[:：]\s*(.+?)(?:\s*\(填表人|$)/)
+    if (changesMatch) {
+      info.changeSummary = changesMatch[1].trim()
+    }
+    
     const filledByMatch = details.match(/填表人[:：]\s*([^)]+)/)
     if (filledByMatch) info.filledBy = filledByMatch[1].trim()
     return info
@@ -732,6 +742,15 @@ export function AuditLog() {
                       return log.details?.replace('教練排班: ', '') || '排班調整'
                     }
                     
+                    // 批次操作：顯示筆數 + 變更內容
+                    const isBatch = log.details?.startsWith('批次修改') || log.details?.startsWith('批次刪除')
+                    if (isBatch) {
+                      const parts: string[] = []
+                      if (parsed.member) parts.push(parsed.member)  // 筆數
+                      if (parsed.changeSummary) parts.push(parsed.changeSummary)
+                      return parts.join(' · ') || (log.details?.startsWith('批次刪除') ? '刪除' : '修改')
+                    }
+                    
                     // 修改預約：顯示會員 + 變更摘要
                     if (log.action === 'update' && parsed.changeSummary) {
                       const parts: string[] = []
@@ -835,13 +854,11 @@ export function AuditLog() {
                             <span style={{
                               fontSize: '12px',
                               color: '#999',
-                              padding: '2px 6px',
+                              padding: '2px 8px',
                               background: '#f5f5f5',
                               borderRadius: '4px',
-                              maxWidth: '80px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
+                              flexShrink: 0,
                             }}>
                               {parsed.filledBy || (log.user_email?.split('@')[0]?.slice(0, 8) || '?')}
                             </span>
