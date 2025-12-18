@@ -778,22 +778,25 @@ export function StaffManagement() {
               </label>
 
               {/* 右邊：月份選擇器 */}
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  border: '2px solid #2196F3',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  background: 'white',
-                  color: '#1565c0',
-                  fontWeight: '500',
-                  minWidth: isMobile ? '100%' : '150px'
-                }}
-              />
+              <div style={{ flex: isMobile ? 1 : 'none', minWidth: isMobile ? 0 : '150px' }}>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '2px solid #2196F3',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    cursor: 'pointer',
+                    background: 'white',
+                    color: '#1565c0',
+                    fontWeight: '500',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
             </div>
 
             {/* 教練列表 */}

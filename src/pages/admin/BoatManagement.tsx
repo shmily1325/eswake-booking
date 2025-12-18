@@ -421,22 +421,25 @@ export function BoatManagement() {
                                 <span>📅</span>
                                 <span>查看維修記錄</span>
                             </div>
-                            <input
-                                type="month"
-                                value={selectedMonth}
-                                onChange={(e) => setSelectedMonth(e.target.value)}
-                                style={{
-                                    padding: '8px 12px',
-                                    border: '2px solid #2196F3',
-                                    borderRadius: '8px',
-                                    fontSize: '14px',
-                                    cursor: 'pointer',
-                                    background: 'white',
-                                    color: '#1565c0',
-                                    fontWeight: '600',
-                                    minWidth: isMobile ? '100%' : '150px'
-                                }}
-                            />
+                            <div style={{ flex: isMobile ? 1 : 'none', minWidth: isMobile ? 0 : '150px' }}>
+                                <input
+                                    type="month"
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px 12px',
+                                        border: '2px solid #2196F3',
+                                        borderRadius: '8px',
+                                        fontSize: '16px',
+                                        cursor: 'pointer',
+                                        background: 'white',
+                                        color: '#1565c0',
+                                        fontWeight: '600',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
                         </div>
                     </>
                 )}

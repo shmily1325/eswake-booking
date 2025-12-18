@@ -296,20 +296,23 @@ export function AnnouncementManagement() {
                 searchText ? a.content.toLowerCase().includes(searchText.toLowerCase()) : true
               ).length})
             </h2>
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px',
-                cursor: 'pointer',
-                minWidth: isMobile ? '100%' : '150px',
-                background: 'white'
-              }}
-            />
+            <div style={{ flex: isMobile ? 1 : 'none', minWidth: isMobile ? 0 : '150px' }}>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  background: 'white',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
           </div>
 
           {/* 搜尋和排序控制 */}

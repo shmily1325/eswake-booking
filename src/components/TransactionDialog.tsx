@@ -81,6 +81,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     borderRadius: '8px',
     fontSize: isMobile ? '16px' : '14px',
     transition: 'border-color 0.2s',
+    boxSizing: 'border-box' as const,
   }
 
   const resetForm = () => {

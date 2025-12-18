@@ -343,7 +343,7 @@ export function TomorrowReminder() {
           </label>
           {isMobile ? (
             // 手機版：徽章在右上角
-            <div style={{ position: 'relative', marginBottom: loading ? '8px' : '0' }}>
+            <div style={{ position: 'relative', marginBottom: loading ? '8px' : '0', marginTop: '10px' }}>
               <input
                 type="date"
                 value={selectedDate}
