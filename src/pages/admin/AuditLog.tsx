@@ -572,7 +572,7 @@ export function AuditLog() {
               color: bookingDateFilter ? '#e65100' : '#666',
               whiteSpace: 'nowrap',
             }}>
-              📅 預約日期：
+              預約日期：
             </span>
             <input
               type="text"
@@ -661,13 +661,13 @@ export function AuditLog() {
               color: '#666',
               marginRight: '4px',
             }}>
-              🕐 記錄時間：
+              記錄時間：
             </span>
             {[
               { key: 'today', label: '今天' },
               { key: '7days', label: '7天' },
               { key: '30days', label: '30天' },
-              { key: '90days', label: '90天' },
+              ...(!isMobile ? [{ key: '90days', label: '90天' }] : []),
             ].map(({ key, label }) => {
               const isActive = (() => {
                 const end = getLocalDateString()

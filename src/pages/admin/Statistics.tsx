@@ -981,41 +981,37 @@ export function Statistics() {
                                         <div 
                                           key={student.memberId}
                                           style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
                                             padding: '8px 12px',
                                             background: '#fafafa',
                                             borderRadius: '6px'
                                           }}
                                         >
-                                          <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center'
+                                          <span style={{ fontSize: '13px', color: '#333' }}>
+                                            {sIdx + 1}. {student.memberName}
+                                            {student.boatMinutes.length > 0 && (
+                                              <span style={{ color: '#888', fontWeight: '400' }}>
+                                                {' - '}
+                                                {student.boatMinutes.map((b, idx) => (
+                                                  <span key={b.boatName}>
+                                                    {b.boatName}: {b.minutes}分
+                                                    {idx < student.boatMinutes.length - 1 && ', '}
+                                                  </span>
+                                                ))}
+                                              </span>
+                                            )}
+                                          </span>
+                                          <span style={{ 
+                                            fontSize: '13px', 
+                                            color: '#ff9800',
+                                            fontWeight: '600',
+                                            flexShrink: 0,
+                                            marginLeft: '12px'
                                           }}>
-                                            <span style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>
-                                              {sIdx + 1}. {student.memberName}
-                                            </span>
-                                            <span style={{ 
-                                              fontSize: '13px', 
-                                              color: '#ff9800',
-                                              fontWeight: '600'
-                                            }}>
-                                              {student.minutes} 分
-                                            </span>
-                                          </div>
-                                          {student.boatMinutes.length > 0 && (
-                                            <div style={{ 
-                                              marginTop: '4px',
-                                              fontSize: '11px',
-                                              color: '#888'
-                                            }}>
-                                              {student.boatMinutes.map((b, idx) => (
-                                                <span key={b.boatName}>
-                                                  {b.boatName}: {b.minutes}分
-                                                  {idx < student.boatMinutes.length - 1 && ', '}
-                                                </span>
-                                              ))}
-                                            </div>
-                                          )}
+                                            {student.minutes} 分
+                                          </span>
                                         </div>
                                       ))}
                                     </div>
