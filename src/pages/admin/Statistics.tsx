@@ -340,12 +340,15 @@ export function Statistics() {
       const stats = statsMap.get(coachId)!
       stats.teachingMinutes += record.duration_min || 0
       
-      // 統計指定學生（只計算有指定的，且有會員資料的）
+      // 統計指定學生（計算有指定的，或彈簧床的教學）
+      const boatName = record.bookings?.boats?.name || '未知船'
       const isDesignated = record.lesson_type === 'designated_paid' || record.lesson_type === 'designated_free'
-      if (isDesignated && record.member_id && record.members) {
+      const isTrampoline = boatName.includes('彈簧床')
+      // 彈簧床特例：即使不指定也算指定（因為彈簧床一定有教練教）
+      const shouldCount = isDesignated || isTrampoline
+      if (shouldCount && record.member_id && record.members) {
         const memberId = record.member_id
         const memberName = record.members.nickname || record.members.name || '未知'
-        const boatName = record.bookings?.boats?.name || '未知船'
         const duration = record.duration_min || 0
         
         if (!stats.designatedStudents.has(memberId)) {
