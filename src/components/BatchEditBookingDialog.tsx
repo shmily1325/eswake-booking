@@ -434,10 +434,15 @@ export function BatchEditBookingDialog({
         }
       }
       
-      // 記錄 Audit Log（只記錄成功的）
-      if (successCount > 0 && user?.email) {
-        const details = `批次修改 ${successCount} 筆預約：${changes.join('、')} (填表人: ${filledBy.trim()})`
-        await logAction(user.email, 'update', 'bookings', details)
+      // 記錄 Audit Log
+      if (successCount > 0) {
+        if (user?.email) {
+          const details = `批次修改 ${successCount} 筆預約：${changes.join('、')} (填表人: ${filledBy.trim()})`
+          console.log('[批次修改] 寫入 Audit Log:', details)
+          await logAction(user.email, 'update', 'bookings', details)
+        } else {
+          console.warn('[批次修改] 無法寫入 Audit Log: user.email 為空', { user })
+        }
       }
       
       console.log('[批次修改] 結果:', { successCount, skipped: skippedItems.length, errorCount })

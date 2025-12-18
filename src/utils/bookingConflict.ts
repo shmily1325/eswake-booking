@@ -355,20 +355,32 @@ export async function prefetchConflictData(
       .or(allDates.map(d => `and(start_at.gte.${d}T00:00:00,start_at.lte.${d}T23:59:59)`).join(','))
       : Promise.resolve({ data: [] }),
     
-    // 3. 查詢所有教練的預約
-    allCoachIds.length > 0 && allDates.length > 0 ? supabase
-      .from('booking_coaches')
-      .select(`coach_id, bookings!inner(id, start_at, duration_min, contact_name)`)
-      .in('coach_id', allCoachIds)
-      .or(allDates.map(d => `bookings.and(start_at.gte.${d}T00:00:00,start_at.lte.${d}T23:59:59)`).join(','))
+    // 3. 查詢所有教練的預約（日期範圍查詢，避免 .or() 語法問題）
+    allCoachIds.length > 0 && allDates.length > 0 ? (async () => {
+      const minDate = allDates.sort()[0]
+      const maxDate = allDates.sort()[allDates.length - 1]
+      const result = await supabase
+        .from('booking_coaches')
+        .select(`coach_id, bookings!inner(id, start_at, duration_min, contact_name)`)
+        .in('coach_id', allCoachIds)
+        .gte('bookings.start_at', `${minDate}T00:00:00`)
+        .lte('bookings.start_at', `${maxDate}T23:59:59`)
+      return result
+    })()
       : Promise.resolve({ data: [] }),
     
-    // 4. 查詢所有駕駛的預約
-    allCoachIds.length > 0 && allDates.length > 0 ? supabase
-      .from('booking_drivers')
-      .select(`driver_id, bookings!inner(id, start_at, duration_min, contact_name)`)
-      .in('driver_id', allCoachIds)
-      .or(allDates.map(d => `bookings.and(start_at.gte.${d}T00:00:00,start_at.lte.${d}T23:59:59)`).join(','))
+    // 4. 查詢所有駕駛的預約（日期範圍查詢）
+    allCoachIds.length > 0 && allDates.length > 0 ? (async () => {
+      const minDate = allDates.sort()[0]
+      const maxDate = allDates.sort()[allDates.length - 1]
+      const result = await supabase
+        .from('booking_drivers')
+        .select(`driver_id, bookings!inner(id, start_at, duration_min, contact_name)`)
+        .in('driver_id', allCoachIds)
+        .gte('bookings.start_at', `${minDate}T00:00:00`)
+        .lte('bookings.start_at', `${maxDate}T23:59:59`)
+      return result
+    })()
       : Promise.resolve({ data: [] })
   ])
   

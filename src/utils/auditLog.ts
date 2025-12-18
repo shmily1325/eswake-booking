@@ -245,16 +245,19 @@ export async function logAction(
   action: 'create' | 'update' | 'delete',
   tableName: string,
   details: string
-) {
+): Promise<void> {
   try {
-    await supabase.from('audit_log').insert({
+    const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
       action,
       table_name: tableName,
       details
     })
+    if (error) {
+      console.error('審計日誌記錄失敗:', error)
+    }
   } catch (error) {
-    console.error('審計日誌記錄失敗:', error)
+    console.error('審計日誌記錄失敗 (exception):', error)
   }
 }
 
@@ -300,4 +303,3 @@ export async function logCoachAssignment(params: CoachAssignmentLogParams) {
     }
   })()
 }
-

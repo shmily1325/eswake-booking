@@ -88,6 +88,9 @@ export function CoachAdmin() {
   const [linkingReport, setLinkingReport] = useState<PendingReport | null>(null)
   const [showMemberSearchDialog, setShowMemberSearchDialog] = useState(false)
   
+  // 追蹤正在展開編輯的項目（用於暫停自動刷新）
+  const [expandedReportIds, setExpandedReportIds] = useState<Set<number>>(new Set())
+  
   // Tab 2: 已結案記錄
   const [completedReports, setCompletedReports] = useState<any[]>([])
   const [completedDriverReports, setCompletedDriverReports] = useState<any[]>([])
@@ -438,10 +441,12 @@ export function CoachAdmin() {
     }
   }, [selectedDate, activeTab, pendingViewMode])
 
-  // 自動刷新：每 30 秒重新載入列表（只在待處理 tab 且沒開對話框時）
+  // 自動刷新：每 30 秒重新載入列表（只在待處理 tab 且沒開對話框且沒有正在編輯的項目時）
   useEffect(() => {
     const interval = setInterval(() => {
-      if (activeTab === 'pending' && !showMemberSearchDialog) {
+      // 如果有項目正在展開編輯，暫停自動刷新避免資料丟失
+      const hasExpandedItems = expandedReportIds.size > 0
+      if (activeTab === 'pending' && !showMemberSearchDialog && !hasExpandedItems) {
         Promise.all([loadPendingReports(), loadNonMemberReports()]).then(() => {
           setLastRefreshTime(new Date())
         })
@@ -449,7 +454,7 @@ export function CoachAdmin() {
     }, 30000) // 30秒
     
     return () => clearInterval(interval)
-  }, [activeTab, showMemberSearchDialog, selectedDate, pendingViewMode])
+  }, [activeTab, showMemberSearchDialog, expandedReportIds, selectedDate, pendingViewMode])
 
   // ============ 資料處理 ============
 
@@ -776,12 +781,29 @@ export function CoachAdmin() {
                           key={report.id}
                           report={report}
                           onComplete={() => {
+                            // 完成後清除展開狀態
+                            setExpandedReportIds(prev => {
+                              const next = new Set(prev)
+                              next.delete(report.id)
+                              return next
+                            })
                             loadPendingReports()
                             loadNonMemberReports()
                           }}
                           submitterInfo={{
                             createdBy: getSubmitterName((report as any).created_by_email),
                             updatedBy: getSubmitterName((report as any).updated_by_email)
+                          }}
+                          onExpandChange={(reportId, isExpanded) => {
+                            setExpandedReportIds(prev => {
+                              const next = new Set(prev)
+                              if (isExpanded) {
+                                next.add(reportId)
+                              } else {
+                                next.delete(reportId)
+                              }
+                              return next
+                            })
                           }}
                         />
                       ))}

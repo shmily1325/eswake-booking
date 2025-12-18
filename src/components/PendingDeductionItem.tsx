@@ -52,9 +52,11 @@ interface Props {
     createdBy: string | null  // 原始回報者名字
     updatedBy: string | null  // 最後修改者名字
   }
+  // 當展開狀態改變時通知父組件（用於暫停自動刷新）
+  onExpandChange?: (reportId: number, isExpanded: boolean) => void
 }
 
-export function PendingDeductionItem({ report, onComplete, submitterInfo }: Props) {
+export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpandChange }: Props) {
   const user = useAuthUser()
   const toast = useToast()
   const [isExpanded, setIsExpanded] = useState(false)
@@ -346,10 +348,13 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo }: Prop
 
   // 展開/收起
   const handleToggle = () => {
-    if (!isExpanded && !memberData) {
+    const newExpanded = !isExpanded
+    if (newExpanded && !memberData) {
       loadMemberData()
     }
-    setIsExpanded(!isExpanded)
+    setIsExpanded(newExpanded)
+    // 通知父組件展開狀態改變（用於暫停自動刷新）
+    onExpandChange?.(report.id, newExpanded)
   }
 
   // 格式化時間
@@ -774,37 +779,68 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo }: Prop
               </div>
 
               {/* 扣款明細列表 */}
-              {items.map((item, index) => (
-                <DeductionItemRow
-                  key={item.id}
-                  index={index + 1}
-                  item={item}
-                  memberData={memberData}
-                  defaultMinutes={report.duration_min}
-                  commonAmounts={getCommonAmounts()}
-                  vipVoucherAmounts={getVipVoucherAmounts()}
-                  defaultDescription={generateDescription()}
-                  boatName={report.bookings.boats?.name || ''}
-                  coachPrice30min={coachPrice30min}
-                  boatData={boatData}
-                  validationErrors={validationErrors}
-                  itemIndex={index}
-                  onUpdate={(updates) => {
-                    updateItem(item.id, updates)
-                    // 清除該項目的錯誤
-                    const newErrors = { ...validationErrors }
-                    Object.keys(newErrors).forEach(key => {
-                      if (key.startsWith(`item-${index}-`)) {
-                        delete newErrors[key]
-                      }
-                    })
-                    setValidationErrors(newErrors)
-                  }}
-                  onRemove={() => removeItem(item.id)}
-                  canRemove={items.length > 1}
-                  totalItems={items.length}
-                />
-              ))}
+              {items.map((item, index) => {
+                // 計算當前項目之前的累計扣款
+                const previousDeductions: PreviousDeductions = {
+                  balance: 0,
+                  vip_voucher: 0,
+                  boat_voucher_g23: 0,
+                  boat_voucher_g21_panther: 0,
+                  designated_lesson: 0,
+                  gift_boat_hours: 0
+                }
+                
+                // 累加前面所有項目的扣款
+                for (let i = 0; i < index; i++) {
+                  const prevItem = items[i]
+                  if (prevItem.category === 'balance') {
+                    previousDeductions.balance += prevItem.amount || 0
+                  } else if (prevItem.category === 'vip_voucher') {
+                    previousDeductions.vip_voucher += prevItem.amount || 0
+                  } else if (prevItem.category === 'boat_voucher_g23') {
+                    previousDeductions.boat_voucher_g23 += prevItem.minutes || 0
+                  } else if (prevItem.category === 'boat_voucher_g21_panther') {
+                    previousDeductions.boat_voucher_g21_panther += prevItem.minutes || 0
+                  } else if (prevItem.category === 'designated_lesson') {
+                    previousDeductions.designated_lesson += prevItem.minutes || 0
+                  } else if (prevItem.category === 'gift_boat_hours') {
+                    previousDeductions.gift_boat_hours += prevItem.minutes || 0
+                  }
+                }
+                
+                return (
+                  <DeductionItemRow
+                    key={item.id}
+                    index={index + 1}
+                    item={item}
+                    memberData={memberData}
+                    defaultMinutes={report.duration_min}
+                    commonAmounts={getCommonAmounts()}
+                    vipVoucherAmounts={getVipVoucherAmounts()}
+                    defaultDescription={generateDescription()}
+                    boatName={report.bookings.boats?.name || ''}
+                    coachPrice30min={coachPrice30min}
+                    boatData={boatData}
+                    validationErrors={validationErrors}
+                    itemIndex={index}
+                    previousDeductions={previousDeductions}
+                    onUpdate={(updates) => {
+                      updateItem(item.id, updates)
+                      // 清除該項目的錯誤
+                      const newErrors = { ...validationErrors }
+                      Object.keys(newErrors).forEach(key => {
+                        if (key.startsWith(`item-${index}-`)) {
+                          delete newErrors[key]
+                        }
+                      })
+                      setValidationErrors(newErrors)
+                    }}
+                    onRemove={() => removeItem(item.id)}
+                    canRemove={items.length > 1}
+                    totalItems={items.length}
+                  />
+                )
+              })}
 
               {/* 總覽 + 操作按鈕區域（固定在底部） */}
               <div style={{
@@ -1040,6 +1076,16 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo }: Prop
   }
 
 // 單個扣款明細項目
+// 累計扣款（用於計算餘額連動）
+interface PreviousDeductions {
+  balance: number           // 儲值累計扣款金額
+  vip_voucher: number       // VIP票券累計扣款金額
+  boat_voucher_g23: number  // G23船券累計扣款分鐘
+  boat_voucher_g21_panther: number  // G21/黑豹券累計扣款分鐘
+  designated_lesson: number // 指定課累計扣款分鐘
+  gift_boat_hours: number   // 贈送時數累計扣款分鐘
+}
+
 interface DeductionItemRowProps {
   index: number
   item: DeductionItem
@@ -1053,6 +1099,7 @@ interface DeductionItemRowProps {
   boatData: { balance_price_per_hour: number | null, vip_price_per_hour: number | null } | null
   validationErrors: Record<string, string>
   itemIndex: number
+  previousDeductions: PreviousDeductions  // 前面項目的累計扣款
   onUpdate: (updates: Partial<DeductionItem>) => void
   onRemove: () => void
   canRemove: boolean
@@ -1070,6 +1117,7 @@ function DeductionItemRow({
   boatData,
   validationErrors,
   itemIndex,
+  previousDeductions,
   onUpdate, 
   onRemove,
   canRemove,
@@ -1116,16 +1164,19 @@ function DeductionItemRow({
   const currentCategory = categories.find(c => c.value === item.category)
   
 
-  // 計算餘額
+  // 計算餘額（考慮前面項目的累計扣款）
   const calculateBalance = () => {
     if (!memberData) return { before: 0, after: 0 }
     
     if (isBalance) {
-      const before = memberData.balance || 0
+      // 原始餘額減去前面項目的累計扣款 = 當前項目的起始餘額
+      const originalBalance = memberData.balance || 0
+      const before = originalBalance - previousDeductions.balance
       const after = before - (item.amount || 0)
       return { before, after }
     } else if (isVipVoucher) {
-      const before = memberData.vip_voucher_amount || 0
+      const originalBalance = memberData.vip_voucher_amount || 0
+      const before = originalBalance - previousDeductions.vip_voucher
       const after = before - (item.amount || 0)
       return { before, after }
     } else {
@@ -1136,7 +1187,10 @@ function DeductionItemRow({
         'gift_boat_hours': 'gift_boat_hours'
       }
       const field = fieldMap[item.category] || ''
-      const before = memberData[field] || 0
+      const originalBalance = memberData[field] || 0
+      // 取得對應類別的累計扣款
+      const prevDeduction = previousDeductions[item.category as keyof PreviousDeductions] || 0
+      const before = originalBalance - prevDeduction
       const after = before - (item.minutes || 0)
       return { before, after }
     }

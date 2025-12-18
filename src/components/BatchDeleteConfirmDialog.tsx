@@ -74,10 +74,15 @@ export function BatchDeleteConfirmDialog({
         }
       }
       
-      // 記錄 Audit Log
-      if (successCount > 0 && user?.email) {
-        const details = `批次刪除 ${successCount} 筆預約 (填表人: ${filledBy.trim()})`
-        logAction(user.email, 'delete', 'bookings', details)
+      // 記錄 Audit Log（批次刪除）
+      if (successCount > 0) {
+        if (user?.email) {
+          const details = `批次刪除 ${successCount} 筆預約 (填表人: ${filledBy.trim()})`
+          console.log('[批次刪除] 寫入 Audit Log:', details)
+          await logAction(user.email, 'delete', 'bookings', details)
+        } else {
+          console.warn('[批次刪除] 無法寫入 Audit Log: user.email 為空', { user })
+        }
       }
       
       if (errorCount === 0) {
