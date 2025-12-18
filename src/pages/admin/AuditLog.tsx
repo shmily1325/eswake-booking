@@ -917,12 +917,25 @@ export function AuditLog() {
                       return log.details?.replace('教練排班: ', '') || '排班調整'
                     }
                     
-                    // 批次操作：顯示筆數 + 變更內容
+                    // 批次操作：顯示筆數 + 變更內容 + 預約列表預覽
                     const isBatch = log.details?.startsWith('批次修改') || log.details?.startsWith('批次刪除')
                     if (isBatch) {
                       const parts: string[] = []
                       if (parsed.member) parts.push(parsed.member)  // 筆數
                       if (parsed.changeSummary) parts.push(parsed.changeSummary)
+                      
+                      // 顯示前 2 筆預約的簡短資訊（姓名 日期）
+                      if (parsed.bookingList && parsed.bookingList.length > 0) {
+                        const previews = parsed.bookingList.slice(0, 2).map(item => {
+                          // "Ming (04/03 08:30)" → "Ming 04/03"
+                          const match = item.match(/^(.+?)\s*\((\d{1,2}\/\d{1,2})/)
+                          return match ? `${match[1]} ${match[2]}` : item.substring(0, 15)
+                        })
+                        const previewText = previews.join(', ')
+                        const moreText = parsed.bookingList.length > 2 ? ` +${parsed.bookingList.length - 2}` : ''
+                        parts.push(`[${previewText}${moreText}]`)
+                      }
+                      
                       return parts.join(' · ') || (log.details?.startsWith('批次刪除') ? '刪除' : '修改')
                     }
                     
