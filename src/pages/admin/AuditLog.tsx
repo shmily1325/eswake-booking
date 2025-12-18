@@ -283,7 +283,7 @@ export function AuditLog() {
   
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'add' | 'edit' | 'delete'>('all')
+  const [filter, setFilter] = useState<'all' | 'add' | 'edit' | 'delete' | 'schedule'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   
@@ -457,8 +457,16 @@ export function AuditLog() {
         .limit(500)
 
       if (filter !== 'all') {
-        const actionMap = { 'add': 'create', 'edit': 'update', 'delete': 'delete' }
-        query = query.eq('action', actionMap[filter])
+        if (filter === 'schedule') {
+          // 篩選排班記錄
+          query = query.eq('table_name', 'coach_assignment')
+        } else {
+          // 篩選預約操作類型，排除排班
+          const actionMap = { 'add': 'create', 'edit': 'update', 'delete': 'delete' } as const
+          query = query
+            .eq('action', actionMap[filter])
+            .eq('table_name', 'bookings')
+        }
       }
 
       const { data, error } = await query
@@ -763,6 +771,7 @@ export function AuditLog() {
               { key: 'add', label: '新增', icon: '➕', color: '#28a745', bgColor: '#d4edda' },
               { key: 'edit', label: '修改', icon: '✏️', color: '#007bff', bgColor: '#d1ecf1' },
               { key: 'delete', label: '刪除', icon: '🗑️', color: '#dc3545', bgColor: '#f8d7da' },
+              { key: 'schedule', label: '排班', icon: '📅', color: '#6c757d', bgColor: '#e9ecef' },
             ].map(({ key, label, icon, color, bgColor }) => (
               <button
                 key={key}

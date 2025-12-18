@@ -744,7 +744,7 @@ export function Statistics() {
                       <span style={{ 
                         width: '4px', 
                         height: '20px', 
-                        background: '#9c27b0', 
+                        background: '#4a90e2', 
                         borderRadius: '2px',
                         display: 'inline-block'
                       }}></span>
@@ -766,7 +766,7 @@ export function Statistics() {
                               onClick={() => hasDetails && setExpandedMemberId(isExpanded ? null : member.memberId)}
                               style={{
                                 padding: '12px',
-                                background: isExpanded ? '#f3e5f5' : '#f8f9fa',
+                                background: isExpanded ? '#e3f2fd' : '#f8f9fa',
                                 borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
                                 cursor: hasDetails ? 'pointer' : 'default',
                                 transition: 'background 0.2s'
@@ -782,7 +782,7 @@ export function Statistics() {
                                   {hasDetails && (
                                     <span style={{ 
                                       fontSize: '12px', 
-                                      color: isExpanded ? '#9c27b0' : '#999',
+                                      color: isExpanded ? '#4a90e2' : '#999',
                                       transition: 'transform 0.2s',
                                       transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
                                     }}>
@@ -802,21 +802,21 @@ export function Statistics() {
                                     {member.bookingCount} 次
                                   </span>
                                 </div>
-                                <span style={{ color: '#9c27b0', fontSize: '14px', fontWeight: '600' }}>
+                                <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
                                   {member.totalMinutes} 分 ({Math.round(member.totalMinutes / 60 * 10) / 10} 小時)
                                 </span>
                               </div>
                               <div style={{
                                 width: '100%',
                                 height: '20px',
-                                background: '#e1bee7',
+                                background: '#e3f2fd',
                                 borderRadius: '6px',
                                 overflow: 'hidden'
                               }}>
                                 <div style={{
                                   width: `${(member.totalMinutes / maxMinutes) * 100}%`,
                                   height: '100%',
-                                  background: 'linear-gradient(90deg, #9c27b0, #7b1fa2)',
+                                  background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
                                   borderRadius: '6px',
                                   transition: 'width 0.3s'
                                 }} />
@@ -827,7 +827,7 @@ export function Statistics() {
                             {isExpanded && hasDetails && (
                               <div style={{
                                 background: 'white',
-                                border: '1px solid #e1bee7',
+                                border: '1px solid #e3f2fd',
                                 borderTop: 'none',
                                 borderRadius: '0 0 8px 8px',
                                 padding: '12px',
@@ -858,7 +858,7 @@ export function Statistics() {
                                         }}
                                       >
                                         <span>{cIdx + 1}. {coach.coachName}</span>
-                                        <span style={{ color: '#9c27b0' }}>{coach.count} 次</span>
+                                        <span style={{ color: '#4a90e2' }}>{coach.count} 次</span>
                                       </div>
                                     ))}
                                   </div>
