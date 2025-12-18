@@ -62,21 +62,21 @@ export function BatchEditBookingDialog({
   const [selectedBoatId, setSelectedBoatId] = useState<number | null>(null)
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
   const [notes, setNotes] = useState('')
-  const [durationMin, setDurationMin] = useState<number>(60)
-  const [durationInput, setDurationInput] = useState<string>('60')  // 用於輸入框顯示
+  const [durationMin, setDurationMin] = useState<number | null>(null)  // 無預設值
+  const [durationInput, setDurationInput] = useState<string>('')  // 用於輸入框顯示
   const [filledBy, setFilledBy] = useState('')
   
   
   // 載入教練和船隻列表，並重置表單
   useEffect(() => {
     if (isOpen) {
-      // 重置所有設定，避免保留上次的選擇
+      // 重置所有設定，避免保留上次的選擇（全部無預設值避免誤點）
       setFieldsToEdit(new Set())
       setSelectedBoatId(null)
       setSelectedCoaches([])
       setNotes('')
-      setDurationMin(60)  // 預設60分鐘更合理
-      setDurationInput('60')
+      setDurationMin(null)
+      setDurationInput('')
       setFilledBy(getFilledByName(user?.email))  // 自動填入對應的填表人姓名
       loadData()
     }
@@ -150,6 +150,11 @@ export function BatchEditBookingDialog({
       return
     }
     
+    if (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15)) {
+      toast.warning('請輸入有效的時長（至少 15 分鐘）')
+      return
+    }
+    
     if (!filledBy.trim()) {
       toast.warning('請輸入填表人')
       return
@@ -203,7 +208,7 @@ export function BatchEditBookingDialog({
         const dateStr = booking.start_at.split('T')[0]
         const startTime = booking.start_at.split('T')[1].substring(0, 5)
         const originalCoachIds = getOriginalCoachIds(booking)
-        const actualDuration = fieldsToEdit.has('duration') ? durationMin : booking.duration_min
+        const actualDuration: number = fieldsToEdit.has('duration') ? durationMin! : booking.duration_min
         const actualBoatId = fieldsToEdit.has('boat') && selectedBoatId ? selectedBoatId : booking.boat_id
         const actualBoatName = fieldsToEdit.has('boat') && targetBoat ? targetBoat.name : (booking.boats as any)?.name || ''
         const actualCoachIds = fieldsToEdit.has('coaches') ? selectedCoaches : originalCoachIds
@@ -244,6 +249,9 @@ export function BatchEditBookingDialog({
         duration: number
         coachIds: string[]
       }> = []
+      
+      // 追蹤成功更新的預約標籤（用於 Audit Log）
+      const successfulLabels: string[] = []
       
       // 輔助函數：使用 calculateTimeSlot 和 checkTimeSlotConflict 檢查內部衝突
       const checkInternalConflict = (
@@ -388,7 +396,7 @@ export function BatchEditBookingDialog({
             updateData.notes = notes.trim() || null
           }
           if (fieldsToEdit.has('duration')) {
-            updateData.duration_min = durationMin
+            updateData.duration_min = durationMin!
           }
           
           if (Object.keys(updateData).length > 0) {
@@ -426,6 +434,9 @@ export function BatchEditBookingDialog({
             coachIds: actualCoachIds,
           })
           
+          // 記錄成功的預約標籤（用於 Audit Log）
+          successfulLabels.push(bookingLabel)
+          
           successCount++
         } catch (err) {
           console.error(`更新預約 ${id} 失敗:`, err)
@@ -434,10 +445,14 @@ export function BatchEditBookingDialog({
         }
       }
       
-      // 記錄 Audit Log
+      // 記錄 Audit Log（包含每筆預約的詳細資訊）
       if (successCount > 0) {
         if (user?.email) {
-          const details = `批次修改 ${successCount} 筆預約：${changes.join('、')} (填表人: ${filledBy.trim()})`
+          // 格式：批次修改 3 筆：時長→90分鐘 [Ming (04/03 08:30), John (04/03 09:00), ...] (填表人: xxx)
+          const bookingList = successfulLabels.length <= 5 
+            ? successfulLabels.join(', ')
+            : `${successfulLabels.slice(0, 5).join(', ')} 等${successfulLabels.length}筆`
+          const details = `批次修改 ${successCount} 筆：${changes.join('、')} [${bookingList}] (填表人: ${filledBy.trim()})`
           console.log('[批次修改] 寫入 Audit Log:', details)
           await logAction(user.email, 'update', 'bookings', details)
         } else {
@@ -476,14 +491,14 @@ export function BatchEditBookingDialog({
     }
   }
   
-  // 重置表單
+  // 重置表單（全部無預設值避免誤點）
   const resetForm = () => {
     setFieldsToEdit(new Set())
     setSelectedBoatId(null)
     setSelectedCoaches([])
     setNotes('')
-    setDurationMin(60)
-    setDurationInput('60')
+    setDurationMin(null)
+    setDurationInput('')
     setFilledBy(getFilledByName(user?.email))  // 重置時也使用自動填入
   }
   
@@ -861,11 +876,12 @@ export function BatchEditBookingDialog({
                       }
                     }}
                     onBlur={() => {
-                      // 離開輸入框時驗證
+                      // 離開輸入框時驗證（無預設值）
                       const val = parseInt(durationInput)
                       if (isNaN(val) || val < 15) {
-                        setDurationMin(60)
-                        setDurationInput('60')
+                        // 無效時清空，不設預設值
+                        setDurationMin(null)
+                        setDurationInput('')
                       } else if (val > 480) {
                         setDurationMin(480)
                         setDurationInput('480')
@@ -952,14 +968,32 @@ export function BatchEditBookingDialog({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading || fieldsToEdit.size === 0 || !filledBy.trim()}
+            disabled={
+              loading || 
+              fieldsToEdit.size === 0 || 
+              !filledBy.trim() ||
+              (fieldsToEdit.has('boat') && !selectedBoatId) ||
+              (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15))
+            }
             style={{
               padding: '14px 28px',
               border: 'none',
               borderRadius: '8px',
-              background: (loading || fieldsToEdit.size === 0 || !filledBy.trim()) ? '#ccc' : '#28a745',
+              background: (
+                loading || 
+                fieldsToEdit.size === 0 || 
+                !filledBy.trim() ||
+                (fieldsToEdit.has('boat') && !selectedBoatId) ||
+                (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15))
+              ) ? '#ccc' : '#28a745',
               color: 'white',
-              cursor: (loading || fieldsToEdit.size === 0 || !filledBy.trim()) ? 'not-allowed' : 'pointer',
+              cursor: (
+                loading || 
+                fieldsToEdit.size === 0 || 
+                !filledBy.trim() ||
+                (fieldsToEdit.has('boat') && !selectedBoatId) ||
+                (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15))
+              ) ? 'not-allowed' : 'pointer',
               fontSize: '16px',
               fontWeight: '600',
               transition: 'all 0.15s',

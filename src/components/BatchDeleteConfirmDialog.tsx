@@ -55,8 +55,25 @@ export function BatchDeleteConfirmDialog({
     setLoading(true)
     
     try {
+      // 1️⃣ 先查詢預約詳細資訊（用於 Audit Log）
+      const { data: bookingsData } = await supabase
+        .from('bookings')
+        .select('id, start_at, members!inner(name)')
+        .in('id', bookingIds)
+      
+      // 建立 ID -> 標籤的映射
+      const bookingLabelsMap = new Map<number, string>()
+      bookingsData?.forEach(booking => {
+        const dateStr = booking.start_at.split('T')[0].slice(5).replace('-', '/') // "04/03"
+        const timeStr = booking.start_at.split('T')[1].substring(0, 5) // "08:30"
+        const name = (booking.members as any)?.name || '未知'
+        bookingLabelsMap.set(booking.id, `${name} (${dateStr} ${timeStr})`)
+      })
+      
+      // 2️⃣ 逐筆刪除
       let successCount = 0
       let errorCount = 0
+      const successfulLabels: string[] = []
       
       for (const bookingId of bookingIds) {
         try {
@@ -68,16 +85,24 @@ export function BatchDeleteConfirmDialog({
           
           if (error) throw error
           successCount++
+          
+          // 記錄成功刪除的標籤
+          const label = bookingLabelsMap.get(bookingId)
+          if (label) successfulLabels.push(label)
         } catch (err) {
           console.error(`刪除預約 ${bookingId} 失敗:`, err)
           errorCount++
         }
       }
       
-      // 記錄 Audit Log（批次刪除）
+      // 3️⃣ 記錄 Audit Log（包含每筆預約的詳細資訊）
       if (successCount > 0) {
         if (user?.email) {
-          const details = `批次刪除 ${successCount} 筆預約 (填表人: ${filledBy.trim()})`
+          // 格式：批次刪除 3 筆 [Ming (04/03 08:30), John (04/03 09:00), ...] (填表人: xxx)
+          const bookingList = successfulLabels.length <= 5 
+            ? successfulLabels.join(', ')
+            : `${successfulLabels.slice(0, 5).join(', ')} 等${successfulLabels.length}筆`
+          const details = `批次刪除 ${successCount} 筆 [${bookingList}] (填表人: ${filledBy.trim()})`
           console.log('[批次刪除] 寫入 Audit Log:', details)
           await logAction(user.email, 'delete', 'bookings', details)
         } else {

@@ -22,6 +22,8 @@ interface ParsedDetails {
   duration?: string
   filledBy?: string
   changeSummary?: string  // 修改預約的變更摘要
+  bookingDate?: string    // 預約日期 (MM/DD 格式)
+  bookingList?: string[]  // 批次操作中的預約列表
   rawText: string
 }
 
@@ -42,7 +44,7 @@ function parseDetails(details: string): ParsedDetails {
     const countMatch = details.match(/(\d+)\s*筆/)
     if (countMatch) info.member = `${countMatch[1]}筆`
     
-    // 新格式：批次修改 3 筆：時長→90分鐘 [Ming 04/03 08:30, ...] (填表人: Ming)
+    // 新格式：批次修改 3 筆：時長→90分鐘 [Ming (04/03 08:30), John (04/03 09:00)] (填表人: Ming)
     // 提取變更內容（在 筆： 和 [ 之間）
     const changesMatch = details.match(/筆[:：]\s*(.+?)(?:\s*\[|$)/)
     if (changesMatch && changesMatch[1].trim()) {
@@ -52,7 +54,15 @@ function parseDetails(details: string): ParsedDetails {
     // 提取預約列表（在 [...] 中）
     const bookingListMatch = details.match(/\[([^\]]+)\]/)
     if (bookingListMatch) {
-      info.boat = bookingListMatch[1].trim()  // 暫存在 boat 欄位顯示
+      const listStr = bookingListMatch[1].trim()
+      // 解析每筆預約：Ming (04/03 08:30), John (04/03 09:00)
+      info.bookingList = listStr.split(/,\s*/).map(s => s.trim()).filter(Boolean)
+      
+      // 提取所有日期用於搜尋
+      const dateMatches = listStr.match(/\d{1,2}\/\d{1,2}/g)
+      if (dateMatches && dateMatches.length > 0) {
+        info.bookingDate = dateMatches[0] // 使用第一個日期作為代表
+      }
     }
     
     const filledByMatch = details.match(/填表人[:：]\s*([^)]+)/)
@@ -61,7 +71,12 @@ function parseDetails(details: string): ParsedDetails {
   }
   
   const timeMatch = details.match(/(\d{4}\/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}|\d{1,2}\/\d{1,2}\s+\d{2}:\d{2})/)
-  if (timeMatch) info.time = timeMatch[1]
+  if (timeMatch) {
+    info.time = timeMatch[1]
+    // 提取預約日期 (MM/DD 格式)
+    const dateOnlyMatch = timeMatch[1].match(/(\d{1,2}\/\d{1,2})/)
+    if (dateOnlyMatch) info.bookingDate = dateOnlyMatch[1]
+  }
   
   const durationMatch = details.match(/(\d+)\s*分/)
   if (durationMatch) info.duration = `${durationMatch[1]}分`
@@ -282,6 +297,9 @@ export function AuditLog() {
   })
   
   const [selectedFilledBy, setSelectedFilledBy] = useState<string>('all')
+  
+  // 預約日期篩選（MM/DD 格式，如 "04/03"）
+  const [bookingDateFilter, setBookingDateFilter] = useState<string>('')
 
   useEffect(() => {
     fetchLogs()
@@ -317,6 +335,57 @@ export function AuditLog() {
   // 篩選邏輯
   const displayedLogs = useMemo(() => {
     let filtered = logs
+    
+    // 預約日期篩選（支援多種格式）
+    if (bookingDateFilter.trim()) {
+      const input = bookingDateFilter.trim()
+      
+      // 轉換各種格式為 MM/DD 標準格式
+      let normalizedDate = input
+      
+      // 1218 → 12/18
+      if (/^\d{4}$/.test(input)) {
+        normalizedDate = `${input.slice(0, 2)}/${input.slice(2)}`
+      }
+      // 12-18 → 12/18
+      else if (/^\d{1,2}-\d{1,2}$/.test(input)) {
+        normalizedDate = input.replace('-', '/')
+      }
+      // 2024/12/18 → 12/18
+      else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(input)) {
+        const parts = input.split('/')
+        normalizedDate = `${parts[1]}/${parts[2]}`
+      }
+      // 2024-12-18 → 12/18
+      else if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(input)) {
+        const parts = input.split('-')
+        normalizedDate = `${parts[1]}/${parts[2]}`
+      }
+      
+      // 補零：4/3 → 04/03
+      if (/^\d{1,2}\/\d{1,2}$/.test(normalizedDate)) {
+        const [m, d] = normalizedDate.split('/')
+        normalizedDate = `${m.padStart(2, '0')}/${d.padStart(2, '0')}`
+      }
+      
+      filtered = filtered.filter(log => {
+        if (log.table_name === 'coach_assignment') return false // 排班記錄不含預約日期
+        if (!log.details) return false
+        
+        const parsed = parseDetails(log.details)
+        
+        // 檢查主要日期
+        if (parsed.bookingDate && parsed.bookingDate.includes(normalizedDate)) return true
+        
+        // 檢查批次操作中的預約列表
+        if (parsed.bookingList) {
+          return parsed.bookingList.some(item => item.includes(normalizedDate))
+        }
+        
+        // 直接在原始內容搜尋（也包含原始輸入格式）
+        return log.details.includes(normalizedDate) || log.details.includes(input)
+      })
+    }
     
     if (selectedFilledBy !== 'all') {
       filtered = filtered.filter(log => {
@@ -354,7 +423,7 @@ export function AuditLog() {
     }
     
     return filtered
-  }, [logs, selectedFilledBy, searchQuery])
+  }, [logs, selectedFilledBy, searchQuery, bookingDateFilter])
 
   // 按日期分組
   const groupedLogs = useMemo(() => {
@@ -479,11 +548,72 @@ export function AuditLog() {
         marginBottom: '15px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
       }}>
+        {/* 🔥 核心功能：預約日期篩選 */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          marginBottom: '12px',
+          padding: '12px 14px',
+          background: bookingDateFilter ? '#fff8e1' : '#f8f9fa',
+          borderRadius: '8px',
+          border: bookingDateFilter ? '2px solid #ff9800' : '1px solid #e0e0e0',
+        }}>
+          <span style={{ 
+            fontSize: '14px', 
+            fontWeight: '600',
+            color: bookingDateFilter ? '#e65100' : '#666',
+            whiteSpace: 'nowrap',
+          }}>
+            📅 預約日期：
+          </span>
+          <input
+            type="text"
+            placeholder="12/18、1218、12-18 都可以"
+            value={bookingDateFilter}
+            onChange={(e) => setBookingDateFilter(e.target.value)}
+            style={{
+              flex: 1,
+              padding: '10px 14px',
+              fontSize: isMobile ? '16px' : '14px',
+              border: bookingDateFilter ? '2px solid #ff9800' : '1px solid #dee2e6',
+              borderRadius: '6px',
+              outline: 'none',
+              background: 'white',
+              maxWidth: '200px',
+            }}
+          />
+          {bookingDateFilter && (
+            <button
+              onClick={() => setBookingDateFilter('')}
+              style={{
+                padding: '8px 14px',
+                fontSize: '13px',
+                border: 'none',
+                borderRadius: '6px',
+                background: '#ff9800',
+                color: 'white',
+                cursor: 'pointer',
+                fontWeight: '500',
+              }}
+            >
+              ✕ 清除
+            </button>
+          )}
+          <span style={{ 
+            fontSize: '12px', 
+            color: '#999',
+            marginLeft: 'auto',
+          }}>
+            找特定日期的預約變更
+          </span>
+        </div>
+        
         {/* 搜尋框 */}
         <div style={{ marginBottom: '12px' }}>
           <input
             type="text"
-            placeholder="🔍 搜尋會員、日期(如04/03)、船隻、填表人..."
+            placeholder="🔍 搜尋會員、船隻、填表人..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -501,7 +631,7 @@ export function AuditLog() {
           />
         </div>
 
-        {/* 日期快選 + 自訂日期 */}
+        {/* 記錄日期範圍（這是操作發生的日期，不是預約日期）*/}
         <div style={{ 
           display: 'flex', 
           gap: '8px', 
@@ -509,6 +639,13 @@ export function AuditLog() {
           alignItems: 'center',
           marginBottom: '12px',
         }}>
+          <span style={{ 
+            fontSize: '13px', 
+            color: '#666',
+            marginRight: '4px',
+          }}>
+            🕐 記錄時間：
+          </span>
           {[
             { key: 'today', label: '今天' },
             { key: '7days', label: '7天' },
@@ -651,8 +788,23 @@ export function AuditLog() {
           color: '#666',
           padding: '0 4px',
         }}>
-          {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' ? (
-            <>找到 <strong style={{ color: '#5a5a5a' }}>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）</>
+          {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' || bookingDateFilter ? (
+            <>
+              找到 <strong style={{ color: '#5a5a5a' }}>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）
+              {bookingDateFilter && (
+                <span style={{ 
+                  marginLeft: '8px',
+                  padding: '3px 10px',
+                  background: '#fff3e0',
+                  borderRadius: '12px',
+                  fontSize: '13px',
+                  color: '#e65100',
+                  fontWeight: '500',
+                }}>
+                  📅 預約 {bookingDateFilter}
+                </span>
+              )}
+            </>
           ) : (
             <>共 <strong style={{ color: '#5a5a5a' }}>{logs.length}</strong> 筆記錄</>
           )}
@@ -678,9 +830,20 @@ export function AuditLog() {
           borderRadius: '12px',
           color: '#999',
         }}>
-          {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' 
-            ? '沒有符合的記錄' 
-            : '沒有記錄'}
+          {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' || bookingDateFilter ? (
+            <div>
+              <div style={{ marginBottom: '8px' }}>沒有符合的記錄</div>
+              {bookingDateFilter && (
+                <div style={{ fontSize: '13px', color: '#666' }}>
+                  找不到 <strong>{bookingDateFilter}</strong> 的預約變更記錄
+                  <br />
+                  <span style={{ fontSize: '12px', color: '#999' }}>
+                    💡 提示：請確認記錄時間範圍足夠長（可選 30 或 90 天）
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : '沒有記錄'}
         </div>
       ) : (
         // 時間軸列表
@@ -958,15 +1121,24 @@ export function AuditLog() {
                                   </button>
                                 )}
                                 {parsed.time && (
-                                  <span style={{
-                                    padding: '5px 10px',
-                                    fontSize: '12px',
-                                    borderRadius: '4px',
-                                    background: '#e8f5e9',
-                                    color: '#2e7d32',
-                                  }}>
+                                  <button
+                                    onClick={(e) => { 
+                                      e.stopPropagation()
+                                      if (parsed.bookingDate) setBookingDateFilter(parsed.bookingDate)
+                                    }}
+                                    style={{
+                                      padding: '5px 10px',
+                                      fontSize: '12px',
+                                      borderRadius: '4px',
+                                      background: '#e8f5e9',
+                                      color: '#2e7d32',
+                                      border: 'none',
+                                      cursor: parsed.bookingDate ? 'pointer' : 'default',
+                                    }}
+                                    title={parsed.bookingDate ? `點擊篩選 ${parsed.bookingDate} 的預約` : undefined}
+                                  >
                                     🕐 {parsed.time}
-                                  </span>
+                                  </button>
                                 )}
                                 {parsed.duration && (
                                   <span style={{
@@ -979,6 +1151,70 @@ export function AuditLog() {
                                     ⏱️ {parsed.duration}
                                   </span>
                                 )}
+                              </div>
+                            )}
+
+                            {/* 批次操作：顯示預約列表 */}
+                            {parsed.bookingList && parsed.bookingList.length > 0 && (
+                              <div style={{
+                                marginTop: '12px',
+                                marginBottom: '12px',
+                                padding: '12px',
+                                background: '#f8f9fa',
+                                borderRadius: '8px',
+                                border: '1px solid #e0e0e0',
+                              }}>
+                                <div style={{ 
+                                  fontSize: '12px', 
+                                  color: '#666', 
+                                  marginBottom: '8px',
+                                  fontWeight: '600',
+                                }}>
+                                  📋 涉及的預約（{parsed.bookingList.length} 筆）：
+                                </div>
+                                <div style={{ 
+                                  display: 'flex', 
+                                  flexWrap: 'wrap', 
+                                  gap: '6px',
+                                }}>
+                                  {parsed.bookingList.map((item, idx) => {
+                                    // 解析 "Ming (04/03 08:30)" 格式
+                                    const match = item.match(/^(.+?)\s*\((\d{1,2}\/\d{1,2})\s+(\d{2}:\d{2})\)/)
+                                    const name = match ? match[1].trim() : item
+                                    const date = match ? match[2] : ''
+                                    const time = match ? match[3] : ''
+                                    
+                                    return (
+                                      <button
+                                        key={idx}
+                                        onClick={(e) => { 
+                                          e.stopPropagation()
+                                          if (date) setBookingDateFilter(date)
+                                        }}
+                                        style={{
+                                          padding: '4px 10px',
+                                          fontSize: '12px',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          background: '#fff3e0',
+                                          color: '#e65100',
+                                          cursor: date ? 'pointer' : 'default',
+                                          display: 'flex',
+                                          gap: '4px',
+                                          alignItems: 'center',
+                                        }}
+                                        title={date ? `點擊篩選 ${date} 的預約` : undefined}
+                                      >
+                                        <span style={{ fontWeight: '500' }}>{name}</span>
+                                        {date && (
+                                          <span style={{ color: '#ff9800', fontSize: '11px' }}>
+                                            {date} {time}
+                                          </span>
+                                        )}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
                               </div>
                             )}
 
