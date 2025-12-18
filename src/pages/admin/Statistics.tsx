@@ -1028,7 +1028,7 @@ export function Statistics() {
                                     {member.totalMinutes} 分
                                   </span>
                                   <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
-                                    指定 {member.designatedMinutes}分 / 不指定 {member.undesignatedMinutes}分
+                                    指定 {Math.round(member.designatedMinutes / 60 * 10) / 10}h / 不指定 {Math.round(member.undesignatedMinutes / 60 * 10) / 10}h
                                   </div>
                                 </div>
                               </div>
