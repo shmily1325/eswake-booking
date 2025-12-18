@@ -389,7 +389,8 @@ export function AuditLog() {
     
     if (selectedFilledBy !== 'all') {
       filtered = filtered.filter(log => {
-        if (log.table_name === 'coach_assignment') return true
+        // 排班記錄沒有填表人，選擇特定填表人時應過濾掉
+        if (log.table_name === 'coach_assignment') return false
         
         if (!log.details) {
           return selectedFilledBy === '（無填表人）'
