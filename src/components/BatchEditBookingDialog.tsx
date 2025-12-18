@@ -62,8 +62,8 @@ export function BatchEditBookingDialog({
   const [selectedBoatId, setSelectedBoatId] = useState<number | null>(null)
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
   const [notes, setNotes] = useState('')
-  const [durationMin, setDurationMin] = useState<number | null>(null)  // null = 未選擇
-  const [durationInput, setDurationInput] = useState<string>('')  // 用於輸入框顯示
+  const [durationMin, setDurationMin] = useState<number>(60)
+  const [durationInput, setDurationInput] = useState<string>('60')  // 用於輸入框顯示
   const [filledBy, setFilledBy] = useState('')
   
   
@@ -75,8 +75,8 @@ export function BatchEditBookingDialog({
       setSelectedBoatId(null)
       setSelectedCoaches([])
       setNotes('')
-      setDurationMin(null)  // 不預設，避免誤改
-      setDurationInput('')
+      setDurationMin(60)  // 預設60分鐘更合理
+      setDurationInput('60')
       setFilledBy(getFilledByName(user?.email))  // 自動填入對應的填表人姓名
       loadData()
     }
@@ -150,11 +150,6 @@ export function BatchEditBookingDialog({
       return
     }
     
-    if (fieldsToEdit.has('duration') && !durationMin) {
-      toast.warning('請選擇要更改的時長')
-      return
-    }
-    
     if (!filledBy.trim()) {
       toast.warning('請輸入填表人')
       return
@@ -208,7 +203,7 @@ export function BatchEditBookingDialog({
         const dateStr = booking.start_at.split('T')[0]
         const startTime = booking.start_at.split('T')[1].substring(0, 5)
         const originalCoachIds = getOriginalCoachIds(booking)
-        const actualDuration = fieldsToEdit.has('duration') && durationMin ? durationMin : booking.duration_min
+        const actualDuration = fieldsToEdit.has('duration') ? durationMin : booking.duration_min
         const actualBoatId = fieldsToEdit.has('boat') && selectedBoatId ? selectedBoatId : booking.boat_id
         const actualBoatName = fieldsToEdit.has('boat') && targetBoat ? targetBoat.name : (booking.boats as any)?.name || ''
         const actualCoachIds = fieldsToEdit.has('coaches') ? selectedCoaches : originalCoachIds
@@ -487,8 +482,8 @@ export function BatchEditBookingDialog({
     setSelectedBoatId(null)
     setSelectedCoaches([])
     setNotes('')
-    setDurationMin(null)
-    setDurationInput('')
+    setDurationMin(60)
+    setDurationInput('60')
     setFilledBy(getFilledByName(user?.email))  // 重置時也使用自動填入
   }
   

@@ -42,10 +42,17 @@ function parseDetails(details: string): ParsedDetails {
     const countMatch = details.match(/(\d+)\s*筆/)
     if (countMatch) info.member = `${countMatch[1]}筆`
     
-    // 提取變更內容（批次修改 X 筆預約：船隻→黑豹、教練→阿寶）
-    const changesMatch = details.match(/預約[:：]\s*(.+?)(?:\s*\(填表人|$)/)
-    if (changesMatch) {
+    // 新格式：批次修改 3 筆：時長→90分鐘 [Ming 04/03 08:30, ...] (填表人: Ming)
+    // 提取變更內容（在 筆： 和 [ 之間）
+    const changesMatch = details.match(/筆[:：]\s*(.+?)(?:\s*\[|$)/)
+    if (changesMatch && changesMatch[1].trim()) {
       info.changeSummary = changesMatch[1].trim()
+    }
+    
+    // 提取預約列表（在 [...] 中）
+    const bookingListMatch = details.match(/\[([^\]]+)\]/)
+    if (bookingListMatch) {
+      info.boat = bookingListMatch[1].trim()  // 暫存在 boat 欄位顯示
     }
     
     const filledByMatch = details.match(/填表人[:：]\s*([^)]+)/)
@@ -329,6 +336,7 @@ export function AuditLog() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(log => {
+        // 搜尋原始 details（包含日期、時間、會員名等）
         const detailsMatch = log.details && log.details.toLowerCase().includes(query)
         const emailMatch = log.user_email && log.user_email.toLowerCase().includes(query)
         
@@ -336,8 +344,12 @@ export function AuditLog() {
         
         const parsed = parseDetails(log.details)
         const filledByMatch = parsed.filledBy && parsed.filledBy.toLowerCase().includes(query)
+        const memberMatch = parsed.member && parsed.member.toLowerCase().includes(query)
+        const boatMatch = parsed.boat && parsed.boat.toLowerCase().includes(query)
+        const timeMatch = parsed.time && parsed.time.toLowerCase().includes(query)
+        const coachMatch = parsed.coach && parsed.coach.toLowerCase().includes(query)
         
-        return detailsMatch || emailMatch || filledByMatch
+        return detailsMatch || emailMatch || filledByMatch || memberMatch || boatMatch || timeMatch || coachMatch
       })
     }
     
@@ -471,7 +483,7 @@ export function AuditLog() {
         <div style={{ marginBottom: '12px' }}>
           <input
             type="text"
-            placeholder="🔍 搜尋會員、船隻、填表人..."
+            placeholder="🔍 搜尋會員、日期(如04/03)、船隻、填表人..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -751,15 +763,18 @@ export function AuditLog() {
                       return parts.join(' · ') || (log.details?.startsWith('批次刪除') ? '刪除' : '修改')
                     }
                     
-                    // 修改預約：顯示會員 + 變更摘要
+                    // 修改預約：顯示預約時間 + 會員 + 變更摘要
                     if (log.action === 'update' && parsed.changeSummary) {
                       const parts: string[] = []
+                      if (parsed.time) parts.push(parsed.time)  // 預約日期時間
                       if (parsed.member) parts.push(parsed.member)
                       parts.push(`改${parsed.changeSummary}`)
                       return parts.join(' · ')
                     }
                     
+                    // 一般預約：顯示預約時間 + 船隻 + 會員
                     const parts: string[] = []
+                    if (parsed.time) parts.push(parsed.time)  // 預約日期時間
                     if (parsed.boat) parts.push(parsed.boat)
                     if (parsed.member) parts.push(parsed.member)
                     if (parsed.coach) parts.push(parsed.coach + '教練')
