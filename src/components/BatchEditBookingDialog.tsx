@@ -208,7 +208,7 @@ export function BatchEditBookingDialog({
         const dateStr = booking.start_at.split('T')[0]
         const startTime = booking.start_at.split('T')[1].substring(0, 5)
         const originalCoachIds = getOriginalCoachIds(booking)
-        const actualDuration = fieldsToEdit.has('duration') ? durationMin : booking.duration_min
+        const actualDuration = fieldsToEdit.has('duration') && durationMin ? durationMin : booking.duration_min
         const actualBoatId = fieldsToEdit.has('boat') && selectedBoatId ? selectedBoatId : booking.boat_id
         const actualBoatName = fieldsToEdit.has('boat') && targetBoat ? targetBoat.name : (booking.boats as any)?.name || ''
         const actualCoachIds = fieldsToEdit.has('coaches') ? selectedCoaches : originalCoachIds
