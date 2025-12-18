@@ -501,12 +501,21 @@ export function Statistics() {
       .from('bookings')
       .select(`
         id, start_at, boat_id, duration_min,
-        boats:boat_id(id, name),
-        booking_participants(coach_id, coaches:coach_id(name))
+        boats:boat_id(id, name)
       `)
       .eq('is_deleted', false)
       .gte('start_at', `${startDate}T00:00:00`)
       .lte('start_at', `${endDateStr}T23:59:59`)
+    
+    // 載入教練資料
+    const bookingIds = bookingData?.map(b => b.id) || []
+    const { data: participantData } = await supabase
+      .from('booking_participants')
+      .select(`
+        booking_id, coach_id,
+        coaches:coach_id(name)
+      `)
+      .in('booking_id', bookingIds.length > 0 ? bookingIds : [-1])
     
     // 整理數據
     const boatMap = new Map<string, {
@@ -517,6 +526,17 @@ export function Statistics() {
       coaches: Map<string, number>
       timeSlots: Map<string, number>
     }>()
+    
+    // 建立 booking -> coaches 的對應
+    const bookingCoachMap = new Map<number, string[]>()
+    participantData?.forEach((p: any) => {
+      if (p.coaches?.name) {
+        if (!bookingCoachMap.has(p.booking_id)) {
+          bookingCoachMap.set(p.booking_id, [])
+        }
+        bookingCoachMap.get(p.booking_id)!.push(p.coaches.name)
+      }
+    })
     
     bookingData?.forEach((booking: any) => {
       const boatId = booking.boat_id
@@ -540,11 +560,9 @@ export function Statistics() {
       stats.bookingCount += 1
       
       // 統計教練
-      booking.booking_participants?.forEach((p: any) => {
-        if (p.coaches?.name) {
-          const coachName = p.coaches.name
-          stats.coaches.set(coachName, (stats.coaches.get(coachName) || 0) + 1)
-        }
+      const coachNames = bookingCoachMap.get(booking.id) || []
+      coachNames.forEach(coachName => {
+        stats.coaches.set(coachName, (stats.coaches.get(coachName) || 0) + 1)
       })
       
       // 統計時段
@@ -603,7 +621,7 @@ export function Statistics() {
         {/* Tab 切換 */}
         <div style={{
           display: 'flex',
-          gap: '12px',
+          gap: isMobile ? '8px' : '12px',
           marginBottom: '24px',
           flexWrap: 'wrap'
         }}>
@@ -611,31 +629,31 @@ export function Statistics() {
             onClick={() => setActiveTab('trend')}
             style={tabStyle(activeTab === 'trend')}
           >
-            📈 預約趨勢
+            {isMobile ? '趨勢' : '📈 預約趨勢'}
           </button>
           <button
             onClick={() => setActiveTab('coach')}
             style={tabStyle(activeTab === 'coach')}
           >
-            🎓 教練時數
+            {isMobile ? '教練' : '🎓 教練時數'}
           </button>
           <button
             onClick={() => setActiveTab('member')}
             style={tabStyle(activeTab === 'member')}
           >
-            👤 會員統計
+            {isMobile ? '會員' : '👤 會員統計'}
           </button>
           <button
             onClick={() => setActiveTab('boat')}
             style={tabStyle(activeTab === 'boat')}
           >
-            🚤 船隻統計
+            {isMobile ? '船隻' : '🚤 船隻統計'}
           </button>
           <button
             onClick={() => setActiveTab('future')}
             style={tabStyle(activeTab === 'future')}
           >
-            📅 未來預約
+            {isMobile ? '未來' : '📅 未來預約'}
           </button>
         </div>
 
@@ -961,7 +979,7 @@ export function Statistics() {
                                       marginBottom: '8px',
                                       fontWeight: '500'
                                     }}>
-                                      🎓 常用教練
+                                      🎓 教練
                                     </div>
                                     {member.coaches.map((coach, cIdx) => (
                                       <div 
@@ -990,7 +1008,7 @@ export function Statistics() {
                                       marginBottom: '8px',
                                       fontWeight: '500'
                                     }}>
-                                      🚤 常用船
+                                      🚤 船
                                     </div>
                                     {member.boats.map((boat, bIdx) => (
                                       <div 
