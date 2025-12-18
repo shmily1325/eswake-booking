@@ -4,7 +4,7 @@ import { useAuthUser } from '../../contexts/AuthContext'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { getCardStyle } from '../../styles/designSystem'
+import { getCardStyle, designSystem } from '../../styles/designSystem'
 import { getLocalDateString } from '../../utils/date'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -841,48 +841,147 @@ export function Statistics() {
             {/* Tab: 會員統計 */}
             {activeTab === 'member' && (
               <>
-                {/* 月份選擇 */}
+                {/* 月份選擇 - 參考排班頁面的佈局 */}
                 <div style={{
-                  ...getCardStyle(isMobile),
-                  marginBottom: '24px'
+                  backgroundColor: 'white',
+                  padding: designSystem.spacing.sm,
+                  borderRadius: designSystem.borderRadius.lg,
+                  boxShadow: designSystem.shadows.sm,
+                  marginBottom: designSystem.spacing.md
                 }}>
-                  <label style={{ fontWeight: '500', marginRight: '12px' }}>選擇月份：</label>
-                  <input
-                    type="month"
-                    value={selectedPeriod}
-                    onChange={(e) => setSelectedPeriod(e.target.value)}
-                    style={{
-                      padding: '12px 16px',
-                      fontSize: '16px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      width: isMobile ? '100%' : '200px'
-                    }}
-                  />
+                  <div style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: designSystem.spacing.sm
+                  }}>
+                    {/* 向前箭頭 */}
+                    <button
+                      onClick={() => {
+                        const [y, m] = selectedPeriod.split('-').map(Number)
+                        const newDate = new Date(y, m - 2, 1)
+                        setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${designSystem.colors.border.main}`,
+                        borderRadius: designSystem.borderRadius.md,
+                        width: '44px',
+                        height: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        color: designSystem.colors.text.primary,
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      ←
+                    </button>
+                    
+                    {/* 月份選擇器 */}
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        type="month"
+                        value={selectedPeriod}
+                        onChange={(e) => setSelectedPeriod(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '44px',
+                          padding: '0 12px',
+                          borderRadius: designSystem.borderRadius.md,
+                          border: `1px solid ${designSystem.colors.border.main}`,
+                          fontSize: '16px',
+                          textAlign: 'center',
+                          backgroundColor: '#f8f9fa',
+                          color: designSystem.colors.text.primary,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                    
+                    {/* 向後箭頭 */}
+                    <button
+                      onClick={() => {
+                        const [y, m] = selectedPeriod.split('-').map(Number)
+                        const newDate = new Date(y, m, 1)
+                        setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${designSystem.colors.border.main}`,
+                        borderRadius: designSystem.borderRadius.md,
+                        width: '44px',
+                        height: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        color: designSystem.colors.text.primary,
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      →
+                    </button>
+
+                    {/* 本月按鈕 */}
+                    <button
+                      onClick={() => {
+                        const now = new Date()
+                        setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
+                      }}
+                      style={{
+                        background: designSystem.colors.secondary[100],
+                        border: `1px solid ${designSystem.colors.secondary[300]}`,
+                        borderRadius: designSystem.borderRadius.md,
+                        height: '44px',
+                        padding: '0 12px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: designSystem.colors.text.secondary,
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      本月
+                    </button>
+                  </div>
                 </div>
 
                 {memberStats.length > 0 ? (
                   <div style={{
-                    ...getCardStyle(isMobile)
+                    ...getCardStyle(isMobile),
+                    padding: isMobile ? '14px' : '20px'
                   }}>
                     <h3 style={{ 
-                      margin: '0 0 20px 0', 
-                      fontSize: '17px', 
+                      margin: '0 0 16px 0', 
+                      fontSize: isMobile ? '15px' : '17px', 
                       fontWeight: '700',
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
+                      alignItems: isMobile ? 'flex-start' : 'center',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      gap: isMobile ? '4px' : '8px'
                     }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ 
+                          width: '4px', 
+                          height: '20px', 
+                          background: '#4a90e2', 
+                          borderRadius: '2px',
+                          display: 'inline-block'
+                        }}></span>
+                        👤 會員時數排行
+                      </div>
                       <span style={{ 
-                        width: '4px', 
-                        height: '20px', 
-                        background: '#4a90e2', 
-                        borderRadius: '2px',
-                        display: 'inline-block'
-                      }}></span>
-                      👤 會員時數排行
-                      <span style={{ fontSize: '13px', color: '#999', fontWeight: '400' }}>
-                        （點擊查看常用教練/船）
+                        fontSize: isMobile ? '11px' : '13px', 
+                        color: '#999', 
+                        fontWeight: '400',
+                        marginLeft: isMobile ? '12px' : '0'
+                      }}>
+                        點擊查看常用教練/船
                       </span>
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1052,55 +1151,154 @@ export function Statistics() {
             {/* Tab: 船隻統計 */}
             {activeTab === 'boat' && (
               <>
-                {/* 月份選擇 */}
+                {/* 月份選擇 - 參考排班頁面的佈局 */}
                 <div style={{
-                  ...getCardStyle(isMobile),
-                  marginBottom: '24px'
+                  backgroundColor: 'white',
+                  padding: designSystem.spacing.sm,
+                  borderRadius: designSystem.borderRadius.lg,
+                  boxShadow: designSystem.shadows.sm,
+                  marginBottom: designSystem.spacing.md
                 }}>
-                  <label style={{ fontWeight: '500', marginRight: '12px' }}>選擇月份：</label>
-                  <input
-                    type="month"
-                    value={selectedPeriod}
-                    onChange={(e) => setSelectedPeriod(e.target.value)}
-                    style={{
-                      padding: '12px 16px',
-                      fontSize: '16px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      width: isMobile ? '100%' : '200px'
-                    }}
-                  />
+                  <div style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: designSystem.spacing.sm
+                  }}>
+                    {/* 向前箭頭 */}
+                    <button
+                      onClick={() => {
+                        const [y, m] = selectedPeriod.split('-').map(Number)
+                        const newDate = new Date(y, m - 2, 1)
+                        setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${designSystem.colors.border.main}`,
+                        borderRadius: designSystem.borderRadius.md,
+                        width: '44px',
+                        height: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        color: designSystem.colors.text.primary,
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      ←
+                    </button>
+                    
+                    {/* 月份選擇器 */}
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        type="month"
+                        value={selectedPeriod}
+                        onChange={(e) => setSelectedPeriod(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '44px',
+                          padding: '0 12px',
+                          borderRadius: designSystem.borderRadius.md,
+                          border: `1px solid ${designSystem.colors.border.main}`,
+                          fontSize: '16px',
+                          textAlign: 'center',
+                          backgroundColor: '#f8f9fa',
+                          color: designSystem.colors.text.primary,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                    
+                    {/* 向後箭頭 */}
+                    <button
+                      onClick={() => {
+                        const [y, m] = selectedPeriod.split('-').map(Number)
+                        const newDate = new Date(y, m, 1)
+                        setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${designSystem.colors.border.main}`,
+                        borderRadius: designSystem.borderRadius.md,
+                        width: '44px',
+                        height: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        color: designSystem.colors.text.primary,
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      →
+                    </button>
+
+                    {/* 本月按鈕 */}
+                    <button
+                      onClick={() => {
+                        const now = new Date()
+                        setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
+                      }}
+                      style={{
+                        background: designSystem.colors.secondary[100],
+                        border: `1px solid ${designSystem.colors.secondary[300]}`,
+                        borderRadius: designSystem.borderRadius.md,
+                        height: '44px',
+                        padding: '0 12px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: designSystem.colors.text.secondary,
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      本月
+                    </button>
+                  </div>
                 </div>
 
                 {boatStats.length > 0 ? (
                   <div style={{
-                    ...getCardStyle(isMobile)
+                    ...getCardStyle(isMobile),
+                    padding: isMobile ? '14px' : '20px'
                   }}>
                     <h3 style={{ 
-                      margin: '0 0 20px 0', 
-                      fontSize: '17px', 
+                      margin: '0 0 16px 0', 
+                      fontSize: isMobile ? '15px' : '17px', 
                       fontWeight: '700',
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
+                      alignItems: isMobile ? 'flex-start' : 'center',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      gap: isMobile ? '4px' : '8px'
                     }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ 
+                          width: '4px', 
+                          height: '20px', 
+                          background: '#50c878', 
+                          borderRadius: '2px',
+                          display: 'inline-block'
+                        }}></span>
+                        🚤 船隻使用排行
+                      </div>
                       <span style={{ 
-                        width: '4px', 
-                        height: '20px', 
-                        background: '#50c878', 
-                        borderRadius: '2px',
-                        display: 'inline-block'
-                      }}></span>
-                      🚤 船隻使用排行
-                      <span style={{ fontSize: '13px', color: '#999', fontWeight: '400' }}>
-                        （點擊查看詳細）
+                        fontSize: isMobile ? '11px' : '13px', 
+                        color: '#999', 
+                        fontWeight: '400',
+                        marginLeft: isMobile ? '12px' : '0'
+                      }}>
+                        點擊查看詳細
                       </span>
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {boatStats.slice(0, 10).map((boat, index) => {
                         const maxMinutes = Math.max(...boatStats.slice(0, 10).map(b => b.totalMinutes))
                         const isExpanded = expandedMemberId === boat.boatId // 復用 expandedMemberId
-                        const hasDetails = boat.coaches.length > 0 || boat.timeSlots.length > 0
+                        const hasDetails = boat.coaches.length > 0
                         
                         return (
                           <div key={boat.boatId}>
@@ -1109,7 +1307,7 @@ export function Statistics() {
                               onClick={() => hasDetails && setExpandedMemberId(isExpanded ? null : boat.boatId)}
                               style={{
                                 padding: '12px',
-                                background: isExpanded ? '#e8f5e9' : '#f8f9fa',
+                                background: isExpanded ? '#e3f2fd' : '#f8f9fa',
                                 borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
                                 cursor: hasDetails ? 'pointer' : 'default',
                                 transition: 'background 0.2s'
@@ -1125,7 +1323,7 @@ export function Statistics() {
                                   {hasDetails && (
                                     <span style={{ 
                                       fontSize: '12px', 
-                                      color: isExpanded ? '#50c878' : '#999',
+                                      color: isExpanded ? '#4a90e2' : '#999',
                                       transition: 'transform 0.2s',
                                       transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
                                     }}>
@@ -1145,21 +1343,21 @@ export function Statistics() {
                                     {boat.bookingCount} 趟
                                   </span>
                                 </div>
-                                <span style={{ color: '#50c878', fontSize: '14px', fontWeight: '600' }}>
+                                <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
                                   {boat.totalMinutes} 分 ({Math.round(boat.totalMinutes / 60 * 10) / 10} 小時)
                                 </span>
                               </div>
                               <div style={{
                                 width: '100%',
                                 height: '20px',
-                                background: '#e8f5e9',
+                                background: '#e3f2fd',
                                 borderRadius: '6px',
                                 overflow: 'hidden'
                               }}>
                                 <div style={{
                                   width: `${(boat.totalMinutes / maxMinutes) * 100}%`,
                                   height: '100%',
-                                  background: 'linear-gradient(90deg, #50c878, #2e7d32)',
+                                  background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
                                   borderRadius: '6px',
                                   transition: 'width 0.3s'
                                 }} />
@@ -1170,71 +1368,34 @@ export function Statistics() {
                             {isExpanded && hasDetails && (
                               <div style={{
                                 background: 'white',
-                                border: '1px solid #e8f5e9',
+                                border: '1px solid #e3f2fd',
                                 borderTop: 'none',
                                 borderRadius: '0 0 8px 8px',
-                                padding: '12px',
-                                display: 'flex',
-                                gap: '24px',
-                                flexWrap: 'wrap'
+                                padding: '12px'
                               }}>
-                                {/* 常用教練 */}
-                                {boat.coaches.length > 0 && (
-                                  <div style={{ flex: 1, minWidth: '150px' }}>
-                                    <div style={{ 
-                                      fontSize: '13px', 
-                                      color: '#666', 
-                                      marginBottom: '8px',
-                                      fontWeight: '500'
-                                    }}>
-                                      🎓 駕駛教練
-                                    </div>
-                                    {boat.coaches.slice(0, 5).map((coach, cIdx) => (
-                                      <div 
-                                        key={coach.coachName}
-                                        style={{
-                                          display: 'flex',
-                                          justifyContent: 'space-between',
-                                          padding: '4px 0',
-                                          fontSize: '13px',
-                                          color: '#333'
-                                        }}
-                                      >
-                                        <span>{cIdx + 1}. {coach.coachName}</span>
-                                        <span style={{ color: '#50c878' }}>{coach.count} 次</span>
-                                      </div>
-                                    ))}
+                                <div style={{ 
+                                  fontSize: '13px', 
+                                  color: '#666', 
+                                  marginBottom: '8px',
+                                  fontWeight: '500'
+                                }}>
+                                  🎓 教練
+                                </div>
+                                {boat.coaches.slice(0, 5).map((coach, cIdx) => (
+                                  <div 
+                                    key={coach.coachName}
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      padding: '4px 0',
+                                      fontSize: '13px',
+                                      color: '#333'
+                                    }}
+                                  >
+                                    <span>{cIdx + 1}. {coach.coachName}</span>
+                                    <span style={{ color: '#4a90e2' }}>{coach.count} 次</span>
                                   </div>
-                                )}
-                                
-                                {/* 時段分佈 */}
-                                {boat.timeSlots.length > 0 && (
-                                  <div style={{ flex: 1, minWidth: '150px' }}>
-                                    <div style={{ 
-                                      fontSize: '13px', 
-                                      color: '#666', 
-                                      marginBottom: '8px',
-                                      fontWeight: '500'
-                                    }}>
-                                      ⏰ 時段分佈
-                                    </div>
-                                    {boat.timeSlots.map((ts) => (
-                                      <div 
-                                        key={ts.slot}
-                                        style={{
-                                          display: 'flex',
-                                          justifyContent: 'space-between',
-                                          padding: '4px 0',
-                                          fontSize: '13px',
-                                          color: '#333'
-                                        }}
-                                      >
-                                        <span>{ts.slot}</span>
-                                        <span style={{ color: '#ff9800' }}>{ts.count} 趟</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
+                                ))}
                               </div>
                             )}
                           </div>
@@ -1366,25 +1527,36 @@ export function Statistics() {
                 </div>
 
                 {/* 教練未來預約列表 */}
-                <div style={getCardStyle(isMobile)}>
+                <div style={{
+                  ...getCardStyle(isMobile),
+                  padding: isMobile ? '14px' : '20px'
+                }}>
                   <h3 style={{ 
-                    margin: '0 0 20px 0', 
-                    fontSize: '17px', 
+                    margin: '0 0 16px 0', 
+                    fontSize: isMobile ? '15px' : '17px', 
                     fontWeight: '700',
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: isMobile ? '4px' : '8px'
                   }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ 
+                        width: '4px', 
+                        height: '20px', 
+                        background: '#4a90e2', 
+                        borderRadius: '2px',
+                        display: 'inline-block'
+                      }}></span>
+                      各教練未來預約
+                    </div>
                     <span style={{ 
-                      width: '4px', 
-                      height: '20px', 
-                      background: '#4a90e2', 
-                      borderRadius: '2px',
-                      display: 'inline-block'
-                    }}></span>
-                    各教練未來預約
-                    <span style={{ fontSize: '13px', color: '#999', fontWeight: '400' }}>
-                      （點擊展開預約列表）
+                      fontSize: isMobile ? '11px' : '13px', 
+                      color: '#999', 
+                      fontWeight: '400',
+                      marginLeft: isMobile ? '12px' : '0'
+                    }}>
+                      點擊展開預約列表
                     </span>
                   </h3>
                   {futureBookings.length > 0 ? (
@@ -1491,31 +1663,114 @@ export function Statistics() {
             {/* Tab 3: 教練時數 */}
             {activeTab === 'coach' && (
               <>
-                {/* 月份選擇 */}
+                {/* 月份選擇 - 參考排班頁面的佈局 */}
                 <div style={{
-                  ...getCardStyle(isMobile),
-                  marginBottom: '24px'
+                  backgroundColor: 'white',
+                  padding: designSystem.spacing.sm,
+                  borderRadius: designSystem.borderRadius.lg,
+                  boxShadow: designSystem.shadows.sm,
+                  marginBottom: designSystem.spacing.md
                 }}>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: '8px', 
-                    fontWeight: '600',
-                    fontSize: '15px'
+                  <div style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: designSystem.spacing.sm
                   }}>
-                    選擇月份
-                  </label>
-                  <input
-                    type="month"
-                    value={selectedPeriod}
-                    onChange={(e) => setSelectedPeriod(e.target.value)}
-                    style={{
-                      padding: '12px 16px',
-                      fontSize: '16px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      width: isMobile ? '100%' : '200px'
-                    }}
-                  />
+                    {/* 向前箭頭 */}
+                    <button
+                      onClick={() => {
+                        const [y, m] = selectedPeriod.split('-').map(Number)
+                        const newDate = new Date(y, m - 2, 1)
+                        setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${designSystem.colors.border.main}`,
+                        borderRadius: designSystem.borderRadius.md,
+                        width: '44px',
+                        height: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        color: designSystem.colors.text.primary,
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      ←
+                    </button>
+                    
+                    {/* 月份選擇器 */}
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        type="month"
+                        value={selectedPeriod}
+                        onChange={(e) => setSelectedPeriod(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '44px',
+                          padding: '0 12px',
+                          borderRadius: designSystem.borderRadius.md,
+                          border: `1px solid ${designSystem.colors.border.main}`,
+                          fontSize: '16px',
+                          textAlign: 'center',
+                          backgroundColor: '#f8f9fa',
+                          color: designSystem.colors.text.primary,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                    
+                    {/* 向後箭頭 */}
+                    <button
+                      onClick={() => {
+                        const [y, m] = selectedPeriod.split('-').map(Number)
+                        const newDate = new Date(y, m, 1)
+                        setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${designSystem.colors.border.main}`,
+                        borderRadius: designSystem.borderRadius.md,
+                        width: '44px',
+                        height: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        color: designSystem.colors.text.primary,
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      →
+                    </button>
+
+                    {/* 本月按鈕 */}
+                    <button
+                      onClick={() => {
+                        const now = new Date()
+                        setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
+                      }}
+                      style={{
+                        background: designSystem.colors.secondary[100],
+                        border: `1px solid ${designSystem.colors.secondary[300]}`,
+                        borderRadius: designSystem.borderRadius.md,
+                        height: '44px',
+                        padding: '0 12px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: designSystem.colors.text.secondary,
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      本月
+                    </button>
+                  </div>
                 </div>
 
                 {coachStats.length > 0 ? (
@@ -1523,26 +1778,35 @@ export function Statistics() {
                     {/* 教學時數排行 */}
                     <div style={{
                       ...getCardStyle(isMobile),
-                      marginBottom: '24px'
+                      marginBottom: isMobile ? '16px' : '24px',
+                      padding: isMobile ? '14px' : '20px'
                     }}>
                       <h3 style={{ 
-                        margin: '0 0 20px 0', 
-                        fontSize: '17px', 
+                        margin: '0 0 16px 0', 
+                        fontSize: isMobile ? '15px' : '17px', 
                         fontWeight: '700',
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
+                        alignItems: isMobile ? 'flex-start' : 'center',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        gap: isMobile ? '4px' : '8px'
                       }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ 
+                            width: '4px', 
+                            height: '20px', 
+                            background: '#4a90e2', 
+                            borderRadius: '2px',
+                            display: 'inline-block'
+                          }}></span>
+                          🎓 教學時數排行
+                        </div>
                         <span style={{ 
-                          width: '4px', 
-                          height: '20px', 
-                          background: '#4a90e2', 
-                          borderRadius: '2px',
-                          display: 'inline-block'
-                        }}></span>
-                        🎓 教學時數排行
-                        <span style={{ fontSize: '13px', color: '#999', fontWeight: '400' }}>
-                          （點擊查看指定學生）
+                          fontSize: isMobile ? '11px' : '13px', 
+                          color: '#999', 
+                          fontWeight: '400',
+                          marginLeft: isMobile ? '12px' : '0'
+                        }}>
+                          點擊查看指定學生
                         </span>
                       </h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1679,10 +1943,13 @@ export function Statistics() {
                     </div>
 
                     {/* 駕駛時數排行 */}
-                    <div style={getCardStyle(isMobile)}>
+                    <div style={{
+                      ...getCardStyle(isMobile),
+                      padding: isMobile ? '14px' : '20px'
+                    }}>
                       <h3 style={{ 
-                        margin: '0 0 20px 0', 
-                        fontSize: '17px', 
+                        margin: '0 0 16px 0', 
+                        fontSize: isMobile ? '15px' : '17px', 
                         fontWeight: '700',
                         display: 'flex',
                         alignItems: 'center',
