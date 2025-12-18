@@ -184,6 +184,62 @@ export function BatchEditBookingDialog({
         changes.push(`備註→${notes.trim() || '清空'}`)
       }
       
+      // 🔴 檢查是否修改了會影響排班的關鍵欄位（與單一編輯相同的邏輯）
+      const keyFieldsChanged = fieldsToEdit.has('boat') || fieldsToEdit.has('coaches') || fieldsToEdit.has('duration')
+      
+      if (keyFieldsChanged) {
+        // 查詢哪些預約有後續記錄
+        const [driversResult, reportsResult, participantsResult] = await Promise.all([
+          supabase
+            .from('booking_drivers')
+            .select('booking_id')
+            .in('booking_id', bookingIds),
+          supabase
+            .from('coach_reports')
+            .select('booking_id')
+            .in('booking_id', bookingIds),
+          supabase
+            .from('booking_participants')
+            .select('booking_id, participant_name')
+            .in('booking_id', bookingIds)
+            .eq('is_deleted', false)
+        ])
+        
+        const bookingsWithDrivers = new Set(driversResult.data?.map(d => d.booking_id) || [])
+        const bookingsWithReports = new Set(reportsResult.data?.map(r => r.booking_id) || [])
+        const bookingsWithParticipants = new Set(participantsResult.data?.map(p => p.booking_id) || [])
+        
+        // 收集有後續記錄的預約
+        const bookingsWithRecords = new Set([
+          ...bookingsWithDrivers,
+          ...bookingsWithReports,
+          ...bookingsWithParticipants
+        ])
+        
+        if (bookingsWithRecords.size > 0) {
+          // 組裝警告訊息
+          const modifyingFields: string[] = []
+          if (fieldsToEdit.has('boat')) modifyingFields.push('船隻')
+          if (fieldsToEdit.has('coaches')) modifyingFields.push('教練')
+          if (fieldsToEdit.has('duration')) modifyingFields.push('時長')
+          
+          const warnings: string[] = []
+          if (bookingsWithDrivers.size > 0) warnings.push(`${bookingsWithDrivers.size} 筆已排班`)
+          if (bookingsWithReports.size > 0) warnings.push(`${bookingsWithReports.size} 筆已有教練回報`)
+          if (bookingsWithParticipants.size > 0) warnings.push(`${bookingsWithParticipants.size} 筆已有參與者記錄`)
+          
+          const confirmMessage = `⚠️ 您要修改 ${modifyingFields.join('、')}\n\n部分預約已有後續記錄：\n${warnings.join('\n')}\n\n修改後將刪除這些預約的：\n• 所有排班記錄\n• 所有回報記錄\n• 所有參與者記錄\n\n確定要繼續嗎？`
+          
+          if (!confirm(confirmMessage)) {
+            console.log('[批次修改] 用戶取消修改')
+            setLoading(false)
+            return
+          }
+          
+          console.log('[批次修改] 用戶確認修改，將清除相關排班和回報記錄')
+        }
+      }
+      
       // 1️⃣ 查詢所有預約的完整資訊（包含教練）
       const { data: bookingsData } = await supabase
         .from('bookings')
@@ -422,6 +478,15 @@ export function BatchEditBookingDialog({
               }))
               await supabase.from('booking_coaches').insert(coachInserts)
             }
+          }
+          
+          // 🔴 修改關鍵欄位後清除排班和回報記錄（與單一編輯一致）
+          if (keyFieldsChanged) {
+            await Promise.all([
+              supabase.from('booking_drivers').delete().eq('booking_id', id),
+              supabase.from('coach_reports').delete().eq('booking_id', id),
+              supabase.from('booking_participants').delete().eq('booking_id', id).eq('is_deleted', false)
+            ])
           }
           
           // 記錄已更新的預約，用於檢查批次內部衝突
