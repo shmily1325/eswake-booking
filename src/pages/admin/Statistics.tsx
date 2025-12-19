@@ -18,7 +18,7 @@ interface MonthlyStats {
   totalMinutes: number
   totalHours: number
   // 各船時數
-  boatMinutes: { boatName: string; minutes: number }[]
+  boatMinutes: { boatId: number; boatName: string; minutes: number }[]
 }
 
 interface CoachFutureBooking {
@@ -30,7 +30,7 @@ interface CoachFutureBooking {
     count: number
     minutes: number
   }[]
-  // 聯絡人時數分布
+  // 會員時數分布
   contactStats: {
     contactName: string
     minutes: number
@@ -166,7 +166,7 @@ export function Statistics() {
       // 查詢預約資料（含船資訊）
       const { data, error } = await supabase
         .from('bookings')
-        .select('id, duration_min, boats(name)')
+        .select('id, duration_min, boats(id, name)')
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${endDateStr}T23:59:59`)
         .neq('status', 'cancelled')
@@ -175,14 +175,20 @@ export function Statistics() {
         const totalMinutes = data.reduce((sum, b) => sum + (b.duration_min || 0), 0)
         
         // 統計各船時數
-        const boatMap = new Map<string, number>()
+        const boatMap = new Map<number, { boatName: string; minutes: number }>()
         data.forEach((b: any) => {
+          const boatId = b.boats?.id || 0
           const boatName = b.boats?.name || '未知'
-          boatMap.set(boatName, (boatMap.get(boatName) || 0) + (b.duration_min || 0))
+          const existing = boatMap.get(boatId)
+          if (existing) {
+            existing.minutes += (b.duration_min || 0)
+          } else {
+            boatMap.set(boatId, { boatName, minutes: b.duration_min || 0 })
+          }
         })
         const boatMinutes = Array.from(boatMap.entries())
-          .map(([boatName, minutes]) => ({ boatName, minutes }))
-          .sort((a, b) => b.minutes - a.minutes)
+          .map(([boatId, data]) => ({ boatId, boatName: data.boatName, minutes: data.minutes }))
+          .sort((a, b) => a.boatId - b.boatId)
         
         months.push({
           month: monthStr,
@@ -275,7 +281,7 @@ export function Statistics() {
     setWeekdayStats({ weekdayCount, weekdayMinutes, weekendCount, weekendMinutes })
   }
 
-  // 載入未來預約（按教練分組，含聯絡人時數分布）
+  // 載入未來預約（按教練分組，含會員時數分布）
   const loadFutureBookings = async () => {
     const today = getLocalDateString()
     
@@ -311,7 +317,7 @@ export function Statistics() {
     let weekdayCount = 0, weekdayMinutes = 0
     let weekendCount = 0, weekendMinutes = 0
     
-    // 整理數據：教練 -> 聯絡人時數分布
+    // 整理數據：教練 -> 會員時數分布
     const coachMap = new Map<string, {
       coachId: string
       coachName: string
@@ -367,7 +373,7 @@ export function Statistics() {
           monthData.minutes += durationMin
         }
         
-        // 聯絡人統計
+        // 會員統計
         if (!coach.contactMap.has(contactName)) {
           coach.contactMap.set(contactName, { minutes: 0, count: 0 })
         }
@@ -1012,6 +1018,21 @@ export function Statistics() {
                     月份數據明細
                   </h3>
                   <div style={{ overflowX: 'auto' }}>
+                    {(() => {
+                      // 收集所有月份的船隻（按 ID 排序）
+                      const boatMap = new Map<number, string>()
+                      monthlyStats.forEach(stat => {
+                        stat.boatMinutes?.forEach(b => {
+                          if (!boatMap.has(b.boatId)) {
+                            boatMap.set(b.boatId, b.boatName)
+                          }
+                        })
+                      })
+                      const allBoats = Array.from(boatMap.entries())
+                        .map(([boatId, boatName]) => ({ boatId, boatName }))
+                        .sort((a, b) => a.boatId - b.boatId)
+                      
+                      return (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                       <thead>
                         <tr style={{ background: '#f8f9fa' }}>
@@ -1019,8 +1040,8 @@ export function Statistics() {
                           <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>筆數</th>
                           <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>總時數</th>
                           {/* 動態顯示各船欄位 */}
-                          {monthlyStats[0]?.boatMinutes?.map(boat => (
-                            <th key={boat.boatName} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                          {allBoats.map(boat => (
+                            <th key={boat.boatId} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
                               🚤 {boat.boatName}
                             </th>
                           ))}
@@ -1041,11 +1062,11 @@ export function Statistics() {
                               {stat.totalMinutes} 分 ({stat.totalHours} 小時)
                             </td>
                             {/* 各船時數 */}
-                            {monthlyStats[0]?.boatMinutes?.map(refBoat => {
-                              const boatData = stat.boatMinutes?.find(b => b.boatName === refBoat.boatName)
+                            {allBoats.map(boat => {
+                              const boatData = stat.boatMinutes?.find(b => b.boatId === boat.boatId)
                               const minutes = boatData?.minutes || 0
                               return (
-                                <td key={refBoat.boatName} style={{ padding: '12px', textAlign: 'right', color: '#50c878' }}>
+                                <td key={boat.boatId} style={{ padding: '12px', textAlign: 'right', color: minutes > 0 ? '#50c878' : '#ccc' }}>
                                   {minutes} 分
                                 </td>
                               )
@@ -1054,6 +1075,8 @@ export function Statistics() {
                         ))}
                       </tbody>
                     </table>
+                      )
+                    })()}
                   </div>
                 </div>
 
@@ -1502,7 +1525,7 @@ export function Statistics() {
                       fontWeight: '400',
                       marginLeft: isMobile ? '12px' : '0'
                     }}>
-                      點擊查看聯絡人時數分布
+                      點擊查看會員時數分布
                     </span>
                   </h3>
                   {futureBookings.length > 0 ? (() => {
@@ -1602,7 +1625,7 @@ export function Statistics() {
                               </div>
                             </div>
                             
-                            {/* 展開的聯絡人時數分布 */}
+                            {/* 展開的會員時數分布 */}
                             {isExpanded && hasContacts && (
                               <div style={{
                                 background: 'white',
@@ -1617,7 +1640,7 @@ export function Statistics() {
                                   marginBottom: '10px',
                                   fontWeight: '500'
                                 }}>
-                                  👥 聯絡人時數分布：
+                                  👥 會員時數分布：
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                   {coach.contactStats.map((contact, cIdx) => (
