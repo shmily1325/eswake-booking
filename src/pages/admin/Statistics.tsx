@@ -46,7 +46,8 @@ export function Statistics() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'trend' | 'coach' | 'member' | 'boat' | 'future'>('trend')
+  const [activeTab, setActiveTab] = useState<'trend' | 'monthly' | 'future'>('trend')
+  const [monthlySubTab, setMonthlySubTab] = useState<'coach' | 'member' | 'boat'>('coach')
   
   // 趨勢數據
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([])
@@ -668,22 +669,10 @@ export function Statistics() {
             {isMobile ? '趨勢' : '📈 預約趨勢'}
           </button>
           <button
-            onClick={() => setActiveTab('coach')}
-            style={tabStyle(activeTab === 'coach')}
+            onClick={() => setActiveTab('monthly')}
+            style={tabStyle(activeTab === 'monthly')}
           >
-            {isMobile ? '教練' : '🎓 教練時數'}
-          </button>
-          <button
-            onClick={() => setActiveTab('member')}
-            style={tabStyle(activeTab === 'member')}
-          >
-            {isMobile ? '會員' : '👤 會員統計'}
-          </button>
-          <button
-            onClick={() => setActiveTab('boat')}
-            style={tabStyle(activeTab === 'boat')}
-          >
-            {isMobile ? '船隻' : '🚤 船隻統計'}
+            {isMobile ? '月度' : '📊 月度統計'}
           </button>
           <button
             onClick={() => setActiveTab('future')}
@@ -693,8 +682,8 @@ export function Statistics() {
           </button>
         </div>
 
-        {/* 共用月份選擇器（只在教練/會員/船隻 Tab 顯示） */}
-        {(activeTab === 'coach' || activeTab === 'member' || activeTab === 'boat') && (
+        {/* 月度統計：月份選擇器 + 子 Tab */}
+        {activeTab === 'monthly' && (
           <div style={{
             backgroundColor: 'white',
             padding: designSystem.spacing.sm,
@@ -797,6 +786,62 @@ export function Statistics() {
                 }}
               >
                 本月
+              </button>
+            </div>
+            
+            {/* 子 Tab 按鈕 */}
+            <div style={{ 
+              display: 'flex',
+              gap: '8px',
+              marginTop: designSystem.spacing.sm
+            }}>
+              <button
+                onClick={() => setMonthlySubTab('coach')}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  borderRadius: designSystem.borderRadius.md,
+                  border: 'none',
+                  background: monthlySubTab === 'coach' ? designSystem.colors.primary[500] : '#f0f0f0',
+                  color: monthlySubTab === 'coach' ? 'white' : '#666',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                🎓 教練
+              </button>
+              <button
+                onClick={() => setMonthlySubTab('member')}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  borderRadius: designSystem.borderRadius.md,
+                  border: 'none',
+                  background: monthlySubTab === 'member' ? designSystem.colors.primary[500] : '#f0f0f0',
+                  color: monthlySubTab === 'member' ? 'white' : '#666',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                👤 會員
+              </button>
+              <button
+                onClick={() => setMonthlySubTab('boat')}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  borderRadius: designSystem.borderRadius.md,
+                  border: 'none',
+                  background: monthlySubTab === 'boat' ? designSystem.colors.primary[500] : '#f0f0f0',
+                  color: monthlySubTab === 'boat' ? 'white' : '#666',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                🚤 船隻
               </button>
             </div>
           </div>
@@ -1100,7 +1145,7 @@ export function Statistics() {
             )}
 
             {/* Tab: 會員統計 */}
-            {activeTab === 'member' && (
+            {activeTab === 'monthly' && monthlySubTab === 'member' && (
               <>
                 {memberStats.length > 0 ? (
                   <div style={{
@@ -1300,7 +1345,7 @@ export function Statistics() {
             )}
 
             {/* Tab: 船隻統計 */}
-            {activeTab === 'boat' && (
+            {activeTab === 'monthly' && monthlySubTab === 'boat' && (
               <>
                 {boatStats.length > 0 ? (
                   <div style={{
@@ -1702,7 +1747,7 @@ export function Statistics() {
             )})()}
 
             {/* Tab 3: 教練時數 */}
-            {activeTab === 'coach' && (
+            {activeTab === 'monthly' && monthlySubTab === 'coach' && (
               <>
                 {/* 月份選擇 - 參考排班頁面的佈局 */}
                 <div style={{
