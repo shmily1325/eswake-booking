@@ -651,7 +651,8 @@ export function LineSettings() {
                 padding: '10px',
                 border: `1px solid ${designSystem.colors.border.main}`,
                 borderRadius: '6px',
-                fontSize: '16px', // 16px 防止 iOS 縮放
+                fontSize: isMobile ? '16px' : '14px', // 16px 防止 iOS 縮放
+                fontFamily: 'inherit',
                 resize: 'vertical',
                 opacity: includeWeatherWarning ? 1 : 0.5
               }}
@@ -671,7 +672,8 @@ export function LineSettings() {
                 padding: '10px',
                 border: `1px solid ${designSystem.colors.border.main}`,
                 borderRadius: '6px',
-                fontSize: '14px',
+                fontSize: isMobile ? '16px' : '14px', // 16px 防止 iOS 縮放
+                fontFamily: 'inherit',
                 resize: 'vertical',
                 boxSizing: 'border-box'
               }}

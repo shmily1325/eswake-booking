@@ -1016,6 +1016,7 @@ export function Statistics() {
                       <thead>
                         <tr style={{ background: '#f8f9fa' }}>
                           <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>筆數</th>
                           <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>總時數</th>
                           {/* 動態顯示各船欄位 */}
                           {monthlyStats[0]?.boatMinutes?.map(boat => (
@@ -1032,6 +1033,9 @@ export function Statistics() {
                           }}>
                             <td style={{ padding: '12px', fontWeight: idx === monthlyStats.length - 1 ? '600' : '400' }}>
                               {stat.month}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'right' }}>
+                              {stat.bookingCount}
                             </td>
                             <td style={{ padding: '12px', textAlign: 'right' }}>
                               {stat.totalMinutes} 分 ({stat.totalHours} 小時)
@@ -1501,9 +1505,12 @@ export function Statistics() {
                       點擊查看聯絡人時數分布
                     </span>
                   </h3>
-                  {futureBookings.length > 0 ? (
+                  {futureBookings.length > 0 ? (() => {
+                    // 計算非未指派教練的排名
+                    let coachRank = 0
+                    return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {futureBookings.map((coach, index) => {
+                      {futureBookings.map((coach) => {
                         // 根據月份篩選計算數據
                         const filteredMinutes = futureMonthFilter === 'all'
                           ? coach.totalMinutes
@@ -1513,6 +1520,9 @@ export function Statistics() {
                           : coach.bookings.find(b => b.month === futureMonthFilter)?.count || 0
                         
                         if (filteredMinutes === 0) return null
+                        
+                        // 計算真正排名（跳過未指派）
+                        const displayRank = coach.coachId === 'unassigned' ? null : ++coachRank
                         
                         const isExpanded = expandedFutureCoachId === coach.coachId
                         const hasContacts = coach.contactStats.length > 0
@@ -1548,9 +1558,9 @@ export function Statistics() {
                                     </span>
                                   )}
                                   <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
-                                    {coach.coachId === 'unassigned' 
-                                      ? `${index + 1}.` 
-                                      : (index < 3 ? ['🥇', '🥈', '🥉'][index] : `${index + 1}.`)
+                                    {displayRank === null 
+                                      ? '⚠️' 
+                                      : (displayRank <= 3 ? ['🥇', '🥈', '🥉'][displayRank - 1] : `${displayRank}.`)
                                     } {coach.coachName}
                                     {coach.coachId === 'unassigned' && (
                                       <span style={{ 
@@ -1646,7 +1656,7 @@ export function Statistics() {
                         )
                       })}
                     </div>
-                  ) : (
+                    )})() : (
                     <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                       目前沒有未來預約
                     </div>
