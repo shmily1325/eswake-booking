@@ -644,15 +644,15 @@ export function Statistics() {
 
   const tabStyle = (isActive: boolean) => ({
     padding: isMobile ? '12px 16px' : '14px 24px',
-    background: isActive ? 'linear-gradient(135deg, #4a90e2 0%, #1976d2 100%)' : 'white',
-    color: isActive ? 'white' : '#666',
-    border: isActive ? 'none' : '1px solid #e0e0e0',
+    background: isActive ? '#475569' : 'white',
+    color: isActive ? 'white' : '#64748b',
+    border: isActive ? 'none' : '1px solid #e2e8f0',
     borderRadius: '10px',
     cursor: 'pointer',
     fontSize: isMobile ? '14px' : '15px',
     fontWeight: isActive ? '600' : '500',
     transition: 'all 0.2s',
-    boxShadow: isActive ? '0 4px 12px rgba(74, 144, 226, 0.3)' : 'none'
+    boxShadow: isActive ? '0 4px 12px rgba(71, 85, 105, 0.25)' : 'none'
   })
 
   return (
@@ -798,7 +798,7 @@ export function Statistics() {
                   setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
                 }}
                 style={{
-                  background: designSystem.colors.primary[500],
+                  background: '#475569',
                   color: 'white',
                   border: 'none',
                   borderRadius: designSystem.borderRadius.md,
@@ -826,9 +826,9 @@ export function Statistics() {
                   flex: 1,
                   padding: '10px 16px',
                   borderRadius: designSystem.borderRadius.md,
-                  border: 'none',
-                  background: monthlySubTab === 'coach' ? designSystem.colors.primary[500] : '#f0f0f0',
-                  color: monthlySubTab === 'coach' ? 'white' : '#666',
+                  border: monthlySubTab === 'coach' ? 'none' : '1px solid #e2e8f0',
+                  background: monthlySubTab === 'coach' ? '#475569' : 'white',
+                  color: monthlySubTab === 'coach' ? 'white' : '#64748b',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer'
@@ -842,9 +842,9 @@ export function Statistics() {
                   flex: 1,
                   padding: '10px 16px',
                   borderRadius: designSystem.borderRadius.md,
-                  border: 'none',
-                  background: monthlySubTab === 'member' ? designSystem.colors.primary[500] : '#f0f0f0',
-                  color: monthlySubTab === 'member' ? 'white' : '#666',
+                  border: monthlySubTab === 'member' ? 'none' : '1px solid #e2e8f0',
+                  background: monthlySubTab === 'member' ? '#475569' : 'white',
+                  color: monthlySubTab === 'member' ? 'white' : '#64748b',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer'
@@ -858,9 +858,9 @@ export function Statistics() {
                   flex: 1,
                   padding: '10px 16px',
                   borderRadius: designSystem.borderRadius.md,
-                  border: 'none',
-                  background: monthlySubTab === 'boat' ? designSystem.colors.primary[500] : '#f0f0f0',
-                  color: monthlySubTab === 'boat' ? 'white' : '#666',
+                  border: monthlySubTab === 'boat' ? 'none' : '1px solid #e2e8f0',
+                  background: monthlySubTab === 'boat' ? '#475569' : 'white',
+                  color: monthlySubTab === 'boat' ? 'white' : '#64748b',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer'
@@ -876,19 +876,19 @@ export function Statistics() {
               gap: '12px',
               marginTop: designSystem.spacing.sm,
               padding: '12px',
-              background: '#f8f9fa',
+              background: '#f8fafc',
               borderRadius: designSystem.borderRadius.md
             }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>平日</div>
-                <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#4a90e2' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>平日</div>
+                <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#334155' }}>
                   {weekdayStats.weekdayCount} 筆 / {weekdayStats.weekdayMinutes} 分
                 </div>
               </div>
-              <div style={{ width: '1px', background: '#ddd' }}></div>
+              <div style={{ width: '1px', background: '#e2e8f0' }}></div>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>假日</div>
-                <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#ff9800' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>假日</div>
+                <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#334155' }}>
                   {weekdayStats.weekendCount} 筆 / {weekdayStats.weekendMinutes} 分
                 </div>
               </div>
@@ -919,47 +919,47 @@ export function Statistics() {
                 }}>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #4a90e2',
+                    borderLeft: '4px solid #475569',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>本月預約</div>
-                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>本月預約</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#334155' }}>
                       {monthlyStats[monthlyStats.length - 1]?.bookingCount || 0}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>筆</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>筆</div>
                   </div>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #50c878',
+                    borderLeft: '4px solid #64748b',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>本月時數</div>
-                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>本月時數</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#334155' }}>
                       {monthlyStats[monthlyStats.length - 1]?.totalHours || 0}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>小時</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>小時</div>
                   </div>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #ffd93d',
+                    borderLeft: '4px solid #94a3b8',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>6個月平均</div>
-                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>6個月平均</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#334155' }}>
                       {Math.round(monthlyStats.reduce((sum, m) => sum + m.bookingCount, 0) / Math.max(monthlyStats.length, 1))}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>筆/月</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>筆/月</div>
                   </div>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #6c5ce7',
+                    borderLeft: '4px solid #cbd5e1',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>6個月總計</div>
-                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>6個月總計</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#334155' }}>
                       {monthlyStats.reduce((sum, m) => sum + m.bookingCount, 0)}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>筆</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>筆</div>
                   </div>
                 </div>
 
@@ -974,12 +974,13 @@ export function Statistics() {
                     fontWeight: '700',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    color: '#334155'
                   }}>
                     <span style={{ 
                       width: '4px', 
                       height: '20px', 
-                      background: '#4a90e2', 
+                      background: '#64748b', 
                       borderRadius: '2px',
                       display: 'inline-block'
                     }}></span>
@@ -1007,18 +1008,18 @@ export function Statistics() {
                           type="monotone" 
                           dataKey="bookingCount" 
                           name="預約數" 
-                          stroke="#4a90e2" 
+                          stroke="#475569" 
                           strokeWidth={3}
-                          dot={{ fill: '#4a90e2', strokeWidth: 2, r: 5 }}
+                          dot={{ fill: '#475569', strokeWidth: 2, r: 5 }}
                           activeDot={{ r: 8 }}
                         />
                         <Line 
                           type="monotone" 
                           dataKey="totalHours" 
                           name="時數" 
-                          stroke="#50c878" 
+                          stroke="#94a3b8" 
                           strokeWidth={3}
-                          dot={{ fill: '#50c878', strokeWidth: 2, r: 5 }}
+                          dot={{ fill: '#94a3b8', strokeWidth: 2, r: 5 }}
                           activeDot={{ r: 8 }}
                         />
                       </LineChart>
@@ -1034,12 +1035,13 @@ export function Statistics() {
                     fontWeight: '700',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    color: '#334155'
                   }}>
                     <span style={{ 
                       width: '4px', 
                       height: '20px', 
-                      background: '#50c878', 
+                      background: '#94a3b8', 
                       borderRadius: '2px',
                       display: 'inline-block'
                     }}></span>
@@ -1048,24 +1050,24 @@ export function Statistics() {
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                       <thead>
-                        <tr style={{ background: '#f8f9fa' }}>
-                          <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>預約數</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>總分鐘</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>總小時</th>
+                        <tr style={{ background: '#f8fafc' }}>
+                          <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>月份</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>預約數</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>總分鐘</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>總小時</th>
                         </tr>
                       </thead>
                       <tbody>
                         {monthlyStats.map((stat, idx) => (
                           <tr key={stat.month} style={{ 
-                            background: idx === monthlyStats.length - 1 ? '#e3f2fd' : 'white'
+                            background: idx === monthlyStats.length - 1 ? '#f1f5f9' : 'white'
                           }}>
-                            <td style={{ padding: '12px', fontWeight: idx === monthlyStats.length - 1 ? '600' : '400' }}>
+                            <td style={{ padding: '12px', fontWeight: idx === monthlyStats.length - 1 ? '600' : '400', color: '#334155' }}>
                               {stat.month}
                             </td>
-                            <td style={{ padding: '12px', textAlign: 'right' }}>{stat.bookingCount}</td>
-                            <td style={{ padding: '12px', textAlign: 'right' }}>{stat.totalMinutes}</td>
-                            <td style={{ padding: '12px', textAlign: 'right' }}>{stat.totalHours}</td>
+                            <td style={{ padding: '12px', textAlign: 'right', color: '#475569' }}>{stat.bookingCount}</td>
+                            <td style={{ padding: '12px', textAlign: 'right', color: '#475569' }}>{stat.totalMinutes}</td>
+                            <td style={{ padding: '12px', textAlign: 'right', color: '#475569' }}>{stat.totalHours}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1097,7 +1099,7 @@ export function Statistics() {
                         <span style={{ 
                           width: '4px', 
                           height: '20px', 
-                          background: '#4a90e2', 
+                          background: '#64748b', 
                           borderRadius: '2px',
                           display: 'inline-block'
                         }}></span>
@@ -1105,7 +1107,7 @@ export function Statistics() {
                       </div>
                       <span style={{ 
                         fontSize: isMobile ? '11px' : '13px', 
-                        color: '#999', 
+                        color: '#94a3b8', 
                         fontWeight: '400',
                         marginLeft: isMobile ? '12px' : '0'
                       }}>
@@ -1125,7 +1127,7 @@ export function Statistics() {
                               onClick={() => hasDetails && setExpandedMemberId(isExpanded ? null : member.memberId)}
                               style={{
                                 padding: '12px',
-                                background: isExpanded ? '#e3f2fd' : '#f8f9fa',
+                                background: isExpanded ? '#f1f5f9' : '#f8fafc',
                                 borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
                                 cursor: hasDetails ? 'pointer' : 'default',
                                 transition: 'background 0.2s'
@@ -1141,20 +1143,20 @@ export function Statistics() {
                                   {hasDetails && (
                                     <span style={{ 
                                       fontSize: '12px', 
-                                      color: isExpanded ? '#4a90e2' : '#999',
+                                      color: isExpanded ? '#475569' : '#94a3b8',
                                       transition: 'transform 0.2s',
                                       transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
                                     }}>
                                       ▶
                                     </span>
                                   )}
-                                  <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
+                                  <span style={{ fontWeight: '600', color: '#334155', fontSize: '14px' }}>
                                     {index + 1}. {member.memberName}
                                   </span>
                                   <span style={{ 
                                     fontSize: '12px', 
-                                    color: '#666',
-                                    background: '#eee',
+                                    color: '#64748b',
+                                    background: '#e2e8f0',
                                     padding: '2px 8px',
                                     borderRadius: '4px'
                                   }}>
@@ -1162,26 +1164,26 @@ export function Statistics() {
                                   </span>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                  <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
+                                  <span style={{ color: '#475569', fontSize: '14px', fontWeight: '600' }}>
                                     {member.totalMinutes} 分
                                   </span>
-                                  <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
                                     指定 {member.designatedMinutes}分 / 不指定 {member.undesignatedMinutes}分
                                   </div>
                                 </div>
                               </div>
                               <div style={{
                                 width: '100%',
-                                height: '20px',
-                                background: '#e3f2fd',
-                                borderRadius: '6px',
+                                height: '8px',
+                                background: '#e2e8f0',
+                                borderRadius: '4px',
                                 overflow: 'hidden'
                               }}>
                                 <div style={{
                                   width: `${(member.totalMinutes / maxMinutes) * 100}%`,
                                   height: '100%',
-                                  background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
-                                  borderRadius: '6px',
+                                  background: '#64748b',
+                                  borderRadius: '4px',
                                   transition: 'width 0.3s'
                                 }} />
                               </div>
@@ -1191,7 +1193,7 @@ export function Statistics() {
                             {isExpanded && hasDetails && (
                               <div style={{
                                 background: 'white',
-                                border: '1px solid #e3f2fd',
+                                border: '1px solid #e2e8f0',
                                 borderTop: 'none',
                                 borderRadius: '0 0 8px 8px',
                                 padding: '12px',
@@ -1204,7 +1206,7 @@ export function Statistics() {
                                   <div style={{ flex: 1, minWidth: '150px' }}>
                                     <div style={{ 
                                       fontSize: '13px', 
-                                      color: '#666', 
+                                      color: '#64748b', 
                                       marginBottom: '8px',
                                       fontWeight: '500'
                                     }}>
@@ -1218,11 +1220,11 @@ export function Statistics() {
                                           justifyContent: 'space-between',
                                           padding: '4px 0',
                                           fontSize: '13px',
-                                          color: '#333'
+                                          color: '#334155'
                                         }}
                                       >
                                         <span>{cIdx + 1}. {coach.coachName}</span>
-                                        <span style={{ color: '#4a90e2' }}>{coach.minutes} 分</span>
+                                        <span style={{ color: '#475569' }}>{coach.minutes} 分</span>
                                       </div>
                                     ))}
                                   </div>
@@ -1233,7 +1235,7 @@ export function Statistics() {
                                   <div style={{ flex: 1, minWidth: '150px' }}>
                                     <div style={{ 
                                       fontSize: '13px', 
-                                      color: '#666', 
+                                      color: '#64748b', 
                                       marginBottom: '8px',
                                       fontWeight: '500'
                                     }}>
@@ -1247,11 +1249,11 @@ export function Statistics() {
                                           justifyContent: 'space-between',
                                           padding: '4px 0',
                                           fontSize: '13px',
-                                          color: '#333'
+                                          color: '#334155'
                                         }}
                                       >
                                         <span>{bIdx + 1}. {boat.boatName}</span>
-                                        <span style={{ color: '#4a90e2' }}>{boat.minutes} 分</span>
+                                        <span style={{ color: '#475569' }}>{boat.minutes} 分</span>
                                       </div>
                                     ))}
                                   </div>
@@ -1268,7 +1270,7 @@ export function Statistics() {
                     ...getCardStyle(isMobile),
                     textAlign: 'center',
                     padding: '60px',
-                    color: '#999'
+                    color: '#94a3b8'
                   }}>
                     {selectedPeriod} 無會員預約記錄
                   </div>
@@ -1297,7 +1299,7 @@ export function Statistics() {
                         <span style={{ 
                           width: '4px', 
                           height: '20px', 
-                          background: '#50c878', 
+                          background: '#64748b', 
                           borderRadius: '2px',
                           display: 'inline-block'
                         }}></span>
@@ -1305,7 +1307,7 @@ export function Statistics() {
                       </div>
                       <span style={{ 
                         fontSize: isMobile ? '11px' : '13px', 
-                        color: '#999', 
+                        color: '#94a3b8', 
                         fontWeight: '400',
                         marginLeft: isMobile ? '12px' : '0'
                       }}>
@@ -1325,7 +1327,7 @@ export function Statistics() {
                               onClick={() => hasDetails && setExpandedMemberId(isExpanded ? null : boat.boatId)}
                               style={{
                                 padding: '12px',
-                                background: isExpanded ? '#e3f2fd' : '#f8f9fa',
+                                background: isExpanded ? '#f1f5f9' : '#f8fafc',
                                 borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
                                 cursor: hasDetails ? 'pointer' : 'default',
                                 transition: 'background 0.2s'
@@ -1341,42 +1343,42 @@ export function Statistics() {
                                   {hasDetails && (
                                     <span style={{ 
                                       fontSize: '12px', 
-                                      color: isExpanded ? '#4a90e2' : '#999',
+                                      color: isExpanded ? '#475569' : '#94a3b8',
                                       transition: 'transform 0.2s',
                                       transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
                                     }}>
                                       ▶
                                     </span>
                                   )}
-                                  <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
+                                  <span style={{ fontWeight: '600', color: '#334155', fontSize: '14px' }}>
                                     {index + 1}. {boat.boatName}
                                   </span>
                                   <span style={{ 
                                     fontSize: '12px', 
-                                    color: '#666',
-                                    background: '#eee',
+                                    color: '#64748b',
+                                    background: '#e2e8f0',
                                     padding: '2px 8px',
                                     borderRadius: '4px'
                                   }}>
                                     {boat.bookingCount} 趟
                                   </span>
                                 </div>
-                                <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
+                                <span style={{ color: '#475569', fontSize: '14px', fontWeight: '600' }}>
                                   {boat.totalMinutes} 分 ({Math.round(boat.totalMinutes / 60 * 10) / 10} 小時)
                                 </span>
                               </div>
                               <div style={{
                                 width: '100%',
-                                height: '20px',
-                                background: '#e3f2fd',
-                                borderRadius: '6px',
+                                height: '8px',
+                                background: '#e2e8f0',
+                                borderRadius: '4px',
                                 overflow: 'hidden'
                               }}>
                                 <div style={{
                                   width: `${(boat.totalMinutes / maxMinutes) * 100}%`,
                                   height: '100%',
-                                  background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
-                                  borderRadius: '6px',
+                                  background: '#64748b',
+                                  borderRadius: '4px',
                                   transition: 'width 0.3s'
                                 }} />
                               </div>
@@ -1386,14 +1388,14 @@ export function Statistics() {
                             {isExpanded && hasDetails && (
                               <div style={{
                                 background: 'white',
-                                border: '1px solid #e3f2fd',
+                                border: '1px solid #e2e8f0',
                                 borderTop: 'none',
                                 borderRadius: '0 0 8px 8px',
                                 padding: '12px'
                               }}>
                                 <div style={{ 
                                   fontSize: '13px', 
-                                  color: '#666', 
+                                  color: '#64748b', 
                                   marginBottom: '8px',
                                   fontWeight: '500'
                                 }}>
@@ -1407,11 +1409,11 @@ export function Statistics() {
                                       justifyContent: 'space-between',
                                       padding: '4px 0',
                                       fontSize: '13px',
-                                      color: '#333'
+                                      color: '#334155'
                                     }}
                                   >
                                     <span>{cIdx + 1}. {coach.coachName}</span>
-                                    <span style={{ color: '#4a90e2' }}>{coach.minutes} 分</span>
+                                    <span style={{ color: '#475569' }}>{coach.minutes} 分</span>
                                   </div>
                                 ))}
                               </div>
@@ -1426,7 +1428,7 @@ export function Statistics() {
                     ...getCardStyle(isMobile),
                     textAlign: 'center',
                     padding: '60px',
-                    color: '#999'
+                    color: '#94a3b8'
                   }}>
                     {selectedPeriod} 無船隻使用記錄
                   </div>
@@ -1461,36 +1463,36 @@ export function Statistics() {
                 }}>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #4a90e2',
+                    borderLeft: '4px solid #64748b',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>{monthLabel}預約</div>
-                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>{monthLabel}預約</div>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#334155' }}>
                       {filteredTotalBookings}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>筆</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>筆</div>
                   </div>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #50c878',
+                    borderLeft: '4px solid #94a3b8',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>總預約時數</div>
-                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>總預約時數</div>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#334155' }}>
                       {Math.round(filteredTotalMinutes / 60 * 10) / 10}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>小時</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>小時</div>
                   </div>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #ffd93d',
+                    borderLeft: '4px solid #cbd5e1',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>教練人數</div>
-                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>教練人數</div>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#334155' }}>
                       {filteredCoachCount}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>人</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>人</div>
                   </div>
                 </div>
 
@@ -1503,7 +1505,8 @@ export function Statistics() {
                     display: 'block', 
                     marginBottom: '8px', 
                     fontWeight: '600',
-                    fontSize: '15px'
+                    fontSize: '15px',
+                    color: '#334155'
                   }}>
                     篩選月份
                   </label>
@@ -1512,9 +1515,9 @@ export function Statistics() {
                       onClick={() => setFutureMonthFilter('all')}
                       style={{
                         padding: '8px 16px',
-                        background: futureMonthFilter === 'all' ? '#4a90e2' : 'white',
-                        color: futureMonthFilter === 'all' ? 'white' : '#666',
-                        border: futureMonthFilter === 'all' ? 'none' : '1px solid #e0e0e0',
+                        background: futureMonthFilter === 'all' ? '#475569' : 'white',
+                        color: futureMonthFilter === 'all' ? 'white' : '#64748b',
+                        border: futureMonthFilter === 'all' ? 'none' : '1px solid #e2e8f0',
                         borderRadius: '6px',
                         cursor: 'pointer',
                         fontWeight: '500',
@@ -1529,9 +1532,9 @@ export function Statistics() {
                         onClick={() => setFutureMonthFilter(b.month)}
                         style={{
                           padding: '8px 16px',
-                          background: futureMonthFilter === b.month ? '#4a90e2' : 'white',
-                          color: futureMonthFilter === b.month ? 'white' : '#666',
-                          border: futureMonthFilter === b.month ? 'none' : '1px solid #e0e0e0',
+                          background: futureMonthFilter === b.month ? '#475569' : 'white',
+                          color: futureMonthFilter === b.month ? 'white' : '#64748b',
+                          border: futureMonthFilter === b.month ? 'none' : '1px solid #e2e8f0',
                           borderRadius: '6px',
                           cursor: 'pointer',
                           fontWeight: '500',
@@ -1562,7 +1565,7 @@ export function Statistics() {
                       <span style={{ 
                         width: '4px', 
                         height: '20px', 
-                        background: '#4a90e2', 
+                        background: '#64748b', 
                         borderRadius: '2px',
                         display: 'inline-block'
                       }}></span>
@@ -1570,7 +1573,7 @@ export function Statistics() {
                     </div>
                     <span style={{ 
                       fontSize: isMobile ? '11px' : '13px', 
-                      color: '#999', 
+                      color: '#94a3b8', 
                       fontWeight: '400',
                       marginLeft: isMobile ? '12px' : '0'
                     }}>
@@ -1605,7 +1608,7 @@ export function Statistics() {
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 padding: '12px 16px',
-                                background: isExpanded ? '#e3f2fd' : '#f8f9fa',
+                                background: isExpanded ? '#f1f5f9' : '#f8fafc',
                                 borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
                                 cursor: 'pointer',
                                 transition: 'background 0.2s'
@@ -1614,21 +1617,21 @@ export function Statistics() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ 
                                   fontSize: '12px', 
-                                  color: isExpanded ? '#4a90e2' : '#999',
+                                  color: isExpanded ? '#475569' : '#94a3b8',
                                   transition: 'transform 0.2s',
                                   transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
                                 }}>
                                   ▶
                                 </span>
-                                <span style={{ fontWeight: '600', color: '#333' }}>
+                                <span style={{ fontWeight: '600', color: '#334155' }}>
                                   {coach.coachName}
                                 </span>
                               </div>
                               <div style={{ display: 'flex', gap: '16px' }}>
-                                <span style={{ color: '#4a90e2', fontWeight: '600', fontSize: '14px' }}>
+                                <span style={{ color: '#475569', fontWeight: '600', fontSize: '14px' }}>
                                   {filteredCount} 筆
                                 </span>
-                                <span style={{ color: '#50c878', fontWeight: '600', fontSize: '14px' }}>
+                                <span style={{ color: '#64748b', fontWeight: '600', fontSize: '14px' }}>
                                   {Math.round(filteredMinutes / 60 * 10) / 10} 小時
                                 </span>
                               </div>
@@ -1638,27 +1641,27 @@ export function Statistics() {
                             {isExpanded && (
                               <div style={{
                                 background: 'white',
-                                border: '1px solid #e3f2fd',
+                                border: '1px solid #e2e8f0',
                                 borderTop: 'none',
                                 borderRadius: '0 0 8px 8px',
                                 overflow: 'hidden'
                               }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                                   <thead>
-                                    <tr style={{ background: '#fafafa' }}>
-                                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '500', color: '#666' }}>日期</th>
-                                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '500', color: '#666' }}>時間</th>
-                                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '500', color: '#666' }}>聯絡人</th>
-                                      <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '500', color: '#666' }}>時長</th>
+                                    <tr style={{ background: '#f8fafc' }}>
+                                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '500', color: '#64748b' }}>日期</th>
+                                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '500', color: '#64748b' }}>時間</th>
+                                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '500', color: '#64748b' }}>聯絡人</th>
+                                      <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '500', color: '#64748b' }}>時長</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {filteredDetails.map((detail) => (
-                                      <tr key={detail.id} style={{ borderTop: '1px solid #f0f0f0' }}>
-                                        <td style={{ padding: '10px 12px' }}>{detail.date}</td>
-                                        <td style={{ padding: '10px 12px' }}>{detail.time}</td>
-                                        <td style={{ padding: '10px 12px', fontWeight: '500' }}>{detail.contactName}</td>
-                                        <td style={{ padding: '10px 12px', textAlign: 'right' }}>{detail.durationMin} 分</td>
+                                      <tr key={detail.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '10px 12px', color: '#334155' }}>{detail.date}</td>
+                                        <td style={{ padding: '10px 12px', color: '#334155' }}>{detail.time}</td>
+                                        <td style={{ padding: '10px 12px', fontWeight: '500', color: '#334155' }}>{detail.contactName}</td>
+                                        <td style={{ padding: '10px 12px', textAlign: 'right', color: '#475569' }}>{detail.durationMin} 分</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -1670,7 +1673,7 @@ export function Statistics() {
                       })}
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                       目前沒有未來預約
                     </div>
                   )}
