@@ -197,6 +197,7 @@ export function AnnouncementManagement() {
           background: 'white',
           borderRadius: '12px',
           padding: isMobile ? '16px' : '20px',
+          paddingTop: isMobile ? '20px' : '20px',
           marginBottom: '15px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
         }}>
