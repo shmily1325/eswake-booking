@@ -17,6 +17,8 @@ interface MonthlyStats {
   bookingCount: number
   totalMinutes: number
   totalHours: number
+  // 各船時數
+  boatMinutes: { boatName: string; minutes: number }[]
 }
 
 interface CoachFutureBooking {
@@ -43,7 +45,7 @@ export function Statistics() {
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'trend' | 'monthly' | 'future'>('trend')
-  const [monthlySubTab, setMonthlySubTab] = useState<'coach' | 'member' | 'boat'>('coach')
+  const [monthlySubTab, setMonthlySubTab] = useState<'coach' | 'member'>('coach')
   
   // 趨勢數據
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([])
@@ -56,19 +58,13 @@ export function Statistics() {
     weekendMinutes: number
   }>({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
   
-  // 財務統計（總額變化 + 預約使用）
+  // 財務統計（預約月結算）
   const [financeStats, setFinanceStats] = useState<{
     month: string
-    // 該月預約使用
-    balanceUsed: number  // 儲值使用金額
-    vipUsed: number  // VIP使用金額
-    g23Used: number  // G23船券使用分鐘
-    g21Used: number  // G21船券使用分鐘
-    // 該月底總額
-    balanceTotal: number
-    vipTotal: number
-    g23Total: number
-    g21Total: number
+    balanceUsed: number  // 儲值結算金額
+    vipUsed: number  // VIP結算金額
+    g23Used: number  // G23船券結算分鐘
+    g21Used: number  // G21船券結算分鐘
   }[]>([])
   
   // 未來預約數據
@@ -112,14 +108,6 @@ export function Statistics() {
   }[]>([])
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null)
   
-  // 船隻統計數據
-  const [boatStats, setBoatStats] = useState<{
-    boatId: string
-    boatName: string
-    totalMinutes: number
-    bookingCount: number
-    coaches: { coachName: string; minutes: number }[]
-  }[]>([])
   
   const [selectedPeriod, setSelectedPeriod] = useState(() => {
     const now = new Date()
@@ -152,7 +140,6 @@ export function Statistics() {
         await Promise.all([
           loadCoachStats(),
           loadMemberStats(),
-          loadBoatStats(),
           loadWeekdayStats()
         ])
       } catch (error) {
@@ -176,21 +163,34 @@ export function Statistics() {
       const endDate = new Date(year, month, 0).getDate()
       const endDateStr = `${monthStr}-${String(endDate).padStart(2, '0')}`
       
+      // 查詢預約資料（含船資訊）
       const { data, error } = await supabase
         .from('bookings')
-        .select('id, duration_min')
+        .select('id, duration_min, boats(name)')
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${endDateStr}T23:59:59`)
         .neq('status', 'cancelled')
       
       if (!error && data) {
         const totalMinutes = data.reduce((sum, b) => sum + (b.duration_min || 0), 0)
+        
+        // 統計各船時數
+        const boatMap = new Map<string, number>()
+        data.forEach((b: any) => {
+          const boatName = b.boats?.name || '未知'
+          boatMap.set(boatName, (boatMap.get(boatName) || 0) + (b.duration_min || 0))
+        })
+        const boatMinutes = Array.from(boatMap.entries())
+          .map(([boatName, minutes]) => ({ boatName, minutes }))
+          .sort((a, b) => b.minutes - a.minutes)
+        
         months.push({
           month: monthStr,
           label: `${month}月`,
           bookingCount: data.length,
           totalMinutes,
-          totalHours: Math.round(totalMinutes / 60 * 10) / 10
+          totalHours: Math.round(totalMinutes / 60 * 10) / 10,
+          boatMinutes
         })
       }
     }
@@ -198,13 +198,9 @@ export function Statistics() {
     setMonthlyStats(months)
   }
 
-  // 載入財務統計（過去6個月：總額變化 + 預約使用）
+  // 載入財務統計（過去6個月：預約月結算）
   const loadFinanceStats = async () => {
-    const stats: {
-      month: string
-      balanceUsed: number; vipUsed: number; g23Used: number; g21Used: number
-      balanceTotal: number; vipTotal: number; g23Total: number; g21Total: number
-    }[] = []
+    const stats: { month: string; balanceUsed: number; vipUsed: number; g23Used: number; g21Used: number }[] = []
     const now = new Date()
     
     for (let i = 5; i >= 0; i--) {
@@ -216,7 +212,7 @@ export function Statistics() {
       const endDate = new Date(year, month, 0).getDate()
       const endDateStr = `${monthStr}-${String(endDate).padStart(2, '0')}`
       
-      // 1. 查詢該月份從預約扣款的交易記錄（預約使用）
+      // 查詢該月份從預約扣款的交易記錄
       const { data: consumeData } = await supabase
         .from('transactions')
         .select('category, amount, minutes')
@@ -238,25 +234,7 @@ export function Statistics() {
         }
       })
       
-      // 2. 查詢該月底的總額（從 members 表加總）
-      const { data: membersData } = await supabase
-        .from('members')
-        .select('balance, vip_voucher_amount, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes')
-        .eq('status', 'active')
-      
-      let balanceTotal = 0, vipTotal = 0, g23Total = 0, g21Total = 0
-      membersData?.forEach((m: any) => {
-        balanceTotal += m.balance || 0
-        vipTotal += m.vip_voucher_amount || 0
-        g23Total += m.boat_voucher_g23_minutes || 0
-        g21Total += m.boat_voucher_g21_panther_minutes || 0
-      })
-      
-      stats.push({
-        month: monthStr,
-        balanceUsed, vipUsed, g23Used, g21Used,
-        balanceTotal, vipTotal, g23Total, g21Total
-      })
+      stats.push({ month: monthStr, balanceUsed, vipUsed, g23Used, g21Used })
     }
     
     setFinanceStats(stats)
@@ -643,96 +621,6 @@ export function Statistics() {
     setMemberStats(sorted)
   }
 
-  // 載入船隻統計
-  const loadBoatStats = async () => {
-    const [year, month] = selectedPeriod.split('-')
-    const startDate = `${selectedPeriod}-01`
-    const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
-    const endDateStr = `${selectedPeriod}-${String(endDate).padStart(2, '0')}`
-    
-    // 載入預約記錄（以船為主）
-    const { data: bookingData } = await supabase
-      .from('bookings')
-      .select(`
-        id, start_at, boat_id, duration_min,
-        boats:boat_id(id, name)
-      `)
-      .gte('start_at', `${startDate}T00:00:00`)
-      .lte('start_at', `${endDateStr}T23:59:59`)
-    
-    // 載入教練資料（含時數）
-    const bookingIds = bookingData?.map(b => b.id) || []
-    const { data: participantData } = await supabase
-      .from('booking_participants')
-      .select(`
-        booking_id, coach_id, duration_min,
-        coaches:coach_id(name)
-      `)
-      .in('booking_id', bookingIds.length > 0 ? bookingIds : [-1])
-    
-    // 整理數據
-    const boatMap = new Map<string, {
-      boatId: string
-      boatName: string
-      totalMinutes: number
-      bookingCount: number
-      coaches: Map<string, number>
-    }>()
-    
-    // 建立 booking -> 教練時數 的對應
-    const bookingCoachMinutesMap = new Map<number, { coachName: string; minutes: number }[]>()
-    participantData?.forEach((p: any) => {
-      if (p.coaches?.name) {
-        if (!bookingCoachMinutesMap.has(p.booking_id)) {
-          bookingCoachMinutesMap.set(p.booking_id, [])
-        }
-        bookingCoachMinutesMap.get(p.booking_id)!.push({
-          coachName: p.coaches.name,
-          minutes: p.duration_min || 0
-        })
-      }
-    })
-    
-    bookingData?.forEach((booking: any) => {
-      const boatId = booking.boat_id
-      if (!boatId || !booking.boats) return
-      
-      const boatName = booking.boats.name || '未知'
-      
-      if (!boatMap.has(boatId)) {
-        boatMap.set(boatId, {
-          boatId,
-          boatName,
-          totalMinutes: 0,
-          bookingCount: 0,
-          coaches: new Map()
-        })
-      }
-      
-      const stats = boatMap.get(boatId)!
-      stats.totalMinutes += booking.duration_min || 0
-      stats.bookingCount += 1
-      
-      // 統計教練時數
-      const coachData = bookingCoachMinutesMap.get(booking.id) || []
-      coachData.forEach(({ coachName, minutes }) => {
-        stats.coaches.set(coachName, (stats.coaches.get(coachName) || 0) + minutes)
-      })
-    })
-    
-    // 轉換為陣列並排序
-    const sorted = Array.from(boatMap.values())
-      .map(boat => ({
-        ...boat,
-        coaches: Array.from(boat.coaches.entries())
-          .map(([coachName, minutes]) => ({ coachName, minutes }))
-          .sort((a, b) => b.minutes - a.minutes)
-      }))
-      .sort((a, b) => b.totalMinutes - a.totalMinutes)
-    
-    setBoatStats(sorted)
-  }
-
   const totalFutureBookings = futureBookings.reduce((sum, c) => sum + c.totalCount, 0)
   const totalFutureMinutes = futureBookings.reduce((sum, c) => sum + c.totalMinutes, 0)
 
@@ -946,22 +834,6 @@ export function Statistics() {
               >
                 會員
               </button>
-              <button
-                onClick={() => setMonthlySubTab('boat')}
-                style={{
-                  flex: 1,
-                  padding: '10px 16px',
-                  borderRadius: designSystem.borderRadius.md,
-                  border: 'none',
-                  background: monthlySubTab === 'boat' ? designSystem.colors.primary[500] : '#f0f0f0',
-                  color: monthlySubTab === 'boat' ? 'white' : '#666',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}
-              >
-                船
-              </button>
             </div>
             
             {/* 平日/假日摘要 */}
@@ -1144,37 +1016,44 @@ export function Statistics() {
                       <thead>
                         <tr style={{ background: '#f8f9fa' }}>
                           <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>預約數</th>
                           <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>總時數</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>平均時長</th>
+                          {/* 動態顯示各船欄位 */}
+                          {monthlyStats[0]?.boatMinutes?.map(boat => (
+                            <th key={boat.boatName} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                              🚤 {boat.boatName}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {monthlyStats.map((stat, idx) => {
-                          const avgMinutes = stat.bookingCount > 0 ? Math.round(stat.totalMinutes / stat.bookingCount) : 0
-                          return (
-                            <tr key={stat.month} style={{ 
-                              background: idx === monthlyStats.length - 1 ? '#e3f2fd' : 'white'
-                            }}>
-                              <td style={{ padding: '12px', fontWeight: idx === monthlyStats.length - 1 ? '600' : '400' }}>
-                                {stat.month}
-                              </td>
-                              <td style={{ padding: '12px', textAlign: 'right' }}>{stat.bookingCount} 筆</td>
-                              <td style={{ padding: '12px', textAlign: 'right' }}>
-                                {stat.totalMinutes} 分 ({stat.totalHours} 小時)
-                              </td>
-                              <td style={{ padding: '12px', textAlign: 'right', color: '#666' }}>
-                                {avgMinutes} 分/筆
-                              </td>
-                            </tr>
-                          )
-                        })}
+                        {monthlyStats.map((stat, idx) => (
+                          <tr key={stat.month} style={{ 
+                            background: idx === monthlyStats.length - 1 ? '#e3f2fd' : 'white'
+                          }}>
+                            <td style={{ padding: '12px', fontWeight: idx === monthlyStats.length - 1 ? '600' : '400' }}>
+                              {stat.month}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'right' }}>
+                              {stat.totalMinutes} 分 ({stat.totalHours} 小時)
+                            </td>
+                            {/* 各船時數 */}
+                            {monthlyStats[0]?.boatMinutes?.map(refBoat => {
+                              const boatData = stat.boatMinutes?.find(b => b.boatName === refBoat.boatName)
+                              const minutes = boatData?.minutes || 0
+                              return (
+                                <td key={refBoat.boatName} style={{ padding: '12px', textAlign: 'right', color: '#50c878' }}>
+                                  {minutes} 分
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
                 </div>
 
-                {/* 預約使用統計 */}
+                {/* 預約月結算 */}
                 <div style={getCardStyle(isMobile)}>
                   <h3 style={{ 
                     margin: '0 0 20px 0', 
@@ -1191,7 +1070,7 @@ export function Statistics() {
                       borderRadius: '2px',
                       display: 'inline-block'
                     }}></span>
-                    📊 預約使用
+                    📊 預約月結算
                   </h3>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
@@ -1200,8 +1079,8 @@ export function Statistics() {
                           <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
                           <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>💰 儲值</th>
                           <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>💎 VIP</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>🚤 G23</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>⛵ G21</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>🚤 G23船券</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>⛵ G21船券</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1241,78 +1120,6 @@ export function Statistics() {
                   </div>
                 </div>
 
-                {/* 會員總額變化 */}
-                <div style={getCardStyle(isMobile)}>
-                  <h3 style={{ 
-                    margin: '0 0 20px 0', 
-                    fontSize: '17px', 
-                    fontWeight: '700',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <span style={{ 
-                      width: '4px', 
-                      height: '20px', 
-                      background: '#9c27b0', 
-                      borderRadius: '2px',
-                      display: 'inline-block'
-                    }}></span>
-                    💎 會員總額（目前）
-                  </h3>
-                  {financeStats.length > 0 && (
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', 
-                      gap: '16px' 
-                    }}>
-                      <div style={{ 
-                        padding: '16px', 
-                        background: '#e3f2fd', 
-                        borderRadius: '8px',
-                        textAlign: 'center'
-                      }}>
-                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>💰 總儲值</div>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4a90e2' }}>
-                          ${financeStats[financeStats.length - 1]?.balanceTotal.toLocaleString()}
-                        </div>
-                      </div>
-                      <div style={{ 
-                        padding: '16px', 
-                        background: '#f3e5f5', 
-                        borderRadius: '8px',
-                        textAlign: 'center'
-                      }}>
-                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>💎 總VIP</div>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#9c27b0' }}>
-                          ${financeStats[financeStats.length - 1]?.vipTotal.toLocaleString()}
-                        </div>
-                      </div>
-                      <div style={{ 
-                        padding: '16px', 
-                        background: '#e8f5e9', 
-                        borderRadius: '8px',
-                        textAlign: 'center'
-                      }}>
-                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>🚤 總G23</div>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#50c878' }}>
-                          {financeStats[financeStats.length - 1]?.g23Total.toLocaleString()} 分
-                        </div>
-                      </div>
-                      <div style={{ 
-                        padding: '16px', 
-                        background: '#fff3e0', 
-                        borderRadius: '8px',
-                        textAlign: 'center'
-                      }}>
-                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>⛵ 總G21</div>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff9800' }}>
-                          {financeStats[financeStats.length - 1]?.g21Total.toLocaleString()} 分
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
 
               </>
             )}
@@ -1517,163 +1324,6 @@ export function Statistics() {
               </>
             )}
 
-            {/* Tab: 船隻統計 */}
-            {activeTab === 'monthly' && monthlySubTab === 'boat' && (
-              <>
-                {boatStats.length > 0 ? (
-                  <div style={{
-                    ...getCardStyle(isMobile),
-                    padding: isMobile ? '14px' : '20px'
-                  }}>
-                    <h3 style={{ 
-                      margin: '0 0 16px 0', 
-                      fontSize: isMobile ? '15px' : '17px', 
-                      fontWeight: '700',
-                      display: 'flex',
-                      alignItems: isMobile ? 'flex-start' : 'center',
-                      flexDirection: isMobile ? 'column' : 'row',
-                      gap: isMobile ? '4px' : '8px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ 
-                          width: '4px', 
-                          height: '20px', 
-                          background: '#50c878', 
-                          borderRadius: '2px',
-                          display: 'inline-block'
-                        }}></span>
-                        🚤 船隻使用排行
-                      </div>
-                      <span style={{ 
-                        fontSize: isMobile ? '11px' : '13px', 
-                        color: '#999', 
-                        fontWeight: '400',
-                        marginLeft: isMobile ? '12px' : '0'
-                      }}>
-                        點擊查看詳細
-                      </span>
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {boatStats.slice(0, 10).map((boat, index) => {
-                        const maxMinutes = Math.max(...boatStats.slice(0, 10).map(b => b.totalMinutes))
-                        const isExpanded = expandedMemberId === boat.boatId // 復用 expandedMemberId
-                        const hasDetails = boat.coaches.length > 0
-                        
-                        return (
-                          <div key={boat.boatId}>
-                            {/* 船隻列 */}
-                            <div
-                              onClick={() => hasDetails && setExpandedMemberId(isExpanded ? null : boat.boatId)}
-                              style={{
-                                padding: '12px',
-                                background: isExpanded ? '#e8f5e9' : '#f8f9fa',
-                                borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
-                                cursor: hasDetails ? 'pointer' : 'default',
-                                transition: 'background 0.2s'
-                              }}
-                            >
-                              <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center',
-                                marginBottom: '8px'
-                              }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  {hasDetails && (
-                                    <span style={{ 
-                                      fontSize: '12px', 
-                                      color: isExpanded ? '#50c878' : '#999',
-                                      transition: 'transform 0.2s',
-                                      transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
-                                    }}>
-                                      ▶
-                                    </span>
-                                  )}
-                                  <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
-                                    {index + 1}. {boat.boatName}
-                                  </span>
-                                  <span style={{ 
-                                    fontSize: '12px', 
-                                    color: '#666',
-                                    background: '#e8f5e9',
-                                    padding: '2px 8px',
-                                    borderRadius: '4px'
-                                  }}>
-                                    {boat.bookingCount} 趟
-                                  </span>
-                                </div>
-                                <span style={{ color: '#50c878', fontSize: '14px', fontWeight: '600' }}>
-                                  {boat.totalMinutes} 分 ({Math.round(boat.totalMinutes / 60 * 10) / 10} 小時)
-                                </span>
-                              </div>
-                              <div style={{
-                                width: '100%',
-                                height: '8px',
-                                background: '#e8f5e9',
-                                borderRadius: '4px',
-                                overflow: 'hidden'
-                              }}>
-                                <div style={{
-                                  width: `${(boat.totalMinutes / maxMinutes) * 100}%`,
-                                  height: '100%',
-                                  background: 'linear-gradient(90deg, #50c878, #2e7d32)',
-                                  borderRadius: '4px',
-                                  transition: 'width 0.3s'
-                                }} />
-                              </div>
-                            </div>
-                            
-                            {/* 展開的詳細資訊 */}
-                            {isExpanded && hasDetails && (
-                              <div style={{
-                                background: 'white',
-                                border: '1px solid #e8f5e9',
-                                borderTop: 'none',
-                                borderRadius: '0 0 8px 8px',
-                                padding: '12px'
-                              }}>
-                                <div style={{ 
-                                  fontSize: '13px', 
-                                  color: '#666', 
-                                  marginBottom: '8px',
-                                  fontWeight: '500'
-                                }}>
-                                  🎓 教練
-                                </div>
-                                {boat.coaches.slice(0, 5).map((coach, cIdx) => (
-                                  <div 
-                                    key={coach.coachName}
-                                    style={{
-                                      display: 'flex',
-                                      justifyContent: 'space-between',
-                                      padding: '4px 0',
-                                      fontSize: '13px',
-                                      color: '#333'
-                                    }}
-                                  >
-                                    <span>{cIdx + 1}. {coach.coachName}</span>
-                                    <span style={{ color: '#4a90e2' }}>{coach.minutes} 分</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{
-                    ...getCardStyle(isMobile),
-                    textAlign: 'center',
-                    padding: '60px',
-                    color: '#999'
-                  }}>
-                    {selectedPeriod} 無船隻使用記錄
-                  </div>
-                )}
-              </>
-            )}
 
             {/* Tab: 未來預約 */}
             {activeTab === 'future' && (() => {
