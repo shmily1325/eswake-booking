@@ -110,7 +110,7 @@ export function BaoHub() {
       justifyContent: 'center'
     }}>
       <div style={{
-        maxWidth: '600px',
+        maxWidth: '750px',
         width: '100%',
         margin: '0 auto'
       }}>
@@ -196,7 +196,7 @@ export function BaoHub() {
             {/* Cards Grid */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
               gap: '15px'
             }}>
               {section.items
