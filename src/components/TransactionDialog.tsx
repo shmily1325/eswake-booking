@@ -1098,7 +1098,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  style={{ ...inputStyle, flex: 1 }}
+                  style={{ ...inputStyle, flex: 1, minWidth: 0 }}
                 />
                 <button
                   onClick={() => handleExportTransactions()}

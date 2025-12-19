@@ -867,26 +867,30 @@ export function BoatManagement() {
                 }}>
                     <div style={{
                         background: 'white', borderRadius: '12px', padding: '30px',
-                        maxWidth: '400px', width: '100%'
+                        maxWidth: '400px', width: '100%', overflow: 'hidden'
                     }}>
                         <h2 style={{ marginTop: 0 }}>設定維修/停用</h2>
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', marginBottom: '5px' }}>開始日期</label>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
-                            />
+                            <div style={{ display: 'flex' }}>
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    style={{ flex: 1, minWidth: 0, padding: '10px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '16px', boxSizing: 'border-box' }}
+                                />
+                            </div>
                         </div>
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', marginBottom: '5px' }}>結束日期</label>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
-                            />
+                            <div style={{ display: 'flex' }}>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    style={{ flex: 1, minWidth: 0, padding: '10px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '16px', boxSizing: 'border-box' }}
+                                />
+                            </div>
                         </div>
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                             <div style={{ flex: 1 }}>

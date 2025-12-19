@@ -467,19 +467,22 @@ export function AnnouncementManagement() {
                             fontFamily: 'inherit'
                           }}
                         />
-                        <input
-                          type="date"
-                          value={editDisplayDate}
-                          onChange={(e) => setEditDisplayDate(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '8px',
-                            border: '1px solid #ddd',
-                            borderRadius: '4px',
-                            fontSize: '14px',
-                            marginBottom: '10px'
-                          }}
-                        />
+                        <div style={{ display: 'flex', marginBottom: '10px' }}>
+                          <input
+                            type="date"
+                            value={editDisplayDate}
+                            onChange={(e) => setEditDisplayDate(e.target.value)}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              padding: '10px',
+                              border: '1px solid #e0e0e0',
+                              borderRadius: '8px',
+                              fontSize: '16px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
                             onClick={() => handleEdit(announcement.id)}

@@ -1626,7 +1626,8 @@ export function StaffManagement() {
             borderRadius: '12px',
             padding: isMobile ? '20px' : '30px',
             maxWidth: '400px',
-            width: '100%'
+            width: '100%',
+            overflow: 'hidden'
           }}>
             <h2 style={{ marginTop: 0, fontSize: '20px' }}>
               設定 {selectedCoach.name} 的休假
@@ -1636,45 +1637,51 @@ export function StaffManagement() {
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
                 開始日期
               </label>
-              <input
-                type="date"
-                value={timeOffStartDate}
-                onChange={(e) => {
-                  setTimeOffStartDate(e.target.value)
-                  // 如果結束日期早於開始日期，自動調整
-                  if (timeOffEndDate < e.target.value) {
-                    setTimeOffEndDate(e.target.value)
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  boxSizing: 'border-box'
-                }}
-              />
+              <div style={{ display: 'flex' }}>
+                <input
+                  type="date"
+                  value={timeOffStartDate}
+                  onChange={(e) => {
+                    setTimeOffStartDate(e.target.value)
+                    // 如果結束日期早於開始日期，自動調整
+                    if (timeOffEndDate < e.target.value) {
+                      setTimeOffEndDate(e.target.value)
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '12px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
             </div>
 
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
                 結束日期
               </label>
-              <input
-                type="date"
-                value={timeOffEndDate}
-                onChange={(e) => setTimeOffEndDate(e.target.value)}
-                min={timeOffStartDate}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  boxSizing: 'border-box'
-                }}
-              />
+              <div style={{ display: 'flex' }}>
+                <input
+                  type="date"
+                  value={timeOffEndDate}
+                  onChange={(e) => setTimeOffEndDate(e.target.value)}
+                  min={timeOffStartDate}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '12px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
             </div>
 
             <div style={{ marginBottom: '20px' }}>

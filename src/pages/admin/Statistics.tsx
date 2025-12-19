@@ -742,6 +742,7 @@ export function Statistics() {
                 onChange={(e) => setSelectedPeriod(e.target.value)}
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   height: '44px',
                   padding: '0 12px',
                   borderRadius: designSystem.borderRadius.md,

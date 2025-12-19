@@ -166,12 +166,14 @@ export function DateRangePicker({
                 }}
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   border: 'none',
                   background: 'transparent',
                   fontSize: '16px',
                   color: '#333',
                   cursor: 'pointer',
-                  outline: 'none'
+                  outline: 'none',
+                  boxSizing: 'border-box'
                 }}
               />
             </div>
