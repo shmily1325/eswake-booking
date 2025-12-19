@@ -330,7 +330,8 @@ export function TomorrowReminder() {
           borderRadius: '8px',
           padding: isMobile ? '15px' : '20px',
           marginBottom: isMobile ? '10px' : '15px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          overflow: 'hidden'
         }}>
           <label style={{
             display: 'block',
@@ -342,49 +343,53 @@ export function TomorrowReminder() {
             選擇日期
           </label>
           {isMobile ? (
-            // 手機版：徽章在右上角
+            // 手機版：使用 flex 布局，和 DayViewMobileHeader 一樣
             <div style={{ 
-              position: 'relative',
-              marginTop: '12px',
-              marginLeft: '8px',
-              marginRight: '8px',
-              marginBottom: loading ? '8px' : '0'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: '#f8f9fa',
+              padding: '8px',
+              borderRadius: '8px',
+              border: '1px solid #dee2e6'
             }}>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  height: '44px',
-                  padding: '0 12px',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                  backgroundColor: '#f8f9fa',
-                  textAlign: 'center',
-                  touchAction: 'manipulation'
-                }}
-              />
-              {/* 星期幾徽章 - 右上角 */}
-              <div style={{
-                position: 'absolute',
-                top: '-10px',
-                right: '8px',
-                fontSize: '11px',
-                color: 'white',
-                fontWeight: '600',
-                background: '#5a5a5a',
-                padding: '3px 10px',
-                borderRadius: '10px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                pointerEvents: 'none',
-              }}>
-                {getWeekdayText(selectedDate)}
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '44px',
+                    padding: '0 12px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                    backgroundColor: 'white',
+                    textAlign: 'center',
+                    touchAction: 'manipulation'
+                  }}
+                />
+                {/* 星期幾徽章 - 右上角 */}
+                <div style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  right: '8px',
+                  fontSize: '11px',
+                  color: 'white',
+                  fontWeight: '600',
+                  background: '#5a5a5a',
+                  padding: '3px 10px',
+                  borderRadius: '10px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  pointerEvents: 'none',
+                }}>
+                  {getWeekdayText(selectedDate)}
+                </div>
               </div>
               {loading && (
-                <div style={{ marginTop: '8px', color: '#666', fontSize: '13px' }}>載入中...</div>
+                <span style={{ color: '#666', fontSize: '13px', flexShrink: 0 }}>載入中...</span>
               )}
             </div>
           ) : (

@@ -743,34 +743,39 @@ export function Statistics() {
               />
               
               {/* 向後箭頭 */}
-              <button
-                onClick={() => {
-                  const [y, m] = selectedPeriod.split('-').map(Number)
-                  const newDate = new Date(y, m, 1)
-                  const now = new Date()
-                  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-                  const newMonth = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`
-                  if (newMonth <= currentMonth) {
-                    setSelectedPeriod(newMonth)
-                  }
-                }}
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${designSystem.colors.border.main}`,
-                  borderRadius: designSystem.borderRadius.md,
-                  width: '44px',
-                  height: '44px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  color: designSystem.colors.text.primary,
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                →
-              </button>
+              {(() => {
+                const now = new Date()
+                const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+                const isAtCurrentMonth = selectedPeriod >= currentMonth
+                return (
+                  <button
+                    onClick={() => {
+                      if (isAtCurrentMonth) return
+                      const [y, m] = selectedPeriod.split('-').map(Number)
+                      const newDate = new Date(y, m, 1)
+                      setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
+                    }}
+                    disabled={isAtCurrentMonth}
+                    style={{
+                      background: 'transparent',
+                      border: `1px solid ${designSystem.colors.border.main}`,
+                      borderRadius: designSystem.borderRadius.md,
+                      width: '44px',
+                      height: '44px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                      color: isAtCurrentMonth ? '#ccc' : designSystem.colors.text.primary,
+                      cursor: isAtCurrentMonth ? 'not-allowed' : 'pointer',
+                      flexShrink: 0,
+                      opacity: isAtCurrentMonth ? 0.5 : 1
+                    }}
+                  >
+                    →
+                  </button>
+                )
+              })()}
               
               {/* 本月按鈕 */}
               <button
@@ -849,6 +854,30 @@ export function Statistics() {
               >
                 🚤 船隻
               </button>
+            </div>
+            
+            {/* 平日/假日摘要 */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              marginTop: designSystem.spacing.sm,
+              padding: '12px',
+              background: '#f8f9fa',
+              borderRadius: designSystem.borderRadius.md
+            }}>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>📅 平日</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#4a90e2' }}>
+                  {weekdayStats.weekdayCount} 筆 / {weekdayStats.weekdayMinutes} 分 ({Math.round(weekdayStats.weekdayMinutes / 60 * 10) / 10}h)
+                </div>
+              </div>
+              <div style={{ width: '1px', background: '#ddd' }}></div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>🎉 假日</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#ff9800' }}>
+                  {weekdayStats.weekendCount} 筆 / {weekdayStats.weekendMinutes} 分 ({Math.round(weekdayStats.weekendMinutes / 60 * 10) / 10}h)
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1030,123 +1059,6 @@ export function Statistics() {
                   </div>
                 </div>
 
-                {/* 平日/假日分佈 */}
-                <div style={getCardStyle(isMobile)}>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    marginBottom: '20px',
-                    flexWrap: 'wrap',
-                    gap: '12px'
-                  }}>
-                    <h3 style={{ 
-                      margin: 0, 
-                      fontSize: '17px', 
-                      fontWeight: '700',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      <span style={{ 
-                        width: '4px', 
-                        height: '20px', 
-                        background: '#ff9800', 
-                        borderRadius: '2px',
-                        display: 'inline-block'
-                      }}></span>
-                      平日/假日分佈
-                    </h3>
-                    <input
-                      type="month"
-                      value={selectedPeriod}
-                      onChange={(e) => setSelectedPeriod(e.target.value)}
-                      style={{
-                        padding: '8px 12px',
-                        fontSize: '14px',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '6px'
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {/* 平日 */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                        <span style={{ fontWeight: '500', color: '#333' }}>
-                          📅 平日（週一～五）
-                        </span>
-                        <span style={{ color: '#4a90e2', fontWeight: '600' }}>
-                          {weekdayStats.weekdayCount} 趟 / {Math.round(weekdayStats.weekdayMinutes / 60 * 10) / 10} 小時
-                        </span>
-                      </div>
-                      <div style={{
-                        width: '100%',
-                        height: '24px',
-                        background: '#e3f2fd',
-                        borderRadius: '6px',
-                        overflow: 'hidden'
-                      }}>
-                        <div style={{
-                          width: `${weekdayStats.weekdayCount + weekdayStats.weekendCount > 0 
-                            ? (weekdayStats.weekdayCount / (weekdayStats.weekdayCount + weekdayStats.weekendCount)) * 100 
-                            : 0}%`,
-                          height: '100%',
-                          background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontSize: '12px',
-                          fontWeight: '600'
-                        }}>
-                          {weekdayStats.weekdayCount + weekdayStats.weekendCount > 0 
-                            ? Math.round((weekdayStats.weekdayCount / (weekdayStats.weekdayCount + weekdayStats.weekendCount)) * 100) 
-                            : 0}%
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* 假日 */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                        <span style={{ fontWeight: '500', color: '#333' }}>
-                          🎉 假日（週六、日）
-                        </span>
-                        <span style={{ color: '#ff9800', fontWeight: '600' }}>
-                          {weekdayStats.weekendCount} 趟 / {Math.round(weekdayStats.weekendMinutes / 60 * 10) / 10} 小時
-                        </span>
-                      </div>
-                      <div style={{
-                        width: '100%',
-                        height: '24px',
-                        background: '#fff3e0',
-                        borderRadius: '6px',
-                        overflow: 'hidden'
-                      }}>
-                        <div style={{
-                          width: `${weekdayStats.weekdayCount + weekdayStats.weekendCount > 0 
-                            ? (weekdayStats.weekendCount / (weekdayStats.weekdayCount + weekdayStats.weekendCount)) * 100 
-                            : 0}%`,
-                          height: '100%',
-                          background: 'linear-gradient(90deg, #ff9800, #f57c00)',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontSize: '12px',
-                          fontWeight: '600'
-                        }}>
-                          {weekdayStats.weekdayCount + weekdayStats.weekendCount > 0 
-                            ? Math.round((weekdayStats.weekendCount / (weekdayStats.weekdayCount + weekdayStats.weekendCount)) * 100) 
-                            : 0}%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </>
             )}
 
@@ -1240,7 +1152,7 @@ export function Statistics() {
                                     {member.totalMinutes} 分
                                   </span>
                                   <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
-                                    指定 {Math.round(member.designatedMinutes / 60 * 10) / 10}h / 不指定 {Math.round(member.undesignatedMinutes / 60 * 10) / 10}h
+                                    指定 {member.designatedMinutes}分 / 不指定 {member.undesignatedMinutes}分
                                   </div>
                                 </div>
                               </div>

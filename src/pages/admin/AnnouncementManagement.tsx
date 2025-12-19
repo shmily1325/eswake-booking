@@ -198,7 +198,8 @@ export function AnnouncementManagement() {
           borderRadius: '12px',
           padding: isMobile ? '16px' : '20px',
           marginBottom: '15px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          overflow: 'hidden'
         }}>
           <div style={{ marginBottom: '12px' }}>
             <label style={{
@@ -238,42 +239,47 @@ export function AnnouncementManagement() {
               顯示日期
             </label>
             <div style={{ 
-              position: 'relative',
-              marginTop: '12px',
-              marginLeft: '8px',
-              marginRight: '8px'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: '#f8f9fa',
+              padding: '8px',
+              borderRadius: '8px',
+              border: '1px solid #dee2e6'
             }}>
-              <input
-                type="date"
-                value={newDisplayDate}
-                onChange={(e) => setNewDisplayDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  height: '44px',
-                  padding: '0 12px',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                  backgroundColor: '#f8f9fa',
-                  textAlign: 'center'
-                }}
-              />
-              {/* 星期幾徽章 - 右上角 */}
-              <div style={{
-                position: 'absolute',
-                top: '-10px',
-                right: '8px',
-                fontSize: '11px',
-                color: 'white',
-                fontWeight: '600',
-                background: '#5a5a5a',
-                padding: '3px 10px',
-                borderRadius: '10px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                pointerEvents: 'none',
-              }}>
-                {getWeekdayText(newDisplayDate)}
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input
+                  type="date"
+                  value={newDisplayDate}
+                  onChange={(e) => setNewDisplayDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '44px',
+                    padding: '0 12px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                    backgroundColor: 'white',
+                    textAlign: 'center'
+                  }}
+                />
+                {/* 星期幾徽章 - 右上角 */}
+                <div style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  right: '8px',
+                  fontSize: '11px',
+                  color: 'white',
+                  fontWeight: '600',
+                  background: '#5a5a5a',
+                  padding: '3px 10px',
+                  borderRadius: '10px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  pointerEvents: 'none',
+                }}>
+                  {getWeekdayText(newDisplayDate)}
+                </div>
               </div>
             </div>
           </div>
@@ -303,7 +309,8 @@ export function AnnouncementManagement() {
           borderRadius: '12px',
           padding: isMobile ? '12px' : '20px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          minHeight: '200px'
+          minHeight: '200px',
+          overflow: 'hidden'
         }}>
           <div style={{
             display: 'flex',
