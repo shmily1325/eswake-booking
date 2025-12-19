@@ -403,39 +403,22 @@ export function BoatManagement() {
                             marginBottom: '20px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '12px',
-                            background: '#f8f9fa',
-                            padding: isMobile ? '12px' : '12px 16px',
-                            borderRadius: '8px',
-                            border: '1px solid #e0e0e0'
+                            gap: '8px'
                         }}>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                fontSize: '14px',
-                                color: '#666',
-                                flexShrink: 0
-                            }}>
-                                <span>📅</span>
-                                <span>查看維修記錄</span>
-                            </div>
-                            <div style={{ flex: 1 }}>
+                            <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>📅 查看維修記錄</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
                                 <input
                                     type="month"
                                     value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(e.target.value)}
                                     style={{
                                         width: '100%',
-                                        height: '40px',
-                                        padding: '0 12px',
-                                        border: '2px solid #2196F3',
+                                        padding: '10px',
+                                        border: '1px solid #e0e0e0',
                                         borderRadius: '8px',
                                         fontSize: '16px',
                                         cursor: 'pointer',
                                         background: 'white',
-                                        color: '#1565c0',
-                                        fontWeight: '600',
                                         boxSizing: 'border-box'
                                     }}
                                 />

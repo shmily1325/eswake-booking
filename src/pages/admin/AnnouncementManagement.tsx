@@ -238,29 +238,31 @@ export function AnnouncementManagement() {
             }}>
               顯示日期
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input
                 type="date"
                 value={newDisplayDate}
                 onChange={(e) => setNewDisplayDate(e.target.value)}
                 style={{
-                  padding: isMobile ? '12px 14px' : '10px 14px',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '6px',
+                  flex: isMobile ? 1 : 'none',
+                  minWidth: 0,
+                  padding: '10px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
                   fontSize: isMobile ? '16px' : '14px',
-                  cursor: 'pointer',
-                  flex: isMobile ? 1 : 'none'
+                  boxSizing: 'border-box'
                 }}
               />
               {/* 星期幾徽章 */}
               <span style={{
-                padding: isMobile ? '12px 14px' : '10px 14px',
-                borderRadius: '6px',
+                padding: '10px 14px',
+                borderRadius: '8px',
                 background: '#5a5a5a',
                 color: 'white',
-                fontSize: isMobile ? '14px' : '14px',
+                fontSize: '14px',
                 fontWeight: '600',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}>
                 {getWeekdayText(newDisplayDate)}
               </span>
@@ -299,7 +301,7 @@ export function AnnouncementManagement() {
             display: 'flex',
             alignItems: 'center',
             marginBottom: '15px',
-            gap: '12px',
+            gap: '8px',
           }}>
             <h2 style={{
               margin: 0,
@@ -312,17 +314,16 @@ export function AnnouncementManagement() {
                 searchText ? a.content.toLowerCase().includes(searchText.toLowerCase()) : true
               ).length})
             </h2>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <input
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 style={{
                   width: '100%',
-                  height: '40px',
-                  padding: '0 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
+                  padding: '10px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
                   fontSize: '16px',
                   cursor: 'pointer',
                   background: 'white',

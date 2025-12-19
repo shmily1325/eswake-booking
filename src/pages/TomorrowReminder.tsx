@@ -343,31 +343,33 @@ export function TomorrowReminder() {
             選擇日期
           </label>
           {isMobile ? (
-            // 手機版：簡潔樣式
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            // 手機版：和預約查詢一樣的樣式
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 style={{
-                  padding: '12px 14px',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  cursor: 'pointer',
                   flex: 1,
+                  minWidth: 0,
+                  padding: '10px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
                   touchAction: 'manipulation'
                 }}
               />
               {/* 星期幾徽章 */}
               <span style={{
-                padding: '12px 14px',
-                borderRadius: '6px',
+                padding: '10px 14px',
+                borderRadius: '8px',
                 background: '#5a5a5a',
                 color: 'white',
                 fontSize: '14px',
                 fontWeight: '600',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}>
                 {getWeekdayText(selectedDate)}
               </span>
@@ -384,8 +386,8 @@ export function TomorrowReminder() {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 style={{
                   padding: '10px 14px',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '6px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
                   fontSize: '14px',
                   cursor: 'pointer'
                 }}
@@ -393,7 +395,7 @@ export function TomorrowReminder() {
               {/* 星期幾徽章 */}
               <span style={{
                 padding: '10px 14px',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 background: '#5a5a5a',
                 color: 'white',
                 fontSize: '14px',

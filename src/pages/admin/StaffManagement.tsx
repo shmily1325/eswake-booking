@@ -777,22 +777,19 @@ export function StaffManagement() {
               </label>
 
               {/* 右邊：月份選擇器 */}
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <input
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   style={{
                     width: '100%',
-                    height: '40px',
-                    padding: '0 12px',
-                    border: '2px solid #2196F3',
+                    padding: '10px',
+                    border: '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
                     cursor: 'pointer',
                     background: 'white',
-                    color: '#1565c0',
-                    fontWeight: '500',
                     boxSizing: 'border-box'
                   }}
                 />
