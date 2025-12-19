@@ -406,23 +406,22 @@ export function BoatManagement() {
                             gap: '8px'
                         }}>
                             <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>📅 查看維修記錄</span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <input
-                                    type="month"
-                                    value={selectedMonth}
-                                    onChange={(e) => setSelectedMonth(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px',
-                                        border: '1px solid #e0e0e0',
-                                        borderRadius: '8px',
-                                        fontSize: '16px',
-                                        cursor: 'pointer',
-                                        background: 'white',
-                                        boxSizing: 'border-box'
-                                    }}
-                                />
-                            </div>
+                            <input
+                                type="month"
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                                style={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                    padding: '10px',
+                                    border: '1px solid #e0e0e0',
+                                    borderRadius: '8px',
+                                    fontSize: '16px',
+                                    cursor: 'pointer',
+                                    background: 'white',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
                         </div>
                     </>
                 )}

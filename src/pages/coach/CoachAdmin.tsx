@@ -32,6 +32,7 @@ interface PendingReport {
   participant_name: string
   duration_min: number
   payment_method: string
+  lesson_type?: string | null
   status: string | null
   replaces_id: number | null
   notes?: string | null
@@ -876,7 +877,7 @@ export function CoachAdmin() {
                                     </span>
                                   </div>
                                   <div style={{ color: '#666', fontSize: '14px' }}>
-                                    {report.duration_min}分 • {PAYMENT_METHODS.find(m => m.value === report.payment_method)?.label}
+                                    {report.duration_min}分 • {PAYMENT_METHODS.find(m => m.value === report.payment_method)?.label} • {LESSON_TYPES.find(lt => lt.value === report.lesson_type)?.label || '不指定'}
                                     {report.coaches && ` • ${report.coaches.name}`}
                                   </div>
                                   {/* 提交者資訊 */}
