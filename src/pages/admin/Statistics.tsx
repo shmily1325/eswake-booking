@@ -1702,7 +1702,7 @@ export function Statistics() {
                           <span style={{ 
                             width: '4px', 
                             height: '20px', 
-                            background: '#4a90e2', 
+                            background: '#64748b', 
                             borderRadius: '2px',
                             display: 'inline-block'
                           }}></span>
@@ -1733,7 +1733,7 @@ export function Statistics() {
                                   onClick={() => hasDesignatedStudents && setExpandedTeachingCoachId(isExpanded ? null : coach.coachId)}
                                   style={{
                                     padding: '12px',
-                                    background: isExpanded ? '#e3f2fd' : '#f8f9fa',
+                                    background: isExpanded ? '#f1f5f9' : '#f8fafc',
                                     borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
                                     cursor: hasDesignatedStudents ? 'pointer' : 'default',
                                     transition: 'background 0.2s'
@@ -1749,33 +1749,33 @@ export function Statistics() {
                                       {hasDesignatedStudents && (
                                         <span style={{ 
                                           fontSize: '12px', 
-                                          color: isExpanded ? '#4a90e2' : '#999',
+                                          color: isExpanded ? '#475569' : '#94a3b8',
                                           transition: 'transform 0.2s',
                                           transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
                                         }}>
                                           ▶
                                         </span>
                                       )}
-                                      <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
+                                      <span style={{ fontWeight: '600', color: '#334155', fontSize: '14px' }}>
                                         {index + 1}. {coach.coachName}
                                       </span>
                                     </div>
-                                    <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
+                                    <span style={{ color: '#475569', fontSize: '14px', fontWeight: '600' }}>
                                       {coach.teachingMinutes} 分 ({Math.round(coach.teachingMinutes / 60 * 10) / 10} 小時)
                                     </span>
                                   </div>
                                   <div style={{
                                     width: '100%',
-                                    height: '20px',
-                                    background: '#e3f2fd',
-                                    borderRadius: '6px',
+                                    height: '8px',
+                                    background: '#e2e8f0',
+                                    borderRadius: '4px',
                                     overflow: 'hidden'
                                   }}>
                                     <div style={{
                                       width: `${(coach.teachingMinutes / maxTeaching) * 100}%`,
                                       height: '100%',
-                                      background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
-                                      borderRadius: '6px',
+                                      background: '#64748b',
+                                      borderRadius: '4px',
                                       transition: 'width 0.3s'
                                     }} />
                                   </div>
@@ -1785,18 +1785,18 @@ export function Statistics() {
                                 {isExpanded && hasDesignatedStudents && (
                                   <div style={{
                                     background: 'white',
-                                    border: '1px solid #e3f2fd',
+                                    border: '1px solid #e2e8f0',
                                     borderTop: 'none',
                                     borderRadius: '0 0 8px 8px',
                                     padding: '12px'
                                   }}>
                                     <div style={{ 
                                       fontSize: '13px', 
-                                      color: '#666', 
+                                      color: '#64748b', 
                                       marginBottom: '10px',
                                       fontWeight: '500'
                                     }}>
-                                      ⭐ 指定 {coach.coachName} 的學生：
+                                      指定 {coach.coachName} 的學生：
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                       {coach.designatedStudents.map((student, sIdx) => (
@@ -1807,14 +1807,14 @@ export function Statistics() {
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
                                             padding: '8px 12px',
-                                            background: '#fafafa',
+                                            background: '#f8fafc',
                                             borderRadius: '6px'
                                           }}
                                         >
-                                          <span style={{ fontSize: '13px', color: '#333' }}>
+                                          <span style={{ fontSize: '13px', color: '#334155' }}>
                                             {sIdx + 1}. {student.memberName}
                                             {student.boatMinutes.length > 0 && (
-                                              <span style={{ color: '#888', fontWeight: '400' }}>
+                                              <span style={{ color: '#94a3b8', fontWeight: '400' }}>
                                                 {' - '}
                                                 {student.boatMinutes.map((b, idx) => (
                                                   <span key={b.boatName}>
@@ -1827,7 +1827,7 @@ export function Statistics() {
                                           </span>
                                           <span style={{ 
                                             fontSize: '13px', 
-                                            color: '#ff9800',
+                                            color: '#475569',
                                             fontWeight: '600',
                                             flexShrink: 0,
                                             marginLeft: '12px'
@@ -1843,7 +1843,7 @@ export function Statistics() {
                             )
                           })}
                         {coachStats.filter(c => c.teachingMinutes > 0).length === 0 && (
-                          <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                          <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
                             本月無教學時數記錄
                           </div>
                         )}
@@ -1866,44 +1866,53 @@ export function Statistics() {
                         <span style={{ 
                           width: '4px', 
                           height: '20px', 
-                          background: '#50c878', 
+                          background: '#94a3b8', 
                           borderRadius: '2px',
                           display: 'inline-block'
                         }}></span>
                         🚤 駕駛時數排行
                       </h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {coachStats
                           .filter(c => c.drivingMinutes > 0)
                           .sort((a, b) => b.drivingMinutes - a.drivingMinutes)
                           .map((coach, index) => {
                             const maxDriving = Math.max(...coachStats.map(c => c.drivingMinutes))
+                            
                             return (
-                              <div key={`driving-${coach.coachId}`}>
+                              <div 
+                                key={`driving-${coach.coachId}`}
+                                style={{
+                                  padding: '12px',
+                                  background: '#f8fafc',
+                                  borderRadius: '8px'
+                                }}
+                              >
                                 <div style={{ 
                                   display: 'flex', 
-                                  justifyContent: 'space-between', 
-                                  marginBottom: '6px' 
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  marginBottom: '8px'
                                 }}>
-                                  <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
+                                  <span style={{ fontWeight: '600', color: '#334155', fontSize: '14px' }}>
                                     {index + 1}. {coach.coachName}
                                   </span>
-                                  <span style={{ color: '#50c878', fontSize: '14px', fontWeight: '600' }}>
+                                  <span style={{ color: '#475569', fontSize: '14px', fontWeight: '600' }}>
                                     {coach.drivingMinutes} 分 ({Math.round(coach.drivingMinutes / 60 * 10) / 10} 小時)
                                   </span>
                                 </div>
                                 <div style={{
                                   width: '100%',
-                                  height: '24px',
-                                  background: '#e8f5e9',
-                                  borderRadius: '6px',
+                                  height: '8px',
+                                  background: '#e2e8f0',
+                                  borderRadius: '4px',
                                   overflow: 'hidden'
                                 }}>
                                   <div style={{
                                     width: `${(coach.drivingMinutes / maxDriving) * 100}%`,
                                     height: '100%',
-                                    background: 'linear-gradient(90deg, #50c878, #2e7d32)',
-                                    borderRadius: '6px',
+                                    background: '#94a3b8',
+                                    borderRadius: '4px',
                                     transition: 'width 0.3s'
                                   }} />
                                 </div>
@@ -1911,7 +1920,7 @@ export function Statistics() {
                             )
                           })}
                         {coachStats.filter(c => c.drivingMinutes > 0).length === 0 && (
-                          <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                          <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
                             本月無駕駛時數記錄
                           </div>
                         )}
