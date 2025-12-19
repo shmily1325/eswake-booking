@@ -838,10 +838,10 @@ export function CoachAdmin() {
                             paddingBottom: '12px', 
                             borderBottom: '1px solid #e0e0e0' 
                           }}>
-                            <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '4px' }}>
+                            <div style={{ fontWeight: '600', fontSize: '15px', marginBottom: '4px' }}>
                               {extractDate(booking.start_at)} {extractTime(booking.start_at)} | {booking.boats?.name} ({booking.duration_min}分)
                             </div>
-                            <div style={{ color: '#666', fontSize: '14px' }}>
+                            <div style={{ color: '#666', fontSize: '13px' }}>
                               預約人：{booking.contact_name}
                             </div>
                           </div>
@@ -863,7 +863,7 @@ export function CoachAdmin() {
                                 }}
                               >
                                 <div style={{ flex: 1, minWidth: '200px' }}>
-                                  <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                                  <div style={{ fontWeight: '600', fontSize: '15px', marginBottom: '4px' }}>
                                     {report.participant_name}
                                     <span style={{
                                       marginLeft: '8px',
@@ -871,12 +871,12 @@ export function CoachAdmin() {
                                       background: '#ff9800',
                                       color: 'white',
                                       borderRadius: '4px',
-                                      fontSize: '12px'
+                                      fontSize: '11px'
                                     }}>
                                       非會員
                                     </span>
                                   </div>
-                                  <div style={{ color: '#666', fontSize: '14px' }}>
+                                  <div style={{ color: '#666', fontSize: '13px' }}>
                                     {report.duration_min}分 • {PAYMENT_METHODS.find(m => m.value === report.payment_method)?.label} • {LESSON_TYPES.find(lt => lt.value === report.lesson_type)?.label || '不指定'}
                                     {report.coaches && ` • ${report.coaches.name}`}
                                   </div>
@@ -1081,10 +1081,10 @@ export function CoachAdmin() {
                           gap: '8px'
                         }}>
                           <div>
-                            <div style={{ fontWeight: '600', fontSize: '18px', marginBottom: '4px' }}>
+                            <div style={{ fontWeight: '600', fontSize: isMobile ? '15px' : '16px', marginBottom: '4px' }}>
                               {extractDate(stat.booking.start_at)} {extractTime(stat.booking.start_at)} | {stat.booking.boats?.name}
                             </div>
-                            <div style={{ color: '#666', fontSize: '14px' }}>
+                            <div style={{ color: '#666', fontSize: isMobile ? '13px' : '14px' }}>
                               {stat.booking.contact_name}
                             </div>
                           </div>
@@ -1129,7 +1129,7 @@ export function CoachAdmin() {
                                 <div style={{ marginBottom: (stat.driverReports.length > 0 || driverParticipants.length > 0) ? '16px' : 0 }}>
                                   <h4 style={{ 
                                     margin: '0 0 12px 0', 
-                                    fontSize: '15px', 
+                                    fontSize: '14px', 
                                     color: '#4caf50',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -1174,7 +1174,7 @@ export function CoachAdmin() {
                                 <div>
                                   <h4 style={{ 
                                     margin: '0 0 12px 0', 
-                                    fontSize: '15px', 
+                                    fontSize: '14px', 
                                     color: '#2196f3',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -1270,7 +1270,7 @@ export function CoachAdmin() {
                           flexWrap: 'wrap',
                           gap: '8px'
                         }}>
-                          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                          <h3 style={{ margin: 0, fontSize: isMobile ? '15px' : '16px', fontWeight: '600' }}>
                             {stat.coachName}
                           </h3>
                           <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>

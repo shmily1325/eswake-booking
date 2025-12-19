@@ -1467,14 +1467,14 @@ export function CoachReport({
                 >
                   {/* 預約資訊 */}
                   <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #e0e0e0' }}>
-                    <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '4px' }}>
+                    <div style={{ fontWeight: '600', fontSize: '15px', marginBottom: '4px' }}>
                       {extractDate(booking.start_at)} {extractTime(booking.start_at)} | {booking.boats?.name} ({booking.duration_min}分)
                     </div>
-                    <div style={{ color: '#666', fontSize: '14px' }}>
+                    <div style={{ color: '#666', fontSize: '13px' }}>
                       {booking.contact_name || '未命名'}
                     </div>
                     {booking.notes && (
-                      <div style={{ color: '#999', fontSize: '13px', marginTop: '4px' }}>
+                      <div style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
                         備註：{booking.notes}
                       </div>
                     )}

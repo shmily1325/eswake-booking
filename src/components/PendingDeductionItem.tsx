@@ -622,10 +622,10 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px' }}>
+          <div style={{ fontSize: '15px', fontWeight: '600', marginBottom: '6px' }}>
             {isExpanded ? '▼' : '▶'} {report.participant_name}
           </div>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+          <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
             {(() => {
               const [datePart] = report.bookings.start_at.split('T')
               return datePart
