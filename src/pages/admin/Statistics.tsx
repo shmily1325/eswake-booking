@@ -693,6 +693,115 @@ export function Statistics() {
           </button>
         </div>
 
+        {/* 共用月份選擇器（只在教練/會員/船隻 Tab 顯示） */}
+        {(activeTab === 'coach' || activeTab === 'member' || activeTab === 'boat') && (
+          <div style={{
+            backgroundColor: 'white',
+            padding: designSystem.spacing.sm,
+            borderRadius: designSystem.borderRadius.lg,
+            boxShadow: designSystem.shadows.sm,
+            marginBottom: designSystem.spacing.md
+          }}>
+            <div style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: designSystem.spacing.sm
+            }}>
+              {/* 向前箭頭 */}
+              <button
+                onClick={() => {
+                  const [y, m] = selectedPeriod.split('-').map(Number)
+                  const newDate = new Date(y, m - 2, 1)
+                  setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
+                }}
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${designSystem.colors.border.main}`,
+                  borderRadius: designSystem.borderRadius.md,
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  color: designSystem.colors.text.primary,
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                ←
+              </button>
+              
+              {/* 月份輸入 */}
+              <input
+                type="month"
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                style={{
+                  flex: 1,
+                  height: '44px',
+                  padding: '0 12px',
+                  borderRadius: designSystem.borderRadius.md,
+                  border: `1px solid ${designSystem.colors.border.main}`,
+                  fontSize: '16px',
+                  textAlign: 'center',
+                  backgroundColor: '#f8f9fa',
+                  color: designSystem.colors.text.primary,
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+              
+              {/* 向後箭頭 */}
+              <button
+                onClick={() => {
+                  const [y, m] = selectedPeriod.split('-').map(Number)
+                  const newDate = new Date(y, m, 1)
+                  setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
+                }}
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${designSystem.colors.border.main}`,
+                  borderRadius: designSystem.borderRadius.md,
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  color: designSystem.colors.text.primary,
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                →
+              </button>
+              
+              {/* 本月按鈕 */}
+              <button
+                onClick={() => {
+                  const now = new Date()
+                  setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
+                }}
+                style={{
+                  background: designSystem.colors.primary[500],
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: designSystem.borderRadius.md,
+                  padding: '0 16px',
+                  height: '44px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                本月
+              </button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div style={{ 
             textAlign: 'center', 
@@ -993,116 +1102,6 @@ export function Statistics() {
             {/* Tab: 會員統計 */}
             {activeTab === 'member' && (
               <>
-                {/* 月份選擇 - 參考排班頁面的佈局 */}
-                <div style={{
-                  backgroundColor: 'white',
-                  padding: designSystem.spacing.sm,
-                  borderRadius: designSystem.borderRadius.lg,
-                  boxShadow: designSystem.shadows.sm,
-                  marginBottom: designSystem.spacing.md
-                }}>
-                  <div style={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: designSystem.spacing.sm
-                  }}>
-                    {/* 向前箭頭 */}
-                    <button
-                      onClick={() => {
-                        const [y, m] = selectedPeriod.split('-').map(Number)
-                        const newDate = new Date(y, m - 2, 1)
-                        setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: `1px solid ${designSystem.colors.border.main}`,
-                        borderRadius: designSystem.borderRadius.md,
-                        width: '44px',
-                        height: '44px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '18px',
-                        color: designSystem.colors.text.primary,
-                        cursor: 'pointer',
-                        flexShrink: 0
-                      }}
-                    >
-                      ←
-                    </button>
-                    
-                    {/* 月份選擇器 */}
-                    <div style={{ flex: 1, position: 'relative' }}>
-                      <input
-                        type="month"
-                        value={selectedPeriod}
-                        onChange={(e) => setSelectedPeriod(e.target.value)}
-                        style={{
-                          width: '100%',
-                          height: '44px',
-                          padding: '0 12px',
-                          borderRadius: designSystem.borderRadius.md,
-                          border: `1px solid ${designSystem.colors.border.main}`,
-                          fontSize: '16px',
-                          textAlign: 'center',
-                          backgroundColor: '#f8f9fa',
-                          color: designSystem.colors.text.primary,
-                          outline: 'none',
-                          boxSizing: 'border-box',
-                        }}
-                      />
-                    </div>
-                    
-                    {/* 向後箭頭 */}
-                    <button
-                      onClick={() => {
-                        const [y, m] = selectedPeriod.split('-').map(Number)
-                        const newDate = new Date(y, m, 1)
-                        setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: `1px solid ${designSystem.colors.border.main}`,
-                        borderRadius: designSystem.borderRadius.md,
-                        width: '44px',
-                        height: '44px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '18px',
-                        color: designSystem.colors.text.primary,
-                        cursor: 'pointer',
-                        flexShrink: 0
-                      }}
-                    >
-                      →
-                    </button>
-
-                    {/* 本月按鈕 */}
-                    <button
-                      onClick={() => {
-                        const now = new Date()
-                        setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
-                      }}
-                      style={{
-                        background: designSystem.colors.secondary[100],
-                        border: `1px solid ${designSystem.colors.secondary[300]}`,
-                        borderRadius: designSystem.borderRadius.md,
-                        height: '44px',
-                        padding: '0 12px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        color: designSystem.colors.text.secondary,
-                        whiteSpace: 'nowrap',
-                        cursor: 'pointer',
-                        flexShrink: 0
-                      }}
-                    >
-                      本月
-                    </button>
-                  </div>
-                </div>
-
                 {memberStats.length > 0 ? (
                   <div style={{
                     ...getCardStyle(isMobile),
@@ -1303,116 +1302,6 @@ export function Statistics() {
             {/* Tab: 船隻統計 */}
             {activeTab === 'boat' && (
               <>
-                {/* 月份選擇 - 參考排班頁面的佈局 */}
-                <div style={{
-                  backgroundColor: 'white',
-                  padding: designSystem.spacing.sm,
-                  borderRadius: designSystem.borderRadius.lg,
-                  boxShadow: designSystem.shadows.sm,
-                  marginBottom: designSystem.spacing.md
-                }}>
-                  <div style={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: designSystem.spacing.sm
-                  }}>
-                    {/* 向前箭頭 */}
-                    <button
-                      onClick={() => {
-                        const [y, m] = selectedPeriod.split('-').map(Number)
-                        const newDate = new Date(y, m - 2, 1)
-                        setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: `1px solid ${designSystem.colors.border.main}`,
-                        borderRadius: designSystem.borderRadius.md,
-                        width: '44px',
-                        height: '44px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '18px',
-                        color: designSystem.colors.text.primary,
-                        cursor: 'pointer',
-                        flexShrink: 0
-                      }}
-                    >
-                      ←
-                    </button>
-                    
-                    {/* 月份選擇器 */}
-                    <div style={{ flex: 1, position: 'relative' }}>
-                      <input
-                        type="month"
-                        value={selectedPeriod}
-                        onChange={(e) => setSelectedPeriod(e.target.value)}
-                        style={{
-                          width: '100%',
-                          height: '44px',
-                          padding: '0 12px',
-                          borderRadius: designSystem.borderRadius.md,
-                          border: `1px solid ${designSystem.colors.border.main}`,
-                          fontSize: '16px',
-                          textAlign: 'center',
-                          backgroundColor: '#f8f9fa',
-                          color: designSystem.colors.text.primary,
-                          outline: 'none',
-                          boxSizing: 'border-box',
-                        }}
-                      />
-                    </div>
-                    
-                    {/* 向後箭頭 */}
-                    <button
-                      onClick={() => {
-                        const [y, m] = selectedPeriod.split('-').map(Number)
-                        const newDate = new Date(y, m, 1)
-                        setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: `1px solid ${designSystem.colors.border.main}`,
-                        borderRadius: designSystem.borderRadius.md,
-                        width: '44px',
-                        height: '44px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '18px',
-                        color: designSystem.colors.text.primary,
-                        cursor: 'pointer',
-                        flexShrink: 0
-                      }}
-                    >
-                      →
-                    </button>
-
-                    {/* 本月按鈕 */}
-                    <button
-                      onClick={() => {
-                        const now = new Date()
-                        setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
-                      }}
-                      style={{
-                        background: designSystem.colors.secondary[100],
-                        border: `1px solid ${designSystem.colors.secondary[300]}`,
-                        borderRadius: designSystem.borderRadius.md,
-                        height: '44px',
-                        padding: '0 12px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        color: designSystem.colors.text.secondary,
-                        whiteSpace: 'nowrap',
-                        cursor: 'pointer',
-                        flexShrink: 0
-                      }}
-                    >
-                      本月
-                    </button>
-                  </div>
-                </div>
-
                 {boatStats.length > 0 ? (
                   <div style={{
                     ...getCardStyle(isMobile),

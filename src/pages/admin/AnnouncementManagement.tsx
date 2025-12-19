@@ -233,39 +233,43 @@ export function AnnouncementManagement() {
               display: 'block',
               fontSize: '13px',
               color: '#666',
-              marginBottom: '12px',
+              marginBottom: '8px',
               fontWeight: '500'
             }}>
               顯示日期
             </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="date"
-                value={newDisplayDate}
-                onChange={(e) => setNewDisplayDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  height: '44px',
-                  padding: '0 12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box'
-                }}
-              />
+            <div style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <div style={{ flex: 1 }}>
+                <input
+                  type="date"
+                  value={newDisplayDate}
+                  onChange={(e) => setNewDisplayDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '44px',
+                    padding: '0 12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                    backgroundColor: '#f8f9fa',
+                    textAlign: 'center'
+                  }}
+                />
+              </div>
               {/* 星期幾徽章 */}
               <div style={{
-                position: 'absolute',
-                top: '-8px',
-                right: '8px',
-                fontSize: '11px',
+                fontSize: '13px',
                 color: 'white',
                 fontWeight: '600',
                 background: '#5a5a5a',
-                padding: '2px 8px',
-                borderRadius: '10px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                pointerEvents: 'none',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                whiteSpace: 'nowrap'
               }}>
                 {getWeekdayText(newDisplayDate)}
               </div>
