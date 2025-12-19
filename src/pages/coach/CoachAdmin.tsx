@@ -898,28 +898,34 @@ export function CoachAdmin() {
               ...getCardStyle(isMobile),
               marginBottom: '24px'
             }}>
-              {/* 查詢期間 - 簡化版 */}
-              <div style={{ marginBottom: '16px' }}>
-                <DateRangePicker
-                  selectedDate={selectedDate}
-                  onDateChange={setSelectedDate}
-                  isMobile={isMobile}
-                  showTodayButton={true}
-                  label="查詢期間"
-                  simplified={true}
-                />
-              </div>
-              
-              {/* 匯出報表按鈕 - 只在桌面版顯示 */}
-              {!isMobile && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              {/* 查詢期間 + 匯出按鈕 */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'flex-end',
+                justifyContent: 'space-between',
+                gap: '16px',
+                flexWrap: 'wrap'
+              }}>
+                <div style={{ flex: 1, minWidth: isMobile ? '100%' : 'auto' }}>
+                  <DateRangePicker
+                    selectedDate={selectedDate}
+                    onDateChange={setSelectedDate}
+                    isMobile={isMobile}
+                    showTodayButton={true}
+                    label="查詢期間"
+                    simplified={true}
+                  />
+                </div>
+                
+                {/* 匯出報表按鈕 - 只在桌面版顯示 */}
+                {!isMobile && (
                   <ExportReportButton 
                     records={completedReports}
                     dateRange={selectedDate.length === 7 ? selectedDate : selectedDate}
                     isMobile={isMobile}
                   />
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {loading ? (
