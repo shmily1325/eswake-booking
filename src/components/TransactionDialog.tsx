@@ -142,13 +142,18 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     setEditingTransaction(tx)
     setEditCategory(tx.category)
     
-    // 直接從金額正負推斷調整類型（最可靠，因為 adjust_type 可能與實際金額不一致）
+    // 計算實際效果（delta），根據實際效果決定顯示增加或減少
     const rawValue = tx.amount || tx.minutes || 0
-    const inferredAdjustType = rawValue >= 0 ? 'increase' : 'decrease'
-    setEditAdjustType(inferredAdjustType)
+    const effectiveDelta = tx.adjust_type === 'increase' ? rawValue : -rawValue
     
-    // 使用絕對值，因為 adjust_type 已經決定了增減方向
-    setEditValue(Math.abs(rawValue).toString())
+    // 根據實際效果顯示：正數顯示「增加」，負數顯示「減少」，數值取絕對值
+    if (effectiveDelta >= 0) {
+      setEditAdjustType('increase')
+      setEditValue(Math.abs(effectiveDelta).toString())
+    } else {
+      setEditAdjustType('decrease')
+      setEditValue(Math.abs(effectiveDelta).toString())
+    }
     setEditDescription(tx.description)
     setEditNotes(tx.notes || '')
     setEditTransactionDate(tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : ''))
@@ -158,7 +163,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     if (!editingTransaction) return
     
     const numValue = parseFloat(editValue)
-    if (!numValue || numValue <= 0) {
+    if (isNaN(numValue) || numValue < 0) {
       toast.warning('請輸入有效的數值')
       return
     }
@@ -543,7 +548,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     e.preventDefault()
     
     const numValue = parseFloat(value)
-    if (!numValue || numValue <= 0) {
+    if (isNaN(numValue) || numValue < 0) {
       toast.warning('請輸入有效的數值')
       return
     }
@@ -903,7 +908,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   type="date"
                   value={transactionDate}
                   onChange={(e) => setTransactionDate(e.target.value)}
-                  style={inputStyle}
+                  style={{
+                    ...inputStyle,
+                    minWidth: 0,
+                    maxWidth: '100%',
+                    touchAction: 'manipulation',
+                  }}
                   required
                 />
               </div>
@@ -1459,7 +1469,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                 type="date"
                                 value={editTransactionDate}
                                 onChange={(e) => setEditTransactionDate(e.target.value)}
-                                style={{ ...inputStyle, fontSize: '14px' }}
+                                style={{
+                                  ...inputStyle,
+                                  fontSize: '14px',
+                                  minWidth: 0,
+                                  maxWidth: '100%',
+                                  touchAction: 'manipulation',
+                                }}
                               />
                             </div>
 
