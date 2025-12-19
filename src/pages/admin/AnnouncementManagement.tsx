@@ -247,6 +247,32 @@ export function AnnouncementManagement() {
               borderRadius: '8px',
               border: '1px solid #dee2e6'
             }}>
+              {/* 左箭頭 */}
+              <button
+                type="button"
+                onClick={() => {
+                  const date = new Date(newDisplayDate)
+                  date.setDate(date.getDate() - 1)
+                  setNewDisplayDate(date.toISOString().split('T')[0])
+                }}
+                style={{
+                  background: 'white',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  color: '#333',
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                ←
+              </button>
+              
               <div style={{ flex: 1, position: 'relative' }}>
                 <input
                   type="date"
@@ -281,6 +307,32 @@ export function AnnouncementManagement() {
                   {getWeekdayText(newDisplayDate)}
                 </div>
               </div>
+              
+              {/* 右箭頭 */}
+              <button
+                type="button"
+                onClick={() => {
+                  const date = new Date(newDisplayDate)
+                  date.setDate(date.getDate() + 1)
+                  setNewDisplayDate(date.toISOString().split('T')[0])
+                }}
+                style={{
+                  background: 'white',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  color: '#333',
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                →
+              </button>
             </div>
           </div>
 
