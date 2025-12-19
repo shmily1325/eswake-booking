@@ -142,18 +142,15 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     setEditingTransaction(tx)
     setEditCategory(tx.category)
     
-    // 計算實際效果（delta），根據實際效果決定顯示增加或減少
-    const rawValue = tx.amount || tx.minutes || 0
-    const effectiveDelta = tx.adjust_type === 'increase' ? rawValue : -rawValue
+    // 直接使用 adjust_type 決定增減（與列表顯示邏輯一致）
+    // adjust_type 可能是 null（舊數據），視為 'decrease'
+    const isIncrease = tx.adjust_type === 'increase'
+    setEditAdjustType(isIncrease ? 'increase' : 'decrease')
     
-    // 根據實際效果顯示：正數顯示「增加」，負數顯示「減少」，數值取絕對值
-    if (effectiveDelta >= 0) {
-      setEditAdjustType('increase')
-      setEditValue(Math.abs(effectiveDelta).toString())
-    } else {
-      setEditAdjustType('decrease')
-      setEditValue(Math.abs(effectiveDelta).toString())
-    }
+    // 數值取絕對值（因為資料庫中可能存負數）
+    const rawValue = tx.amount || tx.minutes || 0
+    setEditValue(Math.abs(rawValue).toString())
+    
     setEditDescription(tx.description)
     setEditNotes(tx.notes || '')
     setEditTransactionDate(tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : ''))
