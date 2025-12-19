@@ -289,7 +289,7 @@ export function AuditLog() {
   
   const [startDate, setStartDate] = useState(() => {
     const date = new Date()
-    date.setDate(date.getDate() - 7)
+    date.setDate(date.getDate() - 30)  // 預設 30 天
     return getLocalDateString(date)
   })
   const [endDate, setEndDate] = useState(() => {
@@ -303,6 +303,9 @@ export function AuditLog() {
   
   // 進階篩選展開狀態
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  
+  // 是否有設定進階篩選
+  const hasAdvancedFilters = filter !== 'all' || selectedFilledBy !== 'all'
 
   useEffect(() => {
     fetchLogs()
@@ -561,19 +564,10 @@ export function AuditLog() {
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
       }}>
         {/* 搜尋框 */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontSize: '13px',
-            color: '#868e96',
-            fontWeight: '500'
-          }}>
-            搜尋
-          </label>
+        <div style={{ marginBottom: '12px' }}>
           <input
             type="text"
-            placeholder="搜尋會員、船隻、填表人..."
+            placeholder="🔍 搜尋會員、船隻、填表人..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -591,147 +585,43 @@ export function AuditLog() {
           />
         </div>
 
-        {/* 操作類型篩選 */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontSize: '13px',
-            color: '#868e96',
-            fontWeight: '500'
-          }}>
-            操作類型
-          </label>
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            flexWrap: 'wrap',
-          }}>
-            {[
-              { key: 'all', label: '全部' },
-              { key: 'add', label: '➕ 新增' },
-              { key: 'edit', label: '✏️ 修改' },
-              { key: 'delete', label: '🗑️ 刪除' },
-              { key: 'schedule', label: '📅 排班' },
-            ].map(({ key, label }) => (
+        {/* 預約日期篩選 - 放最外面 */}
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              placeholder="📅 預約日期（如 12/18 或 1218）"
+              value={bookingDateFilter}
+              onChange={(e) => setBookingDateFilter(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '14px 16px',
+                fontSize: isMobile ? '16px' : '15px',
+                border: bookingDateFilter ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
+                borderRadius: '8px',
+                outline: 'none',
+                background: bookingDateFilter ? '#f8f9fa' : 'white',
+                boxSizing: 'border-box',
+                transition: 'all 0.2s',
+              }}
+            />
+            {bookingDateFilter && (
               <button
-                key={key}
-                onClick={() => setFilter(key as any)}
+                onClick={() => setBookingDateFilter('')}
                 style={{
-                  padding: '10px 16px',
+                  padding: '14px 16px',
                   fontSize: '14px',
-                  fontWeight: filter === key ? '600' : '500',
-                  border: filter === key ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
-                  borderRadius: '20px',
-                  background: filter === key ? '#f0f0f0' : 'white',
-                  color: filter === key ? '#5a5a5a' : '#333',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: '#5a5a5a',
+                  color: 'white',
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
+                  fontWeight: '600',
                 }}
               >
-                {label}
+                ✕
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 記錄時間 */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ 
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '8px'
-          }}>
-            <span style={{ 
-              fontSize: '13px', 
-              color: '#868e96',
-              fontWeight: '500',
-            }}>
-              記錄時間
-            </span>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {[
-                { key: 'today', label: '今天' },
-                { key: '7days', label: '7天' },
-                { key: '30days', label: '30天' },
-              ].map(({ key, label }) => {
-                const isActive = (() => {
-                  const end = getLocalDateString()
-                  const start = new Date()
-                  if (key === 'today') return startDate === end && endDate === end
-                  if (key === '7days') {
-                    start.setDate(start.getDate() - 7)
-                    return startDate === getLocalDateString(start) && endDate === end
-                  }
-                  if (key === '30days') {
-                    start.setDate(start.getDate() - 30)
-                    return startDate === getLocalDateString(start) && endDate === end
-                  }
-                  return false
-                })()
-                
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setQuickDateRange(key as any)}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '20px',
-                      background: isActive ? '#5a5a5a' : 'white',
-                      color: isActive ? 'white' : '#495057',
-                      cursor: 'pointer',
-                      minHeight: '36px',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-          
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px',
-            alignItems: 'center',
-            width: '100%',
-          }}>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                padding: '12px 10px',
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                boxSizing: 'border-box',
-              }}
-            />
-            <span style={{ fontSize: '14px', color: '#999', flexShrink: 0 }}>→</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                padding: '12px 10px',
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                boxSizing: 'border-box',
-              }}
-            />
+            )}
           </div>
         </div>
 
@@ -743,9 +633,9 @@ export function AuditLog() {
             padding: '12px',
             fontSize: '14px',
             fontWeight: '500',
-            border: (bookingDateFilter || selectedFilledBy !== 'all') ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
+            border: hasAdvancedFilters ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
             borderRadius: '8px',
-            background: (bookingDateFilter || selectedFilledBy !== 'all') ? '#f0f0f0' : 'white',
+            background: hasAdvancedFilters ? '#f0f0f0' : 'white',
             color: '#666',
             cursor: 'pointer',
             display: 'flex',
@@ -755,8 +645,8 @@ export function AuditLog() {
             transition: 'all 0.2s',
           }}
         >
-          {showAdvancedFilters ? '收起進階篩選' : '展開進階篩選'}
-          {(bookingDateFilter || selectedFilledBy !== 'all') && (
+          {showAdvancedFilters ? '收起篩選' : '更多篩選'}
+          {hasAdvancedFilters && (
             <span style={{
               padding: '2px 8px',
               background: '#5a5a5a',
@@ -764,7 +654,10 @@ export function AuditLog() {
               borderRadius: '10px',
               fontSize: '12px',
             }}>
-              已設定
+              {[
+                filter !== 'all' ? 1 : 0,
+                selectedFilledBy !== 'all' ? 1 : 0,
+              ].reduce((a, b) => a + b, 0)}
             </span>
           )}
           <span style={{ 
@@ -776,20 +669,17 @@ export function AuditLog() {
 
         {/* 進階篩選區（可摺疊） */}
         <div style={{
-          maxHeight: showAdvancedFilters ? '400px' : '0',
+          maxHeight: showAdvancedFilters ? '600px' : '0',
           overflow: 'hidden',
           transition: 'max-height 0.3s ease',
         }}>
           <div style={{
             marginTop: '16px',
-            padding: '16px',
-            background: '#f8f9fa',
-            borderRadius: '8px',
             display: 'flex',
             flexDirection: 'column',
             gap: '16px',
           }}>
-            {/* 預約日期篩選 */}
+            {/* 操作類型篩選 */}
             <div>
               <label style={{
                 display: 'block',
@@ -798,42 +688,141 @@ export function AuditLog() {
                 color: '#868e96',
                 fontWeight: '500'
               }}>
-                預約日期（找特定日期的預約變更）
+                操作類型
               </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap',
+              }}>
+                {[
+                  { key: 'all', label: '全部' },
+                  { key: 'add', label: '➕ 新增' },
+                  { key: 'edit', label: '✏️ 修改' },
+                  { key: 'delete', label: '🗑️ 刪除' },
+                  { key: 'schedule', label: '📅 排班' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilter(key as any)}
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: '14px',
+                      fontWeight: filter === key ? '600' : '500',
+                      border: filter === key ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
+                      borderRadius: '20px',
+                      background: filter === key ? '#f0f0f0' : 'white',
+                      color: filter === key ? '#5a5a5a' : '#333',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 記錄時間 */}
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '13px',
+                color: '#868e96',
+                fontWeight: '500'
+              }}>
+                記錄時間範圍
+              </label>
+              {/* 快選按鈕 */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px',
+                marginBottom: '8px',
+                flexWrap: 'wrap',
+              }}>
+                {[
+                  { key: 'today', label: '今天' },
+                  { key: '7days', label: '7天' },
+                  { key: '30days', label: '30天' },
+                  { key: '90days', label: '90天' },
+                ].map(({ key, label }) => {
+                  const isActive = (() => {
+                    const end = getLocalDateString()
+                    const start = new Date()
+                    if (key === 'today') return startDate === end && endDate === end
+                    if (key === '7days') {
+                      start.setDate(start.getDate() - 7)
+                      return startDate === getLocalDateString(start) && endDate === end
+                    }
+                    if (key === '30days') {
+                      start.setDate(start.getDate() - 30)
+                      return startDate === getLocalDateString(start) && endDate === end
+                    }
+                    if (key === '90days') {
+                      start.setDate(start.getDate() - 90)
+                      return startDate === getLocalDateString(start) && endDate === end
+                    }
+                    return false
+                  })()
+                  
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setQuickDateRange(key as any)}
+                      style={{
+                        padding: '10px 16px',
+                        fontSize: '14px',
+                        fontWeight: isActive ? '600' : '500',
+                        border: isActive ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
+                        borderRadius: '20px',
+                        background: isActive ? '#f0f0f0' : 'white',
+                        color: isActive ? '#5a5a5a' : '#333',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              {/* 自訂日期 */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px',
+                alignItems: 'center',
+                width: '100%',
+              }}>
                 <input
-                  type="text"
-                  placeholder="如 12/18 或 1218"
-                  value={bookingDateFilter}
-                  onChange={(e) => setBookingDateFilter(e.target.value)}
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
                   style={{
                     flex: 1,
-                    padding: '12px 14px',
-                    fontSize: isMobile ? '16px' : '15px',
-                    border: bookingDateFilter ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
+                    minWidth: 0,
+                    padding: '12px 10px',
+                    border: '2px solid #e0e0e0',
                     borderRadius: '8px',
-                    outline: 'none',
-                    background: 'white',
+                    fontSize: '16px',
                     boxSizing: 'border-box',
                   }}
                 />
-                {bookingDateFilter && (
-                  <button
-                    onClick={() => setBookingDateFilter('')}
-                    style={{
-                      padding: '12px 16px',
-                      fontSize: '14px',
-                      border: 'none',
-                      borderRadius: '8px',
-                      background: '#dc3545',
-                      color: 'white',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                    }}
-                  >
-                    清除
-                  </button>
-                )}
+                <span style={{ fontSize: '14px', color: '#999', flexShrink: 0 }}>→</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '12px 10px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                  }}
+                />
               </div>
             </div>
 
@@ -871,10 +860,10 @@ export function AuditLog() {
             </div>
 
             {/* 清除所有進階篩選 */}
-            {(bookingDateFilter || selectedFilledBy !== 'all') && (
+            {hasAdvancedFilters && (
               <button
                 onClick={() => {
-                  setBookingDateFilter('')
+                  setFilter('all')
                   setSelectedFilledBy('all')
                 }}
                 style={{
@@ -889,7 +878,7 @@ export function AuditLog() {
                   cursor: 'pointer',
                 }}
               >
-                清除進階篩選
+                清除所有篩選
               </button>
             )}
           </div>
