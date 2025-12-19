@@ -897,25 +897,27 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               </div>
 
               {/* 交易日期 */}
-              <div style={{ marginBottom: '16px', overflow: 'hidden' }}>
+              <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
                   交易日期 *
                 </label>
-                <input
-                  type="date"
-                  value={transactionDate}
-                  onChange={(e) => setTransactionDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: isMobile ? '12px 16px' : '10px 16px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: isMobile ? '16px' : '14px',
-                    boxSizing: 'border-box',
-                    touchAction: 'manipulation',
-                  }}
-                  required
-                />
+                <div style={{ display: 'flex' }}>
+                  <input
+                    type="date"
+                    value={transactionDate}
+                    onChange={(e) => setTransactionDate(e.target.value)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '12px',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      boxSizing: 'border-box',
+                    }}
+                    required
+                  />
+                </div>
               </div>
 
               {/* 說明（必填） */}
@@ -1463,24 +1465,26 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                             </div>
 
                             {/* 交易日期 */}
-                            <div style={{ marginBottom: '12px', overflow: 'hidden' }}>
+                            <div style={{ marginBottom: '12px' }}>
                               <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
                                 交易日期 *
                               </label>
-                              <input
-                                type="date"
-                                value={editTransactionDate}
-                                onChange={(e) => setEditTransactionDate(e.target.value)}
-                                style={{
-                                  width: '100%',
-                                  padding: isMobile ? '12px 16px' : '10px 16px',
-                                  border: '2px solid #e0e0e0',
-                                  borderRadius: '8px',
-                                  fontSize: '14px',
-                                  boxSizing: 'border-box',
-                                  touchAction: 'manipulation',
-                                }}
-                              />
+                              <div style={{ display: 'flex' }}>
+                                <input
+                                  type="date"
+                                  value={editTransactionDate}
+                                  onChange={(e) => setEditTransactionDate(e.target.value)}
+                                  style={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                    padding: '12px',
+                                    border: '1px solid #e0e0e0',
+                                    borderRadius: '8px',
+                                    fontSize: '16px',
+                                    boxSizing: 'border-box',
+                                  }}
+                                />
+                              </div>
                             </div>
 
                             {/* 說明 */}
