@@ -763,45 +763,18 @@ const PAYMENT_METHODS = [
 - 所有駕駛回報記錄
 - 按預約時間排序
 
-### 數據統計
-
-#### `coachStats` 計算邏輯
-
-按教練 ID 分組統計：
-
-```typescript
-{
-  coachId: string
-  coachName: string
-  teachingMinutes: number      // 教學總時數
-  drivingMinutes: number       // 駕駛總時數
-  teachingRecords: any[]       // 教學明細記錄
-  drivingRecords: any[]        // 駕駛明細記錄
-}
-```
-
-**統計規則：**
-1. 遍歷所有 `completedReports`（教學記錄），累加各教練的 `duration_min`
-2. 遍歷所有 `completedDriverReports`（駕駛記錄），累加各教練的 `driver_duration_min`
-3. 按教練姓名排序
-
 ### UI 顯示
 
-**1. 總計卡片**
+**總計卡片**
 - 當日總教學時數（所有教練總和）
 - 當日總駕駛時數（所有教練總和）
 - 顯示分鐘和小時單位
 
-**2. 各教練詳細卡片**
-- 教練姓名
-- 教學/駕駛時數統計
-- 教學明細列表：
-  - 時間、船隻
-  - 學員姓名（會員/非會員標記）
-  - 時數、付款方式
-- 駕駛明細列表：
-  - 時間、船隻
-  - 駕駛時數
+**按預約查看**
+- 以預約為單位組織
+- 顯示教練回報（參與者列表）
+- 顯示駕駛回報
+- 顯示學生結帳資訊
 
 ---
 

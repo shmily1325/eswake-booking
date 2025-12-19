@@ -19,15 +19,6 @@ interface MonthlyStats {
   totalHours: number
 }
 
-interface BookingDetail {
-  id: number
-  startAt: string
-  date: string
-  time: string
-  durationMin: number
-  contactName: string
-}
-
 interface CoachFutureBooking {
   coachId: string
   coachName: string
@@ -37,7 +28,12 @@ interface CoachFutureBooking {
     count: number
     minutes: number
   }[]
-  bookingDetails: BookingDetail[]
+  // 聯絡人時數分布
+  contactStats: {
+    contactName: string
+    minutes: number
+    count: number
+  }[]
   totalCount: number
   totalMinutes: number
 }
@@ -63,7 +59,15 @@ export function Statistics() {
   // 未來預約數據
   const [futureBookings, setFutureBookings] = useState<CoachFutureBooking[]>([])
   const [futureMonthFilter, setFutureMonthFilter] = useState<string>('all')
-  const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null)
+  const [expandedFutureCoachId, setExpandedFutureCoachId] = useState<string | null>(null)
+  
+  // 未來平日/假日統計
+  const [futureWeekdayStats, setFutureWeekdayStats] = useState<{
+    weekdayCount: number
+    weekdayMinutes: number
+    weekendCount: number
+    weekendMinutes: number
+  }>({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
   
   // 教練時數數據
   const [coachStats, setCoachStats] = useState<{
@@ -213,7 +217,7 @@ export function Statistics() {
     setWeekdayStats({ weekdayCount, weekdayMinutes, weekendCount, weekendMinutes })
   }
 
-  // 載入未來預約（按教練分組）
+  // 載入未來預約（按教練分組，含聯絡人時數分布）
   const loadFutureBookings = async () => {
     const today = getLocalDateString()
     
@@ -245,93 +249,103 @@ export function Statistics() {
       return
     }
     
-    // 整理數據
-    const coachMap = new Map<string, CoachFutureBooking>()
+    // 計算平日/假日統計
+    let weekdayCount = 0, weekdayMinutes = 0
+    let weekendCount = 0, weekendMinutes = 0
     
-    const createBookingDetail = (booking: any): BookingDetail => {
-      const startAt = booking.start_at
-      const dateStr = startAt.substring(0, 10)
-      const timeStr = startAt.substring(11, 16)
-      return {
-        id: booking.id,
-        startAt,
-        date: dateStr,
-        time: timeStr,
-        durationMin: booking.duration_min || 0,
-        contactName: booking.contact_name || ''
-      }
-    }
+    // 整理數據：教練 -> 聯絡人時數分布
+    const coachMap = new Map<string, {
+      coachId: string
+      coachName: string
+      bookings: { month: string; label: string; count: number; minutes: number }[]
+      contactMap: Map<string, { minutes: number; count: number }>
+      totalCount: number
+      totalMinutes: number
+    }>()
+    
+    const initCoach = (coachId: string, coachName: string) => ({
+      coachId,
+      coachName,
+      bookings: futureMonthsList.map(m => ({
+        month: m,
+        label: `${parseInt(m.split('-')[1])}月`,
+        count: 0,
+        minutes: 0
+      })),
+      contactMap: new Map<string, { minutes: number; count: number }>(),
+      totalCount: 0,
+      totalMinutes: 0
+    })
     
     bookingsData?.forEach((booking: any) => {
       const bookingMonth = booking.start_at.substring(0, 7)
       const coaches = booking.booking_coaches || []
-      const detail = createBookingDetail(booking)
+      const contactName = booking.contact_name || '未知'
+      const durationMin = booking.duration_min || 0
       
-      if (coaches.length === 0) {
-        // 未指派教練的預約
-        if (!coachMap.has('unassigned')) {
-          coachMap.set('unassigned', {
-            coachId: 'unassigned',
-            coachName: '未指派',
-            bookings: futureMonthsList.map(m => ({
-              month: m,
-              label: `${parseInt(m.split('-')[1])}月`,
-              count: 0,
-              minutes: 0
-            })),
-            bookingDetails: [],
-            totalCount: 0,
-            totalMinutes: 0
-          })
+      // 平日/假日統計
+      const date = new Date(booking.start_at)
+      const dayOfWeek = date.getDay()
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      if (isWeekend) {
+        weekendCount++
+        weekendMinutes += durationMin
+      } else {
+        weekdayCount++
+        weekdayMinutes += durationMin
+      }
+      
+      // 處理教練分組
+      const addToCoach = (coachId: string, coachName: string) => {
+        if (!coachMap.has(coachId)) {
+          coachMap.set(coachId, initCoach(coachId, coachName))
         }
-        const coach = coachMap.get('unassigned')!
+        const coach = coachMap.get(coachId)!
+        
+        // 月份統計
         const monthData = coach.bookings.find(b => b.month === bookingMonth)
         if (monthData) {
           monthData.count += 1
-          monthData.minutes += booking.duration_min || 0
+          monthData.minutes += durationMin
         }
-        coach.bookingDetails.push(detail)
+        
+        // 聯絡人統計
+        if (!coach.contactMap.has(contactName)) {
+          coach.contactMap.set(contactName, { minutes: 0, count: 0 })
+        }
+        const contactData = coach.contactMap.get(contactName)!
+        contactData.minutes += durationMin
+        contactData.count += 1
+        
         coach.totalCount += 1
-        coach.totalMinutes += booking.duration_min || 0
+        coach.totalMinutes += durationMin
+      }
+      
+      if (coaches.length === 0) {
+        addToCoach('unassigned', '未指派')
       } else {
         coaches.forEach((bc: any) => {
-          const coachId = bc.coach_id
-          const coachName = bc.coaches?.name || '未知'
-          
-          if (!coachMap.has(coachId)) {
-            coachMap.set(coachId, {
-              coachId,
-              coachName,
-              bookings: futureMonthsList.map(m => ({
-                month: m,
-                label: `${parseInt(m.split('-')[1])}月`,
-                count: 0,
-                minutes: 0
-              })),
-              bookingDetails: [],
-              totalCount: 0,
-              totalMinutes: 0
-            })
-          }
-          
-          const coach = coachMap.get(coachId)!
-          const monthData = coach.bookings.find(b => b.month === bookingMonth)
-          if (monthData) {
-            monthData.count += 1
-            monthData.minutes += booking.duration_min || 0
-          }
-          coach.bookingDetails.push(detail)
-          coach.totalCount += 1
-          coach.totalMinutes += booking.duration_min || 0
+          addToCoach(bc.coach_id, bc.coaches?.name || '未知')
         })
       }
     })
     
-    // 排序並設置
-    const sortedCoaches = Array.from(coachMap.values())
-      .sort((a, b) => b.totalCount - a.totalCount)
+    // 轉換為陣列並排序
+    const sortedCoaches: CoachFutureBooking[] = Array.from(coachMap.values())
+      .map(coach => ({
+        coachId: coach.coachId,
+        coachName: coach.coachName,
+        bookings: coach.bookings,
+        contactStats: Array.from(coach.contactMap.entries())
+          .map(([contactName, data]) => ({ contactName, ...data }))
+          .sort((a, b) => b.minutes - a.minutes),
+        totalCount: coach.totalCount,
+        totalMinutes: coach.totalMinutes
+      }))
+      .sort((a, b) => b.totalMinutes - a.totalMinutes) // 按時數排序
     
     setFutureBookings(sortedCoaches)
+    setFutureWeekdayStats({ weekdayCount, weekdayMinutes, weekendCount, weekendMinutes })
   }
 
   // 載入教練時數統計
@@ -644,15 +658,15 @@ export function Statistics() {
 
   const tabStyle = (isActive: boolean) => ({
     padding: isMobile ? '12px 16px' : '14px 24px',
-    background: isActive ? '#475569' : 'white',
-    color: isActive ? 'white' : '#64748b',
-    border: isActive ? 'none' : '1px solid #e2e8f0',
+    background: isActive ? 'linear-gradient(135deg, #4a90e2 0%, #1976d2 100%)' : 'white',
+    color: isActive ? 'white' : '#666',
+    border: isActive ? 'none' : '1px solid #e0e0e0',
     borderRadius: '10px',
     cursor: 'pointer',
     fontSize: isMobile ? '14px' : '15px',
     fontWeight: isActive ? '600' : '500',
     transition: 'all 0.2s',
-    boxShadow: isActive ? '0 4px 12px rgba(71, 85, 105, 0.25)' : 'none'
+    boxShadow: isActive ? '0 4px 12px rgba(74, 144, 226, 0.3)' : 'none'
   })
 
   return (
@@ -798,7 +812,7 @@ export function Statistics() {
                   setSelectedPeriod(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
                 }}
                 style={{
-                  background: '#475569',
+                  background: designSystem.colors.primary[500],
                   color: 'white',
                   border: 'none',
                   borderRadius: designSystem.borderRadius.md,
@@ -826,9 +840,9 @@ export function Statistics() {
                   flex: 1,
                   padding: '10px 16px',
                   borderRadius: designSystem.borderRadius.md,
-                  border: monthlySubTab === 'coach' ? 'none' : '1px solid #e2e8f0',
-                  background: monthlySubTab === 'coach' ? '#475569' : 'white',
-                  color: monthlySubTab === 'coach' ? 'white' : '#64748b',
+                  border: 'none',
+                  background: monthlySubTab === 'coach' ? designSystem.colors.primary[500] : '#f0f0f0',
+                  color: monthlySubTab === 'coach' ? 'white' : '#666',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer'
@@ -842,9 +856,9 @@ export function Statistics() {
                   flex: 1,
                   padding: '10px 16px',
                   borderRadius: designSystem.borderRadius.md,
-                  border: monthlySubTab === 'member' ? 'none' : '1px solid #e2e8f0',
-                  background: monthlySubTab === 'member' ? '#475569' : 'white',
-                  color: monthlySubTab === 'member' ? 'white' : '#64748b',
+                  border: 'none',
+                  background: monthlySubTab === 'member' ? designSystem.colors.primary[500] : '#f0f0f0',
+                  color: monthlySubTab === 'member' ? 'white' : '#666',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer'
@@ -858,9 +872,9 @@ export function Statistics() {
                   flex: 1,
                   padding: '10px 16px',
                   borderRadius: designSystem.borderRadius.md,
-                  border: monthlySubTab === 'boat' ? 'none' : '1px solid #e2e8f0',
-                  background: monthlySubTab === 'boat' ? '#475569' : 'white',
-                  color: monthlySubTab === 'boat' ? 'white' : '#64748b',
+                  border: 'none',
+                  background: monthlySubTab === 'boat' ? designSystem.colors.primary[500] : '#f0f0f0',
+                  color: monthlySubTab === 'boat' ? 'white' : '#666',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer'
@@ -876,19 +890,19 @@ export function Statistics() {
               gap: '12px',
               marginTop: designSystem.spacing.sm,
               padding: '12px',
-              background: '#f8fafc',
+              background: '#f8f9fa',
               borderRadius: designSystem.borderRadius.md
             }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>平日</div>
-                <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#334155' }}>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>平日</div>
+                <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#333' }}>
                   {weekdayStats.weekdayCount} 筆 / {weekdayStats.weekdayMinutes} 分
                 </div>
               </div>
-              <div style={{ width: '1px', background: '#e2e8f0' }}></div>
+              <div style={{ width: '1px', background: '#ddd' }}></div>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>假日</div>
-                <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#334155' }}>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>假日</div>
+                <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#333' }}>
                   {weekdayStats.weekendCount} 筆 / {weekdayStats.weekendMinutes} 分
                 </div>
               </div>
@@ -919,47 +933,47 @@ export function Statistics() {
                 }}>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #475569',
+                    borderLeft: '4px solid #4a90e2',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>本月預約</div>
-                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#334155' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>本月預約</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
                       {monthlyStats[monthlyStats.length - 1]?.bookingCount || 0}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>筆</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>筆</div>
                   </div>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #64748b',
+                    borderLeft: '4px solid #50c878',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>本月時數</div>
-                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#334155' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>本月時數</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
                       {monthlyStats[monthlyStats.length - 1]?.totalHours || 0}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>小時</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>小時</div>
                   </div>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #94a3b8',
+                    borderLeft: '4px solid #ffd93d',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>6個月平均</div>
-                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#334155' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>6個月平均</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
                       {Math.round(monthlyStats.reduce((sum, m) => sum + m.bookingCount, 0) / Math.max(monthlyStats.length, 1))}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>筆/月</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>筆/月</div>
                   </div>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #cbd5e1',
+                    borderLeft: '4px solid #6c5ce7',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>6個月總計</div>
-                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#334155' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>6個月總計</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
                       {monthlyStats.reduce((sum, m) => sum + m.bookingCount, 0)}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>筆</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>筆</div>
                   </div>
                 </div>
 
@@ -974,13 +988,12 @@ export function Statistics() {
                     fontWeight: '700',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    color: '#334155'
+                    gap: '8px'
                   }}>
                     <span style={{ 
                       width: '4px', 
                       height: '20px', 
-                      background: '#64748b', 
+                      background: '#4a90e2', 
                       borderRadius: '2px',
                       display: 'inline-block'
                     }}></span>
@@ -1008,18 +1021,18 @@ export function Statistics() {
                           type="monotone" 
                           dataKey="bookingCount" 
                           name="預約數" 
-                          stroke="#475569" 
+                          stroke="#4a90e2" 
                           strokeWidth={3}
-                          dot={{ fill: '#475569', strokeWidth: 2, r: 5 }}
+                          dot={{ fill: '#4a90e2', strokeWidth: 2, r: 5 }}
                           activeDot={{ r: 8 }}
                         />
                         <Line 
                           type="monotone" 
                           dataKey="totalHours" 
                           name="時數" 
-                          stroke="#94a3b8" 
+                          stroke="#50c878" 
                           strokeWidth={3}
-                          dot={{ fill: '#94a3b8', strokeWidth: 2, r: 5 }}
+                          dot={{ fill: '#50c878', strokeWidth: 2, r: 5 }}
                           activeDot={{ r: 8 }}
                         />
                       </LineChart>
@@ -1035,13 +1048,12 @@ export function Statistics() {
                     fontWeight: '700',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    color: '#334155'
+                    gap: '8px'
                   }}>
                     <span style={{ 
                       width: '4px', 
                       height: '20px', 
-                      background: '#94a3b8', 
+                      background: '#50c878', 
                       borderRadius: '2px',
                       display: 'inline-block'
                     }}></span>
@@ -1050,24 +1062,24 @@ export function Statistics() {
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                       <thead>
-                        <tr style={{ background: '#f8fafc' }}>
-                          <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>月份</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>預約數</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>總分鐘</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>總小時</th>
+                        <tr style={{ background: '#f8f9fa' }}>
+                          <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>預約數</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>總分鐘</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>總小時</th>
                         </tr>
                       </thead>
                       <tbody>
                         {monthlyStats.map((stat, idx) => (
                           <tr key={stat.month} style={{ 
-                            background: idx === monthlyStats.length - 1 ? '#f1f5f9' : 'white'
+                            background: idx === monthlyStats.length - 1 ? '#e3f2fd' : 'white'
                           }}>
-                            <td style={{ padding: '12px', fontWeight: idx === monthlyStats.length - 1 ? '600' : '400', color: '#334155' }}>
+                            <td style={{ padding: '12px', fontWeight: idx === monthlyStats.length - 1 ? '600' : '400' }}>
                               {stat.month}
                             </td>
-                            <td style={{ padding: '12px', textAlign: 'right', color: '#475569' }}>{stat.bookingCount}</td>
-                            <td style={{ padding: '12px', textAlign: 'right', color: '#475569' }}>{stat.totalMinutes}</td>
-                            <td style={{ padding: '12px', textAlign: 'right', color: '#475569' }}>{stat.totalHours}</td>
+                            <td style={{ padding: '12px', textAlign: 'right' }}>{stat.bookingCount}</td>
+                            <td style={{ padding: '12px', textAlign: 'right' }}>{stat.totalMinutes}</td>
+                            <td style={{ padding: '12px', textAlign: 'right' }}>{stat.totalHours}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1452,47 +1464,80 @@ export function Statistics() {
                 ? '未來3個月' 
                 : `${parseInt(futureMonthFilter.split('-')[1])}月`
               
+              // 計算最大時數用於進度條
+              const maxMinutes = Math.max(...futureBookings.map(c => 
+                futureMonthFilter === 'all' ? c.totalMinutes : (c.bookings.find(b => b.month === futureMonthFilter)?.minutes || 0)
+              ))
+              
               return (
               <>
-                {/* 摘要 */}
+                {/* 摘要卡片 */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
+                  gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
                   gap: '16px',
                   marginBottom: '24px'
                 }}>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #64748b',
+                    borderLeft: '4px solid #4a90e2',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>{monthLabel}預約</div>
-                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#334155' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>{monthLabel}預約</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
                       {filteredTotalBookings}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>筆</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>筆</div>
                   </div>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #94a3b8',
+                    borderLeft: '4px solid #50c878',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>總預約時數</div>
-                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#334155' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>總預約時數</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
                       {Math.round(filteredTotalMinutes / 60 * 10) / 10}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>小時</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>小時</div>
                   </div>
                   <div style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: '4px solid #cbd5e1',
+                    borderLeft: '4px solid #ff9800',
                     marginBottom: 0
                   }}>
-                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>教練人數</div>
-                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#334155' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>教練人數</div>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
                       {filteredCoachCount}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>人</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>人</div>
+                  </div>
+                  {/* 平日/假日分布 */}
+                  <div style={{
+                    ...getCardStyle(isMobile),
+                    marginBottom: 0,
+                    gridColumn: isMobile ? '1 / -1' : 'auto'
+                  }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>平日/假日分布</div>
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '11px', color: '#4a90e2', marginBottom: '4px' }}>平日</div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
+                          {futureWeekdayStats.weekdayCount} 筆
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {Math.round(futureWeekdayStats.weekdayMinutes / 60 * 10) / 10} 小時
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '11px', color: '#ff9800', marginBottom: '4px' }}>假日</div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
+                          {futureWeekdayStats.weekendCount} 筆
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {Math.round(futureWeekdayStats.weekendMinutes / 60 * 10) / 10} 小時
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1505,8 +1550,7 @@ export function Statistics() {
                     display: 'block', 
                     marginBottom: '8px', 
                     fontWeight: '600',
-                    fontSize: '15px',
-                    color: '#334155'
+                    fontSize: '15px'
                   }}>
                     篩選月份
                   </label>
@@ -1515,9 +1559,9 @@ export function Statistics() {
                       onClick={() => setFutureMonthFilter('all')}
                       style={{
                         padding: '8px 16px',
-                        background: futureMonthFilter === 'all' ? '#475569' : 'white',
-                        color: futureMonthFilter === 'all' ? 'white' : '#64748b',
-                        border: futureMonthFilter === 'all' ? 'none' : '1px solid #e2e8f0',
+                        background: futureMonthFilter === 'all' ? '#4a90e2' : 'white',
+                        color: futureMonthFilter === 'all' ? 'white' : '#666',
+                        border: futureMonthFilter === 'all' ? 'none' : '1px solid #e0e0e0',
                         borderRadius: '6px',
                         cursor: 'pointer',
                         fontWeight: '500',
@@ -1532,9 +1576,9 @@ export function Statistics() {
                         onClick={() => setFutureMonthFilter(b.month)}
                         style={{
                           padding: '8px 16px',
-                          background: futureMonthFilter === b.month ? '#475569' : 'white',
-                          color: futureMonthFilter === b.month ? 'white' : '#64748b',
-                          border: futureMonthFilter === b.month ? 'none' : '1px solid #e2e8f0',
+                          background: futureMonthFilter === b.month ? '#4a90e2' : 'white',
+                          color: futureMonthFilter === b.month ? 'white' : '#666',
+                          border: futureMonthFilter === b.month ? 'none' : '1px solid #e0e0e0',
                           borderRadius: '6px',
                           cursor: 'pointer',
                           fontWeight: '500',
@@ -1547,7 +1591,7 @@ export function Statistics() {
                   </div>
                 </div>
 
-                {/* 教練未來預約列表 */}
+                {/* 教練時數排行 */}
                 <div style={{
                   ...getCardStyle(isMobile),
                   padding: isMobile ? '14px' : '20px'
@@ -1565,107 +1609,157 @@ export function Statistics() {
                       <span style={{ 
                         width: '4px', 
                         height: '20px', 
-                        background: '#64748b', 
+                        background: '#4a90e2', 
                         borderRadius: '2px',
                         display: 'inline-block'
                       }}></span>
-                      各教練未來預約
+                      🎓 教練時數排行
                     </div>
                     <span style={{ 
                       fontSize: isMobile ? '11px' : '13px', 
-                      color: '#94a3b8', 
+                      color: '#999', 
                       fontWeight: '400',
                       marginLeft: isMobile ? '12px' : '0'
                     }}>
-                      點擊展開預約列表
+                      點擊查看聯絡人時數分布
                     </span>
                   </h3>
                   {futureBookings.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {futureBookings.map((coach) => {
+                      {futureBookings.map((coach, index) => {
                         // 根據月份篩選計算數據
-                        const filteredCount = futureMonthFilter === 'all' 
-                          ? coach.totalCount 
-                          : coach.bookings.find(b => b.month === futureMonthFilter)?.count || 0
                         const filteredMinutes = futureMonthFilter === 'all'
                           ? coach.totalMinutes
                           : coach.bookings.find(b => b.month === futureMonthFilter)?.minutes || 0
-                        const filteredDetails = futureMonthFilter === 'all'
-                          ? coach.bookingDetails
-                          : coach.bookingDetails.filter(d => d.startAt.startsWith(futureMonthFilter))
+                        const filteredCount = futureMonthFilter === 'all' 
+                          ? coach.totalCount 
+                          : coach.bookings.find(b => b.month === futureMonthFilter)?.count || 0
                         
-                        if (filteredCount === 0) return null
+                        if (filteredMinutes === 0) return null
                         
-                        const isExpanded = expandedCoachId === coach.coachId
+                        const isExpanded = expandedFutureCoachId === coach.coachId
+                        const hasContacts = coach.contactStats.length > 0
                         
                         return (
                           <div key={coach.coachId}>
                             {/* 教練列 */}
                             <div
-                              onClick={() => setExpandedCoachId(isExpanded ? null : coach.coachId)}
+                              onClick={() => hasContacts && setExpandedFutureCoachId(isExpanded ? null : coach.coachId)}
                               style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '12px 16px',
-                                background: isExpanded ? '#f1f5f9' : '#f8fafc',
+                                padding: '12px',
+                                background: isExpanded ? '#e3f2fd' : '#f8f9fa',
                                 borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
-                                cursor: 'pointer',
+                                cursor: hasContacts ? 'pointer' : 'default',
                                 transition: 'background 0.2s'
                               }}
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ 
-                                  fontSize: '12px', 
-                                  color: isExpanded ? '#475569' : '#94a3b8',
-                                  transition: 'transform 0.2s',
-                                  transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
-                                }}>
-                                  ▶
-                                </span>
-                                <span style={{ fontWeight: '600', color: '#334155' }}>
-                                  {coach.coachName}
-                                </span>
+                              <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                marginBottom: '8px'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  {hasContacts && (
+                                    <span style={{ 
+                                      fontSize: '12px', 
+                                      color: isExpanded ? '#4a90e2' : '#999',
+                                      transition: 'transform 0.2s',
+                                      transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+                                    }}>
+                                      ▶
+                                    </span>
+                                  )}
+                                  <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
+                                    {index + 1}. {coach.coachName}
+                                    {coach.coachId === 'unassigned' && (
+                                      <span style={{ 
+                                        marginLeft: '8px', 
+                                        fontSize: '11px', 
+                                        color: '#ff9800',
+                                        background: '#fff3e0',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px'
+                                      }}>待指派</span>
+                                    )}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                  <span style={{ color: '#666', fontSize: '13px' }}>
+                                    {filteredCount} 筆
+                                  </span>
+                                  <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
+                                    {Math.round(filteredMinutes / 60 * 10) / 10} 小時
+                                  </span>
+                                </div>
                               </div>
-                              <div style={{ display: 'flex', gap: '16px' }}>
-                                <span style={{ color: '#475569', fontWeight: '600', fontSize: '14px' }}>
-                                  {filteredCount} 筆
-                                </span>
-                                <span style={{ color: '#64748b', fontWeight: '600', fontSize: '14px' }}>
-                                  {Math.round(filteredMinutes / 60 * 10) / 10} 小時
-                                </span>
+                              <div style={{
+                                width: '100%',
+                                height: '8px',
+                                background: '#e3f2fd',
+                                borderRadius: '4px',
+                                overflow: 'hidden'
+                              }}>
+                                <div style={{
+                                  width: `${maxMinutes > 0 ? (filteredMinutes / maxMinutes) * 100 : 0}%`,
+                                  height: '100%',
+                                  background: coach.coachId === 'unassigned' 
+                                    ? 'linear-gradient(90deg, #ff9800, #f57c00)' 
+                                    : 'linear-gradient(90deg, #4a90e2, #1976d2)',
+                                  borderRadius: '4px',
+                                  transition: 'width 0.3s'
+                                }} />
                               </div>
                             </div>
                             
-                            {/* 展開的預約列表 */}
-                            {isExpanded && (
+                            {/* 展開的聯絡人時數分布 */}
+                            {isExpanded && hasContacts && (
                               <div style={{
                                 background: 'white',
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid #e3f2fd',
                                 borderTop: 'none',
                                 borderRadius: '0 0 8px 8px',
-                                overflow: 'hidden'
+                                padding: '12px'
                               }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                                  <thead>
-                                    <tr style={{ background: '#f8fafc' }}>
-                                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '500', color: '#64748b' }}>日期</th>
-                                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '500', color: '#64748b' }}>時間</th>
-                                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '500', color: '#64748b' }}>聯絡人</th>
-                                      <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '500', color: '#64748b' }}>時長</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {filteredDetails.map((detail) => (
-                                      <tr key={detail.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                        <td style={{ padding: '10px 12px', color: '#334155' }}>{detail.date}</td>
-                                        <td style={{ padding: '10px 12px', color: '#334155' }}>{detail.time}</td>
-                                        <td style={{ padding: '10px 12px', fontWeight: '500', color: '#334155' }}>{detail.contactName}</td>
-                                        <td style={{ padding: '10px 12px', textAlign: 'right', color: '#475569' }}>{detail.durationMin} 分</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                                <div style={{ 
+                                  fontSize: '13px', 
+                                  color: '#666', 
+                                  marginBottom: '10px',
+                                  fontWeight: '500'
+                                }}>
+                                  👥 聯絡人時數分布：
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {coach.contactStats.map((contact, cIdx) => (
+                                    <div 
+                                      key={contact.contactName}
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '8px 12px',
+                                        background: '#fafafa',
+                                        borderRadius: '6px'
+                                      }}
+                                    >
+                                      <span style={{ fontSize: '13px', color: '#333' }}>
+                                        {cIdx + 1}. {contact.contactName}
+                                        <span style={{ color: '#999', marginLeft: '8px' }}>
+                                          ({contact.count} 筆)
+                                        </span>
+                                      </span>
+                                      <span style={{ 
+                                        fontSize: '13px', 
+                                        color: '#4a90e2',
+                                        fontWeight: '600',
+                                        flexShrink: 0,
+                                        marginLeft: '12px'
+                                      }}>
+                                        {contact.minutes} 分 ({Math.round(contact.minutes / 60 * 10) / 10} 小時)
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1673,7 +1767,7 @@ export function Statistics() {
                       })}
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                       目前沒有未來預約
                     </div>
                   )}
@@ -1705,7 +1799,7 @@ export function Statistics() {
                           <span style={{ 
                             width: '4px', 
                             height: '20px', 
-                            background: '#64748b', 
+                            background: '#4a90e2', 
                             borderRadius: '2px',
                             display: 'inline-block'
                           }}></span>
@@ -1736,7 +1830,7 @@ export function Statistics() {
                                   onClick={() => hasDesignatedStudents && setExpandedTeachingCoachId(isExpanded ? null : coach.coachId)}
                                   style={{
                                     padding: '12px',
-                                    background: isExpanded ? '#f1f5f9' : '#f8fafc',
+                                    background: isExpanded ? '#e3f2fd' : '#f8f9fa',
                                     borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
                                     cursor: hasDesignatedStudents ? 'pointer' : 'default',
                                     transition: 'background 0.2s'
@@ -1752,32 +1846,32 @@ export function Statistics() {
                                       {hasDesignatedStudents && (
                                         <span style={{ 
                                           fontSize: '12px', 
-                                          color: isExpanded ? '#475569' : '#94a3b8',
+                                          color: isExpanded ? '#4a90e2' : '#999',
                                           transition: 'transform 0.2s',
                                           transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
                                         }}>
                                           ▶
                                         </span>
                                       )}
-                                      <span style={{ fontWeight: '600', color: '#334155', fontSize: '14px' }}>
+                                      <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
                                         {index + 1}. {coach.coachName}
                                       </span>
                                     </div>
-                                    <span style={{ color: '#475569', fontSize: '14px', fontWeight: '600' }}>
+                                    <span style={{ color: '#4a90e2', fontSize: '14px', fontWeight: '600' }}>
                                       {coach.teachingMinutes} 分 ({Math.round(coach.teachingMinutes / 60 * 10) / 10} 小時)
                                     </span>
                                   </div>
                                   <div style={{
                                     width: '100%',
                                     height: '8px',
-                                    background: '#e2e8f0',
+                                    background: '#e3f2fd',
                                     borderRadius: '4px',
                                     overflow: 'hidden'
                                   }}>
                                     <div style={{
                                       width: `${(coach.teachingMinutes / maxTeaching) * 100}%`,
                                       height: '100%',
-                                      background: '#64748b',
+                                      background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
                                       borderRadius: '4px',
                                       transition: 'width 0.3s'
                                     }} />
@@ -1788,18 +1882,18 @@ export function Statistics() {
                                 {isExpanded && hasDesignatedStudents && (
                                   <div style={{
                                     background: 'white',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid #e3f2fd',
                                     borderTop: 'none',
                                     borderRadius: '0 0 8px 8px',
                                     padding: '12px'
                                   }}>
                                     <div style={{ 
                                       fontSize: '13px', 
-                                      color: '#64748b', 
+                                      color: '#666', 
                                       marginBottom: '10px',
                                       fontWeight: '500'
                                     }}>
-                                      指定 {coach.coachName} 的學生：
+                                      ⭐ 指定 {coach.coachName} 的學生：
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                       {coach.designatedStudents.map((student, sIdx) => (
@@ -1810,14 +1904,14 @@ export function Statistics() {
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
                                             padding: '8px 12px',
-                                            background: '#f8fafc',
+                                            background: '#fafafa',
                                             borderRadius: '6px'
                                           }}
                                         >
-                                          <span style={{ fontSize: '13px', color: '#334155' }}>
+                                          <span style={{ fontSize: '13px', color: '#333' }}>
                                             {sIdx + 1}. {student.memberName}
                                             {student.boatMinutes.length > 0 && (
-                                              <span style={{ color: '#94a3b8', fontWeight: '400' }}>
+                                              <span style={{ color: '#888', fontWeight: '400' }}>
                                                 {' - '}
                                                 {student.boatMinutes.map((b, idx) => (
                                                   <span key={b.boatName}>
@@ -1830,7 +1924,7 @@ export function Statistics() {
                                           </span>
                                           <span style={{ 
                                             fontSize: '13px', 
-                                            color: '#475569',
+                                            color: '#ff9800',
                                             fontWeight: '600',
                                             flexShrink: 0,
                                             marginLeft: '12px'
@@ -1846,7 +1940,7 @@ export function Statistics() {
                             )
                           })}
                         {coachStats.filter(c => c.teachingMinutes > 0).length === 0 && (
-                          <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                          <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
                             本月無教學時數記錄
                           </div>
                         )}
@@ -1869,7 +1963,7 @@ export function Statistics() {
                         <span style={{ 
                           width: '4px', 
                           height: '20px', 
-                          background: '#94a3b8', 
+                          background: '#50c878', 
                           borderRadius: '2px',
                           display: 'inline-block'
                         }}></span>
@@ -1887,7 +1981,7 @@ export function Statistics() {
                                 key={`driving-${coach.coachId}`}
                                 style={{
                                   padding: '12px',
-                                  background: '#f8fafc',
+                                  background: '#f8f9fa',
                                   borderRadius: '8px'
                                 }}
                               >
@@ -1897,24 +1991,24 @@ export function Statistics() {
                                   alignItems: 'center',
                                   marginBottom: '8px'
                                 }}>
-                                  <span style={{ fontWeight: '600', color: '#334155', fontSize: '14px' }}>
+                                  <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
                                     {index + 1}. {coach.coachName}
                                   </span>
-                                  <span style={{ color: '#475569', fontSize: '14px', fontWeight: '600' }}>
+                                  <span style={{ color: '#50c878', fontSize: '14px', fontWeight: '600' }}>
                                     {coach.drivingMinutes} 分 ({Math.round(coach.drivingMinutes / 60 * 10) / 10} 小時)
                                   </span>
                                 </div>
                                 <div style={{
                                   width: '100%',
                                   height: '8px',
-                                  background: '#e2e8f0',
+                                  background: '#e8f5e9',
                                   borderRadius: '4px',
                                   overflow: 'hidden'
                                 }}>
                                   <div style={{
                                     width: `${(coach.drivingMinutes / maxDriving) * 100}%`,
                                     height: '100%',
-                                    background: '#94a3b8',
+                                    background: 'linear-gradient(90deg, #50c878, #2e7d32)',
                                     borderRadius: '4px',
                                     transition: 'width 0.3s'
                                   }} />
@@ -1923,7 +2017,7 @@ export function Statistics() {
                             )
                           })}
                         {coachStats.filter(c => c.drivingMinutes > 0).length === 0 && (
-                          <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                          <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
                             本月無駕駛時數記錄
                           </div>
                         )}

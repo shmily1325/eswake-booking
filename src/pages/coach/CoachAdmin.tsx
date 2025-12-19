@@ -49,7 +49,6 @@ interface PendingReport {
 }
 
 type TabType = 'pending' | 'completed' | 'statistics'
-type CompletedViewMode = 'booking' | 'coach'
 
 const PAYMENT_METHODS = [
   { value: 'cash', label: '現金' },
@@ -95,7 +94,6 @@ export function CoachAdmin() {
   // Tab 2: 已結案記錄
   const [completedReports, setCompletedReports] = useState<any[]>([])
   const [completedDriverReports, setCompletedDriverReports] = useState<any[]>([])
-  const [completedViewMode, setCompletedViewMode] = useState<CompletedViewMode>('booking')
   
   // Email 到名字的映射（用於顯示提交者）
   const [emailToNameMap, setEmailToNameMap] = useState<Record<string, string>>({})
@@ -484,58 +482,6 @@ export function CoachAdmin() {
     acc[key].reports.push(report)
     return acc
   }, {} as Record<string, { booking: any; reports: PendingReport[] }>)
-
-  // 按教練統計 (已結案)
-  const coachStats = (() => {
-    const stats: Record<string, {
-      coachId: string
-      coachName: string
-      teachingMinutes: number
-      drivingMinutes: number
-      teachingRecords: any[]
-      drivingRecords: any[]
-    }> = {}
-    
-    completedReports.forEach((record: any) => {
-      const coachId = record.coach_id
-      if (!coachId) return
-      
-      if (!stats[coachId]) {
-        stats[coachId] = {
-          coachId,
-          coachName: record.coaches?.name || '未知教練',
-          teachingMinutes: 0,
-          drivingMinutes: 0,
-          teachingRecords: [],
-          drivingRecords: []
-        }
-      }
-      
-      stats[coachId].teachingMinutes += record.duration_min || 0
-      stats[coachId].teachingRecords.push(record)
-    })
-    
-    completedDriverReports.forEach((record: any) => {
-      const coachId = record.coach_id
-      if (!coachId) return
-      
-      if (!stats[coachId]) {
-        stats[coachId] = {
-          coachId,
-          coachName: record.coaches?.name || '未知教練',
-          teachingMinutes: 0,
-          drivingMinutes: 0,
-          teachingRecords: [],
-          drivingRecords: []
-        }
-      }
-      
-      stats[coachId].drivingMinutes += record.driver_duration_min || 0
-      stats[coachId].drivingRecords.push(record)
-    })
-    
-    return Object.values(stats).sort((a, b) => a.coachName.localeCompare(b.coachName))
-  })()
 
   // 按預約統計 (已結案)
   const bookingStats = (() => {
@@ -964,58 +910,16 @@ export function CoachAdmin() {
                 />
               </div>
               
-              {/* 查看模式切換 */}
-              <div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <button
-                    onClick={() => setCompletedViewMode('booking')}
-                    style={{
-                      flex: isMobile ? 1 : 'none',
-                      padding: '10px 20px',
-                      background: completedViewMode === 'booking' ? '#2196f3' : '#fff',
-                      color: completedViewMode === 'booking' ? 'white' : '#666',
-                      border: `2px solid ${completedViewMode === 'booking' ? '#2196f3' : '#e0e0e0'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      boxShadow: completedViewMode === 'booking' ? '0 2px 8px rgba(33,150,243,0.3)' : 'none'
-                    }}
-                  >
-                    📋 按預約查看
-                  </button>
-                  <button
-                    onClick={() => setCompletedViewMode('coach')}
-                    style={{
-                      flex: isMobile ? 1 : 'none',
-                      padding: '10px 20px',
-                      background: completedViewMode === 'coach' ? '#2196f3' : '#fff',
-                      color: completedViewMode === 'coach' ? 'white' : '#666',
-                      border: `2px solid ${completedViewMode === 'coach' ? '#2196f3' : '#e0e0e0'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      boxShadow: completedViewMode === 'coach' ? '0 2px 8px rgba(33,150,243,0.3)' : 'none'
-                    }}
-                  >
-                    👤 按教練統計
-                  </button>
-                  
-                  {/* 匯出報表按鈕 - 只在桌面版顯示 */}
-                  {!isMobile && (
-                    <div style={{ marginLeft: 'auto' }}>
-                      <ExportReportButton 
-                        records={completedReports}
-                        dateRange={selectedDate.length === 7 ? selectedDate : selectedDate}
-                        isMobile={isMobile}
-                      />
-                    </div>
-                  )}
+              {/* 匯出報表按鈕 - 只在桌面版顯示 */}
+              {!isMobile && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <ExportReportButton 
+                    records={completedReports}
+                    dateRange={selectedDate.length === 7 ? selectedDate : selectedDate}
+                    isMobile={isMobile}
+                  />
                 </div>
-              </div>
+              )}
             </div>
 
             {loading ? (
@@ -1025,7 +929,7 @@ export function CoachAdmin() {
             ) : (
               <>
                 {/* 總計卡片 */}
-                {(completedViewMode === 'booking' ? bookingStats.length : coachStats.length) > 0 && (
+                {bookingStats.length > 0 && (
                   <div style={{
                     padding: '16px',
                     background: '#f8f9fa',
@@ -1058,9 +962,8 @@ export function CoachAdmin() {
                   </div>
                 )}
 
-                {/* 按預約查看 */}
-                {completedViewMode === 'booking' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* 預約列表 */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {bookingStats.map(stat => (
                       <div
                         key={stat.booking.id}
@@ -1247,143 +1150,6 @@ export function CoachAdmin() {
                       </div>
                     )}
                   </div>
-                )}
-
-                {/* 按教練統計 */}
-                {completedViewMode === 'coach' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {coachStats.map(stat => (
-                      <div
-                        key={stat.coachId}
-                        style={{
-                          ...getCardStyle(isMobile),
-                          borderLeft: '4px solid #2196f3'
-                        }}
-                      >
-                        <div style={{ 
-                          marginBottom: '16px', 
-                          paddingBottom: '12px', 
-                          borderBottom: '1px solid #e0e0e0',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          flexWrap: 'wrap',
-                          gap: '8px'
-                        }}>
-                          <h3 style={{ margin: 0, fontSize: isMobile ? '15px' : '16px', fontWeight: '600' }}>
-                            {stat.coachName}
-                          </h3>
-                          <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
-                            <div>
-                              <span style={{ color: '#666' }}>教學：</span>
-                              <span style={{ fontWeight: '600', color: '#4caf50' }}>
-                                {stat.teachingMinutes}分 ({(stat.teachingMinutes / 60).toFixed(1)}h)
-                              </span>
-                            </div>
-                            <div>
-                              <span style={{ color: '#666' }}>駕駛：</span>
-                              <span style={{ fontWeight: '600', color: '#2196f3' }}>
-                                {stat.drivingMinutes}分 ({(stat.drivingMinutes / 60).toFixed(1)}h)
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 教學記錄 */}
-                        {stat.teachingRecords.length > 0 && (
-                          <div style={{ marginBottom: '16px' }}>
-                            <h4 style={{ 
-                              margin: '0 0 8px 0', 
-                              fontSize: '14px', 
-                              color: '#4caf50',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}>
-                              🎓 教學明細 ({stat.teachingRecords.length}筆)
-                            </h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {stat.teachingRecords.map((record: any) => (
-                                <div
-                                  key={record.id}
-                                  style={{
-                                    padding: '8px 10px',
-                                    background: '#f8f9fa',
-                                    borderRadius: '4px',
-                                    fontSize: '13px',
-                                    lineHeight: '1.5',
-                                    color: '#333'
-                                  }}
-                                >
-                                  <div>
-                                    <span style={{ fontWeight: '600', color: '#333' }}>
-                                      {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)} {record.bookings.boats?.name}
-                                    </span>
-                                    <span style={{ fontWeight: 'normal', color: '#666' }}> • {record.members?.nickname || record.members?.name || record.participant_name}</span>
-                                    {!record.member_id && <span style={{ color: '#ff9800', fontWeight: 'normal' }}> (非會員)</span>}
-                                    <span style={{ fontWeight: 'normal', color: '#666' }}> {record.duration_min}分</span>
-                                    <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}> • {LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}</span>
-                                    <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}> • {PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}</span>
-                                  </div>
-                                  <DeductionDetails 
-                                    transactions={record.transactions || []}
-                                    paymentMethod={record.payment_method}
-                                    notes={record.notes}
-                                    boatName={record.bookings?.boats?.name || ''}
-                                    duration={record.duration_min}
-                                    lessonType={record.lesson_type}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 駕駛記錄 */}
-                        {stat.drivingRecords.length > 0 && (
-                          <div>
-                            <h4 style={{ 
-                              margin: '0 0 8px 0', 
-                              fontSize: '14px', 
-                              color: '#2196f3',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}>
-                              🚤 駕駛明細 ({stat.drivingRecords.length}筆)
-                            </h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {stat.drivingRecords.map((record: any) => (
-                                <div
-                                  key={record.id}
-                                  style={{
-                                    padding: '8px 10px',
-                                    background: '#f8f9fa',
-                                    borderRadius: '4px',
-                                    fontSize: '13px',
-                                    lineHeight: '1.5',
-                                    color: '#333'
-                                  }}
-                                >
-                                  <span style={{ fontWeight: '600', color: '#333' }}>
-                                    {extractDate(record.bookings.start_at)} {extractTime(record.bookings.start_at)} {record.bookings.boats?.name}
-                                  </span>
-                                  <span style={{ fontWeight: 'normal', color: '#666' }}> • {record.driver_duration_min}分</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-
-                    {coachStats.length === 0 && (
-                      <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                        沒有已結案記錄
-                      </div>
-                    )}
-                  </div>
-                )}
               </>
             )}
           </>
