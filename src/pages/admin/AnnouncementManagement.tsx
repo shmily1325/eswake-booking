@@ -238,101 +238,32 @@ export function AnnouncementManagement() {
             }}>
               顯示日期
             </label>
-            <div style={{ 
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: '#f8f9fa',
-              padding: '8px',
-              borderRadius: '8px',
-              border: '1px solid #dee2e6'
-            }}>
-              {/* 左箭頭 */}
-              <button
-                type="button"
-                onClick={() => {
-                  const date = new Date(newDisplayDate)
-                  date.setDate(date.getDate() - 1)
-                  setNewDisplayDate(date.toISOString().split('T')[0])
-                }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <input
+                type="date"
+                value={newDisplayDate}
+                onChange={(e) => setNewDisplayDate(e.target.value)}
                 style={{
-                  background: 'white',
+                  padding: isMobile ? '12px 14px' : '10px 14px',
                   border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  width: '44px',
-                  height: '44px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  color: '#333',
+                  borderRadius: '6px',
+                  fontSize: isMobile ? '16px' : '14px',
                   cursor: 'pointer',
-                  flexShrink: 0
+                  flex: isMobile ? 1 : 'none'
                 }}
-              >
-                ←
-              </button>
-              
-              <div style={{ flex: 1, position: 'relative' }}>
-                <input
-                  type="date"
-                  value={newDisplayDate}
-                  onChange={(e) => setNewDisplayDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '44px',
-                    padding: '0 12px',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box',
-                    backgroundColor: 'white',
-                    textAlign: 'center'
-                  }}
-                />
-                {/* 星期幾徽章 - 右上角 */}
-                <div style={{
-                  position: 'absolute',
-                  top: '-8px',
-                  right: '8px',
-                  fontSize: '11px',
-                  color: 'white',
-                  fontWeight: '600',
-                  background: '#5a5a5a',
-                  padding: '3px 10px',
-                  borderRadius: '10px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  pointerEvents: 'none',
-                }}>
-                  {getWeekdayText(newDisplayDate)}
-                </div>
-              </div>
-              
-              {/* 右箭頭 */}
-              <button
-                type="button"
-                onClick={() => {
-                  const date = new Date(newDisplayDate)
-                  date.setDate(date.getDate() + 1)
-                  setNewDisplayDate(date.toISOString().split('T')[0])
-                }}
-                style={{
-                  background: 'white',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  width: '44px',
-                  height: '44px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  color: '#333',
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                →
-              </button>
+              />
+              {/* 星期幾徽章 */}
+              <span style={{
+                padding: isMobile ? '12px 14px' : '10px 14px',
+                borderRadius: '6px',
+                background: '#5a5a5a',
+                color: 'white',
+                fontSize: isMobile ? '14px' : '14px',
+                fontWeight: '600',
+                whiteSpace: 'nowrap'
+              }}>
+                {getWeekdayText(newDisplayDate)}
+              </span>
             </div>
           </div>
 

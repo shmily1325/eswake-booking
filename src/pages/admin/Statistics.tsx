@@ -107,27 +107,40 @@ export function Statistics() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
 
+  // 初次載入：趨勢和未來預約（固定資料，不需跟著月份變化）
   useEffect(() => {
-    loadAllData()
-  }, [selectedPeriod])
-
-  const loadAllData = async () => {
-    setLoading(true)
-    try {
-      await Promise.all([
-        loadMonthlyTrend(),
-        loadFutureBookings(),
-        loadCoachStats(),
-        loadMemberStats(),
-        loadBoatStats(),
-        loadWeekdayStats()
-      ])
-    } catch (error) {
-      console.error('載入統計數據失敗:', error)
-    } finally {
-      setLoading(false)
+    const loadFixedData = async () => {
+      setLoading(true)
+      try {
+        await Promise.all([
+          loadMonthlyTrend(),
+          loadFutureBookings()
+        ])
+      } catch (error) {
+        console.error('載入趨勢數據失敗:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+    loadFixedData()
+  }, [])
+
+  // 月份變化時載入：教練/會員/船隻/平日假日
+  useEffect(() => {
+    const loadMonthlyData = async () => {
+      try {
+        await Promise.all([
+          loadCoachStats(),
+          loadMemberStats(),
+          loadBoatStats(),
+          loadWeekdayStats()
+        ])
+      } catch (error) {
+        console.error('載入月度統計失敗:', error)
+      }
+    }
+    loadMonthlyData()
+  }, [selectedPeriod])
 
   // 載入過去6個月的預約趨勢
   const loadMonthlyTrend = async () => {
@@ -820,7 +833,7 @@ export function Statistics() {
                   cursor: 'pointer'
                 }}
               >
-                🎓 教練
+                教練
               </button>
               <button
                 onClick={() => setMonthlySubTab('member')}
@@ -836,7 +849,7 @@ export function Statistics() {
                   cursor: 'pointer'
                 }}
               >
-                👤 會員
+                會員
               </button>
               <button
                 onClick={() => setMonthlySubTab('boat')}
@@ -852,7 +865,7 @@ export function Statistics() {
                   cursor: 'pointer'
                 }}
               >
-                🚤 船隻
+                船隻
               </button>
             </div>
             
@@ -866,16 +879,16 @@ export function Statistics() {
               borderRadius: designSystem.borderRadius.md
             }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>📅 平日</div>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: '#4a90e2' }}>
-                  {weekdayStats.weekdayCount} 筆 / {weekdayStats.weekdayMinutes} 分 ({Math.round(weekdayStats.weekdayMinutes / 60 * 10) / 10}h)
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>平日</div>
+                <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#4a90e2' }}>
+                  {weekdayStats.weekdayCount} 筆 / {weekdayStats.weekdayMinutes} 分
                 </div>
               </div>
               <div style={{ width: '1px', background: '#ddd' }}></div>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>🎉 假日</div>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: '#ff9800' }}>
-                  {weekdayStats.weekendCount} 筆 / {weekdayStats.weekendMinutes} 分 ({Math.round(weekdayStats.weekendMinutes / 60 * 10) / 10}h)
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>假日</div>
+                <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#ff9800' }}>
+                  {weekdayStats.weekendCount} 筆 / {weekdayStats.weekendMinutes} 分
                 </div>
               </div>
             </div>
@@ -1099,8 +1112,8 @@ export function Statistics() {
                       </span>
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {memberStats.slice(0, 10).map((member, index) => {
-                        const maxMinutes = Math.max(...memberStats.slice(0, 10).map(m => m.totalMinutes))
+                      {memberStats.slice(0, 20).map((member, index) => {
+                        const maxMinutes = Math.max(...memberStats.slice(0, 20).map(m => m.totalMinutes))
                         const isExpanded = expandedMemberId === member.memberId
                         const hasDetails = member.coaches.length > 0 || member.boats.length > 0
                         

@@ -343,132 +343,61 @@ export function TomorrowReminder() {
             選擇日期
           </label>
           {isMobile ? (
-            // 手機版：使用 flex 布局，和 DayViewMobileHeader 一樣（有左右箭頭）
-            <div style={{ 
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: '#f8f9fa',
-              padding: '8px',
-              borderRadius: '8px',
-              border: '1px solid #dee2e6'
-            }}>
-              {/* 左箭頭 */}
-              <button
-                onClick={() => {
-                  const date = new Date(selectedDate)
-                  date.setDate(date.getDate() - 1)
-                  setSelectedDate(date.toISOString().split('T')[0])
-                }}
-                style={{
-                  background: 'white',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  width: '44px',
-                  height: '44px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  color: '#333',
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                ←
-              </button>
-              
-              <div style={{ flex: 1, position: 'relative' }}>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '44px',
-                    padding: '0 12px',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box',
-                    backgroundColor: 'white',
-                    textAlign: 'center',
-                    touchAction: 'manipulation'
-                  }}
-                />
-                {/* 星期幾徽章 - 右上角 */}
-                <div style={{
-                  position: 'absolute',
-                  top: '-8px',
-                  right: '8px',
-                  fontSize: '11px',
-                  color: 'white',
-                  fontWeight: '600',
-                  background: '#5a5a5a',
-                  padding: '3px 10px',
-                  borderRadius: '10px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  pointerEvents: 'none',
-                }}>
-                  {getWeekdayText(selectedDate)}
-                </div>
-              </div>
-              
-              {/* 右箭頭 */}
-              <button
-                onClick={() => {
-                  const date = new Date(selectedDate)
-                  date.setDate(date.getDate() + 1)
-                  setSelectedDate(date.toISOString().split('T')[0])
-                }}
-                style={{
-                  background: 'white',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  width: '44px',
-                  height: '44px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  color: '#333',
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                →
-              </button>
-              
-              {loading && (
-                <span style={{ color: '#666', fontSize: '13px', flexShrink: 0 }}>載入中...</span>
-              )}
-            </div>
-          ) : (
-            // 電腦版：徽章在旁邊
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            // 手機版：簡潔樣式
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 style={{
-                  padding: '8px 12px',
+                  padding: '12px 14px',
                   border: '1px solid #dee2e6',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  maxWidth: '200px',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  flex: 1,
                   touchAction: 'manipulation'
                 }}
               />
               {/* 星期幾徽章 */}
               <span style={{
-                padding: '8px 12px',
+                padding: '12px 14px',
                 borderRadius: '6px',
-                background: '#f8f9fa',
-                color: '#495057',
+                background: '#5a5a5a',
+                color: 'white',
                 fontSize: '14px',
                 fontWeight: '600',
-                border: '1px solid #dee2e6',
-                whiteSpace: 'nowrap',
+                whiteSpace: 'nowrap'
+              }}>
+                {getWeekdayText(selectedDate)}
+              </span>
+              {loading && (
+                <span style={{ color: '#666', fontSize: '13px', flexShrink: 0 }}>載入中...</span>
+              )}
+            </div>
+          ) : (
+            // 電腦版：簡潔樣式
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{
+                  padding: '10px 14px',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              />
+              {/* 星期幾徽章 */}
+              <span style={{
+                padding: '10px 14px',
+                borderRadius: '6px',
+                background: '#5a5a5a',
+                color: 'white',
+                fontSize: '14px',
+                fontWeight: '600',
               }}>
                 {getWeekdayText(selectedDate)}
               </span>
