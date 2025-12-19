@@ -686,21 +686,21 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         maxWidth: isMobile ? '100%' : '600px',
         width: '100%',
         maxHeight: isMobile ? '95vh' : '90vh',
-        overflow: 'auto',
+        overflow: 'hidden',
         boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
         margin: isMobile ? 'auto 0 0 0' : 'auto',
+        display: 'flex',
+        flexDirection: 'column',
       }}>
         {/* 標題欄 */}
         <div style={{
-          padding: '20px',
+          padding: isMobile ? '16px' : '20px',
           borderBottom: '1px solid #e0e0e0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          position: 'sticky',
-          top: 0,
           background: 'white',
-          zIndex: 1,
+          flexShrink: 0,
         }}>
           <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
             💳 {member.nickname || member.name}
@@ -725,9 +725,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           display: 'flex',
           borderBottom: '1px solid #e0e0e0',
           background: 'white',
-          position: 'sticky',
-          top: '61px',
-          zIndex: 1,
+          flexShrink: 0,
         }}>
           <button
             onClick={() => setActiveTab('transaction')}
@@ -768,8 +766,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         {/* 記帳 Tab */}
         {activeTab === 'transaction' && (
           <div style={{ 
-            padding: '20px', 
+            padding: isMobile ? '16px' : '20px', 
             paddingBottom: isMobile ? '100px' : '20px',  // 為底部按鈕留空間
+            overflow: 'auto',
+            flex: 1,
           }}>
             {/* 會員餘額顯示 */}
             <div style={{
@@ -897,7 +897,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               </div>
 
               {/* 交易日期 */}
-              <div style={{ marginBottom: '16px' }}>
+              <div style={{ marginBottom: '16px', overflow: 'hidden' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
                   交易日期 *
                 </label>
@@ -906,9 +906,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   value={transactionDate}
                   onChange={(e) => setTransactionDate(e.target.value)}
                   style={{
-                    ...inputStyle,
-                    minWidth: 0,
-                    maxWidth: '100%',
+                    width: '100%',
+                    padding: isMobile ? '12px 16px' : '10px 16px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: isMobile ? '16px' : '14px',
+                    boxSizing: 'border-box',
                     touchAction: 'manipulation',
                   }}
                   required
@@ -1075,8 +1078,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         {/* 查帳 Tab */}
         {activeTab === 'history' && (
           <div style={{ 
-            padding: '20px',
+            padding: isMobile ? '16px' : '20px',
             paddingBottom: isMobile ? '40px' : '20px',  // 手機版增加底部留白，確保最後一筆可以完整顯示
+            overflow: 'auto',
+            flex: 1,
           }}>
             {/* 月份選擇和匯出按鈕 */}
             <div style={{ marginBottom: '16px' }}>
@@ -1458,7 +1463,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                             </div>
 
                             {/* 交易日期 */}
-                            <div style={{ marginBottom: '12px' }}>
+                            <div style={{ marginBottom: '12px', overflow: 'hidden' }}>
                               <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
                                 交易日期 *
                               </label>
@@ -1467,10 +1472,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                 value={editTransactionDate}
                                 onChange={(e) => setEditTransactionDate(e.target.value)}
                                 style={{
-                                  ...inputStyle,
+                                  width: '100%',
+                                  padding: isMobile ? '12px 16px' : '10px 16px',
+                                  border: '2px solid #e0e0e0',
+                                  borderRadius: '8px',
                                   fontSize: '14px',
-                                  minWidth: 0,
-                                  maxWidth: '100%',
+                                  boxSizing: 'border-box',
                                   touchAction: 'manipulation',
                                 }}
                               />

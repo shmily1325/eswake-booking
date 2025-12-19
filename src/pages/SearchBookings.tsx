@@ -1482,73 +1482,163 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       {/* Results */}
       {hasSearched && (
         <div>
-          {/* 只在非加载状态时显示结果統計和操作列 */}
+          {/* 只在非載入狀態時顯示結果統計和操作列 */}
           {!loading && (
-            <div style={{
-              display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              justifyContent: 'space-between',
-              alignItems: isMobile ? 'stretch' : 'center',
-              gap: isMobile ? '10px' : '12px',
-              marginBottom: '12px',
-              padding: '0 4px',
-            }}>
-              {/* 左側：結果統計 */}
-              <div style={{
-                fontSize: '14px',
-                color: '#666',
-              }}>
-                找到 <strong style={{ color: '#5a5a5a' }}>{bookings.length}</strong> 筆預約
-                {selectionMode && selectedBookingIds.size > 0 && (
-                  <span style={{ marginLeft: '8px', color: '#5a5a5a' }}>
-                    （已選 {selectedBookingIds.size} 筆）
-                  </span>
-                )}
-              </div>
-
-              {/* 右側：操作按鈕群組 */}
-              {bookings.length > 0 && (
-                <div style={{ 
-                  display: 'flex', 
+            <>
+              {/* 選擇模式：獨立的操作工具列 */}
+              {selectionMode && bookings.length > 0 && (
+                <div style={{
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: '8px', 
-                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  marginBottom: '12px',
+                  padding: '10px 12px',
+                  background: '#5a5a5a',
+                  borderRadius: '8px',
                 }}>
-                  {/* 非選擇模式：排序 + 已結束 + 批次選擇 + 複製 */}
-                  {!selectionMode && (
-                    <>
+                  {/* 左側：已選數量 */}
+                  <div style={{
+                    fontSize: '14px',
+                    color: 'white',
+                    fontWeight: '500',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    已選 {selectedBookingIds.size} / {bookings.length}
+                  </div>
+
+                  {/* 右側：操作按鈕 */}
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    gap: '6px', 
+                  }}>
+                    <button
+                      onClick={selectedBookingIds.size === bookings.length ? deselectAll : selectAll}
+                      style={{
+                        padding: '5px 10px',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        background: 'rgba(255,255,255,0.2)',
+                        color: 'white',
+                        border: '1px solid rgba(255,255,255,0.3)',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {selectedBookingIds.size === bookings.length ? '取消全選' : '全選'}
+                    </button>
+                    
+                    {selectedBookingIds.size > 0 && (
+                      <>
+                        <button
+                          onClick={() => setBatchEditDialogOpen(true)}
+                          style={{
+                            padding: '5px 10px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            background: '#28a745',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✏️ 修改
+                        </button>
+                        <button
+                          onClick={() => setBatchDeleteDialogOpen(true)}
+                          style={{
+                            padding: '5px 10px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            background: '#dc3545',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          🗑️ 刪除
+                        </button>
+                      </>
+                    )}
+                    
+                    <button
+                      onClick={toggleSelectionMode}
+                      style={{
+                        padding: '5px 10px',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        background: 'transparent',
+                        color: 'white',
+                        border: '1px solid rgba(255,255,255,0.5)',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 非選擇模式：一般操作列 */}
+              {!selectionMode && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  justifyContent: 'space-between',
+                  alignItems: isMobile ? 'stretch' : 'center',
+                  gap: '8px',
+                  marginBottom: '12px',
+                  padding: '0 4px',
+                }}>
+                  {/* 第一行/左側：結果統計 */}
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#666',
+                  }}>
+                    找到 <strong style={{ color: '#5a5a5a' }}>{bookings.length}</strong> 筆預約
+                  </div>
+
+                  {/* 第二行/右側：操作按鈕 */}
+                  {bookings.length > 0 && (
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}>
                       {/* 排序按鈕 */}
                       <button
                         onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                         style={{
-                          padding: '6px 10px',
+                          padding: isMobile ? '6px 8px' : '6px 10px',
                           border: '1px solid #dee2e6',
                           background: 'white',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          fontSize: '13px',
+                          fontSize: isMobile ? '12px' : '13px',
                           fontWeight: '500',
                           color: '#495057',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
                         }}
                       >
-                        {sortOrder === 'asc' ? '⬆️ 時間近→遠' : '⬇️ 時間遠→近'}
+                        {sortOrder === 'asc' ? '⬆️ 近→遠' : '⬇️ 遠→近'}
                       </button>
 
                       {/* 過去預約切換 */}
                       <label style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
+                        gap: '4px',
                         cursor: 'pointer',
-                        fontSize: '13px',
+                        fontSize: isMobile ? '12px' : '13px',
                         color: '#666',
-                        padding: '6px 10px',
+                        padding: isMobile ? '6px 8px' : '6px 10px',
                         background: showPastBookings ? '#f0f0f0' : 'white',
                         border: '1px solid #dee2e6',
                         borderRadius: '6px',
+                        whiteSpace: 'nowrap',
                       }}>
                         <input
                           type="checkbox"
@@ -1561,107 +1651,53 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                             accentColor: '#5a5a5a',
                           }}
                         />
-                        {isMobile ? '含已結束' : '顯示已結束'}
+                        {isMobile ? '已結束' : '顯示已結束'}
                       </label>
-                    </>
-                  )}
 
-                  {/* 選擇模式切換 - 只有小編可見 */}
-                  {isEditor && (
-                    <button
-                      onClick={toggleSelectionMode}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        background: selectionMode ? '#6c757d' : 'white',
-                        color: selectionMode ? 'white' : '#495057',
-                        border: selectionMode ? 'none' : '1px solid #dee2e6',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {selectionMode ? '✕ 取消選擇' : '☑️ 批次選擇'}
-                    </button>
-                  )}
-
-                  {/* 選擇模式下的操作按鈕 */}
-                  {selectionMode && isEditor && (
-                    <>
-                      <button
-                        onClick={selectedBookingIds.size === bookings.length ? deselectAll : selectAll}
-                        style={{
-                          padding: '6px 12px',
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          background: 'white',
-                          color: '#495057',
-                          border: '1px solid #dee2e6',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {selectedBookingIds.size === bookings.length ? '取消全選' : '全選'}
-                      </button>
-                      
-                      {selectedBookingIds.size > 0 && (
-                        <>
-                          <button
-                            onClick={() => setBatchEditDialogOpen(true)}
-                            style={{
-                              padding: '6px 12px',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              background: '#28a745',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            ✏️ 批次修改 ({selectedBookingIds.size})
-                          </button>
-                          <button
-                            onClick={() => setBatchDeleteDialogOpen(true)}
-                            style={{
-                              padding: '6px 12px',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              background: '#dc3545',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            🗑️ 批次刪除
-                          </button>
-                        </>
+                      {/* 批次選擇 - 只有小編可見 */}
+                      {isEditor && (
+                        <button
+                          onClick={toggleSelectionMode}
+                          style={{
+                            padding: isMobile ? '6px 8px' : '6px 10px',
+                            fontSize: isMobile ? '12px' : '13px',
+                            fontWeight: '500',
+                            background: 'white',
+                            color: '#495057',
+                            border: '1px solid #dee2e6',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ☑️ 批次
+                        </button>
                       )}
-                    </>
-                  )}
 
-                  {/* 複製 LINE 格式按鈕 - 只在預約人頁面顯示 */}
-                  {!selectionMode && activeTab === 'member' && (
-                    <button
-                      onClick={handleCopyToClipboard}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        background: copySuccess ? '#28a745' : '#5a5a5a',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {copySuccess ? '✓ 已複製' : '📋 複製 LINE 格式'}
-                    </button>
+                      {/* 複製 LINE 格式按鈕 - 只在預約人頁面顯示 */}
+                      {activeTab === 'member' && (
+                        <button
+                          onClick={handleCopyToClipboard}
+                          style={{
+                            padding: isMobile ? '6px 8px' : '6px 10px',
+                            fontSize: isMobile ? '12px' : '13px',
+                            fontWeight: '500',
+                            background: copySuccess ? '#28a745' : '#5a5a5a',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {copySuccess ? '✓ 已複製' : '📋 複製'}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
-            </div>
+            </>
           )}
 
           {/* Loading Skeleton */}
