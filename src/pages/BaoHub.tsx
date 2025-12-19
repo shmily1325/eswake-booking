@@ -67,7 +67,7 @@ export function BaoHub() {
         ]
       },
       {
-        section: '🔧 系統工具',
+        section: '🏢 營運管理',
         items: [
           {
             title: '公告',
@@ -83,7 +83,12 @@ export function BaoHub() {
             title: '船隻管理',
             icon: '🚤',
             link: '/boats'
-          },
+          }
+        ]
+      },
+      {
+        section: '⚙️ 系統設定',
+        items: [
           {
             title: '匯出',
             icon: '💾',

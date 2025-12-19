@@ -803,7 +803,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             color: activeTab === 'boat' ? 'white' : '#666',
           }}
         >
-          {isMobile ? '船隻' : '🚤 船隻'}
+          {isMobile ? '船' : '🚤 船'}
         </button>
         <button
           type="button"
@@ -1482,54 +1482,103 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       {/* Results */}
       {hasSearched && (
         <div>
-          {/* 只在非加载状态时显示结果统计 */}
+          {/* 只在非加载状态时显示结果統計和操作列 */}
           {!loading && (
             <div style={{
               display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              marginBottom: '16px',
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: isMobile ? 'stretch' : 'center',
+              gap: isMobile ? '10px' : '12px',
+              marginBottom: '12px',
+              padding: '0 4px',
             }}>
-              {/* 第一行：結果統計 + 操作按鈕 */}
+              {/* 左側：結果統計 */}
               <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px'
+                fontSize: '14px',
+                color: '#666',
               }}>
-                <div style={{
-                  fontSize: '16px',
-                  color: '#666',
-                  fontWeight: '500',
-                }}>
-                  找到 {bookings.length} 筆預約
-                  {selectionMode && selectedBookingIds.size > 0 && (
-                    <span style={{ color: '#5a5a5a', marginLeft: '8px' }}>
-                      （已選 {selectedBookingIds.size} 筆）
-                    </span>
-                  )}
-                </div>
-              
+                找到 <strong style={{ color: '#5a5a5a' }}>{bookings.length}</strong> 筆預約
+                {selectionMode && selectedBookingIds.size > 0 && (
+                  <span style={{ marginLeft: '8px', color: '#5a5a5a' }}>
+                    （已選 {selectedBookingIds.size} 筆）
+                  </span>
+                )}
+              </div>
+
+              {/* 右側：操作按鈕群組 */}
               {bookings.length > 0 && (
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  gap: '8px', 
+                  flexWrap: 'wrap',
+                }}>
+                  {/* 非選擇模式：排序 + 已結束 + 批次選擇 + 複製 */}
+                  {!selectionMode && (
+                    <>
+                      {/* 排序按鈕 */}
+                      <button
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                        style={{
+                          padding: '6px 10px',
+                          border: '1px solid #dee2e6',
+                          background: 'white',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          color: '#495057',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        {sortOrder === 'asc' ? '⬆️ 時間近→遠' : '⬇️ 時間遠→近'}
+                      </button>
+
+                      {/* 過去預約切換 */}
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        color: '#666',
+                        padding: '6px 10px',
+                        background: showPastBookings ? '#f0f0f0' : 'white',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '6px',
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={showPastBookings}
+                          onChange={(e) => setShowPastBookings(e.target.checked)}
+                          style={{
+                            width: '14px',
+                            height: '14px',
+                            cursor: 'pointer',
+                            accentColor: '#5a5a5a',
+                          }}
+                        />
+                        {isMobile ? '含已結束' : '顯示已結束'}
+                      </label>
+                    </>
+                  )}
+
                   {/* 選擇模式切換 - 只有小編可見 */}
                   {isEditor && (
                     <button
                       onClick={toggleSelectionMode}
                       style={{
-                        padding: '8px 16px',
-                        fontSize: '14px',
+                        padding: '6px 12px',
+                        fontSize: '13px',
                         fontWeight: '500',
-                        background: selectionMode ? '#6c757d' : '#f8f9fa',
+                        background: selectionMode ? '#6c757d' : 'white',
                         color: selectionMode ? 'white' : '#495057',
                         border: selectionMode ? 'none' : '1px solid #dee2e6',
                         borderRadius: '6px',
                         cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s'
                       }}
                     >
                       {selectionMode ? '✕ 取消選擇' : '☑️ 批次選擇'}
@@ -1542,15 +1591,14 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       <button
                         onClick={selectedBookingIds.size === bookings.length ? deselectAll : selectAll}
                         style={{
-                          padding: '8px 12px',
-                          fontSize: '14px',
+                          padding: '6px 12px',
+                          fontSize: '13px',
                           fontWeight: '500',
-                          background: '#f8f9fa',
+                          background: 'white',
                           color: '#495057',
                           border: '1px solid #dee2e6',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          transition: 'all 0.2s'
                         }}
                       >
                         {selectedBookingIds.size === bookings.length ? '取消全選' : '全選'}
@@ -1561,18 +1609,14 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                           <button
                             onClick={() => setBatchEditDialogOpen(true)}
                             style={{
-                              padding: '8px 16px',
-                              fontSize: '14px',
+                              padding: '6px 12px',
+                              fontSize: '13px',
                               fontWeight: '600',
                               background: '#28a745',
                               color: 'white',
                               border: 'none',
                               borderRadius: '6px',
                               cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              transition: 'all 0.2s'
                             }}
                           >
                             ✏️ 批次修改 ({selectedBookingIds.size})
@@ -1580,110 +1624,41 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                           <button
                             onClick={() => setBatchDeleteDialogOpen(true)}
                             style={{
-                              padding: '8px 16px',
-                              fontSize: '14px',
+                              padding: '6px 12px',
+                              fontSize: '13px',
                               fontWeight: '600',
                               background: '#dc3545',
                               color: 'white',
                               border: 'none',
                               borderRadius: '6px',
                               cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              transition: 'all 0.2s'
                             }}
                           >
-                            🗑️ 批次刪除 ({selectedBookingIds.size})
+                            🗑️ 批次刪除
                           </button>
                         </>
                       )}
                     </>
                   )}
 
-                  {/* 複製 LINE 格式按鈕 */}
-                  {!selectionMode && (
+                  {/* 複製 LINE 格式按鈕 - 只在預約人頁面顯示 */}
+                  {!selectionMode && activeTab === 'member' && (
                     <button
                       onClick={handleCopyToClipboard}
                       style={{
-                        padding: '8px 16px',
-                        fontSize: '14px',
+                        padding: '6px 12px',
+                        fontSize: '13px',
                         fontWeight: '500',
                         background: copySuccess ? '#28a745' : '#5a5a5a',
                         color: 'white',
                         border: 'none',
                         borderRadius: '6px',
                         cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s'
                       }}
                     >
                       {copySuccess ? '✓ 已複製' : '📋 複製 LINE 格式'}
                     </button>
                   )}
-                </div>
-              )}
-              </div>
-
-              {/* 第二行：排序 + 過去預約切換 */}
-              {bookings.length > 0 && !selectionMode && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: '12px',
-                  padding: '12px',
-                  background: '#f8f9fa',
-                  borderRadius: '8px',
-                }}>
-                  {/* 排序選項 */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', color: '#666' }}>排序：</span>
-                    <button
-                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                      style={{
-                        padding: '6px 12px',
-                        border: '1px solid #dee2e6',
-                        background: 'white',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        color: '#495057',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      {sortOrder === 'asc' ? '⬆️ 時間近→遠' : '⬇️ 時間遠→近'}
-                    </button>
-                  </div>
-
-                  {/* 過去預約切換 */}
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    color: '#666',
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={showPastBookings}
-                      onChange={(e) => setShowPastBookings(e.target.checked)}
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        cursor: 'pointer',
-                      }}
-                    />
-                    顯示已結束預約
-                  </label>
                 </div>
               )}
             </div>
