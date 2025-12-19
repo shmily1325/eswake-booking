@@ -239,9 +239,9 @@ export function AnnouncementManagement() {
             </label>
             <div style={{ 
               position: 'relative',
-              marginTop: '10px',
-              marginLeft: '4px',
-              marginRight: '4px'
+              marginTop: '12px',
+              marginLeft: '8px',
+              marginRight: '8px'
             }}>
               <input
                 type="date"

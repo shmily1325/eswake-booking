@@ -725,6 +725,7 @@ export function Statistics() {
               <input
                 type="month"
                 value={selectedPeriod}
+                max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
                 style={{
                   flex: 1,
@@ -746,7 +747,12 @@ export function Statistics() {
                 onClick={() => {
                   const [y, m] = selectedPeriod.split('-').map(Number)
                   const newDate = new Date(y, m, 1)
-                  setSelectedPeriod(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`)
+                  const now = new Date()
+                  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+                  const newMonth = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`
+                  if (newMonth <= currentMonth) {
+                    setSelectedPeriod(newMonth)
+                  }
                 }}
                 style={{
                   background: 'transparent',

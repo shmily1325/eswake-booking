@@ -345,9 +345,9 @@ export function TomorrowReminder() {
             // 手機版：徽章在右上角
             <div style={{ 
               position: 'relative',
-              marginTop: '10px',
-              marginLeft: '4px',
-              marginRight: '4px',
+              marginTop: '12px',
+              marginLeft: '8px',
+              marginRight: '8px',
               marginBottom: loading ? '8px' : '0'
             }}>
               <input
