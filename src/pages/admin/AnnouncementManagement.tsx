@@ -276,7 +276,8 @@ export function AnnouncementManagement() {
           borderRadius: '12px',
           padding: isMobile ? '12px' : '20px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          minHeight: '200px'
+          minHeight: '200px',
+          overflow: 'hidden'
         }}>
           <div style={{
             display: 'flex',
@@ -296,7 +297,7 @@ export function AnnouncementManagement() {
                 searchText ? a.content.toLowerCase().includes(searchText.toLowerCase()) : true
               ).length})
             </h2>
-            <div style={{ flex: isMobile ? 1 : 'none', minWidth: isMobile ? 0 : '150px' }}>
+            <div style={{ flex: isMobile ? 1 : 'none', minWidth: isMobile ? 0 : '150px', maxWidth: '100%', overflow: 'hidden' }}>
               <input
                 type="month"
                 value={selectedMonth}

@@ -421,7 +421,7 @@ export function BoatManagement() {
                                 <span>📅</span>
                                 <span>查看維修記錄</span>
                             </div>
-                            <div style={{ flex: isMobile ? 1 : 'none', minWidth: isMobile ? 0 : '150px' }}>
+                            <div style={{ flex: isMobile ? 1 : 'none', minWidth: isMobile ? 0 : '150px', maxWidth: '100%', overflow: 'hidden' }}>
                                 <input
                                     type="month"
                                     value={selectedMonth}
