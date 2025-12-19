@@ -164,15 +164,12 @@ export function Statistics() {
     setMonthlyStats(months)
   }
 
-  // 載入當月平日/假日統計
+  // 載入平日/假日統計（使用 selectedPeriod）
   const loadWeekdayStats = async () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth() + 1
-    const monthStr = `${year}-${String(month).padStart(2, '0')}`
-    const startDate = `${monthStr}-01`
-    const endDate = new Date(year, month, 0).getDate()
-    const endDateStr = `${monthStr}-${String(endDate).padStart(2, '0')}`
+    const [year, month] = selectedPeriod.split('-')
+    const startDate = `${selectedPeriod}-01`
+    const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
+    const endDateStr = `${selectedPeriod}-${String(endDate).padStart(2, '0')}`
     
     const { data } = await supabase
       .from('bookings')
@@ -873,25 +870,45 @@ export function Statistics() {
                   </div>
                 </div>
 
-                {/* 本月平日/假日分佈 */}
+                {/* 平日/假日分佈 */}
                 <div style={getCardStyle(isMobile)}>
-                  <h3 style={{ 
-                    margin: '0 0 20px 0', 
-                    fontSize: '17px', 
-                    fontWeight: '700',
-                    display: 'flex',
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
                     alignItems: 'center',
-                    gap: '8px'
+                    marginBottom: '20px',
+                    flexWrap: 'wrap',
+                    gap: '12px'
                   }}>
-                    <span style={{ 
-                      width: '4px', 
-                      height: '20px', 
-                      background: '#ff9800', 
-                      borderRadius: '2px',
-                      display: 'inline-block'
-                    }}></span>
-                    本月平日/假日分佈
-                  </h3>
+                    <h3 style={{ 
+                      margin: 0, 
+                      fontSize: '17px', 
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <span style={{ 
+                        width: '4px', 
+                        height: '20px', 
+                        background: '#ff9800', 
+                        borderRadius: '2px',
+                        display: 'inline-block'
+                      }}></span>
+                      平日/假日分佈
+                    </h3>
+                    <input
+                      type="month"
+                      value={selectedPeriod}
+                      onChange={(e) => setSelectedPeriod(e.target.value)}
+                      style={{
+                        padding: '8px 12px',
+                        fontSize: '14px',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '6px'
+                      }}
+                    />
+                  </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {/* 平日 */}
                     <div>

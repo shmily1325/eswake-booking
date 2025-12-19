@@ -329,6 +329,7 @@ export function TomorrowReminder() {
           background: 'white',
           borderRadius: '8px',
           padding: isMobile ? '15px' : '20px',
+          paddingTop: isMobile ? '20px' : '20px',
           marginBottom: isMobile ? '10px' : '15px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
@@ -336,24 +337,26 @@ export function TomorrowReminder() {
             display: 'block',
             fontSize: isMobile ? '13px' : '14px',
             fontWeight: '600',
-            marginBottom: '8px',
+            marginBottom: '12px',
             color: '#333'
           }}>
             選擇日期
           </label>
           {isMobile ? (
             // 手機版：徽章在右上角
-            <div style={{ position: 'relative', marginBottom: loading ? '8px' : '0', marginTop: '10px' }}>
+            <div style={{ position: 'relative', marginBottom: loading ? '8px' : '0' }}>
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 style={{
-                  padding: '10px 12px',
+                  width: '100%',
+                  height: '44px',
+                  padding: '0 12px',
                   border: '1px solid #dee2e6',
                   borderRadius: '4px',
-                  fontSize: '15px',
-                  width: '100%',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
                   touchAction: 'manipulation'
                 }}
               />
