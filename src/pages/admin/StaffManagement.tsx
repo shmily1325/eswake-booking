@@ -740,10 +740,8 @@ export function StaffManagement() {
             <div style={{
               marginBottom: '15px',
               display: 'flex',
-              justifyContent: 'space-between',
               alignItems: 'center',
               gap: '12px',
-              flexWrap: isMobile ? 'wrap' : 'nowrap'
             }}>
               {/* 左邊：顯示切換 */}
               <label style={{
@@ -755,7 +753,8 @@ export function StaffManagement() {
                 background: '#f5f5f5',
                 borderRadius: '8px',
                 transition: 'all 0.2s',
-                userSelect: 'none'
+                userSelect: 'none',
+                flexShrink: 0
               }}>
                 <input
                   type="checkbox"
@@ -778,14 +777,15 @@ export function StaffManagement() {
               </label>
 
               {/* 右邊：月份選擇器 */}
-              <div style={{ flex: isMobile ? 1 : 'none', minWidth: isMobile ? 0 : '150px', maxWidth: '100%', overflow: 'hidden' }}>
+              <div style={{ flex: 1 }}>
                 <input
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '8px 12px',
+                    height: '40px',
+                    padding: '0 12px',
                     border: '2px solid #2196F3',
                     borderRadius: '8px',
                     fontSize: '16px',

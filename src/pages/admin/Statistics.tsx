@@ -51,6 +51,14 @@ export function Statistics() {
   // 趨勢數據
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([])
   
+  // 當月平日/假日統計
+  const [weekdayStats, setWeekdayStats] = useState<{
+    weekdayCount: number
+    weekdayMinutes: number
+    weekendCount: number
+    weekendMinutes: number
+  }>({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
+  
   // 未來預約數據
   const [futureBookings, setFutureBookings] = useState<CoachFutureBooking[]>([])
   const [futureMonthFilter, setFutureMonthFilter] = useState<string>('all')
@@ -79,8 +87,8 @@ export function Statistics() {
     designatedMinutes: number
     undesignatedMinutes: number
     bookingCount: number
-    coaches: { coachName: string; count: number }[]
-    boats: { boatName: string; count: number }[]
+    coaches: { coachName: string; minutes: number }[]
+    boats: { boatName: string; minutes: number }[]
   }[]>([])
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null)
   
@@ -110,7 +118,8 @@ export function Statistics() {
         loadFutureBookings(),
         loadCoachStats(),
         loadMemberStats(),
-        loadBoatStats()
+        loadBoatStats(),
+        loadWeekdayStats()
       ])
     } catch (error) {
       console.error('載入統計數據失敗:', error)
@@ -153,6 +162,44 @@ export function Statistics() {
     }
     
     setMonthlyStats(months)
+  }
+
+  // 載入當月平日/假日統計
+  const loadWeekdayStats = async () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth() + 1
+    const monthStr = `${year}-${String(month).padStart(2, '0')}`
+    const startDate = `${monthStr}-01`
+    const endDate = new Date(year, month, 0).getDate()
+    const endDateStr = `${monthStr}-${String(endDate).padStart(2, '0')}`
+    
+    const { data } = await supabase
+      .from('bookings')
+      .select('id, duration_min, start_at')
+      .gte('start_at', `${startDate}T00:00:00`)
+      .lte('start_at', `${endDateStr}T23:59:59`)
+      .neq('status', 'cancelled')
+    
+    let weekdayCount = 0, weekdayMinutes = 0
+    let weekendCount = 0, weekendMinutes = 0
+    
+    data?.forEach(booking => {
+      const date = new Date(booking.start_at)
+      const dayOfWeek = date.getDay() // 0=週日, 6=週六
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      const minutes = booking.duration_min || 0
+      
+      if (isWeekend) {
+        weekendCount++
+        weekendMinutes += minutes
+      } else {
+        weekdayCount++
+        weekdayMinutes += minutes
+      }
+    })
+    
+    setWeekdayStats({ weekdayCount, weekdayMinutes, weekendCount, weekendMinutes })
   }
 
   // 載入未來預約（按教練分組）
@@ -409,7 +456,7 @@ export function Statistics() {
     const { data: participantData } = await supabase
       .from('booking_participants')
       .select(`
-        member_id, duration_min, coach_id, lesson_type,
+        member_id, duration_min, coach_id, lesson_type, is_teaching,
         members:member_id(id, name, nickname),
         coaches:coach_id(id, name),
         bookings!inner(start_at, boats(id, name))
@@ -462,16 +509,16 @@ export function Statistics() {
         stats.undesignatedMinutes += duration
       }
       
-      // 統計教練
-      if (record.coaches?.name) {
+      // 統計教練時數（只計算有指定教學的）
+      if (record.is_teaching && record.coaches?.name) {
         const coachName = record.coaches.name
-        stats.coaches.set(coachName, (stats.coaches.get(coachName) || 0) + 1)
+        stats.coaches.set(coachName, (stats.coaches.get(coachName) || 0) + duration)
       }
       
-      // 統計船
+      // 統計船時數
       if (record.bookings?.boats?.name) {
         const boatName = record.bookings.boats.name
-        stats.boats.set(boatName, (stats.boats.get(boatName) || 0) + 1)
+        stats.boats.set(boatName, (stats.boats.get(boatName) || 0) + duration)
       }
     })
     
@@ -480,11 +527,11 @@ export function Statistics() {
       .map(member => ({
         ...member,
         coaches: Array.from(member.coaches.entries())
-          .map(([coachName, count]) => ({ coachName, count }))
-          .sort((a, b) => b.count - a.count),
+          .map(([coachName, minutes]) => ({ coachName, minutes }))
+          .sort((a, b) => b.minutes - a.minutes),
         boats: Array.from(member.boats.entries())
-          .map(([boatName, count]) => ({ boatName, count }))
-          .sort((a, b) => b.count - a.count)
+          .map(([boatName, minutes]) => ({ boatName, minutes }))
+          .sort((a, b) => b.minutes - a.minutes)
       }))
       .sort((a, b) => b.totalMinutes - a.totalMinutes)
     
@@ -825,6 +872,104 @@ export function Statistics() {
                     </table>
                   </div>
                 </div>
+
+                {/* 本月平日/假日分佈 */}
+                <div style={getCardStyle(isMobile)}>
+                  <h3 style={{ 
+                    margin: '0 0 20px 0', 
+                    fontSize: '17px', 
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <span style={{ 
+                      width: '4px', 
+                      height: '20px', 
+                      background: '#ff9800', 
+                      borderRadius: '2px',
+                      display: 'inline-block'
+                    }}></span>
+                    本月平日/假日分佈
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* 平日 */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ fontWeight: '500', color: '#333' }}>
+                          📅 平日（週一～五）
+                        </span>
+                        <span style={{ color: '#4a90e2', fontWeight: '600' }}>
+                          {weekdayStats.weekdayCount} 趟 / {Math.round(weekdayStats.weekdayMinutes / 60 * 10) / 10} 小時
+                        </span>
+                      </div>
+                      <div style={{
+                        width: '100%',
+                        height: '24px',
+                        background: '#e3f2fd',
+                        borderRadius: '6px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${weekdayStats.weekdayCount + weekdayStats.weekendCount > 0 
+                            ? (weekdayStats.weekdayCount / (weekdayStats.weekdayCount + weekdayStats.weekendCount)) * 100 
+                            : 0}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}>
+                          {weekdayStats.weekdayCount + weekdayStats.weekendCount > 0 
+                            ? Math.round((weekdayStats.weekdayCount / (weekdayStats.weekdayCount + weekdayStats.weekendCount)) * 100) 
+                            : 0}%
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 假日 */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ fontWeight: '500', color: '#333' }}>
+                          🎉 假日（週六、日）
+                        </span>
+                        <span style={{ color: '#ff9800', fontWeight: '600' }}>
+                          {weekdayStats.weekendCount} 趟 / {Math.round(weekdayStats.weekendMinutes / 60 * 10) / 10} 小時
+                        </span>
+                      </div>
+                      <div style={{
+                        width: '100%',
+                        height: '24px',
+                        background: '#fff3e0',
+                        borderRadius: '6px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${weekdayStats.weekdayCount + weekdayStats.weekendCount > 0 
+                            ? (weekdayStats.weekendCount / (weekdayStats.weekdayCount + weekdayStats.weekendCount)) * 100 
+                            : 0}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg, #ff9800, #f57c00)',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}>
+                          {weekdayStats.weekdayCount + weekdayStats.weekendCount > 0 
+                            ? Math.round((weekdayStats.weekendCount / (weekdayStats.weekdayCount + weekdayStats.weekendCount)) * 100) 
+                            : 0}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </>
             )}
 
@@ -1084,7 +1229,7 @@ export function Statistics() {
                                         }}
                                       >
                                         <span>{cIdx + 1}. {coach.coachName}</span>
-                                        <span style={{ color: '#4a90e2' }}>{coach.count} 次</span>
+                                        <span style={{ color: '#4a90e2' }}>{Math.round(coach.minutes / 60 * 10) / 10}h</span>
                                       </div>
                                     ))}
                                   </div>
@@ -1113,7 +1258,7 @@ export function Statistics() {
                                         }}
                                       >
                                         <span>{bIdx + 1}. {boat.boatName}</span>
-                                        <span style={{ color: '#50c878' }}>{boat.count} 次</span>
+                                        <span style={{ color: '#4a90e2' }}>{Math.round(boat.minutes / 60 * 10) / 10}h</span>
                                       </div>
                                     ))}
                                   </div>

@@ -276,35 +276,34 @@ export function AnnouncementManagement() {
           borderRadius: '12px',
           padding: isMobile ? '12px' : '20px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          minHeight: '200px',
-          overflow: 'hidden'
+          minHeight: '200px'
         }}>
           <div style={{
             display: 'flex',
-            justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: '15px',
             gap: '12px',
-            flexWrap: isMobile ? 'wrap' : 'nowrap'
           }}>
             <h2 style={{
               margin: 0,
               fontSize: isMobile ? '16px' : '18px',
               fontWeight: '600',
-              color: '#333'
+              color: '#333',
+              flexShrink: 0
             }}>
               所有交辦事項 ({announcements.filter(a => 
                 searchText ? a.content.toLowerCase().includes(searchText.toLowerCase()) : true
               ).length})
             </h2>
-            <div style={{ flex: isMobile ? 1 : 'none', minWidth: isMobile ? 0 : '150px', maxWidth: '100%', overflow: 'hidden' }}>
+            <div style={{ flex: 1 }}>
               <input
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '8px 12px',
+                  height: '40px',
+                  padding: '0 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '16px',

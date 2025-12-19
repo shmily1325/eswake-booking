@@ -402,9 +402,7 @@ export function BoatManagement() {
                         <div style={{
                             marginBottom: '20px',
                             display: 'flex',
-                            justifyContent: 'space-between',
                             alignItems: 'center',
-                            flexWrap: isMobile ? 'wrap' : 'nowrap',
                             gap: '12px',
                             background: '#f8f9fa',
                             padding: isMobile ? '12px' : '12px 16px',
@@ -416,19 +414,21 @@ export function BoatManagement() {
                                 alignItems: 'center',
                                 gap: '8px',
                                 fontSize: '14px',
-                                color: '#666'
+                                color: '#666',
+                                flexShrink: 0
                             }}>
                                 <span>📅</span>
                                 <span>查看維修記錄</span>
                             </div>
-                            <div style={{ flex: isMobile ? 1 : 'none', minWidth: isMobile ? 0 : '150px', maxWidth: '100%', overflow: 'hidden' }}>
+                            <div style={{ flex: 1 }}>
                                 <input
                                     type="month"
                                     value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(e.target.value)}
                                     style={{
                                         width: '100%',
-                                        padding: '8px 12px',
+                                        height: '40px',
+                                        padding: '0 12px',
                                         border: '2px solid #2196F3',
                                         borderRadius: '8px',
                                         fontSize: '16px',
