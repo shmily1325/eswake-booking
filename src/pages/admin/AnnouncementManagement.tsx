@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { getLocalDateString } from '../../utils/date'
+import { getLocalDateString, getWeekdayText } from '../../utils/date'
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { validateRequired } from '../../utils/errorHandler'
 import { useToast, ToastContainer } from '../../components/ui'
@@ -232,23 +232,43 @@ export function AnnouncementManagement() {
               display: 'block',
               fontSize: '13px',
               color: '#666',
-              marginBottom: '6px',
+              marginBottom: '12px',
               fontWeight: '500'
             }}>
               顯示日期
             </label>
-            <input
-              type="date"
-              value={newDisplayDate}
-              onChange={(e) => setNewDisplayDate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '14px'
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type="date"
+                value={newDisplayDate}
+                onChange={(e) => setNewDisplayDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: '44px',
+                  padding: '0 12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              {/* 星期幾徽章 */}
+              <div style={{
+                position: 'absolute',
+                top: '-8px',
+                right: '8px',
+                fontSize: '11px',
+                color: 'white',
+                fontWeight: '600',
+                background: '#5a5a5a',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                pointerEvents: 'none',
+              }}>
+                {getWeekdayText(newDisplayDate)}
+              </div>
+            </div>
           </div>
 
           <button

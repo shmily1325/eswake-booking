@@ -1246,7 +1246,7 @@ export function Statistics() {
                                         }}
                                       >
                                         <span>{cIdx + 1}. {coach.coachName}</span>
-                                        <span style={{ color: '#4a90e2' }}>{Math.round(coach.minutes / 60 * 10) / 10}h</span>
+                                        <span style={{ color: '#4a90e2' }}>{coach.minutes} 分</span>
                                       </div>
                                     ))}
                                   </div>
@@ -1275,7 +1275,7 @@ export function Statistics() {
                                         }}
                                       >
                                         <span>{bIdx + 1}. {boat.boatName}</span>
-                                        <span style={{ color: '#4a90e2' }}>{Math.round(boat.minutes / 60 * 10) / 10}h</span>
+                                        <span style={{ color: '#4a90e2' }}>{boat.minutes} 分</span>
                                       </div>
                                     ))}
                                   </div>
