@@ -36,6 +36,10 @@ const CATEGORY_CONFIG: Record<string, { emoji: string; label: string; type: 'amo
 
 export function DeductionDetails({ transactions, paymentMethod, notes, boatName = '', duration = 0, lessonType = null }: DeductionDetailsProps) {
 
+  // 檢查是否有代扣標註（格式：(由XXX代扣)）
+  const proxyMatch = notes?.match(/\(由(.+?)代扣\)/)
+  const proxyMemberName = proxyMatch ? proxyMatch[1] : null
+
   // 如果是现金/汇款结清，直接显示结清信息
   if (notes && (notes.includes('[現金結清]') || notes.includes('[匯款結清]') || notes.includes('[指定課不收費]'))) {
     // 提取结清类型并去掉方括号
@@ -65,6 +69,11 @@ export function DeductionDetails({ transactions, paymentMethod, notes, boatName 
       }}>
         <span>{emoji}</span>
         <span>{settlementText}</span>
+        {proxyMemberName && (
+          <span style={{ color: '#e65100', fontWeight: '500', marginLeft: '4px' }}>
+            (由{proxyMemberName}代扣)
+          </span>
+        )}
       </div>
     )
   }
@@ -210,6 +219,11 @@ export function DeductionDetails({ transactions, paymentMethod, notes, boatName 
         <span>{item.emoji}</span>
         <span>{item.label}：</span>
         <span style={{ fontWeight: '600', color: '#333' }}>{item.value}</span>
+        {proxyMemberName && (
+          <span style={{ color: '#e65100', fontWeight: '500' }}>
+            (由{proxyMemberName}代扣)
+          </span>
+        )}
       </div>
     )
   }
@@ -228,9 +242,18 @@ export function DeductionDetails({ transactions, paymentMethod, notes, boatName 
       fontSize: '12px',
       marginTop: '4px',
       color: '#666',
-      paddingLeft: '2px'
+      paddingLeft: '2px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '4px',
+      flexWrap: 'wrap'
     }}>
-      {deductionText}
+      <span>{deductionText}</span>
+      {proxyMemberName && (
+        <span style={{ color: '#e65100', fontWeight: '500' }}>
+          (由{proxyMemberName}代扣)
+        </span>
+      )}
     </div>
   )
 }

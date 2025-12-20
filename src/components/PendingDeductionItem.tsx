@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from './ui'
 import { useAuthUser } from '../contexts/AuthContext'
 import { normalizeDate } from '../utils/date'
+import { useMemberSearch } from '../hooks/useMemberSearch'
 
 // 扣款類別
 type DeductionCategory = 
@@ -65,6 +66,20 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
   const [coachPrice30min, setCoachPrice30min] = useState<number | null>(null)
   const [boatData, setBoatData] = useState<{ balance_price_per_hour: number | null, vip_price_per_hour: number | null } | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  
+  // 代扣會員相關狀態
+  const [proxyMemberId, setProxyMemberId] = useState<string | null>(null)
+  const [proxyMemberName, setProxyMemberName] = useState<string>('')  // 代扣會員名稱
+  const [proxyMemberData, setProxyMemberData] = useState<any>(null)  // 代扣會員完整資料（用於顯示餘額）
+  const [showProxyMemberSearch, setShowProxyMemberSearch] = useState(false)
+  
+  // 使用會員搜尋 hook
+  const { 
+    filteredMembers: proxyFilteredMembers, 
+    searchTerm: proxySearchTerm,
+    handleSearchChange: handleProxySearchChange,
+    reset: resetProxySearch
+  } = useMemberSearch()
   
   // 判斷是否為現金/匯款結清
   const isCashSettlement = report.payment_method === 'cash' || report.payment_method === 'transfer'
@@ -346,6 +361,37 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
     }
   }
 
+  // 選擇代扣會員（同時載入完整資料用於顯示餘額）
+  const selectProxyMember = async (member: { id: string; name: string; nickname: string | null }) => {
+    setProxyMemberId(member.id)
+    setProxyMemberName(member.nickname || member.name)
+    setShowProxyMemberSearch(false)
+    resetProxySearch()
+    
+    // 載入代扣會員的完整資料（用於顯示餘額）
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('*')
+        .eq('id', member.id)
+        .single()
+      
+      if (!error && data) {
+        setProxyMemberData(data)
+      }
+    } catch (error) {
+      console.error('載入代扣會員資料失敗:', error)
+    }
+  }
+
+  // 取消代扣會員
+  const clearProxyMember = () => {
+    setProxyMemberId(null)
+    setProxyMemberName('')
+    setProxyMemberData(null)
+    resetProxySearch()
+  }
+
   // 展開/收起
   const handleToggle = () => {
     const newExpanded = !isExpanded
@@ -489,14 +535,26 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
     // 過濾掉直接結清的項目
     const deductionItems = items.filter(item => item.category !== 'direct_settlement')
     
-    if (!report.member_id) {
-      toast.warning('非會員無法扣款')
+    // 決定實際扣款的會員 ID（如果有代扣會員，使用代扣會員）
+    const actualMemberId = proxyMemberId || report.member_id
+    const isProxyDeduction = !!proxyMemberId && proxyMemberId !== report.member_id
+    
+    if (!actualMemberId) {
+      toast.warning('非會員無法扣款，請選擇代扣會員')
       return
     }
 
-    if (!memberData) {
-      toast.warning('會員資料未載入')
-      return
+    // 驗證會員資料已載入
+    if (isProxyDeduction) {
+      if (!proxyMemberData) {
+        toast.warning('代扣會員資料載入中，請稍後再試')
+        return
+      }
+    } else {
+      if (!memberData) {
+        toast.warning('會員資料未載入')
+        return
+      }
     }
 
     // 驗證扣款項目
@@ -544,6 +602,19 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
       }
     }
 
+    // 如果是代扣，再次確認
+    if (isProxyDeduction) {
+      const proxyConfirmed = window.confirm(
+        `⚠️ 代扣確認\n\n` +
+        `實際消費者：${report.participant_name}\n` +
+        `扣款帳戶：${proxyMemberName}\n\n` +
+        `確定要從 ${proxyMemberName} 的帳戶扣款嗎？`
+      )
+      if (!proxyConfirmed) {
+        return
+      }
+    }
+
     setLoading(true)
     try {
       // 取得當前操作者
@@ -557,22 +628,41 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
       // ✅ 取得預約日期作為交易日期（正規化確保格式正確）
       const bookingDate = normalizeDate(report.bookings.start_at.split('T')[0]) || report.bookings.start_at.split('T')[0]
       
+      // 準備代扣標註（如果有代扣會員）
+      // 代扣會員的交易記錄會顯示：「(小明)」表示代扣小明的費用
+      // 原始會員的記錄會顯示：「(由小華代扣)」
+      const proxyNoteForTransaction = isProxyDeduction 
+        ? `(${report.participant_name})` 
+        : null
+      const proxyNoteForParticipant = isProxyDeduction 
+        ? `(由${proxyMemberName}代扣)` 
+        : null
+      
       // 準備扣款資料（轉換為 JSONB 格式）
-      const deductionsData = deductionItems.map(item => ({
-        category: item.category,
-        amount: item.amount || null,
-        minutes: item.minutes || null,
-        description: item.description || generateDescription(),
-        notes: item.notes || null,
-        planName: item.planName || null,
-        transactionDate: bookingDate  // 使用預約日期
-      }))
+      const deductionsData = deductionItems.map(item => {
+        // 合併原有 notes 和代扣標註
+        let finalNotes = item.notes || ''
+        if (proxyNoteForTransaction) {
+          finalNotes = finalNotes ? `${proxyNoteForTransaction} ${finalNotes}` : proxyNoteForTransaction
+        }
+        
+        return {
+          category: item.category,
+          amount: item.amount || null,
+          minutes: item.minutes || null,
+          description: item.description || generateDescription(),
+          notes: finalNotes || null,
+          planName: item.planName || null,
+          transactionDate: bookingDate  // 使用預約日期
+        }
+      })
 
       // ✅ 使用資料庫交易函數處理扣款（確保原子性）
+      // 如果有代扣會員，使用代扣會員的 ID
       const { data: result, error: rpcError } = await supabase.rpc(
         'process_deduction_transaction',
         {
-          p_member_id: report.member_id,
+          p_member_id: actualMemberId,  // 使用實際扣款的會員 ID（可能是代扣會員）
           p_participant_id: report.id,
           p_operator_id: operatorId,
           p_deductions: deductionsData as any
@@ -589,8 +679,26 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
       if (!resultData?.success) {
         throw new Error(resultData?.error || '扣款處理失敗')
       }
+      
+      // 扣款成功後，如果是代扣，更新原始參與者記錄的 notes
+      if (isProxyDeduction && proxyNoteForParticipant) {
+        const existingNotes = report.notes || ''
+        const newNotes = existingNotes 
+          ? `${existingNotes} [${proxyNoteForParticipant}]`
+          : `[${proxyNoteForParticipant}]`
+        
+        await supabase
+          .from('booking_participants')
+          .update({ notes: newNotes })
+          .eq('id', report.id)
+      }
 
-      toast.success('扣款完成')
+      // 顯示成功訊息（如果是代扣，顯示代扣資訊）
+      if (isProxyDeduction) {
+        toast.success(`扣款完成（由 ${proxyMemberName} 代扣）`)
+      } else {
+        toast.success('扣款完成')
+      }
       onComplete()
     } catch (error) {
       console.error('扣款失敗:', error)
@@ -774,6 +882,83 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
 
           {/* 扣款介面（始終顯示，可選擇） */}
           <>
+              {/* 代扣會員選擇區塊 */}
+              <div style={{ 
+                marginBottom: '16px',
+                padding: '12px',
+                background: proxyMemberId ? '#fff3e0' : '#f5f5f5',
+                borderRadius: '8px',
+                border: proxyMemberId ? '2px solid #ffcc80' : '1px solid #e0e0e0'
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+                      扣款帳戶：
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: '600' }}>
+                      {proxyMemberId ? (
+                        <div>
+                          <span style={{ color: '#e65100' }}>
+                            🔄 {proxyMemberName}
+                            <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>
+                              (代扣 {report.participant_name} 的費用)
+                            </span>
+                          </span>
+                          {proxyMemberData && (
+                            <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                              💰 儲值 ${(proxyMemberData.balance || 0).toLocaleString()} • 
+                              🚤 G23 {proxyMemberData.boat_voucher_g23_minutes || 0}分 • 
+                              ⛵ G21/黑豹 {proxyMemberData.boat_voucher_g21_panther_minutes || 0}分
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span>{report.participant_name}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {proxyMemberId ? (
+                      <button
+                        onClick={clearProxyMember}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#757575',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✕ 取消代扣
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowProxyMemberSearch(true)}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#ff9800',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🔄 切換扣款會員
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>
                 扣款項目：
               </div>
@@ -813,7 +998,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                     key={item.id}
                     index={index + 1}
                     item={item}
-                    memberData={memberData}
+                    memberData={proxyMemberId ? proxyMemberData : memberData}
                     defaultMinutes={report.duration_min}
                     commonAmounts={getCommonAmounts()}
                     vipVoucherAmounts={getVipVoucherAmounts()}
@@ -1016,16 +1201,18 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 </button>
                 <button
                   onClick={handleConfirm}
-                  disabled={loading || !report.member_id}
+                  disabled={loading || (!report.member_id && !proxyMemberId)}
                   style={{
                     flex: 1,
                     padding: '10px',
-                    background: report.member_id ? '#4CAF50' : '#ccc',
+                    background: (report.member_id || proxyMemberId) 
+                      ? (proxyMemberId ? '#ff9800' : '#4CAF50')
+                      : '#ccc',
                     border: 'none',
                     borderRadius: '8px',
                     color: 'white',
                     fontWeight: '600',
-                    cursor: (loading || !report.member_id) ? 'not-allowed' : 'pointer',
+                    cursor: (loading || (!report.member_id && !proxyMemberId)) ? 'not-allowed' : 'pointer',
                     opacity: loading ? 0.6 : 1,
                     display: 'flex',
                     alignItems: 'center',
@@ -1046,18 +1233,18 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                       }} />
                       處理中...
                     </>
-                  ) : '✅ 確認扣款'}
+                  ) : proxyMemberId ? `✅ 確認扣款（${proxyMemberName}）` : '✅ 確認扣款'}
                 </button>
               </div>
 
-                {!report.member_id && (
+                {!report.member_id && !proxyMemberId && (
                   <div style={{ 
                     marginTop: '8px', 
                     fontSize: '13px', 
                     color: '#f44336',
                     textAlign: 'center'
                   }}>
-                    ⚠️ 非會員無法扣款
+                    ⚠️ 非會員無法扣款，請選擇「切換扣款會員」
                   </div>
                 )}
               </div>
@@ -1071,6 +1258,134 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
             to { transform: rotate(360deg); }
           }
         `}</style>
+        
+        {/* 代扣會員搜尋對話框 */}
+        {showProxyMemberSearch && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+            }}>
+              {/* 標題 */}
+              <div style={{
+                padding: '16px',
+                borderBottom: '1px solid #e0e0e0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>
+                  🔄 選擇代扣會員
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowProxyMemberSearch(false)
+                    resetProxySearch()
+                  }}
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#666'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              
+              {/* 說明 */}
+              <div style={{
+                padding: '12px 16px',
+                background: '#fff3e0',
+                fontSize: '13px',
+                color: '#e65100'
+              }}>
+                選擇要代扣的會員帳戶。代扣後：
+                <br />• 該會員的交易記錄會顯示「({report.participant_name})」
+                <br />• {report.participant_name} 的記錄會顯示「(由 XXX 代扣)」
+              </div>
+              
+              {/* 搜尋輸入框 */}
+              <div style={{ padding: '16px' }}>
+                <input
+                  type="text"
+                  value={proxySearchTerm}
+                  onChange={(e) => handleProxySearchChange(e.target.value)}
+                  placeholder="搜尋會員姓名、暱稱或電話..."
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              
+              {/* 搜尋結果 */}
+              <div style={{ 
+                maxHeight: '300px', 
+                overflow: 'auto',
+                borderTop: '1px solid #e0e0e0'
+              }}>
+                {proxySearchTerm && proxyFilteredMembers.length === 0 ? (
+                  <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
+                    找不到會員
+                  </div>
+                ) : (
+                  proxyFilteredMembers.map(member => (
+                    <div
+                      key={member.id}
+                      onClick={() => selectProxyMember(member)}
+                      style={{
+                        padding: '12px 16px',
+                        borderBottom: '1px solid #f0f0f0',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ fontWeight: '600' }}>
+                        {member.nickname || member.name}
+                      </div>
+                      {member.nickname && member.name !== member.nickname && (
+                        <div style={{ fontSize: '14px', color: '#666' }}>
+                          {member.name}
+                        </div>
+                      )}
+                      {member.phone && (
+                        <div style={{ fontSize: '14px', color: '#999' }}>
+                          {member.phone}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

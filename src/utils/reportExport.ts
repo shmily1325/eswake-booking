@@ -42,11 +42,15 @@ function formatDateTime(datetime: string): string {
 function getDeductionText(record: ExportRecord): string {
   const transactions = record.transactions || []
   
+  // 檢查是否有代扣標註（格式：(由XXX代扣)）
+  const proxyMatch = record.notes?.match(/\(由(.+?)代扣\)/)
+  const proxySuffix = proxyMatch ? ` (由${proxyMatch[1]}代扣)` : ''
+  
   // 檢查是否為結清
   if (record.notes) {
-    if (record.notes.includes('[現金結清]')) return '現金結清'
-    if (record.notes.includes('[匯款結清]')) return '匯款結清'
-    if (record.notes.includes('[指定課不收費]')) return '指定課不收費'
+    if (record.notes.includes('[現金結清]')) return '現金結清' + proxySuffix
+    if (record.notes.includes('[匯款結清]')) return '匯款結清' + proxySuffix
+    if (record.notes.includes('[指定課不收費]')) return '指定課不收費' + proxySuffix
   }
   
   if (transactions.length === 0) return '-'
@@ -93,7 +97,8 @@ function getDeductionText(record: ExportRecord): string {
     return null
   }).filter(Boolean)
   
-  return items.length > 0 ? items.join(' + ') : '-'
+  if (items.length === 0) return '-'
+  return items.join(' + ') + proxySuffix
 }
 
 // 1. 匯出所有記錄

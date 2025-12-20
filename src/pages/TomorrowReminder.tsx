@@ -482,7 +482,7 @@ export function TomorrowReminder() {
                 padding: isMobile ? '12px' : '10px',
                 border: '1px solid #dee2e6',
                 borderRadius: '4px',
-                fontSize: isMobile ? '16px' : '14px', // 16px 防止 iOS 縮放
+                fontSize: isMobile ? '15px' : '14px',
                 fontFamily: 'inherit',
                 resize: 'vertical',
                 touchAction: 'manipulation',
@@ -513,7 +513,7 @@ export function TomorrowReminder() {
                 padding: isMobile ? '12px' : '10px',
                 border: '1px solid #dee2e6',
                 borderRadius: '4px',
-                fontSize: isMobile ? '16px' : '14px', // 16px 防止 iOS 縮放
+                fontSize: isMobile ? '15px' : '14px',
                 fontFamily: 'inherit',
                 resize: 'vertical',
                 touchAction: 'manipulation',
