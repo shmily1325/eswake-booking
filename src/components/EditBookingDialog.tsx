@@ -1420,21 +1420,24 @@ export function EditBookingDialog({
             }}>
               開始日期
             </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                boxSizing: 'border-box',
-                fontSize: '16px',
-                touchAction: 'manipulation',
-              }}
-            />
+            <div style={{ display: 'flex' }}>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                required
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ccc',
+                  boxSizing: 'border-box',
+                  fontSize: '16px',
+                  touchAction: 'manipulation',
+                }}
+              />
+            </div>
             {/* 星期幾顯示 - 更醒目 */}
             {startDate && (
               <div style={{

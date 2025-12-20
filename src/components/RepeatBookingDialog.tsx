@@ -840,21 +840,24 @@ export function RepeatBookingDialog({
                 }}>
                   結束日期
                 </label>
-                <input
-                  type="date"
-                  value={repeatEndDate}
-                  onChange={(e) => setRepeatEndDate(e.target.value)}
-                  min={startDate}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #ccc',
-                    fontSize: '16px',
-                    boxSizing: 'border-box',
-                    touchAction: 'manipulation',
-                  }}
-                />
+                <div style={{ display: 'flex' }}>
+                  <input
+                    type="date"
+                    value={repeatEndDate}
+                    onChange={(e) => setRepeatEndDate(e.target.value)}
+                    min={startDate}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #ccc',
+                      fontSize: '16px',
+                      boxSizing: 'border-box',
+                      touchAction: 'manipulation',
+                    }}
+                  />
+                </div>
               </div>
             )}
 
