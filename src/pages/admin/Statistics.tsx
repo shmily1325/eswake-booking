@@ -67,6 +67,9 @@ export function Statistics() {
     g21Used: number  // G21船券結算分鐘
   }[]>([])
   
+  // 所有船隻列表
+  const [allBoatsData, setAllBoatsData] = useState<{ boatId: number; boatName: string }[]>([])
+  
   // 未來預約數據
   const [futureBookings, setFutureBookings] = useState<CoachFutureBooking[]>([])
   const [futureMonthFilter, setFutureMonthFilter] = useState<string>('all')
@@ -114,6 +117,18 @@ export function Statistics() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
 
+  // 載入所有船隻
+  const loadAllBoats = async () => {
+    const { data } = await supabase
+      .from('boats')
+      .select('id, name')
+      .order('id')
+    
+    if (data) {
+      setAllBoatsData(data.map(b => ({ boatId: b.id, boatName: b.name })))
+    }
+  }
+  
   // 初次載入：趨勢和未來預約（固定資料，不需跟著月份變化）
   useEffect(() => {
     const loadFixedData = async () => {
@@ -122,7 +137,8 @@ export function Statistics() {
         await Promise.all([
           loadMonthlyTrend(),
           loadFutureBookings(),
-          loadFinanceStats()
+          loadFinanceStats(),
+          loadAllBoats()
         ])
       } catch (error) {
         console.error('載入趨勢數據失敗:', error)
@@ -1018,31 +1034,16 @@ export function Statistics() {
                     月份數據明細
                   </h3>
                   <div style={{ overflowX: 'auto' }}>
-                    {(() => {
-                      // 收集所有月份的船隻（按 ID 排序）
-                      const boatMap = new Map<number, string>()
-                      monthlyStats.forEach(stat => {
-                        stat.boatMinutes?.forEach(b => {
-                          if (!boatMap.has(b.boatId)) {
-                            boatMap.set(b.boatId, b.boatName)
-                          }
-                        })
-                      })
-                      const allBoats = Array.from(boatMap.entries())
-                        .map(([boatId, boatName]) => ({ boatId, boatName }))
-                        .sort((a, b) => a.boatId - b.boatId)
-                      
-                      return (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                       <thead>
                         <tr style={{ background: '#f8f9fa' }}>
                           <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
                           <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>筆數</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>總時數</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>總時數</th>
                           {/* 動態顯示各船欄位 */}
-                          {allBoats.map(boat => (
+                          {allBoatsData.map(boat => (
                             <th key={boat.boatId} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
-                              🚤 {boat.boatName}
+                              {boat.boatName}
                             </th>
                           ))}
                         </tr>
@@ -1058,11 +1059,11 @@ export function Statistics() {
                             <td style={{ padding: '12px', textAlign: 'right' }}>
                               {stat.bookingCount}
                             </td>
-                            <td style={{ padding: '12px', textAlign: 'right' }}>
+                            <td style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid #e0e0e0' }}>
                               {stat.totalMinutes} 分 ({stat.totalHours} 小時)
                             </td>
                             {/* 各船時數 */}
-                            {allBoats.map(boat => {
+                            {allBoatsData.map(boat => {
                               const boatData = stat.boatMinutes?.find(b => b.boatId === boat.boatId)
                               const minutes = boatData?.minutes || 0
                               return (
@@ -1075,8 +1076,6 @@ export function Statistics() {
                         ))}
                       </tbody>
                     </table>
-                      )
-                    })()}
                   </div>
                 </div>
 
