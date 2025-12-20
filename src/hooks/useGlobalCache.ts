@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
 
 /**
  * 全局數據緩存 Hook
@@ -100,11 +101,7 @@ export function useBoatsCache() {
 
       if (fetchError) throw fetchError
 
-      // 自定義排序順序
-      const order = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床']
-      const sortedBoats = (data || []).sort((a, b) => {
-        return order.indexOf(a.name) - order.indexOf(b.name)
-      })
+      const sortedBoats = sortBoatsByDisplayOrder(data || [])
 
       cache.boats = {
         data: sortedBoats,

@@ -6,6 +6,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getCardStyle, designSystem } from '../../styles/designSystem'
 import { getLocalDateString } from '../../utils/date'
+import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line
@@ -117,15 +118,15 @@ export function Statistics() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
 
-  // 載入所有船隻
+  // 載入所有船隻（按照 DayView 順序排序）
   const loadAllBoats = async () => {
     const { data } = await supabase
       .from('boats')
       .select('id, name')
-      .order('id')
     
     if (data) {
-      setAllBoatsData(data.map(b => ({ boatId: b.id, boatName: b.name })))
+      const sorted = sortBoatsByDisplayOrder(data)
+      setAllBoatsData(sorted.map(b => ({ boatId: b.id, boatName: b.name })))
     }
   }
   
@@ -1034,15 +1035,15 @@ export function Statistics() {
                     月份數據明細
                   </h3>
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', tableLayout: 'fixed' }}>
                       <thead>
                         <tr style={{ background: '#f8f9fa' }}>
-                          <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>筆數</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>總時數</th>
+                          <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', width: '100px' }}>月份</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', width: '60px' }}>筆數</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', borderRight: '1px solid #e0e0e0', width: '140px' }}>總時數</th>
                           {/* 動態顯示各船欄位 */}
                           {allBoatsData.map(boat => (
-                            <th key={boat.boatId} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                            <th key={boat.boatId} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', width: '80px' }}>
                               {boat.boatName}
                             </th>
                           ))}
@@ -1067,7 +1068,7 @@ export function Statistics() {
                               const boatData = stat.boatMinutes?.find(b => b.boatId === boat.boatId)
                               const minutes = boatData?.minutes || 0
                               return (
-                                <td key={boat.boatId} style={{ padding: '12px', textAlign: 'right', color: minutes > 0 ? '#50c878' : '#ccc' }}>
+                                <td key={boat.boatId} style={{ padding: '12px', textAlign: 'right', color: minutes > 0 ? '#2196f3' : '#999' }}>
                                   {minutes} 分
                                 </td>
                               )

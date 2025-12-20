@@ -8,6 +8,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString } from '../../utils/date'
 import { getBookingCardStyle, bookingCardContentStyles } from '../../styles/designSystem'
 import { getDisplayContactName } from '../../utils/bookingFormat'
+import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 
 interface Boat {
   id: number
@@ -116,12 +117,7 @@ export function CoachDailyView() {
       .order('id')
     
     if (data) {
-      // 自定義排序順序
-      const order = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床']
-      const sortedBoats = data.sort((a, b) => {
-        return order.indexOf(a.name) - order.indexOf(b.name)
-      })
-      setBoats(sortedBoats)
+      setBoats(sortBoatsByDisplayOrder(data))
     }
   }
 

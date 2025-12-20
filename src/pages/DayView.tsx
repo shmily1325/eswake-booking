@@ -19,6 +19,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { inspectData, safeMapArray, tryCatch } from '../utils/debugHelpers'
 import { injectAnimationStyles } from '../utils/animations'
 import { isEditorAsync } from '../utils/auth'
+import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
 
@@ -123,11 +124,7 @@ export function DayView() {
       }
 
       if (isInitialLoad) {
-        // 自定義排序順序 (與 CoachDailyView 一致)
-        const order = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床']
-        const sortedBoats = (boatsData || []).sort((a, b) => {
-          return order.indexOf(a.name) - order.indexOf(b.name)
-        })
+        const sortedBoats = sortBoatsByDisplayOrder(boatsData || [])
         console.log('[DayView] Boats loaded:', sortedBoats.length)
         setBoats(sortedBoats)
       }

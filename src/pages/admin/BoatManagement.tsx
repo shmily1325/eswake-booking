@@ -9,6 +9,7 @@ import type { Boat, BoatUnavailableDate } from '../../types/booking'
 import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
 import { designSystem } from '../../styles/designSystem'
 import { isEditorAsync } from '../../utils/auth'
+import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 
 export function BoatManagement() {
     const user = useAuthUser()
@@ -77,12 +78,7 @@ export function BoatManagement() {
                 .order('start_date', { ascending: false })
 
             if (boatsData) {
-                // 自定義排序順序（與 useGlobalCache 保持一致）
-                const order = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床']
-                const sortedBoats = boatsData.sort((a, b) => {
-                    return order.indexOf(a.name) - order.indexOf(b.name)
-                })
-                setBoats(sortedBoats)
+                setBoats(sortBoatsByDisplayOrder(boatsData))
             }
             if (unavailableData) setUnavailableDates(unavailableData)
         } catch (error) {
