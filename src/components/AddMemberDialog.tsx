@@ -42,7 +42,26 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
   }
   
   useEffect(() => {
-    if (open) loadMembers()
+    if (open) {
+      loadMembers()
+    } else {
+      // 關閉時重置表單
+      setFormData({
+        name: '',
+        nickname: '',
+        birthday: '',
+        phone: '',
+        membership_type: 'general',
+        membership_start_date: '',
+        membership_end_date: '',
+        membership_partner_id: '',
+        board_slot_number: '',
+        board_expiry_date: '',
+        free_hours: 0,
+        notes: '',
+      })
+      setBoards([])
+    }
   }, [open])
   
   const [boards, setBoards] = useState<Array<{
@@ -222,24 +241,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
         await supabase.from('member_notes').insert(notesToAdd)
       }
       onSuccess()
-      onClose()
-      
-      // 重置表單
-      setFormData({
-        name: '',
-        nickname: '',
-        birthday: '',
-        phone: '',
-        membership_type: 'general',
-        membership_start_date: '',
-        membership_end_date: '',
-        membership_partner_id: '',
-        board_slot_number: '',
-        board_expiry_date: '',
-        free_hours: 0,
-        notes: '',
-      })
-      setBoards([])
+      onClose()  // useEffect 會在 open=false 時自動重置表單
     } catch (error: any) {
       console.error('新增會員失敗:', error)
       const message = error?.message || '未知錯誤'

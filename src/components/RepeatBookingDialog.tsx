@@ -14,6 +14,7 @@ import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
 import { getLocalTimestamp } from '../utils/date'
 import { BatchResultDialog } from './BatchResultDialog'
+import { DateMultiPicker } from './booking/DateMultiPicker'
 
 
 interface RepeatBookingDialogProps {
@@ -48,9 +49,10 @@ export function RepeatBookingDialog({
   }, [isOpen])
 
   // 重複預約設定
-  const [repeatMode, setRepeatMode] = useState<'count' | 'endDate'>('count')
+  const [repeatMode, setRepeatMode] = useState<'count' | 'endDate' | 'custom'>('count')
   const [repeatCount, setRepeatCount] = useState(8)
   const [repeatEndDate, setRepeatEndDate] = useState('')
+  const [customDates, setCustomDates] = useState<string[]>([])  // 自選日期模式
 
   // 結果對話框
   const [showResultDialog, setShowResultDialog] = useState(false)
@@ -129,10 +131,23 @@ export function RepeatBookingDialog({
 
   // 生成重複日期列表 - 使用 useCallback 確保穩定性
   const generateRepeatDates = useCallback((): Date[] => {
-    if (!startDate || !startTime) return []
+    if (!startTime) return []
+    
+    const [hour, minute] = startTime.split(':').map(Number)
+
+    // 自選日期模式
+    if (repeatMode === 'custom') {
+      if (customDates.length === 0) return []
+      return customDates.map(dateStr => {
+        const [y, m, d] = dateStr.split('-').map(Number)
+        return new Date(y, m - 1, d, hour, minute, 0)
+      })
+    }
+
+    // 每週重複模式需要 startDate
+    if (!startDate) return []
     
     const [year, month, day] = startDate.split('-').map(Number)
-    const [hour, minute] = startTime.split(':').map(Number)
     const baseDateTime = new Date(year, month - 1, day, hour, minute, 0)
     
     const dates: Date[] = []
@@ -153,7 +168,7 @@ export function RepeatBookingDialog({
     }
 
     return dates
-  }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate])
+  }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate, customDates])
 
   if (!isOpen) return null
 
@@ -329,6 +344,7 @@ export function RepeatBookingDialog({
         // 全部成功：用簡短 toast
         toast.success(`成功建立 ${results.success.length} 個重複預約！`)
         resetForm()
+        resetRepeatState()
         onSuccess()
         onClose()
       } else if (results.skipped.length > 0) {
@@ -352,8 +368,17 @@ export function RepeatBookingDialog({
     }
   }
 
+  // 重置重複預約專用的 state
+  const resetRepeatState = () => {
+    setRepeatMode('count')
+    setRepeatCount(8)
+    setRepeatEndDate('')
+    setCustomDates([])
+  }
+
   const handleClose = () => {
     resetForm()
+    resetRepeatState()
     onClose()
   }
 
@@ -361,17 +386,21 @@ export function RepeatBookingDialog({
   const handleResultClose = () => {
     setShowResultDialog(false)
     resetForm()
+    resetRepeatState()
     onClose()
   }
 
-  // 預覽日期 - 取前5個
+  // 預覽日期 - 取前5個（用於預覽）
   let previewDates: Date[] = []
+  let totalDatesCount = 0
   try {
     const allDates = generateRepeatDates()
+    totalDatesCount = allDates.length
     previewDates = allDates.slice(0, 5)
   } catch (error) {
     console.error('[RepeatBookingDialog] Error computing preview:', error)
     previewDates = []
+    totalDatesCount = 0
   }
 
   return (
@@ -487,15 +516,158 @@ export function RepeatBookingDialog({
             isSelectedBoatFacility={isSelectedBoatFacility}
           />
 
-          {/* 時間選擇 */}
-          <TimeSelector
-            startDate={startDate}
-            startTime={startTime}
-            durationMin={durationMin}
-            setStartDate={setStartDate}
-            setStartTime={setStartTime}
-            setDurationMin={setDurationMin}
-          />
+          {/* 時間選擇 - 自選日期模式下只顯示時間和時長 */}
+          {repeatMode === 'custom' ? (
+            <>
+              {/* 開始時間 */}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '6px',
+                  color: '#000',
+                  fontSize: '15px',
+                  fontWeight: '500',
+                }}>
+                  開始時間
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select
+                    value={startTime.split(':')[0]}
+                    onChange={(e) => {
+                      const hour = e.target.value
+                      const minute = startTime.split(':')[1] || '00'
+                      setStartTime(`${hour}:${minute}`)
+                    }}
+                    required
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #ccc',
+                      boxSizing: 'border-box',
+                      fontSize: '16px',
+                      touchAction: 'manipulation',
+                      backgroundColor: 'white',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hour = String(i).padStart(2, '0')
+                      return <option key={hour} value={hour}>{hour}</option>
+                    })}
+                  </select>
+                  <select
+                    value={startTime.split(':')[1] || '00'}
+                    onChange={(e) => {
+                      const hour = startTime.split(':')[0]
+                      const minute = e.target.value
+                      setStartTime(`${hour}:${minute}`)
+                    }}
+                    required
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #ccc',
+                      boxSizing: 'border-box',
+                      fontSize: '16px',
+                      touchAction: 'manipulation',
+                      backgroundColor: 'white',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="00">00</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="45">45</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 時長 */}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '10px',
+                  color: '#000',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                }}>
+                  時長（分鐘）
+                </label>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '8px',
+                  marginBottom: '12px',
+                }}>
+                  {[30, 60, 90, 120, 150, 180, 210, 240].map(minutes => {
+                    const isSelected = durationMin === minutes
+                    return (
+                      <button
+                        key={minutes}
+                        type="button"
+                        onClick={() => setDurationMin(minutes)}
+                        style={{
+                          padding: '12px 8px',
+                          border: isSelected ? '3px solid #1976d2' : '2px solid #e0e0e0',
+                          borderRadius: '8px',
+                          background: isSelected ? '#e3f2fd' : 'white',
+                          color: isSelected ? '#1976d2' : '#333',
+                          fontSize: '14px',
+                          fontWeight: isSelected ? '700' : '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          boxShadow: isSelected ? '0 2px 8px rgba(25,118,210,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
+                        }}
+                      >
+                        {minutes}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>自訂：</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={durationMin}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '')
+                      const numValue = Number(value)
+                      if (numValue > 0 && numValue <= 999) {
+                        setDurationMin(numValue)
+                      } else if (value === '') {
+                        setDurationMin(0)
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      color: '#333',
+                      boxSizing: 'border-box',
+                    }}
+                    placeholder="輸入分鐘數"
+                  />
+                  <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>分</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <TimeSelector
+              startDate={startDate}
+              startTime={startTime}
+              durationMin={durationMin}
+              setStartDate={setStartDate}
+              setStartTime={setStartTime}
+              setDurationMin={setDurationMin}
+            />
+          )}
 
           {/* 重複設定 */}
           <div style={{
@@ -522,18 +694,27 @@ export function RepeatBookingDialog({
                   type="radio"
                   checked={repeatMode === 'count'}
                   onChange={() => setRepeatMode('count')}
-                  style={{ marginRight: '8px' }}
+                  style={{ marginRight: '8px', width: '18px', height: '18px' }}
                 />
                 按次數重複（每週）
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', cursor: 'pointer' }}>
                 <input
                   type="radio"
                   checked={repeatMode === 'endDate'}
                   onChange={() => setRepeatMode('endDate')}
-                  style={{ marginRight: '8px' }}
+                  style={{ marginRight: '8px', width: '18px', height: '18px' }}
                 />
                 按結束日期重複
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  checked={repeatMode === 'custom'}
+                  onChange={() => setRepeatMode('custom')}
+                  style={{ marginRight: '8px', width: '18px', height: '18px' }}
+                />
+                自選日期
               </label>
             </div>
 
@@ -639,8 +820,26 @@ export function RepeatBookingDialog({
               </div>
             )}
 
-            {/* 預覽 */}
-            {previewDates.length > 0 && (
+            {/* 自選日期設定 */}
+            {repeatMode === 'custom' && (
+              <div>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                }}>
+                  選擇日期（點選月曆多選）
+                </label>
+                <DateMultiPicker
+                  selectedDates={customDates}
+                  onDatesChange={setCustomDates}
+                />
+              </div>
+            )}
+
+            {/* 預覽 - 自選日期模式不需要，因為已經在 DateMultiPicker 中顯示 */}
+            {repeatMode !== 'custom' && previewDates.length > 0 && (
               <div style={{ marginTop: '12px', fontSize: '13px', color: '#666' }}>
                 <div style={{ fontWeight: '600', marginBottom: '6px' }}>預覽（前5個）：</div>
                 {previewDates.map((date, i) => (
@@ -758,7 +957,7 @@ export function RepeatBookingDialog({
                 }} />
                 建立中...
               </>
-            ) : `✅ 確認建立 ${previewDates.length}+ 個預約`}
+            ) : `✅ 確認建立 ${totalDatesCount} 個預約`}
           </button>
         </div>
       </div>
