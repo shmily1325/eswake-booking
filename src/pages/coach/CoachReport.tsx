@@ -22,7 +22,6 @@ import {
   filterUnreportedBookings,
   fetchBookingRelations
 } from '../../utils/bookingDataHelpers'
-import { logCoachReport, logParticipantDeletion } from '../../utils/coachReportLog'
 import type {
   Coach,
   Booking,
@@ -721,23 +720,6 @@ export function CoachReport({
           throw new Error(`刪除記錄失敗: ${deleteError.message}`)
         }
 
-        // 記錄刪除日誌
-        const booking = bookings.find(b => b.id === reportingBookingId)
-        if (booking && reportingCoachId) {
-          logParticipantDeletion({
-            coachId: reportingCoachId,
-            coachEmail: user?.email,
-            coachName: reportingCoachName,
-            bookingId: reportingBookingId!,
-            bookingStartAt: booking.start_at,
-            contactName: booking.contact_name,
-            boatName: booking.boats?.name || '',
-            deletedParticipants: participantsToDelete.map(p => ({
-              name: p.participant_name,
-              durationMin: p.duration_min
-            }))
-          })
-        }
       }
 
       // 步驟 3 & 4: 更新現有記錄 + 插入新記錄
@@ -846,33 +828,6 @@ export function CoachReport({
           console.error('插入新記錄失敗:', insertError)
           throw new Error(`插入新記錄失敗: ${insertError.message}`)
         }
-      }
-
-      // 記錄回報日誌
-      const booking = bookings.find(b => b.id === reportingBookingId)
-      if (booking && reportingCoachId) {
-        const hasNewParticipants = participantsToInsert.length > 0
-        const hasUpdatedParticipants = participantsToUpdate.length > 0
-        
-        logCoachReport({
-          coachId: reportingCoachId,
-          coachEmail: user?.email,
-          coachName: reportingCoachName,
-          bookingId: reportingBookingId!,
-          bookingStartAt: booking.start_at,
-          contactName: booking.contact_name,
-          boatName: booking.boats?.name || '',
-          actionType: hasNewParticipants && !hasUpdatedParticipants ? 'create' : 'update',
-          participants: validParticipants.map(p => ({
-            name: p.participant_name,
-            durationMin: p.duration_min,
-            paymentMethod: p.payment_method,
-            lessonType: p.lesson_type || undefined,
-            memberId: p.member_id,
-            isNew: !p.id
-          })),
-          driverDurationMin: (reportType === 'driver' || reportType === 'both') ? driverDuration : undefined
-        })
       }
 
       // 確保在 coach_reports 中有記錄，用於追蹤教練是否已提交回報
