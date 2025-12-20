@@ -110,37 +110,38 @@ export function DateMultiPicker({
 
   return (
     <div style={{ marginTop: '8px' }}>
-      {/* 月份切換 */}
+      {/* 月份切換 - 加大按鈕 */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '8px',
-        padding: '0 4px',
+        marginBottom: '12px',
+        padding: '0 2px',
       }}>
         <button
           type="button"
           onClick={goToPrevMonth}
           disabled={!canGoPrev}
           style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '6px',
+            width: '44px',
+            height: '44px',
+            borderRadius: '8px',
             border: '1px solid #ccc',
             background: canGoPrev ? '#fff' : '#f5f5f5',
             color: canGoPrev ? '#333' : '#ccc',
-            fontSize: '16px',
+            fontSize: '20px',
             fontWeight: 'bold',
             cursor: canGoPrev ? 'pointer' : 'not-allowed',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            touchAction: 'manipulation',
           }}
         >
           ‹
         </button>
         <span style={{
-          fontSize: '14px',
+          fontSize: '16px',
           fontWeight: '600',
           color: '#333',
         }}>
@@ -150,18 +151,19 @@ export function DateMultiPicker({
           type="button"
           onClick={goToNextMonth}
           style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '6px',
+            width: '44px',
+            height: '44px',
+            borderRadius: '8px',
             border: '1px solid #ccc',
             background: '#fff',
             color: '#333',
-            fontSize: '16px',
+            fontSize: '20px',
             fontWeight: 'bold',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            touchAction: 'manipulation',
           }}
         >
           ›
@@ -172,18 +174,18 @@ export function DateMultiPicker({
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(7, 1fr)',
-        gap: '1px',
-        marginBottom: '2px',
+        gap: '2px',
+        marginBottom: '4px',
       }}>
         {WEEKDAY_LABELS.map((label, i) => (
           <div
             key={label}
             style={{
               textAlign: 'center',
-              fontSize: '11px',
+              fontSize: '13px',
               fontWeight: '600',
               color: i === 0 ? '#dc3545' : i === 6 ? '#007bff' : '#666',
-              padding: '2px 0',
+              padding: '4px 0',
             }}
           >
             {label}
@@ -191,11 +193,11 @@ export function DateMultiPicker({
         ))}
       </div>
 
-      {/* 日期格子 */}
+      {/* 日期格子 - 加大高度 */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(7, 1fr)',
-        gap: '2px',
+        gap: '3px',
       }}>
         {calendarDays.map((dayInfo, index) => {
           const isSelected = selectedDates.includes(dayInfo.date)
@@ -208,8 +210,8 @@ export function DateMultiPicker({
               onClick={() => !dayInfo.isDisabled && toggleDate(dayInfo.date)}
               disabled={dayInfo.isDisabled}
               style={{
-                height: '32px',
-                borderRadius: '4px',
+                height: '42px',
+                borderRadius: '6px',
                 border: isSelected ? '2px solid #007bff' : '1px solid #e0e0e0',
                 background: isSelected
                   ? '#007bff'
@@ -227,7 +229,7 @@ export function DateMultiPicker({
                         : weekday === 6
                           ? '#007bff'
                           : '#333',
-                fontSize: '13px',
+                fontSize: '15px',
                 fontWeight: isSelected ? '700' : '500',
                 cursor: dayInfo.isDisabled ? 'not-allowed' : 'pointer',
                 display: 'flex',
@@ -235,6 +237,7 @@ export function DateMultiPicker({
                 justifyContent: 'center',
                 padding: 0,
                 touchAction: 'manipulation',
+                transition: 'transform 0.1s',
               }}
             >
               {dayInfo.day}
@@ -243,53 +246,56 @@ export function DateMultiPicker({
         })}
       </div>
 
-      {/* 已選日期列表 */}
+      {/* 已選日期列表 - 加大標籤 */}
       {selectedDates.length > 0 && (
         <div style={{
-          marginTop: '10px',
-          padding: '8px 10px',
+          marginTop: '12px',
+          padding: '10px 12px',
           background: '#f8f9fa',
           border: '1px solid #dee2e6',
-          borderRadius: '6px',
-          fontSize: '12px',
+          borderRadius: '8px',
         }}>
           <div style={{
             fontWeight: '600',
             color: '#495057',
-            marginBottom: '6px',
+            marginBottom: '8px',
+            fontSize: '13px',
           }}>
             已選 {selectedDates.length} 個日期（點擊可移除）
           </div>
           <div style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '4px',
+            gap: '6px',
           }}>
             {selectedDates.map(dateStr => {
               const [y, m, d] = dateStr.split('-')
               const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
               const weekday = WEEKDAY_LABELS[date.getDay()]
               return (
-                <span
+                <button
                   key={dateStr}
+                  type="button"
                   onClick={() => toggleDate(dateStr)}
                   style={{
-                    padding: '3px 8px',
+                    padding: '8px 12px',
                     background: '#007bff',
                     color: 'white',
-                    borderRadius: '12px',
-                    fontSize: '11px',
+                    borderRadius: '16px',
+                    fontSize: '13px',
                     fontWeight: '500',
                     cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '3px',
+                    gap: '6px',
                     touchAction: 'manipulation',
+                    border: 'none',
+                    minHeight: '36px',
                   }}
                 >
                   {parseInt(m)}/{parseInt(d)}({weekday})
-                  <span style={{ fontSize: '12px', marginLeft: '2px' }}>×</span>
-                </span>
+                  <span style={{ fontSize: '16px', fontWeight: 'bold' }}>×</span>
+                </button>
               )
             })}
           </div>
