@@ -1038,12 +1038,12 @@ export function Statistics() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', tableLayout: 'fixed' }}>
                       <thead>
                         <tr style={{ background: '#f8f9fa' }}>
-                          <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', width: '100px' }}>月份</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', width: '60px' }}>筆數</th>
-                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', borderRight: '1px solid #e0e0e0', width: '140px' }}>總時數</th>
+                          <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>筆數</th>
+                          <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>總時數</th>
                           {/* 動態顯示各船欄位 */}
                           {allBoatsData.map(boat => (
-                            <th key={boat.boatId} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', width: '80px' }}>
+                            <th key={boat.boatId} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
                               {boat.boatName}
                             </th>
                           ))}
@@ -1100,7 +1100,7 @@ export function Statistics() {
                     📊 預約月結算
                   </h3>
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', tableLayout: 'fixed' }}>
                       <thead>
                         <tr style={{ background: '#f8f9fa' }}>
                           <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
