@@ -387,26 +387,35 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       const [year, month] = selectedMonth.split('-')
       const startDate = `${year}-${month}-01`
       
-      // 查詢該月第一天之前的最後一筆交易，以取得期初值
-      const { data: prevTx } = await supabase
+      // 查詢該月第一天之前的所有交易，動態計算期初值
+      const { data: prevTxList } = await supabase
         .from('transactions')
-        .select('balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after')
+        .select('category, adjust_type, amount, minutes')
         .eq('member_id', member.id)
         .lt('transaction_date', startDate)
-        .order('transaction_date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
 
-      // 期初值（如果沒有上月交易則為 0）
+      // 動態計算期初值（從交易記錄加總）
       const initialValues = {
-        balance: prevTx?.balance_after ?? 0,
-        vip_voucher: prevTx?.vip_voucher_amount_after ?? 0,
-        designated_lesson: prevTx?.designated_lesson_minutes_after ?? 0,
-        boat_voucher_g23: prevTx?.boat_voucher_g23_minutes_after ?? 0,
-        boat_voucher_g21_panther: prevTx?.boat_voucher_g21_panther_minutes_after ?? 0,
-        gift_boat_hours: prevTx?.gift_boat_hours_after ?? 0,
+        balance: 0,
+        vip_voucher: 0,
+        designated_lesson: 0,
+        boat_voucher_g23: 0,
+        boat_voucher_g21_panther: 0,
+        gift_boat_hours: 0,
       }
+      
+      prevTxList?.forEach(tx => {
+        const isAmount = tx.category === 'balance' || tx.category === 'vip_voucher'
+        const absValue = Math.abs(isAmount ? (tx.amount || 0) : (tx.minutes || 0))
+        const delta = tx.adjust_type === 'increase' ? absValue : -absValue
+        
+        if (tx.category === 'balance') initialValues.balance += delta
+        else if (tx.category === 'vip_voucher') initialValues.vip_voucher += delta
+        else if (tx.category === 'designated_lesson') initialValues.designated_lesson += delta
+        else if (tx.category === 'boat_voucher_g23') initialValues.boat_voucher_g23 += delta
+        else if (tx.category === 'boat_voucher_g21_panther') initialValues.boat_voucher_g21_panther += delta
+        else if (tx.category === 'gift_boat_hours') initialValues.gift_boat_hours += delta
+      })
 
       // 按類別分組
       const groupedByCategory: Record<string, Transaction[]> = {}
@@ -427,35 +436,24 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         const isAmount = cat.type === 'amount'
         const unit = isAmount ? '$' : '分'
         
-        // 期初值從查詢結果取得
+        // 期初值從動態計算結果取得
         const startValue = initialValues[cat.value as keyof typeof initialValues] ?? 0
         
-        let endValue = startValue
         let totalIncrease = 0
         let totalDecrease = 0
         
-        if (txList.length > 0) {
-          // 有交易：期末值取最後一筆交易的 after 值
-          const lastTx = txList[0] // transactions 已經按時間倒序排列
-          if (cat.value === 'balance') endValue = lastTx.balance_after ?? startValue
-          else if (cat.value === 'vip_voucher') endValue = lastTx.vip_voucher_amount_after ?? startValue
-          else if (cat.value === 'designated_lesson') endValue = lastTx.designated_lesson_minutes_after ?? startValue
-          else if (cat.value === 'boat_voucher_g23') endValue = lastTx.boat_voucher_g23_minutes_after ?? startValue
-          else if (cat.value === 'boat_voucher_g21_panther') endValue = lastTx.boat_voucher_g21_panther_minutes_after ?? startValue
-          else if (cat.value === 'gift_boat_hours') endValue = lastTx.gift_boat_hours_after ?? startValue
-          
-          // 計算本月增加和減少
-          // 使用 Math.abs 確保數值為正數，避免資料庫中有負數時計算錯誤
-          txList.forEach(tx => {
-            const value = Math.abs(isAmount ? (tx.amount || 0) : (tx.minutes || 0))
-            if (tx.adjust_type === 'increase') {
-              totalIncrease += value
-            } else {
-              totalDecrease += value
-            }
-          })
-        }
-        // 如果該月沒有交易，期末值 = 期初值（已在上面設定）
+        // 計算本月增加和減少
+        txList.forEach(tx => {
+          const value = Math.abs(isAmount ? (tx.amount || 0) : (tx.minutes || 0))
+          if (tx.adjust_type === 'increase') {
+            totalIncrease += value
+          } else {
+            totalDecrease += value
+          }
+        })
+        
+        // 期末值 = 期初值 + 本月增加 - 本月減少
+        const endValue = startValue + totalIncrease - totalDecrease
         
         // 跳過空的類別（期初期末都是0且沒有交易）
         if (startValue === 0 && endValue === 0 && txList.length === 0) {

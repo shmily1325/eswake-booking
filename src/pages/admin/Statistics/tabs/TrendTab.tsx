@@ -24,8 +24,8 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
   const bookingChange = previousMonth
     ? calculateChange(currentMonth?.bookingCount || 0, previousMonth.bookingCount)
     : undefined
-  const hoursChange = previousMonth
-    ? calculateChange(currentMonth?.totalHours || 0, previousMonth.totalHours)
+  const minutesChange = previousMonth
+    ? calculateChange(currentMonth?.totalMinutes || 0, previousMonth.totalMinutes)
     : undefined
 
   // 自定義 Tooltip
@@ -57,7 +57,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               {p.name}
             </span>
             <span style={{ fontWeight: '600' }}>
-              {p.dataKey === 'bookingCount' ? `${p.value} 筆` : `${p.value} 小時`}
+              {p.dataKey === 'bookingCount' ? `${p.value} 筆` : `${p.value} 分`}
             </span>
           </div>
         ))}
@@ -123,12 +123,12 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
         />
         <SummaryCard
           label="本月時數"
-          value={currentMonth?.totalHours || 0}
-          unit="小時"
+          value={currentMonth?.totalMinutes || 0}
+          unit="分"
           accentColor="#50c878"
-          change={hoursChange ? {
-            value: hoursChange.value,
-            direction: hoursChange.direction,
+          change={minutesChange ? {
+            value: minutesChange.value,
+            direction: minutesChange.direction,
             label: 'vs 上月'
           } : undefined}
         />
@@ -190,8 +190,8 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               />
               <Line
                 type="monotone"
-                dataKey="totalHours"
-                name="時數"
+                dataKey="totalMinutes"
+                name="時數(分)"
                 stroke="#50c878"
                 strokeWidth={3}
                 dot={{ fill: '#50c878', strokeWidth: 2, r: 5 }}

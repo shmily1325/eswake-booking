@@ -79,8 +79,8 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
         />
         <SummaryCard
           label="總預約時數"
-          value={Math.round(filteredTotalMinutes / 60 * 10) / 10}
-          unit="小時"
+          value={filteredTotalMinutes}
+          unit="分"
           accentColor="#50c878"
         />
         <SummaryCard

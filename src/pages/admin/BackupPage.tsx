@@ -193,34 +193,13 @@ export function BackupPage() {
         return 0
       }
 
-      const getAfterNumber = (t: any) => {
-        switch (t.category) {
-          case 'balance':
-            return t.balance_after ?? ''
-          case 'vip_voucher':
-            return t.vip_voucher_amount_after ?? ''
-          case 'designated_lesson':
-            return t.designated_lesson_minutes_after ?? ''
-          case 'boat_voucher_g23':
-            return t.boat_voucher_g23_minutes_after ?? ''
-          case 'boat_voucher_g21':
-          case 'boat_voucher_g21_panther':
-            return t.boat_voucher_g21_panther_minutes_after ?? ''
-          case 'gift_boat_hours':
-            return t.gift_boat_hours_after ?? ''
-          default:
-            return ''
-        }
-      }
-
       const csv = [
-        '\uFEFF' + ['會員', '日期', '項目', '變動', '交易後餘額', '說明', '備註'].join(','),
+        '\uFEFF' + ['會員', '日期', '項目', '變動', '說明', '備註'].join(','),
         ...data.map((t: any) => [
           csvEscape((t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'),
           t.transaction_date || t.created_at?.split('T')[0] || '',
           getCategoryLabel(t.category),
           getChangeNumber(t),
-          getAfterNumber(t),
           csvEscape(t.description || ''),
           csvEscape(t.notes || ''),
         ].join(','))
@@ -521,7 +500,7 @@ export function BackupPage() {
       value: 'ledger',
       icon: '💰',
       title: '總帳',
-      description: '所有交易記錄：會員、日期、項目、變動金額/分鐘數、交易後餘額、說明、備註。'
+      description: '所有交易記錄：會員、日期、項目、變動金額/分鐘數、說明、備註。'
     },
     {
       value: 'coach_report',

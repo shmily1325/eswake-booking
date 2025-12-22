@@ -1,27 +1,17 @@
 // Statistics Dashboard 共用工具函數
 
 /**
- * 格式化時間顯示
- * - 少於 60 分鐘：顯示分鐘
- * - 60 分鐘以上：顯示小時（保留一位小數）
+ * 格式化時間顯示 - 統一使用分鐘
  */
 export function formatDuration(minutes: number): string {
-  if (minutes < 60) {
-    return `${minutes} 分鐘`
-  }
-  const hours = Math.round(minutes / 60 * 10) / 10
-  return `${hours} 小時`
+  return `${minutes} 分`
 }
 
 /**
  * 格式化時間顯示（簡短版）
  */
 export function formatDurationShort(minutes: number): string {
-  if (minutes < 60) {
-    return `${minutes}分`
-  }
-  const hours = Math.round(minutes / 60 * 10) / 10
-  return `${hours}h`
+  return `${minutes}分`
 }
 
 /**
