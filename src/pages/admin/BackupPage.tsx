@@ -15,13 +15,26 @@ export function BackupPage() {
   const [loading, setLoading] = useState(false)
   const [fullBackupLoading, setFullBackupLoading] = useState(false)
   const [cloudBackupLoading, setCloudBackupLoading] = useState(false)
-  // 預設日期為當月
+  // 預設日期：月初5日前顯示上個月，5日後顯示當月
   const [startDate, setStartDate] = useState(() => {
     const now = new Date()
+    const day = now.getDate()
+    // 5日前顯示上個月
+    if (day < 5) {
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      return `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}-01`
+    }
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
   })
   const [endDate, setEndDate] = useState(() => {
     const now = new Date()
+    const day = now.getDate()
+    // 5日前顯示上個月
+    if (day < 5) {
+      const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate()
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      return `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfLastMonth).padStart(2, '0')}`
+    }
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
   })
@@ -534,44 +547,7 @@ export function BackupPage() {
             選擇要導出的資料類型，可指定日期區間，導出為 CSV 格式
           </p>
 
-          {/* 導出類型選擇 */}
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {exportOptions.map(option => (
-                <div
-                  key={option.value}
-                  onClick={() => setExportType(option.value)}
-                  style={{
-                    padding: '14px 16px',
-                    border: exportType === option.value ? '2px solid #667eea' : '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    backgroundColor: exportType === option.value ? '#f0f4ff' : 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
-                    <input
-                      type="radio"
-                      checked={exportType === option.value}
-                      onChange={() => setExportType(option.value)}
-                      style={{ marginTop: '2px', width: '16px', height: '16px', cursor: 'pointer' }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>
-                        {option.icon} {option.title}
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
-                        {option.description}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 日期區間選擇 */}
+          {/* 日期區間選擇（移到上方） */}
           <div style={{ 
             marginBottom: '20px', 
             padding: '16px', 
@@ -580,7 +556,7 @@ export function BackupPage() {
             border: '1px solid #e0e0e0'
           }}>
             <div style={{ fontSize: '14px', color: '#333', marginBottom: '12px', fontWeight: '500' }}>
-              📅 日期區間 {exportType === 'ledger' ? <span style={{ color: '#dc3545' }}>（必填）</span> : '（選填）'}
+              📅 日期區間（選填）
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -631,12 +607,54 @@ export function BackupPage() {
                 />
               </div>
             </div>
-            {exportType !== 'ledger' && (
-              <div style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
-                清空日期可導出所有資料
-              </div>
-            )}
+            <div style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
+              清空日期可導出所有資料
+            </div>
           </div>
+
+          {/* 導出類型選擇 */}
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {exportOptions.map(option => (
+                <div
+                  key={option.value}
+                  onClick={() => setExportType(option.value)}
+                  style={{
+                    padding: '14px 16px',
+                    border: exportType === option.value ? '2px solid #667eea' : '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    backgroundColor: exportType === option.value ? '#f0f4ff' : 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                    <input
+                      type="radio"
+                      checked={exportType === option.value}
+                      onChange={() => setExportType(option.value)}
+                      style={{ marginTop: '2px', width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>
+                        {option.icon} {option.title}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                        {option.description}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 總帳必填提示 */}
+          {exportType === 'ledger' && (!startDate || !endDate) && (
+            <div style={{ fontSize: '12px', color: '#dc3545', marginBottom: '12px' }}>
+              ⚠️ 匯出總帳需要選擇日期區間
+            </div>
+          )}
 
           <button
             onClick={handleExport}

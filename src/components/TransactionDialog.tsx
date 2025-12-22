@@ -268,7 +268,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
       if (updateError) throw updateError
 
-      // 更新交易記錄
+      // 更新交易記錄（繼續寫入 *_after 欄位，但不再讀取使用）
       const { error } = await supabase
         .from('transactions')
         .update({
@@ -606,7 +606,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
       if (updateError) throw updateError
 
-      // 記錄交易
+      // 記錄交易（繼續寫入 *_after 欄位，但不再讀取使用）
       const categoryConfig = CATEGORIES.find(c => c.value === category)
       
       const transactionData: any = {
