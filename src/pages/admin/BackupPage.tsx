@@ -526,7 +526,7 @@ export function BackupPage() {
           const solutionText = error.solution.steps.join('\n') + '\n\n' + error.solution.documentation
           toast.error(
             `❌ ${error.error}\n\n${error.message}\n\n${solutionText}`,
-            { duration: 10000 }
+            10000
           )
           // 提供快速連結
           if (confirm('是否要開啟取得新刷新令牌的頁面？')) {
@@ -555,7 +555,7 @@ export function BackupPage() {
     } catch (error) {
       console.error('Cloud backup error:', error)
       const errorMessage = (error as Error).message
-      toast.error(`備份失敗：${errorMessage}`, { duration: 5000 })
+      toast.error(`備份失敗：${errorMessage}`, 5000)
     } finally {
       setCloudBackupLoading(false)
     }
