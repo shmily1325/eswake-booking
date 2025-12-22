@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
@@ -6,6 +7,7 @@ import { Footer } from '../../../components/Footer'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { getLocalDateString } from '../../../utils/date'
 import { sortBoatsByDisplayOrder } from '../../../utils/boatUtils'
+import { isEditorAsync } from '../../../utils/auth'
 
 import { LoadingSkeleton, LastUpdated } from './components'
 import { TrendTab, MonthlyTab, FutureTab } from './tabs'
@@ -23,7 +25,9 @@ type TabType = 'trend' | 'monthly' | 'future'
 
 export function Statistics() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const { isMobile } = useResponsive()
+  const [hasAccess, setHasAccess] = useState(false)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
@@ -571,8 +575,28 @@ export function Statistics() {
     setMemberStats(sorted)
   }
 
+  // 權限檢查 - 暫時開放給小編權限
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user) return
+      
+      const canAccess = await isEditorAsync(user)
+      if (!canAccess) {
+        navigate('/')
+        return
+      }
+      
+      setHasAccess(true)
+    }
+    
+    checkAccess()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
   // 初次載入
   useEffect(() => {
+    if (!hasAccess) return
+    
     const loadFixedData = async () => {
       setLoading(true)
       try {
@@ -590,10 +614,12 @@ export function Statistics() {
       }
     }
     loadFixedData()
-  }, [])
+  }, [hasAccess])
 
   // 月份變化時載入月度數據
   useEffect(() => {
+    if (!hasAccess) return
+    
     const loadMonthlyData = async () => {
       try {
         await Promise.all([
@@ -606,7 +632,7 @@ export function Statistics() {
       }
     }
     loadMonthlyData()
-  }, [selectedPeriod])
+  }, [selectedPeriod, hasAccess])
 
   // 重新整理
   const handleRefresh = async () => {
@@ -640,6 +666,17 @@ export function Statistics() {
     transition: 'all 0.2s',
     boxShadow: isActive ? '0 4px 12px rgba(74, 144, 226, 0.3)' : 'none'
   })
+
+  // 權限檢查中
+  if (!hasAccess) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: '#666' }}>
+          載入中...
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
