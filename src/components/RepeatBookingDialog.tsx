@@ -49,7 +49,7 @@ export function RepeatBookingDialog({
   }, [isOpen])
 
   // 重複預約設定
-  const [repeatMode, setRepeatMode] = useState<'count' | 'endDate' | 'custom'>('count')
+  const [repeatMode, setRepeatMode] = useState<'count' | 'endDate' | 'custom'>('endDate')
   const [repeatCount, setRepeatCount] = useState(8)
   const [repeatEndDate, setRepeatEndDate] = useState('')
   const [customDates, setCustomDates] = useState<string[]>([])  // 自選日期模式
@@ -370,8 +370,8 @@ export function RepeatBookingDialog({
 
   // 重置重複預約專用的 state
   const resetRepeatState = () => {
-    setRepeatMode('count')
-    setRepeatCount(8)
+    setRepeatMode('endDate')
+    setRepeatCount(8)  // 保留以防後續需要
     setRepeatEndDate('')
     setCustomDates([])
   }
@@ -687,24 +687,24 @@ export function RepeatBookingDialog({
               🔁 重複設定
             </label>
 
-            {/* 重複模式選擇 - 橫向按鈕組 */}
+            {/* 重複模式選擇 - 兩個按鈕 */}
             <div style={{
               display: 'flex',
-              gap: '6px',
+              gap: '8px',
               marginBottom: '14px',
             }}>
               <button
                 type="button"
-                onClick={() => setRepeatMode('count')}
+                onClick={() => setRepeatMode('endDate')}
                 style={{
                   flex: 1,
-                  padding: '12px 8px',
+                  padding: '14px 12px',
                   borderRadius: '8px',
-                  border: repeatMode === 'count' ? '2px solid #d97706' : '2px solid #e0e0e0',
-                  background: repeatMode === 'count' ? '#fef3c7' : 'white',
-                  color: repeatMode === 'count' ? '#92400e' : '#666',
-                  fontSize: '13px',
-                  fontWeight: repeatMode === 'count' ? '700' : '500',
+                  border: repeatMode === 'endDate' ? '2px solid #d97706' : '2px solid #e0e0e0',
+                  background: repeatMode === 'endDate' ? '#fef3c7' : 'white',
+                  color: repeatMode === 'endDate' ? '#92400e' : '#666',
+                  fontSize: '14px',
+                  fontWeight: repeatMode === 'endDate' ? '700' : '500',
                   cursor: 'pointer',
                   touchAction: 'manipulation',
                   transition: 'all 0.15s',
@@ -714,34 +714,15 @@ export function RepeatBookingDialog({
               </button>
               <button
                 type="button"
-                onClick={() => setRepeatMode('endDate')}
-                style={{
-                  flex: 1,
-                  padding: '12px 8px',
-                  borderRadius: '8px',
-                  border: repeatMode === 'endDate' ? '2px solid #d97706' : '2px solid #e0e0e0',
-                  background: repeatMode === 'endDate' ? '#fef3c7' : 'white',
-                  color: repeatMode === 'endDate' ? '#92400e' : '#666',
-                  fontSize: '13px',
-                  fontWeight: repeatMode === 'endDate' ? '700' : '500',
-                  cursor: 'pointer',
-                  touchAction: 'manipulation',
-                  transition: 'all 0.15s',
-                }}
-              >
-                結束日期
-              </button>
-              <button
-                type="button"
                 onClick={() => setRepeatMode('custom')}
                 style={{
                   flex: 1,
-                  padding: '12px 8px',
+                  padding: '14px 12px',
                   borderRadius: '8px',
                   border: repeatMode === 'custom' ? '2px solid #d97706' : '2px solid #e0e0e0',
                   background: repeatMode === 'custom' ? '#fef3c7' : 'white',
                   color: repeatMode === 'custom' ? '#92400e' : '#666',
-                  fontSize: '13px',
+                  fontSize: '14px',
                   fontWeight: repeatMode === 'custom' ? '700' : '500',
                   cursor: 'pointer',
                   touchAction: 'manipulation',
@@ -751,83 +732,6 @@ export function RepeatBookingDialog({
                 自選日期
               </button>
             </div>
-
-            {/* 次數設定 */}
-            {repeatMode === 'count' && (
-              <div>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                }}>
-                  重複次數
-                </label>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => setRepeatCount(Math.max(1, repeatCount - 1))}
-                    disabled={repeatCount <= 1}
-                    style={{
-                      width: '44px',
-                      height: '44px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: repeatCount <= 1 ? '#e0e0e0' : '#007bff',
-                      color: 'white',
-                      fontSize: '22px',
-                      fontWeight: 'bold',
-                      cursor: repeatCount <= 1 ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    −
-                  </button>
-                  <div style={{
-                    minWidth: '80px',
-                    textAlign: 'center',
-                    fontSize: '17px',
-                    fontWeight: '600',
-                    color: '#333',
-                    padding: '10px 16px',
-                    background: '#f8f9fa',
-                    borderRadius: '8px',
-                    border: '1px solid #e0e0e0',
-                  }}>
-                    {repeatCount} 週
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setRepeatCount(Math.min(52, repeatCount + 1))}
-                    disabled={repeatCount >= 52}
-                    style={{
-                      width: '44px',
-                      height: '44px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: repeatCount >= 52 ? '#e0e0e0' : '#007bff',
-                      color: 'white',
-                      fontSize: '22px',
-                      fontWeight: 'bold',
-                      cursor: repeatCount >= 52 ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* 結束日期設定 */}
             {repeatMode === 'endDate' && (
@@ -888,9 +792,9 @@ export function RepeatBookingDialog({
                     {i + 1}. {date.getFullYear()}/{String(date.getMonth() + 1).padStart(2, '0')}/{String(date.getDate()).padStart(2, '0')} {String(date.getHours()).padStart(2, '0')}:{String(date.getMinutes()).padStart(2, '0')}
                   </div>
                 ))}
-                {repeatMode === 'count' && repeatCount > 5 && (
+                {totalDatesCount > 5 && (
                   <div style={{ marginTop: '4px', fontStyle: 'italic' }}>
-                    ...還有 {repeatCount - 5} 個
+                    ...還有 {totalDatesCount - 5} 個
                   </div>
                 )}
               </div>
