@@ -30,8 +30,14 @@ interface CoachFutureBooking {
     label: string
     count: number
     minutes: number
+    // 該月份的會員時數分布
+    contactStats: {
+      contactName: string
+      minutes: number
+      count: number
+    }[]
   }[]
-  // 會員時數分布
+  // 全部月份的會員時數分布（用於 "全部" 篩選）
   contactStats: {
     contactName: string
     minutes: number
@@ -338,8 +344,14 @@ export function Statistics() {
     const coachMap = new Map<string, {
       coachId: string
       coachName: string
-      bookings: { month: string; label: string; count: number; minutes: number }[]
-      contactMap: Map<string, { minutes: number; count: number }>
+      bookings: { 
+        month: string
+        label: string
+        count: number
+        minutes: number
+        contactMap: Map<string, { minutes: number; count: number }>
+      }[]
+      contactMap: Map<string, { minutes: number; count: number }> // 全局會員統計
       totalCount: number
       totalMinutes: number
     }>()
@@ -347,12 +359,21 @@ export function Statistics() {
     const initCoach = (coachId: string, coachName: string) => ({
       coachId,
       coachName,
-      bookings: futureMonthsList.map(m => ({
-        month: m,
-        label: `${parseInt(m.split('-')[1])}月`,
-        count: 0,
-        minutes: 0
-      })),
+      bookings: futureMonthsList.map(m => {
+        const [year, monthStr] = m.split('-')
+        const monthNum = parseInt(monthStr)
+        // 如果年份與當前年份不同，顯示年份
+        const label = parseInt(year) !== now.getFullYear() 
+          ? `${year.slice(2)}年${monthNum}月` 
+          : `${monthNum}月`
+        return {
+          month: m,
+          label,
+          count: 0,
+          minutes: 0,
+          contactMap: new Map<string, { minutes: number; count: number }>()
+        }
+      }),
       contactMap: new Map<string, { minutes: number; count: number }>(),
       totalCount: 0,
       totalMinutes: 0
@@ -388,9 +409,17 @@ export function Statistics() {
         if (monthData) {
           monthData.count += 1
           monthData.minutes += durationMin
+          
+          // 該月份的會員統計
+          if (!monthData.contactMap.has(contactName)) {
+            monthData.contactMap.set(contactName, { minutes: 0, count: 0 })
+          }
+          const monthContactData = monthData.contactMap.get(contactName)!
+          monthContactData.minutes += durationMin
+          monthContactData.count += 1
         }
         
-        // 會員統計
+        // 全局會員統計（用於 "全部" 篩選）
         if (!coach.contactMap.has(contactName)) {
           coach.contactMap.set(contactName, { minutes: 0, count: 0 })
         }
@@ -416,7 +445,17 @@ export function Statistics() {
       .map(coach => ({
         coachId: coach.coachId,
         coachName: coach.coachName,
-        bookings: coach.bookings,
+        bookings: coach.bookings.map(b => ({
+          month: b.month,
+          label: b.label,
+          count: b.count,
+          minutes: b.minutes,
+          // 該月份的會員統計
+          contactStats: Array.from(b.contactMap.entries())
+            .map(([contactName, data]) => ({ contactName, ...data }))
+            .sort((a, b) => b.minutes - a.minutes)
+        })),
+        // 全局會員統計
         contactStats: Array.from(coach.contactMap.entries())
           .map(([contactName, data]) => ({ contactName, ...data }))
           .sort((a, b) => b.minutes - a.minutes),
@@ -1548,7 +1587,11 @@ export function Statistics() {
                         const displayRank = coach.coachId === 'unassigned' ? null : ++coachRank
                         
                         const isExpanded = expandedFutureCoachId === coach.coachId
-                        const hasContacts = coach.contactStats.length > 0
+                        // 根據月份篩選取得對應的會員統計
+                        const filteredContactStats = futureMonthFilter === 'all'
+                          ? coach.contactStats
+                          : coach.bookings.find(b => b.month === futureMonthFilter)?.contactStats || []
+                        const hasContacts = filteredContactStats.length > 0
                         
                         return (
                           <div key={coach.coachId}>
@@ -1643,7 +1686,7 @@ export function Statistics() {
                                   👥 會員時數分布：
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                  {coach.contactStats.map((contact, cIdx) => (
+                                  {filteredContactStats.map((contact, cIdx) => (
                                     <div 
                                       key={contact.contactName}
                                       style={{

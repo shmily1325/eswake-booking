@@ -153,7 +153,9 @@ export function RepeatBookingDialog({
     const dates: Date[] = []
     const currentDate = new Date(baseDateTime)
 
-    if (repeatMode === 'endDate' && repeatEndDate) {
+    if (repeatMode === 'endDate') {
+      // 每週重複模式：必須有結束日期
+      if (!repeatEndDate) return []
       const [endYear, endMonth, endDay] = repeatEndDate.split('-').map(Number)
       const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59)
       while (currentDate <= endDate) {
@@ -161,6 +163,7 @@ export function RepeatBookingDialog({
         currentDate.setDate(currentDate.getDate() + 7)
       }
     } else {
+      // count 模式（保留邏輯但目前 UI 不使用）
       for (let i = 0; i < repeatCount; i++) {
         dates.push(new Date(currentDate))
         currentDate.setDate(currentDate.getDate() + 7)
@@ -204,6 +207,23 @@ export function RepeatBookingDialog({
     if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
       setError(`${EARLY_BOOKING_HOUR_LIMIT}:00 之前的預約必須指定教練`)
       return
+    }
+
+    // 檢查重複模式的必填欄位
+    if (repeatMode === 'endDate') {
+      if (!startDate) {
+        setError('請選擇開始日期')
+        return
+      }
+      if (!repeatEndDate) {
+        setError('請選擇結束日期')
+        return
+      }
+    } else if (repeatMode === 'custom') {
+      if (customDates.length === 0) {
+        setError('請至少選擇一個日期')
+        return
+      }
     }
 
     // 立即設置 loading 防止重複點擊
