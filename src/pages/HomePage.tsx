@@ -117,12 +117,6 @@ export function HomePage() {
       isEditor: true
     },
     {
-      title: 'Dashboard',
-      icon: '📊',
-      link: '/statistics',
-      isEditor: true
-    },
-    {
       title: 'BAO',
       icon: '🔧',
       link: '/bao',
