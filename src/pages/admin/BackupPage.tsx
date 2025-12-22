@@ -7,26 +7,29 @@ import { extractDate, extractTime } from '../../utils/formatters'
 import { getLocalDateString } from '../../utils/date'
 import { useToast, ToastContainer } from '../../components/ui'
 
+type ExportType = 'pure_bookings' | 'member_hours' | 'ledger' | 'coach_hours'
+
 export function BackupPage() {
   const user = useAuthUser()
   const toast = useToast()
   const [loading, setLoading] = useState(false)
-  const [backupLoading, setBackupLoading] = useState(false)
   const [fullBackupLoading, setFullBackupLoading] = useState(false)
-  const [queryableBackupLoading, setQueryableBackupLoading] = useState(false)
   const [cloudBackupLoading, setCloudBackupLoading] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [exportType, setExportType] = useState<'bookings' | 'member_hours' | 'coach_hours'>('bookings')
+  const [exportType, setExportType] = useState<ExportType>('pure_bookings')
 
-  const exportBookingsToCSV = async () => {
+  const isAnyLoading = loading || fullBackupLoading || cloudBackupLoading
+
+  // 純預約記錄匯出（不含教練回報）
+  const exportPureBookingsToCSV = async () => {
     setLoading(true)
     try {
       let query = supabase
         .from('bookings')
         .select(`
           *,
-          boats:boat_id (name, color)
+          boats:boat_id (name)
         `)
         .order('start_at', { ascending: false })
 
@@ -47,20 +50,14 @@ export function BackupPage() {
 
       const bookingIds = bookings.map(b => b.id)
       
-      // 並行查詢教練和參與者資料
-      const [coachesResult, participantsResult] = await Promise.all([
-        supabase
+      // 查詢教練資料
+      const { data: coachesData } = await supabase
         .from('booking_coaches')
-          .select('booking_id, coaches:coach_id(name)')
-          .in('booking_id', bookingIds),
-      supabase
-        .from('booking_participants')
-        .select('booking_id, participant_name, duration_min, lesson_type')
+        .select('booking_id, coaches:coach_id(name)')
         .in('booking_id', bookingIds)
-      ])
 
       const coachesByBooking: { [key: number]: string[] } = {}
-      for (const item of coachesResult.data || []) {
+      for (const item of coachesData || []) {
         const bookingId = item.booking_id
         const coach = (item as any).coaches
         if (coach) {
@@ -70,49 +67,23 @@ export function BackupPage() {
           coachesByBooking[bookingId].push(coach.name)
         }
       }
-      
-      const participantsByBooking: { [key: number]: Array<{ name: string, duration: number, designated: boolean }> } = {}
-      for (const p of participantsResult.data || []) {
-        if (!participantsByBooking[p.booking_id]) {
-          participantsByBooking[p.booking_id] = []
-        }
-        // 使用 lesson_type 判斷是否為指定課
-        const isDesignated = p.lesson_type === 'designated_paid' || p.lesson_type === 'designated_free'
-        participantsByBooking[p.booking_id].push({
-          name: p.participant_name,
-          duration: p.duration_min,
-          designated: isDesignated
-        })
-      }
-      
-      // 查詢駕駛資訊（從 booking_drivers 表）
+
+      // 查詢駕駛資訊
       const { data: bookingDrivers } = await supabase
         .from('booking_drivers')
-        .select(`
-          booking_id,
-          driver_id,
-          coaches:driver_id (id, name)
-        `)
+        .select('booking_id, coaches:driver_id (name)')
+        .in('booking_id', bookingIds)
       
       const driverByBooking: { [key: number]: string } = {}
       bookingDrivers?.forEach(bd => {
         if (bd.coaches) {
-          const coach = bd.coaches as unknown as { id: string; name: string }
+          const coach = bd.coaches as unknown as { name: string }
           driverByBooking[bd.booking_id] = coach.name
         }
       })
 
-      const formatDateTime = (isoString: string | null): string => {
-        if (!isoString) return ''
-        const dt = isoString.substring(0, 16) // "2025-10-30T08:30"
-        const [date, time] = dt.split('T')
-        if (!date || !time) return ''
-        const [year, month, day] = date.split('-')
-        return `${year}/${month}/${day} ${time}`
-      }
-
       let csv = '\uFEFF'
-      csv += '預約人,預約日期,抵達時間,下水時間,預約時長(分鐘),船隻,教練,駕駛,活動類型,回報狀態,參與者,參與者時長,指定課,狀態,備註,創建時間\n'
+      csv += '預約人,預約日期,抵達時間,下水時間,預約時長(分鐘),船隻,教練,駕駛,活動類型,狀態,備註\n'
 
       bookings.forEach(booking => {
         const boat = (booking as any).boats?.name || '未指定'
@@ -130,44 +101,23 @@ export function BackupPage() {
         
         const bookingDate = extractDate(booking.start_at).replace(/-/g, '/')
         
-        // 回報資訊
-        const participants = participantsByBooking[booking.id] || []
-        const hasReport = participants.length > 0
-        const reportStatus = hasReport ? '已回報' : '未回報'
-        
         const statusMap: { [key: string]: string } = {
           'Confirmed': '已確認',
           'Cancelled': '已取消'
         }
         const status = statusMap[booking.status || ''] || booking.status || ''
 
-        if (participants.length > 0) {
-          // 每個參與者一行
-          participants.forEach((p, idx) => {
-            const participantName = p.name
-            const participantDuration = p.duration
-            const isDesignated = p.designated ? '是' : '否'
-            
-            // 第一個參與者顯示完整預約資訊，其他只顯示參與者資訊
-            if (idx === 0) {
-              csv += `"${booking.contact_name}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${driver}","${activities}","${reportStatus}","${participantName}",${participantDuration},"${isDesignated}","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`
-            } else {
-              csv += `"","","","",,"","","","","","${participantName}",${participantDuration},"${isDesignated}","","",""\n`
-            }
-          })
-        } else {
-          // 沒有回報的預約
-          csv += `"${booking.contact_name}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${driver}","${activities}","${reportStatus}","","","","${status}","${notes}","${formatDateTime(booking.created_at)}"\n`
-        }
+        csv += `"${booking.contact_name}","${bookingDate}","${arrivalTime}","${startTime}",${booking.duration_min},"${boat}","${coaches}","${driver}","${activities}","${status}","${notes}"\n`
       })
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `預約備份_${getLocalDateString()}.csv`
+      link.download = `純預約記錄_${getLocalDateString()}.csv`
       link.click()
       URL.revokeObjectURL(url)
+      toast.success('導出成功！')
     } catch (error) {
       console.error('Export error:', error)
       toast.error('導出失敗，請重試')
@@ -176,10 +126,10 @@ export function BackupPage() {
     }
   }
 
+  // 會員時數詳細記錄
   const exportMemberHoursToCSV = async () => {
     setLoading(true)
     try {
-      // 查詢指定日期範圍內的參與者記錄（使用 booking_participants 表）
       let participantsQuery = supabase
         .from('booking_participants')
         .select(`
@@ -195,9 +145,6 @@ export function BackupPage() {
       }
 
       const { data: participants, error } = await participantsQuery
-
-      console.log('會員時數查詢結果:', participants)
-      console.log('查詢錯誤:', error)
 
       if (error) throw error
 
@@ -251,7 +198,6 @@ export function BackupPage() {
         })
       })
 
-      // 生成CSV（每一行都重複會員資訊，方便Excel篩選）
       let csv = '\uFEFF'
       csv += '會員姓名,日期,單次時長(分鐘),是否指定課,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘)\n'
 
@@ -259,7 +205,6 @@ export function BackupPage() {
         .sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
         .forEach(member => {
           member.records.forEach((record) => {
-            // 每一行都顯示完整資訊，方便篩選
             csv += `"${member.name}","${record.date}",${record.duration},"${record.isDesignated ? '是' : '否'}",${member.totalMinutes},${member.designatedMinutes},${member.normalMinutes}\n`
           })
         })
@@ -268,9 +213,10 @@ export function BackupPage() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `會員時數統計_${getLocalDateString()}.csv`
+      link.download = `會員時數記錄_${getLocalDateString()}.csv`
       link.click()
       URL.revokeObjectURL(url)
+      toast.success('導出成功！')
     } catch (error) {
       console.error('Export error:', error)
       toast.error('導出失敗，請重試')
@@ -279,10 +225,122 @@ export function BackupPage() {
     }
   }
 
+  // 預約對應總帳匯出
+  const exportLedgerToCSV = async () => {
+    setLoading(true)
+    try {
+      if (!startDate || !endDate) {
+        toast.warning('請選擇開始和結束日期')
+        setLoading(false)
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          member_id(name, nickname)
+        `)
+        .gte('transaction_date', startDate)
+        .lte('transaction_date', endDate)
+        .order('transaction_date', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      if (!data || data.length === 0) {
+        toast.warning('所選時間範圍內沒有交易記錄')
+        return
+      }
+
+      const getCategoryLabel = (category: string) => {
+        const labels: Record<string, string> = {
+          balance: '儲值',
+          vip_voucher: 'VIP票券',
+          designated_lesson: '指定課',
+          boat_voucher_g23: 'G23船券',
+          boat_voucher_g21: '黑豹/G21船券',
+          boat_voucher_g21_panther: '黑豹/G21船券',
+          gift_boat_hours: '贈送大船',
+          free_hours: '贈送時數',
+          membership: '會籍',
+          board_storage: '置板',
+        }
+        return labels[category] || category
+      }
+
+      const csvEscape = (str: string) => {
+        if (!str) return ''
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`
+        }
+        return str
+      }
+
+      const getChangeNumber = (t: any) => {
+        const isAmount = t.category === 'balance' || t.category === 'vip_voucher'
+        const value = isAmount ? (t.amount || 0) : (t.minutes || 0)
+        const absValue = Math.abs(value)
+        
+        if (t.adjust_type === 'increase' || (!t.adjust_type && value > 0)) {
+          return absValue
+        } else if (t.adjust_type === 'decrease' || (!t.adjust_type && value < 0)) {
+          return -absValue
+        }
+        return 0
+      }
+
+      const getAfterNumber = (t: any) => {
+        switch (t.category) {
+          case 'balance':
+            return t.balance_after ?? ''
+          case 'vip_voucher':
+            return t.vip_voucher_amount_after ?? ''
+          case 'designated_lesson':
+            return t.designated_lesson_minutes_after ?? ''
+          case 'boat_voucher_g23':
+            return t.boat_voucher_g23_minutes_after ?? ''
+          case 'boat_voucher_g21':
+          case 'boat_voucher_g21_panther':
+            return t.boat_voucher_g21_panther_minutes_after ?? ''
+          case 'gift_boat_hours':
+            return t.gift_boat_hours_after ?? ''
+          default:
+            return ''
+        }
+      }
+
+      const csv = [
+        '\uFEFF' + ['會員', '日期', '項目', '變動', '交易後餘額', '說明', '備註'].join(','),
+        ...data.map((t: any) => [
+          csvEscape((t.member_id as any)?.nickname || (t.member_id as any)?.name || '未知'),
+          t.transaction_date || t.created_at?.split('T')[0] || '',
+          getCategoryLabel(t.category),
+          getChangeNumber(t),
+          getAfterNumber(t),
+          csvEscape(t.description || ''),
+          csvEscape(t.notes || ''),
+        ].join(','))
+      ].join('\n')
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `預約總帳_${startDate}_至_${endDate}.csv`
+      link.click()
+      toast.success('導出成功！')
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('導出失敗，請重試')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 教練時數詳細記錄
   const exportCoachHoursToCSV = async () => {
     setLoading(true)
     try {
-      // 查詢指定日期範圍內的預約
       let bookingsQuery = supabase
         .from('bookings')
         .select(`
@@ -311,7 +369,6 @@ export function BackupPage() {
 
       const bookingIds = bookings.map(b => b.id)
 
-      // 查詢教練和參與者資料
       const [coachesResult, participantsResult] = await Promise.all([
         supabase
           .from('booking_coaches')
@@ -323,7 +380,6 @@ export function BackupPage() {
           .in('booking_id', bookingIds)
       ])
 
-      // 建立預約ID到詳細資訊的映射
       const bookingInfoMap: {
         [key: number]: {
           date: string
@@ -346,7 +402,6 @@ export function BackupPage() {
         }
       })
 
-      // 按教練整理詳細記錄
       const coachRecords: {
         [key: string]: {
           name: string
@@ -380,7 +435,6 @@ export function BackupPage() {
           }
         }
 
-        // 找到該預約的所有參與者
         const participants = participantsResult.data?.filter(p => p.booking_id === item.booking_id) || []
         if (participants.length === 0) {
           const info = bookingInfoMap[item.booking_id]
@@ -396,7 +450,6 @@ export function BackupPage() {
           })
         } else {
           participants.forEach(p => {
-            // 使用 lesson_type 判斷是否為指定課
             const isDesignated = p.lesson_type === 'designated_paid' || p.lesson_type === 'designated_free'
             
             coachRecords[coachName].records.push({
@@ -420,7 +473,6 @@ export function BackupPage() {
         }
       })
 
-      // 生成CSV（每一行都重複教練資訊，方便Excel篩選）
       let csv = '\uFEFF'
       csv += '教練姓名,日期,開始時間,預約人,船隻,學員姓名/狀態,單次時長(分鐘),是否指定課,總時數(分鐘),指定課時數(分鐘),一般時數(分鐘)\n'
 
@@ -428,7 +480,6 @@ export function BackupPage() {
         .sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
         .forEach(coach => {
           coach.records.forEach(record => {
-            // 每一行都顯示完整資訊，方便篩選
             const duration = record.hasReport ? record.duration : ''
             const isDesignatedLabel = record.hasReport ? (record.isDesignated ? '是' : '否') : ''
             csv += `"${coach.name}","${record.date}","${record.startTime}","${record.contactName}","${record.boatName}","${record.participantName}",${duration},"${isDesignatedLabel}",${coach.totalMinutes},${coach.designatedMinutes},${coach.normalMinutes}\n`
@@ -439,9 +490,10 @@ export function BackupPage() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `教練時數統計_${getLocalDateString()}.csv`
+      link.download = `教練時數記錄_${getLocalDateString()}.csv`
       link.click()
       URL.revokeObjectURL(url)
+      toast.success('導出成功！')
     } catch (error) {
       console.error('Export error:', error)
       toast.error('導出失敗，請重試')
@@ -451,12 +503,19 @@ export function BackupPage() {
   }
 
   const handleExport = () => {
-    if (exportType === 'bookings') {
-      exportBookingsToCSV()
-    } else if (exportType === 'member_hours') {
-      exportMemberHoursToCSV()
-    } else {
-      exportCoachHoursToCSV()
+    switch (exportType) {
+      case 'pure_bookings':
+        exportPureBookingsToCSV()
+        break
+      case 'member_hours':
+        exportMemberHoursToCSV()
+        break
+      case 'ledger':
+        exportLedgerToCSV()
+        break
+      case 'coach_hours':
+        exportCoachHoursToCSV()
+        break
     }
   }
 
@@ -475,7 +534,6 @@ export function BackupPage() {
         throw new Error(error.message || '備份失敗')
       }
 
-      // 下載 SQL 檔案
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -485,47 +543,12 @@ export function BackupPage() {
       link.click()
       URL.revokeObjectURL(url)
 
-      toast.success('完整資料庫備份成功！檔案已下載，請保存到 WD MY BOOK 硬碟。')
+      toast.success('完整資料庫備份成功！檔案已下載。')
     } catch (error) {
       console.error('Full backup error:', error)
       toast.error(`備份失敗：${(error as Error).message}`)
     } finally {
       setFullBackupLoading(false)
-    }
-  }
-
-  const backupQueryable = async () => {
-    setQueryableBackupLoading(true)
-    try {
-      const response = await fetch('/api/backup-queryable', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || '備份失敗')
-      }
-
-      // 下載 JSON 檔案
-      const data = await response.json()
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0]
-      link.download = `eswake_queryable_backup_${timestamp}.json`
-      link.click()
-      URL.revokeObjectURL(url)
-
-      toast.success('可查詢備份成功！檔案已下載，可用查詢工具打開：/backup-query-tool.html')
-    } catch (error) {
-      console.error('Queryable backup error:', error)
-      toast.error(`備份失敗：${(error as Error).message}`)
-    } finally {
-      setQueryableBackupLoading(false)
     }
   }
 
@@ -566,79 +589,37 @@ export function BackupPage() {
     }
   }
 
-  const backupToGoogleSheets = async () => {
-    setBackupLoading(true)
-    const startTime = Date.now()
-    
-    try {
-      // 创建带超时的 fetch（60秒超时）
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60秒超时
-
-      console.log('開始備份 (Google Sheets)...', { startDate, endDate })
-      
-      const response = await fetch('/api/backup-to-drive', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
-          manual: true,
-        }),
-        signal: controller.signal,
-      })
-
-      clearTimeout(timeoutId)
-      const elapsed = Date.now() - startTime
-      console.log(`收到响应 (${elapsed}ms)`, response.status)
-
-      const result = await response.json()
-      console.log('響應結果 (Google Sheets):', result)
-
-      if (!response.ok) {
-        const errorMsg = result.message || result.error || '備份失敗'
-        const details = result.details ? `\n\n詳細資訊: ${result.details}` : ''
-        const step = result.step ? `\n\n失敗步驟: ${result.step}` : ''
-        const execTime = result.executionTime ? `\n\n執行時間: ${result.executionTime}ms` : ''
-        throw new Error(`${errorMsg}${details}${step}${execTime}`)
-      }
-
-      const execTime = result.executionTime ? ` (執行時間: ${result.executionTime}ms)` : ''
-      
-      if (result.sheetUrl) {
-        toast.success(
-          `${result.message}${execTime} - 工作表: ${result.sheetTitle}, 備份筆數: ${result.bookingsCount} 筆。將在新視窗開啟 Google Sheets`
-        )
-        window.open(result.sheetUrl, '_blank')
-      } else {
-        toast.success(`${result.message}${execTime}`)
-      }
-    } catch (error) {
-      const elapsed = Date.now() - startTime
-      console.error('Backup error:', error, { elapsed: `${elapsed}ms` })
-      
-      let errorMessage = '備份失敗'
-      
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMessage = '❌ 備份超時（超過60秒）\n\n可能原因：\n1. 數據量太大\n2. Google Sheets API 響應慢\n3. 網絡連接問題\n\n請檢查 Vercel 函數日誌以獲取詳細信息'
-        } else if (error.message) {
-          errorMessage = `❌ ${error.message}`
-        }
-      } else {
-        errorMessage = '❌ 備份失敗，請檢查環境變數設定'
-      }
-      
-      errorMessage += ` (執行時間: ${elapsed}ms)`
-      errorMessage += ' 💡 調試提示：打開開發者工具 (F12) 查看詳細錯誤，或檢查 Vercel 函數日誌'
-      
-      toast.error(errorMessage)
-    } finally {
-      setBackupLoading(false)
+  const exportOptions: Array<{
+    value: ExportType
+    icon: string
+    title: string
+    description: string
+  }> = [
+    {
+      value: 'pure_bookings',
+      icon: '📋',
+      title: '純預約記錄',
+      description: '僅包含預約基本資訊：預約人、日期時間、船隻、教練、駕駛、狀態。不含教練回報細節。'
+    },
+    {
+      value: 'member_hours',
+      icon: '⏱️',
+      title: '會員時數詳細記錄',
+      description: '每位會員的消費時數明細：姓名、日期、時長、是否指定課，以及累計統計。適合用於會員對帳。'
+    },
+    {
+      value: 'ledger',
+      icon: '💰',
+      title: '預約對應總帳',
+      description: '所有交易記錄：會員、日期、項目、變動金額/分鐘數、交易後餘額、說明。與儲值頁面的匯出總帳相同格式。'
+    },
+    {
+      value: 'coach_hours',
+      icon: '🎓',
+      title: '教練時數詳細記錄',
+      description: '每位教練的教學時數明細：日期、學員、時長、是否指定課，以及累計統計。適合用於教練薪資核算。'
     }
-  }
+  ]
 
   return (
     <div style={{
@@ -649,7 +630,7 @@ export function BackupPage() {
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <PageHeader title="💾 匯出" user={user} showBaoLink={true} />
 
-        {/* 備份選項 */}
+        {/* 資料導出區塊 */}
         <div style={{
           background: 'white',
           borderRadius: '12px',
@@ -657,121 +638,60 @@ export function BackupPage() {
           marginBottom: '15px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
         }}>
-          <h2 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#333' }}>
-            導出資料 (CSV 格式)
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600', color: '#333' }}>
+            📊 資料導出
           </h2>
+          <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#666' }}>
+            選擇要導出的資料類型，可指定日期區間，導出為 CSV 格式
+          </p>
 
           {/* 導出類型選擇 */}
           <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '12px',
-              fontSize: '15px',
-              color: '#333',
-              fontWeight: '600'
-            }}>
-              📊 選擇導出類型
-            </label>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* 選項 1: 完整預約記錄 */}
-              <div
-                onClick={() => setExportType('bookings')}
-                style={{
-                  padding: '16px',
-                  border: exportType === 'bookings' ? '2px solid #667eea' : '2px solid #dee2e6',
-                  borderRadius: '8px',
-                  backgroundColor: exportType === 'bookings' ? '#f0f4ff' : 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
-                  <input
-                    type="radio"
-                    checked={exportType === 'bookings'}
-                    onChange={() => setExportType('bookings')}
-                    style={{ marginTop: '4px', width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>
-                      📋 完整預約記錄（包含教練回報）
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-                      包含：預約人、日期時間、船隻、教練、駕駛、每個參與者的時長、是否指定課等完整資訊。適合查看詳細預約狀況與教練回報。
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {exportOptions.map(option => (
+                <div
+                  key={option.value}
+                  onClick={() => setExportType(option.value)}
+                  style={{
+                    padding: '14px 16px',
+                    border: exportType === option.value ? '2px solid #667eea' : '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    backgroundColor: exportType === option.value ? '#f0f4ff' : 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                    <input
+                      type="radio"
+                      checked={exportType === option.value}
+                      onChange={() => setExportType(option.value)}
+                      style={{ marginTop: '2px', width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>
+                        {option.icon} {option.title}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                        {option.description}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* 選項 2: 會員時數詳細記錄 */}
-              <div
-                onClick={() => setExportType('member_hours')}
-                style={{
-                  padding: '16px',
-                  border: exportType === 'member_hours' ? '2px solid #667eea' : '2px solid #dee2e6',
-                  borderRadius: '8px',
-                  backgroundColor: exportType === 'member_hours' ? '#f0f4ff' : 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
-                  <input
-                    type="radio"
-                    checked={exportType === 'member_hours'}
-                    onChange={() => setExportType('member_hours')}
-                    style={{ marginTop: '4px', width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>
-                      💰 會員時數詳細記錄（內有總對帳表）
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-                      每一行顯示：會員姓名、日期、時長、是否指定課、總時數、指定課時數、一般時數。每筆消費都重複顯示會員資訊，方便Excel篩選與透視分析。
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 選項 3: 教練時數詳細記錄 */}
-              <div
-                onClick={() => setExportType('coach_hours')}
-                style={{
-                  padding: '16px',
-                  border: exportType === 'coach_hours' ? '2px solid #667eea' : '2px solid #dee2e6',
-                  borderRadius: '8px',
-                  backgroundColor: exportType === 'coach_hours' ? '#f0f4ff' : 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
-                  <input
-                    type="radio"
-                    checked={exportType === 'coach_hours'}
-                    onChange={() => setExportType('coach_hours')}
-                    style={{ marginTop: '4px', width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>
-                      🎓 教練時數詳細記錄（內有教練對帳表）
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-                      每一行顯示：教練姓名、日期、學員姓名、時長、是否指定課、總時數、指定課時數、一般時數。每次教學都重複顯示教練資訊，方便Excel篩選與核算薪資。
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
-          <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#e7f3ff', borderRadius: '8px', border: '1px solid #b3d9ff' }}>
-            <div style={{ fontSize: '14px', color: '#004085', marginBottom: '12px', fontWeight: '500' }}>
-              📅 選擇日期範圍（選填）
-            </div>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
-              不選擇日期則導出所有預約記錄
+          {/* 日期區間選擇 */}
+          <div style={{ 
+            marginBottom: '20px', 
+            padding: '16px', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '8px',
+            border: '1px solid #e0e0e0'
+          }}>
+            <div style={{ fontSize: '14px', color: '#333', marginBottom: '12px', fontWeight: '500' }}>
+              📅 日期區間 {exportType === 'ledger' ? <span style={{ color: '#dc3545' }}>（必填）</span> : '（選填）'}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -780,8 +700,7 @@ export function BackupPage() {
                   display: 'block',
                   marginBottom: '6px',
                   fontSize: '13px',
-                  color: '#333',
-                  fontWeight: '500'
+                  color: '#555'
                 }}>
                   開始日期
                 </label>
@@ -791,7 +710,7 @@ export function BackupPage() {
                   onChange={(e) => setStartDate(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: '10px 12px',
                     fontSize: '14px',
                     border: '1px solid #dee2e6',
                     borderRadius: '6px',
@@ -804,8 +723,7 @@ export function BackupPage() {
                   display: 'block',
                   marginBottom: '6px',
                   fontSize: '13px',
-                  color: '#333',
-                  fontWeight: '500'
+                  color: '#555'
                 }}>
                   結束日期
                 </label>
@@ -815,7 +733,7 @@ export function BackupPage() {
                   onChange={(e) => setEndDate(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: '10px 12px',
                     fontSize: '14px',
                     border: '1px solid #dee2e6',
                     borderRadius: '6px',
@@ -824,178 +742,150 @@ export function BackupPage() {
                 />
               </div>
             </div>
+            {exportType !== 'ledger' && (
+              <div style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
+                不選擇日期則導出所有資料
+              </div>
+            )}
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <button
-              onClick={handleExport}
-              disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading}
-              style={{
-                flex: 1,
-                minWidth: '200px',
-                padding: '16px',
-                fontSize: '16px',
-                fontWeight: '600',
-                background: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'not-allowed' : 'pointer',
-                boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading ? 'none' : '0 4px 12px rgba(40, 167, 69, 0.3)',
-                transition: 'all 0.2s'
-              }}
-            >
-              {loading ? '⏳ 導出中...' : '💾 導出 CSV 檔案'}
-            </button>
-            <button
-              onClick={backupToGoogleSheets}
-              disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading}
-              style={{
-                flex: 1,
-                minWidth: '200px',
-                padding: '16px',
-                fontSize: '16px',
-                fontWeight: '600',
-                background: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? '#ccc' : 'linear-gradient(135deg, #4285f4 0%, #34a853 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'not-allowed' : 'pointer',
-                boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'none' : '0 4px 12px rgba(66, 133, 244, 0.3)',
-                transition: 'all 0.2s'
-              }}
-            >
-              {backupLoading ? '⏳ 備份中...' : '☁️ 備份到 Google Sheets'}
-            </button>
-          </div>
+          <button
+            onClick={handleExport}
+            disabled={isAnyLoading}
+            style={{
+              width: '100%',
+              padding: '14px',
+              fontSize: '16px',
+              fontWeight: '600',
+              background: isAnyLoading ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              cursor: isAnyLoading ? 'not-allowed' : 'pointer',
+              boxShadow: isAnyLoading ? 'none' : '0 4px 12px rgba(40, 167, 69, 0.3)',
+              transition: 'all 0.2s'
+            }}
+          >
+            {loading ? '⏳ 導出中...' : '📥 導出 CSV 檔案'}
+          </button>
+        </div>
 
-          {/* 雲端完整資料庫備份 */}
-          <div style={{
-            marginTop: '20px',
-            padding: '20px',
-            backgroundColor: '#f0f9ff',
-            borderRadius: '8px',
-            border: '1px solid #93c5fd'
-          }}>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#1e40af' }}>
-              ☁️ 雲端完整資料庫備份
-            </h3>
-            <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
-              將完整資料庫備份（SQL 檔案）自動上傳到 Google Drive，無需電腦開機
-            </p>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                onClick={backupToCloudDrive}
-                disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading}
-                style={{
-                  flex: 1,
-                  minWidth: '200px',
-                  padding: '16px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  background: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? '#ccc' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'not-allowed' : 'pointer',
-                  boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.3)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {cloudBackupLoading ? '⏳ 上傳中...' : '☁️ 備份到 Google Drive (SQL)'}
-              </button>
-            </div>
-            <div style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>
-              <div>💡 <strong>雲端備份</strong>：完整資料庫 SQL 檔案自動上傳到 Google Drive</div>
-              <div style={{ marginTop: '5px' }}>💡 <strong>自動清理</strong>：自動刪除超過 90 天的舊備份</div>
-              <div style={{ marginTop: '5px' }}>💡 <strong>無需電腦開機</strong>：系統每天自動備份（UTC 02:00）</div>
-            </div>
-          </div>
+        {/* 雲端備份區塊 */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '15px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600', color: '#1e40af' }}>
+            ☁️ 雲端備份
+          </h2>
+          <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#666' }}>
+            將完整資料庫備份（SQL 檔案）上傳到 Google Drive
+          </p>
+          
+          <button
+            onClick={backupToCloudDrive}
+            disabled={isAnyLoading}
+            style={{
+              width: '100%',
+              padding: '14px',
+              fontSize: '16px',
+              fontWeight: '600',
+              background: isAnyLoading ? '#ccc' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              cursor: isAnyLoading ? 'not-allowed' : 'pointer',
+              boxShadow: isAnyLoading ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.3)',
+              transition: 'all 0.2s'
+            }}
+          >
+            {cloudBackupLoading ? '⏳ 上傳中...' : '☁️ 備份到 Google Drive'}
+          </button>
 
-          {/* 完整備份和可查詢備份 */}
-          <div style={{
-            marginTop: '20px',
-            padding: '20px',
-            backgroundColor: '#e7f3ff',
-            borderRadius: '8px',
-            border: '1px solid #b3d9ff'
-          }}>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#004085' }}>
-              🛡️ 災難恢復備份（推薦）
-            </h3>
-            <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
-              在網頁和資料庫掛掉時，可以使用這些備份檔案查詢預約和財務數據
-            </p>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                onClick={backupFullDatabase}
-                disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading}
-                style={{
-                  flex: 1,
-                  minWidth: '200px',
-                  padding: '16px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  background: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? '#ccc' : 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'not-allowed' : 'pointer',
-                  boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'none' : '0 4px 12px rgba(220, 53, 69, 0.3)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {fullBackupLoading ? '⏳ 備份中...' : '💾 完整數據庫備份 (SQL)'}
-              </button>
-              <button
-                onClick={backupQueryable}
-                disabled={loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading}
-                style={{
-                  flex: 1,
-                  minWidth: '200px',
-                  padding: '16px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  background: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? '#ccc' : 'linear-gradient(135deg, #fd7e14 0%, #e55a00 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'not-allowed' : 'pointer',
-                  boxShadow: loading || backupLoading || fullBackupLoading || queryableBackupLoading || cloudBackupLoading ? 'none' : '0 4px 12px rgba(253, 126, 20, 0.3)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {queryableBackupLoading ? '⏳ 備份中...' : '🔍 可查詢備份 (JSON)'}
-              </button>
-            </div>
-            <div style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>
-              <div>💡 <strong>完整數據庫備份</strong>：包含所有表和數據，可直接導入恢復</div>
-              <div style={{ marginTop: '5px' }}>💡 <strong>可查詢備份</strong>：輕量級，可用查詢工具打開（<a href="/backup-query-tool.html" target="_blank" style={{ color: '#0066cc' }}>打開查詢工具</a>）</div>
-            </div>
-          </div>
-
-          <div style={{
-            marginTop: '20px',
-            padding: '12px 16px',
-            backgroundColor: '#fff3cd',
-            borderRadius: '8px',
-            border: '1px solid #ffc107',
+          <div style={{ 
+            marginTop: '16px', 
+            padding: '12px', 
+            backgroundColor: '#f0f9ff', 
+            borderRadius: '6px',
             fontSize: '13px',
-            color: '#856404',
-            textAlign: 'left'
+            color: '#555'
           }}>
-            <div style={{ fontWeight: '600', marginBottom: '8px' }}>
-              💡 使用說明：
-            </div>
-            <ul style={{ margin: 0, paddingLeft: '20px' }}>
-              <li>CSV 檔案可用 Excel 或 Google Sheets 打開</li>
-              <li>包含完整的預約、會員時數、教練時數等詳細資訊</li>
-              <li>所有時間已格式化為易讀格式（YYYY/MM/DD HH:mm）</li>
-              <li>系統會每天自動備份到 Google Sheets（根據 vercel.json 中的 cron 設定）</li>
-              <li>也可以手動點擊「備份到 Google Sheets」按鈕立即備份</li>
-              <li><strong>建議：</strong>每週備份一次完整資料庫，每天備份一次可查詢備份到 WD MY BOOK 硬碟</li>
-            </ul>
+            <div style={{ marginBottom: '6px' }}>• 完整資料庫 SQL 檔案自動上傳到 Google Drive</div>
+            <div style={{ marginBottom: '6px' }}>• 自動刪除超過 90 天的舊備份</div>
+            <div>• 系統每天自動備份（UTC 02:00，台灣時間 10:00）</div>
           </div>
+        </div>
+
+        {/* 災難恢復備份區塊 */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '15px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600', color: '#dc3545' }}>
+            🛡️ 災難恢復備份
+          </h2>
+          <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#666' }}>
+            下載完整資料庫備份（SQL），用於在系統故障時恢復資料
+          </p>
+
+          <button
+            onClick={backupFullDatabase}
+            disabled={isAnyLoading}
+            style={{
+              width: '100%',
+              padding: '14px',
+              fontSize: '16px',
+              fontWeight: '600',
+              background: isAnyLoading ? '#ccc' : 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              cursor: isAnyLoading ? 'not-allowed' : 'pointer',
+              boxShadow: isAnyLoading ? 'none' : '0 4px 12px rgba(220, 53, 69, 0.3)',
+              transition: 'all 0.2s'
+            }}
+          >
+            {fullBackupLoading ? '⏳ 備份中...' : '💾 下載完整資料庫備份 (SQL)'}
+          </button>
+
+          <div style={{ 
+            marginTop: '16px', 
+            padding: '12px', 
+            backgroundColor: '#fff5f5', 
+            borderRadius: '6px',
+            fontSize: '13px',
+            color: '#555'
+          }}>
+            <div style={{ marginBottom: '6px' }}>• 包含所有表和數據，可直接匯入 PostgreSQL/Supabase 恢復</div>
+            <div>• 建議每週下載一次，保存到本地硬碟</div>
+          </div>
+        </div>
+
+        {/* 使用說明 */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '15px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          fontSize: '13px',
+          color: '#666'
+        }}>
+          <div style={{ fontWeight: '600', marginBottom: '10px', color: '#333' }}>
+            💡 使用說明
+          </div>
+          <ul style={{ margin: 0, paddingLeft: '20px', lineHeight: '1.8' }}>
+            <li>CSV 檔案可用 Excel 或 Google Sheets 打開</li>
+            <li>時間格式為 YYYY/MM/DD HH:mm，方便排序與篩選</li>
+            <li>「預約對應總帳」需指定日期區間才能匯出</li>
+            <li>雲端備份每天自動執行，也可手動觸發</li>
+          </ul>
         </div>
       </div>
 
@@ -1004,4 +894,3 @@ export function BackupPage() {
     </div>
   )
 }
-

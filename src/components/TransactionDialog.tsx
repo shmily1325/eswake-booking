@@ -96,9 +96,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   // 當對話框開啟時，自動填入預約資訊
   useEffect(() => {
     if (open) {
-      if (defaultDescription) {
-        setDescription(defaultDescription)
-      }
+      // 明確設置，即使是空字串也要清空
+      setDescription(defaultDescription || '')
       if (defaultTransactionDate) {
         setTransactionDate(defaultTransactionDate)
       }
