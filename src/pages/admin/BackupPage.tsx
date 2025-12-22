@@ -7,7 +7,7 @@ import { extractDate, extractTime } from '../../utils/formatters'
 import { getLocalDateString } from '../../utils/date'
 import { useToast, ToastContainer } from '../../components/ui'
 
-type ExportType = 'pure_bookings' | 'ledger' | 'coach_report'
+type ExportType = 'pure_bookings' | 'ledger' | 'coach_detail' | 'coach_summary'
 
 export function BackupPage() {
   const user = useAuthUser()
@@ -232,8 +232,8 @@ export function BackupPage() {
     }
   }
 
-  // 教練回報記錄匯出
-  const exportCoachReportToCSV = async () => {
+  // 教練活動明細匯出（每行一筆活動）
+  const exportCoachDetailToCSV = async () => {
     setLoading(true)
     try {
       let bookingsQuery = supabase
@@ -241,7 +241,6 @@ export function BackupPage() {
         .select(`
           id,
           start_at,
-          duration_min,
           contact_name,
           boats:boat_id(name)
         `)
@@ -264,148 +263,195 @@ export function BackupPage() {
 
       const bookingIds = bookings.map(b => b.id)
 
-      // 查詢教練、駕駛、參與者資料
-      const [coachesResult, driversResult, coachReportsResult, participantsResult] = await Promise.all([
-        supabase
-          .from('booking_coaches')
-          .select('booking_id, coaches:coach_id(name)')
-          .in('booking_id', bookingIds),
-        supabase
-          .from('booking_drivers')
-          .select('booking_id, coaches:driver_id(name)')
-          .in('booking_id', bookingIds),
+      // 查詢教練回報和參與者資料
+      const [coachReportsResult, participantsResult] = await Promise.all([
         supabase
           .from('coach_reports')
-          .select('booking_id, driver_duration_min, coaches:coach_id(name)')
-          .in('booking_id', bookingIds)
-          .not('driver_duration_min', 'is', null),
+          .select('booking_id, coach_id, driver_duration_min, coaches:coach_id(name)')
+          .in('booking_id', bookingIds),
         supabase
           .from('booking_participants')
-          .select('booking_id, participant_name, duration_min, lesson_type, payment_method')
+          .select('booking_id, participant_name, duration_min, coach_id, coaches:coach_id(name)')
           .in('booking_id', bookingIds)
+          .eq('is_deleted', false)
       ])
 
-      // 建立預約ID到詳細資訊的映射
-      const bookingInfoMap: {
-        [key: number]: {
-          date: string
-          startTime: string
-          contactName: string
-          boatName: string
-          duration: number
-        }
-      } = {}
+      // 建立預約資訊映射
+      const bookingInfoMap: { [key: number]: { date: string, contactName: string, boatName: string } } = {}
       bookings.forEach(b => {
-        const bookingDate = extractDate(b.start_at).replace(/-/g, '/')
-        const startTime = extractTime(b.start_at)
-        const boatName = (b as any).boats?.name || '未指定'
         bookingInfoMap[b.id] = {
-          date: bookingDate,
-          startTime,
+          date: extractDate(b.start_at).replace(/-/g, '/'),
           contactName: b.contact_name,
-          boatName,
-          duration: b.duration_min
+          boatName: (b as any).boats?.name || '未指定'
         }
       })
 
-      // 教練映射
-      const coachesByBooking: { [key: number]: string[] } = {}
-      coachesResult.data?.forEach(item => {
-        const coachName = (item as any).coaches?.name
-        if (coachName) {
-          if (!coachesByBooking[item.booking_id]) {
-            coachesByBooking[item.booking_id] = []
-          }
-          coachesByBooking[item.booking_id].push(coachName)
-        }
-      })
-
-      // 駕駛映射（從 booking_drivers 取駕駛名字）
-      const driversByBooking: { [key: number]: { name: string, duration: number } } = {}
-      driversResult.data?.forEach(item => {
-        const driverName = (item as any).coaches?.name
-        if (driverName) {
-          driversByBooking[item.booking_id] = {
-            name: driverName,
-            duration: 0
-          }
-        }
-      })
-
-      // 從 coach_reports 取駕駛時數
-      coachReportsResult.data?.forEach(item => {
-        if (driversByBooking[item.booking_id]) {
-          driversByBooking[item.booking_id].duration = item.driver_duration_min || 0
-        }
-      })
-
-      // 參與者映射
-      const participantsByBooking: { [key: number]: Array<{
-        name: string
+      // 收集所有活動記錄
+      const activities: Array<{
+        date: string
+        coachName: string
+        type: string
         duration: number
-        lessonType: string
-        paymentMethod: string
-      }> } = {}
-      participantsResult.data?.forEach(p => {
-        if (!participantsByBooking[p.booking_id]) {
-          participantsByBooking[p.booking_id] = []
+        contactName: string
+        boatName: string
+        studentName: string
+      }> = []
+
+      // 駕駛活動
+      coachReportsResult.data?.forEach(report => {
+        if (report.driver_duration_min && report.driver_duration_min > 0) {
+          const info = bookingInfoMap[report.booking_id]
+          if (info) {
+            activities.push({
+              date: info.date,
+              coachName: (report as any).coaches?.name || '未知',
+              type: '駕駛',
+              duration: report.driver_duration_min,
+              contactName: info.contactName,
+              boatName: info.boatName,
+              studentName: ''
+            })
+          }
         }
-        participantsByBooking[p.booking_id].push({
-          name: p.participant_name,
-          duration: p.duration_min,
-          lessonType: p.lesson_type || '',
-          paymentMethod: p.payment_method || ''
-        })
       })
 
-      const getLessonTypeLabel = (type: string) => {
-        const labels: Record<string, string> = {
-          'undesignated': '不指定',
-          'designated_paid': '指定（收費）',
-          'designated_free': '指定（免費）'
+      // 教學活動
+      participantsResult.data?.forEach(p => {
+        const info = bookingInfoMap[p.booking_id]
+        if (info && p.duration_min > 0) {
+          activities.push({
+            date: info.date,
+            coachName: (p as any).coaches?.name || '未指定教練',
+            type: '教學',
+            duration: p.duration_min,
+            contactName: info.contactName,
+            boatName: info.boatName,
+            studentName: p.participant_name
+          })
         }
-        return labels[type] || type
-      }
+      })
 
-      const getPaymentMethodLabel = (method: string) => {
-        const labels: Record<string, string> = {
-          'cash': '現金',
-          'transfer': '匯款',
-          'balance': '扣儲值',
-          'voucher': '票券'
-        }
-        return labels[method] || method
-      }
+      // 按日期、教練排序
+      activities.sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date)
+        if (a.coachName !== b.coachName) return a.coachName.localeCompare(b.coachName)
+        return a.type.localeCompare(b.type)
+      })
 
       let csv = '\uFEFF'
-      csv += '日期,下水時間,預約人,船隻,教練,駕駛,駕駛時數,學員,學員時數,指定類型,付款方式\n'
+      csv += '日期,教練,類型,時數(分鐘),預約人,船隻,學員\n'
 
-      bookings.forEach(booking => {
-        const info = bookingInfoMap[booking.id]
-        const coaches = coachesByBooking[booking.id]?.join('/') || ''
-        const driver = driversByBooking[booking.id]
-        const participants = participantsByBooking[booking.id] || []
-
-        if (participants.length > 0) {
-          // 有回報的預約：每個學員一行
-          participants.forEach((p, idx) => {
-            if (idx === 0) {
-              csv += `"${info.date}","${info.startTime}","${info.contactName}","${info.boatName}","${coaches}","${driver?.name || ''}",${driver?.duration || ''},"${p.name}",${p.duration},"${getLessonTypeLabel(p.lessonType)}","${getPaymentMethodLabel(p.paymentMethod)}"\n`
-            } else {
-              csv += `"","","","","","",,"${p.name}",${p.duration},"${getLessonTypeLabel(p.lessonType)}","${getPaymentMethodLabel(p.paymentMethod)}"\n`
-            }
-          })
-        } else {
-          // 未回報的預約
-          csv += `"${info.date}","${info.startTime}","${info.contactName}","${info.boatName}","${coaches}","${driver?.name || ''}",${driver?.duration || ''},"（未回報）",,,""\n`
-        }
+      activities.forEach(a => {
+        csv += `"${a.date}","${a.coachName}","${a.type}",${a.duration},"${a.contactName}","${a.boatName}","${a.studentName}"\n`
       })
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `教練回報記錄_${getLocalDateString()}.csv`
+      link.download = `教練活動明細_${startDate || 'all'}_${endDate || 'all'}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success('導出成功！')
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('導出失敗，請重試')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 教練月統計匯出
+  const exportCoachSummaryToCSV = async () => {
+    setLoading(true)
+    try {
+      let bookingsQuery = supabase
+        .from('bookings')
+        .select('id, start_at')
+        .order('start_at', { ascending: true })
+
+      if (startDate && endDate) {
+        bookingsQuery = bookingsQuery
+          .gte('start_at', `${startDate}T00:00:00`)
+          .lte('start_at', `${endDate}T23:59:59`)
+      }
+
+      const { data: bookings, error: bookingsError } = await bookingsQuery
+
+      if (bookingsError) throw bookingsError
+
+      if (!bookings || bookings.length === 0) {
+        toast.warning('沒有數據可以導出')
+        return
+      }
+
+      const bookingIds = bookings.map(b => b.id)
+
+      // 查詢教練回報和參與者資料
+      const [coachReportsResult, participantsResult] = await Promise.all([
+        supabase
+          .from('coach_reports')
+          .select('booking_id, coach_id, driver_duration_min, coaches:coach_id(name)')
+          .in('booking_id', bookingIds),
+        supabase
+          .from('booking_participants')
+          .select('booking_id, duration_min, coach_id, coaches:coach_id(name)')
+          .in('booking_id', bookingIds)
+          .eq('is_deleted', false)
+      ])
+
+      // 統計每個教練的時數
+      const coachStats: { [coachName: string]: { teaching: number, driving: number } } = {}
+
+      // 駕駛時數
+      coachReportsResult.data?.forEach(report => {
+        if (report.driver_duration_min && report.driver_duration_min > 0) {
+          const coachName = (report as any).coaches?.name || '未知'
+          if (!coachStats[coachName]) {
+            coachStats[coachName] = { teaching: 0, driving: 0 }
+          }
+          coachStats[coachName].driving += report.driver_duration_min
+        }
+      })
+
+      // 教學時數
+      participantsResult.data?.forEach(p => {
+        if (p.duration_min > 0) {
+          const coachName = (p as any).coaches?.name || '未指定教練'
+          if (!coachStats[coachName]) {
+            coachStats[coachName] = { teaching: 0, driving: 0 }
+          }
+          coachStats[coachName].teaching += p.duration_min
+        }
+      })
+
+      // 轉換為陣列並排序
+      const summaryList = Object.entries(coachStats)
+        .map(([name, stats]) => ({
+          name,
+          teaching: stats.teaching,
+          driving: stats.driving,
+          total: stats.teaching + stats.driving
+        }))
+        .sort((a, b) => b.total - a.total)
+
+      let csv = '\uFEFF'
+      csv += '教練,教學時數(分鐘),駕駛時數(分鐘),總時數(分鐘)\n'
+
+      summaryList.forEach(s => {
+        csv += `"${s.name}",${s.teaching},${s.driving},${s.total}\n`
+      })
+
+      // 加總行
+      const totalTeaching = summaryList.reduce((sum, s) => sum + s.teaching, 0)
+      const totalDriving = summaryList.reduce((sum, s) => sum + s.driving, 0)
+      csv += `"【合計】",${totalTeaching},${totalDriving},${totalTeaching + totalDriving}\n`
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `教練月統計_${startDate || 'all'}_${endDate || 'all'}.csv`
       link.click()
       URL.revokeObjectURL(url)
       toast.success('導出成功！')
@@ -422,8 +468,10 @@ export function BackupPage() {
       exportPureBookingsToCSV()
     } else if (exportType === 'ledger') {
       exportLedgerToCSV()
-    } else {
-      exportCoachReportToCSV()
+    } else if (exportType === 'coach_detail') {
+      exportCoachDetailToCSV()
+    } else if (exportType === 'coach_summary') {
+      exportCoachSummaryToCSV()
     }
   }
 
@@ -516,10 +564,16 @@ export function BackupPage() {
       description: '所有交易記錄：會員、日期、項目、變動金額/分鐘數、說明、備註。'
     },
     {
-      value: 'coach_report',
+      value: 'coach_detail',
       icon: '🎓',
-      title: '教練回報記錄',
-      description: '教練回報明細：日期、預約人、船隻、教練、駕駛時數、學員、學員時數、指定類型、付款方式。'
+      title: '教練活動明細',
+      description: '每行一筆活動：日期、教練、類型（教學/駕駛）、時數、預約人、船隻、學員。方便按教練篩選。'
+    },
+    {
+      value: 'coach_summary',
+      icon: '📊',
+      title: '教練月統計',
+      description: '教練總時數統計：教練、教學時數、駕駛時數、總時數。'
     }
   ]
 
