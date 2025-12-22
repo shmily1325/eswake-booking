@@ -757,12 +757,12 @@ export function BackupPage() {
               padding: '14px',
               fontSize: '16px',
               fontWeight: '600',
-              background: isAnyLoading ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+              background: loading ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
               color: 'white',
               border: 'none',
               borderRadius: '10px',
               cursor: isAnyLoading ? 'not-allowed' : 'pointer',
-              boxShadow: isAnyLoading ? 'none' : '0 4px 12px rgba(40, 167, 69, 0.3)',
+              boxShadow: loading ? 'none' : '0 4px 12px rgba(40, 167, 69, 0.3)',
               transition: 'all 0.2s'
             }}
           >
@@ -793,12 +793,12 @@ export function BackupPage() {
               padding: '14px',
               fontSize: '16px',
               fontWeight: '600',
-              background: isAnyLoading ? '#ccc' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+              background: cloudBackupLoading ? '#ccc' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
               color: 'white',
               border: 'none',
               borderRadius: '10px',
               cursor: isAnyLoading ? 'not-allowed' : 'pointer',
-              boxShadow: isAnyLoading ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.3)',
+              boxShadow: cloudBackupLoading ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.3)',
               transition: 'all 0.2s'
             }}
           >
@@ -842,12 +842,12 @@ export function BackupPage() {
               padding: '14px',
               fontSize: '16px',
               fontWeight: '600',
-              background: isAnyLoading ? '#ccc' : 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+              background: fullBackupLoading ? '#ccc' : 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
               color: 'white',
               border: 'none',
               borderRadius: '10px',
               cursor: isAnyLoading ? 'not-allowed' : 'pointer',
-              boxShadow: isAnyLoading ? 'none' : '0 4px 12px rgba(220, 53, 69, 0.3)',
+              boxShadow: fullBackupLoading ? 'none' : '0 4px 12px rgba(220, 53, 69, 0.3)',
               transition: 'all 0.2s'
             }}
           >
