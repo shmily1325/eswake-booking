@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 產生授權 URL
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline', // 需要刷新令牌
-      scope: ['https://www.googleapis.com/auth/drive.file'], // Google Drive 檔案存取權限
+      scope: ['https://www.googleapis.com/auth/drive'], // Google Drive 完整存取權限（需要存取共享資料夾）
       prompt: 'consent', // 強制顯示同意畫面，確保取得刷新令牌
     });
 

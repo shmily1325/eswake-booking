@@ -520,7 +520,22 @@ export function BackupPage() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || '備份失敗')
+        
+        // 處理 OAuth invalid_grant 錯誤
+        if (error.errorCode === 'INVALID_GRANT' && error.solution) {
+          const solutionText = error.solution.steps.join('\n') + '\n\n' + error.solution.documentation
+          toast.error(
+            `❌ ${error.error}\n\n${error.message}\n\n${solutionText}`,
+            { duration: 10000 }
+          )
+          // 提供快速連結
+          if (confirm('是否要開啟取得新刷新令牌的頁面？')) {
+            window.open('/api/oauth2-auth-url', '_blank')
+          }
+          return
+        }
+        
+        throw new Error(error.message || error.error || '備份失敗')
       }
 
       const result = await response.json()
@@ -539,7 +554,8 @@ export function BackupPage() {
       }
     } catch (error) {
       console.error('Cloud backup error:', error)
-      toast.error(`備份失敗：${(error as Error).message}`)
+      const errorMessage = (error as Error).message
+      toast.error(`備份失敗：${errorMessage}`, { duration: 5000 })
     } finally {
       setCloudBackupLoading(false)
     }

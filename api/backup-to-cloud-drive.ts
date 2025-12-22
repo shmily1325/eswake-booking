@@ -91,9 +91,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         googleOAuthClientId,
         googleOAuthClientSecret
       );
-      oauth2Client.setCredentials({
-        refresh_token: googleOAuthRefreshToken,
-      });
+      
+      try {
+        oauth2Client.setCredentials({
+          refresh_token: googleOAuthRefreshToken,
+        });
+        
+        // 測試 token 是否有效（嘗試獲取 access token）
+        await oauth2Client.getAccessToken();
+        logStep('3.0.1 OAuth token 驗證成功');
+      } catch (tokenError: any) {
+        logStep('3.0.1 OAuth token 驗證失敗', { error: tokenError.message });
+        
+        // 檢查是否是 invalid_grant 錯誤
+        if (tokenError.message?.includes('invalid_grant') || tokenError.code === 400) {
+          throw new Error(
+            'OAuth 刷新令牌無效或已過期。請重新取得刷新令牌：\n\n' +
+            '1. 訪問：https://eswake-booking.vercel.app/api/oauth2-auth-url\n' +
+            '2. 複製返回的 authUrl 並在瀏覽器中開啟\n' +
+            '3. 授權應用程式存取 Google Drive\n' +
+            '4. 取得新的刷新令牌後，更新 Vercel 環境變數 GOOGLE_OAUTH_REFRESH_TOKEN\n' +
+            '5. 重新部署應用程式\n\n' +
+            '詳細說明請參考：docs/OAUTH2_BACKUP_SETUP.md'
+          );
+        }
+        throw tokenError;
+      }
+      
       auth = oauth2Client;
     } else if (googleClientEmail && googlePrivateKey) {
       // 使用服務帳號（JWT）
@@ -329,7 +353,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     console.error('Backup error:', error);
 
-    // 检查是否是存储配额错误
+    // 檢查是否是 invalid_grant 錯誤（OAuth token 問題）
+    if (error.message?.includes('invalid_grant') || 
+        error.message?.includes('Token has been expired') ||
+        error.message?.includes('Token has been revoked') ||
+        error.code === 400) {
+      return res.status(401).json({
+        error: 'OAuth 授權失敗',
+        message: error.message || '刷新令牌無效或已過期',
+        solution: {
+          title: '如何修復：',
+          steps: [
+            '1. 訪問：https://eswake-booking.vercel.app/api/oauth2-auth-url',
+            '2. 複製返回的 authUrl 並在瀏覽器中開啟',
+            '3. 使用您的 Google 帳號登入並授權應用程式',
+            '4. 授權完成後，複製新的刷新令牌（refresh_token）',
+            '5. 在 Vercel Dashboard 中更新環境變數 GOOGLE_OAUTH_REFRESH_TOKEN',
+            '6. 重新部署應用程式',
+          ],
+          documentation: '詳細說明請參考：docs/OAUTH2_BACKUP_SETUP.md',
+        },
+        executionTime: totalTime,
+        errorCode: 'INVALID_GRANT',
+      });
+    }
+
+    // 檢查是否是存儲配額錯誤
     if (error.message?.includes('storage quota') || error.message?.includes('Service Accounts do not have storage quota')) {
       return res.status(500).json({
         error: '備份失敗：服務帳號儲存配額限制',
