@@ -1767,8 +1767,8 @@ function DeductionItemRow({
                   inputMode="numeric"
                   placeholder="請輸入金額"
                   value={isAmountFocused 
-                    ? (item.amount || '') 
-                    : (item.amount ? item.amount.toLocaleString() : '')}
+                    ? (item.amount ?? '') 
+                    : (item.amount != null ? item.amount.toLocaleString() : '')}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, '')
                     onUpdate({ amount: value === '' ? 0 : parseInt(value) })
