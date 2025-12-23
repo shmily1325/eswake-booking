@@ -277,10 +277,12 @@ export function BackupPage() {
       ])
 
       // 建立預約資訊映射
-      const bookingInfoMap: { [key: number]: { date: string, contactName: string, boatName: string } } = {}
+      const bookingInfoMap: { [key: number]: { dateTime: string, contactName: string, boatName: string } } = {}
       bookings.forEach(b => {
+        const date = extractDate(b.start_at).replace(/-/g, '/')
+        const time = b.start_at ? new Date(b.start_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''
         bookingInfoMap[b.id] = {
-          date: extractDate(b.start_at).replace(/-/g, '/'),
+          dateTime: `${date} ${time}`,
           contactName: b.contact_name,
           boatName: (b as any).boats?.name || '未指定'
         }
@@ -288,7 +290,7 @@ export function BackupPage() {
 
       // 收集所有活動記錄
       const activities: Array<{
-        date: string
+        dateTime: string
         coachName: string
         type: string
         duration: number
@@ -303,7 +305,7 @@ export function BackupPage() {
           const info = bookingInfoMap[report.booking_id]
           if (info) {
             activities.push({
-              date: info.date,
+              dateTime: info.dateTime,
               coachName: (report as any).coaches?.name || '未知',
               type: '駕駛',
               duration: report.driver_duration_min,
@@ -320,7 +322,7 @@ export function BackupPage() {
         const info = bookingInfoMap[p.booking_id]
         if (info && p.duration_min > 0) {
           activities.push({
-            date: info.date,
+            dateTime: info.dateTime,
             coachName: (p as any).coaches?.name || '未指定教練',
             type: '教學',
             duration: p.duration_min,
@@ -331,18 +333,18 @@ export function BackupPage() {
         }
       })
 
-      // 按日期、教練排序
+      // 按日期時間、教練排序
       activities.sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date)
+        if (a.dateTime !== b.dateTime) return a.dateTime.localeCompare(b.dateTime)
         if (a.coachName !== b.coachName) return a.coachName.localeCompare(b.coachName)
         return a.type.localeCompare(b.type)
       })
 
       let csv = '\uFEFF'
-      csv += '日期,教練,類型,時數(分鐘),預約人,船隻,學員\n'
+      csv += '日期時間,教練,類型,時數(分鐘),預約人,船隻,學員\n'
 
       activities.forEach(a => {
-        csv += `"${a.date}","${a.coachName}","${a.type}",${a.duration},"${a.contactName}","${a.boatName}","${a.studentName}"\n`
+        csv += `"${a.dateTime}","${a.coachName}","${a.type}",${a.duration},"${a.contactName}","${a.boatName}","${a.studentName}"\n`
       })
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
