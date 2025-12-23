@@ -470,7 +470,12 @@ export function EditBookingDialog({
 
       // 檢查需要駕駛變更
       if (booking.requires_driver !== requiresDriver) {
-        changes.push(`需要駕駛: ${booking.requires_driver ? '是' : '否'} → ${requiresDriver ? '是' : '否'}`)
+        changes.push(`駕駛: ${booking.requires_driver ? '需要' : '無'} → ${requiresDriver ? '需要' : '無'}`)
+      }
+
+      // 檢查教練練習變更
+      if ((booking.is_coach_practice || false) !== isCoachPractice) {
+        changes.push(`教練練習: ${booking.is_coach_practice ? '是' : '否'} → ${isCoachPractice ? '是' : '否'}`)
       }
 
       // 檢查時間變更
