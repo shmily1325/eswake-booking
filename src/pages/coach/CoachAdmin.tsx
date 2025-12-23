@@ -345,12 +345,11 @@ export function CoachAdmin() {
         original_name: report.participant_name
       })
 
-      // 保留原始非會員名字到備註
+      // 保留原始名字到備註
       const originalName = report.participant_name
-      const notePrefix = `非會員：${originalName}`
       const newNotes = report.notes 
-        ? `${notePrefix} ${report.notes}` 
-        : notePrefix
+        ? `${originalName} ${report.notes}` 
+        : originalName
 
       const { data, error } = await supabase
         .from('booking_participants')
