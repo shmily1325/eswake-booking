@@ -398,6 +398,61 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
     resetProxySearch()
   }
 
+  // 判斷是否從非會員關聯過來（notes 中有原始名字）
+  const getOriginalNonMemberName = (): string | null => {
+    if (!report.notes) return null
+    // 舊格式：非會員：XXX
+    const oldMatch = report.notes.match(/非會員：([^\s\[]+)/)
+    // 新格式：直接是名字（第一個詞，不包含 [ 開頭的標記）
+    const newMatch = report.notes.match(/^([^\s\[]+)/)
+    
+    const originalName = oldMatch?.[1] || (newMatch?.[1] && !newMatch[1].startsWith('[') ? newMatch[1] : null)
+    // 只有當原始名字和當前名字不同時才返回
+    if (originalName && originalName !== report.participant_name) {
+      return originalName
+    }
+    return null
+  }
+
+  const originalNonMemberName = getOriginalNonMemberName()
+
+  // 取消關聯（將會員記錄還原為非會員）
+  const handleUnlinkMember = async () => {
+    if (!originalNonMemberName) return
+    
+    const confirmed = window.confirm(
+      `確定要取消關聯嗎？\n\n` +
+      `這會將記錄還原為非會員「${originalNonMemberName}」\n` +
+      `並移回「非會員記錄」區域。`
+    )
+    
+    if (!confirmed) return
+    
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('booking_participants')
+        .update({
+          member_id: null,
+          participant_name: originalNonMemberName,
+          status: 'not_applicable',
+          notes: null,
+          updated_by_email: null
+        })
+        .eq('id', report.id)
+      
+      if (error) throw error
+      
+      toast.success(`已取消關聯，還原為非會員「${originalNonMemberName}」`)
+      onComplete()
+    } catch (error) {
+      console.error('取消關聯失敗:', error)
+      toast.error('取消關聯失敗')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // 展開/收起
   const handleToggle = () => {
     const newExpanded = !isExpanded
@@ -930,7 +985,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                       )}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {proxyMemberId ? (
                       <button
                         onClick={clearProxyMember}
@@ -960,6 +1015,25 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                         }}
                       >
                         🔄 切換扣款會員
+                      </button>
+                    )}
+                    {/* 取消關聯按鈕（只有從非會員關聯過來的才顯示） */}
+                    {originalNonMemberName && !proxyMemberId && (
+                      <button
+                        onClick={handleUnlinkMember}
+                        disabled={loading}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#f44336',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          cursor: loading ? 'not-allowed' : 'pointer',
+                          opacity: loading ? 0.6 : 1
+                        }}
+                      >
+                        ✕ 取消關聯
                       </button>
                     )}
                   </div>
