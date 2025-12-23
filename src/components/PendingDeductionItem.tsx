@@ -204,13 +204,18 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
     // 如果是指定課扣款，加上標注
     const lessonLabel = isDesignatedLesson ? '【指定課】' : ''
     
-    // 只有非會員才顯示參與者名稱
-    // 檢查 notes 中是否有非會員資訊
+    // 檢查 notes 中是否有原始參與者名稱（關聯會員時記錄的）
+    // 支援舊格式「非會員：XXX」和新格式「XXX」
     let participantSuffix = ''
-    if (report.notes && report.notes.includes('非會員：')) {
-      const match = report.notes.match(/非會員：([^\s]+)/)
-      if (match && match[1]) {
-        participantSuffix = ` (非會員：${match[1]})`
+    if (report.notes) {
+      // 舊格式：非會員：XXX
+      const oldMatch = report.notes.match(/非會員：([^\s\[]+)/)
+      // 新格式：直接是名字（第一個詞，不包含 [ 開頭的標記）
+      const newMatch = report.notes.match(/^([^\s\[]+)/)
+      
+      const originalName = oldMatch?.[1] || (newMatch?.[1] && !newMatch[1].startsWith('[') ? newMatch[1] : null)
+      if (originalName && originalName !== report.participant_name) {
+        participantSuffix = ` (${originalName})`
       }
     }
     
