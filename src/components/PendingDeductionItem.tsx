@@ -649,8 +649,9 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
         
         return {
           category: item.category,
-          amount: item.amount || null,
-          minutes: item.minutes || null,
+          // ✅ 使用 ?? 運算符，確保 0 值不會被轉成 null
+          amount: item.amount ?? null,
+          minutes: item.minutes ?? null,
           description: item.description || generateDescription(),
           notes: finalNotes || null,
           planName: item.planName || null,
