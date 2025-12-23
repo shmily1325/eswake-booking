@@ -84,9 +84,10 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
   // 判斷是否為現金/匯款結清
   const isCashSettlement = report.payment_method === 'cash' || report.payment_method === 'transfer'
   
-  // 判斷是否為彈簧床指定課不收費（也視為結清）
+  // 判斷是否為彈簧床不需扣款（指定不收費 或 不指定 都視為結清）
   const boatName = report.bookings.boats?.name || ''
-  const isTrampolineFreeLesson = boatName.includes('彈簧床') && report.lesson_type === 'designated_free'
+  const isTrampolineFreeLesson = boatName.includes('彈簧床') && 
+    (report.lesson_type === 'designated_free' || report.lesson_type === 'undesignated')
   
   // 是否顯示結清按鈕
   const showSettlementButton = isCashSettlement || isTrampolineFreeLesson
