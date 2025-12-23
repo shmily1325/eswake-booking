@@ -201,7 +201,8 @@ export function Statistics() {
       .from('bookings')
       .select(`
         id, start_at, duration_min, contact_name,
-        booking_coaches(coach_id, coaches(id, name))
+        booking_coaches(coach_id, coaches(id, name)),
+        booking_members(member_id, members(id, name, nickname))
       `)
       .gte('start_at', `${today}T00:00:00`)
       .lte('start_at', `${endDateStr}T23:59:59`)
@@ -250,8 +251,15 @@ export function Statistics() {
     bookingsData?.forEach((booking: any) => {
       const bookingMonth = booking.start_at.substring(0, 7)
       const coaches = booking.booking_coaches || []
-      const contactName = booking.contact_name || '未知'
+      const bookingMembers = booking.booking_members || []
       const durationMin = booking.duration_min || 0
+
+      // 優先使用 booking_members 的會員名稱，沒有則 fallback 到 contact_name
+      const memberNames: string[] = bookingMembers.length > 0
+        ? bookingMembers.map((bm: any) => 
+            bm.members?.nickname || bm.members?.name || '未知會員'
+          )
+        : (booking.contact_name || '未知').split(/[,，]/).map((n: string) => n.trim()).filter((n: string) => n)
 
       const date = new Date(booking.start_at)
       const dayOfWeek = date.getDay()
@@ -271,24 +279,32 @@ export function Statistics() {
         const coach = coachMap.get(coachId)!
 
         const monthData = coach.bookings.find(b => b.month === bookingMonth)
+        
+        // 每個會員分別計算時數（時數平分給每個會員）
+        const perMemberMinutes = memberNames.length > 0 ? Math.round(durationMin / memberNames.length) : durationMin
+        
+        memberNames.forEach(memberName => {
+          if (monthData) {
+            if (!monthData.contactMap.has(memberName)) {
+              monthData.contactMap.set(memberName, { minutes: 0, count: 0 })
+            }
+            const monthContactData = monthData.contactMap.get(memberName)!
+            monthContactData.minutes += perMemberMinutes
+            monthContactData.count += 1
+          }
+
+          if (!coach.contactMap.has(memberName)) {
+            coach.contactMap.set(memberName, { minutes: 0, count: 0 })
+          }
+          const contactData = coach.contactMap.get(memberName)!
+          contactData.minutes += perMemberMinutes
+          contactData.count += 1
+        })
+
         if (monthData) {
           monthData.count += 1
           monthData.minutes += durationMin
-
-          if (!monthData.contactMap.has(contactName)) {
-            monthData.contactMap.set(contactName, { minutes: 0, count: 0 })
-          }
-          const monthContactData = monthData.contactMap.get(contactName)!
-          monthContactData.minutes += durationMin
-          monthContactData.count += 1
         }
-
-        if (!coach.contactMap.has(contactName)) {
-          coach.contactMap.set(contactName, { minutes: 0, count: 0 })
-        }
-        const contactData = coach.contactMap.get(contactName)!
-        contactData.minutes += durationMin
-        contactData.count += 1
 
         coach.totalCount += 1
         coach.totalMinutes += durationMin
