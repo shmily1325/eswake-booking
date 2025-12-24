@@ -573,25 +573,21 @@ export function BackupPage() {
   }> = [
     {
       value: 'pure_bookings',
-      icon: '📋',
       title: '純預約記錄',
       description: '預約基本資訊：預約人、日期時間、船隻、教練、駕駛、活動類型、備註。'
     },
     {
       value: 'ledger',
-      icon: '💰',
       title: '總帳',
       description: '所有交易記錄：會員、日期、項目、變動金額/分鐘數、說明、備註。'
     },
     {
       value: 'coach_detail',
-      icon: '🎓',
       title: '教練活動明細',
       description: '每行一筆活動：日期、教練、類型（教學/駕駛）、時數、預約人、船隻、學員。方便按教練篩選。'
     },
     {
       value: 'coach_summary',
-      icon: '📊',
       title: '教練月統計',
       description: '教練總時數統計：教練、教學時數、駕駛時數、總時數。'
     }
@@ -719,7 +715,7 @@ export function BackupPage() {
                     />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>
-                        {option.icon} {option.title}
+                        {option.title}
                       </div>
                       <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
                         {option.description}
