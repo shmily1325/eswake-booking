@@ -88,11 +88,12 @@ export function DailyAnnouncement() {
       birthdayResult,
       boatUnavailableResult
     ] = await Promise.all([
-      // 獲取交辦事項
+      // 獲取交辦事項（支援日期範圍：display_date <= today <= end_date）
       supabase
         .from('daily_announcements')
         .select('*')
-        .eq('display_date', today)
+        .lte('display_date', today)
+        .or(`end_date.gte.${today},end_date.is.null`)
         .order('created_at', { ascending: true }),
       
       // 獲取今日休假教練（排除已隱藏的教練）

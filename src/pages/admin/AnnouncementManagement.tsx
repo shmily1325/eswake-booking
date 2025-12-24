@@ -13,6 +13,7 @@ interface Announcement {
   id: number
   content: string
   display_date: string
+  end_date: string | null
   created_at: string | null
 }
 
@@ -25,8 +26,10 @@ export function AnnouncementManagement() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [newContent, setNewContent] = useState('')
   const [newDisplayDate, setNewDisplayDate] = useState(getLocalDateString())
+  const [newEndDate, setNewEndDate] = useState(getLocalDateString())
   const [editContent, setEditContent] = useState('')
   const [editDisplayDate, setEditDisplayDate] = useState('')
+  const [editEndDate, setEditEndDate] = useState('')
   
   // 搜尋和過濾
   const [searchText, setSearchText] = useState('')
@@ -60,7 +63,7 @@ export function AnnouncementManagement() {
         .order('display_date', { ascending: sortOrder === 'asc' })
         .order('created_at', { ascending: sortOrder === 'asc' })
 
-      if (data) setAnnouncements(data)
+      if (data) setAnnouncements(data as Announcement[])
     } catch (error) {
       console.error('載入公告失敗:', error)
     } finally {
@@ -75,6 +78,11 @@ export function AnnouncementManagement() {
       return
     }
 
+    if (newEndDate < newDisplayDate) {
+      toast.warning('結束日期不能早於開始日期')
+      return
+    }
+
     await executeAsync(
       async () => {
         const { error } = await supabase
@@ -82,6 +90,7 @@ export function AnnouncementManagement() {
           .insert({
             content: newContent.trim(),
             display_date: newDisplayDate,
+            end_date: newEndDate,
             created_by: user.id
           })
 
@@ -92,7 +101,9 @@ export function AnnouncementManagement() {
         errorContext: '新增交辦事項',
         onComplete: () => {
           setNewContent('')
-          setNewDisplayDate(getLocalDateString())
+          const today = getLocalDateString()
+          setNewDisplayDate(today)
+          setNewEndDate(today)
           loadAnnouncements()
         }
       }
@@ -100,13 +111,19 @@ export function AnnouncementManagement() {
   }
 
   const handleEdit = async (id: number) => {
+    if (editEndDate < editDisplayDate) {
+      toast.warning('結束日期不能早於開始日期')
+      return
+    }
+
     await executeAsync(
       async () => {
         const { error } = await supabase
           .from('daily_announcements')
           .update({
             content: editContent.trim(),
-            display_date: editDisplayDate
+            display_date: editDisplayDate,
+            end_date: editEndDate
           })
           .eq('id', id)
 
@@ -149,6 +166,7 @@ export function AnnouncementManagement() {
     setEditingId(announcement.id)
     setEditContent(announcement.content)
     setEditDisplayDate(announcement.display_date)
+    setEditEndDate(announcement.end_date || announcement.display_date)
   }
 
   const cancelEdit = () => {
@@ -238,11 +256,33 @@ export function AnnouncementManagement() {
             }}>
               顯示日期
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <input
                 type="date"
                 value={newDisplayDate}
-                onChange={(e) => setNewDisplayDate(e.target.value)}
+                onChange={(e) => {
+                  setNewDisplayDate(e.target.value)
+                  // 如果結束日期早於開始日期，自動調整
+                  if (e.target.value > newEndDate) {
+                    setNewEndDate(e.target.value)
+                  }
+                }}
+                style={{
+                  flex: isMobile ? 1 : 'none',
+                  minWidth: 0,
+                  padding: '10px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: isMobile ? '16px' : '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <span style={{ color: '#999', fontSize: '14px' }}>～</span>
+              <input
+                type="date"
+                value={newEndDate}
+                onChange={(e) => setNewEndDate(e.target.value)}
+                min={newDisplayDate}
                 style={{
                   flex: isMobile ? 1 : 'none',
                   minWidth: 0,
@@ -264,7 +304,10 @@ export function AnnouncementManagement() {
                 whiteSpace: 'nowrap',
                 flexShrink: 0
               }}>
-                {getWeekdayText(newDisplayDate)}
+                {newDisplayDate === newEndDate 
+                  ? getWeekdayText(newDisplayDate)
+                  : `${getWeekdayText(newDisplayDate)} ~ ${getWeekdayText(newEndDate)}`
+                }
               </span>
             </div>
           </div>
@@ -467,11 +510,32 @@ export function AnnouncementManagement() {
                             fontFamily: 'inherit'
                           }}
                         />
-                        <div style={{ display: 'flex', marginBottom: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
                           <input
                             type="date"
                             value={editDisplayDate}
-                            onChange={(e) => setEditDisplayDate(e.target.value)}
+                            onChange={(e) => {
+                              setEditDisplayDate(e.target.value)
+                              if (e.target.value > editEndDate) {
+                                setEditEndDate(e.target.value)
+                              }
+                            }}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              padding: '10px',
+                              border: '1px solid #e0e0e0',
+                              borderRadius: '8px',
+                              fontSize: '16px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                          <span style={{ color: '#999', fontSize: '14px' }}>～</span>
+                          <input
+                            type="date"
+                            value={editEndDate}
+                            onChange={(e) => setEditEndDate(e.target.value)}
+                            min={editDisplayDate}
                             style={{
                               flex: 1,
                               minWidth: 0,
