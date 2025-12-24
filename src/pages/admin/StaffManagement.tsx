@@ -43,7 +43,7 @@ export function StaffManagement() {
   const [timeOffs, setTimeOffs] = useState<TimeOff[]>([])
   const [editorUsers, setEditorUsers] = useState<EditorUser[]>([])
   const [loading, setLoading] = useState(true)
-  const [showArchived, setShowArchived] = useState(false) // 是否顯示已歸檔
+  const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'archived'>('active') // 狀態篩選
   const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing' | 'features'>('coaches') // Tab 切換
   const [expandedCoachIds, setExpandedCoachIds] = useState<Set<string>>(new Set()) // 展開的教練ID
   
@@ -82,6 +82,9 @@ export function StaffManagement() {
   // 功能權限（小編）
   const [newEditorEmail, setNewEditorEmail] = useState('')
   const [addingEditor, setAddingEditor] = useState(false)
+  
+  // 說明展開狀態
+  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -596,20 +599,6 @@ export function StaffManagement() {
         padding: isMobile ? '20px 16px' : '40px 20px'
       }}>
         <PageHeader user={user} title="🎓 人員管理" showBaoLink={true} />
-        
-        {/* 操作按鈕 */}
-        {activeTab === 'coaches' && (
-          <div style={{ marginBottom: '20px' }}>
-            <Button
-              variant="outline"
-              size="medium"
-              onClick={() => setAddDialogOpen(true)}
-              icon={<span>➕</span>}
-            >
-              新增教練
-            </Button>
-          </div>
-        )}
 
         {/* Tab 切換 */}
         <div style={{
@@ -693,158 +682,157 @@ export function StaffManagement() {
           </button>
         </div>
 
-        {/* 說明提示 - 只在教練管理 Tab 顯示 */}
+        {/* 說明提示 - 可展開收起 */}
         {activeTab === 'coaches' && (
           <div style={{
-            background: '#fff9e6',
-            padding: isMobile ? '12px 16px' : '14px 20px',
+            background: showHelp ? '#fff9e6' : '#f8f9fa',
+            padding: '10px 16px',
             borderRadius: '8px',
-            marginBottom: '20px',
+            marginBottom: '16px',
             fontSize: '14px',
-            color: '#856404',
-            border: '1px solid #ffeaa7',
-            lineHeight: '1.6'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-              <span style={{ flexShrink: 0 }}>💡</span>
-              <div>
-                <div style={{ marginBottom: '6px' }}>
-                  <strong>啟用／停用</strong>：啟用 = 可在預約和排班中選擇、停用 = 暫時不上班，不會出現在選單
+            color: showHelp ? '#856404' : '#666',
+            border: showHelp ? '1px solid #ffeaa7' : '1px solid #e9ecef',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+          onClick={() => setShowHelp(!showHelp)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>💡 {showHelp ? '功能說明' : '點此查看功能說明'}</span>
+              <span style={{ fontSize: '12px', color: '#999' }}>{showHelp ? '▲ 收起' : '▼ 展開'}</span>
+            </div>
+            {showHelp && (
+              <div style={{ marginTop: '12px', lineHeight: '1.7' }}>
+                <div style={{ marginBottom: '4px' }}>
+                  <strong>啟用／停用</strong>：啟用 = 可選擇、停用 = 暫不上班
                 </div>
                 <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
-                  <strong>設定休假</strong>：特定日期範圍不在（如：出國、雪季），該日期在排班時會顯示「今日休假」
+                  <strong>休假</strong>：特定日期不在，排班時顯示「今日休假」
                 </div>
                 <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
-                  <strong>隱藏</strong>：長期不在，從列表隱藏但資料保留（如：外師、離職），可隨時恢復
+                  <strong>隱藏</strong>：長期不在，資料保留可恢復
                 </div>
                 <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                  <strong>刪除</strong>：永久刪除教練（僅限隱藏狀態且無歷史預約的教練）
+                  <strong>刪除</strong>：永久刪除（僅限無預約的隱藏教練）
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
-        {/* 統計資訊 - 只在教練管理 Tab 且非手機版顯示 */}
+        {/* 統計資訊 - 緊湊版 */}
         {activeTab === 'coaches' && !isMobile && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '12px',
-          marginBottom: '20px'
-        }}>
           <div style={{
-            background: 'white',
-            padding: isMobile ? '16px 12px' : '20px',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            textAlign: 'center'
+            display: 'flex',
+            gap: '16px',
+            marginBottom: '16px',
+            fontSize: '14px',
+            color: '#666'
           }}>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>總數</div>
-            <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: '#2196F3' }}>
-              {coaches.length}
-            </div>
+            <span>共 <strong style={{ color: '#2196F3' }}>{coaches.length}</strong> 位</span>
+            <span>啟用 <strong style={{ color: '#4caf50' }}>{coaches.filter(c => c.status === 'active').length}</strong></span>
+            {coaches.filter(c => c.status === 'inactive').length > 0 && (
+              <span>停用 <strong style={{ color: '#ff9800' }}>{coaches.filter(c => c.status === 'inactive').length}</strong></span>
+            )}
+            {coaches.filter(c => c.status === 'archived').length > 0 && (
+              <span>隱藏 <strong style={{ color: '#999' }}>{coaches.filter(c => c.status === 'archived').length}</strong></span>
+            )}
           </div>
-          
-          <div style={{
-            background: 'white',
-            padding: isMobile ? '16px 12px' : '20px',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>啟用中</div>
-            <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: '#4caf50' }}>
-              {coaches.filter(c => c.status === 'active').length}
-            </div>
-          </div>
-
-          <div style={{
-            background: 'white',
-            padding: isMobile ? '16px 12px' : '20px',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>已停用</div>
-            <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: '#ff9800' }}>
-              {coaches.filter(c => c.status === 'inactive').length}
-            </div>
-          </div>
-
-          <div style={{
-            background: 'white',
-            padding: isMobile ? '16px 12px' : '20px',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>已隱藏</div>
-            <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', color: '#999' }}>
-              {coaches.filter(c => c.status === 'archived').length}
-            </div>
-          </div>
-        </div>
         )}
 
         {/* 教練管理 Tab */}
         {activeTab === 'coaches' && (
           <>
-            {/* 標題列 + 月份選擇器 */}
+            {/* 控制列：新增 + 顯示已隱藏 + 月份 */}
             <div style={{
-              marginBottom: '15px',
+              marginBottom: '16px',
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
+              flexWrap: 'wrap'
             }}>
-              {/* 左邊：顯示切換 */}
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                padding: '10px 16px',
-                background: '#f5f5f5',
-                borderRadius: '8px',
-                transition: 'all 0.2s',
-                userSelect: 'none',
-                flexShrink: 0
-              }}>
-                <input
-                  type="checkbox"
-                  checked={showArchived}
-                  onChange={() => setShowArchived(!showArchived)}
-                  style={{
-                    width: '40px',
-                    height: '20px',
-                    cursor: 'pointer',
-                    accentColor: '#5a5a5a'
-                  }}
-                />
-                <span style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#666'
-                }}>
-                  顯示已隱藏的教練
-                </span>
-              </label>
+              {/* 新增按鈕 */}
+              <Button
+                variant="outline"
+                size="medium"
+                onClick={() => setAddDialogOpen(true)}
+                icon={<span>➕</span>}
+              >
+                新增教練
+              </Button>
 
-              {/* 右邊：月份選擇器 */}
+              {/* 間隔 */}
+              <div style={{ flex: 1 }} />
+
+              {/* 狀態篩選按鈕組 */}
+              <div style={{
+                display: 'flex',
+                background: '#f0f0f0',
+                borderRadius: '6px',
+                padding: '3px'
+              }}>
+                <button
+                  onClick={() => setStatusFilter('active')}
+                  style={{
+                    padding: '6px 12px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    background: statusFilter === 'active' ? 'white' : 'transparent',
+                    color: statusFilter === 'active' ? '#4caf50' : '#666',
+                    fontSize: '13px',
+                    fontWeight: statusFilter === 'active' ? '600' : '400',
+                    cursor: 'pointer',
+                    boxShadow: statusFilter === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  啟用中
+                </button>
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  style={{
+                    padding: '6px 12px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    background: statusFilter === 'all' ? 'white' : 'transparent',
+                    color: statusFilter === 'all' ? '#2196F3' : '#666',
+                    fontSize: '13px',
+                    fontWeight: statusFilter === 'all' ? '600' : '400',
+                    cursor: 'pointer',
+                    boxShadow: statusFilter === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  全部
+                </button>
+                <button
+                  onClick={() => setStatusFilter('archived')}
+                  style={{
+                    padding: '6px 12px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    background: statusFilter === 'archived' ? 'white' : 'transparent',
+                    color: statusFilter === 'archived' ? '#999' : '#666',
+                    fontSize: '13px',
+                    fontWeight: statusFilter === 'archived' ? '600' : '400',
+                    cursor: 'pointer',
+                    boxShadow: statusFilter === 'archived' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  已隱藏
+                </button>
+              </div>
+
+              {/* 月份選擇器 */}
               <input
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: '10px',
+                  padding: '8px 12px',
                   border: '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
+                  borderRadius: '6px',
+                  fontSize: '14px',
                   cursor: 'pointer',
-                  background: 'white',
-                  boxSizing: 'border-box'
+                  background: 'white'
                 }}
               />
             </div>
@@ -855,7 +843,11 @@ export function StaffManagement() {
           gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
           gap: '15px' 
         }}>
-          {coaches.filter(coach => showArchived || coach.status !== 'archived').map(coach => {
+          {coaches.filter(coach => {
+            if (statusFilter === 'active') return coach.status === 'active' || coach.status === 'inactive'
+            if (statusFilter === 'archived') return coach.status === 'archived'
+            return true // 'all'
+          }).map(coach => {
             const coachTimeOffs = timeOffs.filter(t => t.coach_id === coach.id)
             const isActive = coach.status === 'active'
             const isArchived = coach.status === 'archived'
