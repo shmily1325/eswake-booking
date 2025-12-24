@@ -42,6 +42,9 @@ export function BoatManagement() {
     // 價格設定狀態
     const [editingPrices, setEditingPrices] = useState<{[key: string]: {balance: string, vip: string}}>({})
     const [savingPrices, setSavingPrices] = useState<{[key: string]: boolean}>({})
+    
+    // 說明展開狀態
+    const [showHelp, setShowHelp] = useState(true)
 
     // 權限檢查
     useEffect(() => {
@@ -363,45 +366,49 @@ export function BoatManagement() {
                             whiteSpace: 'nowrap'
                         }}
                     >
-                        💰 價格設定
+                        價格設定
                     </button>
                 </div>
 
                 {/* 船隻列表 Tab */}
                 {activeTab === 'boats' && (
                     <>
-                        {/* 說明提示 */}
+                        {/* 可收起的說明 */}
                         <div style={{
-                            background: '#e3f2fd',
-                            padding: isMobile ? '12px 16px' : '14px 20px',
+                            background: showHelp ? '#fff9e6' : '#f8f9fa',
+                            padding: '10px 16px',
                             borderRadius: '8px',
-                            marginBottom: '20px',
+                            marginBottom: '16px',
                             fontSize: '14px',
-                            color: '#0d47a1',
-                            border: '1px solid #bbdefb',
-                            lineHeight: '1.6'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                <span style={{ flexShrink: 0 }}>💡</span>
-                                <div>
-                                    <div style={{ marginBottom: '4px' }}>
-                                        <strong>維修/停用</strong>：設定特定日期或時段船隻不可預約。
-                                    </div>
-                                    <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                                        若不指定時間，則視為<strong>全天停用</strong>。若指定時間（例如 10:00-12:00），則該時段外仍可預約。
+                            color: showHelp ? '#856404' : '#666',
+                            border: showHelp ? '1px solid #ffeaa7' : '1px solid #e9ecef',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onClick={() => setShowHelp(!showHelp)}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span>💡 {showHelp ? '功能說明' : '點此查看功能說明'}</span>
+                                <span style={{ fontSize: '12px', color: '#999' }}>{showHelp ? '▲ 收起' : '▼ 展開'}</span>
+                            </div>
+                            {showHelp && (
+                                <div style={{ marginTop: '12px', lineHeight: '1.7' }}>
+                                    <div><strong>維修/停用</strong>：設定特定日期或時段船隻不可預約。</div>
+                                    <div style={{ fontSize: '13px', opacity: 0.85, marginTop: '4px' }}>
+                                        若不指定時間，則視為全天停用。若指定時間（例如 10:00-12:00），則該時段外仍可預約。
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
-                        {/* 月份選擇器 */}
+                        {/* 控制列：月份選擇器 */}
                         <div style={{
-                            marginBottom: '20px',
+                            marginBottom: '16px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '8px'
+                            gap: '12px'
                         }}>
-                            <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>📅 查看維修記錄</span>
+                            <span style={{ fontSize: '14px', color: '#666' }}>查看維修記錄</span>
                             <input
                                 type="month"
                                 value={selectedMonth}

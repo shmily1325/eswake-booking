@@ -826,12 +826,15 @@ export function StaffManagement() {
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 style={{
-                  padding: '8px 12px',
+                  flex: 1,
+                  minWidth: 0,
+                  padding: '10px',
                   border: '1px solid #e0e0e0',
-                  borderRadius: '6px',
-                  fontSize: '14px',
+                  borderRadius: '8px',
+                  fontSize: '16px',
                   cursor: 'pointer',
-                  background: 'white'
+                  background: 'white',
+                  boxSizing: 'border-box'
                 }}
               />
             </div>
