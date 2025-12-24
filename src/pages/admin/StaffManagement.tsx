@@ -84,7 +84,7 @@ export function StaffManagement() {
   const [addingEditor, setAddingEditor] = useState(false)
   
   // 說明展開狀態
-  const [showHelp, setShowHelp] = useState(false)
+  const [showHelp, setShowHelp] = useState(true)
 
   useEffect(() => {
     loadData()
@@ -605,8 +605,7 @@ export function StaffManagement() {
           display: 'flex',
           gap: '8px',
           marginBottom: '20px',
-          borderBottom: '2px solid #e0e0e0',
-          overflowX: 'auto'
+          borderBottom: '2px solid #e0e0e0'
         }}>
           <button
             onClick={() => setActiveTab('coaches')}
@@ -624,7 +623,7 @@ export function StaffManagement() {
               whiteSpace: 'nowrap'
             }}
           >
-            👥 教練管理
+            教練管理
           </button>
           <button
             onClick={() => setActiveTab('accounts')}
@@ -642,7 +641,7 @@ export function StaffManagement() {
               whiteSpace: 'nowrap'
             }}
           >
-            🔐 帳號配對
+            帳號配對
           </button>
           <button
             onClick={() => setActiveTab('pricing')}
@@ -660,7 +659,7 @@ export function StaffManagement() {
               whiteSpace: 'nowrap'
             }}
           >
-            💰 指定課價格
+            指定課價格
           </button>
           <button
             onClick={() => setActiveTab('features')}
@@ -678,7 +677,7 @@ export function StaffManagement() {
               whiteSpace: 'nowrap'
             }}
           >
-            🚤 功能權限
+            功能權限
           </button>
         </div>
 
