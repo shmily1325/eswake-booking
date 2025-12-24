@@ -520,6 +520,19 @@ export function CoachReport({
       return
     }
     
+    // 驗證用戶登入狀態（防止 session 過期時提交）
+    if (!user?.email) {
+      toast.error('連線逾時，請重新整理頁面後再提交')
+      console.error('❌ 提交失敗：user.email 不存在', { user, hasUser: !!user })
+      // 嘗試重新取得 session 資訊幫助診斷
+      const { data: sessionData } = await supabase.auth.getSession()
+      console.error('❌ Session 狀態:', { 
+        hasSession: !!sessionData.session,
+        sessionEmail: sessionData.session?.user?.email 
+      })
+      return
+    }
+    
     // 先收起手機鍵盤，避免畫面跳動
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur()
@@ -764,6 +777,9 @@ export function CoachReport({
           
           console.log(`  → 有變更: ${hasChanges}, 最終狀態: ${finalStatus}`)
           
+          // 如果原本沒有 created_by_email（首次回報），則設定回報者
+          const shouldSetCreatedBy = !original?.created_by_email
+          
           participantsToUpdate.push({
             booking_id: reportingBookingId,
             coach_id: reportingCoachId,
@@ -778,7 +794,9 @@ export function CoachReport({
             is_teaching: isTeaching,
             id: p.id,
             updated_at: getLocalTimestamp(),
-            updated_by_email: user?.email || null
+            updated_by_email: user?.email || null,
+            // 首次回報時設定 created_by_email
+            ...(shouldSetCreatedBy ? { created_by_email: user?.email || null } : {})
           })
         } else {
           // 新記錄：插入
