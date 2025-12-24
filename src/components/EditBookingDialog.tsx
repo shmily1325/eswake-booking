@@ -1375,9 +1375,9 @@ export function EditBookingDialog({
                     >
                       {isSelected && <span style={{ fontSize: '16px' }}>✓</span>}
                       {coach.name}
-                      {isOnTimeOff && (
-                        <span style={{ marginLeft: '2px', opacity: 0.5, filter: 'grayscale(100%)' }}>🏖️</span>
-                      )}
+                                      {isOnTimeOff && (
+                                        <span style={{ marginLeft: '2px', opacity: 0.6 }}>🏖️</span>
+                                      )}
                     </button>
                   )
                 })}

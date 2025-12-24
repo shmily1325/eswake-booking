@@ -175,7 +175,7 @@ export function CoachSelector({
                                 >
                                     {coach.name}
                                     {isOnTimeOff && (
-                                        <span style={{ marginLeft: '4px', opacity: 0.5, filter: 'grayscale(100%)' }}>🏖️</span>
+                                        <span style={{ marginLeft: '4px', opacity: 0.6 }}>🏖️</span>
                                     )}
                                 </button>
                             )
