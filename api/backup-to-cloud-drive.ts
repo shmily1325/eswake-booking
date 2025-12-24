@@ -333,6 +333,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const totalTime = Date.now() - startTime;
     logStep('10. 備份完成', { totalTime: `${totalTime}ms` });
 
+    // 記錄備份成功到 backup_logs
+    try {
+      await supabase.from('backup_logs').insert({
+        backup_type: 'cloud_drive',
+        status: 'success',
+        records_count: totalRecords,
+        file_name: uploadResponse.data.name,
+        file_size: uploadResponse.data.size,
+        file_url: uploadResponse.data.webViewLink,
+        execution_time: totalTime,
+      });
+      logStep('11. 備份記錄已寫入 backup_logs');
+    } catch (logError) {
+      // 記錄失敗不影響備份結果
+      console.error('寫入 backup_logs 失敗:', logError);
+    }
+
     return res.status(200).json({
       success: true,
       message: `✅ 成功備份 ${totalRecords} 筆資料到 Google Drive`,
@@ -352,6 +369,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       totalTime: `${totalTime}ms`
     });
     console.error('Backup error:', error);
+
+    // 記錄備份失敗到 backup_logs
+    try {
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (supabaseUrl && supabaseServiceKey) {
+        const supabaseForLog = createClient(supabaseUrl, supabaseServiceKey);
+        await supabaseForLog.from('backup_logs').insert({
+          backup_type: 'cloud_drive',
+          status: 'failed',
+          error_message: error.message || 'Unknown error',
+          execution_time: totalTime,
+        });
+      }
+    } catch (logError) {
+      console.error('寫入 backup_logs 失敗:', logError);
+    }
 
     // 檢查是否是 invalid_grant 錯誤（OAuth token 問題）
     if (error.message?.includes('invalid_grant') || 

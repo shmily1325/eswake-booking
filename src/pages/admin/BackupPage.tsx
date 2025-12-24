@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -10,6 +10,19 @@ import { useResponsive } from '../../hooks/useResponsive'
 
 type ExportType = 'pure_bookings' | 'ledger' | 'coach_detail' | 'coach_summary'
 
+interface BackupLog {
+  id: number
+  backup_type: string
+  status: string
+  records_count: number | null
+  file_name: string | null
+  file_size: string | null
+  file_url: string | null
+  error_message: string | null
+  execution_time: number | null
+  created_at: string | null
+}
+
 export function BackupPage() {
   const user = useAuthUser()
   const toast = useToast()
@@ -17,6 +30,8 @@ export function BackupPage() {
   const [loading, setLoading] = useState(false)
   const [fullBackupLoading, setFullBackupLoading] = useState(false)
   const [cloudBackupLoading, setCloudBackupLoading] = useState(false)
+  const [backupLogs, setBackupLogs] = useState<BackupLog[]>([])
+  const [backupLogsLoading, setBackupLogsLoading] = useState(true)
   // 預設日期：月初5日前顯示上個月，5日後顯示當月
   const [startDate, setStartDate] = useState(() => {
     const now = new Date()
@@ -43,6 +58,63 @@ export function BackupPage() {
   const [exportType, setExportType] = useState<ExportType>('pure_bookings')
 
   const isAnyLoading = loading || fullBackupLoading || cloudBackupLoading
+
+  // 載入備份記錄
+  useEffect(() => {
+    const fetchBackupLogs = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('backup_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        if (error) {
+          console.error('載入備份記錄失敗:', error)
+          return
+        }
+
+        setBackupLogs(data || [])
+      } catch (err) {
+        console.error('載入備份記錄失敗:', err)
+      } finally {
+        setBackupLogsLoading(false)
+      }
+    }
+
+    fetchBackupLogs()
+  }, [])
+
+  // 檢查備份健康狀態
+  const getBackupHealthStatus = () => {
+    if (backupLogs.length === 0) {
+      return { status: 'unknown', message: '尚無備份記錄', color: '#6c757d' }
+    }
+
+    const latestBackup = backupLogs[0]
+    if (!latestBackup.created_at) {
+      return { status: 'unknown', message: '備份時間未知', color: '#6c757d' }
+    }
+    const lastBackupTime = new Date(latestBackup.created_at)
+    const now = new Date()
+    const hoursSinceLastBackup = (now.getTime() - lastBackupTime.getTime()) / (1000 * 60 * 60)
+
+    if (latestBackup.status === 'failed') {
+      return { status: 'error', message: '最近一次備份失敗', color: '#dc3545' }
+    }
+
+    if (hoursSinceLastBackup > 48) {
+      return { status: 'warning', message: `超過 ${Math.floor(hoursSinceLastBackup)} 小時未備份`, color: '#ffc107' }
+    }
+
+    if (hoursSinceLastBackup > 24) {
+      return { status: 'warning', message: `${Math.floor(hoursSinceLastBackup)} 小時前備份`, color: '#ffc107' }
+    }
+
+    return { status: 'ok', message: '備份正常', color: '#28a745' }
+  }
+
+  const backupHealth = getBackupHealthStatus()
 
   // 純預約記錄匯出
   const exportPureBookingsToCSV = async () => {
@@ -600,6 +672,109 @@ export function BackupPage() {
     }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <PageHeader title="💾 匯出" user={user} showBaoLink={true} />
+
+        {/* 備份健康狀態區塊 */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '15px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          borderLeft: `4px solid ${backupHealth.color}`
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#333' }}>
+              {backupHealth.status === 'ok' ? '✅' : backupHealth.status === 'warning' ? '⚠️' : backupHealth.status === 'error' ? '❌' : '❓'} 備份健康狀態
+            </h2>
+            <span style={{
+              fontSize: '13px',
+              fontWeight: '500',
+              color: backupHealth.color,
+              padding: '4px 10px',
+              backgroundColor: `${backupHealth.color}15`,
+              borderRadius: '12px'
+            }}>
+              {backupHealth.message}
+            </span>
+          </div>
+
+          {backupLogsLoading ? (
+            <div style={{ fontSize: '14px', color: '#666' }}>載入中...</div>
+          ) : backupLogs.length === 0 ? (
+            <div style={{ fontSize: '14px', color: '#666' }}>
+              尚無備份記錄。請先執行一次雲端備份。
+            </div>
+          ) : (
+            <div>
+              {/* 最近一次成功備份 */}
+              {(() => {
+                const successLog = backupLogs.find(log => log.status === 'success')
+                if (!successLog || !successLog.created_at) return null
+                return (
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
+                    最近成功備份：
+                    <span style={{ color: '#333', fontWeight: '500' }}>
+                      {' '}{new Date(successLog.created_at).toLocaleString('zh-TW')}
+                    </span>
+                    {successLog.records_count && (
+                      <span style={{ color: '#28a745' }}>
+                        {' '}({successLog.records_count.toLocaleString()} 筆)
+                      </span>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* 最近 7 天備份記錄 */}
+              <div style={{ fontSize: '13px', color: '#555' }}>
+                <div style={{ marginBottom: '8px', fontWeight: '500' }}>最近備份記錄：</div>
+                <div style={{ 
+                  maxHeight: '150px', 
+                  overflowY: 'auto',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '6px',
+                  padding: '8px 12px'
+                }}>
+                  {backupLogs.slice(0, 7).map((log) => (
+                    <div key={log.id} style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px',
+                      padding: '4px 0',
+                      borderBottom: '1px solid #eee'
+                    }}>
+                      <span>{log.status === 'success' ? '✅' : '❌'}</span>
+                      <span style={{ color: '#666', minWidth: '140px' }}>
+                        {log.created_at ? new Date(log.created_at).toLocaleString('zh-TW', { 
+                          month: '2-digit', 
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) : '-'}
+                      </span>
+                      {log.status === 'success' ? (
+                        <>
+                          <span style={{ color: '#28a745' }}>
+                            {log.records_count?.toLocaleString()} 筆
+                          </span>
+                          {log.execution_time && (
+                            <span style={{ color: '#999', fontSize: '12px' }}>
+                              ({(log.execution_time / 1000).toFixed(1)}s)
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span style={{ color: '#dc3545', fontSize: '12px' }}>
+                          {log.error_message?.substring(0, 50) || '未知錯誤'}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* 資料導出區塊 */}
         <div style={{
