@@ -44,3 +44,4 @@ WHERE transaction_type = 'consume'
 ORDER BY id DESC;
 
 
+

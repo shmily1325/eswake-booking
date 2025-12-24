@@ -98,7 +98,8 @@ export function NewBookingDialog({
     toggleActivityType,
     handleMemberSearch,
     performConflictCheck,
-    resetForm
+    resetForm,
+    refreshCoachTimeOff
   } = useBookingForm({
     defaultBoatId,
     defaultDate: defaultStartTime,
@@ -114,6 +115,13 @@ export function NewBookingDialog({
       fetchAllData()
     }
   }, [isOpen, fetchAllData])
+
+  // 日期變化時刷新教練休假狀態
+  useEffect(() => {
+    if (isOpen && startDate) {
+      refreshCoachTimeOff()
+    }
+  }, [isOpen, startDate, refreshCoachTimeOff])
 
   // 即時衝突檢查 Effect
   useEffect(() => {

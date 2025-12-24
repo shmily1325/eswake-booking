@@ -55,6 +55,8 @@ export function StaffManagement() {
   // 新增教練
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [newCoachName, setNewCoachName] = useState('')
+  const [newCoachEmail, setNewCoachEmail] = useState('')
+  const [newCoachPrice, setNewCoachPrice] = useState('')
   const [addLoading, setAddLoading] = useState(false)
   
   // 設定不在期間
@@ -213,6 +215,20 @@ export function StaffManagement() {
       return
     }
 
+    // 驗證 email 格式（如果有填寫）
+    const email = newCoachEmail.trim()
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.warning('請輸入有效的 Email 格式')
+      return
+    }
+
+    // 驗證價格（如果有填寫）
+    const price = newCoachPrice.trim()
+    if (price && (isNaN(Number(price)) || Number(price) < 0 || !Number.isInteger(Number(price)))) {
+      toast.warning('請輸入有效的價格（正整數）')
+      return
+    }
+
     setAddLoading(true)
     try {
       const { error } = await supabase
@@ -220,12 +236,21 @@ export function StaffManagement() {
         .insert([{
           name: newCoachName.trim(),
           status: 'active',
+          user_email: email || null,
+          designated_lesson_price_30min: price ? parseInt(price) : null,
           created_at: getLocalTimestamp()
         }])
 
-      if (error) throw error
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('此帳號已被其他教練使用')
+        }
+        throw error
+      }
 
       setNewCoachName('')
+      setNewCoachEmail('')
+      setNewCoachPrice('')
       setAddDialogOpen(false)
       toast.success('教練新增成功')
       loadData()
@@ -283,6 +308,46 @@ export function StaffManagement() {
       loadData()
     } catch (error) {
       toast.error('恢復教練失敗：' + (error as Error).message)
+    }
+  }
+
+  const handleDeleteCoach = async (coach: Coach) => {
+    // 先檢查是否有關聯的預約
+    const { data: bookingCoaches } = await supabase
+      .from('booking_coaches')
+      .select('id')
+      .eq('coach_id', coach.id)
+      .limit(1)
+
+    const { data: bookingDrivers } = await supabase
+      .from('booking_drivers')
+      .select('id')
+      .eq('driver_id', coach.id)
+      .limit(1)
+
+    const hasBookings = (bookingCoaches && bookingCoaches.length > 0) || (bookingDrivers && bookingDrivers.length > 0)
+
+    if (hasBookings) {
+      toast.error(`${coach.name} 有歷史預約記錄，無法刪除。建議使用「隱藏」功能。`)
+      return
+    }
+
+    if (!confirm(`確定要永久刪除「${coach.name}」嗎？\n\n此操作無法復原！`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('coaches')
+        .delete()
+        .eq('id', coach.id)
+
+      if (error) throw error
+
+      toast.success(`${coach.name} 已刪除`)
+      loadData()
+    } catch (error) {
+      toast.error('刪除教練失敗：' + (error as Error).message)
     }
   }
 
@@ -642,31 +707,20 @@ export function StaffManagement() {
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
               <span style={{ flexShrink: 0 }}>💡</span>
-              {isMobile ? (
-                <div>
-                  <div style={{ marginBottom: '4px' }}>
-                    <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選
-                  </div>
-                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                    <strong>休假</strong>：特定日期選不到該教練（例如：出國或者雪季）
-                  </div>
-                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                    <strong>隱藏</strong>：不再顯示該教練但仍保存於資料庫，可隨時恢復（例如：外師或其他俱樂部教練）
-                  </div>
+              <div>
+                <div style={{ marginBottom: '6px' }}>
+                  <strong>啟用／停用</strong>：啟用 = 可在預約和排班中選擇、停用 = 暫時不上班，不會出現在選單
                 </div>
-              ) : (
-                <div>
-                  <div style={{ marginBottom: '6px' }}>
-                    <strong>切換開關</strong>：啟用 = 可選擇該教練、停用 = 立即不可選擇
-                  </div>
-                  <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
-                    <strong>休假</strong>：特定日期選不到該教練（例如：出國或者雪季）
-                  </div>
-                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                    <strong>隱藏</strong>：不再顯示該教練但仍保存於資料庫，可隨時恢復（例如：外師或其他俱樂部教練）
-                  </div>
+                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
+                  <strong>設定休假</strong>：特定日期範圍不在（如：出國、雪季），該日期在排班時會顯示「今日休假」
                 </div>
-              )}
+                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
+                  <strong>隱藏</strong>：長期不在，從列表隱藏但資料保留（如：外師、離職），可隨時恢復
+                </div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                  <strong>刪除</strong>：永久刪除教練（僅限隱藏狀態且無歷史預約的教練）
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -876,25 +930,43 @@ export function StaffManagement() {
                     alignItems: 'center'
                   }}>
                     {isArchived ? (
-                      // 已隱藏：只顯示恢復按鈕
-                      <button
-                        onClick={() => handleRestoreCoach(coach)}
-                        style={{
-                          padding: '8px 16px',
-                          background: '#4caf50',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          transition: 'all 0.2s',
-                          minWidth: '80px'
-                        }}
-                      >
-                        恢復顯示
-                      </button>
+                      // 已隱藏：顯示恢復按鈕 + 刪除按鈕
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => handleRestoreCoach(coach)}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#4caf50',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          恢復
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCoach(coach)}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#f44336',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          刪除
+                        </button>
+                      </div>
                     ) : (
                       // 未隱藏：顯示啟用/停用按鈕 + 隱藏按鈕
                       <>
@@ -1552,14 +1624,15 @@ export function StaffManagement() {
             background: 'white',
             borderRadius: '12px',
             padding: isMobile ? '20px' : '30px',
-            maxWidth: '400px',
+            maxWidth: '450px',
             width: '100%'
           }}>
             <h2 style={{ marginTop: 0, fontSize: '20px' }}>新增教練</h2>
             
-            <div style={{ marginBottom: '20px' }}>
+            {/* 教練名稱（必填） */}
+            <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                教練名稱
+                教練名稱 <span style={{ color: '#e53935' }}>*</span>
               </label>
               <input
                 type="text"
@@ -1581,12 +1654,60 @@ export function StaffManagement() {
               />
             </div>
 
+            {/* 登入帳號（可選） */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                登入帳號 Email <span style={{ color: '#999', fontWeight: '400', fontSize: '13px' }}>（可選）</span>
+              </label>
+              <input
+                type="email"
+                value={newCoachEmail}
+                onChange={(e) => setNewCoachEmail(e.target.value)}
+                placeholder="例如：coach@example.com"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* 指定課價格（可選） */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                30分鐘指定課價格 <span style={{ color: '#999', fontWeight: '400', fontSize: '13px' }}>（可選）</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={newCoachPrice}
+                onChange={(e) => {
+                  const numValue = e.target.value.replace(/\D/g, '')
+                  setNewCoachPrice(numValue)
+                }}
+                placeholder="例如：1000"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
             <div style={{ display: 'flex', gap: '12px' }}>
               <Button
                 variant="outline"
                 onClick={() => {
                   setAddDialogOpen(false)
                   setNewCoachName('')
+                  setNewCoachEmail('')
+                  setNewCoachPrice('')
                 }}
                 disabled={addLoading}
                 style={{ flex: 1 }}

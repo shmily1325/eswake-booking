@@ -2,7 +2,7 @@ import React from 'react'
 import type { Coach } from '../../types/booking'
 
 interface CoachSelectorProps {
-    coaches: Pick<Coach, 'id' | 'name'>[]
+    coaches: (Pick<Coach, 'id' | 'name'> & { isOnTimeOff?: boolean })[]
     selectedCoaches: string[]
     selectedCoachesSet: Set<string>
     setSelectedCoaches: React.Dispatch<React.SetStateAction<string[]>>
@@ -150,6 +150,7 @@ export function CoachSelector({
                         {/* 教練列表 */}
                         {safeCoaches.map((coach) => {
                             const isSelected = selectedCoachesSet.has(coach.id)
+                            const isOnTimeOff = coach.isOnTimeOff
                             return (
                                 <button
                                     key={coach.id}
@@ -173,6 +174,9 @@ export function CoachSelector({
                                     }}
                                 >
                                     {coach.name}
+                                    {isOnTimeOff && (
+                                        <span style={{ marginLeft: '4px', opacity: 0.5, filter: 'grayscale(100%)' }}>🏖️</span>
+                                    )}
                                 </button>
                             )
                         })}

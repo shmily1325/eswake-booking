@@ -109,7 +109,8 @@ export function EditBookingDialog({
     toggleActivityType,
     handleMemberSearch,
     performConflictCheck,
-    resetForm
+    resetForm,
+    refreshCoachTimeOff
   } = useBookingForm({
     initialBooking: booking,
     userEmail: user.email || undefined
@@ -127,6 +128,13 @@ export function EditBookingDialog({
       fetchAllData()
     }
   }, [isOpen, fetchAllData])
+
+  // 日期變化時刷新教練休假狀態
+  useEffect(() => {
+    if (isOpen && startDate) {
+      refreshCoachTimeOff()
+    }
+  }, [isOpen, startDate, refreshCoachTimeOff])
 
   // 即時衝突檢查 Effect（編輯預約用）
   useEffect(() => {
@@ -1334,6 +1342,7 @@ export function EditBookingDialog({
                 {/* 教練列表 */}
                 {coaches.map((coach) => {
                   const isSelected = selectedCoachesSet.has(coach.id)
+                  const isOnTimeOff = (coach as any).isOnTimeOff
                   return (
                     <button
                       key={coach.id}
@@ -1366,6 +1375,9 @@ export function EditBookingDialog({
                     >
                       {isSelected && <span style={{ fontSize: '16px' }}>✓</span>}
                       {coach.name}
+                      {isOnTimeOff && (
+                        <span style={{ marginLeft: '2px', opacity: 0.5, filter: 'grayscale(100%)' }}>🏖️</span>
+                      )}
                     </button>
                   )
                 })}

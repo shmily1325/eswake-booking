@@ -21,7 +21,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     const [boats, setBoats] = useState<Pick<Boat, 'id' | 'name' | 'color'>[]>([])
     const [selectedBoatId, setSelectedBoatId] = useState<number>(initialBooking?.boat_id || defaultBoatId || 0)
 
-    const [coaches, setCoaches] = useState<Pick<Coach, 'id' | 'name'>[]>([])
+    const [coaches, setCoaches] = useState<(Pick<Coach, 'id' | 'name'> & { isOnTimeOff?: boolean })[]>([])
     const [selectedCoaches, setSelectedCoaches] = useState<string[]>(
         initialBooking?.coaches?.map(c => c.id) || []
     )
@@ -174,23 +174,44 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         else setBoats(data || [])
     }, [])
 
-    const fetchCoaches = useCallback(async () => {
+    const fetchCoaches = useCallback(async (dateToCheck?: string) => {
         setLoadingCoaches(true)
         try {
-            const { data, error } = await supabase
-                .from('coaches')
-                .select('id, name')
-                .eq('status', 'active')
-                .order('name')
+            // 取得要檢查的日期（預設為 startDate）
+            const checkDate = dateToCheck || startDate
+            
+            // 並行查詢教練和休假資料
+            const [coachesResult, timeOffResult] = await Promise.all([
+                supabase
+                    .from('coaches')
+                    .select('id, name')
+                    .eq('status', 'active')
+                    .order('name'),
+                checkDate ? supabase
+                    .from('coach_time_off')
+                    .select('coach_id')
+                    .lte('start_date', checkDate)
+                    .gte('end_date', checkDate) : Promise.resolve({ data: [] })
+            ])
 
-            if (error) throw error
-            setCoaches(data || [])
+            if (coachesResult.error) throw coachesResult.error
+            
+            // 建立休假教練 ID 集合
+            const timeOffCoachIds = new Set((timeOffResult.data || []).map((t: any) => t.coach_id))
+            
+            // 標記休假狀態
+            const coachesWithTimeOff = (coachesResult.data || []).map(coach => ({
+                ...coach,
+                isOnTimeOff: timeOffCoachIds.has(coach.id)
+            }))
+            
+            setCoaches(coachesWithTimeOff)
         } catch (error) {
             console.error('Error fetching coaches:', error)
         } finally {
             setLoadingCoaches(false)
         }
-    }, [])
+    }, [startDate])
 
     const fetchMembers = useCallback(async () => {
         const { data, error } = await supabase
@@ -204,8 +225,15 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     }, [])
 
     const fetchAllData = useCallback(async () => {
-        await Promise.all([fetchBoats(), fetchCoaches(), fetchMembers()])
-    }, [fetchBoats, fetchCoaches, fetchMembers])
+        await Promise.all([fetchBoats(), fetchCoaches(startDate), fetchMembers()])
+    }, [fetchBoats, fetchCoaches, fetchMembers, startDate])
+    
+    // 當日期改變時，重新查詢教練休假狀態
+    const refreshCoachTimeOff = useCallback(async () => {
+        if (startDate) {
+            await fetchCoaches(startDate)
+        }
+    }, [startDate, fetchCoaches])
 
     const toggleCoach = (coachId: string) => {
         setSelectedCoaches(prev => toggleSelection(prev, coachId))
@@ -319,6 +347,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         toggleActivityType,
         handleMemberSearch,
         performConflictCheck,
-        resetForm
+        resetForm,
+        refreshCoachTimeOff
     }
 }
