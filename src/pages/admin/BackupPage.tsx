@@ -567,7 +567,6 @@ export function BackupPage() {
 
   const exportOptions: Array<{
     value: ExportType
-    icon: string
     title: string
     description: string
   }> = [
