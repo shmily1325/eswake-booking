@@ -502,6 +502,12 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
 
   // 結清處理（現金/匯款/彈簧床指定課不收費）
   const handleSettlement = async () => {
+    // 驗證用戶登入狀態
+    if (!user?.email) {
+      toast.error('連線逾時，請重新整理頁面後再試')
+      return
+    }
+    
     setLoading(true)
     try {
       let settlementLabel = ''

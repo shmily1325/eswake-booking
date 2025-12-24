@@ -334,6 +334,12 @@ export function CoachAdmin() {
   // 關聯會員
   const handleLinkMember = async (report: PendingReport, member: MemberSearchResult) => {
     if (!report) return
+    
+    // 驗證用戶登入狀態
+    if (!user?.email) {
+      toast.error('連線逾時，請重新整理頁面後再試')
+      return
+    }
 
     try {
       console.log('關聯會員 - 更新前:', {
@@ -389,6 +395,12 @@ export function CoachAdmin() {
   // 直接結案非會員
   const handleCloseNonMemberReport = async (report: PendingReport) => {
     if (!report) return
+    
+    // 驗證用戶登入狀態
+    if (!user?.email) {
+      toast.error('連線逾時，請重新整理頁面後再試')
+      return
+    }
 
     if (!confirm(`確定要結案「${report.participant_name}」的記錄嗎？\n\n結案後此記錄將不會關聯到任何會員，僅保留時數統計。`)) {
       return
