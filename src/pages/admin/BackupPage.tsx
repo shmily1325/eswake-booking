@@ -6,12 +6,14 @@ import { Footer } from '../../components/Footer'
 import { extractDate, extractTime } from '../../utils/formatters'
 import { getLocalDateString } from '../../utils/date'
 import { useToast, ToastContainer } from '../../components/ui'
+import { useResponsive } from '../../hooks/useResponsive'
 
 type ExportType = 'pure_bookings' | 'ledger' | 'coach_detail' | 'coach_summary'
 
 export function BackupPage() {
   const user = useAuthUser()
   const toast = useToast()
+  const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(false)
   const [fullBackupLoading, setFullBackupLoading] = useState(false)
   const [cloudBackupLoading, setCloudBackupLoading] = useState(false)
@@ -631,8 +633,13 @@ export function BackupPage() {
               📅 日期區間（選填）
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: isMobile ? 'stretch' : 'center',
+              gap: '12px' 
+            }}>
+              <div style={{ flex: 1 }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '6px',
@@ -648,14 +655,15 @@ export function BackupPage() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    fontSize: '14px',
+                    fontSize: isMobile ? '16px' : '14px',
                     border: '1px solid #dee2e6',
                     borderRadius: '6px',
                     boxSizing: 'border-box'
                   }}
                 />
               </div>
-              <div>
+              {!isMobile && <span style={{ color: '#999', marginTop: '24px' }}>～</span>}
+              <div style={{ flex: 1 }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '6px',
@@ -671,7 +679,7 @@ export function BackupPage() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    fontSize: '14px',
+                    fontSize: isMobile ? '16px' : '14px',
                     border: '1px solid #dee2e6',
                     borderRadius: '6px',
                     boxSizing: 'border-box'
