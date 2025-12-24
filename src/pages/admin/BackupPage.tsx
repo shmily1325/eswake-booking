@@ -639,7 +639,7 @@ export function BackupPage() {
               alignItems: isMobile ? 'stretch' : 'center',
               gap: '12px' 
             }}>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '6px',
@@ -654,16 +654,17 @@ export function BackupPage() {
                   onChange={(e) => setStartDate(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
-                    fontSize: isMobile ? '16px' : '14px',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '6px',
+                    minWidth: 0,
+                    padding: '10px',
+                    fontSize: '16px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
                     boxSizing: 'border-box'
                   }}
                 />
               </div>
               {!isMobile && <span style={{ color: '#999', marginTop: '24px' }}>～</span>}
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '6px',
@@ -678,10 +679,11 @@ export function BackupPage() {
                   onChange={(e) => setEndDate(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
-                    fontSize: isMobile ? '16px' : '14px',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '6px',
+                    minWidth: 0,
+                    padding: '10px',
+                    fontSize: '16px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
                     boxSizing: 'border-box'
                   }}
                 />
@@ -802,7 +804,7 @@ export function BackupPage() {
           }}>
             <div style={{ marginBottom: '6px' }}>• 完整資料庫 SQL 檔案自動上傳到 Google Drive</div>
             <div style={{ marginBottom: '6px' }}>• 自動刪除超過 90 天的舊備份</div>
-            <div>• 系統每天自動備份（UTC 02:00，台灣時間 10:00）</div>
+            <div>• 系統每天自動備份（UTC 18:00，台灣時間 02:00）</div>
           </div>
         </div>
 
