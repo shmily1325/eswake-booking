@@ -30,8 +30,18 @@ interface TimeOff {
 interface EditorUser {
   id: string
   email: string
+  display_name: string | null
   created_at: string | null
   created_by: string | null
+  notes: string | null
+}
+
+// 畫面權限用戶
+interface ViewUser {
+  id: string
+  email: string
+  display_name: string | null
+  created_at: string | null
   notes: string | null
 }
 
@@ -44,8 +54,16 @@ export function StaffManagement() {
   const [editorUsers, setEditorUsers] = useState<EditorUser[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'archived'>('active') // 狀態篩選
-  const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing' | 'features'>('coaches') // Tab 切換
+  const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing' | 'views' | 'features'>('coaches') // Tab 切換
   const [expandedCoachIds, setExpandedCoachIds] = useState<Set<string>>(new Set()) // 展開的教練ID
+  
+  // 畫面權限管理
+  const [viewUsers, setViewUsers] = useState<ViewUser[]>([])
+  const [newViewUserEmail, setNewViewUserEmail] = useState('')
+  const [newViewUserName, setNewViewUserName] = useState('')
+  const [addingViewUser, setAddingViewUser] = useState(false)
+  const [editingViewUserId, setEditingViewUserId] = useState<string | null>(null)
+  const [editViewUserName, setEditViewUserName] = useState('')
   
   // 月份篩選
   const today = new Date()
@@ -81,7 +99,10 @@ export function StaffManagement() {
   
   // 功能權限（小編）
   const [newEditorEmail, setNewEditorEmail] = useState('')
+  const [newEditorDisplayName, setNewEditorDisplayName] = useState('')
   const [addingEditor, setAddingEditor] = useState(false)
+  const [editingEditorId, setEditingEditorId] = useState<string | null>(null)
+  const [editEditorName, setEditEditorName] = useState('')
   
   // 說明展開狀態
   const [showHelp, setShowHelp] = useState(true)
@@ -182,7 +203,12 @@ export function StaffManagement() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [coachesResult, timeOffsResult, editorsResult] = await Promise.all([
+      const [
+        coachesResult, 
+        timeOffsResult, 
+        editorsResult,
+        viewUsersResult
+      ] = await Promise.all([
         supabase
           .from('coaches')
           .select('*')
@@ -194,16 +220,22 @@ export function StaffManagement() {
         (supabase as any)
           .from('editor_users')
           .select('*')
+          .order('email'),
+        // 載入畫面權限用戶
+        (supabase as any)
+          .from('view_users')
+          .select('*')
           .order('email')
       ])
 
       if (coachesResult.error) throw coachesResult.error
       if (timeOffsResult.error) throw timeOffsResult.error
-      // editor_users 表可能不存在，忽略錯誤
+      // 其他表可能不存在，忽略錯誤
 
       setCoaches(coachesResult.data || [])
       setTimeOffs(timeOffsResult.data || [])
       setEditorUsers(editorsResult.data as any || [])
+      setViewUsers(viewUsersResult.data || [])
     } catch (error) {
       console.error('載入資料失敗:', error)
       toast.error('載入資料失敗')
@@ -508,7 +540,7 @@ export function StaffManagement() {
     }
   }
 
-  // 新增功能權限帳號
+  // 新增小編帳號
   const handleAddEditor = async () => {
     if (!newEditorEmail.trim()) {
       toast.warning('請輸入 Email')
@@ -522,36 +554,50 @@ export function StaffManagement() {
 
     setAddingEditor(true)
     try {
+      const email = newEditorEmail.trim().toLowerCase()
+      const displayName = newEditorDisplayName.trim() || null
+      
       // 加入 editor_users 表
       const { error: editorError } = await (supabase as any)
         .from('editor_users')
         .insert([{
-          email: newEditorEmail.trim().toLowerCase(),
-          created_by: user.email,
-          notes: null
+          email: email,
+          display_name: displayName
         }])
 
       if (editorError) {
         if (editorError.code === '23505') {
-          throw new Error('此 Email 已有功能權限')
+          throw new Error('此 Email 已有小編權限')
         }
         throw editorError
       }
 
-      // 同時加入白名單（使用 upsert）
-      await supabase
-        .from('allowed_users')
+      // 同時加入 view_users（小編也有畫面權限）
+      await (supabase as any)
+        .from('view_users')
         .upsert([{
-          email: newEditorEmail.trim().toLowerCase(),
-          created_by: user.email,
-          notes: '功能權限'
+          email: email,
+          display_name: displayName,
+          notes: '小編權限'
         }], {
           onConflict: 'email',
           ignoreDuplicates: true
         })
 
-      toast.success(`已將 ${newEditorEmail} 加入功能權限`)
+      // 同時加入白名單（使用 upsert）
+      await supabase
+        .from('allowed_users')
+        .upsert([{
+          email: email,
+          notes: '小編權限'
+        }], {
+          onConflict: 'email',
+          ignoreDuplicates: true
+        })
+
+      toast.success(`已將 ${displayName || email} 加入小編權限`)
       setNewEditorEmail('')
+      setNewEditorDisplayName('')
       clearPermissionCache() // 清除權限緩存
       loadData()
     } catch (error) {
@@ -561,9 +607,9 @@ export function StaffManagement() {
     }
   }
 
-  // 移除功能權限帳號
-  const handleRemoveEditor = async (id: string, email: string) => {
-    if (!confirm(`確定要將 ${email} 從功能權限移除嗎？`)) {
+  // 移除小編帳號
+  const handleRemoveEditor = async (id: string, email: string, displayName: string | null) => {
+    if (!confirm(`確定要將 ${displayName || email} 從小編權限移除嗎？`)) {
       return
     }
 
@@ -575,13 +621,118 @@ export function StaffManagement() {
 
       if (error) throw error
 
-      toast.success(`已將 ${email} 從功能權限移除`)
+      toast.success(`已將 ${displayName || email} 從小編權限移除`)
       clearPermissionCache() // 清除權限緩存
       loadData()
     } catch (error) {
       toast.error('移除失敗: ' + (error as Error).message)
     }
   }
+  
+  // 更新小編名稱
+  const handleUpdateEditorName = async (id: string) => {
+    try {
+      await (supabase as any)
+        .from('editor_users')
+        .update({
+          display_name: editEditorName.trim() || null
+        })
+        .eq('id', id)
+      
+      toast.success('已更新名稱')
+      setEditingEditorId(null)
+      setEditEditorName('')
+      loadData()
+    } catch (error) {
+      toast.error('更新失敗: ' + (error as Error).message)
+    }
+  }
+
+  // ========== 畫面權限管理 ==========
+  
+  // 新增畫面權限用戶
+  const handleAddViewUser = async () => {
+    if (!newViewUserEmail.trim()) {
+      toast.warning('請輸入 Email')
+      return
+    }
+    
+    if (!newViewUserEmail.includes('@')) {
+      toast.warning('請輸入有效的 Email')
+      return
+    }
+    
+    setAddingViewUser(true)
+    try {
+      const email = newViewUserEmail.trim().toLowerCase()
+      
+      const { error } = await (supabase as any)
+        .from('view_users')
+        .insert([{
+          email: email,
+          display_name: newViewUserName.trim() || null
+        }])
+      
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('此 Email 已有畫面權限')
+        }
+        throw error
+      }
+      
+      toast.success(`已新增 ${newViewUserName || email} 的畫面權限`)
+      setNewViewUserEmail('')
+      setNewViewUserName('')
+      clearPermissionCache()
+      loadData()
+    } catch (error) {
+      toast.error('新增失敗: ' + (error as Error).message)
+    } finally {
+      setAddingViewUser(false)
+    }
+  }
+  
+  // 移除畫面權限用戶
+  const handleRemoveViewUser = async (id: string, email: string, displayName: string | null) => {
+    if (!confirm(`確定要移除 ${displayName || email} 的畫面權限嗎？`)) {
+      return
+    }
+    
+    try {
+      const { error } = await (supabase as any)
+        .from('view_users')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+      
+      toast.success(`已移除 ${displayName || email} 的畫面權限`)
+      clearPermissionCache()
+      loadData()
+    } catch (error) {
+      toast.error('移除失敗: ' + (error as Error).message)
+    }
+  }
+  
+  // 更新畫面權限用戶的顯示名稱
+  const handleUpdateViewUserName = async (id: string) => {
+    try {
+      await (supabase as any)
+        .from('view_users')
+        .update({
+          display_name: editViewUserName.trim() || null
+        })
+        .eq('id', id)
+      
+      toast.success('已更新名稱')
+      setEditingViewUserId(null)
+      setEditViewUserName('')
+      loadData()
+    } catch (error) {
+      toast.error('更新失敗: ' + (error as Error).message)
+    }
+  }
+  
 
   if (loading) {
     return (
@@ -662,6 +813,24 @@ export function StaffManagement() {
             指定課價格
           </button>
           <button
+            onClick={() => setActiveTab('views')}
+            style={{
+              padding: isMobile ? '12px 16px' : '14px 28px',
+              background: activeTab === 'views' ? 'white' : 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'views' ? '3px solid #4CAF50' : '3px solid transparent',
+              color: activeTab === 'views' ? '#4CAF50' : '#666',
+              fontWeight: activeTab === 'views' ? 'bold' : 'normal',
+              fontSize: isMobile ? '14px' : '16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              marginBottom: '-2px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            畫面權限
+          </button>
+          <button
             onClick={() => setActiveTab('features')}
             style={{
               padding: isMobile ? '12px 16px' : '14px 28px',
@@ -677,7 +846,7 @@ export function StaffManagement() {
               whiteSpace: 'nowrap'
             }}
           >
-            功能權限
+            小編權限
           </button>
         </div>
 
@@ -1416,7 +1585,253 @@ export function StaffManagement() {
           </>
         )}
 
-        {/* 功能權限 Tab */}
+        {/* 畫面權限 Tab */}
+        {activeTab === 'views' && (
+          <>
+            {/* 說明提示 */}
+            <div style={{
+              background: '#e8f5e9',
+              padding: isMobile ? '12px 16px' : '14px 20px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '14px',
+              color: '#2e7d32',
+              border: '1px solid #a5d6a7',
+              lineHeight: '1.6'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <span style={{ flexShrink: 0 }}>👁️</span>
+                <div>
+                  <div style={{ marginBottom: '6px' }}>
+                    <strong>畫面權限</strong>：設定哪些帳號可以看到一般功能
+                  </div>
+                  <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '8px' }}>
+                    加入後，該帳號登入時可以看到：預約表、預約查詢、明日提醒、編輯記錄
+                  </div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                    💡 未加入的用戶只能看到「今日預約」
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 新增帳號 */}
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: isMobile ? '16px' : '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                marginBottom: '16px',
+                color: '#333'
+              }}>
+                新增帳號
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px',
+                flexDirection: isMobile ? 'column' : 'row',
+                marginBottom: '12px'
+              }}>
+                <input
+                  type="email"
+                  value={newViewUserEmail}
+                  onChange={(e) => setNewViewUserEmail(e.target.value)}
+                  placeholder="輸入 Email"
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <input
+                  type="text"
+                  value={newViewUserName}
+                  onChange={(e) => setNewViewUserName(e.target.value)}
+                  placeholder="名稱標記（選填）"
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleAddViewUser}
+                  disabled={addingViewUser}
+                  style={{ background: '#4CAF50' }}
+                >
+                  {addingViewUser ? '新增中...' : '➕ 新增'}
+                </Button>
+              </div>
+            </div>
+
+            {/* 已授權帳號列表 */}
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: isMobile ? '16px' : '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                marginBottom: '16px',
+                color: '#333',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                已授權帳號
+                <Badge variant="success" size="small">
+                  {viewUsers.length} 人
+                </Badge>
+              </div>
+
+              {viewUsers.length === 0 ? (
+                <div style={{
+                  padding: '40px 20px',
+                  textAlign: 'center',
+                  color: '#999',
+                  fontSize: '14px'
+                }}>
+                  尚無帳號，請在上方新增
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {viewUsers.map((viewUser) => (
+                    <div
+                      key={viewUser.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '14px 16px',
+                        background: '#f8f9fa',
+                        borderRadius: '10px',
+                        border: '1px solid #e9ecef',
+                        gap: '12px',
+                        flexWrap: 'wrap'
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        {editingViewUserId === viewUser.id ? (
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              value={editViewUserName}
+                              onChange={(e) => setEditViewUserName(e.target.value)}
+                              placeholder="輸入名稱"
+                              style={{
+                                flex: 1,
+                                padding: '8px',
+                                border: '1px solid #4CAF50',
+                                borderRadius: '6px',
+                                fontSize: '14px'
+                              }}
+                              autoFocus
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                                  handleUpdateViewUserName(viewUser.id)
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="primary"
+                              size="small"
+                              onClick={() => handleUpdateViewUserName(viewUser.id)}
+                              style={{ background: '#4CAF50' }}
+                            >
+                              確定
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="small"
+                              onClick={() => {
+                                setEditingViewUserId(null)
+                                setEditViewUserName('')
+                              }}
+                            >
+                              取消
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{
+                              fontSize: '15px',
+                              fontWeight: '600',
+                              color: '#333',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              {viewUser.display_name && (
+                                <span style={{ color: '#4CAF50' }}>{viewUser.display_name}</span>
+                              )}
+                              <span style={{ 
+                                color: viewUser.display_name ? '#999' : '#333',
+                                fontSize: viewUser.display_name ? '13px' : '15px',
+                                wordBreak: 'break-all'
+                              }}>
+                                {viewUser.display_name ? `(${viewUser.email})` : viewUser.email}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setEditingViewUserId(viewUser.id)
+                                  setEditViewUserName(viewUser.display_name || '')
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '14px',
+                                  padding: '2px 6px',
+                                  opacity: 0.6
+                                }}
+                                title="編輯名稱"
+                              >
+                                ✏️
+                              </button>
+                            </div>
+                            <div style={{
+                              fontSize: '12px',
+                              color: '#999',
+                              marginTop: '4px'
+                            }}>
+                              加入時間：{viewUser.created_at ? new Date(viewUser.created_at).toLocaleDateString('zh-TW') : '-'}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {editingViewUserId !== viewUser.id && (
+                        <Button
+                          variant="danger"
+                          size="small"
+                          onClick={() => handleRemoveViewUser(viewUser.id, viewUser.email, viewUser.display_name)}
+                        >
+                          移除
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* 小編權限 Tab */}
         {activeTab === 'features' && (
           <>
             {/* 說明提示 */}
@@ -1434,10 +1849,10 @@ export function StaffManagement() {
                 <span style={{ flexShrink: 0 }}>🚤</span>
                 <div>
                   <div style={{ marginBottom: '6px' }}>
-                    <strong>功能權限</strong>：設定哪些帳號可以在首頁看到額外功能
+                    <strong>小編權限</strong>：設定哪些帳號可以在首頁看到進階功能
                   </div>
                   <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '8px' }}>
-                    加入後，該帳號登入時首頁會直接顯示對應功能的 icon
+                    加入後，該帳號登入時首頁會顯示進階功能（小編也自動擁有畫面權限）
                   </div>
                   <div style={{ 
                     background: 'rgba(255,255,255,0.7)', 
@@ -1495,6 +1910,20 @@ export function StaffManagement() {
                   value={newEditorEmail}
                   onChange={(e) => setNewEditorEmail(e.target.value)}
                   placeholder="輸入 Email"
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <input
+                  type="text"
+                  value={newEditorDisplayName}
+                  onChange={(e) => setNewEditorDisplayName(e.target.value)}
+                  placeholder="名稱標記（選填）"
                   style={{
                     flex: 1,
                     padding: '12px',
@@ -1567,29 +1996,102 @@ export function StaffManagement() {
                       }}
                     >
                       <div style={{ flex: 1, minWidth: '200px' }}>
-                        <div style={{
-                          fontSize: '15px',
-                          fontWeight: '600',
-                          color: '#333',
-                          wordBreak: 'break-all'
-                        }}>
-                          {editor.email}
-                        </div>
-                        <div style={{
-                          fontSize: '12px',
-                          color: '#999',
-                          marginTop: '4px'
-                        }}>
-                          加入時間：{editor.created_at ? new Date(editor.created_at).toLocaleDateString('zh-TW') : '-'}
-                        </div>
+                        {editingEditorId === editor.id ? (
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              value={editEditorName}
+                              onChange={(e) => setEditEditorName(e.target.value)}
+                              placeholder="輸入名稱"
+                              style={{
+                                flex: 1,
+                                padding: '8px',
+                                border: '1px solid #2196F3',
+                                borderRadius: '6px',
+                                fontSize: '14px'
+                              }}
+                              autoFocus
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                                  handleUpdateEditorName(editor.id)
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="primary"
+                              size="small"
+                              onClick={() => handleUpdateEditorName(editor.id)}
+                            >
+                              確定
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="small"
+                              onClick={() => {
+                                setEditingEditorId(null)
+                                setEditEditorName('')
+                              }}
+                            >
+                              取消
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{
+                              fontSize: '15px',
+                              fontWeight: '600',
+                              color: '#333',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              {editor.display_name && (
+                                <span style={{ color: '#2196F3' }}>{editor.display_name}</span>
+                              )}
+                              <span style={{ 
+                                color: editor.display_name ? '#999' : '#333',
+                                fontSize: editor.display_name ? '13px' : '15px',
+                                wordBreak: 'break-all'
+                              }}>
+                                {editor.display_name ? `(${editor.email})` : editor.email}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setEditingEditorId(editor.id)
+                                  setEditEditorName(editor.display_name || '')
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '14px',
+                                  padding: '2px 6px',
+                                  opacity: 0.6
+                                }}
+                                title="編輯名稱"
+                              >
+                                ✏️
+                              </button>
+                            </div>
+                            <div style={{
+                              fontSize: '12px',
+                              color: '#999',
+                              marginTop: '4px'
+                            }}>
+                              加入時間：{editor.created_at ? new Date(editor.created_at).toLocaleDateString('zh-TW') : '-'}
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <Button
-                        variant="danger"
-                        size="small"
-                        onClick={() => handleRemoveEditor(editor.id, editor.email)}
-                      >
-                        移除
-                      </Button>
+                      {editingEditorId !== editor.id && (
+                        <Button
+                          variant="danger"
+                          size="small"
+                          onClick={() => handleRemoveEditor(editor.id, editor.email, editor.display_name)}
+                        >
+                          移除
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -12,6 +12,7 @@ const TABLES_TO_BACKUP = [
   'bookings',
   'booking_members',
   'booking_coaches',
+  'booking_drivers',  // ⭐ 駕駛資料
   'coach_reports',
   'booking_participants',
   'transactions',
@@ -19,6 +20,7 @@ const TABLES_TO_BACKUP = [
   'audit_log',
   'system_settings',
   'line_bindings',
+  'backup_logs',  // ⭐ 備份記錄
 ];
 
 function getLocalTimestamp(date: Date = new Date()): string {

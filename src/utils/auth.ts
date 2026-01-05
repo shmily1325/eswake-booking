@@ -19,6 +19,7 @@ export const SUPER_ADMINS = [
 let adminEmailsCache: string[] | null = null
 let allowedEmailsCache: string[] | null = null
 let editorEmailsCache: string[] | null = null
+let viewUsersCache: string[] | null = null
 let cacheTimestamp: number = 0
 const CACHE_DURATION = 60000 // 1分鐘
 
@@ -114,12 +115,43 @@ async function loadEditorEmails(): Promise<string[]> {
 }
 
 /**
+ * 從資料庫載入畫面權限用戶列表
+ */
+async function loadViewUsers(): Promise<string[]> {
+  const now = Date.now()
+  
+  // 使用緩存
+  if (viewUsersCache && (now - cacheTimestamp < CACHE_DURATION)) {
+    return viewUsersCache
+  }
+  
+  try {
+    const { data, error } = await (supabase as any)
+      .from('view_users')
+      .select('email')
+    
+    if (error) {
+      logger.error('Failed to load view users:', error)
+      return []
+    }
+    
+    const emails: string[] = data?.map((row: any) => row.email) || []
+    viewUsersCache = emails
+    return emails
+  } catch (err) {
+    logger.error('Failed to load view users:', err)
+    return []
+  }
+}
+
+/**
  * 清除權限緩存
  */
 export function clearPermissionCache() {
   adminEmailsCache = null
   allowedEmailsCache = null
   editorEmailsCache = null
+  viewUsersCache = null
   cacheTimestamp = 0
 }
 
@@ -238,5 +270,30 @@ export function isEditor(user: User | null): boolean {
   if (editorEmailsCache && editorEmailsCache.includes(user.email)) return true
   
   return false
+}
+
+/**
+ * 檢查用戶是否有畫面權限（異步版本）
+ * 有畫面權限的用戶可以看到一般功能（預約表、查詢、明日提醒、編輯記錄等）
+ * @param user 用戶
+ * @returns 是否有畫面權限
+ */
+export async function hasViewAccess(user: User | null): Promise<boolean> {
+  if (!user || !user.email) return false
+  
+  // 超級管理員有所有權限
+  if (SUPER_ADMINS.includes(user.email)) return true
+  
+  // 管理員有所有權限
+  const adminEmails = await loadAdminEmails()
+  if (adminEmails.includes(user.email)) return true
+  
+  // 小編有所有權限
+  const editorEmails = await loadEditorEmails()
+  if (editorEmails.includes(user.email)) return true
+  
+  // 檢查是否在畫面權限用戶列表中
+  const viewUsers = await loadViewUsers()
+  return viewUsers.includes(user.email)
 }
 

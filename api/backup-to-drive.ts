@@ -176,30 +176,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     logStep('4. 创建 Supabase 客户端');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 构建查询
-    logStep('5. 查询预约数据');
-    let query = supabase
-      .from('bookings')
-      .select(`
-        *,
-        boats:boat_id (name, color)
-      `)
-      .order('start_at', { ascending: false });
+    // 构建查询（使用分頁解決 Supabase 1000 筆限制）
+    logStep('5. 查询预约数据（分頁模式）');
+    
+    const PAGE_SIZE = 1000;
+    let allBookings: any[] = [];
+    let offset = 0;
+    let hasMore = true;
 
-    // 如果指定了日期范围
-    if (startDate && endDate) {
-      query = query
-        .gte('start_at', `${startDate}T00:00:00`)
-        .lte('start_at', `${endDate}T23:59:59`);
+    while (hasMore) {
+      let query = supabase
+        .from('bookings')
+        .select(`
+          *,
+          boats:boat_id (name, color)
+        `)
+        .order('start_at', { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      // 如果指定了日期范围
+      if (startDate && endDate) {
+        query = query
+          .gte('start_at', `${startDate}T00:00:00`)
+          .lte('start_at', `${endDate}T23:59:59`);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        logStep('错误: 预约查询失败', error);
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        allBookings = allBookings.concat(data);
+        offset += PAGE_SIZE;
+        hasMore = data.length === PAGE_SIZE;
+        logStep(`5.1 预约数据分頁查询 offset=${offset}`, { count: data.length });
+      } else {
+        hasMore = false;
+      }
     }
-
-    const { data: bookings, error: bookingsError } = await query;
-    logStep('5.1 预约数据查询完成', { count: bookings?.length || 0, error: bookingsError?.message });
-
-    if (bookingsError) {
-      logStep('错误: 预约查询失败', bookingsError);
-      throw bookingsError;
-    }
+    
+    const bookings = allBookings;
+    logStep('5.2 预约数据查询完成', { total: bookings.length });
 
     if (!bookings || bookings.length === 0) {
       logStep('警告: 没有数据可以备份');
@@ -207,26 +227,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     bookingsForLog = bookings.length;
 
-    // 获取所有预约的教练信息、参与者和驾驶信息
-    logStep('6. 查询关联数据（教练、参与者、驾驶）');
+    // 获取所有预约的教练信息、参与者和驾驶信息（使用分頁）
+    logStep('6. 查询关联数据（教练、参与者、驾驶）- 分頁模式');
     const bookingIds = bookings.map((b) => b.id);
     logStep('6.1 预约ID列表', { count: bookingIds.length });
     
-    const [coachesResult, participantsResult, driversResult] = await Promise.all([
-      supabase
-        .from('booking_coaches')
-        .select('booking_id, coaches:coach_id(name)')
-        .in('booking_id', bookingIds),
-      supabase
-        .from('booking_participants')
-        .select('booking_id, participant_name, duration_min, lesson_type')
-        .in('booking_id', bookingIds),
-      supabase
-        .from('bookings')
-        .select('id, driver_coach_id')
-        .in('id', bookingIds)
-        .not('driver_coach_id', 'is', null)
+    // 分頁查詢輔助函數
+    async function fetchWithInPagination(tableName: string, selectCols: string, inColumn: string, ids: number[], additionalFilter?: (q: any) => any) {
+      const BATCH_SIZE = 500;
+      let allData: any[] = [];
+
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batchIds = ids.slice(i, i + BATCH_SIZE);
+        let fetchOffset = 0;
+        let fetchMore = true;
+
+        while (fetchMore) {
+          let q = supabase
+            .from(tableName)
+            .select(selectCols)
+            .in(inColumn, batchIds)
+            .range(fetchOffset, fetchOffset + PAGE_SIZE - 1);
+
+          if (additionalFilter) {
+            q = additionalFilter(q);
+          }
+
+          const { data, error } = await q;
+          if (error) throw error;
+
+          if (data && data.length > 0) {
+            allData = allData.concat(data);
+            fetchOffset += PAGE_SIZE;
+            fetchMore = data.length === PAGE_SIZE;
+          } else {
+            fetchMore = false;
+          }
+        }
+      }
+      return allData;
+    }
+
+    const [coachesData, participantsData, driversData] = await Promise.all([
+      fetchWithInPagination('booking_coaches', 'booking_id, coaches:coach_id(name)', 'booking_id', bookingIds),
+      fetchWithInPagination('booking_participants', 'booking_id, participant_name, duration_min, lesson_type', 'booking_id', bookingIds),
+      fetchWithInPagination('bookings', 'id, driver_coach_id', 'id', bookingIds, (q) => q.not('driver_coach_id', 'is', null))
     ]);
+    
+    const coachesResult = { data: coachesData };
+    const participantsResult = { data: participantsData };
+    const driversResult = { data: driversData };
+    
     logStep('6.2 关联数据查询完成', {
       coaches: coachesResult.data?.length || 0,
       participants: participantsResult.data?.length || 0,

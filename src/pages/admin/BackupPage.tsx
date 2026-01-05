@@ -8,6 +8,100 @@ import { getLocalDateString } from '../../utils/date'
 import { useToast, ToastContainer } from '../../components/ui'
 import { useResponsive } from '../../hooks/useResponsive'
 
+// 分頁查詢輔助函數（解決 Supabase 1000 筆限制）
+async function fetchAllWithPagination<T>(
+  queryBuilder: () => ReturnType<typeof supabase.from>,
+  selectColumns: string,
+  orderColumn: string = 'id',
+  filters?: (query: any) => any
+): Promise<T[]> {
+  const PAGE_SIZE = 1000
+  let allData: T[] = []
+  let offset = 0
+  let hasMore = true
+
+  while (hasMore) {
+    let query = queryBuilder()
+      .select(selectColumns)
+      .order(orderColumn, { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1)
+
+    if (filters) {
+      query = filters(query)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('分頁查詢失敗:', error)
+      throw error
+    }
+
+    if (data && data.length > 0) {
+      allData = allData.concat(data as T[])
+      offset += PAGE_SIZE
+      hasMore = data.length === PAGE_SIZE
+    } else {
+      hasMore = false
+    }
+  }
+
+  return allData
+}
+
+// 使用 .in() 的分頁查詢（用於關聯資料查詢）
+async function fetchAllWithInPagination<T>(
+  tableName: string,
+  selectColumns: string,
+  inColumn: string,
+  inValues: (number | string)[],
+  additionalFilters?: (query: any) => any
+): Promise<T[]> {
+  if (inValues.length === 0) return []
+  
+  // Supabase 的 .in() 也有限制，需要分批處理
+  const BATCH_SIZE = 500
+  let allData: T[] = []
+
+  for (let i = 0; i < inValues.length; i += BATCH_SIZE) {
+    const batchIds = inValues.slice(i, i + BATCH_SIZE)
+    
+    // 對每批 ID 進行分頁查詢
+    const PAGE_SIZE = 1000
+    let offset = 0
+    let hasMore = true
+
+    while (hasMore) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let query = (supabase.from(tableName as any) as any)
+        .select(selectColumns)
+        .in(inColumn, batchIds)
+        .range(offset, offset + PAGE_SIZE - 1)
+
+      if (additionalFilters) {
+        query = additionalFilters(query)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error(`分頁查詢 ${tableName} 失敗:`, error)
+        throw error
+      }
+
+      if (data && data.length > 0) {
+        allData = allData.concat(data as T[])
+        offset += PAGE_SIZE
+        hasMore = data.length === PAGE_SIZE
+      } else {
+        hasMore = false
+      }
+    }
+  }
+
+  return allData
+}
+
 type ExportType = 'pure_bookings' | 'ledger' | 'coach_detail' | 'coach_summary'
 
 interface BackupLog {
@@ -120,36 +214,31 @@ export function BackupPage() {
   const exportPureBookingsToCSV = async () => {
     setLoading(true)
     try {
-      let query = supabase
-        .from('bookings')
-        .select(`
-          *,
-          boats:boat_id (name)
-        `)
-        .order('start_at', { ascending: true })
-
-      if (startDate && endDate) {
-        query = query
-          .gte('start_at', `${startDate}T00:00:00`)
-          .lte('start_at', `${endDate}T23:59:59`)
-      }
-
-      const { data: bookings, error } = await query
-
-      if (error) throw error
+      // 使用分頁查詢取得所有預約（解決 Supabase 1000 筆限制）
+      const bookings = await fetchAllWithPagination<any>(
+        () => supabase.from('bookings'),
+        '*, boats:boat_id (name)',
+        'start_at',
+        startDate && endDate
+          ? (q) => q.gte('start_at', `${startDate}T00:00:00`).lte('start_at', `${endDate}T23:59:59`)
+          : undefined
+      )
 
       if (!bookings || bookings.length === 0) {
         toast.warning('沒有數據可以導出')
+        setLoading(false)
         return
       }
 
       const bookingIds = bookings.map(b => b.id)
       
-      // 查詢教練資料
-      const { data: coachesData } = await supabase
-        .from('booking_coaches')
-        .select('booking_id, coaches:coach_id(name)')
-        .in('booking_id', bookingIds)
+      // 查詢教練資料（使用分頁）
+      const coachesData = await fetchAllWithInPagination<any>(
+        'booking_coaches',
+        'booking_id, coaches:coach_id(name)',
+        'booking_id',
+        bookingIds
+      )
 
       const coachesByBooking: { [key: number]: string[] } = {}
       for (const item of coachesData || []) {
@@ -163,11 +252,13 @@ export function BackupPage() {
         }
       }
 
-      // 查詢駕駛資訊
-      const { data: bookingDrivers } = await supabase
-        .from('booking_drivers')
-        .select('booking_id, coaches:driver_id (name)')
-        .in('booking_id', bookingIds)
+      // 查詢駕駛資訊（使用分頁）
+      const bookingDrivers = await fetchAllWithInPagination<any>(
+        'booking_drivers',
+        'booking_id, coaches:driver_id (name)',
+        'booking_id',
+        bookingIds
+      )
       
       const driverByBooking: { [key: number]: string } = {}
       bookingDrivers?.forEach(bd => {
@@ -225,21 +316,17 @@ export function BackupPage() {
         return
       }
 
-      const { data, error } = await supabase
-        .from('transactions')
-        .select(`
-          *,
-          member_id(name, nickname)
-        `)
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDate)
-        .order('transaction_date', { ascending: true })
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
+      // 使用分頁查詢取得所有交易記錄（解決 Supabase 1000 筆限制）
+      const data = await fetchAllWithPagination<any>(
+        () => supabase.from('transactions'),
+        '*, member_id(name, nickname)',
+        'transaction_date',
+        (q) => q.gte('transaction_date', startDate).lte('transaction_date', endDate)
+      )
 
       if (!data || data.length === 0) {
         toast.warning('所選時間範圍內沒有交易記錄')
+        setLoading(false)
         return
       }
 
@@ -310,45 +397,43 @@ export function BackupPage() {
   const exportCoachDetailToCSV = async () => {
     setLoading(true)
     try {
-      let bookingsQuery = supabase
-        .from('bookings')
-        .select(`
-          id,
-          start_at,
-          contact_name,
-          boats:boat_id(name)
-        `)
-        .order('start_at', { ascending: true })
-
-      if (startDate && endDate) {
-        bookingsQuery = bookingsQuery
-          .gte('start_at', `${startDate}T00:00:00`)
-          .lte('start_at', `${endDate}T23:59:59`)
-      }
-
-      const { data: bookings, error: bookingsError } = await bookingsQuery
-
-      if (bookingsError) throw bookingsError
+      // 使用分頁查詢取得所有預約（解決 Supabase 1000 筆限制）
+      const bookings = await fetchAllWithPagination<any>(
+        () => supabase.from('bookings'),
+        'id, start_at, contact_name, boats:boat_id(name)',
+        'start_at',
+        startDate && endDate
+          ? (q) => q.gte('start_at', `${startDate}T00:00:00`).lte('start_at', `${endDate}T23:59:59`)
+          : undefined
+      )
 
       if (!bookings || bookings.length === 0) {
         toast.warning('沒有數據可以導出')
+        setLoading(false)
         return
       }
 
       const bookingIds = bookings.map(b => b.id)
 
-      // 查詢教練回報和參與者資料
-      const [coachReportsResult, participantsResult] = await Promise.all([
-        supabase
-          .from('coach_reports')
-          .select('booking_id, coach_id, driver_duration_min, coaches:coach_id(name)')
-          .in('booking_id', bookingIds),
-        supabase
-          .from('booking_participants')
-          .select('booking_id, participant_name, duration_min, coach_id, coaches:coach_id(name)')
-          .in('booking_id', bookingIds)
-          .eq('is_deleted', false)
+      // 查詢教練回報和參與者資料（使用分頁）
+      const [coachReportsData, participantsData] = await Promise.all([
+        fetchAllWithInPagination<any>(
+          'coach_reports',
+          'booking_id, coach_id, driver_duration_min, coaches:coach_id(name)',
+          'booking_id',
+          bookingIds
+        ),
+        fetchAllWithInPagination<any>(
+          'booking_participants',
+          'booking_id, participant_name, duration_min, coach_id, coaches:coach_id(name)',
+          'booking_id',
+          bookingIds,
+          (q) => q.eq('is_deleted', false)
+        )
       ])
+      
+      const coachReportsResult = { data: coachReportsData }
+      const participantsResult = { data: participantsData }
 
       // 建立預約資訊映射
       const bookingInfoMap: { [key: number]: { dateTime: string, contactName: string, boatName: string } } = {}
@@ -441,40 +526,43 @@ export function BackupPage() {
   const exportCoachSummaryToCSV = async () => {
     setLoading(true)
     try {
-      let bookingsQuery = supabase
-        .from('bookings')
-        .select('id, start_at')
-        .order('start_at', { ascending: true })
-
-      if (startDate && endDate) {
-        bookingsQuery = bookingsQuery
-          .gte('start_at', `${startDate}T00:00:00`)
-          .lte('start_at', `${endDate}T23:59:59`)
-      }
-
-      const { data: bookings, error: bookingsError } = await bookingsQuery
-
-      if (bookingsError) throw bookingsError
+      // 使用分頁查詢取得所有預約（解決 Supabase 1000 筆限制）
+      const bookings = await fetchAllWithPagination<any>(
+        () => supabase.from('bookings'),
+        'id, start_at',
+        'start_at',
+        startDate && endDate
+          ? (q) => q.gte('start_at', `${startDate}T00:00:00`).lte('start_at', `${endDate}T23:59:59`)
+          : undefined
+      )
 
       if (!bookings || bookings.length === 0) {
         toast.warning('沒有數據可以導出')
+        setLoading(false)
         return
       }
 
       const bookingIds = bookings.map(b => b.id)
 
-      // 查詢教練回報和參與者資料
-      const [coachReportsResult, participantsResult] = await Promise.all([
-        supabase
-          .from('coach_reports')
-          .select('booking_id, coach_id, driver_duration_min, coaches:coach_id(name)')
-          .in('booking_id', bookingIds),
-        supabase
-          .from('booking_participants')
-          .select('booking_id, duration_min, coach_id, coaches:coach_id(name)')
-          .in('booking_id', bookingIds)
-          .eq('is_deleted', false)
+      // 查詢教練回報和參與者資料（使用分頁）
+      const [coachReportsData, participantsData] = await Promise.all([
+        fetchAllWithInPagination<any>(
+          'coach_reports',
+          'booking_id, coach_id, driver_duration_min, coaches:coach_id(name)',
+          'booking_id',
+          bookingIds
+        ),
+        fetchAllWithInPagination<any>(
+          'booking_participants',
+          'booking_id, duration_min, coach_id, coaches:coach_id(name)',
+          'booking_id',
+          bookingIds,
+          (q) => q.eq('is_deleted', false)
+        )
       ])
+      
+      const coachReportsResult = { data: coachReportsData }
+      const participantsResult = { data: participantsData }
 
       // 統計每個教練的時數
       const coachStats: { [coachName: string]: { teaching: number, driving: number } } = {}

@@ -5,7 +5,10 @@ import { createClient } from '@supabase/supabase-js';
 const KEY_TABLES = [
   'members',
   'bookings',
+  'booking_coaches',     // ⭐ 教練資料
+  'booking_drivers',     // ⭐ 駕駛資料
   'booking_participants',
+  'coach_reports',       // ⭐ 教練回報
   'transactions',
   'coaches',
   'boats',

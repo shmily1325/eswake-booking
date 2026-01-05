@@ -4,7 +4,7 @@ import { UserMenu } from '../components/UserMenu'
 import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
-import { isAdmin, isEditorAsync } from '../utils/auth'
+import { isAdmin, isEditorAsync, hasViewAccess } from '../utils/auth'
 import { supabase } from '../lib/supabase'
 import { useState, useEffect } from 'react'
 
@@ -13,6 +13,8 @@ export function HomePage() {
   const { isMobile } = useResponsive()
   const [isCoach, setIsCoach] = useState(false)
   const [isEditorUser, setIsEditorUser] = useState(false)
+  const [hasViewPermission, setHasViewPermission] = useState(false)
+  const [permissionsLoading, setPermissionsLoading] = useState(true)
   
   // Detect V2 environment
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
@@ -59,6 +61,29 @@ export function HomePage() {
     checkIfEditor()
   }, [user, userIsAdmin])
   
+  // 載入用戶的畫面權限
+  useEffect(() => {
+    const loadPermissions = async () => {
+      if (!user) {
+        setHasViewPermission(false)
+        setPermissionsLoading(false)
+        return
+      }
+      
+      try {
+        const hasAccess = await hasViewAccess(user)
+        setHasViewPermission(hasAccess)
+      } catch (error) {
+        console.error('載入權限失敗:', error)
+        setHasViewPermission(false)
+      } finally {
+        setPermissionsLoading(false)
+      }
+    }
+    
+    loadPermissions()
+  }, [user])
+  
   const menuItems: Array<{
     title: string
     icon: string
@@ -67,16 +92,20 @@ export function HomePage() {
     isAdmin?: boolean
     isCoach?: boolean
     isEditor?: boolean
+    requiresViewAccess?: boolean  // 需要畫面權限
+    alwaysShow?: boolean          // 是否總是顯示（如今日預約）
   }> = [
     {
       title: '今日預約',
       icon: '📅',
-      link: '/coach-daily'
+      link: '/coach-daily',
+      alwaysShow: true  // 所有登入用戶都能看到
     },
     {
       title: '預約表',
       icon: '📝',
-      link: `/day?date=${getLocalDateString()}`
+      link: `/day?date=${getLocalDateString()}`,
+      requiresViewAccess: true
     },
     {
       title: '教練回報',
@@ -87,22 +116,20 @@ export function HomePage() {
     {
       title: '預約查詢',
       icon: '🔍',
-      link: '/search'
+      link: '/search',
+      requiresViewAccess: true
     },
     {
       title: '明日提醒',
       icon: '⏰',
-      link: '/tomorrow'
+      link: '/tomorrow',
+      requiresViewAccess: true
     },
-    // {
-    //   title: '教練回報',
-    //   icon: '✅',
-    //   link: '/coach-check'
-    // },
     {
       title: '編輯記錄',
       icon: '📋',
-      link: '/audit-log'
+      link: '/audit-log',
+      requiresViewAccess: true
     },
     {
       title: '排班',
@@ -187,9 +214,19 @@ export function HomePage() {
         }}>
           {menuItems
             .filter(item => {
+              // 總是顯示的項目（如今日預約）
+              if (item.alwaysShow) return true
+              // 管理員專用
               if (item.isAdmin && !userIsAdmin) return false
+              // 教練專用
               if (item.isCoach && !isCoach) return false
+              // 小編專用
               if (item.isEditor && !isEditorUser) return false
+              // 需要畫面權限的項目（權限載入中時不顯示）
+              if (item.requiresViewAccess) {
+                if (permissionsLoading) return false
+                return hasViewPermission
+              }
               return true
             })
             .map((item, index) => (
