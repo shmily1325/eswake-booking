@@ -556,17 +556,20 @@ export function DayView() {
               今天
             </button>
 
-            <Link
-              to={`/coach-assignment?date=${dateParam}`}
-              style={{
-                ...getButtonStyle('secondary', 'medium', false),
-                textDecoration: 'none',
-                minWidth: '100px',
-                boxSizing: 'border-box'
-              }}
-            >
-              排班
-            </Link>
+            {/* 排班按鈕 - 只有小編可見 */}
+            {isEditor && (
+              <Link
+                to={`/coach-assignment?date=${dateParam}`}
+                style={{
+                  ...getButtonStyle('secondary', 'medium', false),
+                  textDecoration: 'none',
+                  minWidth: '100px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                排班
+              </Link>
+            )}
 
             <div style={{
               marginLeft: 'auto',
