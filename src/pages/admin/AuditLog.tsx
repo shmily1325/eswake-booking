@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString } from '../../utils/date'
+import { hasViewAccess } from '../../utils/auth'
 
 interface AuditLogEntry {
   id: number
@@ -279,7 +281,21 @@ const OPERATION_CONFIG = {
 
 export function AuditLog() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const { isMobile } = useResponsive()
+  
+  // 權限檢查：需要一般權限
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (user) {
+        const canAccess = await hasViewAccess(user)
+        if (!canAccess) {
+          navigate('/')
+        }
+      }
+    }
+    checkAccess()
+  }, [user, navigate])
   
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)

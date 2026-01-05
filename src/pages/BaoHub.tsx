@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../contexts/AuthContext'
 import { UserMenu } from '../components/UserMenu'
 import { Footer } from '../components/Footer'
@@ -7,8 +8,16 @@ import { isAdmin } from '../utils/auth'
 
 export function BaoHub() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const { isMobile } = useResponsive()
   const userIsAdmin = isAdmin(user)
+  
+  // 權限檢查：只有管理員可以進入
+  useEffect(() => {
+    if (user && !userIsAdmin) {
+      navigate('/')
+    }
+  }, [user, userIsAdmin, navigate])
 
   const baoFeatures: Array<{
     section: string

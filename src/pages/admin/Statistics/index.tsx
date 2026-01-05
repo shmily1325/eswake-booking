@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
@@ -6,6 +7,7 @@ import { Footer } from '../../../components/Footer'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { getLocalDateString } from '../../../utils/date'
 import { sortBoatsByDisplayOrder } from '../../../utils/boatUtils'
+import { isAdmin } from '../../../utils/auth'
 
 import { LoadingSkeleton, LastUpdated } from './components'
 import { TrendTab, MonthlyTab, FutureTab } from './tabs'
@@ -23,9 +25,17 @@ type TabType = 'trend' | 'monthly' | 'future'
 
 export function Statistics() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  
+  // 權限檢查：只有管理員可以進入
+  useEffect(() => {
+    if (user && !isAdmin(user)) {
+      navigate('/')
+    }
+  }, [user, navigate])
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [activeTab, setActiveTab] = useState<TabType>('trend')
 

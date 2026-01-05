@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -7,6 +8,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString } from '../../utils/date'
 import type { MemberBasic, ImportRecord, BoardExportData } from '../../types/common'
 import { Button, useToast, ToastContainer } from '../../components/ui'
+import { isAdmin } from '../../utils/auth'
 
 interface BoardSlot {
   id?: number
@@ -31,9 +33,18 @@ const BOARD_SECTIONS = [
 
 export function BoardManagement() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const toast = useToast()
   const { isMobile } = useResponsive()
   const [boardSlots, setBoardSlots] = useState<BoardSlot[]>([])
+  
+  // 權限檢查：只有管理員可以進入
+  useEffect(() => {
+    if (user && !isAdmin(user)) {
+      toast.error('您沒有權限訪問此頁面')
+      navigate('/')
+    }
+  }, [user, navigate, toast])
   const [loading, setLoading] = useState(true)
   const [selectedSlot, setSelectedSlot] = useState<BoardSlot | null>(null)
   const [editing, setEditing] = useState(false)

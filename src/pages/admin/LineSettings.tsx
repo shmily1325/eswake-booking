@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -7,6 +8,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { useToast, ToastContainer } from '../../components/ui'
 import { designSystem, getCardStyle } from '../../styles/designSystem'
+import { isAdmin } from '../../utils/auth'
 
 interface Booking {
   id: number
@@ -28,8 +30,17 @@ interface BindingStats {
 
 export function LineSettings() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const { isMobile } = useResponsive()
   const toast = useToast()
+  
+  // 權限檢查：只有管理員可以進入
+  useEffect(() => {
+    if (user && !isAdmin(user)) {
+      toast.error('您沒有權限訪問此頁面')
+      navigate('/')
+    }
+  }, [user, navigate, toast])
   
   // 日期 - 參照 TomorrowReminder 的邏輯
   const getDefaultDate = () => {

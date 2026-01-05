@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -7,6 +8,7 @@ import { extractDate, extractTime } from '../../utils/formatters'
 import { getLocalDateString } from '../../utils/date'
 import { useToast, ToastContainer } from '../../components/ui'
 import { useResponsive } from '../../hooks/useResponsive'
+import { isAdmin } from '../../utils/auth'
 
 // 分頁查詢輔助函數（解決 Supabase 1000 筆限制）
 async function fetchAllWithPagination<T>(
@@ -119,9 +121,18 @@ interface BackupLog {
 
 export function BackupPage() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const toast = useToast()
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(false)
+  
+  // 權限檢查：只有管理員可以進入
+  useEffect(() => {
+    if (user && !isAdmin(user)) {
+      toast.error('您沒有權限訪問此頁面')
+      navigate('/')
+    }
+  }, [user, navigate, toast])
   const [fullBackupLoading, setFullBackupLoading] = useState(false)
   const [cloudBackupLoading, setCloudBackupLoading] = useState(false)
   const [backupLogs, setBackupLogs] = useState<BackupLog[]>([])

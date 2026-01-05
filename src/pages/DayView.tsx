@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { NewBookingDialog } from '../components/NewBookingDialog'
@@ -18,7 +18,7 @@ import { VirtualizedBookingList } from '../components/VirtualizedBookingList'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { inspectData, safeMapArray, tryCatch } from '../utils/debugHelpers'
 import { injectAnimationStyles } from '../utils/animations'
-import { isEditorAsync } from '../utils/auth'
+import { isEditorAsync, hasViewAccess } from '../utils/auth'
 import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
@@ -53,10 +53,25 @@ const TIME_SLOTS = generateTimeSlots()
 
 export function DayView() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const toast = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const dateParam = searchParams.get('date') || getLocalDateString()
   const { isMobile } = useResponsive()
+
+  // 權限檢查：需要一般權限
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (user) {
+        const canAccess = await hasViewAccess(user)
+        if (!canAccess) {
+          toast.error('您沒有權限訪問此頁面')
+          navigate('/')
+        }
+      }
+    }
+    checkAccess()
+  }, [user, navigate, toast])
 
   // 注入動畫樣式
   useEffect(() => {

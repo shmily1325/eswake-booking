@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getWeekdayText } from '../utils/date'
 import { Footer } from '../components/Footer'
+import { hasViewAccess } from '../utils/auth'
 
 interface Booking {
   id: number
@@ -20,7 +22,21 @@ interface Booking {
 
 export function TomorrowReminder() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const { isMobile } = useResponsive()
+  
+  // 權限檢查：需要一般權限
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (user) {
+        const canAccess = await hasViewAccess(user)
+        if (!canAccess) {
+          navigate('/')
+        }
+      }
+    }
+    checkAccess()
+  }, [user, navigate])
   
   const getDefaultDate = () => {
     const now = new Date()

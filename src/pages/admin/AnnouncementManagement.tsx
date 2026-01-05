@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -8,6 +9,7 @@ import { getLocalDateString, getWeekdayText } from '../../utils/date'
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { validateRequired } from '../../utils/errorHandler'
 import { useToast, ToastContainer } from '../../components/ui'
+import { isAdmin } from '../../utils/auth'
 
 interface Announcement {
   id: number
@@ -19,10 +21,19 @@ interface Announcement {
 
 export function AnnouncementManagement() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const toast = useToast()
   const { isMobile } = useResponsive()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // 權限檢查：只有管理員可以進入
+  useEffect(() => {
+    if (user && !isAdmin(user)) {
+      toast.error('您沒有權限訪問此頁面')
+      navigate('/')
+    }
+  }, [user, navigate, toast])
   const [editingId, setEditingId] = useState<number | null>(null)
   const [newContent, setNewContent] = useState('')
   const [newDisplayDate, setNewDisplayDate] = useState(getLocalDateString())

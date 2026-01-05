@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -6,7 +7,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
-import { clearPermissionCache } from '../../utils/auth'
+import { clearPermissionCache, isAdmin } from '../../utils/auth'
 
 interface Coach {
   id: string
@@ -47,12 +48,21 @@ interface ViewUser {
 
 export function StaffManagement() {
   const user = useAuthUser()
+  const navigate = useNavigate()
   const toast = useToast()
   const { isMobile } = useResponsive()
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [timeOffs, setTimeOffs] = useState<TimeOff[]>([])
   const [editorUsers, setEditorUsers] = useState<EditorUser[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // 權限檢查：只有管理員可以進入
+  useEffect(() => {
+    if (user && !isAdmin(user)) {
+      toast.error('您沒有權限訪問此頁面')
+      navigate('/')
+    }
+  }, [user, navigate, toast])
   const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'archived'>('active') // 狀態篩選
   const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing' | 'permissions'>('coaches') // Tab 切換
   const [expandedCoachIds, setExpandedCoachIds] = useState<Set<string>>(new Set()) // 展開的教練ID
