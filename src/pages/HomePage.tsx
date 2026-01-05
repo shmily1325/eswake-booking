@@ -61,7 +61,7 @@ export function HomePage() {
     checkIfEditor()
   }, [user, userIsAdmin])
   
-  // 載入用戶的畫面權限
+  // 載入用戶的一般權限
   useEffect(() => {
     const loadPermissions = async () => {
       if (!user) {
@@ -92,7 +92,7 @@ export function HomePage() {
     isAdmin?: boolean
     isCoach?: boolean
     isEditor?: boolean
-    requiresViewAccess?: boolean  // 需要畫面權限
+    requiresViewAccess?: boolean  // 需要一般權限
     alwaysShow?: boolean          // 是否總是顯示（如今日預約）
   }> = [
     {
@@ -222,7 +222,7 @@ export function HomePage() {
               if (item.isCoach && !isCoach) return false
               // 小編專用
               if (item.isEditor && !isEditorUser) return false
-              // 需要畫面權限的項目（權限載入中時不顯示）
+              // 需要一般權限的項目（權限載入中時不顯示）
               if (item.requiresViewAccess) {
                 if (permissionsLoading) return false
                 return hasViewPermission

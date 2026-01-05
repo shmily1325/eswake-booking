@@ -36,7 +36,7 @@ interface EditorUser {
   notes: string | null
 }
 
-// 畫面權限用戶
+// 一般權限用戶
 interface ViewUser {
   id: string
   email: string
@@ -54,10 +54,10 @@ export function StaffManagement() {
   const [editorUsers, setEditorUsers] = useState<EditorUser[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'archived'>('active') // 狀態篩選
-  const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing' | 'views' | 'features'>('coaches') // Tab 切換
+  const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing' | 'permissions'>('coaches') // Tab 切換
   const [expandedCoachIds, setExpandedCoachIds] = useState<Set<string>>(new Set()) // 展開的教練ID
   
-  // 畫面權限管理
+  // 一般權限管理
   const [viewUsers, setViewUsers] = useState<ViewUser[]>([])
   const [newViewUserEmail, setNewViewUserEmail] = useState('')
   const [newViewUserName, setNewViewUserName] = useState('')
@@ -221,7 +221,7 @@ export function StaffManagement() {
           .from('editor_users')
           .select('*')
           .order('email'),
-        // 載入畫面權限用戶
+        // 載入一般權限用戶
         (supabase as any)
           .from('view_users')
           .select('*')
@@ -572,7 +572,7 @@ export function StaffManagement() {
         throw editorError
       }
 
-      // 同時加入 view_users（小編也有畫面權限）
+      // 同時加入 view_users（小編也有一般權限）
       await (supabase as any)
         .from('view_users')
         .upsert([{
@@ -648,9 +648,9 @@ export function StaffManagement() {
     }
   }
 
-  // ========== 畫面權限管理 ==========
+  // ========== 一般權限管理 ==========
   
-  // 新增畫面權限用戶
+  // 新增一般權限用戶
   const handleAddViewUser = async () => {
     if (!newViewUserEmail.trim()) {
       toast.warning('請輸入 Email')
@@ -675,12 +675,12 @@ export function StaffManagement() {
       
       if (error) {
         if (error.code === '23505') {
-          throw new Error('此 Email 已有畫面權限')
+          throw new Error('此 Email 已有一般權限')
         }
         throw error
       }
       
-      toast.success(`已新增 ${newViewUserName || email} 的畫面權限`)
+      toast.success(`已新增 ${newViewUserName || email} 的一般權限`)
       setNewViewUserEmail('')
       setNewViewUserName('')
       clearPermissionCache()
@@ -692,9 +692,9 @@ export function StaffManagement() {
     }
   }
   
-  // 移除畫面權限用戶
+  // 移除一般權限用戶
   const handleRemoveViewUser = async (id: string, email: string, displayName: string | null) => {
-    if (!confirm(`確定要移除 ${displayName || email} 的畫面權限嗎？`)) {
+    if (!confirm(`確定要移除 ${displayName || email} 的一般權限嗎？`)) {
       return
     }
     
@@ -706,7 +706,7 @@ export function StaffManagement() {
       
       if (error) throw error
       
-      toast.success(`已移除 ${displayName || email} 的畫面權限`)
+      toast.success(`已移除 ${displayName || email} 的一般權限`)
       clearPermissionCache()
       loadData()
     } catch (error) {
@@ -714,7 +714,7 @@ export function StaffManagement() {
     }
   }
   
-  // 更新畫面權限用戶的顯示名稱
+  // 更新一般權限用戶的顯示名稱
   const handleUpdateViewUserName = async (id: string) => {
     try {
       await (supabase as any)
@@ -813,14 +813,14 @@ export function StaffManagement() {
             指定課價格
           </button>
           <button
-            onClick={() => setActiveTab('views')}
+            onClick={() => setActiveTab('permissions')}
             style={{
               padding: isMobile ? '12px 16px' : '14px 28px',
-              background: activeTab === 'views' ? 'white' : 'transparent',
+              background: activeTab === 'permissions' ? 'white' : 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'views' ? '3px solid #4CAF50' : '3px solid transparent',
-              color: activeTab === 'views' ? '#4CAF50' : '#666',
-              fontWeight: activeTab === 'views' ? 'bold' : 'normal',
+              borderBottom: activeTab === 'permissions' ? '3px solid #4CAF50' : '3px solid transparent',
+              color: activeTab === 'permissions' ? '#4CAF50' : '#666',
+              fontWeight: activeTab === 'permissions' ? 'bold' : 'normal',
               fontSize: isMobile ? '14px' : '16px',
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -828,25 +828,7 @@ export function StaffManagement() {
               whiteSpace: 'nowrap'
             }}
           >
-            畫面權限
-          </button>
-          <button
-            onClick={() => setActiveTab('features')}
-            style={{
-              padding: isMobile ? '12px 16px' : '14px 28px',
-              background: activeTab === 'features' ? 'white' : 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'features' ? '3px solid #2196F3' : '3px solid transparent',
-              color: activeTab === 'features' ? '#2196F3' : '#666',
-              fontWeight: activeTab === 'features' ? 'bold' : 'normal',
-              fontSize: isMobile ? '14px' : '16px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              marginBottom: '-2px',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            小編權限
+            權限管理
           </button>
         </div>
 
@@ -1585,57 +1567,74 @@ export function StaffManagement() {
           </>
         )}
 
-        {/* 畫面權限 Tab */}
-        {activeTab === 'views' && (
+        {/* 權限管理 Tab */}
+        {activeTab === 'permissions' && (
           <>
-            {/* 說明提示 */}
+            {/* 總體說明 */}
             <div style={{
-              background: '#e8f5e9',
+              background: '#fff3e0',
               padding: isMobile ? '12px 16px' : '14px 20px',
               borderRadius: '8px',
               marginBottom: '20px',
               fontSize: '14px',
-              color: '#2e7d32',
-              border: '1px solid #a5d6a7',
-              lineHeight: '1.6'
+              color: '#e65100',
+              border: '1px solid #ffcc80',
+              lineHeight: '1.8'
             }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <span style={{ flexShrink: 0 }}>👁️</span>
-                <div>
-                  <div style={{ marginBottom: '6px' }}>
-                    <strong>畫面權限</strong>：設定哪些帳號可以看到一般功能
-                  </div>
-                  <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '8px' }}>
-                    加入後，該帳號登入時可以看到：預約表、預約查詢、明日提醒、編輯記錄
-                  </div>
-                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                    💡 未加入的用戶只能看到「今日預約」
-                  </div>
-                </div>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '15px' }}>
+                📋 權限說明
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div>• <strong>未加入任何權限</strong>：只能看到「今日預約」</div>
+                <div>• <strong>一般權限</strong>：可看到預約表、預約查詢、明日提醒、編輯記錄</div>
+                <div>• <strong>小編權限</strong>：一般權限 ＋ 排班、船隻管理等進階功能</div>
+              </div>
+              <div style={{ 
+                marginTop: '10px', 
+                padding: '8px 12px', 
+                background: 'rgba(255,255,255,0.7)', 
+                borderRadius: '6px',
+                fontSize: '13px'
+              }}>
+                💡 <strong>小編自動擁有一般權限</strong>，不需要重複加入一般權限清單
               </div>
             </div>
 
-            {/* 新增帳號 */}
+            {/* ========== 一般權限區塊 ========== */}
+            <div style={{
+              background: '#e8f5e9',
+              padding: '12px 16px',
+              borderRadius: '8px 8px 0 0',
+              fontSize: '15px',
+              fontWeight: 'bold',
+              color: '#2e7d32',
+              border: '1px solid #a5d6a7',
+              borderBottom: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>👁️</span>
+              一般權限
+              <Badge variant="success" size="small">{viewUsers.length} 人</Badge>
+            </div>
+
+            {/* 一般權限 - 內容區塊 */}
             <div style={{
               background: 'white',
-              borderRadius: '12px',
+              borderRadius: '0 0 12px 12px',
               padding: isMobile ? '16px' : '20px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              marginBottom: '20px'
+              marginBottom: '24px',
+              border: '1px solid #a5d6a7',
+              borderTop: 'none'
             }}>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                marginBottom: '16px',
-                color: '#333'
-              }}>
-                新增帳號
-              </div>
+              {/* 新增表單 */}
               <div style={{ 
                 display: 'flex', 
                 gap: '12px',
                 flexDirection: isMobile ? 'column' : 'row',
-                marginBottom: '12px'
+                marginBottom: '16px'
               }}>
                 <input
                   type="email"
@@ -1675,30 +1674,8 @@ export function StaffManagement() {
                   {addingViewUser ? '新增中...' : '➕ 新增'}
                 </Button>
               </div>
-            </div>
 
-            {/* 已授權帳號列表 */}
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: isMobile ? '16px' : '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-            }}>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                marginBottom: '16px',
-                color: '#333',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                已授權帳號
-                <Badge variant="success" size="small">
-                  {viewUsers.length} 人
-                </Badge>
-              </div>
-
+              {/* 帳號列表 */}
               {viewUsers.length === 0 ? (
                 <div style={{
                   padding: '40px 20px',
@@ -1828,82 +1805,66 @@ export function StaffManagement() {
                 </div>
               )}
             </div>
-          </>
-        )}
 
-        {/* 小編權限 Tab */}
-        {activeTab === 'features' && (
-          <>
-            {/* 說明提示 */}
+            {/* ========== 小編權限區塊 ========== */}
             <div style={{
               background: '#e3f2fd',
-              padding: isMobile ? '12px 16px' : '14px 20px',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              fontSize: '14px',
+              padding: '12px 16px',
+              borderRadius: '8px 8px 0 0',
+              fontSize: '15px',
+              fontWeight: 'bold',
               color: '#1565c0',
               border: '1px solid #90caf9',
+              borderBottom: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>🚤</span>
+              小編權限
+              <Badge variant="info" size="small">{editorUsers.length} 人</Badge>
+            </div>
+            
+            <div style={{
+              background: '#e3f2fd',
+              padding: '10px 16px',
+              fontSize: '13px',
+              color: '#1565c0',
+              border: '1px solid #90caf9',
+              borderTop: 'none',
+              borderBottom: 'none',
               lineHeight: '1.6'
             }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <span style={{ flexShrink: 0 }}>🚤</span>
-                <div>
-                  <div style={{ marginBottom: '6px' }}>
-                    <strong>小編權限</strong>：設定哪些帳號可以在首頁看到進階功能
-                  </div>
-                  <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '8px' }}>
-                    加入後，該帳號登入時首頁會顯示進階功能（小編也自動擁有畫面權限）
-                  </div>
-                  <div style={{ 
-                    background: 'rgba(255,255,255,0.7)', 
-                    padding: '10px 12px', 
-                    borderRadius: '6px',
-                    fontSize: '13px'
-                  }}>
-                    <div style={{ fontWeight: '600', marginBottom: '6px', color: '#0d47a1' }}>
-                      目前開放的功能：
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <span>📆</span>
-                      <span><strong>排班</strong> - 分配教練、駕駛，填寫排班備註</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <span>🚤</span>
-                      <span><strong>船隻管理</strong> - 管理船隻狀態、設定維修/停用時段、調整價格</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <span>🔍</span>
-                      <span><strong>批次修改</strong> - 在預約查詢中批次修改多筆預約</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span>🔄</span>
-                      <span><strong>重複預約</strong> - 在預約表中將預約重複到多個日期</span>
-                    </div>
-                  </div>
-                </div>
+              <div style={{ marginBottom: '6px' }}>
+                小編可使用：<strong>排班</strong>、<strong>船隻管理</strong>、<strong>批次修改</strong>、<strong>重複預約</strong>
+              </div>
+              <div style={{ 
+                fontSize: '12px', 
+                opacity: 0.85,
+                padding: '6px 10px',
+                background: 'rgba(255,255,255,0.5)',
+                borderRadius: '4px',
+                display: 'inline-block'
+              }}>
+                ⚠️ 移除小編權限時，<strong>不會</strong>自動移除一般權限（需另外移除）
               </div>
             </div>
 
-            {/* 新增帳號 */}
+            {/* 小編權限 - 內容區塊 */}
             <div style={{
               background: 'white',
-              borderRadius: '12px',
+              borderRadius: '0 0 12px 12px',
               padding: isMobile ? '16px' : '20px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              marginBottom: '20px'
+              border: '1px solid #90caf9',
+              borderTop: 'none'
             }}>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                marginBottom: '16px',
-                color: '#333'
-              }}>
-                新增帳號
-              </div>
+              {/* 新增表單 */}
               <div style={{ 
                 display: 'flex', 
                 gap: '12px',
-                flexDirection: isMobile ? 'column' : 'row'
+                flexDirection: isMobile ? 'column' : 'row',
+                marginBottom: '16px'
               }}>
                 <input
                   type="email"
@@ -1945,30 +1906,8 @@ export function StaffManagement() {
                   {addingEditor ? '新增中...' : '➕ 新增'}
                 </Button>
               </div>
-            </div>
 
-            {/* 已授權帳號列表 */}
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: isMobile ? '16px' : '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-            }}>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                marginBottom: '16px',
-                color: '#333',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                已授權帳號
-                <Badge variant="info" size="small">
-                  {editorUsers.length} 人
-                </Badge>
-              </div>
-
+              {/* 帳號列表 */}
               {editorUsers.length === 0 ? (
                 <div style={{
                   padding: '40px 20px',
