@@ -896,7 +896,8 @@ export function BackupPage() {
             padding: '16px', 
             backgroundColor: '#f8f9fa', 
             borderRadius: '8px',
-            border: '1px solid #e0e0e0'
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
           }}>
             <div style={{ fontSize: '14px', color: '#333', marginBottom: '12px', fontWeight: '500' }}>
               📅 日期區間（選填）
@@ -908,7 +909,7 @@ export function BackupPage() {
               alignItems: isMobile ? 'stretch' : 'center',
               gap: '12px' 
             }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '6px',
@@ -924,16 +925,18 @@ export function BackupPage() {
                   style={{
                     width: '100%',
                     minWidth: 0,
+                    maxWidth: '100%',
                     padding: '10px',
                     fontSize: '16px',
                     border: '1px solid #e0e0e0',
                     borderRadius: '8px',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    WebkitAppearance: 'none',
                   }}
                 />
               </div>
               {!isMobile && <span style={{ color: '#999', marginTop: '24px' }}>～</span>}
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '6px',
@@ -949,11 +952,13 @@ export function BackupPage() {
                   style={{
                     width: '100%',
                     minWidth: 0,
+                    maxWidth: '100%',
                     padding: '10px',
                     fontSize: '16px',
                     border: '1px solid #e0e0e0',
                     borderRadius: '8px',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    WebkitAppearance: 'none',
                   }}
                 />
               </div>
