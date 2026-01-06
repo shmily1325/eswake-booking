@@ -27,11 +27,18 @@ export function MonthlyTab({
   const getQuickMonths = () => {
     const months = []
     const now = new Date()
+    const currentYear = now.getFullYear()
     for (let i = 0; i < 6; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const year = date.getFullYear()
+      const month = date.getMonth() + 1
+      // 如果不是當年，顯示年份
+      const label = year !== currentYear 
+        ? `${year}/${month}月`
+        : `${month}月`
       months.push({
-        value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
-        label: `${date.getMonth() + 1}月`
+        value: `${year}-${String(month).padStart(2, '0')}`,
+        label
       })
     }
     return months
@@ -62,48 +69,58 @@ export function MonthlyTab({
               key={m.value}
               onClick={() => setSelectedPeriod(m.value)}
               style={{
-                padding: '10px 16px',
+                padding: isMobile ? '8px 12px' : '10px 16px',
                 borderRadius: designSystem.borderRadius.md,
                 border: selectedPeriod === m.value ? 'none' : `1px solid ${designSystem.colors.border.main}`,
                 background: selectedPeriod === m.value
                   ? 'linear-gradient(135deg, #4a90e2 0%, #1976d2 100%)'
                   : 'white',
                 color: selectedPeriod === m.value ? 'white' : '#666',
-                fontSize: '14px',
+                fontSize: isMobile ? '13px' : '14px',
                 fontWeight: selectedPeriod === m.value ? '600' : '500',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                boxShadow: selectedPeriod === m.value ? '0 2px 8px rgba(74,144,226,0.3)' : 'none'
+                boxShadow: selectedPeriod === m.value ? '0 2px 8px rgba(74,144,226,0.3)' : 'none',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
             >
               {m.label}
               {isCurrentMonth(m.value) && (
                 <span style={{
                   marginLeft: '4px',
-                  fontSize: '10px',
+                  fontSize: isMobile ? '9px' : '10px',
                   opacity: 0.8
                 }}>
-                  (本月)
+                  本月
                 </span>
               )}
             </button>
           ))}
-          {/* 更多月份 */}
-          <input
-            type="month"
+          {/* 更多月份 - 使用 select 替代 input[type=month] 避免英文 */}
+          <select
             value={selectedPeriod}
-            max={quickMonths[0].value}
             onChange={(e) => setSelectedPeriod(e.target.value)}
             style={{
-              padding: '10px 12px',
+              padding: isMobile ? '8px 10px' : '10px 12px',
               borderRadius: designSystem.borderRadius.md,
               border: `1px solid ${designSystem.colors.border.main}`,
-              fontSize: '14px',
+              fontSize: isMobile ? '13px' : '14px',
               color: '#666',
               cursor: 'pointer',
-              background: '#f8f9fa'
+              background: '#f8f9fa',
+              flexShrink: 0,
             }}
-          />
+          >
+            {/* 產生過去 24 個月的選項 */}
+            {Array.from({ length: 24 }, (_, i) => {
+              const date = new Date()
+              date.setMonth(date.getMonth() - i)
+              const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+              const label = `${date.getFullYear()}年${date.getMonth() + 1}月`
+              return <option key={value} value={value}>{label}</option>
+            })}
+          </select>
         </div>
 
         {/* 子 Tab 按鈕 */}
