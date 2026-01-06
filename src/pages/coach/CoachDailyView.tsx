@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { getLocalDateString } from '../../utils/date'
+import { getLocalDateString, getWeekdayText } from '../../utils/date'
 import { getBookingCardStyle, bookingCardContentStyles } from '../../styles/designSystem'
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
@@ -248,16 +248,6 @@ export function CoachDailyView() {
   const goToToday = () => {
     const today = getLocalDateString()
     setSearchParams({ date: today })
-  }
-
-  // 格式化日期顯示
-  const formatDisplayDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const days = ['日', '一', '二', '三', '四', '五', '六']
-    const month = date.getMonth() + 1
-    const day = date.getDate()
-    const weekday = days[date.getDay()]
-    return { dateText: `${month}月${day}日`, weekday: `星期${weekday}` }
   }
 
   // 獲取某個時間點的預約
@@ -627,94 +617,114 @@ export function CoachDailyView() {
           marginBottom: '20px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
-          {/* 日期切換 */}
+          {/* 日期切換 - 參考 DayView 設計 */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            gap: isMobile ? '8px' : '10px',
             marginBottom: '16px',
-            gap: '10px'
+            backgroundColor: 'white',
+            padding: isMobile ? '8px' : '12px',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
           }}>
             <button
               onClick={() => handleDateChange(-1)}
               style={{
-                padding: '8px 16px',
-                background: 'white',
-                border: '2px solid #e0e0e0',
+                background: 'transparent',
+                border: '1px solid #dee2e6',
                 borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '16px',
-                color: '#666',
-                fontWeight: '600'
-              }}
-            >
-              ← 前一天
-            </button>
-
-            <div style={{
-              flex: 1,
-              textAlign: 'center'
-            }}>
-              <div style={{
+                width: '44px',
+                height: '44px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px',
-                marginBottom: '4px',
-                flexWrap: 'wrap'
-              }}>
-                <div style={{
-                  fontSize: isMobile ? '18px' : '20px',
-                  fontWeight: 'bold',
-                  color: '#333',
-                }}>
-                  {formatDisplayDate(dateParam).dateText}
-                </div>
-                <div style={{
-                  fontSize: isMobile ? '13px' : '14px',
-                  fontWeight: '600',
-                  color: '#495057',
-                  background: '#f8f9fa',
-                  padding: '4px 12px',
-                  borderRadius: '12px',
+                fontSize: '18px',
+                color: '#333',
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+              aria-label="前一天"
+            >
+              ←
+            </button>
+
+            <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+              <input
+                type="date"
+                value={dateParam}
+                onChange={(e) => setSearchParams({ date: e.target.value })}
+                style={{
+                  width: '100%',
+                  height: '44px',
+                  padding: '0 12px',
+                  borderRadius: '8px',
                   border: '1px solid #dee2e6',
-                }}>
-                  {formatDisplayDate(dateParam).weekday}
-                </div>
+                  fontSize: '16px',
+                  textAlign: 'center',
+                  backgroundColor: '#f8f9fa',
+                  color: '#333',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {/* 星期幾徽章 */}
+              <div style={{
+                position: 'absolute',
+                top: '-8px',
+                right: '8px',
+                fontSize: '11px',
+                color: 'white',
+                fontWeight: '600',
+                background: '#5a5a5a',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                pointerEvents: 'none',
+              }}>
+                {getWeekdayText(dateParam)}
               </div>
-              {dateParam !== getLocalDateString() && (
-                <button
-                  onClick={goToToday}
-                  style={{
-                    padding: '4px 12px',
-                    background: '#2196f3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '600'
-                  }}
-                >
-                  回到今天
-                </button>
-              )}
             </div>
 
             <button
               onClick={() => handleDateChange(1)}
               style={{
-                padding: '8px 16px',
-                background: 'white',
-                border: '2px solid #e0e0e0',
+                background: 'transparent',
+                border: '1px solid #dee2e6',
                 borderRadius: '8px',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                color: '#333',
                 cursor: 'pointer',
-                fontSize: '16px',
-                color: '#666',
-                fontWeight: '600'
+                flexShrink: 0,
               }}
+              aria-label="後一天"
             >
-              後一天 →
+              →
+            </button>
+
+            <button
+              onClick={goToToday}
+              style={{
+                background: dateParam === getLocalDateString() ? '#e8e8e8' : '#f0f7ff',
+                border: dateParam === getLocalDateString() ? '1px solid #ccc' : '1px solid #b3d4fc',
+                borderRadius: '8px',
+                height: '44px',
+                padding: '0 12px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: dateParam === getLocalDateString() ? '#999' : '#1976d2',
+                whiteSpace: 'nowrap',
+                cursor: dateParam === getLocalDateString() ? 'default' : 'pointer',
+                flexShrink: 0,
+              }}
+              disabled={dateParam === getLocalDateString()}
+            >
+              今天
             </button>
           </div>
 
