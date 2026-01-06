@@ -11,6 +11,7 @@ import { Button, useToast, ToastContainer } from '../../components/ui'
 import { isFacility } from '../../utils/facility'
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
+import { getDisplayContactName } from '../../utils/bookingFormat'
 import {
   calculateIsTeaching,
   calculateParticipantStatus
@@ -188,7 +189,8 @@ export function CoachReport({
         .from('bookings')
         .select(`
           id, start_at, duration_min, contact_name, notes, boat_id, requires_driver, status, is_coach_practice,
-          boats(name, color)
+          boats(name, color),
+          booking_members(member_id, members:member_id(id, name, nickname))
         `)
         .eq('status', 'confirmed')
         .eq('is_coach_practice', false)  // 過濾教練練習
@@ -1444,7 +1446,7 @@ export function CoachReport({
                       {extractDate(booking.start_at)} {extractTime(booking.start_at)} | {booking.boats?.name} ({booking.duration_min}分)
                     </div>
                     <div style={{ color: '#666', fontSize: '13px' }}>
-                      {booking.contact_name || '未命名'}
+                      {getDisplayContactName(booking)}
                     </div>
                     {booking.notes && (
                       <div style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>

@@ -75,41 +75,67 @@ export function formatBookingsForLine(bookings: BookingFormatData[], title: stri
  * 如果有非會員，會從 contact_name 中提取並一併顯示
  */
 export function getDisplayContactName(booking: any): string {
-  // 如果有關聯的會員，優先顯示暱稱
-  if (booking.booking_members && booking.booking_members.length > 0) {
-    const memberDisplayNames = booking.booking_members
-      .map((bm: any) => {
-        // 安全檢查：確保 members 不是 null
-        if (!bm.members) return null
-        return bm.members.nickname || bm.members.name
-      })
-      .filter(Boolean) as string[]
-
-    // 如果有重複的暱稱，只顯示一個
-    const uniqueNames = Array.from(new Set(memberDisplayNames))
-
-    // 如果沒有任何有效的會員名稱，回退到 contact_name
-    if (uniqueNames.length === 0) {
-      return booking.contact_name || '未命名'
-    }
-
-    // 如果只有會員，且數量吻合 contact_name 中的名字數量，直接返回
-    // 否則，可能還包含非會員名字，直接用 contact_name
-    const contactNameParts = booking.contact_name?.split(',').map((n: any) => n.trim()).filter(Boolean) || []
-
-    // 如果會員數量等於 contact_name 中的名字數量，說明都是會員
-    if (uniqueNames.length === contactNameParts.length) {
-      return uniqueNames.join(', ')
-    }
-
-    // 否則，contact_name 中可能還有非會員，需要混合處理
-    // 為了簡化，直接返回第一個會員的暱稱/姓名
-    // 如果要完整顯示，會比較複雜（需要從 contact_name 中排除會員真實姓名，再加上暱稱）
-    return uniqueNames[0] || booking.contact_name || '未命名'
+  // 如果沒有 contact_name，返回未命名
+  if (!booking.contact_name) {
+    return '未命名'
   }
 
-  // 沒有關聯會員，直接使用 contact_name
-  return booking.contact_name || '未命名'
+  // 如果沒有關聯會員，直接使用 contact_name
+  if (!booking.booking_members || booking.booking_members.length === 0) {
+    return booking.contact_name
+  }
+
+  // 有關聯會員的情況：需要處理會員暱稱替換 + 非會員保留
+  const contactNameParts = booking.contact_name.split(/[,，]/).map((n: string) => n.trim()).filter(Boolean)
+  
+  // 建立會員名字 -> 暱稱的映射（用於替換）
+  const memberNameToNickname = new Map<string, string>()
+  const memberNicknameSet = new Set<string>()
+  
+  booking.booking_members.forEach((bm: any) => {
+    if (!bm.members) return
+    const name = bm.members.name
+    const nickname = bm.members.nickname || bm.members.name
+    if (name) {
+      memberNameToNickname.set(name, nickname)
+      memberNicknameSet.add(nickname)
+    }
+    // 也把暱稱映射到自己（防止暱稱被當成非會員）
+    if (bm.members.nickname) {
+      memberNameToNickname.set(bm.members.nickname, bm.members.nickname)
+    }
+  })
+  
+  // 處理每個名字：如果是會員就用暱稱，否則保留原名
+  const processedMemberIds = new Set<string>()
+  const displayNames: string[] = []
+  
+  contactNameParts.forEach((name: string) => {
+    // 檢查是否匹配會員（真名或暱稱）
+    if (memberNameToNickname.has(name)) {
+      const nickname = memberNameToNickname.get(name)!
+      // 避免重複顯示同一個暱稱
+      if (!processedMemberIds.has(nickname)) {
+        displayNames.push(nickname)
+        processedMemberIds.add(nickname)
+      }
+    } else {
+      // 不是會員，保留原名（非會員）
+      displayNames.push(name)
+    }
+  })
+  
+  // 確保所有會員都出現（防止 contact_name 中漏掉會員）
+  booking.booking_members.forEach((bm: any) => {
+    if (!bm.members) return
+    const nickname = bm.members.nickname || bm.members.name
+    if (nickname && !processedMemberIds.has(nickname)) {
+      displayNames.push(nickname)
+      processedMemberIds.add(nickname)
+    }
+  })
+
+  return displayNames.length > 0 ? displayNames.join(', ') : booking.contact_name || '未命名'
 }
 
 

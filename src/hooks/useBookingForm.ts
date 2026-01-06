@@ -108,9 +108,24 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             }
             setSelectedMemberIds([...new Set(initialMemberIds)])
 
-            // Initialize manual names
-            if (initialMemberIds.length === 0 && initialBooking.contact_name) {
-                setManualNames([initialBooking.contact_name])
+            // Initialize manual names - 從 contact_name 中提取非會員名字
+            if (initialBooking.contact_name) {
+                const contactNames = initialBooking.contact_name.split(/[,，]/).map(n => n.trim()).filter(Boolean)
+                
+                // 取得已選會員的名字和暱稱（用於比對）
+                const memberNamesSet = new Set<string>()
+                if (initialBooking.booking_members && initialBooking.booking_members.length > 0) {
+                    initialBooking.booking_members.forEach((bm: any) => {
+                        if (bm.members) {
+                            if (bm.members.name) memberNamesSet.add(bm.members.name)
+                            if (bm.members.nickname) memberNamesSet.add(bm.members.nickname)
+                        }
+                    })
+                }
+                
+                // 從 contact_name 中過濾出非會員（不在會員名字/暱稱中的名字）
+                const nonMemberNames = contactNames.filter(name => !memberNamesSet.has(name))
+                setManualNames(nonMemberNames)
             } else {
                 setManualNames([])
             }
