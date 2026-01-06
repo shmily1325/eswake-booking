@@ -147,7 +147,7 @@ export function TimeSelector({
                     gap: '8px',
                     marginBottom: '12px',
                 }}>
-                    {[30, 60, 90, 120, 150, 180, 210, 240].map(minutes => {
+                    {[30, 40, 60, 90, 120, 150, 180, 210].map(minutes => {
                         const isSelected = durationMin === minutes
                         return (
                             <button
