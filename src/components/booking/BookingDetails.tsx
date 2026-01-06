@@ -61,8 +61,7 @@ export function BookingDetails({
                             marginTop: '4px',
                             lineHeight: '1.5',
                         }}>
-                            教練練習不需排班、不需回報<br/>
-                            會顯示在時間表上，但不會進入排班與回報流程
+                            教練練習會顯示在時間表上，需要排班，但不需要回報
                         </div>
                     </div>
                 </label>

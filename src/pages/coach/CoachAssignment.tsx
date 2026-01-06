@@ -1543,19 +1543,6 @@ export function CoachAssignment() {
           // 分類預約 - 使用編輯中的值（即時反應）
           bookings.forEach(booking => {
             const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
-            const isCoachPractice = booking.is_coach_practice === true
-            
-            // 教練練習：只顯示在已分配的教練時間表中
-            if (isCoachPractice) {
-              if (booking.currentCoaches && booking.currentCoaches.length > 0) {
-                booking.currentCoaches.forEach(coachId => {
-                  if (coachGroups[coachId]) {
-                    coachGroups[coachId].push(booking)
-                  }
-                })
-              }
-              return // 教練練習不進入其他流程
-            }
             
             // 如果有衝突，只顯示在「需要駕駛」區域
             if (assignment.conflicts.length > 0) {
