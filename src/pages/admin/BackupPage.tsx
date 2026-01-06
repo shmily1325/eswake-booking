@@ -893,7 +893,7 @@ export function BackupPage() {
           {/* 日期區間選擇（移到上方） */}
           <div style={{ 
             marginBottom: '20px', 
-            padding: '16px', 
+            padding: isMobile ? '12px' : '16px', 
             backgroundColor: '#f8f9fa', 
             borderRadius: '8px',
             border: '1px solid #e0e0e0',
@@ -907,9 +907,9 @@ export function BackupPage() {
               display: 'flex', 
               flexDirection: isMobile ? 'column' : 'row',
               alignItems: isMobile ? 'stretch' : 'center',
-              gap: '12px' 
+              gap: isMobile ? '10px' : '12px',
             }}>
-              <div style={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '6px',
@@ -923,20 +923,19 @@ export function BackupPage() {
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   style={{
-                    width: '100%',
+                    flex: isMobile ? 1 : 'none',
                     minWidth: 0,
-                    maxWidth: '100%',
+                    width: '100%',
                     padding: '10px',
-                    fontSize: '16px',
                     border: '1px solid #e0e0e0',
                     borderRadius: '8px',
-                    boxSizing: 'border-box',
-                    WebkitAppearance: 'none',
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
               {!isMobile && <span style={{ color: '#999', marginTop: '24px' }}>～</span>}
-              <div style={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '6px',
@@ -950,15 +949,14 @@ export function BackupPage() {
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   style={{
-                    width: '100%',
+                    flex: isMobile ? 1 : 'none',
                     minWidth: 0,
-                    maxWidth: '100%',
+                    width: '100%',
                     padding: '10px',
-                    fontSize: '16px',
                     border: '1px solid #e0e0e0',
                     borderRadius: '8px',
-                    boxSizing: 'border-box',
-                    WebkitAppearance: 'none',
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
