@@ -77,7 +77,7 @@ export function Statistics() {
     }
   }
 
-  // 載入過去6個月的預約趨勢
+  // 載入過去6個月的預約趨勢（歷史資料，不含未來）
   const loadMonthlyTrend = async () => {
     const months: MonthlyStats[] = []
     const now = new Date()
@@ -88,8 +88,25 @@ export function Statistics() {
       const month = date.getMonth() + 1
       const monthStr = `${year}-${String(month).padStart(2, '0')}`
       const startDate = `${monthStr}-01`
-      const endDate = new Date(year, month, 0).getDate()
-      const endDateStr = `${monthStr}-${String(endDate).padStart(2, '0')}`
+      
+      // 計算結束日期：當月只到昨天，過去月份到月底
+      const lastDayOfMonth = new Date(year, month, 0).getDate()
+      let endDateStr: string
+      
+      if (i === 0) {
+        // 當月：只統計到昨天（不含今天及未來）
+        const yesterday = new Date(now)
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yesterdayStr = getLocalDateString(yesterday)
+        // 如果昨天還在上個月，則當月沒有歷史資料
+        if (yesterdayStr < startDate) {
+          continue // 跳過當月（月初第一天時沒有歷史資料）
+        }
+        endDateStr = yesterdayStr
+      } else {
+        // 過去月份：到月底
+        endDateStr = `${monthStr}-${String(lastDayOfMonth).padStart(2, '0')}`
+      }
 
       const { data } = await supabase
         .from('bookings')
@@ -354,12 +371,26 @@ export function Statistics() {
     setFutureWeekdayStats({ weekdayCount, weekdayMinutes, weekendCount, weekendMinutes })
   }
 
-  // 載入平日/假日統計（月度）
+  // 載入平日/假日統計（月度，只統計歷史資料）
   const loadWeekdayStats = async () => {
     const [year, month] = selectedPeriod.split('-')
     const startDate = `${selectedPeriod}-01`
-    const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
-    const endDateStr = `${selectedPeriod}-${String(endDate).padStart(2, '0')}`
+    const lastDayOfMonth = new Date(parseInt(year), parseInt(month), 0).getDate()
+    const lastDayOfMonthStr = `${selectedPeriod}-${String(lastDayOfMonth).padStart(2, '0')}`
+    
+    // 計算結束日期：不超過昨天
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = getLocalDateString(yesterday)
+    
+    // 如果選擇的月份還沒開始，則沒有歷史資料
+    if (startDate > yesterdayStr) {
+      setWeekdayStats({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
+      return
+    }
+    
+    // 結束日期取月底和昨天的較小值
+    const endDateStr = yesterdayStr < lastDayOfMonthStr ? yesterdayStr : lastDayOfMonthStr
 
     const { data } = await supabase
       .from('bookings')
