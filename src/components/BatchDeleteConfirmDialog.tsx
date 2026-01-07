@@ -58,7 +58,7 @@ export function BatchDeleteConfirmDialog({
       // 1️⃣ 先查詢預約詳細資訊（用於 Audit Log）
       const { data: bookingsData } = await supabase
         .from('bookings')
-        .select('id, start_at, members!inner(name)')
+        .select('id, start_at, members!inner(name, nickname)')
         .in('id', bookingIds)
       
       // 建立 ID -> 標籤的映射
@@ -66,7 +66,8 @@ export function BatchDeleteConfirmDialog({
       bookingsData?.forEach(booking => {
         const dateStr = booking.start_at.split('T')[0].slice(5).replace('-', '/') // "04/03"
         const timeStr = booking.start_at.split('T')[1].substring(0, 5) // "08:30"
-        const name = (booking.members as any)?.name || '未知'
+        const member = booking.members as any
+        const name = member?.nickname || member?.name || '未知'  // 優先使用暱稱
         bookingLabelsMap.set(booking.id, `${name} (${dateStr} ${timeStr})`)
       })
       
