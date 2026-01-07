@@ -782,6 +782,11 @@ export function CoachReport({
           // 如果原本沒有 created_by_email（首次回報），則設定回報者
           const shouldSetCreatedBy = !original?.created_by_email
           
+          // ⛔ 安全檢查：確保 user.email 有值
+          if (!user?.email) {
+            throw new Error(`無法取得您的帳號資訊，請重新整理頁面後再試。(participant: ${p.participant_name})`)
+          }
+          
           participantsToUpdate.push({
             booking_id: reportingBookingId,
             coach_id: reportingCoachId,
@@ -796,12 +801,16 @@ export function CoachReport({
             is_teaching: isTeaching,
             id: p.id,
             updated_at: getLocalTimestamp(),
-            updated_by_email: user?.email || null,
+            updated_by_email: user.email,
             // 首次回報時設定 created_by_email
-            ...(shouldSetCreatedBy ? { created_by_email: user?.email || null } : {})
+            ...(shouldSetCreatedBy ? { created_by_email: user.email } : {})
           })
         } else {
           // 新記錄：插入
+          // ⛔ 安全檢查：確保 user.email 有值（理論上不應該發生，但防止空值寫入）
+          if (!user?.email) {
+            throw new Error(`無法取得您的帳號資訊，請重新整理頁面後再試。(participant: ${p.participant_name})`)
+          }
           participantsToInsert.push({
             booking_id: reportingBookingId,
             coach_id: reportingCoachId,
@@ -814,8 +823,8 @@ export function CoachReport({
             status: calculatedStatus,
             reported_at: getLocalTimestamp(),
             is_teaching: isTeaching,
-            created_by_email: user?.email || null,
-            updated_by_email: user?.email || null
+            created_by_email: user.email,
+            updated_by_email: user.email
           })
         }
       })

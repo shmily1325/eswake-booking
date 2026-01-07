@@ -839,7 +839,8 @@ export function CoachAdmin() {
                                   </div>
                                   {/* 提交者資訊 */}
                                   {(() => {
-                                    const createdBy = getSubmitterName((report as any).created_by_email)
+                                    // 如果沒有 created_by_email，使用教練名稱作為備選
+                                    const createdBy = getSubmitterName((report as any).created_by_email) || (report.coaches?.name || null)
                                     const updatedBy = getSubmitterName((report as any).updated_by_email)
                                     if (!createdBy && !updatedBy) return null
                                     return (
