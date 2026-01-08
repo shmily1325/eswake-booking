@@ -18,6 +18,7 @@ interface Booking {
   notes: string | null
   boats?: { id: number; name: string; color: string } | null
   coaches?: { id: string; name: string }[]
+  drivers?: { id: string; name: string }[]  // 駕駛資料
 }
 
 export function TomorrowReminder() {
@@ -127,6 +128,24 @@ export function TomorrowReminder() {
           }
         }
         
+        // ✅ 查詢駕駛資料
+        const { data: bookingDriversData } = await supabase
+          .from('booking_drivers')
+          .select('booking_id, coaches:driver_id(id, name)')
+          .in('booking_id', bookingIds)
+        
+        const driversByBooking: { [key: number]: { id: string; name: string }[] } = {}
+        for (const item of bookingDriversData || []) {
+          const bookingId = item.booking_id
+          const driver = (item as any).coaches
+          if (driver) {
+            if (!driversByBooking[bookingId]) {
+              driversByBooking[bookingId] = []
+            }
+            driversByBooking[bookingId].push(driver)
+          }
+        }
+        
         // ✅ 新增：查詢會員資料以獲取最新的暱稱
         const { data: bookingMembersData } = await supabase
           .from('booking_members')
@@ -145,9 +164,10 @@ export function TomorrowReminder() {
           }
         }
         
-        // ✅ 組合教練和會員資料，並更新 contact_name 為最新暱稱
+        // ✅ 組合教練、駕駛和會員資料，並更新 contact_name 為最新暱稱
         bookingsData.forEach((booking: any) => {
           booking.coaches = coachesByBooking[booking.id] || []
+          booking.drivers = driversByBooking[booking.id] || []
           
           // ✅ 如果有會員資料，智能更新名稱：保留訪客，更新會員
           const members = membersByBooking[booking.id] || []
@@ -237,6 +257,9 @@ export function TomorrowReminder() {
     return Array.from(students).sort()
   }
   
+  // ✅ 特殊會員：需要額外顯示船和開船教練資訊
+  const SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小']
+  
   const generateMessageForStudent = (studentName: string): string => {
     // ✅ 找出所有包含此會員的預約
     const studentBookings = bookings
@@ -246,7 +269,30 @@ export function TomorrowReminder() {
       })
       .sort((a, b) => a.start_at.localeCompare(b.start_at)) // 按時間排序
     
-    let message = `${studentName}你好\n提醒你，明天有預約\n\n`
+    let message = `${studentName}你好\n\n提醒你，明天有預約\n`
+    
+    // ✅ 特殊會員：加入船和開船教練資訊（從第一個預約取得）
+    if (SPECIAL_MEMBERS_FOR_BOAT_INFO.includes(studentName) && studentBookings.length > 0) {
+      const firstBooking = studentBookings[0]
+      const boatName = firstBooking.boats?.name || ''
+      // 駕駛：優先使用 booking_drivers，如果沒有則使用教練
+      const driverNames = firstBooking.drivers && firstBooking.drivers.length > 0
+        ? firstBooking.drivers.map(d => d.name).join('/')
+        : (firstBooking.coaches && firstBooking.coaches.length > 0
+            ? firstBooking.coaches.map(c => c.name).join('/')
+            : '')
+      
+      if (boatName) {
+        // 有駕駛才顯示開船資訊，沒有就只顯示船名
+        if (driverNames) {
+          message += `船：${boatName} / 開船：${driverNames}\n`
+        } else {
+          message += `船：${boatName}\n`
+        }
+      }
+    }
+    
+    message += '\n'
     
     let previousCoachNames = ''
     let boatCount = 0  // 只計算真正的船（不含彈簧床）

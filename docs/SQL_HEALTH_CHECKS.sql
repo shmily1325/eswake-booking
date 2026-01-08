@@ -1,14 +1,33 @@
 -- ============================================
 -- 🏥 ES Wake 系統健康檢查 SQL 腳本
 -- ============================================
--- 版本：v2 (2025-11-26 更新)
+-- 版本：v3 (2026-01-08 更新)
 -- 使用方式：複製到 Supabase SQL Editor 執行
 -- 建議：每週執行一次，記錄結果
 -- 
 -- 更新記錄：
+-- v3 (2026-01-08):
+-- - 餘額計算改用 SUM(transactions) 而非 balance_after
+-- - 加入 charge 類型到餘額計算（charge = 費用計入帳戶）
+-- 
+-- v2 (2025-11-26):
 -- - 修正為實際的表名稱：booking_participants（不是 booking_reports）
 -- - 修正為實際的欄位名稱：created_at, transaction_type, is_deleted 等
 -- - 新增更多檢查項目
+-- 
+-- ⚠️ 重要說明：balance_after 欄位已停用
+-- ============================================
+-- transactions 表中的 balance_after 欄位是早期設計，
+-- 用於記錄每筆交易後的餘額快照。但此欄位有以下問題：
+-- 1. 當管理員手動調整餘額時，舊交易的 balance_after 不會更新
+-- 2. 導致「最後一筆交易的 balance_after」與「會員當前餘額」不一致
+-- 3. 這是預期行為，不是 bug
+-- 
+-- 正確的餘額驗證方式：
+-- - 使用 SUM(transactions) 計算所有交易的累計值
+-- - transaction_type = 'increase' → 加值（+）
+-- - transaction_type = 'decrease' → 扣款（-）
+-- - transaction_type = 'charge' → 費用計入帳戶（+，之後再付款）
 -- ============================================
 
 -- ============================================
@@ -126,28 +145,43 @@ WHERE (
 ORDER BY created_at DESC
 LIMIT 20;
 
--- 2.4 會員餘額與最後一筆交易不一致
+-- 2.4 會員餘額與交易計算不一致
+-- ⚠️ 注意：balance_after 欄位已停用，改用 SUM 計算
 SELECT 
-  m.id,
   m.name,
   m.balance as current_balance,
-  t.balance_after as last_transaction_balance,
-  m.balance - t.balance_after as difference,
-  t.created_at as last_transaction_date
+  COALESCE(SUM(
+    CASE 
+      WHEN t.transaction_type IN ('increase', 'charge') THEN COALESCE(t.amount, 0)
+      WHEN t.transaction_type = 'decrease' THEN -COALESCE(t.amount, 0)
+      ELSE 0
+    END
+  ), 0) as calculated_from_transactions,
+  m.balance - COALESCE(SUM(
+    CASE 
+      WHEN t.transaction_type IN ('increase', 'charge') THEN COALESCE(t.amount, 0)
+      WHEN t.transaction_type = 'decrease' THEN -COALESCE(t.amount, 0)
+      ELSE 0
+    END
+  ), 0) as difference
 FROM members m
-LEFT JOIN LATERAL (
-  SELECT balance_after, created_at
-  FROM transactions
-  WHERE member_id = m.id
-    AND category = 'balance'
-    AND balance_after IS NOT NULL
-  ORDER BY created_at DESC
-  LIMIT 1
-) t ON true
+LEFT JOIN transactions t ON m.id = t.member_id AND t.category = 'balance'
 WHERE m.status = 'active'
-  AND t.balance_after IS NOT NULL
-  AND ABS(m.balance - t.balance_after) > 0.01
-ORDER BY ABS(m.balance - t.balance_after) DESC
+GROUP BY m.id, m.name, m.balance
+HAVING ABS(m.balance - COALESCE(SUM(
+  CASE 
+    WHEN t.transaction_type IN ('increase', 'charge') THEN COALESCE(t.amount, 0)
+    WHEN t.transaction_type = 'decrease' THEN -COALESCE(t.amount, 0)
+    ELSE 0
+  END
+), 0)) > 1
+ORDER BY ABS(m.balance - COALESCE(SUM(
+  CASE 
+    WHEN t.transaction_type IN ('increase', 'charge') THEN COALESCE(t.amount, 0)
+    WHEN t.transaction_type = 'decrease' THEN -COALESCE(t.amount, 0)
+    ELSE 0
+  END
+), 0)) DESC
 LIMIT 20;
 
 
@@ -406,34 +440,47 @@ WHERE b.start_at::date = CURRENT_DATE
 -- ============================================
 
 -- 7.1 會員的所有交易累計與當前餘額不一致
--- （這個查詢較慢，建議只在發現問題時執行）
+-- 已整合到 2.4，這裡保留完整版本供參考
+-- ⚠️ 注意：transaction_type 有三種值 increase、decrease、charge
+--    - increase：充值、加值
+--    - decrease：扣款、消費
+--    - charge：費用計入帳戶（增加餘額，之後再付款）
 /*
-WITH member_balance_calc AS (
-  SELECT 
-    m.id,
-    m.name,
-    m.balance as current_balance,
-    COALESCE(SUM(
-      CASE 
-        WHEN t.adjust_type = 'increase' THEN t.amount
-        WHEN t.adjust_type = 'decrease' THEN -t.amount
-        ELSE 0
-      END
-    ), 0) as calculated_balance
-  FROM members m
-  LEFT JOIN transactions t ON m.id = t.member_id AND t.category = 'balance'
-  WHERE m.status = 'active'
-  GROUP BY m.id, m.name, m.balance
-)
 SELECT 
-  id,
-  name,
-  current_balance,
-  calculated_balance,
-  current_balance - calculated_balance as difference
-FROM member_balance_calc
-WHERE ABS(current_balance - calculated_balance) > 1
-ORDER BY ABS(current_balance - calculated_balance) DESC
+  m.name,
+  m.balance as current_balance,
+  COALESCE(SUM(
+    CASE 
+      WHEN t.transaction_type IN ('increase', 'charge') THEN COALESCE(t.amount, 0)
+      WHEN t.transaction_type = 'decrease' THEN -COALESCE(t.amount, 0)
+      ELSE 0
+    END
+  ), 0) as calculated_from_transactions,
+  m.balance - COALESCE(SUM(
+    CASE 
+      WHEN t.transaction_type IN ('increase', 'charge') THEN COALESCE(t.amount, 0)
+      WHEN t.transaction_type = 'decrease' THEN -COALESCE(t.amount, 0)
+      ELSE 0
+    END
+  ), 0) as difference
+FROM members m
+LEFT JOIN transactions t ON m.id = t.member_id AND t.category = 'balance'
+WHERE m.status = 'active'
+GROUP BY m.id, m.name, m.balance
+HAVING ABS(m.balance - COALESCE(SUM(
+  CASE 
+    WHEN t.transaction_type IN ('increase', 'charge') THEN COALESCE(t.amount, 0)
+    WHEN t.transaction_type = 'decrease' THEN -COALESCE(t.amount, 0)
+    ELSE 0
+  END
+), 0)) > 1
+ORDER BY ABS(m.balance - COALESCE(SUM(
+  CASE 
+    WHEN t.transaction_type IN ('increase', 'charge') THEN COALESCE(t.amount, 0)
+    WHEN t.transaction_type = 'decrease' THEN -COALESCE(t.amount, 0)
+    ELSE 0
+  END
+), 0)) DESC
 LIMIT 20;
 */
 
