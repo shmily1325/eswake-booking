@@ -8,28 +8,27 @@ import { getLocalDateString } from './utils/date'
 // 啟用全局錯誤捕獲
 setupGlobalErrorHandler()
 
-// 每日自動重新整理機制
-// 確保用戶使用最新版本的程式碼
+// 每日自動重新整理：確保用戶使用最新版本
 const checkDailyRefresh = () => {
-  const LAST_REFRESH_KEY = 'app_last_refresh_date'
-  const today = getLocalDateString()
-  const lastRefreshDate = localStorage.getItem(LAST_REFRESH_KEY)
-  
-  if (lastRefreshDate !== today) {
-    // 記錄今天已檢查，避免無限循環
-    localStorage.setItem(LAST_REFRESH_KEY, today)
+  try {
+    const today = getLocalDateString()
     
-    // 如果不是第一次使用（有上次紀錄），強制重新整理
-    if (lastRefreshDate) {
-      console.log(`[每日重整] 上次: ${lastRefreshDate}, 今天: ${today}, 執行強制重整`)
-      window.location.reload()
-      return true // 正在重新整理
+    // 安全機制：本次 session 已嘗試過就不再重試（防止無限循環）
+    if (sessionStorage.getItem('app_refresh_attempted')) return
+    
+    const lastDate = localStorage.getItem('app_last_refresh_date')
+    
+    if (lastDate !== today) {
+      sessionStorage.setItem('app_refresh_attempted', '1')
+      try { localStorage.setItem('app_last_refresh_date', today) } catch {}
+      
+      // 有舊紀錄才重整（第一次使用不重整）
+      if (lastDate) {
+        window.location.reload()
+      }
     }
-  }
-  return false
+  } catch {}
 }
-
-// 執行每日檢查
 checkDailyRefresh()
 import { LoginPage } from './components/LoginPage'
 import { HomePage } from './pages/HomePage'
@@ -144,3 +143,4 @@ function App() {
 }
 
 export default App
+

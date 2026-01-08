@@ -1695,8 +1695,8 @@ export function CoachAssignment() {
                               </div>
                             )}
                             
-                            {/* 移除按鈕 - 只有駕駛可以移除（教練練習不可移除）*/}
-                            {!isCoachPractice && isDriver && !isCoach && (
+                            {/* 移除按鈕 - 只有駕駛可以移除 */}
+                            {isDriver && !isCoach && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -1713,7 +1713,7 @@ export function CoachAssignment() {
                                   style={{
                                 position: 'absolute',
                                 top: '8px',
-                                right: '8px',
+                                right: isCoachPractice ? '90px' : '8px',
                                 background: '#f5f5f5',
                                     border: 'none',
                                     borderRadius: '4px',
