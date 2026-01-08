@@ -113,14 +113,15 @@ export function CoachAdmin() {
   const [newBillingMemberName, setNewBillingMemberName] = useState('')
   const [newBillingNotes, setNewBillingNotes] = useState('')
   const [showBillingMemberSearch, setShowBillingMemberSearch] = useState(false)
-  const [billingSearchTerm, setBillingSearchTerm] = useState('')
   const [addingBillingRelation, setAddingBillingRelation] = useState(false)
   
-  // 會員搜尋
+  // 會員搜尋（關聯會員 & 代扣設定共用）
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
   const { 
     filteredMembers,
-    handleSearchChange 
+    searchTerm,
+    handleSearchChange,
+    reset: resetMemberSearch
   } = useMemberSearch()
 
   // ============ 資料載入 ============
@@ -250,7 +251,7 @@ export function CoachAdmin() {
     setNewBillingMemberId(member.id)
     setNewBillingMemberName(member.nickname || member.name)
     setShowBillingMemberSearch(false)
-    setBillingSearchTerm('')
+    resetMemberSearch()
   }
 
   // 根據 email 取得顯示名稱
@@ -1380,7 +1381,7 @@ export function CoachAdmin() {
                     type="text"
                     value={newParticipantName}
                     onChange={(e) => setNewParticipantName(e.target.value)}
-                    placeholder="例如：火龍、澤澤、甯甯"
+                    placeholder=""
                     style={{
                       ...getInputStyle(isMobile),
                       width: '100%'
@@ -1437,7 +1438,7 @@ export function CoachAdmin() {
                   type="text"
                   value={newBillingNotes}
                   onChange={(e) => setNewBillingNotes(e.target.value)}
-                  placeholder="例如：小孩、家人"
+                  placeholder=""
                   style={{
                     ...getInputStyle(isMobile),
                     width: '100%'
@@ -1593,7 +1594,7 @@ export function CoachAdmin() {
                 <button
                   onClick={() => {
                     setShowBillingMemberSearch(false)
-                    setBillingSearchTerm('')
+                    resetMemberSearch()
                   }}
                   style={{
                     border: 'none',
@@ -1611,11 +1612,8 @@ export function CoachAdmin() {
               <div style={{ padding: '16px' }}>
                 <input
                   type="text"
-                  value={billingSearchTerm}
-                  onChange={(e) => {
-                    setBillingSearchTerm(e.target.value)
-                    handleSearchChange(e.target.value)
-                  }}
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   placeholder="搜尋會員姓名、暱稱或電話..."
                   autoFocus
                   style={{
@@ -1635,7 +1633,7 @@ export function CoachAdmin() {
                 overflow: 'auto',
                 borderTop: '1px solid #e0e0e0'
               }}>
-                {billingSearchTerm && filteredMembers.length === 0 ? (
+                {searchTerm && filteredMembers.length === 0 ? (
                   <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
                     找不到會員
                   </div>
