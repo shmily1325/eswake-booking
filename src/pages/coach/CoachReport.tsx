@@ -752,32 +752,27 @@ export function CoachReport({
         // 使用工具函数计算 is_teaching 和 status
         const isTeaching = calculateIsTeaching(p.lesson_type || 'undesignated', boatName)
         const calculatedStatus = calculateParticipantStatus(p.member_id)
-        
-        console.log(`參與者 ${p.participant_name}:`, {
-          member_id: p.member_id,
-          existing_status: p.status,
-          calculated_status: calculatedStatus,
-          is_teaching: isTeaching,
-          is_會員: !!p.member_id
-        })
 
         if (p.id) {
           // 現有記錄：更新
-          // 檢查關鍵欄位是否有變更
+          // 檢查關鍵欄位是否有變更（統一處理類型和空值）
           const original = originalParticipants.find(op => op.id === p.id)
+          
+          // 正規化比較函數：統一處理 null/undefined/空字串
+          const normalize = (val: any) => val ?? ''
+          const normalizeLesson = (val: any) => val || 'undesignated' // lesson_type 預設是 undesignated
+          
           const hasChanges = !original || 
-            original.participant_name !== p.participant_name ||
-            original.duration_min !== p.duration_min ||
-            original.payment_method !== p.payment_method ||
-            original.lesson_type !== p.lesson_type ||
-            original.member_id !== p.member_id ||
-            (original.notes || '') !== (p.notes || '')
+            normalize(original.participant_name) !== normalize(p.participant_name) ||
+            Number(original.duration_min) !== Number(p.duration_min) ||
+            normalize(original.payment_method) !== normalize(p.payment_method) ||
+            normalizeLesson(original.lesson_type) !== normalizeLesson(p.lesson_type) ||
+            normalize(original.member_id) !== normalize(p.member_id) ||
+            normalize(original.notes) !== normalize(p.notes)
           
           // 如果有變更，使用新計算的 status（會員 → pending，非會員 → not_applicable）
           // 如果沒有變更，保留原狀態（避免 processed 變回 pending）
           const finalStatus = hasChanges ? calculatedStatus : (p.status || calculatedStatus)
-          
-          console.log(`  → 有變更: ${hasChanges}, 最終狀態: ${finalStatus}`)
           
           // 如果原本沒有 created_by_email（首次回報），則設定回報者
           const shouldSetCreatedBy = !original?.created_by_email
@@ -823,6 +818,8 @@ export function CoachReport({
             status: calculatedStatus,
             reported_at: getLocalTimestamp(),
             is_teaching: isTeaching,
+            created_at: getLocalTimestamp(),
+            updated_at: getLocalTimestamp(),
             created_by_email: user.email,
             updated_by_email: user.email
           })
@@ -919,11 +916,17 @@ export function CoachReport({
   // 清除會員綁定
   const clearMember = (index: number) => {
     const updated = [...participants]
+    const current = updated[index]
+    
+    // 只有在實際有會員時才調整付款方式
+    const hadMember = !!current.member_id
+    
     updated[index] = {
-      ...updated[index],
+      ...current,
       member_id: null,
-      payment_method: 'cash',
-      status: 'not_applicable'
+      // 只有清除會員時才改付款方式
+      payment_method: hadMember ? 'cash' : current.payment_method
+      // 不再強制設定 status，讓 submitCoachReport 計算
     }
     setParticipants(updated)
   }
@@ -941,12 +944,19 @@ export function CoachReport({
   const selectMember = (index: number, member: MemberSearchResult) => {
     // 一次性更新所有字段，選了會員自動調整收費方式
     const updated = [...participants]
+    const current = updated[index]
+    
+    // 只有在實際更換會員時才調整付款方式
+    // 保留原本的 status，讓 submitCoachReport 根據 hasChanges 決定
+    const isSameMember = current.member_id === member.id
+    
     updated[index] = {
-      ...updated[index],
+      ...current,
       member_id: member.id,
       participant_name: member.nickname || member.name,
-      payment_method: 'balance',  // 會員自動改為扣儲值
-      status: 'pending'  // 會員狀態
+      // 只有換成不同會員時才改付款方式
+      payment_method: isSameMember ? current.payment_method : 'balance'
+      // 不再強制設定 status，讓 submitCoachReport 計算
     }
     setParticipants(updated)
     setMemberSearchTerm('')

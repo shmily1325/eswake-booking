@@ -1338,7 +1338,7 @@ export function CoachAdmin() {
               lineHeight: 1.6
             }}>
               <strong>說明：</strong>設定代扣關係後，扣款時會自動帶入對應的代扣會員。
-              <br />例如：設定「火龍 → Mandy」後，扣「火龍」的款項時會自動從 Mandy 扣款。
+              <br />例如：設定「火腿 → Mandy」後，扣「火腿」的款項時會自動從 Mandy 扣款。
             </div>
 
             {/* 新增代扣關係表單 */}

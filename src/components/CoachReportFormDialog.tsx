@@ -127,6 +127,23 @@ export function CoachReportFormDialog({
 
         {/* 表单内容 */}
         <div style={{ padding: '20px', overflow: 'auto', flex: 1 }}>
+          {/* 已結案記錄警告 */}
+          {participants.some(p => p.status === 'processed') && (
+            <div
+              style={{
+                marginBottom: '16px',
+                padding: '12px 16px',
+                background: '#fff3e0',
+                border: '1px solid #ffb74d',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#e65100'
+              }}
+            >
+              ⚠️ <strong>注意：</strong>此記錄已被管理員處理過。如果修改任何內容，將會重新進入待處理狀態。
+            </div>
+          )}
+
           {/* 驾驶回报 */}
           {(reportType === 'driver' || reportType === 'both') && (
             <div
