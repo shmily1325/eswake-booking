@@ -119,9 +119,7 @@ export function CoachAdmin() {
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
   const { 
     filteredMembers,
-    searchTerm,
     handleSearchChange,
-    reset: resetMemberSearch
   } = useMemberSearch()
 
   // ============ 資料載入 ============
@@ -1387,14 +1385,14 @@ export function CoachAdmin() {
                   <div style={{ position: 'relative' }}>
                     <input
                       type="text"
-                      value={newBillingMemberId ? newBillingMemberName : searchTerm}
+                      value={newBillingMemberId ? newBillingMemberName : memberSearchTerm}
                       onChange={(e) => {
                         if (newBillingMemberId) {
                           // 已選擇會員，清除並開始新搜尋
                           setNewBillingMemberId('')
                           setNewBillingMemberName('')
                         }
-                        handleSearchChange(e.target.value)
+                        setMemberSearchTerm(e.target.value)
                       }}
                       onFocus={() => setShowBillingMemberSearch(true)}
                       onBlur={() => {
@@ -1413,7 +1411,7 @@ export function CoachAdmin() {
                         onClick={() => {
                           setNewBillingMemberId('')
                           setNewBillingMemberName('')
-                          resetMemberSearch()
+                          setMemberSearchTerm('')
                         }}
                         style={{
                           position: 'absolute',
@@ -1431,7 +1429,7 @@ export function CoachAdmin() {
                       </button>
                     )}
                     {/* 搜尋結果下拉 */}
-                    {showBillingMemberSearch && !newBillingMemberId && searchTerm && (
+                    {showBillingMemberSearch && !newBillingMemberId && memberSearchTerm && (
                       <div style={{
                         position: 'absolute',
                         top: '100%',
@@ -1457,7 +1455,7 @@ export function CoachAdmin() {
                                 setNewBillingMemberId(member.id)
                                 setNewBillingMemberName(member.nickname || member.name)
                                 setShowBillingMemberSearch(false)
-                                resetMemberSearch()
+                                setMemberSearchTerm('')
                               }}
                               style={{
                                 padding: '10px 12px',
