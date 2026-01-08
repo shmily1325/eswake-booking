@@ -93,13 +93,19 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
       </SummaryCardsGrid>
 
       {/* 未指派警告 */}
-      {unassignedCount > 0 && (
+      {unassignedCount > 0 && unassigned && (
         <AlertCard
           variant="warning"
           icon="⚠️"
           title={`有 ${unassignedCount} 筆預約尚未指派教練`}
           count={unassignedCount}
           minutes={unassignedMinutes}
+          expandable={true}
+          contactStats={
+            monthFilter === 'all'
+              ? unassigned.contactStats
+              : unassigned.bookings.find(b => b.month === monthFilter)?.contactStats || []
+          }
         />
       )}
 
