@@ -246,14 +246,6 @@ export function CoachAdmin() {
     }
   }
 
-  // 選擇代扣會員
-  const selectBillingMember = (member: { id: string; name: string; nickname: string | null }) => {
-    setNewBillingMemberId(member.id)
-    setNewBillingMemberName(member.nickname || member.name)
-    setShowBillingMemberSearch(false)
-    resetMemberSearch()
-  }
-
   // 根據 email 取得顯示名稱
   const getSubmitterName = (email: string | null | undefined): string | null => {
     if (!email) return null
@@ -1395,15 +1387,25 @@ export function CoachAdmin() {
                   <div style={{ position: 'relative' }}>
                     <input
                       type="text"
-                      value={newBillingMemberName}
-                      onClick={() => setShowBillingMemberSearch(true)}
-                      readOnly
-                      placeholder="點擊選擇會員..."
+                      value={newBillingMemberId ? newBillingMemberName : searchTerm}
+                      onChange={(e) => {
+                        if (newBillingMemberId) {
+                          // 已選擇會員，清除並開始新搜尋
+                          setNewBillingMemberId('')
+                          setNewBillingMemberName('')
+                        }
+                        handleSearchChange(e.target.value)
+                      }}
+                      onFocus={() => setShowBillingMemberSearch(true)}
+                      onBlur={() => {
+                        // 延遲關閉，讓點擊事件先觸發
+                        setTimeout(() => setShowBillingMemberSearch(false), 200)
+                      }}
+                      placeholder="搜尋會員..."
                       style={{
                         ...getInputStyle(isMobile),
                         width: '100%',
-                        cursor: 'pointer',
-                        background: '#fff'
+                        background: newBillingMemberId ? '#e8f5e9' : '#fff'
                       }}
                     />
                     {newBillingMemberId && (
@@ -1411,6 +1413,7 @@ export function CoachAdmin() {
                         onClick={() => {
                           setNewBillingMemberId('')
                           setNewBillingMemberName('')
+                          resetMemberSearch()
                         }}
                         style={{
                           position: 'absolute',
@@ -1426,6 +1429,56 @@ export function CoachAdmin() {
                       >
                         ✕
                       </button>
+                    )}
+                    {/* 搜尋結果下拉 */}
+                    {showBillingMemberSearch && !newBillingMemberId && searchTerm && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        background: 'white',
+                        border: '1px solid #ddd',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        zIndex: 100,
+                        maxHeight: '200px',
+                        overflow: 'auto'
+                      }}>
+                        {filteredMembers.length === 0 ? (
+                          <div style={{ padding: '12px', textAlign: 'center', color: '#999' }}>
+                            找不到會員
+                          </div>
+                        ) : (
+                          filteredMembers.map(member => (
+                            <div
+                              key={member.id}
+                              onClick={() => {
+                                setNewBillingMemberId(member.id)
+                                setNewBillingMemberName(member.nickname || member.name)
+                                setShowBillingMemberSearch(false)
+                                resetMemberSearch()
+                              }}
+                              style={{
+                                padding: '10px 12px',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid #f0f0f0'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                            >
+                              <div style={{ fontWeight: '600' }}>
+                                {member.nickname || member.name}
+                              </div>
+                              {member.nickname && member.name !== member.nickname && (
+                                <div style={{ fontSize: '13px', color: '#666' }}>
+                                  {member.name}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1556,121 +1609,6 @@ export function CoachAdmin() {
           </div>
         )}
 
-        {/* 代扣會員搜尋對話框 */}
-        {showBillingMemberSearch && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px'
-          }}>
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              maxWidth: '400px',
-              width: '100%',
-              maxHeight: '80vh',
-              overflow: 'hidden',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
-            }}>
-              {/* 標題 */}
-              <div style={{
-                padding: '16px',
-                borderBottom: '1px solid #e0e0e0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>
-                  選擇代扣會員
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowBillingMemberSearch(false)
-                    resetMemberSearch()
-                  }}
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    fontSize: '20px',
-                    cursor: 'pointer',
-                    color: '#666'
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              
-              {/* 搜尋輸入框 */}
-              <div style={{ padding: '16px' }}>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder="搜尋會員姓名、暱稱或電話..."
-                  autoFocus
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-              
-              {/* 搜尋結果 */}
-              <div style={{ 
-                maxHeight: '300px', 
-                overflow: 'auto',
-                borderTop: '1px solid #e0e0e0'
-              }}>
-                {searchTerm && filteredMembers.length === 0 ? (
-                  <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
-                    找不到會員
-                  </div>
-                ) : (
-                  filteredMembers.map(member => (
-                    <div
-                      key={member.id}
-                      onClick={() => selectBillingMember(member)}
-                      style={{
-                        padding: '12px 16px',
-                        borderBottom: '1px solid #f0f0f0',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <div style={{ fontWeight: '600' }}>
-                        {member.nickname || member.name}
-                      </div>
-                      {member.nickname && member.name !== member.nickname && (
-                        <div style={{ fontSize: '14px', color: '#666' }}>
-                          {member.name}
-                        </div>
-                      )}
-                      {member.phone && (
-                        <div style={{ fontSize: '14px', color: '#999' }}>
-                          {member.phone}
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <Footer />
