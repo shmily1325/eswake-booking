@@ -108,6 +108,16 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
   const [boardRenewEndDate, setBoardRenewEndDate] = useState('')
   const [renewingBoard, setRenewingBoard] = useState<{id: number, slot_number: number, expires_at: string | null} | null>(null)
 
+  // 置板編輯相關狀態
+  const [boardEditDialogOpen, setBoardEditDialogOpen] = useState(false)
+  const [editingBoard, setEditingBoard] = useState<BoardStorage | null>(null)
+  const [boardEditForm, setBoardEditForm] = useState({
+    start_date: '',
+    expires_at: '',
+    notes: '',
+    addToMemo: true  // 是否記錄到備忘錄
+  })
+
   // 快速編輯電話相關狀態
   const [quickEditPhoneOpen, setQuickEditPhoneOpen] = useState(false)
   const [quickEditPhone, setQuickEditPhone] = useState('')
@@ -124,6 +134,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
       setRenewEndDate('')
       setQuickEditPhoneOpen(false)
       setQuickEditPhone('')
+      setBoardEditDialogOpen(false)
+      setEditingBoard(null)
     }
   }, [open])
 
@@ -654,6 +666,75 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
     }
   }
 
+  // 打開置板編輯對話框
+  const openBoardEditDialog = (board: BoardStorage) => {
+    setEditingBoard(board)
+    setBoardEditForm({
+      start_date: board.start_date || '',
+      expires_at: board.expires_at || '',
+      notes: board.notes || '',
+      addToMemo: false  // 預設不記錄，因為編輯通常是修正錯誤
+    })
+    setBoardEditDialogOpen(true)
+  }
+
+  // 執行置板編輯
+  const handleBoardEdit = async () => {
+    if (!editingBoard) return
+
+    try {
+      const oldStartDate = editingBoard.start_date
+      const oldExpiresAt = editingBoard.expires_at
+      const newStartDate = boardEditForm.start_date || null
+      const newExpiresAt = boardEditForm.expires_at || null
+
+      const { error } = await supabase
+        .from('board_storage')
+        .update({
+          start_date: newStartDate,
+          expires_at: newExpiresAt,
+          notes: boardEditForm.notes.trim() || null
+        })
+        .eq('id', editingBoard.id)
+
+      if (error) throw error
+
+      // 如果勾選「記錄到備忘錄」且日期有變更
+      if (boardEditForm.addToMemo) {
+        const changes: string[] = []
+        if (oldStartDate !== newStartDate) {
+          changes.push(`開始日：${oldStartDate || '無'} → ${newStartDate || '無'}`)
+        }
+        if (oldExpiresAt !== newExpiresAt) {
+          changes.push(`到期日：${oldExpiresAt || '無'} → ${newExpiresAt || '無'}`)
+        }
+
+        if (changes.length > 0) {
+          const today = new Date().toISOString().split('T')[0]
+          // @ts-ignore
+          await supabase.from('member_notes').insert([{
+            member_id: memberId,
+            event_date: today,
+            event_type: '備註',
+            description: `置板 #${editingBoard.slot_number} 修改：${changes.join('、')}`
+          }])
+        }
+      }
+
+      toast.success(`置板 #${editingBoard.slot_number} 已更新`)
+      setBoardEditDialogOpen(false)
+      setEditingBoard(null)
+      loadMemberData()
+      if (boardEditForm.addToMemo) {
+        loadMemberNotes()
+      }
+      onUpdate()
+    } catch (error) {
+      console.error('置板編輯失敗:', error)
+      toast.error('置板編輯失敗')
+    }
+  }
+
   if (!open || !memberId) return null
 
   return (
@@ -958,15 +1039,30 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {boardStorage.map((board) => (
-                            <div key={board.id} style={{
-                              background: '#f8f9fa',
-                              borderRadius: '6px',
-                              padding: '10px 14px',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              fontSize: '13px'
-                            }}>
+                            <div 
+                              key={board.id} 
+                              onClick={() => openBoardEditDialog(board)}
+                              style={{
+                                background: '#f8f9fa',
+                                borderRadius: '6px',
+                                padding: '10px 14px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                fontSize: '13px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                border: '1px solid transparent',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#e8f4fd'
+                                e.currentTarget.style.borderColor = '#90caf9'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#f8f9fa'
+                                e.currentTarget.style.borderColor = 'transparent'
+                              }}
+                            >
                               <div>
                                 <span style={{ fontWeight: '600' }}>#{board.slot_number}</span>
                                 {board.start_date && <span style={{ color: '#666', marginLeft: '8px' }}>{formatDate(board.start_date)}</span>}
@@ -974,36 +1070,29 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                                 {board.expires_at && isExpired(board.expires_at) && 
                                   <span style={{ color: '#f44336', marginLeft: '6px' }}>(已過期)</span>
                                 }
+                                {board.notes && (
+                                  <span style={{ color: '#999', marginLeft: '8px', fontSize: '12px' }}>
+                                    📝 {board.notes.length > 10 ? board.notes.substring(0, 10) + '...' : board.notes}
+                                  </span>
+                                )}
                               </div>
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <button
-                                  onClick={() => openBoardRenewDialog(board.id, board.slot_number, board.expires_at)}
-                                  style={{
-                                    padding: '2px 8px',
-                                    background: '#4caf50',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    fontSize: '12px',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  +1年
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteBoard(board.id, board.slot_number)}
-                                  style={{
-                                    padding: '2px 8px',
-                                    background: 'transparent',
-                                    color: '#999',
-                                    border: 'none',
-                                    fontSize: '12px',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  移除
-                                </button>
-                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()  // 防止觸發卡片的點擊
+                                  openBoardRenewDialog(board.id, board.slot_number, board.expires_at)
+                                }}
+                                style={{
+                                  padding: '4px 10px',
+                                  background: '#4caf50',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                +1年
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -1777,6 +1866,179 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
               >
                 確認續約
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 置板編輯對話框 */}
+      {boardEditDialogOpen && editingBoard && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '400px',
+            width: '90%',
+            padding: '24px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>
+              ✏️ 編輯置板 #{editingBoard.slot_number}
+            </h3>
+            
+            {/* 開始日期 */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                開始日期
+              </label>
+              <input
+                type="date"
+                value={boardEditForm.start_date}
+                onChange={(e) => setBoardEditForm({ ...boardEditForm, start_date: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                }}
+              />
+            </div>
+
+            {/* 到期日期 */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                到期日期
+              </label>
+              <input
+                type="date"
+                value={boardEditForm.expires_at}
+                onChange={(e) => setBoardEditForm({ ...boardEditForm, expires_at: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                }}
+              />
+              <div style={{ fontSize: '12px', color: '#999', marginTop: '6px' }}>
+                目前：{editingBoard.expires_at || '未設定'}
+              </div>
+            </div>
+
+            {/* 備註 */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                備註
+              </label>
+              <input
+                type="text"
+                value={boardEditForm.notes}
+                onChange={(e) => setBoardEditForm({ ...boardEditForm, notes: e.target.value })}
+                placeholder="例如：有三格"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                }}
+              />
+            </div>
+
+            {/* 是否記錄到備忘錄 */}
+            <div style={{ 
+              marginBottom: '20px',
+              padding: '12px',
+              background: boardEditForm.addToMemo ? '#e8f5e9' : '#f5f5f5',
+              borderRadius: '8px',
+            }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={boardEditForm.addToMemo}
+                  onChange={(e) => setBoardEditForm({ ...boardEditForm, addToMemo: e.target.checked })}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <span>記錄到備忘錄</span>
+              </label>
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '6px', marginLeft: '28px' }}>
+                如僅修正錯誤可不勾選
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                onClick={() => {
+                  if (confirm(`確定要移除置板 #${editingBoard.slot_number} 嗎？`)) {
+                    handleDeleteBoard(editingBoard.id, editingBoard.slot_number)
+                    setBoardEditDialogOpen(false)
+                    setEditingBoard(null)
+                  }
+                }}
+                style={{
+                  padding: '10px 16px',
+                  border: '1px solid #f44336',
+                  borderRadius: '6px',
+                  background: 'white',
+                  color: '#f44336',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                }}
+              >
+                🗑️ 移除置板
+              </button>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => {
+                    setBoardEditDialogOpen(false)
+                    setEditingBoard(null)
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                  }}
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleBoardEdit}
+                  style={{
+                    padding: '10px 20px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  儲存
+                </button>
+              </div>
             </div>
           </div>
         </div>

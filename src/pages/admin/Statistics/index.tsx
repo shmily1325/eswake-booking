@@ -430,7 +430,7 @@ export function Statistics() {
     const { data: teachingData } = await supabase
       .from('booking_participants')
       .select(`
-        coach_id, duration_min, lesson_type, member_id,
+        coach_id, duration_min, lesson_type, member_id, participant_name,
         coaches:coach_id(id, name),
         members:member_id(id, name, nickname),
         bookings!inner(start_at, boats(id, name))
@@ -486,10 +486,13 @@ export function Statistics() {
       const duration = record.duration_min || 0
       stats.teachingMinutes += duration
 
-      // 指定教練學生統計
-      if ((record.lesson_type === 'designated_paid' || record.lesson_type === 'designated_free') && record.member_id) {
-        const memberId = record.member_id
-        const memberName = record.members?.nickname || record.members?.name || '未知'
+      // 指定教練學生統計（包含非會員）
+      if (record.lesson_type === 'designated_paid' || record.lesson_type === 'designated_free') {
+        // 非會員用 participant_name 作為 ID，會員用 member_id
+        const memberId = record.member_id || `non-member:${record.participant_name || '未知'}`
+        const memberName = record.member_id 
+          ? (record.members?.nickname || record.members?.name || '未知')
+          : (record.participant_name || '非會員')
         const boatName = record.bookings?.boats?.name || '未知'
 
         if (!stats.designatedStudents.has(memberId)) {
