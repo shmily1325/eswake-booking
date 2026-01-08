@@ -8,6 +8,47 @@ import { isAdmin, isEditorAsync, hasViewAccess } from '../utils/auth'
 import { supabase } from '../lib/supabase'
 import { useState, useEffect } from 'react'
 
+// 菜單按鈕 Skeleton 組件
+function MenuButtonSkeleton({ isMobile }: { isMobile: boolean }) {
+  return (
+    <div
+      style={{
+        background: 'rgba(255, 255, 255, 0.7)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '16px',
+        padding: '35px 20px',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        gap: '12px',
+        border: '1px solid rgba(224, 224, 224, 0.5)'
+      }}
+    >
+      {/* Icon skeleton */}
+      <div style={{
+        width: '42px',
+        height: '42px',
+        borderRadius: '50%',
+        background: 'linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%)',
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 1.5s infinite',
+        marginBottom: '5px',
+      }} />
+      {/* Title skeleton */}
+      <div style={{
+        width: isMobile ? '60px' : '70px',
+        height: isMobile ? '16px' : '18px',
+        borderRadius: '4px',
+        background: 'linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%)',
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 1.5s infinite',
+      }} />
+    </div>
+  )
+}
+
 export function HomePage() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
@@ -21,68 +62,52 @@ export function HomePage() {
   const isV2Environment = supabaseUrl.includes('v2') || supabaseUrl.includes('staging')
   const userIsAdmin = isAdmin(user)
   
-  // 檢查用戶是否為教練
+  // 合併所有權限檢查，一次性載入
   useEffect(() => {
-    const checkIfCoach = async () => {
-      if (!user?.email) {
-        setIsCoach(false)
-        return
-      }
-      
-      const { data, error } = await supabase
-        .from('coaches')
-        .select('id')
-        .eq('user_email', user.email)
-        .maybeSingle()
-      
-      if (!error && data) {
-        setIsCoach(true)
-      } else {
-        setIsCoach(false)
-      }
-    }
-    
-    checkIfCoach()
-  }, [user?.email])
-  
-  // 檢查用戶是否為小編（但不是管理員）
-  useEffect(() => {
-    const checkIfEditor = async () => {
-      if (!user || userIsAdmin) {
-        setIsEditorUser(false)
-        return
-      }
-      
-      const isEditor = await isEditorAsync(user)
-      // 只有小編且不是管理員才顯示小編入口
-      setIsEditorUser(isEditor && !userIsAdmin)
-    }
-    
-    checkIfEditor()
-  }, [user, userIsAdmin])
-  
-  // 載入用戶的一般權限
-  useEffect(() => {
-    const loadPermissions = async () => {
+    const loadAllPermissions = async () => {
       if (!user) {
+        setIsCoach(false)
+        setIsEditorUser(false)
         setHasViewPermission(false)
         setPermissionsLoading(false)
         return
       }
-      
+
+      setPermissionsLoading(true)
+
       try {
-        const hasAccess = await hasViewAccess(user)
-        setHasViewPermission(hasAccess)
+        // 並行執行所有權限檢查
+        const [coachResult, editorResult, viewAccessResult] = await Promise.all([
+          // 1. 檢查是否為教練
+          user.email 
+            ? supabase.from('coaches').select('id').eq('user_email', user.email).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+          // 2. 檢查是否為小編
+          !userIsAdmin ? isEditorAsync(user) : Promise.resolve(false),
+          // 3. 檢查一般權限
+          hasViewAccess(user)
+        ])
+
+        // 設置教練狀態
+        setIsCoach(!coachResult.error && !!coachResult.data)
+        
+        // 設置小編狀態（只有小編且不是管理員才顯示小編入口）
+        setIsEditorUser(editorResult === true && !userIsAdmin)
+        
+        // 設置一般權限
+        setHasViewPermission(viewAccessResult)
       } catch (error) {
         console.error('載入權限失敗:', error)
+        setIsCoach(false)
+        setIsEditorUser(false)
         setHasViewPermission(false)
       } finally {
         setPermissionsLoading(false)
       }
     }
-    
-    loadPermissions()
-  }, [user])
+
+    loadAllPermissions()
+  }, [user, userIsAdmin])
   
   const menuItems: Array<{
     title: string
@@ -212,24 +237,39 @@ export function HomePage() {
           gap: '15px',
           marginBottom: '30px'
         }}>
-          {menuItems
-            .filter(item => {
-              // 總是顯示的項目（如今日預約）
-              if (item.alwaysShow) return true
-              // 管理員專用
-              if (item.isAdmin && !userIsAdmin) return false
-              // 教練專用
-              if (item.isCoach && !isCoach) return false
-              // 小編專用
-              if (item.isEditor && !isEditorUser) return false
-              // 需要一般權限的項目（權限載入中時不顯示）
-              if (item.requiresViewAccess) {
-                if (permissionsLoading) return false
-                return hasViewPermission
-              }
-              return true
-            })
-            .map((item, index) => (
+          {/* Skeleton shimmer 動畫樣式 */}
+          <style>{`
+            @keyframes shimmer {
+              0% { background-position: 200% 0; }
+              100% { background-position: -200% 0; }
+            }
+          `}</style>
+          
+          {/* 載入中顯示 Skeleton */}
+          {permissionsLoading ? (
+            <>
+              {Array.from({ length: isMobile ? 4 : 6 }).map((_, index) => (
+                <MenuButtonSkeleton key={index} isMobile={isMobile} />
+              ))}
+            </>
+          ) : (
+            menuItems
+              .filter(item => {
+                // 總是顯示的項目（如今日預約）
+                if (item.alwaysShow) return true
+                // 管理員專用
+                if (item.isAdmin && !userIsAdmin) return false
+                // 教練專用
+                if (item.isCoach && !isCoach) return false
+                // 小編專用
+                if (item.isEditor && !isEditorUser) return false
+                // 需要一般權限的項目
+                if (item.requiresViewAccess) {
+                  return hasViewPermission
+                }
+                return true
+              })
+              .map((item, index) => (
             <Link
               key={index}
               to={item.link}
@@ -288,7 +328,8 @@ export function HomePage() {
                 </p>
               )}
             </Link>
-          ))}
+          ))
+          )}
         </div>
 
         {/* Footer with Copyright */}

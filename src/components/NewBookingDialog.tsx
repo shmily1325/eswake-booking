@@ -187,13 +187,8 @@ export function NewBookingDialog({
     setLoading(true)
 
     try {
-      // 獲取船名稱（用於審計日誌和衝突檢查）
-      const { data: boatData } = await supabase
-        .from('boats')
-        .select('name')
-        .eq('id', selectedBoatId)
-        .single()
-      const boatName = boatData?.name || '未知船隻'
+      // 從已載入的船隻列表取得名稱（避免額外 API 請求）
+      const boatName = boats.find(b => b.id === selectedBoatId)?.name || '未知船隻'
 
       // 構建時間
       const [year, month, day] = startDate.split('-').map(Number)

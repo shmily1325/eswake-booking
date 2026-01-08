@@ -114,6 +114,7 @@ export function Statistics() {
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${endDateStr}T23:59:59`)
         .neq('status', 'cancelled')
+        .or('is_coach_practice.is.null,is_coach_practice.eq.false')  // 排除教練練習
 
       if (data) {
         const totalMinutes = data.reduce((sum, b) => sum + (b.duration_min || 0), 0)
@@ -234,6 +235,7 @@ export function Statistics() {
       .gte('start_at', `${today}T00:00:00`)
       .lte('start_at', `${endDateStr}T23:59:59`)
       .neq('status', 'cancelled')
+      .or('is_coach_practice.is.null,is_coach_practice.eq.false')  // 排除教練練習
       .order('start_at', { ascending: true })
 
     let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
@@ -398,6 +400,7 @@ export function Statistics() {
       .gte('start_at', `${startDate}T00:00:00`)
       .lte('start_at', `${endDateStr}T23:59:59`)
       .neq('status', 'cancelled')
+      .or('is_coach_practice.is.null,is_coach_practice.eq.false')  // 排除教練練習
 
     let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
 
