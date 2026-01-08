@@ -1230,14 +1230,40 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                       )}
                     </div>
 
-                    {/* 金流資訊 */}
+                    {/* 金流資訊 - 點擊可記帳 */}
                     <div style={{ marginBottom: '24px' }}>
                       <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333', fontWeight: '600' }}>💰 金流</h3>
-                      <div style={{ 
-                        background: '#f8f9fa',
-                        borderRadius: '8px',
-                        padding: '12px 16px',
-                      }}>
+                      <div 
+                        onClick={() => setTransactionDialogOpen(true)}
+                        style={{ 
+                          background: '#f8f9fa',
+                          borderRadius: '8px',
+                          padding: '12px 16px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          border: '2px solid transparent',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#e8f4e8'
+                          e.currentTarget.style.borderColor = '#4caf50'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#f8f9fa'
+                          e.currentTarget.style.borderColor = 'transparent'
+                        }}
+                      >
+                        <div style={{ 
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '10px',
+                          paddingBottom: '8px',
+                          borderBottom: '1px solid #e0e0e0',
+                        }}>
+                          <span style={{ fontSize: '12px', color: '#4caf50', fontWeight: '500' }}>
+                            點擊記帳 →
+                          </span>
+                        </div>
                         <div style={{ 
                           display: 'grid', 
                           gridTemplateColumns: 'repeat(2, 1fr)',
