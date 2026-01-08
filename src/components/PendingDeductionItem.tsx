@@ -72,6 +72,8 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
   const [proxyMemberName, setProxyMemberName] = useState<string>('')  // 代扣會員名稱
   const [proxyMemberData, setProxyMemberData] = useState<any>(null)  // 代扣會員完整資料（用於顯示餘額）
   const [showProxyMemberSearch, setShowProxyMemberSearch] = useState(false)
+  const [isAutoProxy, setIsAutoProxy] = useState(false)  // 是否為自動帶入的代扣會員
+  const [hasCheckedBillingRelation, setHasCheckedBillingRelation] = useState(false)  // 是否已查詢過代扣關係
   
   // 使用會員搜尋 hook
   const { 
@@ -367,10 +369,56 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
     }
   }
 
+  // 自動載入代扣關係（如果有設定的話）
+  const loadBillingRelation = async () => {
+    // 如果已經查詢過，不需要再查詢（避免用戶取消後又自動帶入）
+    if (hasCheckedBillingRelation) return
+    // 如果已經設定了代扣會員，不需要再查詢
+    if (proxyMemberId) return
+    
+    setHasCheckedBillingRelation(true)
+    
+    try {
+      const { data, error } = await supabase
+        .from('billing_relations')
+        .select(`
+          billing_member_id,
+          members:billing_member_id(id, name, nickname)
+        `)
+        .eq('participant_name', report.participant_name)
+        .single()
+      
+      if (error || !data) return // 沒有找到代扣關係
+      
+      // 自動帶入代扣會員
+      const member = data.members as any
+      if (member) {
+        setProxyMemberId(data.billing_member_id)
+        setProxyMemberName(member.nickname || member.name)
+        setIsAutoProxy(true)  // 標記為自動帶入
+        
+        // 載入代扣會員的完整資料（用於顯示餘額）
+        const { data: memberData, error: memberError } = await supabase
+          .from('members')
+          .select('*')
+          .eq('id', data.billing_member_id)
+          .single()
+        
+        if (!memberError && memberData) {
+          setProxyMemberData(memberData)
+        }
+      }
+    } catch (error) {
+      // 查詢失敗時靜默處理（可能是表不存在或沒有對應記錄）
+      console.log('查詢代扣關係:', error)
+    }
+  }
+
   // 選擇代扣會員（同時載入完整資料用於顯示餘額）
   const selectProxyMember = async (member: { id: string; name: string; nickname: string | null }) => {
     setProxyMemberId(member.id)
     setProxyMemberName(member.nickname || member.name)
+    setIsAutoProxy(false)  // 手動選擇，不是自動帶入
     setShowProxyMemberSearch(false)
     resetProxySearch()
     
@@ -395,6 +443,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
     setProxyMemberId(null)
     setProxyMemberName('')
     setProxyMemberData(null)
+    setIsAutoProxy(false)
     resetProxySearch()
   }
 
@@ -456,8 +505,12 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
   // 展開/收起
   const handleToggle = () => {
     const newExpanded = !isExpanded
-    if (newExpanded && !memberData) {
-      loadMemberData()
+    if (newExpanded) {
+      if (!memberData) {
+        loadMemberData()
+      }
+      // 自動載入代扣關係（如果有設定的話）
+      loadBillingRelation()
     }
     setIsExpanded(newExpanded)
     // 通知父組件展開狀態改變（用於暫停自動刷新）
@@ -977,6 +1030,18 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                             <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>
                               (代扣 {report.participant_name} 的費用)
                             </span>
+                            {isAutoProxy && (
+                              <span style={{ 
+                                fontSize: '11px', 
+                                color: '#fff',
+                                background: '#4CAF50',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                marginLeft: '8px'
+                              }}>
+                                ✓ 自動帶入
+                              </span>
+                            )}
                           </span>
                           {proxyMemberData && (
                             <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>

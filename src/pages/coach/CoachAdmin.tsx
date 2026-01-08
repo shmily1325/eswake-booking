@@ -48,7 +48,7 @@ interface PendingReport {
   old_participant?: any
 }
 
-type TabType = 'pending' | 'completed' | 'statistics'
+type TabType = 'pending' | 'completed' | 'statistics' | 'billing'
 
 const PAYMENT_METHODS = [
   { value: 'cash', label: '現金' },
@@ -98,6 +98,24 @@ export function CoachAdmin() {
   // Email 到名字的映射（用於顯示提交者）
   const [emailToNameMap, setEmailToNameMap] = useState<Record<string, string>>({})
   
+  // Tab 4: 代扣設定
+  const [billingRelations, setBillingRelations] = useState<Array<{
+    id: number
+    participant_name: string
+    billing_member_id: string
+    billing_member_name: string
+    billing_member_nickname: string | null
+    notes: string | null
+    created_at: string
+  }>>([])
+  const [newParticipantName, setNewParticipantName] = useState('')
+  const [newBillingMemberId, setNewBillingMemberId] = useState('')
+  const [newBillingMemberName, setNewBillingMemberName] = useState('')
+  const [newBillingNotes, setNewBillingNotes] = useState('')
+  const [showBillingMemberSearch, setShowBillingMemberSearch] = useState(false)
+  const [billingSearchTerm, setBillingSearchTerm] = useState('')
+  const [addingBillingRelation, setAddingBillingRelation] = useState(false)
+  
   // 會員搜尋
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
   const { 
@@ -127,6 +145,112 @@ export function CoachAdmin() {
     } catch (error) {
       console.error('載入 email 映射失敗:', error)
     }
+  }
+
+  // 載入代扣關係
+  const loadBillingRelations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('billing_relations')
+        .select(`
+          id,
+          participant_name,
+          billing_member_id,
+          notes,
+          created_at,
+          members:billing_member_id(name, nickname)
+        `)
+        .order('participant_name', { ascending: true })
+      
+      if (error) throw error
+      
+      const relations = (data || []).map((r: any) => ({
+        id: r.id,
+        participant_name: r.participant_name,
+        billing_member_id: r.billing_member_id,
+        billing_member_name: r.members?.name || '未知',
+        billing_member_nickname: r.members?.nickname || null,
+        notes: r.notes,
+        created_at: r.created_at
+      }))
+      
+      setBillingRelations(relations)
+    } catch (error) {
+      console.error('載入代扣關係失敗:', error)
+    }
+  }
+
+  // 新增代扣關係
+  const addBillingRelation = async () => {
+    if (!newParticipantName.trim()) {
+      toast.warning('請輸入參與者名稱')
+      return
+    }
+    if (!newBillingMemberId) {
+      toast.warning('請選擇代扣會員')
+      return
+    }
+
+    setAddingBillingRelation(true)
+    try {
+      const { error } = await supabase
+        .from('billing_relations')
+        .insert({
+          participant_name: newParticipantName.trim(),
+          billing_member_id: newBillingMemberId,
+          notes: newBillingNotes.trim() || null
+        })
+      
+      if (error) {
+        if (error.code === '23505') {
+          toast.error(`「${newParticipantName}」已有代扣設定`)
+        } else {
+          throw error
+        }
+        return
+      }
+      
+      toast.success(`已新增代扣關係：${newParticipantName} → ${newBillingMemberName}`)
+      setNewParticipantName('')
+      setNewBillingMemberId('')
+      setNewBillingMemberName('')
+      setNewBillingNotes('')
+      loadBillingRelations()
+    } catch (error) {
+      console.error('新增代扣關係失敗:', error)
+      toast.error('新增失敗')
+    } finally {
+      setAddingBillingRelation(false)
+    }
+  }
+
+  // 刪除代扣關係
+  const deleteBillingRelation = async (id: number, participantName: string) => {
+    const confirmed = window.confirm(`確定要刪除「${participantName}」的代扣設定嗎？`)
+    if (!confirmed) return
+
+    try {
+      const { error } = await supabase
+        .from('billing_relations')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+      
+      toast.success(`已刪除「${participantName}」的代扣設定`)
+      loadBillingRelations()
+    } catch (error) {
+      console.error('刪除代扣關係失敗:', error)
+      toast.error('刪除失敗')
+    }
+  }
+
+  // 選擇代扣會員
+  const selectBillingMember = (member: { id: string; name: string; nickname: string | null }) => {
+    setNewBillingMemberId(member.id)
+    setNewBillingMemberName(member.nickname || member.name)
+    setShowBillingMemberSearch(false)
+    setBillingSearchTerm('')
   }
 
   // 根據 email 取得顯示名稱
@@ -435,6 +559,13 @@ export function CoachAdmin() {
     loadEmailToNameMap()
   }, [])
 
+  // 載入代扣關係（切換到代扣設定 Tab 時）
+  useEffect(() => {
+    if (activeTab === 'billing') {
+      loadBillingRelations()
+    }
+  }, [activeTab])
+
   useEffect(() => {
     handleSearchChange(memberSearchTerm)
   }, [memberSearchTerm, handleSearchChange])
@@ -650,6 +781,23 @@ export function CoachAdmin() {
           >
             📊 統計報表
           </button>
+          <button
+            onClick={() => setActiveTab('billing')}
+            style={{
+              padding: '12px 24px',
+              background: activeTab === 'billing' ? '#2196f3' : 'transparent',
+              color: activeTab === 'billing' ? 'white' : '#666',
+              border: 'none',
+              borderBottom: activeTab === 'billing' ? '3px solid #2196f3' : 'none',
+              borderRadius: '8px 8px 0 0',
+              cursor: 'pointer',
+              fontSize: isMobile ? '14px' : '16px',
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}
+          >
+            🔄 代扣設定
+          </button>
         </div>
 
         {/* Tab 1: 待處理記錄 */}
@@ -839,8 +987,7 @@ export function CoachAdmin() {
                                   </div>
                                   {/* 提交者資訊 */}
                                   {(() => {
-                                    // 如果沒有 created_by_email，使用教練名稱作為備選
-                                    const createdBy = getSubmitterName((report as any).created_by_email) || (report.coaches?.name || null)
+                                    const createdBy = getSubmitterName((report as any).created_by_email)
                                     const updatedBy = getSubmitterName((report as any).updated_by_email)
                                     if (!createdBy && !updatedBy) return null
                                     return (
@@ -1176,6 +1323,355 @@ export function CoachAdmin() {
         {/* Tab 3: 統計報表 */}
         {activeTab === 'statistics' && (
           <StatisticsTab isMobile={isMobile} />
+        )}
+
+        {/* Tab 4: 代扣設定 */}
+        {activeTab === 'billing' && (
+          <div style={{ ...getCardStyle(isMobile) }}>
+            <h2 style={{ 
+              fontSize: isMobile ? '18px' : '20px',
+              fontWeight: '600',
+              marginBottom: '20px',
+              color: '#333'
+            }}>
+              🔄 代扣關係設定
+            </h2>
+            
+            <div style={{
+              background: '#fff3e0',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginBottom: '24px',
+              fontSize: '14px',
+              color: '#e65100',
+              lineHeight: 1.6
+            }}>
+              <strong>說明：</strong>設定代扣關係後，扣款時會自動帶入對應的代扣會員。
+              <br />例如：設定「火龍 → Mandy」後，扣「火龍」的款項時會自動從 Mandy 扣款。
+            </div>
+
+            {/* 新增代扣關係表單 */}
+            <div style={{
+              background: '#f8f9fa',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '24px',
+              border: '2px dashed #dee2e6'
+            }}>
+              <h3 style={{ 
+                fontSize: '16px',
+                fontWeight: '600',
+                marginBottom: '16px',
+                color: '#495057'
+              }}>
+                ➕ 新增代扣關係
+              </h3>
+              
+              <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: '16px',
+                marginBottom: '16px'
+              }}>
+                {/* 參與者名稱 */}
+                <div>
+                  <label style={getLabelStyle(isMobile)}>參與者名稱</label>
+                  <input
+                    type="text"
+                    value={newParticipantName}
+                    onChange={(e) => setNewParticipantName(e.target.value)}
+                    placeholder="例如：火龍、澤澤、甯甯"
+                    style={{
+                      ...getInputStyle(isMobile),
+                      width: '100%'
+                    }}
+                  />
+                </div>
+                
+                {/* 代扣會員 */}
+                <div>
+                  <label style={getLabelStyle(isMobile)}>代扣會員</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      value={newBillingMemberName}
+                      onClick={() => setShowBillingMemberSearch(true)}
+                      readOnly
+                      placeholder="點擊選擇會員..."
+                      style={{
+                        ...getInputStyle(isMobile),
+                        width: '100%',
+                        cursor: 'pointer',
+                        background: '#fff'
+                      }}
+                    />
+                    {newBillingMemberId && (
+                      <button
+                        onClick={() => {
+                          setNewBillingMemberId('')
+                          setNewBillingMemberName('')
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '16px',
+                          cursor: 'pointer',
+                          color: '#999'
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* 備註 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={getLabelStyle(isMobile)}>備註（選填）</label>
+                <input
+                  type="text"
+                  value={newBillingNotes}
+                  onChange={(e) => setNewBillingNotes(e.target.value)}
+                  placeholder="例如：小孩、家人"
+                  style={{
+                    ...getInputStyle(isMobile),
+                    width: '100%'
+                  }}
+                />
+              </div>
+              
+              <button
+                onClick={addBillingRelation}
+                disabled={addingBillingRelation || !newParticipantName.trim() || !newBillingMemberId}
+                style={{
+                  ...getButtonStyle('success', 'medium', isMobile),
+                  background: (!newParticipantName.trim() || !newBillingMemberId) ? '#ccc' : '#4CAF50',
+                  cursor: (!newParticipantName.trim() || !newBillingMemberId) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {addingBillingRelation ? '新增中...' : '✅ 新增代扣關係'}
+              </button>
+            </div>
+
+            {/* 代扣關係列表 */}
+            <h3 style={{ 
+              fontSize: '16px',
+              fontWeight: '600',
+              marginBottom: '16px',
+              color: '#495057'
+            }}>
+              📋 現有代扣關係 ({billingRelations.length})
+            </h3>
+            
+            {billingRelations.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px',
+                color: '#999',
+                background: '#f8f9fa',
+                borderRadius: '8px'
+              }}>
+                尚未設定任何代扣關係
+              </div>
+            ) : (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                {billingRelations.map((relation) => (
+                  <div
+                    key={relation.id}
+                    style={{
+                      background: 'white',
+                      borderRadius: '10px',
+                      padding: '16px',
+                      border: '1px solid #e0e0e0',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '12px'
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <div style={{ 
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '4px'
+                      }}>
+                        <span style={{ fontWeight: '600', fontSize: '16px' }}>
+                          {relation.participant_name}
+                        </span>
+                        <span style={{ color: '#999' }}>→</span>
+                        <span style={{ 
+                          fontWeight: '600',
+                          fontSize: '16px',
+                          color: '#ff9800'
+                        }}>
+                          {relation.billing_member_nickname || relation.billing_member_name}
+                        </span>
+                      </div>
+                      {relation.notes && (
+                        <div style={{ fontSize: '13px', color: '#666' }}>
+                          📝 {relation.notes}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deleteBillingRelation(relation.id, relation.participant_name)}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#fff',
+                        color: '#f44336',
+                        border: '1px solid #f44336',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f44336'
+                        e.currentTarget.style.color = 'white'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#fff'
+                        e.currentTarget.style.color = '#f44336'
+                      }}
+                    >
+                      🗑️ 刪除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 代扣會員搜尋對話框 */}
+        {showBillingMemberSearch && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+            }}>
+              {/* 標題 */}
+              <div style={{
+                padding: '16px',
+                borderBottom: '1px solid #e0e0e0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>
+                  選擇代扣會員
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowBillingMemberSearch(false)
+                    setBillingSearchTerm('')
+                  }}
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#666'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              
+              {/* 搜尋輸入框 */}
+              <div style={{ padding: '16px' }}>
+                <input
+                  type="text"
+                  value={billingSearchTerm}
+                  onChange={(e) => {
+                    setBillingSearchTerm(e.target.value)
+                    handleSearchChange(e.target.value)
+                  }}
+                  placeholder="搜尋會員姓名、暱稱或電話..."
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              
+              {/* 搜尋結果 */}
+              <div style={{ 
+                maxHeight: '300px', 
+                overflow: 'auto',
+                borderTop: '1px solid #e0e0e0'
+              }}>
+                {billingSearchTerm && filteredMembers.length === 0 ? (
+                  <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
+                    找不到會員
+                  </div>
+                ) : (
+                  filteredMembers.map(member => (
+                    <div
+                      key={member.id}
+                      onClick={() => selectBillingMember(member)}
+                      style={{
+                        padding: '12px 16px',
+                        borderBottom: '1px solid #f0f0f0',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ fontWeight: '600' }}>
+                        {member.nickname || member.name}
+                      </div>
+                      {member.nickname && member.name !== member.nickname && (
+                        <div style={{ fontSize: '14px', color: '#666' }}>
+                          {member.name}
+                        </div>
+                      )}
+                      {member.phone && (
+                        <div style={{ fontSize: '14px', color: '#999' }}>
+                          {member.phone}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
