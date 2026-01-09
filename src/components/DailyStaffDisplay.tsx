@@ -10,7 +10,7 @@ interface DailyStaffDisplayProps {
  * 使用共用的 useDailyStaff hook
  */
 export function DailyStaffDisplay({ date, isMobile }: DailyStaffDisplayProps) {
-  const { workingStaff, timeOffStaff, loading } = useDailyStaff(date)
+  const { workingStaff, loading } = useDailyStaff(date)
 
   if (loading) {
     return (
@@ -52,7 +52,7 @@ export function DailyStaffDisplay({ date, isMobile }: DailyStaffDisplayProps) {
       {/* 上班人員 */}
       <div style={{
         display: 'flex',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         gap: '8px',
         flexWrap: 'wrap',
       }}>
@@ -65,13 +65,12 @@ export function DailyStaffDisplay({ date, isMobile }: DailyStaffDisplayProps) {
           alignItems: 'center',
           gap: '4px',
         }}>
-          👥 上班
+          👥 可上班
         </span>
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
           gap: isMobile ? '4px' : '6px',
-          flex: 1,
         }}>
           {workingStaff.length > 0 ? (
             workingStaff.map(staff => (
@@ -101,48 +100,6 @@ export function DailyStaffDisplay({ date, isMobile }: DailyStaffDisplayProps) {
             </span>
           )}
         </div>
-        
-        {/* 休假人員 - 同一行顯示 */}
-        {timeOffStaff.length > 0 && (
-          <>
-            <span style={{
-              fontSize: isMobile ? '14px' : '15px',
-              fontWeight: '600',
-              color: '#666',
-              whiteSpace: 'nowrap',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              marginLeft: isMobile ? '0' : '12px',
-            }}>
-              🏖️ 休
-            </span>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: isMobile ? '4px' : '6px',
-            }}>
-              {timeOffStaff.map(staff => (
-                <span
-                  key={staff.id}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: isMobile ? '3px 8px' : '4px 10px',
-                    backgroundColor: '#fff3e0',
-                    color: '#e65100',
-                    borderRadius: '12px',
-                    fontSize: isMobile ? '12px' : '13px',
-                    fontWeight: '500',
-                    border: '1px solid #ffe0b2',
-                  }}
-                >
-                  {staff.name}
-                </span>
-              ))}
-            </div>
-          </>
-        )}
       </div>
     </div>
   )
