@@ -633,14 +633,14 @@ export function DayView() {
           </div>
         )}
 
-        {/* 當天上班人員 */}
-        {!loading && (
-          <DailyStaffDisplay date={dateParam} isMobile={isMobile} />
-        )}
-
         {/* 今日總覽卡片 - 僅電腦版顯示 */}
         {!isMobile && !loading && bookings.length > 0 && (
           <TodayOverview bookings={bookings} isMobile={isMobile} />
+        )}
+
+        {/* 當天可上班人員 - 電腦版：在今日總覽下方 */}
+        {!isMobile && !loading && (
+          <DailyStaffDisplay date={dateParam} isMobile={isMobile} />
         )}
 
         {viewMode === 'list' && (
@@ -723,6 +723,11 @@ export function DayView() {
                 )}
               </div>
             </div>
+
+            {/* 當天可上班人員 - 手機版：在新增預約下方 */}
+            {isMobile && !loading && (
+              <DailyStaffDisplay date={dateParam} isMobile={isMobile} />
+            )}
 
             <VirtualizedBookingList
               boats={boats}
