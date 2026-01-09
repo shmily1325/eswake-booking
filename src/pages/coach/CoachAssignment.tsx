@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
+import { useDailyStaff } from '../../hooks/useDailyStaff'
 import { designSystem, getButtonStyle } from '../../styles/designSystem'
 import { isAdmin, isEditorAsync } from '../../utils/auth'
 import { isFacility } from '../../utils/facility'
@@ -12,12 +13,6 @@ import { logCoachAssignment } from '../../utils/auditLog'
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { useToast, ToastContainer } from '../../components/ui'
 import { getWeekdayText } from '../../utils/date'
-
-interface Coach {
-  id: string
-  name: string
-  isOnTimeOff?: boolean  // 是否休假
-}
 
 interface Booking {
   id: number
@@ -76,8 +71,10 @@ export function CoachAssignment() {
     : getTomorrowDate()
   const [selectedDate, setSelectedDate] = useState<string>(validatedDate)
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // 使用共用 hook 取得當天上班人員
+  const { allStaff: coaches } = useDailyStaff(selectedDate)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
@@ -91,42 +88,6 @@ export function CoachAssignment() {
     conflicts: string[] // 即時衝突提示
     requiresDriver: boolean
   }>>({})
-
-  const loadCoaches = async () => {
-    try {
-      // 並行查詢：同時取得教練和當天休假資料
-      const [coachesResult, timeOffResult] = await Promise.all([
-        supabase
-          .from('coaches')
-          .select('id, name')
-          .eq('status', 'active')
-          .order('name'),
-        supabase
-          .from('coach_time_off')
-          .select('coach_id')
-          .lte('start_date', selectedDate)
-          .gte('end_date', selectedDate)
-      ])
-      
-      if (coachesResult.error) {
-        console.error('載入教練失敗:', coachesResult.error)
-        return
-      }
-      
-      // 建立休假教練 ID 集合
-      const timeOffCoachIds = new Set((timeOffResult.data || []).map(t => t.coach_id))
-      
-      // 標記休假狀態
-      const coachesWithTimeOff = (coachesResult.data || []).map(coach => ({
-        ...coach,
-        isOnTimeOff: timeOffCoachIds.has(coach.id)
-      }))
-      
-      setCoaches(coachesWithTimeOff)
-    } catch (error) {
-      console.error('載入教練失敗:', error)
-    }
-  }
 
   const loadBookings = async () => {
     setLoading(true)
@@ -219,7 +180,7 @@ export function CoachAssignment() {
   }
 
   useEffect(() => {
-    loadCoaches()
+    // coaches 由 useDailyStaff hook 自動載入（當 selectedDate 變化時）
     loadBookings()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate])

@@ -13,6 +13,7 @@ import { getButtonStyle } from '../styles/designSystem'
 import { getDisplayContactName } from '../utils/bookingFormat'
 import { useToast, ToastContainer, BookingListSkeleton, TimelineSkeleton } from '../components/ui'
 import { TodayOverview } from '../components/TodayOverview'
+import { DailyStaffDisplay } from '../components/DailyStaffDisplay'
 import { DayViewMobileHeader } from '../components/DayViewMobileHeader'
 import { VirtualizedBookingList } from '../components/VirtualizedBookingList'
 import { ErrorBoundary } from '../components/ErrorBoundary'
@@ -630,6 +631,11 @@ export function DayView() {
               </button>
             </div>
           </div>
+        )}
+
+        {/* 當天上班人員 */}
+        {!loading && (
+          <DailyStaffDisplay date={dateParam} isMobile={isMobile} />
         )}
 
         {/* 今日總覽卡片 - 僅電腦版顯示 */}
