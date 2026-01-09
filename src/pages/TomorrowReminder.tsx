@@ -269,7 +269,7 @@ export function TomorrowReminder() {
       })
       .sort((a, b) => a.start_at.localeCompare(b.start_at)) // 按時間排序
     
-    let message = `${studentName}你好\n\n提醒你，明天有預約\n`
+    let message = `${studentName}你好\n提醒你，明天有預約\n`
     
     // ✅ 特殊會員：加入船和開船教練資訊（從第一個預約取得）
     if (SPECIAL_MEMBERS_FOR_BOAT_INFO.includes(studentName) && studentBookings.length > 0) {
