@@ -1250,9 +1250,6 @@ export function CoachAssignment() {
           </div>
         )}
 
-        {/* 當天可上班人員 */}
-        <DailyStaffDisplay date={selectedDate} isMobile={isMobile} />
-
         {success && (
           <div style={{
             marginTop: designSystem.spacing.sm,
@@ -1478,6 +1475,11 @@ export function CoachAssignment() {
             </div>
           )
         })()}
+
+        {/* 當天可上班人員 - 在今日總覽下方 */}
+        {!loading && (
+          <DailyStaffDisplay date={selectedDate} isMobile={isMobile} />
+        )}
 
         {/* 載入中 */}
         {loading && (
