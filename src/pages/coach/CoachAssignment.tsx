@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
+import { DailyStaffDisplay } from '../../components/DailyStaffDisplay'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useDailyStaff } from '../../hooks/useDailyStaff'
@@ -1248,6 +1249,9 @@ export function CoachAssignment() {
             </button>
           </div>
         )}
+
+        {/* 當天可上班人員 */}
+        <DailyStaffDisplay date={selectedDate} isMobile={isMobile} />
 
         {success && (
           <div style={{
