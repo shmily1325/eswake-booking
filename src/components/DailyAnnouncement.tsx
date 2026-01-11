@@ -210,6 +210,13 @@ export function DailyAnnouncement() {
         }}>
           {announcements.length > 0 && (
             <div style={{ marginBottom: '6px' }}>
+              <div style={{ 
+                color: '#667eea', 
+                fontWeight: '500',
+                marginBottom: '2px'
+              }}>
+                📋 交辦事項：
+              </div>
               {announcements.map((ann, idx) => (
                 <div 
                   key={ann.id} 
@@ -218,11 +225,10 @@ export function DailyAnnouncement() {
                     fontWeight: '500',
                     wordBreak: 'break-word',
                     whiteSpace: 'pre-wrap',
-                    marginBottom: idx < announcements.length - 1 ? '4px' : '0'
+                    paddingLeft: '1.5em',
+                    marginBottom: idx < announcements.length - 1 ? '2px' : '0'
                   }}
                 >
-                  {idx === 0 && '📋 交辦事項：'}
-                  {idx > 0 && '　　　　'}
                   {ann.content}
                 </div>
               ))}
