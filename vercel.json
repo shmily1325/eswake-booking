@@ -5,6 +5,20 @@
       "destination": "/index.html"
     }
   ],
+  "functions": {
+    "api/backup-full-database.ts": {
+      "maxDuration": 60
+    },
+    "api/backup-queryable.ts": {
+      "maxDuration": 60
+    },
+    "api/backup-to-cloud-drive.ts": {
+      "maxDuration": 60
+    },
+    "api/backup-to-drive.ts": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/backup-to-drive",

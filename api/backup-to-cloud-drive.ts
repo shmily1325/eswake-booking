@@ -3,25 +3,45 @@ import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
 
 // 需要备份的所有表（按依赖顺序）
+// ⚠️ 重要：新增資料表時請務必同步更新此列表！
 const TABLES_TO_BACKUP = [
+  // === 基礎資料表（無外鍵依賴）===
   'members',
   'coaches',
   'boats',
+  
+  // === 權限相關表 ===
+  'admin_users',        // ⭐ 管理員用戶
+  'allowed_users',      // ⭐ 允許登入用戶
+  'editor_users',       // ⭐ 小編權限用戶
+  'view_users',         // ⭐ 一般權限用戶
+  
+  // === 會員相關 ===
+  'member_notes',       // ⭐ 會員備註/事件記錄
+  'billing_relations',  // ⭐ 代扣關係表
   'board_storage',
+  
+  // === 船隻與教練相關 ===
   'boat_unavailable_dates',
   'coach_time_off',
+  
+  // === 預約相關（有外鍵依賴）===
   'bookings',
   'booking_members',
   'booking_coaches',
-  'booking_drivers',  // ⭐ 駕駛資料
+  'booking_drivers',    // 駕駛資料
   'coach_reports',
   'booking_participants',
+  
+  // === 財務相關 ===
   'transactions',
+  
+  // === 系統相關 ===
   'daily_announcements',
   'audit_log',
   'system_settings',
   'line_bindings',
-  'backup_logs',  // ⭐ 備份記錄
+  'backup_logs',        // 備份記錄
 ];
 
 function getLocalTimestamp(date: Date = new Date()): string {
