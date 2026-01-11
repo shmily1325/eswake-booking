@@ -121,6 +121,13 @@ export function CoachAdmin() {
     filteredMembers,
     handleSearchChange,
   } = useMemberSearch()
+  
+  // 非會員的代扣關係映射（participant_name -> member info）
+  const [nonMemberBillingMap, setNonMemberBillingMap] = useState<Record<string, {
+    memberId: string
+    memberName: string
+    memberNickname: string | null
+  }>>({})
 
   // ============ 資料載入 ============
 
@@ -324,10 +331,48 @@ export function CoachAdmin() {
 
       if (error) throw error
       setNonMemberReports(data || [])
+      
+      // 載入這些非會員的代扣關係
+      if (data && data.length > 0) {
+        const participantNames = data.map((r: any) => r.participant_name)
+        loadNonMemberBillingRelations(participantNames)
+      } else {
+        setNonMemberBillingMap({})
+      }
     } catch (error) {
       console.error('載入非會員記錄失敗:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 載入非會員的代扣關係
+  const loadNonMemberBillingRelations = async (participantNames: string[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('billing_relations')
+        .select(`
+          participant_name,
+          billing_member_id,
+          members:billing_member_id(id, name, nickname)
+        `)
+        .in('participant_name', participantNames)
+      
+      if (error) throw error
+      
+      const map: Record<string, { memberId: string; memberName: string; memberNickname: string | null }> = {}
+      data?.forEach((relation: any) => {
+        if (relation.members) {
+          map[relation.participant_name] = {
+            memberId: relation.billing_member_id,
+            memberName: relation.members.name,
+            memberNickname: relation.members.nickname
+          }
+        }
+      })
+      setNonMemberBillingMap(map)
+    } catch (error) {
+      console.error('載入非會員代扣關係失敗:', error)
     }
   }
 
@@ -456,6 +501,10 @@ export function CoachAdmin() {
       return
     }
 
+    // 防止重複點擊
+    if (loading) return
+    setLoading(true)
+
     try {
       console.log('關聯會員 - 更新前:', {
         report_id: report.id,
@@ -504,6 +553,7 @@ export function CoachAdmin() {
     } catch (error) {
       console.error('關聯會員失敗:', error)
       toast.error(`關聯會員失敗：${error instanceof Error ? error.message : '未知錯誤'}`)
+      setLoading(false)
     }
   }
 
@@ -995,26 +1045,60 @@ export function CoachAdmin() {
                                   })()}
                                 </div>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-                                  <button
-                                    onClick={() => {
-                                      setLinkingReport(report)
-                                      setShowMemberSearchDialog(true)
-                                    }}
-                                    style={{
-                                      ...getButtonStyle('secondary'),
-                                      padding: '8px 16px',
-                                      fontSize: '14px'
-                                    }}
-                                  >
-                                    🔗 關聯會員
-                                  </button>
+                                  {/* 檢查是否有代扣關係 */}
+                                  {nonMemberBillingMap[report.participant_name] ? (
+                                    <button
+                                      onClick={() => {
+                                        const billingInfo = nonMemberBillingMap[report.participant_name]
+                                        handleLinkMember(report, {
+                                          id: billingInfo.memberId,
+                                          name: billingInfo.memberName,
+                                          nickname: billingInfo.memberNickname,
+                                          phone: null
+                                        })
+                                      }}
+                                      disabled={loading}
+                                      style={{
+                                        ...getButtonStyle('secondary'),
+                                        padding: '8px 16px',
+                                        fontSize: '14px',
+                                        background: '#fff3e0',
+                                        color: '#e65100',
+                                        border: '2px solid #ffcc80',
+                                        opacity: loading ? 0.6 : 1,
+                                        cursor: loading ? 'not-allowed' : 'pointer'
+                                      }}
+                                    >
+                                      🔗 關聯{nonMemberBillingMap[report.participant_name].memberNickname || nonMemberBillingMap[report.participant_name].memberName}
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setLinkingReport(report)
+                                        setShowMemberSearchDialog(true)
+                                      }}
+                                      disabled={loading}
+                                      style={{
+                                        ...getButtonStyle('secondary'),
+                                        padding: '8px 16px',
+                                        fontSize: '14px',
+                                        opacity: loading ? 0.6 : 1,
+                                        cursor: loading ? 'not-allowed' : 'pointer'
+                                      }}
+                                    >
+                                      🔗 關聯會員
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => handleCloseNonMemberReport(report)}
+                                    disabled={loading}
                                     style={{
                                       ...getButtonStyle('primary'),
                                       padding: '8px 16px',
                                       fontSize: '14px',
-                                      background: '#4caf50'
+                                      background: '#4caf50',
+                                      opacity: loading ? 0.6 : 1,
+                                      cursor: loading ? 'not-allowed' : 'pointer'
                                     }}
                                   >
                                     ✓ 直接結案
