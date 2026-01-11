@@ -283,11 +283,22 @@ export function Statistics() {
       const bookingMembers = booking.booking_members || []
       const durationMin = booking.duration_min || 0
 
-      // 優先使用 booking_members 的會員名稱，沒有則 fallback 到 contact_name
-      const memberNames: string[] = bookingMembers.length > 0
-        ? bookingMembers.map((bm: any) => 
-            bm.members?.nickname || bm.members?.name || '未知會員'
-          )
+      // 合併會員和非會員名稱
+      const memberNamesFromBookingMembers = bookingMembers.map((bm: any) => 
+        bm.members?.nickname || bm.members?.name || '未知會員'
+      )
+      
+      // 從 contact_name 取得所有名稱，過濾掉已經在 booking_members 中的
+      const contactNames = (booking.contact_name || '').split(/[,，]/).map((n: string) => n.trim()).filter((n: string) => n)
+      const nonMemberNames = contactNames.filter((name: string) => 
+        !memberNamesFromBookingMembers.some((memberName: string) => 
+          memberName === name || name.includes(memberName) || memberName.includes(name)
+        )
+      )
+      
+      // 合併：先會員，再非會員
+      const memberNames: string[] = memberNamesFromBookingMembers.length > 0 || nonMemberNames.length > 0
+        ? [...memberNamesFromBookingMembers, ...nonMemberNames]
         : (booking.contact_name || '未知').split(/[,，]/).map((n: string) => n.trim()).filter((n: string) => n)
 
       const date = new Date(booking.start_at)
