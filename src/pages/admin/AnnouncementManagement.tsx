@@ -606,7 +606,9 @@ export function AnnouncementManagement() {
                             flex: 1,
                             fontSize: '14px',
                             color: '#333',
-                            lineHeight: '1.5'
+                            lineHeight: '1.5',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word'
                           }}>
                             {announcement.content}
                           </div>
