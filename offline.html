@@ -245,7 +245,7 @@
 <body>
     <div id="app" class="container">
         <!-- 資料庫載入器 -->
-        <div id="db-loader" class="modal active">
+        <div id="db-loader" class="modal">
             <div class="modal-content">
                 <div class="modal-title">💾 載入資料庫</div>
                 <div id="db-alert"></div>
@@ -266,7 +266,7 @@
         </div>
         
         <!-- 主頁面 -->
-        <div id="main-content" class="hidden">
+        <div id="main-content">
             <div class="header">
                 <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23000'/%3E%3Ctext x='50' y='65' font-size='40' fill='white' text-anchor='middle' font-weight='bold'%3EES%3C/text%3E%3C/svg%3E" 
                      alt="ES Wake Logo" class="logo" onerror="this.style.display='none'">
@@ -313,6 +313,152 @@
             }, 5000);
         }
         
+        // 動態創建表的輔助函數
+        // 使用一個集合來追蹤需要創建的表，然後一次性創建
+        const pendingTables = new Map(); // 使用 Map 來存儲表配置
+        let isUpgrading = false; // 升級鎖定標記
+        
+        async function createTableIfNotExists(tableName, keyPath = 'id', autoIncrement = false) {
+            if (db && db.objectStoreNames.contains(tableName)) {
+                return; // 表已存在
+            }
+            
+            // 將表添加到待創建列表
+            pendingTables.set(tableName, { keyPath, autoIncrement });
+            
+            // 如果正在升級，等待完成
+            if (isUpgrading) {
+                // 等待升級完成
+                while (isUpgrading) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                // 檢查表是否已經被創建
+                if (db && db.objectStoreNames.contains(tableName)) {
+                    return;
+                }
+            }
+            
+            // 調用 createAllPendingTables 來一次性創建所有表
+            await createAllPendingTables();
+        }
+        
+        // 一次性創建所有待創建的表（在處理 SQL 語句之前調用）
+        async function createAllPendingTables() {
+            if (pendingTables.size === 0) {
+                return;
+            }
+            
+            if (isUpgrading) {
+                // 等待升級完成
+                while (isUpgrading) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                return;
+            }
+            
+            if (!db) {
+                await initDatabase();
+            }
+            
+            // 再次檢查，可能已經被創建了
+            const tablesToCreate = [];
+            pendingTables.forEach((config, name) => {
+                if (!db.objectStoreNames.contains(name)) {
+                    tablesToCreate.push({ name, ...config });
+                }
+            });
+            
+            if (tablesToCreate.length === 0) {
+                pendingTables.clear();
+                return;
+            }
+            
+            isUpgrading = true;
+            const currentVersion = db.version;
+            const newVersion = currentVersion + 1;
+            
+            // 關閉當前連接
+            db.close();
+            db = null;
+            
+            try {
+                await new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, newVersion);
+                    
+                    request.onerror = (e) => {
+                        isUpgrading = false;
+                        console.error('資料庫開啟錯誤:', e);
+                        reject(new Error('無法開啟資料庫以創建表: ' + (request.error?.message || '未知錯誤')));
+                    };
+                    
+                    request.onsuccess = () => {
+                        db = request.result;
+                        isUpgrading = false;
+                        console.log(`✅ 已創建 ${tablesToCreate.length} 個表`);
+                        pendingTables.clear();
+                        resolve(db);
+                    };
+                    
+                    request.onupgradeneeded = (event) => {
+                        try {
+                            const database = event.target.result;
+                            
+                            // 重新創建所有現有表（如果不存在）
+                            const existingStores = {
+                                'members': { keyPath: 'id', autoIncrement: false },
+                                'boats': { keyPath: 'id', autoIncrement: true, index: { name: 'name', unique: true } },
+                                'coaches': { keyPath: 'id', autoIncrement: false },
+                                'bookings': { keyPath: 'id', autoIncrement: true, index: { name: 'start_at', unique: false } },
+                                'booking_coaches': { keyPath: 'id', autoIncrement: true },
+                                'booking_drivers': { keyPath: 'id', autoIncrement: true },
+                                'booking_members': { keyPath: 'id', autoIncrement: true },
+                                'daily_announcements': { keyPath: 'id', autoIncrement: true },
+                                'audit_log': { keyPath: 'id', autoIncrement: true }
+                            };
+                            
+                            // 創建現有表
+                            Object.keys(existingStores).forEach(storeName => {
+                                if (!database.objectStoreNames.contains(storeName)) {
+                                    const config = existingStores[storeName];
+                                    const store = database.createObjectStore(storeName, {
+                                        keyPath: config.keyPath,
+                                        autoIncrement: config.autoIncrement
+                                    });
+                                    if (config.index) {
+                                        store.createIndex(config.index.name, config.index.name, { unique: config.index.unique });
+                                    }
+                                }
+                            });
+                            
+                            // 創建所有待創建的表
+                            tablesToCreate.forEach(({ name, keyPath, autoIncrement }) => {
+                                if (!database.objectStoreNames.contains(name)) {
+                                    const options = { keyPath: keyPath };
+                                    if (autoIncrement) {
+                                        options.autoIncrement = true;
+                                    }
+                                    database.createObjectStore(name, options);
+                                    console.log(`📋 創建表: ${name}`);
+                                }
+                            });
+                        } catch (upgradeError) {
+                            console.error('升級資料庫時發生錯誤:', upgradeError);
+                            reject(upgradeError);
+                        }
+                    };
+                });
+            } catch (error) {
+                isUpgrading = false;
+                // 嘗試重新打開資料庫
+                try {
+                    await initDatabase();
+                } catch (reopenError) {
+                    console.error('重新打開資料庫失敗:', reopenError);
+                }
+                throw error;
+            }
+        }
+        
         // 初始化 IndexedDB
         async function initDatabase() {
             if (db) return db;
@@ -320,8 +466,13 @@
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
                 
-                request.onerror = () => {
-                    reject(new Error('無法開啟資料庫'));
+                request.onerror = (event) => {
+                    const error = request.error || event.target?.error;
+                    const errorMessage = error ? 
+                        `無法開啟資料庫: ${error.name} - ${error.message}` : 
+                        '無法開啟資料庫: 未知錯誤';
+                    console.error('資料庫開啟錯誤:', errorMessage, error);
+                    reject(new Error(errorMessage));
                 };
                 
                 request.onsuccess = () => {
@@ -331,40 +482,79 @@
                 };
                 
                 request.onupgradeneeded = (event) => {
-                    const database = event.target.result;
-                    
-                    // 建立資料表（Object Stores）
-                    if (!database.objectStoreNames.contains('members')) {
-                        database.createObjectStore('members', { keyPath: 'id' });
+                    try {
+                        const database = event.target.result;
+                        
+                        // 建立資料表（Object Stores）
+                        if (!database.objectStoreNames.contains('members')) {
+                            database.createObjectStore('members', { keyPath: 'id' });
+                        }
+                        if (!database.objectStoreNames.contains('boats')) {
+                            const boatStore = database.createObjectStore('boats', { keyPath: 'id', autoIncrement: true });
+                            boatStore.createIndex('name', 'name', { unique: true });
+                        }
+                        if (!database.objectStoreNames.contains('coaches')) {
+                            database.createObjectStore('coaches', { keyPath: 'id' });
+                        }
+                    if (!database.objectStoreNames.contains('bookings')) {
+                        const bookingStore = database.createObjectStore('bookings', { keyPath: 'id', autoIncrement: true });
+                        bookingStore.createIndex('start_at', 'start_at');
                     }
-                    if (!database.objectStoreNames.contains('boats')) {
-                        const boatStore = database.createObjectStore('boats', { keyPath: 'id', autoIncrement: true });
-                        boatStore.createIndex('name', 'name', { unique: true });
+                    if (!database.objectStoreNames.contains('booking_coaches')) {
+                        database.createObjectStore('booking_coaches', { keyPath: 'id', autoIncrement: true });
                     }
-                    if (!database.objectStoreNames.contains('coaches')) {
-                        database.createObjectStore('coaches', { keyPath: 'id' });
+                    if (!database.objectStoreNames.contains('booking_drivers')) {
+                        database.createObjectStore('booking_drivers', { keyPath: 'id', autoIncrement: true });
                     }
-                if (!database.objectStoreNames.contains('bookings')) {
-                    const bookingStore = database.createObjectStore('bookings', { keyPath: 'id', autoIncrement: true });
-                    bookingStore.createIndex('start_at', 'start_at');
+                    if (!database.objectStoreNames.contains('booking_members')) {
+                        database.createObjectStore('booking_members', { keyPath: 'id', autoIncrement: true });
+                    }
+                        if (!database.objectStoreNames.contains('daily_announcements')) {
+                            database.createObjectStore('daily_announcements', { keyPath: 'id', autoIncrement: true });
+                        }
+                        if (!database.objectStoreNames.contains('audit_log')) {
+                            database.createObjectStore('audit_log', { keyPath: 'id', autoIncrement: true });
+                        }
+                        
+                        console.log('✅ 資料表已建立');
+                    } catch (upgradeError) {
+                        console.error('升級資料庫時發生錯誤:', upgradeError);
+                        reject(new Error(`升級資料庫失敗: ${upgradeError.message}`));
+                    }
+                };
+                
+                request.onblocked = () => {
+                    console.warn('資料庫升級被阻止，請關閉其他標籤頁');
+                    reject(new Error('資料庫升級被阻止，請關閉其他使用此資料庫的標籤頁'));
+                };
+            });
+        }
+        
+        // 刪除並重新創建資料庫（用於修復損壞的資料庫）
+        async function resetDatabase() {
+            return new Promise((resolve, reject) => {
+                // 關閉當前連接
+                if (db) {
+                    db.close();
+                    db = null;
                 }
-                if (!database.objectStoreNames.contains('booking_coaches')) {
-                    database.createObjectStore('booking_coaches', { keyPath: 'id', autoIncrement: true });
-                }
-                if (!database.objectStoreNames.contains('booking_drivers')) {
-                    database.createObjectStore('booking_drivers', { keyPath: 'id', autoIncrement: true });
-                }
-                if (!database.objectStoreNames.contains('booking_members')) {
-                    database.createObjectStore('booking_members', { keyPath: 'id', autoIncrement: true });
-                }
-                    if (!database.objectStoreNames.contains('daily_announcements')) {
-                        database.createObjectStore('daily_announcements', { keyPath: 'id', autoIncrement: true });
-                    }
-                    if (!database.objectStoreNames.contains('audit_log')) {
-                        database.createObjectStore('audit_log', { keyPath: 'id', autoIncrement: true });
-                    }
-                    
-                    console.log('✅ 資料表已建立');
+                
+                // 刪除資料庫
+                const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+                
+                deleteRequest.onerror = () => {
+                    reject(new Error('無法刪除資料庫: ' + (deleteRequest.error?.message || '未知錯誤')));
+                };
+                
+                deleteRequest.onsuccess = () => {
+                    console.log('✅ 舊資料庫已刪除');
+                    // 重新初始化
+                    initDatabase()
+                        .then(() => {
+                            console.log('✅ 資料庫已重新創建');
+                            resolve(db);
+                        })
+                        .catch(reject);
                 };
             });
         }
@@ -413,6 +603,13 @@
         
         // 載入 SQL 檔案
         async function loadSQLFile(file) {
+            // 在函數開始時就設置載入標記，防止重複觸發
+            if (isFileLoading) {
+                console.log('檔案正在載入中，忽略重複調用');
+                return;
+            }
+            isFileLoading = true;
+            
             console.log('開始載入 SQL 檔案:', file.name, '大小:', file.size, 'bytes');
             
             const loadingDiv = document.getElementById('db-loading');
@@ -420,9 +617,32 @@
                 loadingDiv.classList.remove('hidden');
             }
             
+            // 禁用 input 和 label，防止重複點擊
+            const fileInput = document.getElementById('sql-file');
+            const label = fileInput?.closest('label');
+            if (fileInput) fileInput.disabled = true;
+            if (label) label.style.pointerEvents = 'none';
+            
             try {
-                await initDatabase();
-                console.log('資料庫已初始化');
+                // 嘗試初始化資料庫，如果失敗則嘗試重置
+                try {
+                    await initDatabase();
+                    console.log('資料庫已初始化');
+                } catch (initError) {
+                    console.warn('資料庫初始化失敗，嘗試重置資料庫...', initError);
+                    const shouldReset = confirm('資料庫初始化失敗，是否要重置資料庫？\n\n這將刪除所有現有資料並重新創建資料庫。\n\n點擊「確定」重置\n點擊「取消」取消載入');
+                    if (shouldReset) {
+                        try {
+                            await resetDatabase();
+                            console.log('資料庫已重置並重新初始化');
+                        } catch (resetError) {
+                            console.error('重置資料庫失敗:', resetError);
+                            throw new Error(`無法初始化資料庫: ${initError.message}。重置也失敗: ${resetError.message}`);
+                        }
+                    } else {
+                        throw new Error('用戶取消重置資料庫');
+                    }
+                }
                 
                 // 詢問是否要清空現有資料
                 const shouldClear = confirm('是否要清空現有資料庫並載入新資料？\n\n點擊「確定」清空並載入\n點擊「取消」追加到現有資料');
@@ -434,6 +654,32 @@
                 
                 const text = await file.text();
                 console.log('檔案讀取完成，長度:', text.length);
+                
+                // 先掃描所有 CREATE TABLE 語句，收集需要創建的表
+                console.log('📋 掃描 CREATE TABLE 語句...');
+                const createTableMatches = text.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)/gi);
+                if (createTableMatches) {
+                    createTableMatches.forEach(match => {
+                        const tableName = match.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)/i)[1];
+                        if (!db.objectStoreNames.contains(tableName)) {
+                            // 檢查是否有 id SERIAL/BIGSERIAL
+                            const tableDef = text.match(new RegExp(`CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${tableName}[\\s\\S]*?(?=CREATE|$)`, 'i'));
+                            let keyPath = 'id';
+                            let autoIncrement = false;
+                            if (tableDef) {
+                                autoIncrement = /id\s+(?:SERIAL|BIGSERIAL)/i.test(tableDef[0]);
+                            }
+                            pendingTables.set(tableName, { keyPath, autoIncrement });
+                            console.log(`📋 發現需要創建的表: ${tableName}`);
+                        }
+                    });
+                }
+                
+                // 一次性創建所有需要的表
+                if (pendingTables.size > 0) {
+                    console.log(`📋 準備創建 ${pendingTables.size} 個表...`);
+                    await createAllPendingTables();
+                }
                 
                 // 更好的 SQL 語句分割（處理多行和註解）
                 const statements = [];
@@ -489,63 +735,468 @@
                 
                 let successCount = 0;
                 let skipCount = 0;
+                const skippedReasons = {
+                    'CREATE TABLE': 0,
+                    'ALTER TABLE': 0,
+                    'CREATE INDEX': 0,
+                    'INSERT 格式不符': 0,
+                    '執行錯誤': 0,
+                    '其他': 0
+                };
+                // 詳細記錄每個跳過的語句（用於調試）
+                const skippedStatements = {
+                    'CREATE TABLE': [],
+                    'ALTER TABLE': [],
+                    'CREATE INDEX': [],
+                    'INSERT 格式不符': [],
+                    '執行錯誤': [],
+                    '其他': []
+                };
                 
-                for (const statement of statements) {
+                console.log('📊 開始處理 SQL 語句，總數:', statements.length);
+                
+                for (let idx = 0; idx < statements.length; idx++) {
+                    const statement = statements[idx];
                     const trimmed = statement.trim();
                     if (!trimmed) continue;
                     
                     try {
                         const upperSql = trimmed.toUpperCase();
                         
-                        // 跳過不支援的語句
-                        if (upperSql.includes('CREATE TABLE') || 
-                            upperSql.includes('ALTER TABLE') ||
-                            upperSql.includes('CREATE INDEX')) {
+                        // 處理 CREATE TABLE 語句 - 動態創建表
+                        if (upperSql.includes('CREATE TABLE')) {
+                            try {
+                                const createTableMatch = trimmed.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)/i);
+                                if (createTableMatch) {
+                                    const tableName = createTableMatch[1];
+                                    
+                                    // 檢查表是否已存在
+                                    if (!db.objectStoreNames.contains(tableName)) {
+                                        // 嘗試從 CREATE TABLE 語句中提取主鍵
+                                        let keyPath = 'id'; // 預設主鍵
+                                        let autoIncrement = false;
+                                        
+                                        // 檢查是否有 id 欄位且是主鍵或 SERIAL/BIGSERIAL
+                                        if (trimmed.match(/id\s+(?:SERIAL|BIGSERIAL|INTEGER|INT|BIGINT)/i)) {
+                                            keyPath = 'id';
+                                            autoIncrement = trimmed.match(/id\s+(?:SERIAL|BIGSERIAL)/i) !== null;
+                                        }
+                                        
+                                        // 在 IndexedDB 中創建表
+                                        // 注意：IndexedDB 需要在 upgrade 事件中創建，所以我們需要重新打開資料庫
+                                        // 但為了簡化，我們先記錄表名，稍後統一處理
+                                        console.log(`📋 [${idx + 1}/${statements.length}] 發現 CREATE TABLE: ${tableName}`);
+                                        
+                                        // 使用一個輔助函數來創建表
+                                        await createTableIfNotExists(tableName, keyPath, autoIncrement);
+                                        
+                                        console.log(`✅ [${idx + 1}/${statements.length}] 表已創建: ${tableName}`);
+                                    } else {
+                                        console.log(`ℹ️  [${idx + 1}/${statements.length}] 表已存在: ${tableName}`);
+                                    }
+                                } else {
+                                    skipCount++;
+                                    skippedReasons['CREATE TABLE']++;
+                                    const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                                    skippedStatements['CREATE TABLE'].push({ index: idx + 1, preview });
+                                    console.warn(`⏭️  [${idx + 1}/${statements.length}] CREATE TABLE 格式不符:`, preview);
+                                }
+                            } catch (createError) {
+                                skipCount++;
+                                skippedReasons['執行錯誤']++;
+                                const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                                skippedStatements['執行錯誤'].push({ 
+                                    index: idx + 1, 
+                                    preview, 
+                                    error: `CREATE TABLE 失敗: ${createError.message}` 
+                                });
+                                console.error(`❌ [${idx + 1}/${statements.length}] CREATE TABLE 失敗:`, createError.message);
+                            }
+                            continue;
+                        }
+                        
+                        // 跳過 ALTER TABLE（IndexedDB 不支援）
+                        if (upperSql.includes('ALTER TABLE')) {
                             skipCount++;
+                            skippedReasons['ALTER TABLE']++;
+                            const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                            skippedStatements['ALTER TABLE'].push({ index: idx + 1, preview });
+                            console.log(`⏭️  [${idx + 1}/${statements.length}] 跳過 ALTER TABLE:`, preview);
+                            continue;
+                        }
+                        
+                        // 跳過 CREATE INDEX（IndexedDB 索引需要在創建表時定義）
+                        if (upperSql.includes('CREATE INDEX')) {
+                            skipCount++;
+                            skippedReasons['CREATE INDEX']++;
+                            const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                            skippedStatements['CREATE INDEX'].push({ index: idx + 1, preview });
+                            console.log(`⏭️  [${idx + 1}/${statements.length}] 跳過 CREATE INDEX:`, preview);
+                            continue;
+                        }
+                        
+                        // 處理 DELETE FROM 語句
+                        if (upperSql.includes('DELETE FROM')) {
+                            try {
+                                const deleteMatch = trimmed.match(/DELETE\s+FROM\s+(\w+)/i);
+                                if (deleteMatch) {
+                                    const tableName = deleteMatch[1];
+                                    
+                                    // 確保表存在
+                                    await createTableIfNotExists(tableName, 'id', false);
+                                    
+                                    // 執行 DELETE（清空表）
+                                    const transaction = db.transaction([tableName], 'readwrite');
+                                    const store = transaction.objectStore(tableName);
+                                    await new Promise((resolve, reject) => {
+                                        const request = store.clear();
+                                        request.onsuccess = () => resolve();
+                                        request.onerror = () => reject(request.error);
+                                    });
+                                    
+                                    console.log(`🗑️  [${idx + 1}/${statements.length}] DELETE FROM ${tableName} - 表已清空`);
+                                } else {
+                                    skipCount++;
+                                    skippedReasons['其他']++;
+                                    const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                                    skippedStatements['其他'].push({ index: idx + 1, preview });
+                                    console.warn(`⏭️  [${idx + 1}/${statements.length}] DELETE FROM 格式不符:`, preview);
+                                }
+                            } catch (deleteError) {
+                                skipCount++;
+                                skippedReasons['執行錯誤']++;
+                                const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                                skippedStatements['執行錯誤'].push({ 
+                                    index: idx + 1, 
+                                    preview, 
+                                    error: `DELETE FROM 失敗: ${deleteError.message}` 
+                                });
+                                console.error(`❌ [${idx + 1}/${statements.length}] DELETE FROM 失敗:`, deleteError.message);
+                            }
                             continue;
                         }
                         
                         // 處理 INSERT
                         if (upperSql.includes('INSERT INTO')) {
-                            const match = trimmed.match(/INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i);
-                            if (match) {
-                                const tableName = match[1];
-                                const columns = match[2].split(',').map(c => c.trim());
-                                const values = match[3].split(',').map(v => {
-                                    v = v.trim();
-                                    if (v === 'NULL' || v === 'null') return null;
-                                    if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
-                                        return v.slice(1, -1).replace(/''/g, "'").replace(/""/g, '"');
+                            // 改進的正則表達式，支援更複雜的格式（包括多行 VALUES）
+                            const insertMatch = trimmed.match(/INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*(.+)/is);
+                            if (insertMatch) {
+                                const tableName = insertMatch[1];
+                                const columnsStr = insertMatch[2];
+                                const allValuesStr = insertMatch[3];
+                                
+                                // 檢查表是否存在，如果不存在則自動創建
+                                if (!db.objectStoreNames.contains(tableName)) {
+                                    console.log(`⚠️  表 "${tableName}" 不存在，嘗試自動創建...`);
+                                    try {
+                                        await createTableIfNotExists(tableName, 'id', false);
+                                        console.log(`✅ 表 "${tableName}" 已自動創建`);
+                                    } catch (createError) {
+                                        skipCount++;
+                                        skippedReasons['執行錯誤']++;
+                                        const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                                        skippedStatements['執行錯誤'].push({ 
+                                            index: idx + 1, 
+                                            preview, 
+                                            error: `表 "${tableName}" 不存在且無法創建: ${createError.message}` 
+                                        });
+                                        console.warn(`⏭️  [${idx + 1}/${statements.length}] 表不存在且無法創建: ${tableName}`);
+                                        continue;
                                     }
-                                    return v;
-                                });
+                                }
                                 
-                                const record = {};
-                                columns.forEach((col, idx) => {
-                                    record[col] = values[idx] || null;
-                                });
+                                // 解析欄位名稱
+                                const columns = columnsStr.split(',').map(c => c.trim().replace(/["']/g, ''));
                                 
-                                const transaction = db.transaction([tableName], 'readwrite');
-                                const store = transaction.objectStore(tableName);
-                                await new Promise((resolve, reject) => {
-                                    const request = store.add(record);
-                                    request.onsuccess = () => resolve();
-                                    request.onerror = () => reject(request.error);
-                                });
+                                // 解析多個 VALUES 子句（處理 VALUES (...), (...), (...) 的情況）
+                                function parseMultipleValues(allValuesStr) {
+                                    const valueGroups = [];
+                                    let current = '';
+                                    let parenDepth = 0;
+                                    let inString = false;
+                                    let stringChar = '';
+                                    
+                                    for (let i = 0; i < allValuesStr.length; i++) {
+                                        const char = allValuesStr[i];
+                                        const nextChar = allValuesStr[i + 1];
+                                        
+                                        if (!inString && (char === "'" || char === '"')) {
+                                            inString = true;
+                                            stringChar = char;
+                                            current += char;
+                                        } else if (inString && char === stringChar) {
+                                            if (nextChar === stringChar) {
+                                                current += char + nextChar;
+                                                i++;
+                                            } else {
+                                                inString = false;
+                                                stringChar = '';
+                                                current += char;
+                                            }
+                                        } else if (!inString && char === '(') {
+                                            if (parenDepth === 0) {
+                                                current = ''; // 開始新的值組
+                                            }
+                                            parenDepth++;
+                                            current += char;
+                                        } else if (!inString && char === ')') {
+                                            parenDepth--;
+                                            current += char;
+                                            if (parenDepth === 0) {
+                                                // 完成一個值組
+                                                valueGroups.push(current.trim());
+                                                current = '';
+                                            }
+                                        } else {
+                                            current += char;
+                                        }
+                                    }
+                                    
+                                    return valueGroups;
+                                }
                                 
-                                successCount++;
+                                // 解析所有 VALUES 子句
+                                const valueGroups = parseMultipleValues(allValuesStr);
+                                
+                                if (valueGroups.length === 0) {
+                                    skipCount++;
+                                    skippedReasons['INSERT 格式不符']++;
+                                    const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                                    skippedStatements['INSERT 格式不符'].push({ index: idx + 1, preview });
+                                    console.warn(`⏭️  [${idx + 1}/${statements.length}] 無法解析 VALUES:`, preview);
+                                    continue;
+                                }
+                                
+                                // 處理每個 VALUES 組
+                                let groupSuccessCount = 0;
+                                let groupErrorCount = 0;
+                                
+                                for (const valuesStr of valueGroups) {
+                                    // 移除外層括號
+                                    const cleanValuesStr = valuesStr.trim().replace(/^\(|\)$/g, '');
+                                
+                                // 改進的值解析函數，處理包含逗號的字串
+                                function parseValues(valuesStr) {
+                                    const values = [];
+                                    let current = '';
+                                    let inString = false;
+                                    let stringChar = '';
+                                    let parenDepth = 0;
+                                    
+                                    for (let i = 0; i < valuesStr.length; i++) {
+                                        const char = valuesStr[i];
+                                        const nextChar = valuesStr[i + 1];
+                                        
+                                        if (!inString && (char === "'" || char === '"')) {
+                                            inString = true;
+                                            stringChar = char;
+                                            current += char;
+                                        } else if (inString && char === stringChar) {
+                                            if (nextChar === stringChar) {
+                                                // 轉義的引號
+                                                current += char + nextChar;
+                                                i++; // 跳過下一個字元
+                                            } else {
+                                                // 字串結束
+                                                inString = false;
+                                                stringChar = '';
+                                                current += char;
+                                            }
+                                        } else if (!inString && char === '(') {
+                                            parenDepth++;
+                                            current += char;
+                                        } else if (!inString && char === ')') {
+                                            parenDepth--;
+                                            current += char;
+                                        } else if (!inString && parenDepth === 0 && char === ',') {
+                                            // 值分隔符
+                                            values.push(current.trim());
+                                            current = '';
+                                        } else {
+                                            current += char;
+                                        }
+                                    }
+                                    
+                                    // 添加最後一個值
+                                    if (current.trim()) {
+                                        values.push(current.trim());
+                                    }
+                                    
+                                    return values;
+                                }
+                                
+                                    // 解析值
+                                    const rawValues = parseValues(cleanValuesStr);
+                                    
+                                    // 處理每個值
+                                    const values = rawValues.map(v => {
+                                        v = v.trim();
+                                        if (!v || v === 'NULL' || v === 'null') return null;
+                                        
+                                        // 處理字串值
+                                        if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
+                                            return v.slice(1, -1)
+                                                .replace(/''/g, "'")
+                                                .replace(/""/g, '"')
+                                                .replace(/\\'/g, "'")
+                                                .replace(/\\"/g, '"')
+                                                .replace(/\\n/g, '\n')
+                                                .replace(/\\t/g, '\t')
+                                                .replace(/\\\\/g, '\\');
+                                        }
+                                        
+                                        // 處理布林值
+                                        if (v.toUpperCase() === 'TRUE' || v.toUpperCase() === 'FALSE') {
+                                            return v.toUpperCase() === 'TRUE';
+                                        }
+                                        
+                                        // 處理數字
+                                        if (/^-?\d+$/.test(v)) {
+                                            return parseInt(v, 10);
+                                        }
+                                        if (/^-?\d*\.\d+$/.test(v)) {
+                                            return parseFloat(v);
+                                        }
+                                        
+                                        // 處理 JSON/陣列（如 PostgreSQL 的 ARRAY）
+                                        if (v.startsWith('{') && v.endsWith('}')) {
+                                            try {
+                                                return JSON.parse(v);
+                                            } catch (e) {
+                                                return v; // 如果無法解析，返回原始值
+                                            }
+                                        }
+                                        
+                                        // 其他情況返回原始值
+                                        return v;
+                                    });
+                                    
+                                    // 建立記錄物件
+                                    const record = {};
+                                    columns.forEach((col, colIdx) => {
+                                        if (colIdx < values.length) {
+                                            record[col] = values[colIdx];
+                                        } else {
+                                            record[col] = null;
+                                        }
+                                    });
+                                    
+                                    // 嘗試插入記錄（使用 put 而不是 add，以處理主鍵衝突）
+                                    try {
+                                        const transaction = db.transaction([tableName], 'readwrite');
+                                        const store = transaction.objectStore(tableName);
+                                        
+                                        // 先檢查是否有主鍵
+                                        const keyPath = store.keyPath;
+                                        let shouldUsePut = false;
+                                        
+                                        if (keyPath && record[keyPath] !== undefined) {
+                                            // 有主鍵，使用 put（會覆蓋已存在的記錄）
+                                            shouldUsePut = true;
+                                        }
+                                        
+                                        await new Promise((resolve, reject) => {
+                                            const request = shouldUsePut ? store.put(record) : store.add(record);
+                                            request.onsuccess = () => resolve();
+                                            request.onerror = (e) => {
+                                                const error = request.error;
+                                                // 如果是主鍵衝突且使用 add，嘗試改用 put
+                                                if (!shouldUsePut && error.name === 'ConstraintError') {
+                                                    const putRequest = store.put(record);
+                                                    putRequest.onsuccess = () => resolve();
+                                                    putRequest.onerror = () => reject(putRequest.error);
+                                                } else {
+                                                    reject(error);
+                                                }
+                                            };
+                                        });
+                                        
+                                        groupSuccessCount++;
+                                        successCount++;
+                                        if (successCount % 100 === 0) {
+                                            console.log(`✅ 已處理 ${successCount} 條記錄...`);
+                                        }
+                                    } catch (insertError) {
+                                        groupErrorCount++;
+                                        // 插入失敗，記錄錯誤但繼續處理下一條
+                                        skipCount++;
+                                        skippedReasons['執行錯誤']++;
+                                        const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                                        skippedStatements['執行錯誤'].push({ 
+                                            index: idx + 1, 
+                                            preview, 
+                                            error: `${insertError.name}: ${insertError.message}` 
+                                        });
+                                        console.warn(`⚠️  [${idx + 1}/${statements.length}] 插入失敗 (${tableName}):`, insertError.message);
+                                    }
+                                }
+                                
+                                // 如果有多個值組，記錄處理結果
+                                if (valueGroups.length > 1 && groupErrorCount > 0) {
+                                    console.log(`   → 此語句包含 ${valueGroups.length} 個值組，成功 ${groupSuccessCount} 個，失敗 ${groupErrorCount} 個`);
+                                }
                             } else {
                                 skipCount++;
+                                skippedReasons['INSERT 格式不符']++;
+                                const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                                skippedStatements['INSERT 格式不符'].push({ index: idx + 1, preview });
+                                console.warn(`⏭️  [${idx + 1}/${statements.length}] INSERT 語句格式不符，已跳過:`, preview);
                             }
+                        } else {
+                            // 不是 INSERT 語句，跳過
+                            skipCount++;
+                            skippedReasons['其他']++;
+                            const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                            skippedStatements['其他'].push({ index: idx + 1, preview });
+                            console.log(`⏭️  [${idx + 1}/${statements.length}] 跳過非 INSERT 語句:`, preview);
                         }
                     } catch (err) {
                         skipCount++;
-                        console.warn('跳過語句:', trimmed.substring(0, 100), err);
+                        skippedReasons['執行錯誤']++;
+                        const preview = trimmed.substring(0, 200).replace(/\s+/g, ' ');
+                        skippedStatements['執行錯誤'].push({ index: idx + 1, preview, error: err.message });
+                        console.error(`❌ [${idx + 1}/${statements.length}] 執行語句時出錯，已跳過:`, preview, '錯誤:', err.message);
                     }
                 }
                 
-                console.log(`載入完成：成功 ${successCount} 條，跳過 ${skipCount} 條`);
-                showAlert(`✅ 資料庫載入成功！成功: ${successCount} 條，跳過: ${skipCount} 條`, 'success');
+                // 生成跳過原因摘要
+                const skipDetails = Object.entries(skippedReasons)
+                    .filter(([_, count]) => count > 0)
+                    .map(([reason, count]) => `${reason}: ${count}`)
+                    .join(', ');
+                
+                console.log(`\n📊 ========== 載入完成統計 ==========`);
+                console.log(`✅ 成功: ${successCount} 條`);
+                console.log(`⏭️  跳過: ${skipCount} 條`);
+                console.log(`📈 總計: ${statements.length} 條 SQL 語句`);
+                console.log(`📉 成功率: ${((successCount / statements.length) * 100).toFixed(2)}%`);
+                
+                if (skipCount > 0) {
+                    console.log(`\n📋 跳過原因統計:`);
+                    Object.entries(skippedReasons)
+                        .filter(([_, count]) => count > 0)
+                        .forEach(([reason, count]) => {
+                            console.log(`   ${reason}: ${count} 條`);
+                        });
+                    
+                    console.log(`\n🔍 詳細跳過資訊（展開查看）:`);
+                    Object.entries(skippedStatements)
+                        .filter(([_, items]) => items.length > 0)
+                        .forEach(([reason, items]) => {
+                            console.group(`⏭️  ${reason} (${items.length} 條)`);
+                            items.forEach((item, i) => {
+                                console.log(`   [${item.index}] ${item.preview}${item.error ? ` | 錯誤: ${item.error}` : ''}`);
+                            });
+                            console.groupEnd();
+                        });
+                }
+                console.log(`========================================\n`);
+                
+                let alertMessage = `✅ 資料庫載入成功！\n成功: ${successCount} 條`;
+                if (skipCount > 0) {
+                    alertMessage += `\n跳過: ${skipCount} 條\n\n跳過原因：\n${Object.entries(skippedReasons).filter(([_, count]) => count > 0).map(([reason, count]) => `  • ${reason}: ${count}`).join('\n')}`;
+                }
+                showAlert(alertMessage, 'success');
                 
                 // 重置文件輸入框，以便可以再次選擇同一個文件
                 const fileInput = document.getElementById('sql-file');
@@ -564,7 +1215,8 @@
                     const mainContent = document.getElementById('main-content');
                     if (mainContent) {
                         mainContent.classList.remove('hidden');
-                        renderMenu();
+                        // 顯示主頁面（包含「重新載入資料庫」按鈕）
+                        showHomePage();
                     }
                 }, 1000);
                 
@@ -572,12 +1224,16 @@
                 console.error('載入 SQL 檔案時發生錯誤:', error);
                 if (loadingDiv) loadingDiv.classList.add('hidden');
                 showAlert('❌ 載入失敗: ' + (error.message || '未知錯誤'), 'error');
-                
-                // 重置文件輸入框
+            } finally {
+                // 重置載入標記和啟用 input/label
+                isFileLoading = false;
                 const fileInput = document.getElementById('sql-file');
+                const label = fileInput?.closest('label');
                 if (fileInput) {
-                    fileInput.value = '';
+                    fileInput.disabled = false;
+                    fileInput.value = ''; // 清空選擇，允許重新選擇同一個檔案
                 }
+                if (label) label.style.pointerEvents = 'auto';
                 const fileNameDiv = document.getElementById('file-name');
                 if (fileNameDiv) {
                     fileNameDiv.textContent = '';
@@ -623,7 +1279,8 @@
                     loadingDiv.classList.add('hidden');
                     document.getElementById('db-loader').classList.remove('active');
                     document.getElementById('main-content').classList.remove('hidden');
-                    renderMenu();
+                    // 顯示主頁面（包含「重新載入資料庫」按鈕）
+                    showHomePage();
                 }, 1000);
             } catch (error) {
                 loadingDiv.classList.add('hidden');
@@ -1154,6 +1811,9 @@
                         // 構建卡片 HTML（與網頁版樣式一致）
                         const cardStyle = 'padding: 14px 12px; background: linear-gradient(135deg, ' + boatColor + '08 0%, ' + boatColor + '15 100%); border: 2px solid ' + boatColor + '; vertical-align: top; position: relative; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
                         
+                        // 教練練習標籤（如果有）
+                        const coachPracticeHtml = booking.is_coach_practice ? '<div style="display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; background: #fff3e0; color: #e65100; border-radius: 4px; margin-bottom: 6px; border: 1px solid #ff9800;">🏄 教練練習</div>' : '';
+                        
                         const timeRangeHtml = '<div style="font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; text-align: center; line-height: 1.3; letter-spacing: 0.5px;">' + startTime + ' - ' + endTime + '</div>';
                         const contactNameHtml = '<div style="font-size: 16px; font-weight: 700; margin-bottom: 6px; text-align: center; color: #1a1a1a;">' + displayContactName + '</div>';
                         const notesHtml = booking.notes ? '<div style="font-size: 12px; color: #666; margin-bottom: 4px; text-align: center; font-style: italic;">' + booking.notes + '</div>' : '';
@@ -1164,7 +1824,7 @@
                         const driverHtml = driverNames ? '<div style="font-size: 12px; color: ' + boatColor + '; font-weight: 600; text-align: center; margin-top: 2px;">🚤 ' + driverNames + '</div>' : '';
                         
                         cells.push({
-                            html: '<td rowspan="' + slots + '" style="' + cardStyle + '">' + timeRangeHtml + contactNameHtml + notesHtml + scheduleNotesHtml + coachHtml + driverHtml + '</td>',
+                            html: '<td rowspan="' + slots + '" style="' + cardStyle + '">' + coachPracticeHtml + timeRangeHtml + contactNameHtml + notesHtml + scheduleNotesHtml + coachHtml + driverHtml + '</td>',
                             skip: false
                         });
                     } else if (isInRange) {
@@ -1258,6 +1918,7 @@
         
         // 檔案選擇事件 - 使用標記避免重複設置
         let fileInputSetup = false;
+        let isFileLoading = false; // 防止重複載入
         function setupFileInput() {
             if (fileInputSetup) return; // 避免重複設置
             const fileInput = document.getElementById('sql-file');
@@ -1269,6 +1930,13 @@
                 
                 // 添加新的事件監聽器
                 newInput.addEventListener('change', function(e) {
+                    // 防止重複觸發
+                    if (isFileLoading) {
+                        console.log('檔案正在載入中，忽略重複觸發');
+                        e.target.value = ''; // 清空選擇，避免重複觸發
+                        return;
+                    }
+                    
                     const file = e.target.files?.[0];
                     const fileNameDiv = document.getElementById('file-name');
                     
@@ -1278,6 +1946,7 @@
                             fileNameDiv.textContent = `已選擇: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
                             fileNameDiv.style.color = '#667eea';
                         }
+                        // loadSQLFile 函數內部會設置 isFileLoading 標記並禁用 input
                         loadSQLFile(file);
                     } else {
                         console.log('未選擇檔案');
@@ -1287,14 +1956,20 @@
                     }
                 });
                 
-                // 也為 label 添加點擊事件（確保可以觸發）
+                // label 的 for 屬性已經足夠觸發 input，不需要額外的點擊事件
+                // 但我們需要在載入過程中禁用 label 的點擊
                 const label = newInput.closest('label');
                 if (label) {
+                    // 監聽 label 點擊，在載入過程中阻止
                     label.addEventListener('click', function(e) {
-                        if (e.target === label || e.target.tagName === 'SPAN') {
-                            newInput.click();
+                        if (isFileLoading || newInput.disabled) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            console.log('檔案正在載入中，忽略 label 點擊');
+                            return false;
                         }
-                    });
+                    }, true); // 使用 capture phase 確保優先處理
                 }
                 
                 console.log('✅ 檔案輸入事件監聽器已設置');
@@ -1310,23 +1985,36 @@
                 // 設置檔案輸入事件監聽器
                 setupFileInput();
                 
-                await initDatabase();
-                // 檢查是否有資料
-                const transaction = db.transaction(['members'], 'readonly');
-                const store = transaction.objectStore('members');
-                const countRequest = store.count();
+                // 先顯示首頁（包含載入資料庫按鈕）
+                document.getElementById('db-loader').classList.remove('active');
+                document.getElementById('main-content').classList.remove('hidden');
+                showHomePage();
                 
-                countRequest.onsuccess = () => {
-                    if (countRequest.result > 0) {
-                        // 有資料，直接顯示主頁面
-                        document.getElementById('db-loader').classList.remove('active');
-                        document.getElementById('main-content').classList.remove('hidden');
-                        renderMenu();
+                // 嘗試初始化資料庫（不阻塞首頁顯示）
+                try {
+                    await initDatabase();
+                    // 檢查是否有資料
+                    if (db && db.objectStoreNames.contains('members')) {
+                        const transaction = db.transaction(['members'], 'readonly');
+                        const store = transaction.objectStore('members');
+                        const countRequest = store.count();
+                        
+                        countRequest.onsuccess = () => {
+                            if (countRequest.result > 0) {
+                                console.log('✅ 資料庫已有資料');
+                            }
+                        };
                     }
-                    // 沒有資料，顯示載入器讓用戶選擇
-                };
+                } catch (dbError) {
+                    console.warn('資料庫初始化警告（不影響使用，可以點擊載入資料庫按鈕）:', dbError.message || dbError);
+                    // 不顯示錯誤，讓用戶可以點擊載入資料庫按鈕
+                }
             } catch (error) {
-                console.error('初始化資料庫失敗:', error);
+                console.error('初始化失敗:', error);
+                // 即使出錯也顯示首頁
+                document.getElementById('db-loader').classList.remove('active');
+                document.getElementById('main-content').classList.remove('hidden');
+                showHomePage();
             }
         });
     </script>
