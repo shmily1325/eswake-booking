@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -89,6 +89,32 @@ export function CoachAssignment() {
     conflicts: string[] // 即時衝突提示
     requiresDriver: boolean
   }>>({})
+
+  // 計算未排班數量（用於 DailyStaffDisplay 顯示警告）
+  const unassignedCount = useMemo(() => {
+    return bookings.filter(booking => {
+      const assignment = assignments[booking.id]
+      
+      if (!assignment) {
+        return true
+      }
+      
+      const hasCoach = assignment.coachIds.length > 0
+      const hasDriver = assignment.driverIds.length > 0
+      const requiresDriver = booking.requires_driver === true
+      
+      // 未排班條件：
+      // 1. 標記需要駕駛但沒有駕駛
+      if (requiresDriver && !hasDriver) {
+        return true
+      }
+      // 2. 既沒有教練也沒有駕駛
+      if (!hasCoach && !hasDriver) {
+        return true
+      }
+      return false
+    }).length
+  }, [bookings, assignments])
 
   const loadBookings = async () => {
     setLoading(true)
@@ -1478,7 +1504,7 @@ export function CoachAssignment() {
 
         {/* 當天可上班人員 - 在今日總覽下方 */}
         {!loading && (
-          <DailyStaffDisplay date={selectedDate} isMobile={isMobile} />
+          <DailyStaffDisplay date={selectedDate} isMobile={isMobile} unassignedCount={unassignedCount} />
         )}
 
         {/* 載入中 */}

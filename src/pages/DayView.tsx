@@ -315,6 +315,26 @@ export function DayView() {
     return hour * 60 + minute
   }
 
+  // 計算未排班數量（與排班頁面邏輯一致）
+  const unassignedCount = useMemo(() => {
+    return bookings.filter(booking => {
+      const hasCoach = booking.coaches && booking.coaches.length > 0
+      const hasDriver = booking.drivers && booking.drivers.length > 0
+      const requiresDriver = booking.requires_driver === true
+      
+      // 未排班條件：
+      // 1. 標記需要駕駛但沒有駕駛
+      if (requiresDriver && !hasDriver) {
+        return true
+      }
+      // 2. 既沒有教練也沒有駕駛
+      if (!hasCoach && !hasDriver) {
+        return true
+      }
+      return false
+    }).length
+  }, [bookings])
+
   // 優化：預先計算預約和清理時間的 Map，實現 O(1) 查找
   const { bookingMap, cleanupMap } = useMemo(() => {
     const bMap = new Map<string, Booking>()
@@ -640,7 +660,7 @@ export function DayView() {
 
         {/* 當天可上班人員 - 電腦版：在今日總覽下方 */}
         {!isMobile && !loading && (
-          <DailyStaffDisplay date={dateParam} isMobile={isMobile} />
+          <DailyStaffDisplay date={dateParam} isMobile={isMobile} unassignedCount={unassignedCount} />
         )}
 
         {viewMode === 'list' && (
@@ -726,7 +746,7 @@ export function DayView() {
 
             {/* 當天可上班人員 - 手機版：在新增預約下方 */}
             {isMobile && !loading && (
-              <DailyStaffDisplay date={dateParam} isMobile={isMobile} />
+              <DailyStaffDisplay date={dateParam} isMobile={isMobile} unassignedCount={unassignedCount} />
             )}
 
             <VirtualizedBookingList

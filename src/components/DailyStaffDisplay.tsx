@@ -3,13 +3,14 @@ import { useDailyStaff } from '../hooks/useDailyStaff'
 interface DailyStaffDisplayProps {
   date: string  // YYYY-MM-DD 格式
   isMobile: boolean
+  unassignedCount?: number  // 未排班預約數量
 }
 
 /**
  * 顯示指定日期的上班人員
  * 使用共用的 useDailyStaff hook
  */
-export function DailyStaffDisplay({ date, isMobile }: DailyStaffDisplayProps) {
+export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaffDisplayProps) {
   const { workingStaff, loading } = useDailyStaff(date)
 
   if (loading) {
@@ -49,6 +50,29 @@ export function DailyStaffDisplay({ date, isMobile }: DailyStaffDisplayProps) {
       boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
       border: '1px solid #e9ecef',
     }}>
+      {/* 未排班警告 */}
+      {unassignedCount !== undefined && unassignedCount > 0 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          marginBottom: '8px',
+          padding: isMobile ? '6px 10px' : '8px 12px',
+          backgroundColor: '#fff7ed',
+          borderRadius: '6px',
+          border: '1px solid #fed7aa',
+        }}>
+          <span style={{ fontSize: isMobile ? '13px' : '14px' }}>⚠️</span>
+          <span style={{
+            fontSize: isMobile ? '13px' : '14px',
+            fontWeight: '600',
+            color: '#c2410c',
+          }}>
+            尚有 {unassignedCount} 筆未排班
+          </span>
+        </div>
+      )}
+      
       {/* 上班人員 */}
       <div style={{
         display: 'flex',
