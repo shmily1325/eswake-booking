@@ -21,12 +21,8 @@
   },
   "crons": [
     {
-      "path": "/api/backup-to-drive",
-      "schedule": "20 19 * * *"
-    },
-    {
       "path": "/api/backup-to-cloud-drive",
-      "schedule": "00 18 * * *"
+      "schedule": "0 18 * * *"
     },
     {
       "path": "/api/line-reminder",
