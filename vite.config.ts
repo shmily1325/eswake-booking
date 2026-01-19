@@ -8,53 +8,12 @@ export default defineConfig({
     dedupe: ['react', 'react-dom', 'react-router-dom']
   },
   build: {
-    chunkSizeWarningLimit: 1500, // 提高到 1500 KB
+    chunkSizeWarningLimit: 2000, // 提高到 2000 KB
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          // React 核心庫 - 必須最先載入
-          if (id.includes('node_modules/react/') || 
-              id.includes('node_modules/react-dom/') ||
-              id.includes('node_modules/react-router-dom/') ||
-              id.includes('node_modules/react-is/')) {
-            return 'react-vendor'
-          }
-          
-          // Supabase
-          if (id.includes('node_modules/@supabase')) {
-            return 'supabase'
-          }
-          
-          // Recharts (圖表庫，較大)
-          if (id.includes('node_modules/recharts')) {
-            return 'recharts'
-          }
-          
-          // Sentry (監控庫)
-          if (id.includes('node_modules/@sentry')) {
-            return 'sentry'
-          }
-          
-          // React Window 相關
-          if (id.includes('node_modules/react-window') ||
-              id.includes('node_modules/react-virtualized-auto-sizer')) {
-            return 'react-window'
-          }
-          
-          // PapaParse (CSV 處理)
-          if (id.includes('node_modules/papaparse')) {
-            return 'papaparse'
-          }
-          
-          // LINE LIFF
-          if (id.includes('node_modules/@line/liff')) {
-            return 'line-liff'
-          }
-          
-          // 其他 node_modules
-          if (id.includes('node_modules')) {
-            return 'vendor'
-          }
+        // 使用更簡單的方法：只分離 React 核心庫，其他都在一起
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom', 'react-is']
         }
       }
     }
