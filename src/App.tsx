@@ -85,60 +85,56 @@ function AppContent() {
         </div>
       )}
 
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/day" element={<DayView />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/search-bookings" element={<SearchBookings />} />
-          {/* <Route path="/coach-check" element={<CoachCheck />} /> */}
-          <Route path="/coach-report" element={<CoachReport />} />
-          <Route path="/my-report" element={<MyReport />} />
-          <Route path="/my-report-detail" element={<CoachReport autoFilterByUser={true} />} />
-          <Route path="/coach-admin" element={<CoachAdmin />} />
-          <Route path="/coach-assignment" element={<CoachAssignment />} />
-          <Route path="/member-import" element={<MemberImport />} />
-          <Route path="/audit-log" element={<AuditLog />} />
-          <Route path="/tomorrow" element={<TomorrowReminder />} />
-          <Route path="/backup" element={<BackupPage />} />
-          <Route path="/quick-transaction" element={<QuickTransaction />} />
-          <Route path="/member-transaction" element={<MemberTransaction />} />
-          <Route path="/bao" element={<BaoHub />} />
-          <Route path="/members" element={<MemberManagement />} />
-          <Route path="/boards" element={<BoardManagement />} />
-          <Route path="/staff" element={<StaffManagement />} />
-          <Route path="/announcements" element={<AnnouncementManagement />} />
-          <Route path="/line-settings" element={<LineSettings />} />
-          <Route path="/coach-daily" element={<CoachDailyView />} />
-          {/* <Route path="/permissions" element={<PermissionManagement />} /> */}
-          <Route path="/boats" element={<BoatManagement />} />
-          <Route path="/statistics" element={<Statistics />} />
-          {/* <Route path="/editor" element={<EditorHub />} /> */}
-          <Route path="/unauthorized" element={<UnauthorizedPage />} />
-        </Routes>
-      </BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/day" element={<DayView />} />
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/search-bookings" element={<SearchBookings />} />
+        {/* <Route path="/coach-check" element={<CoachCheck />} /> */}
+        <Route path="/coach-report" element={<CoachReport />} />
+        <Route path="/my-report" element={<MyReport />} />
+        <Route path="/my-report-detail" element={<CoachReport autoFilterByUser={true} />} />
+        <Route path="/coach-admin" element={<CoachAdmin />} />
+        <Route path="/coach-assignment" element={<CoachAssignment />} />
+        <Route path="/member-import" element={<MemberImport />} />
+        <Route path="/audit-log" element={<AuditLog />} />
+        <Route path="/tomorrow" element={<TomorrowReminder />} />
+        <Route path="/backup" element={<BackupPage />} />
+        <Route path="/quick-transaction" element={<QuickTransaction />} />
+        <Route path="/member-transaction" element={<MemberTransaction />} />
+        <Route path="/bao" element={<BaoHub />} />
+        <Route path="/members" element={<MemberManagement />} />
+        <Route path="/boards" element={<BoardManagement />} />
+        <Route path="/staff" element={<StaffManagement />} />
+        <Route path="/announcements" element={<AnnouncementManagement />} />
+        <Route path="/line-settings" element={<LineSettings />} />
+        <Route path="/coach-daily" element={<CoachDailyView />} />
+        {/* <Route path="/permissions" element={<PermissionManagement />} /> */}
+        <Route path="/boats" element={<BoatManagement />} />
+        <Route path="/statistics" element={<Statistics />} />
+        {/* <Route path="/editor" element={<EditorHub />} /> */}
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      </Routes>
     </ErrorBoundary>
   )
 }
 
 function App() {
-  // LIFF 頁面不需要系統登入驗證
-  if (window.location.pathname === '/liff') {
-    return (
-      <ErrorBoundary>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/liff" element={<LiffMyBookings />} />
-          </Routes>
-        </BrowserRouter>
-      </ErrorBoundary>
-    )
-  }
-
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          {/* LIFF 頁面不需要系統登入驗證 */}
+          <Route path="/liff" element={<LiffMyBookings />} />
+          {/* 其他頁面需要登入驗證 */}
+          <Route path="*" element={
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          } />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }
 
