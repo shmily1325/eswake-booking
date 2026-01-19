@@ -1,3 +1,4 @@
+import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -8,28 +9,6 @@ import { getLocalDateString } from './utils/date'
 // 啟用全局錯誤捕獲
 setupGlobalErrorHandler()
 
-// 每日自動重新整理：確保用戶使用最新版本
-const checkDailyRefresh = () => {
-  try {
-    const today = getLocalDateString()
-    
-    // 安全機制：本次 session 已嘗試過就不再重試（防止無限循環）
-    if (sessionStorage.getItem('app_refresh_attempted')) return
-    
-    const lastDate = localStorage.getItem('app_last_refresh_date')
-    
-    if (lastDate !== today) {
-      sessionStorage.setItem('app_refresh_attempted', '1')
-      try { localStorage.setItem('app_last_refresh_date', today) } catch {}
-      
-      // 有舊紀錄才重整（第一次使用不重整）
-      if (lastDate) {
-        window.location.reload()
-      }
-    }
-  } catch {}
-}
-checkDailyRefresh()
 import { LoginPage } from './components/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { DayView } from './pages/DayView'
@@ -63,6 +42,28 @@ import { LiffMyBookings } from './pages/LiffMyBookings'
 function AppContent() {
   const { user, loading } = useAuth()
   const isOnline = useOnlineStatus()
+
+  // 每日自動重新整理：確保用戶使用最新版本
+  React.useEffect(() => {
+    try {
+      const today = getLocalDateString()
+      
+      // 安全機制：本次 session 已嘗試過就不再重試（防止無限循環）
+      if (sessionStorage.getItem('app_refresh_attempted')) return
+      
+      const lastDate = localStorage.getItem('app_last_refresh_date')
+      
+      if (lastDate !== today) {
+        sessionStorage.setItem('app_refresh_attempted', '1')
+        try { localStorage.setItem('app_last_refresh_date', today) } catch {}
+        
+        // 有舊紀錄才重整（第一次使用不重整）
+        if (lastDate) {
+          window.location.reload()
+        }
+      }
+    } catch {}
+  }, [])
 
   if (loading) {
     return (
@@ -120,6 +121,11 @@ function AppContent() {
 }
 
 function App() {
+  // 確保在客戶端環境中執行
+  if (typeof window === 'undefined') {
+    return null
+  }
+
   return (
     <ErrorBoundary>
       <BrowserRouter>

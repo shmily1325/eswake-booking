@@ -3,15 +3,20 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    // 確保 React 和 ReactDOM 只使用一個版本，避免重複打包
+    dedupe: ['react', 'react-dom', 'react-router-dom']
+  },
   build: {
     chunkSizeWarningLimit: 1500, // 提高到 1500 KB
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // React 核心庫
-          if (id.includes('node_modules/react') || 
-              id.includes('node_modules/react-dom') ||
-              id.includes('node_modules/react-router-dom')) {
+          // React 核心庫 - 必須最先載入
+          if (id.includes('node_modules/react/') || 
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/react-router-dom/') ||
+              id.includes('node_modules/react-is/')) {
             return 'react-vendor'
           }
           
