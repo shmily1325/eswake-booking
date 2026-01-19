@@ -9,6 +9,40 @@ import { getLocalDateString } from './utils/date'
 // 啟用全局錯誤捕獲
 setupGlobalErrorHandler()
 
+// 每日自動重新整理：確保用戶使用最新版本
+const checkDailyRefresh = () => {
+  try {
+    const today = getLocalDateString()
+    
+    // 清除 URL 中的 _r 參數（重整後美化網址）
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.has('_r')) {
+      urlParams.delete('_r')
+      const cleanUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
+      window.history.replaceState({}, '', cleanUrl)
+    }
+    
+    // 安全機制：檢查「今天」是否已嘗試過（用日期而非單純標記，解決手機 sessionStorage 跨日持續問題）
+    const attemptedDate = sessionStorage.getItem('app_refresh_attempted_date')
+    if (attemptedDate === today) return
+    
+    const lastDate = localStorage.getItem('app_last_refresh_date')
+    
+    if (lastDate !== today) {
+      // 記錄今天已嘗試（防止無限循環）
+      sessionStorage.setItem('app_refresh_attempted_date', today)
+      try { localStorage.setItem('app_last_refresh_date', today) } catch {}
+      
+      // 有舊紀錄才重整（第一次使用不重整）
+      if (lastDate) {
+        // 強制重新載入（加上時間戳避免快取）
+        window.location.href = window.location.pathname + '?_r=' + Date.now()
+      }
+    }
+  } catch {}
+}
+checkDailyRefresh()
+
 import { LoginPage } from './components/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { DayView } from './pages/DayView'

@@ -269,7 +269,19 @@ export function TomorrowReminder() {
       })
       .sort((a, b) => a.start_at.localeCompare(b.start_at)) // 按時間排序
     
+    // ✅ 檢查是否有 PAPA 教練的預約
+    const hasPapaCoach = studentBookings.some(booking => 
+      booking.coaches?.some(coach => 
+        coach.name.toUpperCase() === 'PAPA'
+      )
+    )
+    
     let message = `${studentName}你好\n提醒你，明天有預約\n`
+    
+    // ✅ 如果有 PAPA 教練，加上現金提醒
+    if (hasPapaCoach) {
+      message += `請幫我帶現金直接給Papa\n`
+    }
     
     // ✅ 特殊會員：加入船和開船教練資訊（從第一個預約取得）
     if (SPECIAL_MEMBERS_FOR_BOAT_INFO.includes(studentName) && studentBookings.length > 0) {
