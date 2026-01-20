@@ -1,4 +1,3 @@
-import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -77,27 +76,7 @@ function AppContent() {
   const { user, loading } = useAuth()
   const isOnline = useOnlineStatus()
 
-  // 每日自動重新整理：確保用戶使用最新版本
-  React.useEffect(() => {
-    try {
-      const today = getLocalDateString()
-      
-      // 安全機制：本次 session 已嘗試過就不再重試（防止無限循環）
-      if (sessionStorage.getItem('app_refresh_attempted')) return
-      
-      const lastDate = localStorage.getItem('app_last_refresh_date')
-      
-      if (lastDate !== today) {
-        sessionStorage.setItem('app_refresh_attempted', '1')
-        try { localStorage.setItem('app_last_refresh_date', today) } catch {}
-        
-        // 有舊紀錄才重整（第一次使用不重整）
-        if (lastDate) {
-          window.location.reload()
-        }
-      }
-    } catch {}
-  }, [])
+  // 每日自動重新整理邏輯已在模組頂層的 checkDailyRefresh() 執行
 
   if (loading) {
     return (

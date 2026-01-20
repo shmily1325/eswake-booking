@@ -612,14 +612,11 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               />
             </div>
 
-            {isMobile && (
-              <div style={{ height: '80px' }} />
-            )}
           </div>
 
           {/* 底部按鈕 */}
           <div style={{
-            padding: isMobile ? '20px 20px calc(80px + env(safe-area-inset-bottom))' : '20px',
+            padding: isMobile ? '16px 20px calc(20px + env(safe-area-inset-bottom))' : '20px',
             borderTop: '1px solid #e0e0e0',
             position: 'sticky',
             bottom: 0,
