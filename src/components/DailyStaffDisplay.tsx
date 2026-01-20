@@ -1,4 +1,5 @@
 import { useDailyStaff } from '../hooks/useDailyStaff'
+import { styles, getResponsiveStyles } from '../styles/designSystem'
 
 interface DailyStaffDisplayProps {
   date: string  // YYYY-MM-DD 格式
@@ -12,114 +13,48 @@ interface DailyStaffDisplayProps {
  */
 export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaffDisplayProps) {
   const { workingStaff, loading } = useDailyStaff(date)
+  const rs = getResponsiveStyles(isMobile)
 
   if (loading) {
     return (
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '10px',
-        padding: isMobile ? '10px 12px' : '12px 16px',
-        marginBottom: '12px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}>
-          <span style={{ fontSize: isMobile ? '14px' : '15px' }}>👥</span>
-          <div style={{
-            width: '150px',
-            height: '16px',
-            background: 'linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%)',
-            backgroundSize: '200% 100%',
-            animation: 'shimmer 1.5s infinite',
-            borderRadius: '4px',
-          }} />
+      <div style={{ ...styles.card, ...rs.cardPadding, marginBottom: '12px' }}>
+        <div style={styles.flexRow}>
+          <span style={rs.iconSize}>👥</span>
+          <div style={{ ...styles.shimmer, width: '150px', height: '16px' }} />
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '10px',
-      padding: isMobile ? '10px 12px' : '12px 16px',
-      marginBottom: '12px',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-      border: '1px solid #e9ecef',
-    }}>
+    <div style={{ ...styles.cardBordered, ...rs.cardPadding, marginBottom: '12px' }}>
       {/* 未排班警告 */}
       {unassignedCount !== undefined && unassignedCount > 0 && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          marginBottom: '8px',
-          padding: isMobile ? '6px 10px' : '8px 12px',
-          backgroundColor: '#fff7ed',
-          borderRadius: '6px',
-          border: '1px solid #fed7aa',
-        }}>
+        <div style={{ ...styles.warningBox, ...rs.alertPadding, marginBottom: '8px' }}>
           <span style={{ fontSize: isMobile ? '13px' : '14px' }}>⚠️</span>
-          <span style={{
-            fontSize: isMobile ? '13px' : '14px',
-            fontWeight: '600',
-            color: '#c2410c',
-          }}>
+          <span style={{ ...styles.textWarning, fontSize: isMobile ? '13px' : '14px' }}>
             尚有 {unassignedCount} 筆未排班
           </span>
         </div>
       )}
       
       {/* 上班人員 */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        flexWrap: 'wrap',
-      }}>
-        <span style={{
-          fontSize: isMobile ? '14px' : '15px',
-          fontWeight: '600',
-          color: '#2c3e50',
-          whiteSpace: 'nowrap',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-        }}>
+      <div style={{ ...styles.flexRow, flexWrap: 'wrap' }}>
+        <span style={{ ...rs.labelText, ...styles.flexRowTight, whiteSpace: 'nowrap' }}>
           👥 可上班
         </span>
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: isMobile ? '4px' : '6px',
-        }}>
+        <div style={{ ...styles.flexWrap, ...rs.gapSm }}>
           {workingStaff.length > 0 ? (
             workingStaff.map(staff => (
               <span
                 key={staff.id}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: isMobile ? '3px 8px' : '4px 10px',
-                  backgroundColor: '#e8f5e9',
-                  color: '#2e7d32',
-                  borderRadius: '12px',
-                  fontSize: isMobile ? '12px' : '13px',
-                  fontWeight: '500',
-                  border: '1px solid #c8e6c9',
-                }}
+                style={{ ...styles.badgeSuccess, ...rs.badgePadding, fontSize: isMobile ? '12px' : '13px' }}
               >
                 {staff.name}
               </span>
             ))
           ) : (
-            <span style={{
-              color: '#999',
-              fontSize: isMobile ? '12px' : '13px',
-            }}>
+            <span style={rs.smallText}>
               無排班人員
             </span>
           )}

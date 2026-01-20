@@ -1,5 +1,10 @@
 // ES Wake V2 Design System
 // 統一的樣式配置，確保整個應用的一致性
+// 
+// 使用方式：
+// import { styles, designSystem, getCardStyle } from '../styles/designSystem'
+// <div style={styles.flexRow}>...</div>
+// <div style={styles.card}>...</div>
 
 interface DesignSystem {
   fontSize: {
@@ -589,3 +594,399 @@ export const bookingCardContentStyles = {
     textAlign: 'center',
   }),
 }
+
+// ============================================================
+// 常用佈局樣式 (靜態常量，不會每次 render 重新創建)
+// 
+// 使用方式：
+//   import { styles } from '../styles/designSystem'
+//   <div style={styles.flexRow}>...</div>
+// 
+// 替換對照：
+//   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+//   → style={styles.flexRow}
+// ============================================================
+
+export const styles = {
+  // -------- Flex 佈局 --------
+  /** display: flex */
+  flex: {
+    display: 'flex',
+  } as React.CSSProperties,
+  
+  /** display: flex, alignItems: center, gap: 8px */
+  flexRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  } as React.CSSProperties,
+  
+  /** display: flex, alignItems: center, gap: 4px */
+  flexRowTight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  } as React.CSSProperties,
+  
+  /** display: flex, alignItems: center, gap: 12px */
+  flexRowWide: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  } as React.CSSProperties,
+  
+  /** display: flex, alignItems: center, gap: 16px */
+  flexRowLg: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+  } as React.CSSProperties,
+  
+  /** display: flex, flexDirection: column, gap: 8px */
+  flexCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  } as React.CSSProperties,
+  
+  /** display: flex, flexDirection: column, gap: 12px */
+  flexColMd: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  } as React.CSSProperties,
+  
+  /** display: flex, flexDirection: column, gap: 16px */
+  flexColLg: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  } as React.CSSProperties,
+  
+  /** display: flex, flexWrap: wrap, gap: 8px */
+  flexWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+  } as React.CSSProperties,
+  
+  /** display: flex, flexWrap: wrap, gap: 4px */
+  flexWrapTight: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+  } as React.CSSProperties,
+  
+  /** display: flex, flexWrap: wrap, gap: 6px */
+  flexWrapSm: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+  } as React.CSSProperties,
+  
+  /** display: flex, justifyContent: space-between, alignItems: center */
+  flexBetween: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  } as React.CSSProperties,
+  
+  /** display: flex, justifyContent: center, alignItems: center */
+  flexCenter: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  } as React.CSSProperties,
+  
+  /** display: flex, justifyContent: flex-end, alignItems: center, gap: 8px */
+  flexEnd: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: '8px',
+  } as React.CSSProperties,
+
+  // -------- 卡片/容器 --------
+  /** 基礎白色卡片：白底、圓角 10px、陰影 */
+  card: {
+    backgroundColor: 'white',
+    borderRadius: '10px',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+  } as React.CSSProperties,
+  
+  /** 帶邊框的白色卡片 */
+  cardBordered: {
+    backgroundColor: 'white',
+    borderRadius: '10px',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+    border: '1px solid #e9ecef',
+  } as React.CSSProperties,
+  
+  /** 圓角 8px 的卡片 */
+  cardSm: {
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+  } as React.CSSProperties,
+  
+  /** 圓角 12px 的卡片 */
+  cardLg: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+  } as React.CSSProperties,
+
+  // -------- 警告/提示框 --------
+  /** 橘色警告框 */
+  warningBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 12px',
+    backgroundColor: '#fff7ed',
+    borderRadius: '6px',
+    border: '1px solid #fed7aa',
+  } as React.CSSProperties,
+  
+  /** 紅色錯誤框 */
+  errorBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 12px',
+    backgroundColor: '#fef2f2',
+    borderRadius: '6px',
+    border: '1px solid #fecaca',
+  } as React.CSSProperties,
+  
+  /** 綠色成功框 */
+  successBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 12px',
+    backgroundColor: '#f0fdf4',
+    borderRadius: '6px',
+    border: '1px solid #bbf7d0',
+  } as React.CSSProperties,
+  
+  /** 藍色資訊框 */
+  infoBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 12px',
+    backgroundColor: '#eff6ff',
+    borderRadius: '6px',
+    border: '1px solid #bfdbfe',
+  } as React.CSSProperties,
+
+  // -------- Badge/標籤 --------
+  /** 綠色成功 badge */
+  badgeSuccess: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '4px 10px',
+    backgroundColor: '#e8f5e9',
+    color: '#2e7d32',
+    borderRadius: '12px',
+    fontSize: '13px',
+    fontWeight: '500',
+    border: '1px solid #c8e6c9',
+  } as React.CSSProperties,
+  
+  /** 橘色警告 badge */
+  badgeWarning: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '4px 10px',
+    backgroundColor: '#fff7ed',
+    color: '#c2410c',
+    borderRadius: '12px',
+    fontSize: '13px',
+    fontWeight: '500',
+    border: '1px solid #fed7aa',
+  } as React.CSSProperties,
+  
+  /** 紅色危險 badge */
+  badgeDanger: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '4px 10px',
+    backgroundColor: '#fef2f2',
+    color: '#dc2626',
+    borderRadius: '12px',
+    fontSize: '13px',
+    fontWeight: '500',
+    border: '1px solid #fecaca',
+  } as React.CSSProperties,
+  
+  /** 灰色預設 badge */
+  badgeDefault: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '4px 10px',
+    backgroundColor: '#f5f5f5',
+    color: '#666',
+    borderRadius: '12px',
+    fontSize: '13px',
+    fontWeight: '500',
+    border: '1px solid #e0e0e0',
+  } as React.CSSProperties,
+
+  // -------- 文字樣式 --------
+  /** 標題文字 */
+  textTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#333',
+  } as React.CSSProperties,
+  
+  /** 次要文字 */
+  textSecondary: {
+    fontSize: '13px',
+    color: '#666',
+  } as React.CSSProperties,
+  
+  /** 禁用文字 */
+  textDisabled: {
+    fontSize: '13px',
+    color: '#999',
+  } as React.CSSProperties,
+  
+  /** 警告文字 */
+  textWarning: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#c2410c',
+  } as React.CSSProperties,
+  
+  /** 錯誤文字 */
+  textError: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#dc2626',
+  } as React.CSSProperties,
+  
+  /** 成功文字 */
+  textSuccess: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#2e7d32',
+  } as React.CSSProperties,
+
+  // -------- Loading 動畫 --------
+  /** Shimmer loading 效果 */
+  shimmer: {
+    background: 'linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%)',
+    backgroundSize: '200% 100%',
+    animation: 'shimmer 1.5s infinite',
+    borderRadius: '4px',
+  } as React.CSSProperties,
+
+  // -------- 其他常用 --------
+  /** 全寬 */
+  fullWidth: {
+    width: '100%',
+  } as React.CSSProperties,
+  
+  /** 文字置中 */
+  textCenter: {
+    textAlign: 'center',
+  } as React.CSSProperties,
+  
+  /** 隱藏 */
+  hidden: {
+    display: 'none',
+  } as React.CSSProperties,
+  
+  /** 相對定位 */
+  relative: {
+    position: 'relative',
+  } as React.CSSProperties,
+  
+  /** 絕對定位 */
+  absolute: {
+    position: 'absolute',
+  } as React.CSSProperties,
+  
+  /** 不換行 */
+  noWrap: {
+    whiteSpace: 'nowrap',
+  } as React.CSSProperties,
+  
+  /** 可點擊 */
+  clickable: {
+    cursor: 'pointer',
+  } as React.CSSProperties,
+} as const
+
+// ============================================================
+// 響應式樣式生成器 (根據 isMobile 返回不同樣式)
+// 
+// 使用方式：
+//   import { getResponsiveStyles } from '../styles/designSystem'
+//   const rs = getResponsiveStyles(isMobile)
+//   <div style={rs.cardPadding}>...</div>
+// ============================================================
+
+export const getResponsiveStyles = (isMobile: boolean) => ({
+  /** 卡片內距：mobile 10px 12px, desktop 12px 16px */
+  cardPadding: {
+    padding: isMobile ? '10px 12px' : '12px 16px',
+  } as React.CSSProperties,
+  
+  /** 卡片內距 (較大)：mobile 12px 14px, desktop 16px 20px */
+  cardPaddingLg: {
+    padding: isMobile ? '12px 14px' : '16px 20px',
+  } as React.CSSProperties,
+  
+  /** 區塊間距：mobile 12px, desktop 16px */
+  sectionMargin: {
+    marginBottom: isMobile ? '12px' : '16px',
+  } as React.CSSProperties,
+  
+  /** 標題字體：mobile 14px, desktop 15px */
+  labelText: {
+    fontSize: isMobile ? '14px' : '15px',
+    fontWeight: '600',
+    color: '#2c3e50',
+  } as React.CSSProperties,
+  
+  /** 內容字體：mobile 13px, desktop 14px */
+  bodyText: {
+    fontSize: isMobile ? '13px' : '14px',
+    color: '#333',
+  } as React.CSSProperties,
+  
+  /** 小字體：mobile 12px, desktop 13px */
+  smallText: {
+    fontSize: isMobile ? '12px' : '13px',
+    color: '#666',
+  } as React.CSSProperties,
+  
+  /** Icon 字體大小 */
+  iconSize: {
+    fontSize: isMobile ? '14px' : '15px',
+  } as React.CSSProperties,
+  
+  /** Flex gap：mobile 4px, desktop 6px */
+  gapSm: {
+    gap: isMobile ? '4px' : '6px',
+  } as React.CSSProperties,
+  
+  /** Flex gap：mobile 6px, desktop 8px */
+  gapMd: {
+    gap: isMobile ? '6px' : '8px',
+  } as React.CSSProperties,
+  
+  /** Badge padding：mobile 3px 8px, desktop 4px 10px */
+  badgePadding: {
+    padding: isMobile ? '3px 8px' : '4px 10px',
+  } as React.CSSProperties,
+  
+  /** 警告框 padding */
+  alertPadding: {
+    padding: isMobile ? '6px 10px' : '8px 12px',
+  } as React.CSSProperties,
+})
