@@ -30,7 +30,7 @@ const checkDailyRefresh = () => {
     if (lastDate !== today) {
       // 記錄今天已嘗試（防止無限循環）
       sessionStorage.setItem('app_refresh_attempted_date', today)
-      try { localStorage.setItem('app_last_refresh_date', today) } catch {}
+      try { localStorage.setItem('app_last_refresh_date', today) } catch { /* localStorage may be unavailable */ }
       
       // 有舊紀錄才重整（第一次使用不重整）
       if (lastDate) {
@@ -38,7 +38,7 @@ const checkDailyRefresh = () => {
         window.location.href = window.location.pathname + '?_r=' + Date.now()
       }
     }
-  } catch {}
+  } catch { /* ignore refresh errors */ }
 }
 checkDailyRefresh()
 

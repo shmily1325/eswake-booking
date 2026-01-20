@@ -53,17 +53,6 @@ function getLocalTimestamp(date: Date = new Date()): string {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
-function escapeCSV(value: any): string {
-  if (value === null || value === undefined) return '';
-  if (Array.isArray(value)) return JSON.stringify(value);
-  const str = String(value);
-  // 如果包含逗号、引号或换行，需要用引号包裹
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
 

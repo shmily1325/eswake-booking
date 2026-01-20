@@ -108,7 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const member = (memberBinding as any).members;
 
         const [date, time] = (booking as any).start_at.split('T');
-        const [year, month, day] = date.split('-');
+        const [, month, day] = date.split('-');
         const dateStr = `${month}/${day}`;
         const timeStr = time.substring(0, 5);
         const coaches = coachesByBooking[(booking as any).id]?.join('、') || '未指定';
