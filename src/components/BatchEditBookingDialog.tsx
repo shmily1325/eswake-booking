@@ -595,59 +595,64 @@ export function BatchEditBookingDialog({
       alignItems: isMobile ? 'flex-end' : 'center',
       justifyContent: 'center',
       zIndex: 1000,
-      padding: isMobile ? '0' : '20px',
+      padding: isMobile ? '0' : '16px',
+      overflowY: isMobile ? 'hidden' : 'auto',
     }}>
       <div style={{
         background: 'white',
-        borderRadius: isMobile ? '12px 12px 0 0' : '12px',
+        borderRadius: isMobile ? '16px 16px 0 0' : '12px',
         maxWidth: isMobile ? '100%' : '500px',
         width: '100%',
-        maxHeight: isMobile ? '90vh' : '85vh',
-        overflow: 'auto',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+        maxHeight: isMobile ? '80vh' : '85vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+        margin: isMobile ? 'auto 0 0 0' : 'auto',
       }}>
         {/* 標題 */}
         <div style={{
-          padding: '20px',
+          padding: isMobile ? '20px 20px 16px' : '20px',
           borderBottom: '1px solid #e0e0e0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          position: 'sticky',
-          top: 0,
+          flexShrink: 0,
           background: 'white',
-          zIndex: 1,
         }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
-              批次修改預約
+            <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '18px', fontWeight: 'bold' }}>
+              ✏️ 批次修改預約
             </h2>
             <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
               已選擇 {bookingIds.length} 筆預約
             </div>
           </div>
           <button
+            type="button"
             onClick={handleClose}
+            disabled={loading}
             style={{
               border: 'none',
               background: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
+              fontSize: '28px',
+              cursor: loading ? 'not-allowed' : 'pointer',
               color: '#666',
-              padding: '0',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              padding: '0 8px',
+              opacity: loading ? 0.5 : 1,
             }}
           >
             ×
           </button>
         </div>
         
-        {/* 內容 */}
-        <div style={{ padding: isMobile ? '16px' : '20px' }}>
+        {/* 內容區域 - Scrollable */}
+        <div style={{ 
+          flex: 1,
+          overflowY: 'auto',
+          padding: isMobile ? '16px' : '20px',
+          WebkitOverflowScrolling: 'touch',
+        }}>
           <div style={{
             padding: '12px',
             backgroundColor: '#fff3cd',
@@ -1003,29 +1008,33 @@ export function BatchEditBookingDialog({
           </div>
         </div>
         
-        {/* 底部按鈕 */}
+        {/* 底部按鈕欄 - 固定底部 */}
         <div style={{
-          padding: isMobile ? '16px 20px 30px' : '16px 20px',
+          padding: isMobile ? '12px 20px' : '20px 24px',
           borderTop: '1px solid #e0e0e0',
-          display: 'flex',
-          gap: '12px',
-          justifyContent: 'flex-end',
-          position: 'sticky',
-          bottom: 0,
           background: 'white',
+          display: 'flex',
+          gap: isMobile ? '8px' : '12px',
+          paddingBottom: isMobile ? 'max(20px, env(safe-area-inset-bottom))' : '20px',
+          flexShrink: 0,
         }}>
           <button
             type="button"
             onClick={handleClose}
             disabled={loading}
             style={{
-              padding: '12px 24px',
-              border: '1px solid #ddd',
+              flex: 1,
+              padding: isMobile ? '14px' : '12px 24px',
               borderRadius: '8px',
-              background: 'white',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: '15px',
+              border: '1px solid #ccc',
+              backgroundColor: 'white',
+              color: '#333',
+              fontSize: isMobile ? '16px' : '15px',
               fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.5 : 1,
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
             }}
           >
             取消
@@ -1041,9 +1050,10 @@ export function BatchEditBookingDialog({
               (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15))
             }
             style={{
-              padding: '14px 28px',
-              border: 'none',
+              flex: 1,
+              padding: isMobile ? '14px' : '12px 24px',
               borderRadius: '8px',
+              border: 'none',
               background: (
                 loading || 
                 fieldsToEdit.size === 0 || 
@@ -1052,6 +1062,8 @@ export function BatchEditBookingDialog({
                 (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15))
               ) ? '#ccc' : '#28a745',
               color: 'white',
+              fontSize: isMobile ? '16px' : '15px',
+              fontWeight: '600',
               cursor: (
                 loading || 
                 fieldsToEdit.size === 0 || 
@@ -1059,29 +1071,12 @@ export function BatchEditBookingDialog({
                 (fieldsToEdit.has('boat') && !selectedBoatId) ||
                 (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15))
               ) ? 'not-allowed' : 'pointer',
-              fontSize: '16px',
-              fontWeight: '600',
-              transition: 'all 0.15s',
-              transform: 'scale(1)',
-              opacity: loading ? 0.7 : 1,
-            }}
-            onTouchStart={(e) => {
-              if (!loading && fieldsToEdit.size > 0 && filledBy.trim()) {
-                e.currentTarget.style.transform = 'scale(0.95)'
-                e.currentTarget.style.opacity = '0.8'
-              }
-            }}
-            onTouchEnd={(e) => {
-              e.currentTarget.style.transform = 'scale(1)'
-              e.currentTarget.style.opacity = '1'
-            }}
-            onMouseDown={(e) => {
-              if (!loading && fieldsToEdit.size > 0 && filledBy.trim()) {
-                e.currentTarget.style.transform = 'scale(0.95)'
-              }
-            }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.transform = 'scale(1)'
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
             }}
           >
             {loading ? '🔄 更新中...' : `✅ 確認修改 (${bookingIds.length} 筆)`}

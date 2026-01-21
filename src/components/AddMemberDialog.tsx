@@ -269,56 +269,60 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
       alignItems: isMobile ? 'flex-end' : 'center',
       justifyContent: 'center',
       zIndex: 1000,
-      padding: isMobile ? '0' : '20px',
+      padding: isMobile ? '0' : '16px',
+      overflowY: isMobile ? 'hidden' : 'auto',
     }}>
       <div style={{
         background: 'white',
-        borderRadius: isMobile ? '12px 12px 0 0' : '12px',
+        borderRadius: isMobile ? '16px 16px 0 0' : '12px',
         maxWidth: isMobile ? '100%' : '600px',
         width: '100%',
-        maxHeight: isMobile ? '95vh' : '90vh',
-        overflow: 'auto',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+        maxHeight: isMobile ? '80vh' : '90vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
         margin: isMobile ? 'auto 0 0 0' : 'auto',
       }}>
         {/* 標題欄 */}
         <div style={{
-          padding: '20px',
+          padding: isMobile ? '20px 20px 16px' : '20px',
           borderBottom: '1px solid #e0e0e0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          position: 'sticky',
-          top: 0,
+          flexShrink: 0,
           background: 'white',
-          zIndex: 1,
         }}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-            新增會員
+          <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: 'bold' }}>
+            ➕ 新增會員
           </h2>
           <button
+            type="button"
             onClick={onClose}
+            disabled={loading}
             style={{
               border: 'none',
               background: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
+              fontSize: '28px',
+              cursor: loading ? 'not-allowed' : 'pointer',
               color: '#666',
-              padding: '0',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              padding: '0 8px',
+              opacity: loading ? 0.5 : 1,
             }}
           >
             ×
           </button>
         </div>
 
-        {/* 表單 */}
-        <form onSubmit={handleSubmit}>
-          <div style={{ padding: isMobile ? '16px' : '20px' }}>
+        {/* 內容區域 - Scrollable */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: isMobile ? '20px' : '20px',
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          <form onSubmit={handleSubmit} id="add-member-form">
             {/* 姓名 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
@@ -608,64 +612,77 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               />
             </div>
 
-            {isMobile && (
-              <div style={{ height: '80px' }} />
-            )}
-          </div>
+          </form>
+        </div>
 
-          {/* 底部按鈕 */}
-          <div style={{            padding: isMobile ? '24px 20px calc(40px + env(safe-area-inset-bottom))' : '20px 20px 30px',
-            borderTop: '1px solid #e0e0e0',
-            display: 'flex',
-            gap: isMobile ? '12px' : '12px',
-            justifyContent: 'flex-end',
-            flexDirection: isMobile ? 'column' : 'row',
-            position: 'sticky',
-            bottom: 0,
-            background: 'white',
-            zIndex: 10,
-            boxShadow: '0 -4px 16px rgba(0,0,0,0.2)',
-          }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              style={{
-                padding: isMobile ? '16px 24px' : '12px 20px',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                background: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: isMobile ? '17px' : '14px',
-                minHeight: isMobile ? '52px' : '44px',
-                flex: '1',
-                fontWeight: isMobile ? '600' : 'normal',
-                touchAction: 'manipulation',
-              }}
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                padding: isMobile ? '16px 24px' : '12px 20px',
-                border: 'none',
-                borderRadius: '8px',
-                background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-                color: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: isMobile ? '17px' : '14px',
-                fontWeight: 'bold',
-                minHeight: isMobile ? '52px' : '44px',
-                flex: '1',
-                touchAction: 'manipulation',
-              }}
-            >
-              {loading ? '新增中...' : '確認新增'}
-            </button>
-          </div>
-        </form>
+        {/* 底部按鈕欄 - 固定底部 */}
+        <div style={{
+          padding: isMobile ? '12px 20px' : '20px 24px',
+          borderTop: '1px solid #e0e0e0',
+          background: 'white',
+          display: 'flex',
+          gap: isMobile ? '8px' : '12px',
+          paddingBottom: isMobile ? 'max(20px, env(safe-area-inset-bottom))' : '20px',
+          flexShrink: 0,
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: isMobile ? '14px' : '12px 24px',
+              borderRadius: '8px',
+              border: '1px solid #ccc',
+              backgroundColor: 'white',
+              color: '#333',
+              fontSize: isMobile ? '16px' : '15px',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.5 : 1,
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+            }}
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            form="add-member-form"
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: isMobile ? '14px' : '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+              color: 'white',
+              fontSize: isMobile ? '16px' : '15px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
+            {loading ? (
+              <>
+                <span style={{ 
+                  display: 'inline-block',
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                }} />
+                新增中...
+              </>
+            ) : '✅ 確認新增'}
+          </button>
+        </div>
       </div>
     </div>
   )

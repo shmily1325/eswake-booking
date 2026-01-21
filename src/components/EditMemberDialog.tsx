@@ -267,52 +267,60 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       alignItems: isMobile ? 'flex-end' : 'center',
       justifyContent: 'center',
       zIndex: 1001,
-      padding: isMobile ? '0' : '20px',
+      padding: isMobile ? '0' : '16px',
+      overflowY: isMobile ? 'hidden' : 'auto',
     }}>
       <div style={{
         background: 'white',
-        borderRadius: isMobile ? '12px 12px 0 0' : '12px',
+        borderRadius: isMobile ? '16px 16px 0 0' : '12px',
         maxWidth: isMobile ? '100%' : '600px',
         width: '100%',
-        maxHeight: isMobile ? '95vh' : '90vh',
-        overflow: 'auto',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+        maxHeight: isMobile ? '80vh' : '90vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
         margin: isMobile ? 'auto 0 0 0' : 'auto',
-        WebkitOverflowScrolling: 'touch',
       }}>
         {/* 標題欄 */}
         <div style={{
-          padding: '20px',
+          padding: isMobile ? '20px 20px 16px' : '20px',
           borderBottom: '1px solid #e0e0e0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          position: 'sticky',
-          top: 0,
+          flexShrink: 0,
           background: 'white',
-          zIndex: 1,
         }}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-            編輯會員資料
+          <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: 'bold' }}>
+            ✏️ 編輯會員資料
           </h2>
           <button
+            type="button"
             onClick={onClose}
+            disabled={loading}
             style={{
               border: 'none',
               background: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
+              fontSize: '28px',
+              cursor: loading ? 'not-allowed' : 'pointer',
               color: '#666',
               padding: '0 8px',
+              opacity: loading ? 0.5 : 1,
             }}
           >
             ×
           </button>
         </div>
 
-        {/* 表單 */}
-        <form onSubmit={handleSubmit}>
-          <div style={{ padding: isMobile ? '16px' : '20px' }}>
+        {/* 內容區域 - Scrollable */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: isMobile ? '20px' : '20px',
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          <form onSubmit={handleSubmit} id="edit-member-form">
             {/* 姓名 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
@@ -612,86 +620,77 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               />
             </div>
 
-          </div>
+          </form>
+        </div>
 
-          {/* 底部按鈕 */}
-          <div style={{
-            padding: isMobile ? '16px 20px calc(20px + env(safe-area-inset-bottom))' : '20px',
-            borderTop: '1px solid #e0e0e0',
-            position: 'sticky',
-            bottom: 0,
-            background: 'white',
-            zIndex: 10,
-            boxShadow: '0 -4px 16px rgba(0,0,0,0.2)',
-          }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: isMobile ? '16px' : '14px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '10px',
-                background: 'white',
-                color: '#666',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: isMobile ? '16px' : '15px',
-                fontWeight: '600',
-                touchAction: 'manipulation',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
-                marginBottom: '12px',
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.background = '#f8f8f8'
-                  e.currentTarget.style.borderColor = '#ccc'
-                  e.currentTarget.style.transform = 'translateY(-1px)'
-                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.12)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'white'
-                e.currentTarget.style.borderColor = '#e0e0e0'
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.08)'
-              }}
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: isMobile ? '16px' : '14px',
-                border: 'none',
-                borderRadius: '10px',
-                background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-                color: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: isMobile ? '16px' : '15px',
-                fontWeight: '600',
-                touchAction: 'manipulation',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'
-              }}
-            >
-              {loading ? '更新中...' : '✓ 確認更新'}
-            </button>
-          </div>
-        </form>
+        {/* 底部按鈕欄 - 固定底部 */}
+        <div style={{
+          padding: isMobile ? '12px 20px' : '20px 24px',
+          borderTop: '1px solid #e0e0e0',
+          background: 'white',
+          display: 'flex',
+          gap: isMobile ? '8px' : '12px',
+          paddingBottom: isMobile ? 'max(20px, env(safe-area-inset-bottom))' : '20px',
+          flexShrink: 0,
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: isMobile ? '14px' : '12px 24px',
+              borderRadius: '8px',
+              border: '1px solid #ccc',
+              backgroundColor: 'white',
+              color: '#333',
+              fontSize: isMobile ? '16px' : '15px',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.5 : 1,
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+            }}
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            form="edit-member-form"
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: isMobile ? '14px' : '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+              color: 'white',
+              fontSize: isMobile ? '16px' : '15px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
+            {loading ? (
+              <>
+                <span style={{ 
+                  display: 'inline-block',
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                }} />
+                更新中...
+              </>
+            ) : '✅ 確認更新'}
+          </button>
+        </div>
       </div>
     </div>
   )
