@@ -1,5 +1,10 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+// import { createClient } from '@supabase/supabase-js';
+
+// ============================================
+// LINE 提醒功能已停用 - 2026-01-21
+// 保留程式碼供未來參考
+// ============================================
 
 // 時區處理：獲取本地日期字串（避免 UTC 時區問題）
 function getLocalDateString(date: Date = new Date()): string {
@@ -11,6 +16,13 @@ function getLocalDateString(date: Date = new Date()): string {
 
 // Daily reminder function
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // LINE 功能已停用
+  return res.status(200).json({ 
+    message: 'LINE reminder feature is disabled',
+    disabled_at: '2026-01-21'
+  });
+
+  /* 原始程式碼已停用
   try {
     const supabaseUrl = process.env.VITE_SUPABASE_URL!;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -141,5 +153,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Error:', error);
     return res.status(500).json({ error: error.message });
   }
+  */
 }
 

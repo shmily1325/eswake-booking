@@ -104,10 +104,17 @@ export function BaoHub() {
             link: '/backup'
           },
           {
+            title: 'LINE 綁定狀態',
+            icon: '📱',
+            link: '/line-binding',
+            adminOnly: true
+          },
+          {
             title: 'LINE 提醒設置',
             icon: '📱',
             link: '/line-settings',
-            adminOnly: true
+            adminOnly: true,
+            disabled: true
           }
         ]
       }

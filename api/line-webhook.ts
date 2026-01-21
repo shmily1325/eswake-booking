@@ -1,5 +1,10 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+// import { createClient } from '@supabase/supabase-js';
+
+// ============================================
+// LINE Webhook 功能已停用 - 2026-01-21
+// 保留程式碼供未來參考
+// ============================================
 
 // 時區處理：獲取本地時間戳（避免 UTC 時區問題）
 function getLocalTimestamp(date: Date = new Date()): string {
@@ -14,6 +19,13 @@ function getLocalTimestamp(date: Date = new Date()): string {
 
 // LINE webhook handler for member binding
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // LINE 功能已停用 - 直接返回 200 讓 LINE 伺服器不會重試
+  return res.status(200).json({ 
+    message: 'LINE webhook is disabled',
+    disabled_at: '2026-01-21'
+  });
+
+  /* 原始程式碼已停用
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -128,6 +140,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: error.message });
   }
 }
+
+*/
 
 async function replyMessage(replyToken: string, message: string) {
   const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN!;
