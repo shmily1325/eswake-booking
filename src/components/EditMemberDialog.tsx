@@ -614,27 +614,31 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                             style={{...inputStyle}}
                           />
                         </div>
-                        <div>
+                        <div style={{ minWidth: 0 }}>
                           <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '13px' }}>
                             開始日期
                           </label>
-                          <input
-                            type="date"
-                            value={slot.start_date}
-                            onChange={(e) => handleUpdateBoardSlot(index, 'start_date', e.target.value)}
-                            style={{...inputStyle}}
-                          />
+                          <div style={{ display: 'flex' }}>
+                            <input
+                              type="date"
+                              value={slot.start_date}
+                              onChange={(e) => handleUpdateBoardSlot(index, 'start_date', e.target.value)}
+                              style={{...inputStyle, flex: 1}}
+                            />
+                          </div>
                         </div>
-                        <div>
+                        <div style={{ minWidth: 0 }}>
                           <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '13px' }}>
                             到期日期
                           </label>
-                          <input
-                            type="date"
-                            value={slot.expires_at}
-                            onChange={(e) => handleUpdateBoardSlot(index, 'expires_at', e.target.value)}
-                            style={{...inputStyle}}
-                          />
+                          <div style={{ display: 'flex' }}>
+                            <input
+                              type="date"
+                              value={slot.expires_at}
+                              onChange={(e) => handleUpdateBoardSlot(index, 'expires_at', e.target.value)}
+                              style={{...inputStyle, flex: 1}}
+                            />
+                          </div>
                         </div>
                       </div>
                       <button

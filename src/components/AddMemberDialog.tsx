@@ -555,12 +555,14 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#666' }}>
                       置板開始 <span style={{ fontSize: '12px' }}>（選填）</span>
                     </label>
-                    <input
-                      type="date"
-                      value={board.start_date}
-                      onChange={(e) => updateBoard(index, 'start_date', e.target.value)}
-                      style={{...inputStyle}}
-                    />
+                    <div style={{ display: 'flex' }}>
+                      <input
+                        type="date"
+                        value={board.start_date}
+                        onChange={(e) => updateBoard(index, 'start_date', e.target.value)}
+                        style={{...inputStyle, flex: 1}}
+                      />
+                    </div>
                   </div>
 
                   {/* 置板到期 */}
@@ -568,12 +570,14 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#666' }}>
                       置板到期 <span style={{ fontSize: '12px' }}>（選填）</span>
                     </label>
-                    <input
-                      type="date"
-                      value={board.expires_at}
-                      onChange={(e) => updateBoard(index, 'expires_at', e.target.value)}
-                      style={{...inputStyle}}
-                    />
+                    <div style={{ display: 'flex' }}>
+                      <input
+                        type="date"
+                        value={board.expires_at}
+                        onChange={(e) => updateBoard(index, 'expires_at', e.target.value)}
+                        style={{...inputStyle, flex: 1}}
+                      />
+                    </div>
                   </div>
 
                   {/* 置板備註 */}
