@@ -94,6 +94,10 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       membership_end_date: member.membership_end_date || '',
       membership_partner_id: member.membership_partner_id || '',
     })
+    
+    // 重置備忘錄相關狀態
+    setAddToMemo(true)
+    setMemoText('')
   }, [member, open])
 
   const inputStyle: React.CSSProperties = {
