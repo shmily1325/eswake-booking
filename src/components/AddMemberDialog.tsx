@@ -26,7 +26,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     board_slot_number: '',
     board_expiry_date: '',
     free_hours: 0,
-    notes: '',
   })
   
   const [allMembers, setAllMembers] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
@@ -58,7 +57,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
         board_slot_number: '',
         board_expiry_date: '',
         free_hours: 0,
-        notes: '',
       })
       setBoards([])
     }
@@ -158,7 +156,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
           board_expiry_date: formData.board_expiry_date || null,
           free_hours: formData.free_hours || 0,
           free_hours_used: 0,
-          notes: formData.notes.trim() || null,
           balance: 0,
           designated_lesson_minutes: 0,
           boat_voucher_g23_minutes: 0,
@@ -594,25 +591,6 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                   </div>
                 </div>
               ))}
-            </div>
-
-            {/* 備註 */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                備註 <span style={{ fontSize: '13px' }}>（選填）</span>
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="請輸入備註"
-                rows={3}
-                style={{
-                  ...inputStyle,
-                  resize: 'vertical',
-                }}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
             </div>
 
           </form>

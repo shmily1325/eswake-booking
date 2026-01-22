@@ -31,6 +31,8 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   const [loading, setLoading] = useState(false)
   const [allMembers, setAllMembers] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
   const [boardSlots, setBoardSlots] = useState<Array<{id?: number, slot_number: string, start_date: string, expires_at: string}>>([])
+  const [addToMemo, setAddToMemo] = useState(true)  // 是否記錄到備忘錄
+  const [memoText, setMemoText] = useState('')  // 自訂備忘錄內容
   const [formData, setFormData] = useState({
     name: member.name,
     nickname: member.nickname || '',
@@ -40,7 +42,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     membership_start_date: member.membership_start_date || '',
     membership_end_date: member.membership_end_date || '',
     membership_partner_id: member.membership_partner_id || '',
-    notes: member.notes || '',
   })
 
   // 載入會員列表（用於配對選擇）
@@ -91,7 +92,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       membership_start_date: member.membership_start_date || '',
       membership_end_date: member.membership_end_date || '',
       membership_partner_id: member.membership_partner_id || '',
-      notes: member.notes || '',
     })
   }, [member, open])
 
@@ -171,7 +171,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
           membership_start_date: formData.membership_start_date || null,
           membership_end_date: formData.membership_end_date || null,
           membership_partner_id: formData.membership_partner_id || null,
-          notes: formData.notes || null,
         })
         .eq('id', member.id)
 
@@ -243,6 +242,43 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             .from('members')
             .update({ membership_partner_id: member.id })
             .eq('id', newPartnerId)
+        }
+      }
+
+      // 3. 如果勾選「記錄到備忘錄」，檢查變更並新增備忘錄
+      if (addToMemo) {
+        const changes: string[] = []
+        const oldStartDate = member.membership_start_date || ''
+        const oldEndDate = member.membership_end_date || ''
+        const newStartDate = formData.membership_start_date || ''
+        const newEndDate = formData.membership_end_date || ''
+
+        if (oldStartDate !== newStartDate) {
+          changes.push(`會籍開始：${oldStartDate || '無'} → ${newStartDate || '無'}`)
+        }
+        if (oldEndDate !== newEndDate) {
+          changes.push(`會籍到期：${oldEndDate || '無'} → ${newEndDate || '無'}`)
+        }
+
+        // 有日期變更或有自訂文字時，新增備忘錄
+        if (changes.length > 0 || memoText.trim()) {
+          const today = new Date().toISOString().split('T')[0]
+          let description = ''
+          
+          if (changes.length > 0) {
+            description = `會籍修改：${changes.join('、')}`
+          }
+          if (memoText.trim()) {
+            description = description ? `${description}（${memoText.trim()}）` : memoText.trim()
+          }
+          
+          // @ts-ignore
+          await supabase.from('member_notes').insert([{
+            member_id: member.id,
+            event_date: today,
+            event_type: '備註',
+            description
+          }])
         }
       }
 
@@ -604,23 +640,55 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               )}
             </div>
 
-            {/* 備註 */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                備註
+            {/* 是否記錄到歷史紀錄 */}
+            <div style={{ 
+              marginBottom: '16px',
+              padding: '12px',
+              background: addToMemo ? '#e3f2fd' : '#f5f5f5',
+              borderRadius: '8px',
+              transition: 'background 0.2s',
+            }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={addToMemo}
+                  onChange={(e) => setAddToMemo(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <span style={{ fontWeight: '500' }}>📋 記錄到歷史紀錄</span>
               </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="請輸入備註"
-                rows={3}
-                style={{
-                  ...inputStyle,
-                  resize: 'vertical',
-                }}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
+              {addToMemo && (
+                <div style={{ marginTop: '10px', marginLeft: '28px' }}>
+                  <input
+                    type="text"
+                    value={memoText}
+                    onChange={(e) => setMemoText(e.target.value)}
+                    placeholder="可輸入說明（選填），例如：續約一年"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #90caf9',
+                      borderRadius: '6px',
+                      fontSize: '16px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '6px' }}>
+                    會自動記錄日期變更，可在會員詳情的「備忘錄」查看
+                  </div>
+                </div>
+              )}
+              {!addToMemo && (
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '6px', marginLeft: '28px' }}>
+                  如僅修正錯誤可不勾選
+                </div>
+              )}
             </div>
 
           </form>
