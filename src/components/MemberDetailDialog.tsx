@@ -5,6 +5,7 @@ import { EditMemberDialog } from './EditMemberDialog'
 import { TransactionDialog } from './TransactionDialog'
 import { useToast } from './ui'
 import { normalizeDate } from '../utils/date'
+import { MemoRecordCheckbox } from './MemoRecordCheckbox'
 
 interface Member {
   id: string
@@ -115,7 +116,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
     start_date: '',
     expires_at: '',
     notes: '',
-    addToMemo: true  // 是否記錄到備忘錄
+    addToMemo: false,  // 預設不記錄，置板編輯通常是修正錯誤
+    memoText: ''       // 記錄原因
   })
 
   // 快速編輯電話相關狀態
@@ -673,7 +675,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
       start_date: board.start_date || '',
       expires_at: board.expires_at || '',
       notes: board.notes || '',
-      addToMemo: false  // 預設不記錄，因為編輯通常是修正錯誤
+      addToMemo: false,  // 預設不記錄，因為置板編輯通常是修正錯誤
+      memoText: ''       // 清空自訂文字
     })
     setBoardEditDialogOpen(true)
   }
@@ -699,24 +702,36 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
 
       if (error) throw error
 
-      // 如果勾選「記錄到備忘錄」且日期有變更
+      // 如果勾選「記錄到歷史紀錄」且日期有變更或有自訂文字
       if (boardEditForm.addToMemo) {
         const changes: string[] = []
         if (oldStartDate !== newStartDate) {
-          changes.push(`開始日：${oldStartDate || '無'} → ${newStartDate || '無'}`)
+          changes.push(`開始日 ${oldStartDate || '無'} → ${newStartDate || '無'}`)
         }
         if (oldExpiresAt !== newExpiresAt) {
-          changes.push(`到期日：${oldExpiresAt || '無'} → ${newExpiresAt || '無'}`)
+          changes.push(`到期日 ${oldExpiresAt || '無'} → ${newExpiresAt || '無'}`)
         }
 
-        if (changes.length > 0) {
+        // 有日期變更或有自訂文字時，新增備忘錄
+        if (changes.length > 0 || boardEditForm.memoText.trim()) {
           const today = new Date().toISOString().split('T')[0]
+          let description = ''
+          
+          if (changes.length > 0) {
+            description = `置板 #${editingBoard.slot_number} 修改：${changes.join('、')}`
+          }
+          if (boardEditForm.memoText.trim()) {
+            description = description 
+              ? `${description}（${boardEditForm.memoText.trim()}）` 
+              : `置板 #${editingBoard.slot_number}：${boardEditForm.memoText.trim()}`
+          }
+          
           // @ts-ignore
           await supabase.from('member_notes').insert([{
             member_id: memberId,
             event_date: today,
             event_type: '備註',
-            description: `置板 #${editingBoard.slot_number} 修改：${changes.join('、')}`
+            description
           }])
         }
       }
@@ -1937,7 +1952,9 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                   padding: '12px',
                   border: '2px solid #e0e0e0',
                   borderRadius: '8px',
-                  fontSize: '14px',
+                  fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
+                  boxSizing: 'border-box',
+                  minWidth: 0,
                 }}
               />
             </div>
@@ -1956,13 +1973,28 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                   padding: '12px',
                   border: '2px solid #e0e0e0',
                   borderRadius: '8px',
-                  fontSize: '14px',
+                  fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
+                  boxSizing: 'border-box',
+                  minWidth: 0,
                 }}
               />
               <div style={{ fontSize: '12px', color: '#999', marginTop: '6px' }}>
                 目前：{editingBoard.expires_at || '未設定'}
               </div>
             </div>
+
+            {/* 日期有變更時才顯示記錄選項 */}
+            {(boardEditForm.start_date !== (editingBoard.start_date || '') ||
+              boardEditForm.expires_at !== (editingBoard.expires_at || '')) && (
+              <MemoRecordCheckbox
+                checked={boardEditForm.addToMemo}
+                onChange={(checked) => setBoardEditForm({ ...boardEditForm, addToMemo: checked })}
+                inputValue={boardEditForm.memoText}
+                onInputChange={(text) => setBoardEditForm({ ...boardEditForm, memoText: text })}
+                inputPlaceholder="可輸入說明（選填），例如：出國暫停"
+                hint="如僅修正錯誤可不勾選"
+              />
+            )}
 
             {/* 備註 */}
             <div style={{ marginBottom: '16px' }}>
@@ -1982,33 +2014,6 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                   fontSize: '14px',
                 }}
               />
-            </div>
-
-            {/* 是否記錄到備忘錄 */}
-            <div style={{ 
-              marginBottom: '20px',
-              padding: '12px',
-              background: boardEditForm.addToMemo ? '#e8f5e9' : '#f5f5f5',
-              borderRadius: '8px',
-            }}>
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '10px',
-                cursor: 'pointer',
-                fontSize: '14px',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={boardEditForm.addToMemo}
-                  onChange={(e) => setBoardEditForm({ ...boardEditForm, addToMemo: e.target.checked })}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                />
-                <span>記錄到備忘錄</span>
-              </label>
-              <div style={{ fontSize: '12px', color: '#666', marginTop: '6px', marginLeft: '28px' }}>
-                如僅修正錯誤可不勾選
-              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'space-between', alignItems: 'center' }}>

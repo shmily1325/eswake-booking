@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
+import { MemoRecordCheckbox } from './MemoRecordCheckbox'
 
 interface Member {
   id: string
@@ -245,7 +246,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         }
       }
 
-      // 3. 如果勾選「記錄到備忘錄」，檢查變更並新增備忘錄
+      // 3. 如果勾選「記錄到歷史紀錄」，檢查變更並新增備忘錄
       if (addToMemo) {
         const changes: string[] = []
         const oldStartDate = member.membership_start_date || ''
@@ -254,10 +255,10 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         const newEndDate = formData.membership_end_date || ''
 
         if (oldStartDate !== newStartDate) {
-          changes.push(`會籍開始：${oldStartDate || '無'} → ${newStartDate || '無'}`)
+          changes.push(`開始 ${oldStartDate || '無'} → ${newStartDate || '無'}`)
         }
         if (oldEndDate !== newEndDate) {
-          changes.push(`會籍到期：${oldEndDate || '無'} → ${newEndDate || '無'}`)
+          changes.push(`到期 ${oldEndDate || '無'} → ${newEndDate || '無'}`)
         }
 
         // 有日期變更或有自訂文字時，新增備忘錄
@@ -266,7 +267,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
           let description = ''
           
           if (changes.length > 0) {
-            description = `會籍修改：${changes.join('、')}`
+            description = `修改會籍日期：${changes.join('、')}`
           }
           if (memoText.trim()) {
             description = description ? `${description}（${memoText.trim()}）` : memoText.trim()
@@ -483,6 +484,19 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               </div>
             </div>
 
+            {/* 日期有變更時才顯示記錄選項 */}
+            {(formData.membership_start_date !== (member.membership_start_date || '') ||
+              formData.membership_end_date !== (member.membership_end_date || '')) && (
+              <MemoRecordCheckbox
+                checked={addToMemo}
+                onChange={setAddToMemo}
+                inputValue={memoText}
+                onInputChange={setMemoText}
+                inputPlaceholder="可輸入說明（選填），例如：出國請假、續約一年"
+                hint="如僅修正錯誤可不勾選"
+              />
+            )}
+
             {/* 配對會員 - 只在選擇「雙人會籍」時顯示 */}
             {formData.membership_type === 'dual' && (
               <div style={{ marginBottom: '16px' }}>
@@ -636,57 +650,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                       </button>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
-
-            {/* 是否記錄到歷史紀錄 */}
-            <div style={{ 
-              marginBottom: '16px',
-              padding: '12px',
-              background: addToMemo ? '#e3f2fd' : '#f5f5f5',
-              borderRadius: '8px',
-              transition: 'background 0.2s',
-            }}>
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '10px',
-                cursor: 'pointer',
-                fontSize: '14px',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={addToMemo}
-                  onChange={(e) => setAddToMemo(e.target.checked)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                />
-                <span style={{ fontWeight: '500' }}>📋 記錄到歷史紀錄</span>
-              </label>
-              {addToMemo && (
-                <div style={{ marginTop: '10px', marginLeft: '28px' }}>
-                  <input
-                    type="text"
-                    value={memoText}
-                    onChange={(e) => setMemoText(e.target.value)}
-                    placeholder="可輸入說明（選填），例如：續約一年"
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #90caf9',
-                      borderRadius: '6px',
-                      fontSize: '16px',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  <div style={{ fontSize: '12px', color: '#666', marginTop: '6px' }}>
-                    會自動記錄日期變更，可在會員詳情的「備忘錄」查看
-                  </div>
-                </div>
-              )}
-              {!addToMemo && (
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '6px', marginLeft: '28px' }}>
-                  如僅修正錯誤可不勾選
                 </div>
               )}
             </div>
