@@ -404,14 +404,16 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
                 生日
               </label>
-              <input
-                type="date"
-                value={formData.birthday}
-                onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-                style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
+              <div style={{ display: 'flex' }}>
+                <input
+                  type="date"
+                  value={formData.birthday}
+                  onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                  style={{...inputStyle, flex: 1}}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+              </div>
             </div>
 
             {/* 電話 */}
@@ -458,33 +460,37 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               marginBottom: '16px'
             }}>
               {/* 會員開始日期 */}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                   會員開始日期
                 </label>
-                <input
-                  type="date"
-                  value={formData.membership_start_date}
-                  onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
-                  style={inputStyle}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
-                />
+                <div style={{ display: 'flex' }}>
+                  <input
+                    type="date"
+                    value={formData.membership_start_date}
+                    onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
+                    style={{...inputStyle, flex: 1}}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                </div>
               </div>
 
               {/* 會員截止日期 */}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                   會員截止日期
                 </label>
-                <input
-                  type="date"
-                  value={formData.membership_end_date}
-                  onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
-                  style={inputStyle}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
-                />
+                <div style={{ display: 'flex' }}>
+                  <input
+                    type="date"
+                    value={formData.membership_end_date}
+                    onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
+                    style={{...inputStyle, flex: 1}}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                </div>
               </div>
             </div>
 

@@ -1429,19 +1429,22 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                   置板開始 <span style={{ fontSize: '13px' }}>（選填）</span>
                 </label>
-                <input
-                  type="date"
-                  value={boardFormData.start_date}
-                  onChange={(e) => setBoardFormData({ ...boardFormData, start_date: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <div style={{ display: 'flex' }}>
+                  <input
+                    type="date"
+                    value={boardFormData.start_date}
+                    onChange={(e) => setBoardFormData({ ...boardFormData, start_date: e.target.value })}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '10px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
               </div>
 
               {/* 置板到期 */}
@@ -1449,19 +1452,22 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                   置板到期 <span style={{ fontSize: '13px' }}>（選填）</span>
                 </label>
-                <input
-                  type="date"
-                  value={boardFormData.expires_at}
-                  onChange={(e) => setBoardFormData({ ...boardFormData, expires_at: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <div style={{ display: 'flex' }}>
+                  <input
+                    type="date"
+                    value={boardFormData.expires_at}
+                    onChange={(e) => setBoardFormData({ ...boardFormData, expires_at: e.target.value })}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '10px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
               </div>
 
               {/* 置板備註 */}
@@ -1587,19 +1593,22 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
                   事件日期 <span style={{ color: 'red' }}>*</span>
                 </label>
-                <input
-                  type="date"
-                  value={noteFormData.event_date}
-                  onChange={(e) => setNoteFormData({ ...noteFormData, event_date: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <div style={{ display: 'flex' }}>
+                  <input
+                    type="date"
+                    value={noteFormData.event_date}
+                    onChange={(e) => setNoteFormData({ ...noteFormData, event_date: e.target.value })}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '10px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
               </div>
 
               {/* 事件類型 */}
@@ -1735,19 +1744,22 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                 {member?.membership_type === 'guest' ? '會籍到期日' : '新的到期日'}
               </label>
-              <input
-                type="date"
-                value={renewEndDate}
-                onChange={(e) => setRenewEndDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
-                  boxSizing: 'border-box',
-                }}
-              />
+              <div style={{ display: 'flex' }}>
+                <input
+                  type="date"
+                  value={renewEndDate}
+                  onChange={(e) => setRenewEndDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
               {member?.membership_type === 'guest' ? (
                 <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
                   會籍開始日將設為今天
@@ -1861,19 +1873,22 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                 新的到期日
               </label>
-              <input
-                type="date"
-                value={boardRenewEndDate}
-                onChange={(e) => setBoardRenewEndDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
-                  boxSizing: 'border-box',
-                }}
-              />
+              <div style={{ display: 'flex' }}>
+                <input
+                  type="date"
+                  value={boardRenewEndDate}
+                  onChange={(e) => setBoardRenewEndDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
               <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
                 目前到期：{renewingBoard.expires_at ? formatDate(renewingBoard.expires_at) : '未設定'}
               </div>
@@ -1948,20 +1963,22 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                 開始日期
               </label>
-              <input
-                type="date"
-                value={boardEditForm.start_date}
-                onChange={(e) => setBoardEditForm({ ...boardEditForm, start_date: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
-                  boxSizing: 'border-box',
-                  minWidth: 0,
-                }}
-              />
+              <div style={{ display: 'flex' }}>
+                <input
+                  type="date"
+                  value={boardEditForm.start_date}
+                  onChange={(e) => setBoardEditForm({ ...boardEditForm, start_date: e.target.value })}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
             </div>
 
             {/* 到期日期 */}
@@ -1969,20 +1986,22 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                 到期日期
               </label>
-              <input
-                type="date"
-                value={boardEditForm.expires_at}
-                onChange={(e) => setBoardEditForm({ ...boardEditForm, expires_at: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
-                  boxSizing: 'border-box',
-                  minWidth: 0,
-                }}
-              />
+              <div style={{ display: 'flex' }}>
+                <input
+                  type="date"
+                  value={boardEditForm.expires_at}
+                  onChange={(e) => setBoardEditForm({ ...boardEditForm, expires_at: e.target.value })}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
               <div style={{ fontSize: '12px', color: '#999', marginTop: '6px' }}>
                 目前：{editingBoard.expires_at || '未設定'}
               </div>

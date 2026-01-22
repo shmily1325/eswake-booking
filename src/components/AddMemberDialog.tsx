@@ -362,14 +362,16 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                 生日 <span style={{ fontSize: '13px' }}>（選填）</span>
               </label>
-              <input
-                type="date"
-                value={formData.birthday}
-                onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-                style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
+              <div style={{ display: 'flex' }}>
+                <input
+                  type="date"
+                  value={formData.birthday}
+                  onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                  style={{...inputStyle, flex: 1}}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+              </div>
             </div>
 
             {/* 電話 */}
@@ -416,33 +418,37 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               marginBottom: '16px'
             }}>
               {/* 會員開始日期 */}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                   會員開始日期 <span style={{ fontSize: '13px' }}>（選填）</span>
                 </label>
-                <input
-                  type="date"
-                  value={formData.membership_start_date}
-                  onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
-                  style={inputStyle}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
-                />
+                <div style={{ display: 'flex' }}>
+                  <input
+                    type="date"
+                    value={formData.membership_start_date}
+                    onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
+                    style={{...inputStyle, flex: 1}}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                </div>
               </div>
 
               {/* 會員截止日期 */}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
                   會員截止日期 <span style={{ fontSize: '13px' }}>（選填）</span>
                 </label>
-                <input
-                  type="date"
-                  value={formData.membership_end_date}
-                  onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
-                  style={inputStyle}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
-                />
+                <div style={{ display: 'flex' }}>
+                  <input
+                    type="date"
+                    value={formData.membership_end_date}
+                    onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
+                    style={{...inputStyle, flex: 1}}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                </div>
               </div>
             </div>
 
