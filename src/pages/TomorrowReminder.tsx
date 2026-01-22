@@ -283,6 +283,8 @@ export function TomorrowReminder() {
       message += `請幫我帶現金直接給Papa\n`
     }
     
+    message += '\n'
+    
     // ✅ 特殊會員：加入船和開船教練資訊（從第一個預約取得）
     if (SPECIAL_MEMBERS_FOR_BOAT_INFO.includes(studentName) && studentBookings.length > 0) {
       const firstBooking = studentBookings[0]
@@ -303,8 +305,6 @@ export function TomorrowReminder() {
         }
       }
     }
-    
-    message += '\n'
     
     let previousCoachNames = ''
     let boatCount = 0  // 只計算真正的船（不含彈簧床）
