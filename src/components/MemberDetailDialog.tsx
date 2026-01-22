@@ -702,7 +702,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
 
       if (error) throw error
 
-      // 如果勾選「記錄到歷史紀錄」且日期有變更或有自訂文字
+      // 如果勾選「記錄到備忘錄」且日期有變更或有自訂文字
       if (boardEditForm.addToMemo) {
         const changes: string[] = []
         if (oldStartDate !== newStartDate) {
@@ -1438,7 +1438,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                     padding: '10px',
                     border: '2px solid #e0e0e0',
                     borderRadius: '8px',
-                    fontSize: '14px',
+                    fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -1457,7 +1458,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                     padding: '10px',
                     border: '2px solid #e0e0e0',
                     borderRadius: '8px',
-                    fontSize: '14px',
+                    fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -1594,7 +1596,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                     padding: '10px',
                     border: '2px solid #e0e0e0',
                     borderRadius: '8px',
-                    fontSize: '14px',
+                    fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -1741,7 +1744,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                   padding: '12px',
                   border: '2px solid #e0e0e0',
                   borderRadius: '8px',
-                  fontSize: '14px',
+                  fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
+                  boxSizing: 'border-box',
                 }}
               />
               {member?.membership_type === 'guest' ? (
@@ -1866,7 +1870,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                   padding: '12px',
                   border: '2px solid #e0e0e0',
                   borderRadius: '8px',
-                  fontSize: '14px',
+                  fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
+                  boxSizing: 'border-box',
                 }}
               />
               <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>

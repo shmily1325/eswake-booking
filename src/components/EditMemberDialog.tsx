@@ -246,7 +246,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         }
       }
 
-      // 3. 如果勾選「記錄到歷史紀錄」，檢查變更並新增備忘錄
+      // 3. 如果勾選「記錄到備忘錄」，檢查變更並新增備忘錄
       if (addToMemo) {
         const changes: string[] = []
         const oldStartDate = member.membership_start_date || ''

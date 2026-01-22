@@ -16,7 +16,7 @@ interface MemoRecordCheckboxProps {
 }
 
 /**
- * 統一的「記錄到歷史紀錄」勾選框元件
+ * 統一的「記錄到備忘錄」勾選框元件
  * 用於：
  * - EditMemberDialog（修改會籍日期）
  * - MemberDetailDialog（修改置板日期）
@@ -51,7 +51,7 @@ export const MemoRecordCheckbox: React.FC<MemoRecordCheckboxProps> = ({
           onChange={(e) => onChange(e.target.checked)}
           style={{ width: '18px', height: '18px', cursor: 'pointer' }}
         />
-        <span style={{ fontWeight: '500' }}>📋 記錄到歷史紀錄</span>
+        <span style={{ fontWeight: '500' }}>📋 記錄到備忘錄</span>
       </label>
       
       {checked && showInput && onInputChange && (
