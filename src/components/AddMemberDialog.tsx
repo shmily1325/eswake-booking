@@ -85,13 +85,16 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     setBoards(newBoards)
   }
 
-  const inputStyle = {
+  const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: isMobile ? '12px' : '10px',
     border: '2px solid #e0e0e0',
     borderRadius: '8px',
-    fontSize: isMobile ? '16px' : '14px',
+    fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
     transition: 'border-color 0.2s',
+    boxSizing: 'border-box',
+    minWidth: 0,
+    touchAction: 'manipulation',
   }
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -546,7 +549,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                         }
                       }}
                       placeholder="請輸入格位編號"
-                      style={{...inputStyle, fontSize: '14px', padding: '8px'}}
+                      style={{...inputStyle}}
                     />
                   </div>
 
@@ -559,7 +562,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                       type="date"
                       value={board.start_date}
                       onChange={(e) => updateBoard(index, 'start_date', e.target.value)}
-                      style={{...inputStyle, fontSize: '14px', padding: '8px'}}
+                      style={{...inputStyle}}
                     />
                   </div>
 
@@ -572,7 +575,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                       type="date"
                       value={board.expires_at}
                       onChange={(e) => updateBoard(index, 'expires_at', e.target.value)}
-                      style={{...inputStyle, fontSize: '14px', padding: '8px'}}
+                      style={{...inputStyle}}
                     />
                   </div>
 
@@ -586,7 +589,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                       value={board.notes}
                       onChange={(e) => updateBoard(index, 'notes', e.target.value)}
                       placeholder="例如：有三格"
-                      style={{...inputStyle, fontSize: '14px', padding: '8px'}}
+                      style={{...inputStyle}}
                     />
                   </div>
                 </div>

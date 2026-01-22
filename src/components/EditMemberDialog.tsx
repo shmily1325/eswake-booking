@@ -95,13 +95,16 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     })
   }, [member, open])
 
-  const inputStyle = {
+  const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: isMobile ? '12px' : '10px',
     border: '2px solid #e0e0e0',
     borderRadius: '8px',
-    fontSize: isMobile ? '16px' : '14px',
+    fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
     transition: 'border-color 0.2s',
+    boxSizing: 'border-box',
+    minWidth: 0,
+    touchAction: 'manipulation',
   }
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -554,7 +557,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                               }
                             }}
                             placeholder="例如：1"
-                            style={{...inputStyle, fontSize: '14px'}}
+                            style={{...inputStyle}}
                           />
                         </div>
                         <div>
@@ -565,7 +568,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                             type="date"
                             value={slot.start_date}
                             onChange={(e) => handleUpdateBoardSlot(index, 'start_date', e.target.value)}
-                            style={{...inputStyle, fontSize: '14px', maxWidth: '100%', boxSizing: 'border-box'}}
+                            style={{...inputStyle}}
                           />
                         </div>
                         <div>
@@ -576,7 +579,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                             type="date"
                             value={slot.expires_at}
                             onChange={(e) => handleUpdateBoardSlot(index, 'expires_at', e.target.value)}
-                            style={{...inputStyle, fontSize: '14px', maxWidth: '100%', boxSizing: 'border-box'}}
+                            style={{...inputStyle}}
                           />
                         </div>
                       </div>
