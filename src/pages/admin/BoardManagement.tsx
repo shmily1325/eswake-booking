@@ -890,18 +890,22 @@ export function BoardManagement() {
                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
                           開始日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
                         </label>
-                        <input
-                          type="date"
-                          value={editForm.start_date}
-                          onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                          }}
-                        />
+                        <div style={{ display: 'flex' }}>
+                          <input
+                            type="date"
+                            value={editForm.start_date}
+                            onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              padding: '10px',
+                              border: '2px solid #e0e0e0',
+                              borderRadius: '8px',
+                              fontSize: '16px',
+                              boxSizing: 'border-box',
+                            }}
+                          />
+                        </div>
                       </div>
 
                       {/* 到期日 */}
@@ -916,10 +920,12 @@ export function BoardManagement() {
                             onChange={(e) => setEditForm({ ...editForm, expires_at: e.target.value })}
                             style={{
                               flex: 1,
+                              minWidth: 0,
                               padding: '10px',
                               border: '2px solid #e0e0e0',
                               borderRadius: '8px',
-                              fontSize: '14px',
+                              fontSize: '16px',
+                              boxSizing: 'border-box',
                             }}
                           />
                           <button
@@ -1190,18 +1196,22 @@ export function BoardManagement() {
                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
                           開始日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
                         </label>
-                        <input
-                          type="date"
-                          value={newBoardForm.start_date}
-                          onChange={(e) => setNewBoardForm({ ...newBoardForm, start_date: e.target.value })}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                          }}
-                        />
+                        <div style={{ display: 'flex' }}>
+                          <input
+                            type="date"
+                            value={newBoardForm.start_date}
+                            onChange={(e) => setNewBoardForm({ ...newBoardForm, start_date: e.target.value })}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              padding: '10px',
+                              border: '2px solid #e0e0e0',
+                              borderRadius: '8px',
+                              fontSize: '16px',
+                              boxSizing: 'border-box',
+                            }}
+                          />
+                        </div>
                       </div>
 
                       {/* 到期日 */}
@@ -1209,18 +1219,22 @@ export function BoardManagement() {
                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
                           到期日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
                         </label>
-                        <input
-                          type="date"
-                          value={newBoardForm.expires_at}
-                          onChange={(e) => setNewBoardForm({ ...newBoardForm, expires_at: e.target.value })}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                          }}
-                        />
+                        <div style={{ display: 'flex' }}>
+                          <input
+                            type="date"
+                            value={newBoardForm.expires_at}
+                            onChange={(e) => setNewBoardForm({ ...newBoardForm, expires_at: e.target.value })}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              padding: '10px',
+                              border: '2px solid #e0e0e0',
+                              borderRadius: '8px',
+                              fontSize: '16px',
+                              boxSizing: 'border-box',
+                            }}
+                          />
+                        </div>
                       </div>
 
                       {/* 備註 */}
