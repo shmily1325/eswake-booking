@@ -417,7 +417,7 @@ export function CoachReport({
       
       availableMembers.forEach((bm) => {
         const member = bm.members
-        if (!member) return // 跳过没有会员信息的记录
+        if (!member) return // 跳過沒有會員資訊的記錄
         
         addedMemberIds.add(bm.member_id)
         participants.push({

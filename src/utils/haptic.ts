@@ -1,21 +1,21 @@
 /**
  * Haptic Feedback Utility for Mobile Devices
- * 为移动设备提供触觉反馈
+ * 為行動裝置提供觸覺回饋
  */
 
 export type HapticType = 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error'
 
 /**
- * 触发触觉反馈
- * @param type - 反馈类型
+ * 觸發觸覺回饋
+ * @param type - 回饋類型
  */
 export function triggerHaptic(type: HapticType = 'light'): void {
-  // 检查是否支持 Vibration API
+  // 檢查是否支援 Vibration API
   if (!navigator.vibrate) {
     return
   }
 
-  // 根据不同类型触发不同强度的震动
+  // 根據不同類型觸發不同強度的震動
   const patterns: Record<HapticType, number | number[]> = {
     light: 10,
     medium: 20,
@@ -28,15 +28,15 @@ export function triggerHaptic(type: HapticType = 'light'): void {
   try {
     navigator.vibrate(patterns[type])
   } catch (error) {
-    // 静默失败，不影响用户体验
+    // 靜默失敗，不影響使用者體驗
     console.debug('Haptic feedback failed:', error)
   }
 }
 
 /**
- * 为按钮添加触觉反馈的辅助函数
- * @param callback - 原始的点击回调
- * @param hapticType - 触觉反馈类型
+ * 為按鈕添加觸覺回饋的輔助函數
+ * @param callback - 原始的點擊回調
+ * @param hapticType - 觸覺回饋類型
  */
 export function withHaptic<T extends (...args: any[]) => any>(
   callback: T,

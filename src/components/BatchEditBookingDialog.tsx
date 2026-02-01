@@ -240,10 +240,10 @@ export function BatchEditBookingDialog({
         }
       }
       
-      // 1️⃣ 查詢所有預約的完整資訊（包含教練）
+      // 1️⃣ 查詢所有預約的完整資訊（包含教練、活動、備註等）
       const { data: bookingsData } = await supabase
         .from('bookings')
-        .select('id, start_at, duration_min, boat_id, contact_name, boats:boat_id(name), booking_coaches(coach_id)')
+        .select('id, start_at, duration_min, boat_id, contact_name, activity_types, notes, boats:boat_id(name), booking_coaches(coach_id)')
         .in('id', bookingIds)
       
       if (!bookingsData) {
@@ -365,7 +365,13 @@ export function BatchEditBookingDialog({
       for (const booking of bookingsForCheck) {
         const { id, dateStr, startTime, durationMin: actualDuration, boatId: actualBoatId, boatName: actualBoatName, coachIds: actualCoachIds, originalCoachIds, contactName, hour } = booking
         const isBoatFacility = isFacility(actualBoatName)
-        const bookingLabel = `${contactName} (${dateStr} ${startTime})`
+        
+        // 更詳細的標籤格式：包含船只和時長
+        const shortDate = dateStr.slice(5).replace('-', '/') // "04/03"
+        let bookingLabel = `${contactName} (${shortDate} ${startTime}`
+        if (actualBoatName) bookingLabel += ` · ${actualBoatName}`
+        if (actualDuration) bookingLabel += ` · ${actualDuration}分`
+        bookingLabel += ')'
         
         // 0. 檢查與本批次內已更新預約的衝突
         if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration') || fieldsToEdit.has('coaches')) {
@@ -513,11 +519,42 @@ export function BatchEditBookingDialog({
       // 記錄 Audit Log（包含每筆預約的詳細資訊）
       if (successCount > 0) {
         if (user?.email) {
-          // 格式：批次修改 3 筆：時長→90分鐘 [Ming (04/03 08:30), John (04/03 09:00), ...] (填表人: xxx)
+          // 格式：批次修改 3 筆：時長→90分鐘 [Ming (04/03 08:30 · G23 · 60分), John (04/03 09:00 · G21 · 90分)] (填表人: xxx)
           const bookingList = successfulLabels.length <= 5 
             ? successfulLabels.join(', ')
             : `${successfulLabels.slice(0, 5).join(', ')} 等${successfulLabels.length}筆`
-          const details = `批次修改 ${successCount} 筆：${changes.join('、')} [${bookingList}] (填表人: ${filledBy.trim()})`
+          let details = `批次修改 ${successCount} 筆：${changes.join('、')} [${bookingList}]`
+          
+          // 如果有修改備註字段，或者預約有特殊資訊，補充說明
+          const modifiedBookings = bookingsData?.filter(b => successfulLabels.some(label => label.includes(b.contact_name)))
+          const hasAdditionalInfo = modifiedBookings?.some(b => 
+            b.activity_types?.length || 
+            b.notes ||
+            getOriginalCoachIds(b).length > 0
+          )
+          
+          if (hasAdditionalInfo) {
+            const infoItems: string[] = []
+            const totalActivities = new Set<string>()
+            let hasNotes = false
+            let hasCoaches = false
+            
+            modifiedBookings?.forEach(b => {
+              b.activity_types?.forEach((a: string) => totalActivities.add(a))
+              if (b.notes) hasNotes = true
+              if (getOriginalCoachIds(b).length > 0) hasCoaches = true
+            })
+            
+            if (hasCoaches) infoItems.push('含教練')
+            if (totalActivities.size > 0) infoItems.push(`活動:${Array.from(totalActivities).join('+')}`)
+            if (hasNotes) infoItems.push('含備註')
+            
+            if (infoItems.length > 0) {
+              details += ` (${infoItems.join('、')})`
+            }
+          }
+          
+          details += ` (填表人: ${filledBy.trim()})`
           console.log('[批次修改] 寫入 Audit Log:', details)
           await logAction(user.email, 'update', 'bookings', details)
         } else {

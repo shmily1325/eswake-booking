@@ -55,20 +55,70 @@ export function BatchDeleteConfirmDialog({
     setLoading(true)
     
     try {
-      // 1️⃣ 先查詢預約詳細資訊（用於 Audit Log）
+      // 1️⃣ 先查詢預約詳細資訊（用於 Audit Log）- 包含完整信息
       const { data: bookingsData } = await supabase
         .from('bookings')
-        .select('id, start_at, members!inner(name, nickname)')
+        .select(`
+          id, 
+          start_at, 
+          duration_min,
+          notes,
+          activity_types,
+          boats:boat_id(name),
+          members!inner(name, nickname)
+        `)
         .in('id', bookingIds)
       
-      // 建立 ID -> 標籤的映射
+      // 查詢教練和駕駛信息
+      const { data: coachData } = await supabase
+        .from('booking_coaches')
+        .select('booking_id, coaches:coach_id(name)')
+        .in('booking_id', bookingIds)
+      
+      const { data: driverData } = await supabase
+        .from('booking_drivers')
+        .select('booking_id, coaches:driver_id(name)')
+        .in('booking_id', bookingIds)
+      
+      // 建立教練和駕駛映射
+      const coachesMap = new Map<number, string[]>()
+      const driversMap = new Map<number, string[]>()
+      
+      coachData?.forEach((item: any) => {
+        if (!coachesMap.has(item.booking_id)) {
+          coachesMap.set(item.booking_id, [])
+        }
+        if (item.coaches?.name) {
+          coachesMap.get(item.booking_id)!.push(item.coaches.name)
+        }
+      })
+      
+      driverData?.forEach((item: any) => {
+        if (!driversMap.has(item.booking_id)) {
+          driversMap.set(item.booking_id, [])
+        }
+        if (item.coaches?.name) {
+          driversMap.get(item.booking_id)!.push(item.coaches.name)
+        }
+      })
+      
+      // 建立 ID -> 標籤的映射（包含更多信息）
       const bookingLabelsMap = new Map<number, string>()
-      bookingsData?.forEach(booking => {
+      bookingsData?.forEach((booking: any) => {
         const dateStr = booking.start_at.split('T')[0].slice(5).replace('-', '/') // "04/03"
         const timeStr = booking.start_at.split('T')[1].substring(0, 5) // "08:30"
         const member = booking.members as any
         const name = member?.nickname || member?.name || '未知'  // 優先使用暱稱
-        bookingLabelsMap.set(booking.id, `${name} (${dateStr} ${timeStr})`)
+        const boatName = booking.boats?.name || ''
+        const duration = booking.duration_min || 0
+        
+        // 格式：Ming (04/03 08:30 · G23 · 60分)
+        let label = `${name} (${dateStr} ${timeStr}`
+        if (boatName) label += ` · ${boatName}`
+        if (duration) label += ` · ${duration}分`
+        label += ')'
+        
+        bookingLabelsMap.set(booking.id, label)
       })
       
       // 2️⃣ 逐筆刪除
@@ -99,11 +149,45 @@ export function BatchDeleteConfirmDialog({
       // 3️⃣ 記錄 Audit Log（包含每筆預約的詳細資訊）
       if (successCount > 0) {
         if (user?.email) {
-          // 格式：批次刪除 3 筆 [Ming (04/03 08:30), John (04/03 09:00), ...] (填表人: xxx)
+          // 格式：批次刪除 3 筆 [Ming (04/03 08:30 · G23 · 60分), John (04/03 09:00 · G21 · 90分)] (填表人: xxx)
           const bookingList = successfulLabels.length <= 5 
             ? successfulLabels.join(', ')
             : `${successfulLabels.slice(0, 5).join(', ')} 等${successfulLabels.length}筆`
-          const details = `批次刪除 ${successCount} 筆 [${bookingList}] (填表人: ${filledBy.trim()})`
+          let details = `批次刪除 ${successCount} 筆 [${bookingList}]`
+          
+          // 如果有任何預約有教練、駕駛、活動或備註，在後面補充說明
+          const hasAdditionalInfo = bookingsData?.some((b: any) => 
+            coachesMap.get(b.id)?.length || 
+            driversMap.get(b.id)?.length || 
+            b.activity_types?.length || 
+            b.notes
+          )
+          
+          if (hasAdditionalInfo) {
+            const infoItems: string[] = []
+            const totalCoaches = new Set<string>()
+            const totalDrivers = new Set<string>()
+            const totalActivities = new Set<string>()
+            let hasNotes = false
+            
+            bookingsData?.forEach((b: any) => {
+              coachesMap.get(b.id)?.forEach(c => totalCoaches.add(c))
+              driversMap.get(b.id)?.forEach(d => totalDrivers.add(d))
+              b.activity_types?.forEach((a: string) => totalActivities.add(a))
+              if (b.notes) hasNotes = true
+            })
+            
+            if (totalCoaches.size > 0) infoItems.push(`教練:${Array.from(totalCoaches).join('、')}`)
+            if (totalDrivers.size > 0) infoItems.push(`駕駛:${Array.from(totalDrivers).join('、')}`)
+            if (totalActivities.size > 0) infoItems.push(`活動:${Array.from(totalActivities).join('+')}`)
+            if (hasNotes) infoItems.push('含備註')
+            
+            if (infoItems.length > 0) {
+              details += ` (${infoItems.join('、')})`
+            }
+          }
+          
+          details += ` (填表人: ${filledBy.trim()})`
           console.log('[批次刪除] 寫入 Audit Log:', details)
           await logAction(user.email, 'delete', 'bookings', details)
         } else {

@@ -676,7 +676,11 @@ export function EditBookingDialog({
         boatName: booking.boats?.name || '未知',
         startTime: booking.start_at,
         durationMin: booking.duration_min,
-        filledBy: filledBy  // 使用表單中重新填寫的填表人
+        filledBy: filledBy,  // 使用表單中重新填寫的填表人
+        notes: booking.notes || undefined,  // 保留預約的原始備註
+        coachNames: booking.coaches?.map(c => c.name) || undefined,  // 教練
+        driverNames: booking.drivers?.map(d => d.name) || undefined,  // 駕駛
+        activityTypes: booking.activity_types || undefined  // 活動類型
       })
 
       // Success
@@ -830,7 +834,9 @@ export function EditBookingDialog({
         coachNames: selectedCoaches.length > 0
           ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
           : [],
-        filledBy: copyFilledBy
+        filledBy: copyFilledBy,
+        activityTypes: activityTypes.length > 0 ? activityTypes : undefined,  // 活動類型
+        notes: notes || undefined  // 備註
       })
 
       // Success

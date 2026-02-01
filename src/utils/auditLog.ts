@@ -25,6 +25,8 @@ interface CreateBookingLogParams {
   durationMin: number
   coachNames: string[]
   filledBy?: string
+  activityTypes?: string[]  // 活動類型
+  notes?: string           // 備註
 }
 
 interface UpdateBookingLogParams {
@@ -42,6 +44,10 @@ interface DeleteBookingLogParams {
   startTime: string
   durationMin: number
   filledBy?: string
+  notes?: string           // 預約的原始備註
+  coachNames?: string[]    // 教練
+  driverNames?: string[]   // 駕駛
+  activityTypes?: string[] // 活動類型
 }
 
 /**
@@ -55,17 +61,29 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
     startTime,
     durationMin,
     coachNames,
-    filledBy
+    filledBy,
+    activityTypes,
+    notes
   } = params
 
   const formattedTime = formatBookingTime(startTime)
 
-  // 格式：2025/11/20 14:45 60分 G23 小楊 | 小胖教練、Ivan教練 (填表人: xxx)
+  // 格式：2025/11/20 14:45 60分 G23 小楊 | 小胖教練、Ivan教練 [活動: SUP] [備註: xxx] (填表人: xxx)
   // 使用 | 分隔會員和教練，避免解析混亂
   let details = `${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
   
   if (coachNames.length > 0) {
     details += ` | ${coachNames.map(name => `${name}教練`).join('、')}`
+  }
+  
+  // 加上活動類型
+  if (activityTypes && activityTypes.length > 0) {
+    details += ` [${activityTypes.join('+')}]`
+  }
+  
+  // 加上備註
+  if (notes && notes.trim()) {
+    details += ` [${notes.trim()}]`
   }
   
   // 加上填表人資訊
@@ -143,13 +161,38 @@ export async function logBookingUpdate(params: UpdateBookingLogParams) {
  * 記錄刪除預約
  */
 export async function logBookingDeletion(params: DeleteBookingLogParams) {
-  const { userEmail, studentName, boatName, startTime, durationMin, filledBy } = params
+  const { userEmail, studentName, boatName, startTime, durationMin, filledBy, notes, coachNames, driverNames, activityTypes } = params
 
   const formattedTime = formatBookingTime(startTime)
   
-  // 格式：2025/11/20 14:45 60分 G23 小楊 (填表人: xxx)
-  // 刪除記錄不包含教練資訊，所以不需要 | 分隔符
+  // 格式：2025/11/20 14:45 60分 G23 小楊 | 教練 | 駕駛 [活動: SUP] [備註: xxx] (填表人: xxx)
   let details = `刪除預約：${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
+  
+  // 加上教練資訊
+  if (coachNames && coachNames.length > 0) {
+    details += ` | ${coachNames.map(name => `${name}教練`).join('、')}`
+  }
+  
+  // 加上駕駛資訊（如果與教練不同）
+  if (driverNames && driverNames.length > 0) {
+    // 檢查駕駛是否與教練相同
+    const isDifferentFromCoach = !coachNames || 
+      JSON.stringify(driverNames.sort()) !== JSON.stringify(coachNames.sort())
+    
+    if (isDifferentFromCoach) {
+      details += ` | 🚤${driverNames.join('、')}`
+    }
+  }
+  
+  // 加上活動類型
+  if (activityTypes && activityTypes.length > 0) {
+    details += ` [${activityTypes.join('+')}]`
+  }
+  
+  // 如果有原始備註，加入記錄中
+  if (notes && notes.trim()) {
+    details += ` [${notes.trim()}]`
+  }
   
   // 加上填表人資訊
   if (filledBy && filledBy.trim()) {

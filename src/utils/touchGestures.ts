@@ -67,17 +67,17 @@ export class TouchGestureHandler {
     const touch = e.touches[0]
     this.startPoint = this.getTouchPoint(touch)
 
-    // 启动长按计时器
+    // 啟動長按計時器
     this.longPressTimer = setTimeout(() => {
       if (this.startPoint) {
         this.options.onLongPress(this.startPoint)
-        this.startPoint = null // 防止触发其他手势
+        this.startPoint = null // 防止觸發其他手勢
       }
     }, this.options.longPressDelay)
   }
 
   private handleTouchMove = (_e: TouchEvent) => {
-    // 移动时取消长按
+    // 移動時取消長按
     if (this.longPressTimer) {
       clearTimeout(this.longPressTimer)
       this.longPressTimer = null
@@ -101,7 +101,7 @@ export class TouchGestureHandler {
     const duration = endPoint.time - this.startPoint.time
     const velocity = distance / duration
 
-    // 判断是否为滑动
+    // 判斷是否為滑動
     if (distance > this.options.swipeThreshold) {
       const direction = this.getSwipeDirection(deltaX, deltaY)
       this.options.onSwipe({
@@ -111,11 +111,11 @@ export class TouchGestureHandler {
         velocity,
       })
     } else {
-      // 判断是否为点击或双击
+      // 判斷是否為點擊或雙擊
       const now = Date.now()
       if (now - this.lastTapTime < this.options.doubleTapDelay) {
         this.options.onDoubleTap(endPoint)
-        this.lastTapTime = 0 // 重置以避免三击
+        this.lastTapTime = 0 // 重置以避免三擊
       } else {
         this.options.onTap(endPoint)
         this.lastTapTime = now

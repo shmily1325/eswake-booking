@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { logBookingCreation } from '../utils/auditLog'
+import { logAction } from '../utils/auditLog'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
 import { useBookingConflict } from '../hooks/useBookingConflict'
@@ -243,6 +243,9 @@ export function RepeatBookingDialog({
         success: [] as string[],
         skipped: [] as { date: string; reason: string }[],
       }
+      
+      // 收集成功創建的預約時間（用於審計日誌）
+      const successTimes: string[] = []
 
       // 獲取船名稱
       const { data: boatData } = await supabase
@@ -342,23 +345,50 @@ export function RepeatBookingDialog({
             .insert(bookingMembersToInsert)
         }
 
-        // 記錄審計日誌
-        const coachNames = selectedCoaches.length > 0
-          ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
-          : []
-        await logBookingCreation({
-          userEmail: user.email || '',
-          studentName: finalStudentName,
-          boatName,
-          startTime: newStartAt,
-          durationMin,
-          coachNames,
-          filledBy
-        })
+        // 記錄成功的時間（用於審計日誌）
+        const shortDate = `${month}/${day}`
+        successTimes.push(`${shortDate} ${timeStr}`)
 
         results.success.push(displayDate)
       }
 
+      // 記錄審計日誌（批次記錄）
+      if (results.success.length > 0 && user.email) {
+        // 格式：重複預約 3 筆：G23 60分 Queenie | Papa教練 [SUP] [課堂人：L] [04/03 10:00, 04/04 10:00, 04/05 10:00] (填表人: L)
+        const coachNames = selectedCoaches.length > 0
+          ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
+          : []
+        
+        let details = `重複預約 ${results.success.length} 筆：${boatName} ${durationMin}分 ${finalStudentName}`
+        
+        // 加上教練
+        if (coachNames.length > 0) {
+          details += ` | ${coachNames.map(name => `${name}教練`).join('、')}`
+        }
+        
+        // 加上活動類型
+        if (activityTypes.length > 0) {
+          details += ` [${activityTypes.join('+')}]`
+        }
+        
+        // 加上備註
+        if (notes && notes.trim()) {
+          details += ` [${notes.trim()}]`
+        }
+        
+        // 加上時間列表
+        const timeList = successTimes.length <= 5 
+          ? successTimes.join(', ')
+          : `${successTimes.slice(0, 5).join(', ')} 等${successTimes.length}筆`
+        details += ` [${timeList}]`
+        
+        // 加上填表人
+        details += ` (填表人: ${filledBy})`
+        
+        console.log('[重複預約] 寫入 Audit Log:', details)
+        await logAction(user.email, 'create', 'bookings', details)
+      }
+      
       // 顯示結果
       if (results.success.length > 0 && results.skipped.length === 0) {
         // 全部成功：用簡短 toast

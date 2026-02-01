@@ -143,7 +143,7 @@ export function DeductionDetails({ transactions, paymentMethod, notes, boatName 
     )
   }
 
-  // 分析交易记录
+  // 分析交易記錄
   const deductionItems = transactions.map(tx => {
     const config = CATEGORY_CONFIG[tx.category]
     if (!config) return null

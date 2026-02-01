@@ -301,7 +301,9 @@ export function NewBookingDialog({
           startTime: newStartAt,
           durationMin,
           coachNames,
-          filledBy
+          filledBy,
+          activityTypes: activityTypes.length > 0 ? activityTypes : undefined,  // 活動類型
+          notes: notes || undefined  // 備註
         })
 
       // Success

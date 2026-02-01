@@ -20,12 +20,15 @@ interface ParsedDetails {
   member?: string
   boat?: string
   coach?: string
+  driver?: string         // 駕駛
   time?: string
   duration?: string
   filledBy?: string
   changeSummary?: string  // 修改預約的變更摘要
   bookingDate?: string    // 預約日期 (MM/DD 格式)
   bookingList?: string[]  // 批次操作中的預約列表
+  notes?: string          // 預約的原始備註
+  activityTypes?: string  // 活動類型
   rawText: string
 }
 
@@ -40,30 +43,67 @@ function parseDetails(details: string): ParsedDetails {
   const isDelete = details.startsWith('刪除預約')
   const isBatchEdit = details.startsWith('批次修改')
   const isBatchDelete = details.startsWith('批次刪除')
+  const isRepeat = details.startsWith('重複預約')
   
-  if (isBatchEdit || isBatchDelete) {
+  if (isBatchEdit || isBatchDelete || isRepeat) {
     // 提取筆數
     const countMatch = details.match(/(\d+)\s*筆/)
     if (countMatch) info.member = `${countMatch[1]}筆`
     
-    // 新格式：批次修改 3 筆：時長→90分鐘 [Ming (04/03 08:30), John (04/03 09:00)] (填表人: Ming)
-    // 提取變更內容（在 筆： 和 [ 之間）
+    // 新格式：
+    // 批次修改 3 筆：時長→90分鐘 [Ming (04/03 08:30), John (04/03 09:00)] (填表人: Ming)
+    // 重複預約 3 筆：G23 60分 Queenie | Papa教練 [SUP] [04/03 10:00, 04/04 10:00] (填表人: L)
+    // 提取變更內容或預約信息（在 筆： 和第一個 [ 之間）
     const changesMatch = details.match(/筆[:：]\s*(.+?)(?:\s*\[|$)/)
     if (changesMatch && changesMatch[1].trim()) {
-      info.changeSummary = changesMatch[1].trim()
+      const content = changesMatch[1].trim()
+      
+      if (isRepeat) {
+        // 重複預約：解析船隻、時長、會員、教練
+        // 格式：G23 60分 Queenie | Papa教練
+        const parts = content.split('|').map(p => p.trim())
+        const mainPart = parts[0] || ''
+        
+        // 提取船隻、時長、會員
+        const tokens = mainPart.split(/\s+/)
+        if (tokens.length >= 3) {
+          info.boat = tokens[0] // G23
+          info.duration = tokens[1] // 60分
+          info.member = tokens.slice(2).join(' ') // Queenie
+        }
+        
+        // 提取教練
+        if (parts.length > 1) {
+          const coachPart = parts[1]
+          const coachMatches = coachPart.match(/([\u4e00-\u9fa5A-Za-z0-9\s]+?)(?:教練|老師)/g)
+          if (coachMatches) {
+            const coaches = coachMatches.map(m => m.replace(/教練|老師/g, '').trim())
+            info.coach = coaches.join('/')
+          }
+        }
+      } else {
+        // 批次修改/刪除
+        info.changeSummary = content
+      }
     }
     
-    // 提取預約列表（在 [...] 中）
-    const bookingListMatch = details.match(/\[([^\]]+)\]/)
-    if (bookingListMatch) {
-      const listStr = bookingListMatch[1].trim()
-      // 解析每筆預約：Ming (04/03 08:30), John (04/03 09:00)
-      info.bookingList = listStr.split(/,\s*/).map(s => s.trim()).filter(Boolean)
+    // 提取預約列表（在最後一個 [...] 中，因為前面可能有活動和備註）
+    const allBrackets = details.match(/\[([^\]]+)\]/g)
+    if (allBrackets && allBrackets.length > 0) {
+      // 最後一個方括號通常是時間列表
+      const lastBracket = allBrackets[allBrackets.length - 1]
+      const listStr = lastBracket.slice(1, -1).trim()
       
-      // 提取所有日期用於搜尋
-      const dateMatches = listStr.match(/\d{1,2}\/\d{1,2}/g)
-      if (dateMatches && dateMatches.length > 0) {
-        info.bookingDate = dateMatches[0] // 使用第一個日期作為代表
+      // 檢查是否為時間列表（包含時間格式）
+      if (/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/.test(listStr) || /\d{1,2}\/\d{1,2}/.test(listStr)) {
+        // 解析每筆預約：Ming (04/03 08:30), John (04/03 09:00) 或 04/03 10:00, 04/04 10:00
+        info.bookingList = listStr.split(/,\s*/).map(s => s.trim()).filter(Boolean)
+        
+        // 提取所有日期用於搜尋
+        const dateMatches = listStr.match(/\d{1,2}\/\d{1,2}/g)
+        if (dateMatches && dateMatches.length > 0) {
+          info.bookingDate = dateMatches[0] // 使用第一個日期作為代表
+        }
       }
     }
     
@@ -82,6 +122,34 @@ function parseDetails(details: string): ParsedDetails {
   
   const durationMatch = details.match(/(\d+)\s*分/)
   if (durationMatch) info.duration = `${durationMatch[1]}分`
+  
+  // 提取方括號內容（活動類型和備註）
+  // 新格式：[SUP+風帆] [課堂人：L]
+  // 舊格式：[活動: SUP] [備註: xxx]（向後兼容）
+  const bracketMatches = details.match(/\[([^\]]+)\]/g)
+  if (bracketMatches && bracketMatches.length > 0) {
+    bracketMatches.forEach((match, index) => {
+      const content = match.slice(1, -1).trim() // 去掉方括號
+      
+      // 檢查是否為舊格式
+      if (content.startsWith('活動:') || content.startsWith('活動：')) {
+        info.activityTypes = content.replace(/^活動[:：]\s*/, '').trim()
+      } else if (content.startsWith('備註:') || content.startsWith('備註：')) {
+        info.notes = content.replace(/^備註[:：]\s*/, '').trim()
+      } else {
+        // 新格式：按順序判斷
+        // 常見活動類型關鍵字
+        const activityKeywords = ['SUP', 'sup', '風帆', '帆船', '獨木舟', '龍舟', '衝浪', '滑水']
+        const isActivity = activityKeywords.some(keyword => content.includes(keyword)) || content.includes('+')
+        
+        if (isActivity && !info.activityTypes) {
+          info.activityTypes = content
+        } else if (!info.notes) {
+          info.notes = content
+        }
+      }
+    })
+  }
   
   if (isCreate) {
     let text = details
@@ -193,15 +261,59 @@ function parseDetails(details: string): ParsedDetails {
       .replace(/\d+\s*分/, '')
       .trim()
     
-    text = text.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
-    text = text.replace(/([\u4e00-\u9fa5A-Za-z0-9]+(?:\s+[\u4e00-\u9fa5A-Za-z0-9]+)*)\s*(?:教練|老師)/g, '').trim()
+    // 移除活動類型和備註（已在前面統一處理，包含新舊格式）
+    text = text.replace(/\s*\[[^\]]+\]\s*/g, '').trim()
     
-    const firstSpaceIndex = text.indexOf(' ')
-    if (firstSpaceIndex > 0) {
-      info.boat = text.substring(0, firstSpaceIndex).trim()
-      info.member = text.substring(firstSpaceIndex + 1).trim()
-    } else if (text.length > 0) {
-      info.boat = text
+    text = text.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
+    
+    // 提取教練和駕駛（使用 | 分隔）
+    const pipeIndex = text.indexOf(' | ')
+    if (pipeIndex > 0) {
+      const beforePipe = text.substring(0, pipeIndex).trim()
+      const afterPipe = text.substring(pipeIndex + 3).trim()
+      
+      // 解析教練和駕駛
+      const parts = afterPipe.split('|').map(p => p.trim())
+      for (const part of parts) {
+        // 新格式：🚤Sky、Papa
+        if (part.startsWith('🚤')) {
+          info.driver = part.replace(/^🚤\s*/, '').trim()
+        }
+        // 舊格式（向後兼容）：🚗Sky 或 駕駛:Sky
+        else if (part.startsWith('🚗')) {
+          info.driver = part.replace(/^🚗\s*/, '').trim()
+        }
+        else if (part.startsWith('駕駛:') || part.startsWith('駕駛：')) {
+          info.driver = part.replace(/^駕駛[:：]\s*/, '').trim()
+        } else {
+          // 教練
+          const coachMatches = part.match(/([\u4e00-\u9fa5A-Za-z0-9\s]+?)(?:教練|老師)/g)
+          if (coachMatches) {
+            const coaches = coachMatches.map(m => m.replace(/教練|老師/g, '').trim())
+            info.coach = coaches.join('/')
+          }
+        }
+      }
+      
+      // 解析船隻和會員
+      const firstSpaceIndex = beforePipe.indexOf(' ')
+      if (firstSpaceIndex > 0) {
+        info.boat = beforePipe.substring(0, firstSpaceIndex).trim()
+        info.member = beforePipe.substring(firstSpaceIndex + 1).trim()
+      } else {
+        info.boat = beforePipe
+      }
+    } else {
+      // 沒有管道符號，舊格式
+      text = text.replace(/([\u4e00-\u9fa5A-Za-z0-9]+(?:\s+[\u4e00-\u9fa5A-Za-z0-9]+)*)\s*(?:教練|老師)/g, '').trim()
+      
+      const firstSpaceIndex = text.indexOf(' ')
+      if (firstSpaceIndex > 0) {
+        info.boat = text.substring(0, firstSpaceIndex).trim()
+        info.member = text.substring(firstSpaceIndex + 1).trim()
+      } else if (text.length > 0) {
+        info.boat = text
+      }
     }
   }
   
@@ -440,8 +552,11 @@ export function AuditLog() {
         const boatMatch = parsed.boat && parsed.boat.toLowerCase().includes(query)
         const timeMatch = parsed.time && parsed.time.toLowerCase().includes(query)
         const coachMatch = parsed.coach && parsed.coach.toLowerCase().includes(query)
+        const driverMatch = parsed.driver && parsed.driver.toLowerCase().includes(query)
+        const activityMatch = parsed.activityTypes && parsed.activityTypes.toLowerCase().includes(query)
+        const notesMatch = parsed.notes && parsed.notes.toLowerCase().includes(query)
         
-        return detailsMatch || emailMatch || filledByMatch || memberMatch || boatMatch || timeMatch || coachMatch
+        return detailsMatch || emailMatch || filledByMatch || memberMatch || boatMatch || timeMatch || coachMatch || driverMatch || activityMatch || notesMatch
       })
     }
     
@@ -522,6 +637,7 @@ export function AuditLog() {
     if (tableName === 'coach_assignment') return '排班'
     if (details?.startsWith('批次修改')) return '批次修改'
     if (details?.startsWith('批次刪除')) return '批次刪除'
+    if (details?.startsWith('重複預約')) return '重複預約'
     return getOperationConfig(action).label + '預約'
   }
 
@@ -1038,26 +1154,39 @@ export function AuditLog() {
                       return log.details?.replace('教練排班: ', '') || '排班調整'
                     }
                     
-                    // 批次操作：顯示筆數 + 變更內容 + 預約列表預覽
+                    // 批次操作和重複預約：顯示筆數 + 內容 + 預約列表預覽
                     const isBatch = log.details?.startsWith('批次修改') || log.details?.startsWith('批次刪除')
-                    if (isBatch) {
+                    const isRepeatBooking = log.details?.startsWith('重複預約')
+                    
+                    if (isBatch || isRepeatBooking) {
                       const parts: string[] = []
-                      if (parsed.member) parts.push(parsed.member)  // 筆數
-                      if (parsed.changeSummary) parts.push(parsed.changeSummary)
                       
-                      // 顯示前 2 筆預約的簡短資訊（姓名 日期）
+                      if (isRepeatBooking) {
+                        // 重複預約：顯示船隻、會員、教練
+                        if (parsed.boat) parts.push(parsed.boat)
+                        if (parsed.member) parts.push(parsed.member)
+                        if (parsed.coach) parts.push(parsed.coach + '教練')
+                      } else {
+                        // 批次修改/刪除
+                        if (parsed.member) parts.push(parsed.member)  // 筆數
+                        if (parsed.changeSummary) parts.push(parsed.changeSummary)
+                      }
+                      
+                      // 顯示前 2 筆預約的簡短資訊
                       if (parsed.bookingList && parsed.bookingList.length > 0) {
                         const previews = parsed.bookingList.slice(0, 2).map(item => {
-                          // "Ming (04/03 08:30)" → "Ming 04/03"
+                          // "Ming (04/03 08:30)" → "Ming 04/03" 或 "04/03 10:00" → "04/03 10:00"
                           const match = item.match(/^(.+?)\s*\((\d{1,2}\/\d{1,2})/)
-                          return match ? `${match[1]} ${match[2]}` : item.substring(0, 15)
+                          if (match) return `${match[1]} ${match[2]}`
+                          // 純時間格式
+                          return item.substring(0, 15)
                         })
                         const previewText = previews.join(', ')
                         const moreText = parsed.bookingList.length > 2 ? ` +${parsed.bookingList.length - 2}` : ''
                         parts.push(`[${previewText}${moreText}]`)
                       }
                       
-                      return parts.join(' · ') || (log.details?.startsWith('批次刪除') ? '刪除' : '修改')
+                      return parts.join(' · ') || (log.details?.startsWith('批次刪除') ? '刪除' : log.details?.startsWith('重複預約') ? '重複預約' : '修改')
                     }
                     
                     // 修改預約：顯示預約時間 + 會員 + 變更摘要
@@ -1198,7 +1327,7 @@ export function AuditLog() {
                             borderTop: '1px solid #f0f0f0',
                           }}>
                             {/* 標籤區 */}
-                            {(parsed.member || parsed.boat || parsed.coach || parsed.time || parsed.duration) && (
+                            {(parsed.member || parsed.boat || parsed.coach || parsed.driver || parsed.time || parsed.duration || parsed.activityTypes || parsed.notes) && (
                               <div style={{ 
                                 display: 'flex', 
                                 gap: '6px', 
@@ -1254,6 +1383,22 @@ export function AuditLog() {
                                     🎓 {parsed.coach}
                                   </button>
                                 )}
+                                {parsed.driver && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.driver!) }}
+                                    style={{
+                                      padding: '5px 10px',
+                                      fontSize: '12px',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      background: '#e1f5fe',
+                                      color: '#0277bd',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    🚤 {parsed.driver}
+                                  </button>
+                                )}
                                 {parsed.time && (
                                   <button
                                     onClick={(e) => { 
@@ -1283,6 +1428,36 @@ export function AuditLog() {
                                     color: '#c2185b',
                                   }}>
                                     ⏱️ {parsed.duration}
+                                  </span>
+                                )}
+                                {parsed.activityTypes && (
+                                  <span style={{
+                                    padding: '5px 10px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    background: '#f3e5f5',
+                                    color: '#8e24aa',
+                                    fontWeight: '600',
+                                  }}>
+                                    🏄 {parsed.activityTypes}
+                                  </span>
+                                )}
+                                {parsed.notes && (
+                                  <span style={{
+                                    padding: '5px 10px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    background: '#fff9e6',
+                                    color: '#d97706',
+                                    border: '1px solid #fcd34d',
+                                    maxWidth: '300px',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                  title={parsed.notes}
+                                  >
+                                    📝 {parsed.notes}
                                   </span>
                                 )}
                               </div>
