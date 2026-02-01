@@ -12,6 +12,7 @@ import { isFacility } from '../../utils/facility'
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
 import { getDisplayContactName } from '../../utils/bookingFormat'
+import { splitAndDeduplicateNames } from '../../utils/memberUtils'
 import {
   calculateIsTeaching,
   calculateParticipantStatus
@@ -447,7 +448,8 @@ export function CoachReport({
 
       const booking = bookings.find(b => b.id === bookingId)
       if (booking) {
-        const contactNames = booking.contact_name.split(/[,，]/).map(n => n.trim()).filter(n => n)
+        // 使用去重函數處理預約人名單
+        const contactNames = splitAndDeduplicateNames(booking.contact_name)
         contactNames.forEach(contactName => {
           if (!reportedNames.has(contactName) && !participants.some(p => p.participant_name === contactName)) {
             const isExistingMember = participants.some(p => 

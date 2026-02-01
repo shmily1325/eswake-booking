@@ -50,7 +50,7 @@ export function filterMembers<T extends BasicMember>(
  * @param members 完整的會員列表
  * @param selectedMemberIds 選中的會員 ID 列表
  * @param manualNames 手動輸入的非會員名字列表
- * @returns 組合後的姓名字串（用逗號分隔）
+ * @returns 組合後的姓名字串（用逗號分隔，自動去重）
  * 
  * @example
  * ```typescript
@@ -73,7 +73,55 @@ export function composeFinalStudentName<T extends BasicMember>(
   
   const allNames = [...memberNames, ...manualNames]
   
-  return allNames.join(', ')
+  // 自動去重（防止重複輸入）
+  const deduplicated = deduplicateNames(allNames)
+  
+  return deduplicated.join(', ')
+}
+
+/**
+ * 去除重複的名字（保留順序）
+ * 用於處理預約人或參與者名單中的重複項目
+ * 
+ * @param names 名字列表
+ * @returns 去重後的名字列表
+ * 
+ * @example
+ * ```typescript
+ * const names = deduplicateNames(['大貓咪', '大貓咪', '訪客A'])
+ * // 返回: ['大貓咪', '訪客A']
+ * 
+ * const names = deduplicateNames(['大貓咪', '訪客A', '訪客B'])
+ * // 返回: ['大貓咪', '訪客A', '訪客B'] (沒有重複，不變)
+ * ```
+ */
+export function deduplicateNames(names: string[]): string[] {
+  const seen = new Set<string>()
+  return names.filter(name => {
+    const trimmed = name.trim()
+    if (!trimmed || seen.has(trimmed)) return false
+    seen.add(trimmed)
+    return true
+  })
+}
+
+/**
+ * 分割並去重名字字串
+ * 從逗號分隔的字串中提取所有名字，並自動去重
+ * 
+ * @param nameString 用逗號分隔的名字字串（支援中英文逗號）
+ * @returns 去重後的名字陣列
+ * 
+ * @example
+ * ```typescript
+ * const names = splitAndDeduplicateNames('大貓咪, 大貓咪, 訪客A')
+ * // 返回: ['大貓咪', '訪客A']
+ * ```
+ */
+export function splitAndDeduplicateNames(nameString: string): string[] {
+  if (!nameString) return []
+  const names = nameString.split(/[,，]/).map(n => n.trim()).filter(Boolean)
+  return deduplicateNames(names)
 }
 
 /**

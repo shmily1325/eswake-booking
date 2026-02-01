@@ -3,6 +3,8 @@ import {
   filterMembers,
   composeFinalStudentName,
   toggleSelection,
+  deduplicateNames,
+  splitAndDeduplicateNames,
   type BasicMember
 } from '../memberUtils'
 
@@ -168,6 +170,80 @@ describe('memberUtils.ts - 會員工具函數', () => {
       const result = toggleSelection(['a', 'b', 'a'], 'a')
       // 移除所有 'a'
       expect(result).toEqual(['b'])
+    })
+  })
+
+  describe('deduplicateNames', () => {
+    it('應該去除重複的名字', () => {
+      const result = deduplicateNames(['大貓咪', '大貓咪', '訪客A'])
+      expect(result).toEqual(['大貓咪', '訪客A'])
+    })
+
+    it('應該保留原始順序', () => {
+      const result = deduplicateNames(['訪客A', '大貓咪', '訪客A', '訪客B'])
+      expect(result).toEqual(['訪客A', '大貓咪', '訪客B'])
+    })
+
+    it('應該移除空字串', () => {
+      const result = deduplicateNames(['大貓咪', '', '訪客A', '  ', '訪客B'])
+      expect(result).toEqual(['大貓咪', '訪客A', '訪客B'])
+    })
+
+    it('應該處理全部重複的情況', () => {
+      const result = deduplicateNames(['大貓咪', '大貓咪', '大貓咪'])
+      expect(result).toEqual(['大貓咪'])
+    })
+
+    it('應該處理空陣列', () => {
+      const result = deduplicateNames([])
+      expect(result).toEqual([])
+    })
+
+    it('應該處理沒有重複的情況', () => {
+      const result = deduplicateNames(['大貓咪', '訪客A', '訪客B'])
+      expect(result).toEqual(['大貓咪', '訪客A', '訪客B'])
+    })
+
+    it('應該自動 trim 空白並去重', () => {
+      const result = deduplicateNames(['大貓咪', ' 大貓咪 ', '訪客A'])
+      expect(result).toEqual(['大貓咪', '訪客A'])
+    })
+  })
+
+  describe('splitAndDeduplicateNames', () => {
+    it('應該分割並去重名字字串（中文逗號）', () => {
+      const result = splitAndDeduplicateNames('大貓咪，大貓咪，訪客A')
+      expect(result).toEqual(['大貓咪', '訪客A'])
+    })
+
+    it('應該分割並去重名字字串（英文逗號）', () => {
+      const result = splitAndDeduplicateNames('大貓咪, 大貓咪, 訪客A')
+      expect(result).toEqual(['大貓咪', '訪客A'])
+    })
+
+    it('應該處理混合逗號', () => {
+      const result = splitAndDeduplicateNames('大貓咪, 訪客A，訪客A, 訪客B')
+      expect(result).toEqual(['大貓咪', '訪客A', '訪客B'])
+    })
+
+    it('應該處理空字串', () => {
+      const result = splitAndDeduplicateNames('')
+      expect(result).toEqual([])
+    })
+
+    it('應該處理單個名字', () => {
+      const result = splitAndDeduplicateNames('大貓咪')
+      expect(result).toEqual(['大貓咪'])
+    })
+
+    it('應該移除多餘的空白', () => {
+      const result = splitAndDeduplicateNames('大貓咪 ,  訪客A  , 訪客B')
+      expect(result).toEqual(['大貓咪', '訪客A', '訪客B'])
+    })
+
+    it('應該處理會員+非會員的組合', () => {
+      const result = splitAndDeduplicateNames('大貓咪, 訪客A, 訪客B')
+      expect(result).toEqual(['大貓咪', '訪客A', '訪客B'])
     })
   })
 })

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBookingConflict } from './useBookingConflict'
-import { filterMembers, composeFinalStudentName, toggleSelection } from '../utils/memberUtils'
+import { filterMembers, composeFinalStudentName, toggleSelection, splitAndDeduplicateNames } from '../utils/memberUtils'
 import { MEMBER_SEARCH_DEBOUNCE_MS } from '../constants/booking'
 import type { Booking, Boat, Coach, Member } from '../types/booking'
 import { isFacility } from '../utils/facility'
@@ -110,7 +110,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
 
             // Initialize manual names - 從 contact_name 中提取非會員名字
             if (initialBooking.contact_name) {
-                const contactNames = initialBooking.contact_name.split(/[,，]/).map(n => n.trim()).filter(Boolean)
+                // 使用去重函數處理 contact_name
+                const contactNames = splitAndDeduplicateNames(initialBooking.contact_name)
                 
                 // 取得已選會員的名字和暱稱（用於比對）
                 const memberNamesSet = new Set<string>()

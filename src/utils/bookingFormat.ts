@@ -1,5 +1,7 @@
 // 預約訊息格式化工具
 
+import { deduplicateNames } from './memberUtils'
+
 interface BookingFormatData {
   start_at: string
   duration_min: number
@@ -109,6 +111,7 @@ export function getDisplayContactName(booking: any): string {
   // 處理每個名字：如果是會員就用暱稱，否則保留原名
   const processedMemberIds = new Set<string>()
   const displayNames: string[] = []
+  const nonMemberNames: string[] = []
   
   contactNameParts.forEach((name: string) => {
     // 檢查是否匹配會員（真名或暱稱）
@@ -120,10 +123,14 @@ export function getDisplayContactName(booking: any): string {
         processedMemberIds.add(nickname)
       }
     } else {
-      // 不是會員，保留原名（非會員）
-      displayNames.push(name)
+      // 不是會員，暫存到非會員列表（稍後去重）
+      nonMemberNames.push(name)
     }
   })
+  
+  // 去重非會員名單（防止重複輸入）
+  const deduplicatedNonMembers = deduplicateNames(nonMemberNames)
+  displayNames.push(...deduplicatedNonMembers)
   
   // 確保所有會員都出現（防止 contact_name 中漏掉會員）
   booking.booking_members.forEach((bm: any) => {
