@@ -138,9 +138,8 @@ function parseDetails(details: string): ParsedDetails {
         info.notes = content.replace(/^備註[:：]\s*/, '').trim()
       } else {
         // 新格式：按順序判斷
-        // 常見活動類型關鍵字
-        const activityKeywords = ['SUP', 'sup', '風帆', '帆船', '獨木舟', '龍舟', '衝浪', '滑水']
-        const isActivity = activityKeywords.some(keyword => content.includes(keyword)) || content.includes('+')
+        // 活動類型通常包含 + 號（如 WB+WS）或是 WB/WS
+        const isActivity = content.includes('+') || /^(WB|WS)(\+|$)/.test(content)
         
         if (isActivity && !info.activityTypes) {
           info.activityTypes = content

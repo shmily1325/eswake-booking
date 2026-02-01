@@ -749,21 +749,17 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
       const bookingDate = normalizeDate(report.bookings.start_at.split('T')[0]) || report.bookings.start_at.split('T')[0]
       
       // 準備代扣標註（如果有代扣會員）
-      // 代扣會員的交易記錄會顯示：「(小明)」表示代扣小明的費用
-      // 原始會員的記錄會顯示：「(由小華代扣)」
-      const proxyNoteForTransaction = isProxyDeduction 
-        ? `(${report.participant_name})` 
-        : null
+      // 原始參與者的回報記錄會顯示：「(由小華代扣)」
       const proxyNoteForParticipant = isProxyDeduction 
         ? `(由${proxyMemberName}代扣)` 
         : null
       
       // 準備扣款資料（轉換為 JSONB 格式）
       const deductionsData = deductionItems.map(item => {
-        // 合併原有 notes 和代扣標註
-        let finalNotes = item.notes || ''
-        if (proxyNoteForTransaction) {
-          finalNotes = finalNotes ? `${proxyNoteForTransaction} ${finalNotes}` : proxyNoteForTransaction
+        // 生成交易說明，如果是代扣則添加參與者名稱
+        let description = item.description || generateDescription()
+        if (isProxyDeduction) {
+          description = `${description} (${report.participant_name})`
         }
         
         return {
@@ -771,8 +767,8 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
           // ✅ 使用 ?? 運算符，確保 0 值不會被轉成 null
           amount: item.amount ?? null,
           minutes: item.minutes ?? null,
-          description: item.description || generateDescription(),
-          notes: finalNotes || null,
+          description,
+          notes: item.notes || null,  // 不再添加代扣標註到 notes，因為已經在 description 中了
           planName: item.planName || null,
           transactionDate: bookingDate  // 使用預約日期
         }
@@ -801,7 +797,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
         throw new Error(resultData?.error || '扣款處理失敗')
       }
       
-      // 扣款成功後，如果是代扣，更新原始參與者記錄的 notes
+      // 扣款成功後，如果是代扣，更新原始參與者的回報記錄 notes
       if (isProxyDeduction && proxyNoteForParticipant) {
         const existingNotes = report.notes || ''
         const newNotes = existingNotes 
@@ -1471,8 +1467,8 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 color: '#e65100'
               }}>
                 選擇要代扣的會員帳戶。代扣後：
-                <br />• 該會員的交易記錄會顯示「({report.participant_name})」
-                <br />• {report.participant_name} 的記錄會顯示「(由 XXX 代扣)」
+                <br />• 該會員的交易說明會顯示「教練 ({report.participant_name})」
+                <br />• {report.participant_name} 的回報記錄會顯示「(由 XXX 代扣)」
               </div>
               
               {/* 搜尋輸入框 */}
