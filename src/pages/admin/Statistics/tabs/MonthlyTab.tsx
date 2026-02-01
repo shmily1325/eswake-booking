@@ -281,7 +281,7 @@ export function MonthlyTab({
             name: m.memberName,
             value: m.totalMinutes,
             count: m.bookingCount,
-            badge: `指定 ${Math.round(m.designatedMinutes / m.totalMinutes * 100)}%`
+            badge: m.totalMinutes > 0 ? `指定 ${Math.round(m.designatedMinutes / m.totalMinutes * 100)}%` : '指定 0%'
           }))}
           accentColor="#4a90e2"
           emptyText="本月無會員預約記錄"

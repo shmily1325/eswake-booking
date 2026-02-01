@@ -181,8 +181,25 @@ export function Statistics() {
       const month = date.getMonth() + 1
       const monthStr = `${year}-${String(month).padStart(2, '0')}`
       const startDate = `${monthStr}-01`
-      const endDate = new Date(year, month, 0).getDate()
-      const endDateStr = `${monthStr}-${String(endDate).padStart(2, '0')}`
+      
+      // 計算結束日期：當月只到昨天，過去月份到月底
+      const lastDayOfMonth = new Date(year, month, 0).getDate()
+      let endDateStr: string
+      
+      if (i === 0) {
+        // 當月：只統計到昨天
+        const yesterday = new Date(now)
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yesterdayStr = getLocalDateString(yesterday)
+        // 如果昨天還在上個月，則當月沒有歷史資料
+        if (yesterdayStr < startDate) {
+          continue
+        }
+        endDateStr = yesterdayStr
+      } else {
+        // 過去月份：到月底
+        endDateStr = `${monthStr}-${String(lastDayOfMonth).padStart(2, '0')}`
+      }
 
       const { data: consumeData } = await supabase
         .from('transactions')
@@ -238,6 +255,15 @@ export function Statistics() {
       .or('is_coach_practice.is.null,is_coach_practice.eq.false')  // 排除教練練習
       .order('start_at', { ascending: true })
 
+    // 載入已回報的預約 ID（排除這些）
+    const { data: reportedBookings } = await supabase
+      .from('coach_reports')
+      .select('booking_id')
+      .gte('bookings!inner.start_at', `${today}T00:00:00`)
+      .lte('bookings!inner.start_at', `${endDateStr}T23:59:59`)
+
+    const reportedBookingIds = new Set(reportedBookings?.map(r => r.booking_id) || [])
+
     let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
 
     const coachMap = new Map<string, {
@@ -278,6 +304,10 @@ export function Statistics() {
     })
 
     bookingsData?.forEach((booking: any) => {
+      // 排除已回報的預約
+      if (reportedBookingIds.has(booking.id)) {
+        return
+      }
       const bookingMonth = booking.start_at.substring(0, 7)
       const coaches = booking.booking_coaches || []
       const bookingMembers = booking.booking_members || []
@@ -384,26 +414,12 @@ export function Statistics() {
     setFutureWeekdayStats({ weekdayCount, weekdayMinutes, weekendCount, weekendMinutes })
   }
 
-  // 載入平日/假日統計（月度，只統計歷史資料）
+  // 載入平日/假日統計（月度）
   const loadWeekdayStats = async () => {
     const [year, month] = selectedPeriod.split('-')
     const startDate = `${selectedPeriod}-01`
-    const lastDayOfMonth = new Date(parseInt(year), parseInt(month), 0).getDate()
-    const lastDayOfMonthStr = `${selectedPeriod}-${String(lastDayOfMonth).padStart(2, '0')}`
-    
-    // 計算結束日期：不超過昨天
-    const yesterday = new Date()
-    yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdayStr = getLocalDateString(yesterday)
-    
-    // 如果選擇的月份還沒開始，則沒有歷史資料
-    if (startDate > yesterdayStr) {
-      setWeekdayStats({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
-      return
-    }
-    
-    // 結束日期取月底和昨天的較小值
-    const endDateStr = yesterdayStr < lastDayOfMonthStr ? yesterdayStr : lastDayOfMonthStr
+    const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
+    const endDateStr = `${selectedPeriod}-${String(endDate).padStart(2, '0')}`
 
     const { data } = await supabase
       .from('bookings')
@@ -440,13 +456,14 @@ export function Statistics() {
     const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
     const endDateStr = `${selectedPeriod}-${String(endDate).padStart(2, '0')}`
 
-    // 載入教學記錄
+    // 載入教學記錄（使用實際付款人）
     const { data: teachingData } = await supabase
       .from('booking_participants')
       .select(`
-        coach_id, duration_min, lesson_type, member_id, participant_name,
+        coach_id, duration_min, lesson_type, member_id, participant_name, transaction_id,
         coaches:coach_id(id, name),
         members:member_id(id, name, nickname),
+        transactions(member_id, members(id, name, nickname)),
         bookings!inner(start_at, boats(id, name))
       `)
       .eq('status', 'processed')
@@ -500,12 +517,16 @@ export function Statistics() {
       const duration = record.duration_min || 0
       stats.teachingMinutes += duration
 
-      // 指定教練學生統計（包含非會員）
+      // 指定教練學生統計（優先用實際付款人）
       if (record.lesson_type === 'designated_paid' || record.lesson_type === 'designated_free') {
-        // 非會員用 participant_name 作為 ID，會員用 member_id
-        const memberId = record.member_id || `non-member:${record.participant_name || '未知'}`
-        const memberName = record.member_id 
-          ? (record.members?.nickname || record.members?.name || '未知')
+        // 優先用交易記錄的 member_id（實際付款人），沒有則用參與者的 member_id
+        const payerId = record.transactions?.member_id || record.member_id
+        const payerData = record.transactions?.members || record.members
+        
+        // 非會員用 participant_name 作為 ID
+        const memberId = payerId || `non-member:${record.participant_name || '未知'}`
+        const memberName = payerId
+          ? (payerData?.nickname || payerData?.name || '未知')
           : (record.participant_name || '非會員')
         const boatName = record.bookings?.boats?.name || '未知'
 
@@ -557,7 +578,7 @@ export function Statistics() {
     setCoachStats(sorted)
   }
 
-  // 載入會員統計
+  // 載入會員統計（優先用實際扣款人，否則用參與者本人）
   const loadMemberStats = async () => {
     const [year, month] = selectedPeriod.split('-')
     const startDate = `${selectedPeriod}-01`
@@ -567,8 +588,9 @@ export function Statistics() {
     const { data: participantData } = await supabase
       .from('booking_participants')
       .select(`
-        member_id, duration_min, coach_id, lesson_type, is_teaching,
+        member_id, transaction_id, duration_min, coach_id, lesson_type, is_teaching,
         members:member_id(id, name, nickname),
+        transactions(member_id, members(id, name, nickname)),
         coaches:coach_id(id, name),
         bookings!inner(start_at, boats(id, name))
       `)
@@ -590,10 +612,13 @@ export function Statistics() {
     }>()
 
     participantData?.forEach((record: any) => {
-      const memberId = record.member_id
-      if (!memberId || !record.members) return
+      // 優先用交易記錄的 member_id（實際付款人），沒有則用參與者的 member_id
+      const memberId = record.transactions?.member_id || record.member_id
+      const memberData = record.transactions?.members || record.members
+      
+      if (!memberId || !memberData) return
 
-      const memberName = record.members.nickname || record.members.name || '未知'
+      const memberName = memberData.nickname || memberData.name || '未知'
       const duration = record.duration_min || 0
       const isDesignated = record.lesson_type === 'designated_paid' || record.lesson_type === 'designated_free'
 
