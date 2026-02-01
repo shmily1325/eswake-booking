@@ -19,7 +19,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = formatBookingForLine(booking)
-      expect(result).toBe('11/24 10:30 60分 G23 ED SUP')
+      expect(result).toBe('11/24 10:00抵達, 10:30下水, 60分鐘, G23, ED教練')
     })
 
     it('應該處理多個教練', () => {
@@ -31,7 +31,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = formatBookingForLine(booking)
-      expect(result).toBe('11/24 14:00 90分 G23 ED/John')
+      expect(result).toBe('11/24 13:30抵達, 14:00下水, 90分鐘, G23, ED教練/John教練')
     })
 
     it('應該處理多個活動類型', () => {
@@ -44,10 +44,10 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = formatBookingForLine(booking)
-      expect(result).toBe('11/24 09:00 60分 G23 ED SUP+Wakeboard')
+      expect(result).toBe('11/24 08:30抵達, 09:00下水, 60分鐘, G23, ED教練')
     })
 
-    it('沒有教練時應該顯示「不指定」', () => {
+    it('沒有教練時不應該顯示教練資訊', () => {
       const booking = {
         start_at: '2025-11-24T10:00:00',
         duration_min: 60,
@@ -56,7 +56,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = formatBookingForLine(booking)
-      expect(result).toBe('11/24 10:00 60分 G23 不指定')
+      expect(result).toBe('11/24 09:30抵達, 10:00下水, 60分鐘, G23')
     })
 
     it('沒有活動類型時不應該顯示活動類型', () => {
@@ -69,7 +69,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = formatBookingForLine(booking)
-      expect(result).toBe('11/24 10:00 60分 G23 ED')
+      expect(result).toBe('11/24 09:30抵達, 10:00下水, 60分鐘, G23, ED教練')
     })
 
     it('沒有船隻資訊時應該顯示「?」', () => {
@@ -81,7 +81,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = formatBookingForLine(booking)
-      expect(result).toBe('11/24 10:00 60分 ? ED')
+      expect(result).toBe('11/24 09:30抵達, 10:00下水, 60分鐘, ?, ED教練')
     })
 
     it('應該正確補零月份和日期', () => {
@@ -93,7 +93,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = formatBookingForLine(booking)
-      expect(result).toBe('01/05 09:05 60分 G23 ED')
+      expect(result).toBe('01/05 08:35抵達, 09:05下水, 60分鐘, G23, ED教練')
     })
   })
 
@@ -109,7 +109,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = formatSingleBookingWithName(booking)
-      expect(result).toBe('王小明的預約\n11/24 10:30 60分 G23 ED SUP')
+      expect(result).toBe('王小明的預約\n11/24 10:00抵達, 10:30下水, 60分鐘, G23, ED教練')
     })
 
     it('沒有聯絡人名稱時應該顯示「客人」', () => {
@@ -121,7 +121,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = formatSingleBookingWithName(booking)
-      expect(result).toBe('客人的預約\n11/24 10:30 60分 G23 ED')
+      expect(result).toBe('客人的預約\n11/24 10:00抵達, 10:30下水, 60分鐘, G23, ED教練')
     })
   })
 
@@ -143,7 +143,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       ]
 
       const result = formatBookingsForLine(bookings, '今日預約')
-      expect(result).toBe('今日預約\n11/24 10:00 60分 G23 ED\n11/24 11:30 90分 G24 John')
+      expect(result).toBe('今日預約\n11/24 09:30抵達, 10:00下水, 60分鐘, G23, ED教練\n11/24 11:00抵達, 11:30下水, 90分鐘, G24, John教練')
     })
 
     it('空列表應該返回空字串', () => {
@@ -162,7 +162,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       ]
 
       const result = formatBookingsForLine(bookings, '明日預約提醒')
-      expect(result).toBe('明日預約提醒\n11/24 10:00 60分 G23 ED')
+      expect(result).toBe('明日預約提醒\n11/24 09:30抵達, 10:00下水, 60分鐘, G23, ED教練')
     })
   })
 
@@ -286,7 +286,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       expect(result).toBe('Jerry')
     })
 
-    it('混合會員和非會員時應該顯示第一個會員的暱稱', () => {
+    it('混合會員和非會員時應該同時顯示會員暱稱和非會員名稱', () => {
       const booking = {
         contact_name: '王小明, 張三',
         booking_members: [
@@ -300,7 +300,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = getDisplayContactName(booking)
-      expect(result).toBe('Jerry')
+      expect(result).toBe('Jerry, 張三')
     })
 
     it('所有會員都是 null 時應該回退到 contact_name', () => {
@@ -348,7 +348,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       expect(result).toBe('張三')
     })
 
-    it('部分會員被刪除時應該只顯示存在的會員', () => {
+    it('部分會員被刪除時應該顯示存在的會員和標記為已刪除的名稱', () => {
       const booking = {
         contact_name: '王小明, 已刪除會員',
         booking_members: [
@@ -367,7 +367,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       }
 
       const result = getDisplayContactName(booking)
-      expect(result).toBe('Jerry')
+      expect(result).toBe('Jerry, 已刪除會員')
     })
 
     it('會員名稱為空字串時應該過濾掉', () => {

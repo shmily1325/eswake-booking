@@ -8,21 +8,25 @@ import {
   validateEmail,
   validateDateRange
 } from '../errorHandler'
+import { toast } from '../toast'
 
 describe('errorHandler.ts - 錯誤處理工具', () => {
-  // Mock alert, console.log, console.error, confirm
-  let alertMock: ReturnType<typeof vi.fn>
+  // Mock toast, console.log, console.error, confirm
+  let toastErrorMock: ReturnType<typeof vi.fn>
+  let toastSuccessMock: ReturnType<typeof vi.fn>
   let consoleLogMock: ReturnType<typeof vi.fn>
   let consoleErrorMock: ReturnType<typeof vi.fn>
   let confirmMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    alertMock = vi.fn()
+    toastErrorMock = vi.fn()
+    toastSuccessMock = vi.fn()
     consoleLogMock = vi.fn()
     consoleErrorMock = vi.fn()
     confirmMock = vi.fn()
     
-    global.alert = alertMock as any
+    toast.error = toastErrorMock as any
+    toast.success = toastSuccessMock as any
     global.console.log = consoleLogMock as any
     global.console.error = consoleErrorMock as any
     global.confirm = confirmMock as any
@@ -100,7 +104,7 @@ describe('errorHandler.ts - 錯誤處理工具', () => {
       const result = handleError(error)
       
       expect(result).toBe('測試錯誤')
-      expect(alertMock).toHaveBeenCalledWith('❌ 測試錯誤')
+      expect(toastErrorMock).toHaveBeenCalledWith('測試錯誤')
       expect(consoleErrorMock).toHaveBeenCalledWith('[錯誤] 操作:', error)
     })
 
@@ -109,15 +113,15 @@ describe('errorHandler.ts - 錯誤處理工具', () => {
       const result = handleError(error, '新增會員')
       
       expect(result).toBe('新增會員失敗：資料庫錯誤')
-      expect(alertMock).toHaveBeenCalledWith('❌ 新增會員失敗：資料庫錯誤')
+      expect(toastErrorMock).toHaveBeenCalledWith('新增會員失敗：資料庫錯誤')
       expect(consoleErrorMock).toHaveBeenCalledWith('[錯誤] 新增會員:', error)
     })
 
-    it('showAlert 為 false 時不應該顯示 alert', () => {
+    it('showAlert 為 false 時不應該顯示 toast', () => {
       const error = { message: '測試錯誤' }
       handleError(error, undefined, false)
       
-      expect(alertMock).not.toHaveBeenCalled()
+      expect(toastErrorMock).not.toHaveBeenCalled()
       expect(consoleErrorMock).toHaveBeenCalled()
     })
 
@@ -126,7 +130,7 @@ describe('errorHandler.ts - 錯誤處理工具', () => {
       const result = handleError(error, '新增資料')
       
       expect(result).toBe('新增資料失敗：資料重複：此項目已存在')
-      expect(alertMock).toHaveBeenCalledWith('❌ 新增資料失敗：資料重複：此項目已存在')
+      expect(toastErrorMock).toHaveBeenCalledWith('新增資料失敗：資料重複：此項目已存在')
     })
   })
 
@@ -134,14 +138,14 @@ describe('errorHandler.ts - 錯誤處理工具', () => {
     it('應該顯示成功訊息', () => {
       handleSuccess('操作成功')
       
-      expect(alertMock).toHaveBeenCalledWith('✅ 操作成功')
+      expect(toastSuccessMock).toHaveBeenCalledWith('操作成功')
       expect(consoleLogMock).toHaveBeenCalledWith('[成功] 操作成功')
     })
 
-    it('showAlert 為 false 時不應該顯示 alert', () => {
+    it('showAlert 為 false 時不應該顯示 toast', () => {
       handleSuccess('操作成功', false)
       
-      expect(alertMock).not.toHaveBeenCalled()
+      expect(toastSuccessMock).not.toHaveBeenCalled()
       expect(consoleLogMock).toHaveBeenCalledWith('[成功] 操作成功')
     })
   })

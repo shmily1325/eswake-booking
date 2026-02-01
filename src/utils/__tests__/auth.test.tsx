@@ -155,17 +155,7 @@ describe('auth.ts - 權限驗證', () => {
       expect(result).toBe(true)
     })
 
-    it('資料庫中的管理員應該是管理員', async () => {
-      mockSupabaseResponse([{ email: 'admin@example.com' }])
-
-      const user = createMockUser('admin@example.com')
-      const result = await isAdminAsync(user)
-      expect(result).toBe(true)
-    })
-
-    it('非管理員應該不是管理員', async () => {
-      mockSupabaseResponse([{ email: 'other@example.com' }])
-
+    it('非超級管理員應該不是管理員', async () => {
       const user = createMockUser('notadmin@example.com')
       const result = await isAdminAsync(user)
       expect(result).toBe(false)
