@@ -456,14 +456,13 @@ export function Statistics() {
     const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
     const endDateStr = `${selectedPeriod}-${String(endDate).padStart(2, '0')}`
 
-    // 載入教學記錄（使用實際付款人）
+    // 載入教學記錄
     const { data: teachingData } = await supabase
       .from('booking_participants')
       .select(`
-        coach_id, duration_min, lesson_type, member_id, participant_name, transaction_id,
+        coach_id, duration_min, lesson_type, member_id, participant_name,
         coaches:coach_id(id, name),
         members:member_id(id, name, nickname),
-        transactions(member_id, members(id, name, nickname)),
         bookings!inner(start_at, boats(id, name))
       `)
       .eq('status', 'processed')
@@ -517,16 +516,12 @@ export function Statistics() {
       const duration = record.duration_min || 0
       stats.teachingMinutes += duration
 
-      // 指定教練學生統計（優先用實際付款人）
+      // 指定教練學生統計（包含非會員）
       if (record.lesson_type === 'designated_paid' || record.lesson_type === 'designated_free') {
-        // 優先用交易記錄的 member_id（實際付款人），沒有則用參與者的 member_id
-        const payerId = record.transactions?.member_id || record.member_id
-        const payerData = record.transactions?.members || record.members
-        
-        // 非會員用 participant_name 作為 ID
-        const memberId = payerId || `non-member:${record.participant_name || '未知'}`
-        const memberName = payerId
-          ? (payerData?.nickname || payerData?.name || '未知')
+        // 非會員用 participant_name 作為 ID，會員用 member_id
+        const memberId = record.member_id || `non-member:${record.participant_name || '未知'}`
+        const memberName = record.member_id 
+          ? (record.members?.nickname || record.members?.name || '未知')
           : (record.participant_name || '非會員')
         const boatName = record.bookings?.boats?.name || '未知'
 
@@ -578,7 +573,7 @@ export function Statistics() {
     setCoachStats(sorted)
   }
 
-  // 載入會員統計（優先用實際扣款人，否則用參與者本人）
+  // 載入會員統計
   const loadMemberStats = async () => {
     const [year, month] = selectedPeriod.split('-')
     const startDate = `${selectedPeriod}-01`
@@ -588,9 +583,8 @@ export function Statistics() {
     const { data: participantData } = await supabase
       .from('booking_participants')
       .select(`
-        member_id, transaction_id, duration_min, coach_id, lesson_type, is_teaching,
+        member_id, duration_min, coach_id, lesson_type, is_teaching,
         members:member_id(id, name, nickname),
-        transactions(member_id, members(id, name, nickname)),
         coaches:coach_id(id, name),
         bookings!inner(start_at, boats(id, name))
       `)
@@ -612,13 +606,10 @@ export function Statistics() {
     }>()
 
     participantData?.forEach((record: any) => {
-      // 優先用交易記錄的 member_id（實際付款人），沒有則用參與者的 member_id
-      const memberId = record.transactions?.member_id || record.member_id
-      const memberData = record.transactions?.members || record.members
-      
-      if (!memberId || !memberData) return
+      const memberId = record.member_id
+      if (!memberId || !record.members) return
 
-      const memberName = memberData.nickname || memberData.name || '未知'
+      const memberName = record.members.nickname || record.members.name || '未知'
       const duration = record.duration_min || 0
       const isDesignated = record.lesson_type === 'designated_paid' || record.lesson_type === 'designated_free'
 
