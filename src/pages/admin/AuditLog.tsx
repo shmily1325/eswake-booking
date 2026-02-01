@@ -128,7 +128,7 @@ function parseDetails(details: string): ParsedDetails {
   // 舊格式：[活動: SUP] [備註: xxx]（向後兼容）
   const bracketMatches = details.match(/\[([^\]]+)\]/g)
   if (bracketMatches && bracketMatches.length > 0) {
-    bracketMatches.forEach((match, index) => {
+    bracketMatches.forEach((match) => {
       const content = match.slice(1, -1).trim() // 去掉方括號
       
       // 檢查是否為舊格式
