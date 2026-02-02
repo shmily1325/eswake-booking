@@ -36,13 +36,9 @@ export function BookingCard({
         fontSize: '16px',
         fontWeight: '600',
         color: '#333',
-        marginBottom: '8px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px'
+        marginBottom: '12px'
       }}>
-        <span>📅</span>
-        <span>{formatDate(booking.start_at)}</span>
+        {formatDate(booking.start_at)}
       </div>
       
       {/* 抵達時間 & 下水時間 */}
@@ -50,21 +46,21 @@ export function BookingCard({
         display: 'flex',
         gap: '16px',
         marginBottom: '12px',
-        padding: '10px 12px',
-        background: '#f0f7ff',
+        padding: '12px',
+        background: '#fafafa',
         borderRadius: '8px'
       }}>
         {isFirstOfDay && (
           <div>
-            <div style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>🚗 抵達時間</div>
-            <div style={{ fontSize: '18px', fontWeight: '700', color: '#1976d2' }}>
+            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>抵達時間</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: '#333' }}>
               {getArrivalTime(booking.start_at)}
             </div>
           </div>
         )}
-        <div style={isFirstOfDay ? { borderLeft: '1px solid #ddd', paddingLeft: '16px' } : {}}>
-          <div style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>🏄 下水時間</div>
-          <div style={{ fontSize: '18px', fontWeight: '700', color: '#333' }}>
+        <div style={isFirstOfDay ? { borderLeft: '1px solid #e0e0e0', paddingLeft: '16px' } : {}}>
+          <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>下水時間</div>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: '#333' }}>
             {getStartTime(booking.start_at)}
           </div>
         </div>
@@ -94,7 +90,7 @@ export function BookingCard({
         color: '#666',
         marginBottom: '8px'
       }}>
-        ⏱️ {booking.duration_min} 分鐘
+        {booking.duration_min} 分鐘
         <span style={{ color: '#999', marginLeft: '8px' }}>
           (結束: {getEndTime(booking.start_at, booking.duration_min)})
         </span>
@@ -106,7 +102,7 @@ export function BookingCard({
           fontSize: '14px',
           color: '#666'
         }}>
-          🎓 指定教練: {coachNames}
+          指定教練: {coachNames}
         </div>
       )}
 
@@ -123,11 +119,10 @@ export function BookingCard({
               key={idx}
               style={{
                 padding: '4px 10px',
-                background: '#e3f2fd',
-                color: '#1976d2',
+                background: '#f5f5f5',
+                color: '#666',
                 borderRadius: '12px',
-                fontSize: '12px',
-                fontWeight: '600'
+                fontSize: '12px'
               }}
             >
               {type}
@@ -147,7 +142,7 @@ export function BookingCard({
           color: '#555',
           lineHeight: '1.5'
         }}>
-          <div style={{ fontWeight: '600', marginBottom: '4px' }}>📝 備註</div>
+          <div style={{ fontWeight: '600', marginBottom: '4px', color: '#666' }}>備註</div>
           {booking.notes}
         </div>
       )}

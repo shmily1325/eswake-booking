@@ -2,20 +2,16 @@
 
 interface BalanceCardProps {
   label: string
-  emoji: string
   value: number | undefined
   unit: '元' | '分'
-  color: string
   category: string
   onClick: (category: string) => void
 }
 
 export function BalanceCard({
   label,
-  emoji,
   value,
   unit,
-  color,
   category,
   onClick
 }: BalanceCardProps) {
@@ -26,10 +22,10 @@ export function BalanceCard({
     <div 
       onClick={() => onClick(category)}
       style={{
-        background: '#f8f9fa',
+        background: 'white',
         borderRadius: '8px',
         padding: '16px',
-        border: `2px solid ${color}`,
+        border: `1px solid #e0e0e0`,
         cursor: 'pointer',
         transition: 'all 0.2s'
       }}
@@ -40,13 +36,13 @@ export function BalanceCard({
         e.currentTarget.style.transform = 'scale(1)'
       }}
     >
-      <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-        {emoji} {label}
+      <div style={{ fontSize: '13px', color: '#999', marginBottom: '6px' }}>
+        {label}
       </div>
       <div style={{ 
-        fontSize: unit === '元' ? '22px' : '20px', 
-        fontWeight: unit === '元' ? '700' : '600', 
-        color 
+        fontSize: unit === '元' ? '24px' : '22px', 
+        fontWeight: '700', 
+        color: '#333'
       }}>
         {formattedValue}
       </div>
