@@ -1042,6 +1042,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                           {proxyMemberData && (
                             <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                               💰 儲值 ${(proxyMemberData.balance || 0).toLocaleString()} • 
+                              💎 VIP票券 ${(proxyMemberData.vip_voucher_amount || 0).toLocaleString()} • 
                               🚤 G23 {proxyMemberData.boat_voucher_g23_minutes || 0}分 • 
                               ⛵ G21/黑豹 {proxyMemberData.boat_voucher_g21_panther_minutes || 0}分
                             </div>

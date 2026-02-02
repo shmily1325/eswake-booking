@@ -2,6 +2,7 @@
 
 interface BalanceCardProps {
   label: string
+  emoji: string
   value: number | undefined
   unit: '元' | '分'
   color: string
@@ -11,6 +12,7 @@ interface BalanceCardProps {
 
 export function BalanceCard({
   label,
+  emoji,
   value,
   unit,
   color,
@@ -38,8 +40,9 @@ export function BalanceCard({
         e.currentTarget.style.transform = 'scale(1)'
       }}
     >
-      <div style={{ fontSize: '13px', color: '#999', marginBottom: '6px' }}>
-        {label}
+      <div style={{ fontSize: '13px', color: '#999', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <span>{emoji}</span>
+        <span>{label}</span>
       </div>
       <div style={{ 
         fontSize: unit === '元' ? '24px' : '22px', 

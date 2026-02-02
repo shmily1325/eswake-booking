@@ -30,10 +30,15 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   const { isMobile } = useResponsive()
   const toast = useToast()
   const [loading, setLoading] = useState(false)
-  const [allMembers, setAllMembers] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
   const [boardSlots, setBoardSlots] = useState<Array<{id?: number, slot_number: string, start_date: string, expires_at: string}>>([])
   const [addToMemo, setAddToMemo] = useState(true)  // 是否記錄到備忘錄
   const [memoText, setMemoText] = useState('')  // 自訂備忘錄內容
+  
+  // 配對會員搜尋相關狀態
+  const [partnerSearch, setPartnerSearch] = useState('')
+  const [partnerSearchResults, setPartnerSearchResults] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
+  const [selectedPartner, setSelectedPartner] = useState<{id: string, name: string, nickname: string | null} | null>(null)
+  
   const [formData, setFormData] = useState({
     name: member.name,
     nickname: member.nickname || '',
@@ -45,15 +50,27 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     membership_partner_id: member.membership_partner_id || '',
   })
 
-  // 載入會員列表（用於配對選擇）
-  const loadMembers = async () => {
-    const { data } = await supabase
-      .from('members')
-      .select('id, name, nickname')
-      .eq('status', 'active')
-      .neq('id', member.id)  // 排除自己
-      .order('name')
-    if (data) setAllMembers(data)
+  // 搜尋配對會員
+  const searchPartner = async (query: string) => {
+    if (!query.trim()) {
+      setPartnerSearchResults([])
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('id, name, nickname, phone')
+        .or(`name.ilike.%${query}%,nickname.ilike.%${query}%,phone.ilike.%${query}%`)
+        .eq('status', 'active')
+        .neq('id', member.id)  // 排除自己
+        .limit(10)
+
+      if (error) throw error
+      setPartnerSearchResults(data || [])
+    } catch (error) {
+      console.error('搜尋會員失敗:', error)
+    }
   }
 
   // 載入會員的置板格位
@@ -78,10 +95,12 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     if (!open) {
       // 对话框关闭时重置状态
       setBoardSlots([])
+      setPartnerSearch('')
+      setPartnerSearchResults([])
+      setSelectedPartner(null)
       return
     }
 
-    loadMembers()
     loadBoardSlots()
     
     setFormData({
@@ -98,6 +117,19 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     // 重置備忘錄相關狀態
     setAddToMemo(true)
     setMemoText('')
+    
+    // 如果已有配對會員，載入並設定為選中狀態
+    if (member.membership_partner_id && member.partner) {
+      setSelectedPartner({
+        id: member.partner.id,
+        name: member.partner.name,
+        nickname: member.partner.nickname
+      })
+    } else {
+      setSelectedPartner(null)
+    }
+    setPartnerSearch('')
+    setPartnerSearchResults([])
   }, [member, open])
 
   const inputStyle: React.CSSProperties = {
@@ -511,25 +543,101 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             {formData.membership_type === 'dual' && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#2196F3' }}>
-                  🔗 配對會員
+                  🔗 配對會員 {selectedPartner ? '' : member.partner && <span style={{ fontSize: '13px', color: '#666', fontWeight: 'normal' }}>（目前：{member.partner.nickname || member.partner.name}）</span>}
                 </label>
-                <select
-                  value={formData.membership_partner_id}
-                  onChange={(e) => setFormData({ ...formData, membership_partner_id: e.target.value })}
+                <input
+                  type="text"
+                  value={partnerSearch}
+                  onChange={(e) => {
+                    setPartnerSearch(e.target.value)
+                    searchPartner(e.target.value)
+                  }}
+                  placeholder="搜尋會員姓名/暱稱..."
                   style={inputStyle}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
-                >
-                  <option value="">請選擇配對會員</option>
-                  {allMembers.map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.nickname || m.name}
-                    </option>
-                  ))}
-                </select>
-                {member.partner && (
-                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                    目前配對：{member.partner.nickname || member.partner.name}
+                />
+
+                {/* 搜尋結果 */}
+                {partnerSearchResults.length > 0 && !selectedPartner && (
+                  <div style={{
+                    marginTop: '8px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    background: 'white'
+                  }}>
+                    {partnerSearchResults.map((m) => (
+                      <div
+                        key={m.id}
+                        onClick={() => {
+                          setSelectedPartner(m)
+                          setFormData({ ...formData, membership_partner_id: m.id })
+                          setPartnerSearch('')
+                          setPartnerSearchResults([])
+                        }}
+                        style={{
+                          padding: '10px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #f0f0f0'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                      >
+                        <div style={{ fontWeight: '500' }}>{m.name}</div>
+                        {m.nickname && (
+                          <div style={{ fontSize: '13px', color: '#666' }}>
+                            暱稱：{m.nickname}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 已選擇的配對會員（綠色框） */}
+                {selectedPartner && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '12px',
+                    background: selectedPartner.id === member.membership_partner_id ? '#e3f2fd' : '#e8f5e9',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: '500', color: selectedPartner.id === member.membership_partner_id ? '#1976d2' : '#2e7d32' }}>
+                        {selectedPartner.id === member.membership_partner_id ? '✓ 維持原配對：' : '🔄 更換為：'}{selectedPartner.name}
+                      </div>
+                      {selectedPartner.nickname && (
+                        <div style={{ fontSize: '13px', color: '#666' }}>
+                          暱稱：{selectedPartner.nickname}
+                        </div>
+                      )}
+                      {selectedPartner.id !== member.membership_partner_id && member.partner && (
+                        <div style={{ fontSize: '12px', color: '#e65100', marginTop: '4px' }}>
+                          從「{member.partner.nickname || member.partner.name}」更換
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedPartner(null)
+                        setFormData({ ...formData, membership_partner_id: '' })
+                        setPartnerSearch('')
+                      }}
+                      style={{
+                        padding: '4px 8px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '18px'
+                      }}
+                    >
+                      ✕
+                    </button>
                   </div>
                 )}
               </div>

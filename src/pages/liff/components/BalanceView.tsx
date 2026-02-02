@@ -51,6 +51,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
       }}>
         <BalanceCard
           label="儲值餘額"
+          emoji="💰"
           value={member.balance}
           unit="元"
           color="#52c41a"
@@ -59,6 +60,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
         />
         <BalanceCard
           label="VIP票券"
+          emoji="💎"
           value={member.vip_voucher_amount}
           unit="元"
           color="#9c27b0"
@@ -67,6 +69,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
         />
         <BalanceCard
           label="指定課"
+          emoji="📚"
           value={member.designated_lesson_minutes}
           unit="分"
           color="#ff9800"
@@ -75,6 +78,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
         />
         <BalanceCard
           label="G23船券"
+          emoji="🚤"
           value={member.boat_voucher_g23_minutes}
           unit="分"
           color="#1976d2"
@@ -83,6 +87,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
         />
         <BalanceCard
           label="G21/黑豹"
+          emoji="⛵"
           value={member.boat_voucher_g21_panther_minutes}
           unit="分"
           color="#00acc1"
@@ -91,6 +96,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
         />
         <BalanceCard
           label="贈送大船"
+          emoji="🎁"
           value={member.gift_boat_hours}
           unit="分"
           color="#e91e63"
