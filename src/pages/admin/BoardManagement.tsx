@@ -54,6 +54,11 @@ export function BoardManagement() {
     notes: ''
   })
   
+  // 更換會員相關狀態
+  const [changeMemberSearch, setChangeMemberSearch] = useState('')
+  const [changeMemberResults, setChangeMemberResults] = useState<MemberBasic[]>([])
+  const [newMemberForChange, setNewMemberForChange] = useState<MemberBasic | null>(null)
+  
   // 新增置板相關狀態
   const [isAddingBoard, setIsAddingBoard] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
@@ -314,6 +319,9 @@ export function BoardManagement() {
     const slot = slotInfo || { slot_number: slotNumber }
     setSelectedSlot(slot)
     setEditing(false)
+    setNewMemberForChange(null)
+    setChangeMemberSearch('')
+    setChangeMemberResults([])
     if (slotInfo) {
       setEditForm({
         start_date: slotInfo.start_date || '',
@@ -328,25 +336,56 @@ export function BoardManagement() {
 
     const oldExpiry = selectedSlot.expires_at
     const newExpiry = editForm.expires_at || null
+    const oldMemberId = selectedSlot.member_id
+    const newMemberId = newMemberForChange?.id || oldMemberId
 
     try {
+      // 更新置板資料
+      const updateData: any = {
+        start_date: editForm.start_date || null,
+        expires_at: newExpiry,
+        notes: editForm.notes.trim() || null,
+      }
+      
+      // 如果有更換會員，也更新 member_id
+      if (newMemberForChange && newMemberId !== oldMemberId) {
+        updateData.member_id = newMemberId
+      }
+
       const { error } = await supabase
         .from('board_storage')
-        .update({
-          start_date: editForm.start_date || null,
-          expires_at: newExpiry,
-          notes: editForm.notes.trim() || null,
-        })
+        .update(updateData)
         .eq('id', selectedSlot.id)
 
       if (error) throw error
 
-      // 如果到期日有變更，新增備忘錄
-      if (selectedSlot.member_id && oldExpiry !== newExpiry && newExpiry) {
-        const today = new Date().toISOString().split('T')[0]
+      const today = new Date().toISOString().split('T')[0]
+
+      // 如果更換了會員，新增備忘錄到兩個會員
+      if (newMemberForChange && newMemberId !== oldMemberId && oldMemberId) {
+        const expiryInfo = newExpiry ? `，至 ${newExpiry}` : ''
+        
+        // @ts-ignore
+        await supabase.from('member_notes').insert([
+          {
+            member_id: oldMemberId,
+            event_date: today,
+            event_type: '備註',
+            description: `移除置板 #${selectedSlot.slot_number}`
+          },
+          {
+            member_id: newMemberId,
+            event_date: today,
+            event_type: '備註',
+            description: `置板開始 #${selectedSlot.slot_number}${expiryInfo}`
+          }
+        ])
+      } 
+      // 如果只是修改到期日（沒有更換會員），且到期日有變更，新增續約備忘錄
+      else if (newMemberId && oldExpiry !== newExpiry && newExpiry) {
         // @ts-ignore
         await supabase.from('member_notes').insert([{
-          member_id: selectedSlot.member_id,
+          member_id: newMemberId,
           event_date: today,
           event_type: '續約置板',
           description: `置板續約 #${selectedSlot.slot_number}，至 ${newExpiry}`
@@ -355,6 +394,9 @@ export function BoardManagement() {
 
       toast.success('已更新')
       setEditing(false)
+      setNewMemberForChange(null)
+      setChangeMemberSearch('')
+      setChangeMemberResults([])
       setSelectedSlot(null)
       loadBoardData()
     } catch (error) {
@@ -424,6 +466,28 @@ export function BoardManagement() {
 
       if (error) throw error
       setSearchResults(data || [])
+    } catch (error) {
+      console.error('搜尋會員失敗:', error)
+    }
+  }
+
+  // 更換會員時的搜尋
+  const searchMembersForChange = async (query: string) => {
+    if (!query.trim()) {
+      setChangeMemberResults([])
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('id, name, nickname, phone')
+        .or(`name.ilike.%${query}%,nickname.ilike.%${query}%,phone.ilike.%${query}%`)
+        .eq('status', 'active')
+        .limit(10)
+
+      if (error) throw error
+      setChangeMemberResults(data || [])
     } catch (error) {
       console.error('搜尋會員失敗:', error)
     }
@@ -842,7 +906,14 @@ export function BoardManagement() {
                 格位 {selectedSlot.slot_number}
               </h2>
               <button
-                onClick={() => setSelectedSlot(null)}
+                onClick={() => {
+                  setSelectedSlot(null)
+                  setEditing(false)
+                  setNewMemberForChange(null)
+                  setChangeMemberSearch('')
+                  setChangeMemberResults([])
+                  setEditForm({ start_date: '', expires_at: '', notes: '' })
+                }}
                 style={{
                   border: 'none',
                   background: 'none',
@@ -859,32 +930,113 @@ export function BoardManagement() {
             <div style={{ padding: '20px' }}>
               {selectedSlot.member_name ? (
                 <>
-                  {/* 會員資訊 */}
-                  <div style={{ 
-                    marginBottom: '20px',
-                    padding: '16px',
-                    background: '#f8f9fa',
-                    borderRadius: '8px'
-                  }}>
-                    <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>會員</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                      {selectedSlot.member_nickname || selectedSlot.member_name}
-                      {selectedSlot.member_nickname && selectedSlot.member_name && (
-                        <span style={{ 
-                          fontSize: '14px', 
-                          color: '#666', 
-                          marginLeft: '8px',
-                          fontWeight: 'normal'
-                        }}>
-                          ({selectedSlot.member_name})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
                   {/* 編輯模式 */}
                   {editing ? (
                     <>
+                      {/* 會員選擇（編輯模式） */}
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                          會員 {newMemberForChange ? '' : <span style={{ fontSize: '13px', color: '#666' }}>（目前：{selectedSlot.member_nickname || selectedSlot.member_name}）</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={changeMemberSearch}
+                          onChange={(e) => {
+                            setChangeMemberSearch(e.target.value)
+                            searchMembersForChange(e.target.value)
+                          }}
+                          placeholder="搜尋會員姓名/暱稱..."
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                          }}
+                        />
+
+                        {/* 搜尋結果 */}
+                        {changeMemberResults.length > 0 && !newMemberForChange && (
+                          <div style={{
+                            marginTop: '8px',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            background: 'white'
+                          }}>
+                            {changeMemberResults.map((member) => (
+                              <div
+                                key={member.id}
+                                onClick={() => {
+                                  setNewMemberForChange(member)
+                                  setChangeMemberSearch('')
+                                  setChangeMemberResults([])
+                                }}
+                                style={{
+                                  padding: '10px',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid #f0f0f0'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                              >
+                                <div style={{ fontWeight: '500' }}>{member.name}</div>
+                                {member.nickname && (
+                                  <div style={{ fontSize: '13px', color: '#666' }}>
+                                    暱稱：{member.nickname}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 已選擇的新會員（綠色框） */}
+                        {newMemberForChange && (
+                          <div style={{
+                            marginTop: '8px',
+                            padding: '12px',
+                            background: newMemberForChange.id === selectedSlot.member_id ? '#e3f2fd' : '#e8f5e9',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <div>
+                              <div style={{ fontWeight: '500', color: newMemberForChange.id === selectedSlot.member_id ? '#1976d2' : '#2e7d32' }}>
+                                {newMemberForChange.id === selectedSlot.member_id ? '✓ 維持原會員：' : '🔄 更換為：'}{newMemberForChange.name}
+                              </div>
+                              {newMemberForChange.nickname && (
+                                <div style={{ fontSize: '13px', color: '#666' }}>
+                                  暱稱：{newMemberForChange.nickname}
+                                </div>
+                              )}
+                              {newMemberForChange.id !== selectedSlot.member_id && (
+                                <div style={{ fontSize: '12px', color: '#e65100', marginTop: '4px' }}>
+                                  從「{selectedSlot.member_nickname || selectedSlot.member_name}」轉移
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => {
+                                setNewMemberForChange(null)
+                                setChangeMemberSearch('')
+                              }}
+                              style={{
+                                padding: '4px 8px',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '18px'
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       {/* 開始日 */}
                       <div style={{ marginBottom: '16px' }}>
                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
@@ -971,7 +1123,12 @@ export function BoardManagement() {
                       {/* 編輯按鈕 */}
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <button
-                          onClick={() => setEditing(false)}
+                          onClick={() => {
+                            setEditing(false)
+                            setNewMemberForChange(null)
+                            setChangeMemberSearch('')
+                            setChangeMemberResults([])
+                          }}
                           style={{
                             flex: 1,
                             padding: '10px',
@@ -1005,7 +1162,30 @@ export function BoardManagement() {
                     </>
                   ) : (
                     <>
-                      {/* 檢視模式 */}
+                      {/* 會員資訊（檢視模式） */}
+                      <div style={{ 
+                        marginBottom: '20px',
+                        padding: '16px',
+                        background: '#f8f9fa',
+                        borderRadius: '8px'
+                      }}>
+                        <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>會員</div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+                          {selectedSlot.member_nickname || selectedSlot.member_name}
+                          {selectedSlot.member_nickname && selectedSlot.member_name && (
+                            <span style={{ 
+                              fontSize: '14px', 
+                              color: '#666', 
+                              marginLeft: '8px',
+                              fontWeight: 'normal'
+                            }}>
+                              ({selectedSlot.member_name})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 檢視模式其他資訊 */}
                       {selectedSlot.expires_at && (
                         <div style={{ marginBottom: '16px' }}>
                           <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>到期日</div>
