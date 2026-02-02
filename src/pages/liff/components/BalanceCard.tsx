@@ -4,6 +4,7 @@ interface BalanceCardProps {
   label: string
   value: number | undefined
   unit: '元' | '分'
+  color: string
   category: string
   onClick: (category: string) => void
 }
@@ -12,6 +13,7 @@ export function BalanceCard({
   label,
   value,
   unit,
+  color,
   category,
   onClick
 }: BalanceCardProps) {
@@ -25,7 +27,7 @@ export function BalanceCard({
         background: 'white',
         borderRadius: '8px',
         padding: '16px',
-        border: `1px solid #e0e0e0`,
+        border: `2px solid ${color}15`,
         cursor: 'pointer',
         transition: 'all 0.2s'
       }}
@@ -42,7 +44,7 @@ export function BalanceCard({
       <div style={{ 
         fontSize: unit === '元' ? '24px' : '22px', 
         fontWeight: '700', 
-        color: '#333'
+        color
       }}>
         {formattedValue}
       </div>

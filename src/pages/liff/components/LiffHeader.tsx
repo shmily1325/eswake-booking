@@ -35,7 +35,7 @@ export function LiffHeader({ member, refreshing, onRefresh }: LiffHeaderProps) {
             onClick={onRefresh}
             disabled={refreshing}
             style={{
-              background: 'rgba(255,255,255,0.15)',
+              background: 'rgba(255,255,255,0.2)',
               border: 'none',
               borderRadius: '50%',
               width: '36px',
@@ -47,22 +47,13 @@ export function LiffHeader({ member, refreshing, onRefresh }: LiffHeaderProps) {
               transition: 'all 0.2s'
             }}
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{
-                display: 'inline-block',
-                animation: refreshing ? 'spin 1s linear infinite' : 'none'
-              }}
-            >
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-            </svg>
+            <span style={{
+              fontSize: '18px',
+              display: 'inline-block',
+              animation: refreshing ? 'spin 1s linear infinite' : 'none'
+            }}>
+              🔄
+            </span>
           </button>
           <img 
             src="/logo_circle (white).png" 

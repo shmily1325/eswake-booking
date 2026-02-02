@@ -20,21 +20,27 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
         fontSize: '18px',
         fontWeight: '600',
         color: '#333',
-        marginBottom: '20px'
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px'
       }}>
-        我的儲值
+        💰 我的儲值
       </h2>
 
       {/* 提示 */}
       <div style={{
         padding: '10px 12px',
-        background: '#f5f5f5',
+        background: '#f0f7ff',
         borderRadius: '6px',
         marginBottom: '12px',
         fontSize: '13px',
-        color: '#666'
+        color: '#666',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px'
       }}>
-        點擊任一項目查看兩個月內的交易明細
+        💡 點擊任一項目查看兩個月內的交易明細
       </div>
 
       {/* 儲值數據 */}
@@ -47,6 +53,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
           label="儲值餘額"
           value={member.balance}
           unit="元"
+          color="#52c41a"
           category="balance"
           onClick={onCategoryClick}
         />
@@ -54,6 +61,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
           label="VIP票券"
           value={member.vip_voucher_amount}
           unit="元"
+          color="#9c27b0"
           category="vip_voucher"
           onClick={onCategoryClick}
         />
@@ -61,6 +69,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
           label="指定課"
           value={member.designated_lesson_minutes}
           unit="分"
+          color="#ff9800"
           category="designated_lesson"
           onClick={onCategoryClick}
         />
@@ -68,6 +77,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
           label="G23船券"
           value={member.boat_voucher_g23_minutes}
           unit="分"
+          color="#1976d2"
           category="boat_voucher_g23"
           onClick={onCategoryClick}
         />
@@ -75,6 +85,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
           label="G21/黑豹"
           value={member.boat_voucher_g21_panther_minutes}
           unit="分"
+          color="#00acc1"
           category="boat_voucher_g21_panther"
           onClick={onCategoryClick}
         />
@@ -82,6 +93,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
           label="贈送大船"
           value={member.gift_boat_hours}
           unit="分"
+          color="#e91e63"
           category="gift_boat"
           onClick={onCategoryClick}
         />

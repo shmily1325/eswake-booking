@@ -36,9 +36,12 @@ export function BookingCard({
         fontSize: '16px',
         fontWeight: '600',
         color: '#333',
-        marginBottom: '12px'
+        marginBottom: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px'
       }}>
-        {formatDate(booking.start_at)}
+        📅 {formatDate(booking.start_at)}
       </div>
       
       {/* 抵達時間 & 下水時間 */}
@@ -47,19 +50,19 @@ export function BookingCard({
         gap: '16px',
         marginBottom: '12px',
         padding: '12px',
-        background: '#fafafa',
+        background: '#f0f5ff',
         borderRadius: '8px'
       }}>
         {isFirstOfDay && (
           <div>
-            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>抵達時間</div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: '#333' }}>
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>抵達時間</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: '#1976d2' }}>
               {getArrivalTime(booking.start_at)}
             </div>
           </div>
         )}
-        <div style={isFirstOfDay ? { borderLeft: '1px solid #e0e0e0', paddingLeft: '16px' } : {}}>
-          <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>下水時間</div>
+        <div style={isFirstOfDay ? { borderLeft: '1px solid #d0d0d0', paddingLeft: '16px' } : {}}>
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>下水時間</div>
           <div style={{ fontSize: '20px', fontWeight: '700', color: '#333' }}>
             {getStartTime(booking.start_at)}
           </div>
@@ -119,8 +122,8 @@ export function BookingCard({
               key={idx}
               style={{
                 padding: '4px 10px',
-                background: '#f5f5f5',
-                color: '#666',
+                background: '#e8f4fd',
+                color: '#1976d2',
                 borderRadius: '12px',
                 fontSize: '12px'
               }}
