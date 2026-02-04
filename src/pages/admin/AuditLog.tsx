@@ -27,6 +27,7 @@ interface ParsedDetails {
   changeSummary?: string  // 修改預約的變更摘要
   bookingDate?: string    // 預約日期 (MM/DD 格式)
   bookingList?: string[]  // 批次操作中的預約列表
+  totalCount?: number     // 批次操作的真實總筆數（從 "8 筆" 中提取）
   notes?: string          // 預約的原始備註
   activityTypes?: string  // 活動類型
   rawText: string
@@ -48,7 +49,10 @@ function parseDetails(details: string): ParsedDetails {
   if (isBatchEdit || isBatchDelete || isRepeat) {
     // 提取筆數
     const countMatch = details.match(/(\d+)\s*筆/)
-    if (countMatch) info.member = `${countMatch[1]}筆`
+    if (countMatch) {
+      info.member = `${countMatch[1]}筆`
+      info.totalCount = parseInt(countMatch[1], 10)  // ✅ 保存真實總筆數
+    }
     
     // 新格式：
     // 批次修改 3 筆：時長→90分鐘 [Ming (04/03 08:30), John (04/03 09:00)] (填表人: Ming)
@@ -92,10 +96,13 @@ function parseDetails(details: string): ParsedDetails {
     if (allBrackets && allBrackets.length > 0) {
       // 最後一個方括號通常是時間列表
       const lastBracket = allBrackets[allBrackets.length - 1]
-      const listStr = lastBracket.slice(1, -1).trim()
+      let listStr = lastBracket.slice(1, -1).trim()
       
       // 檢查是否為時間列表（包含時間格式）
       if (/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}/.test(listStr) || /\d{1,2}\/\d{1,2}/.test(listStr)) {
+        // ✅ 移除 "等X筆" 這樣的後綴文字（如：05/09 08:30, 05/16 08:30 等8筆）
+        listStr = listStr.replace(/\s*等\d+筆\s*$/, '').trim()
+        
         // 解析每筆預約：Ming (04/03 08:30), John (04/03 09:00) 或 04/03 10:00, 04/04 10:00
         info.bookingList = listStr.split(/,\s*/).map(s => s.trim()).filter(Boolean)
         
@@ -1185,7 +1192,9 @@ export function AuditLog() {
                           return item.substring(0, 15)
                         })
                         const previewText = previews.join(', ')
-                        const moreText = parsed.bookingList.length > 2 ? ` +${parsed.bookingList.length - 2}` : ''
+                        // ✅ 使用真實總筆數計算剩餘數量（如果有的話）
+                        const totalCount = parsed.totalCount || parsed.bookingList.length
+                        const moreText = totalCount > 2 ? ` +${totalCount - 2}` : ''
                         parts.push(`[${previewText}${moreText}]`)
                       }
                       
@@ -1482,7 +1491,12 @@ export function AuditLog() {
                                   marginBottom: '8px',
                                   fontWeight: '600',
                                 }}>
-                                  📋 涉及的預約（{parsed.bookingList.length} 筆）：
+                                  {/* ✅ 如果有真實總筆數且與顯示筆數不同，則標註 */}
+                                  {parsed.totalCount && parsed.totalCount > parsed.bookingList.length ? (
+                                    <>📋 涉及的預約（顯示 {parsed.bookingList.length} 筆，共 {parsed.totalCount} 筆）：</>
+                                  ) : (
+                                    <>📋 涉及的預約（{parsed.bookingList.length} 筆）：</>
+                                  )}
                                 </div>
                                 <div style={{ 
                                   display: 'flex', 
