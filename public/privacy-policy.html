@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隱私權政策 - ESWake Booking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', Arial, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #1a73e8;
+            font-size: 32px;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #1a73e8;
+            padding-bottom: 15px;
+        }
+        
+        .update-date {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            color: #1a73e8;
+            font-size: 24px;
+            margin-top: 35px;
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 4px solid #1a73e8;
+        }
+        
+        h3 {
+            color: #333;
+            font-size: 18px;
+            margin-top: 25px;
+            margin-bottom: 12px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        .highlight {
+            background: #e8f0fe;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #1a73e8;
+        }
+        
+        .contact {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .contact strong {
+            color: #1a73e8;
+        }
+        
+        a {
+            color: #1a73e8;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>隱私權政策</h1>
+        <p class="update-date">最後更新日期：2026年2月4日</p>
+        
+        <div class="highlight">
+            <p><strong>ESWake Booking</strong>（以下簡稱「本系統」）致力於保護您的隱私。本隱私權政策說明我們如何收集、使用、儲存和保護您的個人資訊。</p>
+        </div>
+
+        <h2>1. 服務說明</h2>
+        <p>ESWake Booking 是一個預約管理系統，提供以下服務：</p>
+        <ul>
+            <li>會員管理與預約功能</li>
+            <li>教練與船隻排程管理</li>
+            <li>財務交易記錄</li>
+            <li>系統資料自動備份</li>
+        </ul>
+
+        <h2>2. 我們收集的資訊</h2>
+        
+        <h3>2.1 會員資訊</h3>
+        <p>為了提供預約服務，我們可能收集以下資訊：</p>
+        <ul>
+            <li>基本資料：姓名、聯絡電話、電子郵件地址</li>
+            <li>預約記錄：預約時間、參與活動、使用的船隻和教練</li>
+            <li>財務資訊：交易記錄、帳戶餘額（不包含信用卡號碼或銀行帳號）</li>
+            <li>系統使用記錄：登入時間、操作日誌</li>
+        </ul>
+
+        <h3>2.2 管理員資訊</h3>
+        <p>系統管理員和工作人員的身份驗證資訊，包括登入憑證和權限設定。</p>
+
+        <h2>3. Google Drive API 使用說明</h2>
+        <div class="highlight">
+            <p><strong>重要說明：</strong>本系統使用 Google Drive API 僅用於以下目的：</p>
+        </div>
+        
+        <h3>3.1 使用目的</h3>
+        <ul>
+            <li><strong>自動備份：</strong>系統每日自動將資料庫備份檔案（SQL 格式）上傳至指定的 Google Drive 資料夾</li>
+            <li><strong>資料安全：</strong>確保系統資料有完整的備份，防止資料遺失</li>
+            <li><strong>災難復原：</strong>在系統故障時能夠快速恢復資料</li>
+        </ul>
+
+        <h3>3.2 存取範圍</h3>
+        <ul>
+            <li>本系統僅存取您授權的特定 Google Drive 資料夾</li>
+            <li>我們<strong>不會</strong>讀取、修改或刪除您的其他 Google Drive 檔案</li>
+            <li>我們<strong>不會</strong>與第三方分享您的 Google Drive 資料</li>
+            <li>備份檔案僅包含系統運營所需的業務資料（會員、預約、交易記錄等）</li>
+        </ul>
+
+        <h3>3.3 權限聲明</h3>
+        <p>我們請求的 Google Drive 權限（<code>https://www.googleapis.com/auth/drive.file</code>）允許系統：</p>
+        <ul>
+            <li>在您的 Google Drive 中建立和管理由本系統建立的備份檔案</li>
+            <li>自動刪除超過 90 天的舊備份檔案以節省儲存空間</li>
+        </ul>
+
+        <h2>4. 資訊使用方式</h2>
+        <p>我們使用收集的資訊用於：</p>
+        <ul>
+            <li><strong>提供服務：</strong>處理預約、管理排程、記錄交易</li>
+            <li><strong>系統維護：</strong>進行資料備份、系統監控、故障排除</li>
+            <li><strong>改善服務：</strong>分析使用情況以優化系統功能</li>
+            <li><strong>通知與溝通：</strong>發送預約提醒、系統公告（如有啟用 LINE 通知功能）</li>
+        </ul>
+
+        <h2>5. 資料保護措施</h2>
+        <p>我們採取多項安全措施保護您的資料：</p>
+        <ul>
+            <li><strong>加密傳輸：</strong>所有資料傳輸均使用 HTTPS 加密</li>
+            <li><strong>存取控制：</strong>採用角色權限管理，僅授權人員可存取敏感資料</li>
+            <li><strong>定期備份：</strong>每日自動備份至 Google Drive，保留 90 天</li>
+            <li><strong>審計日誌：</strong>記錄所有重要操作，確保可追溯性</li>
+            <li><strong>安全基礎設施：</strong>使用 Supabase 作為資料庫服務，提供企業級安全保護</li>
+        </ul>
+
+        <h2>6. 資料保留與刪除</h2>
+        <ul>
+            <li><strong>預約記錄：</strong>保留以供歷史查詢和統計分析</li>
+            <li><strong>財務記錄：</strong>依據法律規定保留必要期限</li>
+            <li><strong>備份檔案：</strong>自動刪除超過 90 天的舊備份</li>
+            <li><strong>帳號刪除：</strong>如您要求刪除帳號，我們將在 30 天內移除您的個人資料（法律要求保留的資料除外）</li>
+        </ul>
+
+        <h2>7. 第三方服務</h2>
+        <p>本系統使用以下第三方服務：</p>
+        <ul>
+            <li><strong>Supabase：</strong>提供資料庫和認證服務（<a href="https://supabase.com/privacy" target="_blank">隱私權政策</a>）</li>
+            <li><strong>Google Drive API：</strong>提供雲端備份儲存（<a href="https://policies.google.com/privacy" target="_blank">隱私權政策</a>）</li>
+            <li><strong>Vercel：</strong>提供網站託管服務（<a href="https://vercel.com/legal/privacy-policy" target="_blank">隱私權政策</a>）</li>
+            <li><strong>LINE LIFF：</strong>提供 LINE 整合功能（如有使用）（<a href="https://line.me/en/terms/policy/" target="_blank">隱私權政策</a>）</li>
+        </ul>
+
+        <h2>8. 您的權利</h2>
+        <p>根據個人資料保護法，您擁有以下權利：</p>
+        <ul>
+            <li><strong>查詢權：</strong>查詢您的個人資料</li>
+            <li><strong>更正權：</strong>要求更正不正確的資料</li>
+            <li><strong>刪除權：</strong>要求刪除您的個人資料</li>
+            <li><strong>暫停處理權：</strong>要求停止處理您的資料</li>
+            <li><strong>資料可攜權：</strong>要求取得您的資料副本</li>
+        </ul>
+        <p>如需行使上述權利，請透過下方聯絡方式與我們聯繫。</p>
+
+        <h2>9. Cookie 和追蹤技術</h2>
+        <p>本系統使用 Cookie 和本地儲存（Local Storage）來：</p>
+        <ul>
+            <li>維持登入狀態</li>
+            <li>記住使用者偏好設定</li>
+            <li>分析系統使用情況</li>
+        </ul>
+        <p>您可以透過瀏覽器設定管理或清除 Cookie。</p>
+
+        <h2>10. 兒童隱私</h2>
+        <p>本服務不針對 13 歲以下兒童。如果您是家長並發現您的孩子在未經許可的情況下提供了個人資訊，請聯繫我們，我們將立即刪除相關資訊。</p>
+
+        <h2>11. 隱私權政策更新</h2>
+        <p>我們可能會不定期更新本隱私權政策。任何重大變更將會在系統中公告，並更新本頁面的「最後更新日期」。建議您定期查看本政策。</p>
+
+        <h2>12. 適用法律</h2>
+        <p>本隱私權政策受中華民國法律管轄，並依據個人資料保護法制定。</p>
+
+        <div class="contact">
+            <h2 style="margin-top: 0;">13. 聯絡我們</h2>
+            <p>如果您對本隱私權政策有任何疑問、意見或要求，請透過以下方式聯繫我們：</p>
+            <p>
+                <strong>電子郵件：</strong> <a href="mailto:minlin1325@gmail.com">minlin1325@gmail.com</a><br>
+                <strong>服務名稱：</strong> ESWake Booking 預約系統<br>
+                <strong>網站：</strong> <a href="https://eswake-booking.vercel.app" target="_blank">https://eswake-booking.vercel.app</a>
+            </p>
+            <p>我們將在收到您的請求後 30 天內回覆。</p>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 ESWake Booking. All rights reserved.</p>
+            <p>本隱私權政策符合 Google API 服務使用者資料政策要求</p>
+        </div>
+    </div>
+</body>
+</html>
