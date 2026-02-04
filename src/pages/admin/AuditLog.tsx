@@ -157,7 +157,11 @@ function parseDetails(details: string): ParsedDetails {
       .replace(/\d+\s*分/, '')
       .trim()
     
+    // 移除填表人和課堂人資訊
     text = text.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
+    
+    // ✅ 移除活動類型和備註（方括號內容），因為已經在前面提取過了
+    text = text.replace(/\s*\[[^\]]+\]\s*/g, '').trim()
     
     const pipeIndex = text.indexOf(' | ')
     if (pipeIndex > 0) {
