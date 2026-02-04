@@ -121,9 +121,12 @@ export function StaffManagement() {
     loadData()
   }, [])
 
-  // 格式化日期為 MM/DD
-  const formatShortDate = (dateStr: string): string => {
-    const [, month, day] = dateStr.split('-')
+  // 格式化日期為 MM/DD 或 YYYY/MM/DD（跨年時）
+  const formatShortDate = (dateStr: string, showYear: boolean = false): string => {
+    const [year, month, day] = dateStr.split('-')
+    if (showYear) {
+      return `${year}/${parseInt(month)}/${parseInt(day)}`
+    }
     return `${parseInt(month)}/${parseInt(day)}`
   }
 
@@ -170,8 +173,13 @@ export function StaffManagement() {
     const first = group[0]
     const last = group[group.length - 1]
     
-    const startStr = formatShortDate(first.start_date)
-    const endStr = formatShortDate(last.end_date)
+    // 檢查是否跨年
+    const startYear = first.start_date.split('-')[0]
+    const endYear = last.end_date.split('-')[0]
+    const isCrossYear = startYear !== endYear
+    
+    const startStr = formatShortDate(first.start_date, isCrossYear)
+    const endStr = formatShortDate(last.end_date, isCrossYear)
     
     let displayText = startStr === endStr ? startStr : `${startStr} - ${endStr}`
     
