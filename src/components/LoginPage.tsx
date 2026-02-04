@@ -101,9 +101,19 @@ export function LoginPage() {
           {loading ? '登入中...' : '使用 Google 登入'}
         </button>
 
-        <p className="mt-5 text-xs text-gray-400">
-          登入即表示您同意我們的服務條款
-        </p>
+        <div className="mt-5 text-xs text-gray-500 space-y-1">
+          <p>登入即表示您同意我們的服務條款</p>
+          <p>
+            <a 
+              href="/privacy-policy.html" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              隱私權政策
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   )
