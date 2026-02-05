@@ -37,7 +37,7 @@ export function wrapWithErrorReport<T>(
     console.groupEnd()
     
     // 如果是 "Cannot read properties of null" 錯誤，提供額外資訊
-    if ((error as Error).message.includes('Cannot read properties of null')) {
+    if ((error as Error).message && (error as Error).message.includes('Cannot read properties of null')) {
       console.error('⚠️ NULL ACCESS DETECTED!')
       console.log('Attempting to access property on null/undefined')
       console.trace('Full trace')
