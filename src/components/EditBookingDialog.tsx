@@ -654,7 +654,37 @@ export function EditBookingDialog({
       // 用戶確認後才開始 loading
       setLoading(true)
 
+      // 🔥 關鍵修復：在刪除之前先查詢完整的預約資料，確保不遺漏任何欄位
+      // 因為從 React 狀態傳來的 booking 物件可能不完整（coaches 可能未載入）
+      console.log('查詢完整預約資料...')
+      const { data: completeBooking, error: queryError } = await supabase
+        .from('bookings')
+        .select('*, boats:boat_id(name)')
+        .eq('id', booking.id)
+        .single()
+      
+      if (queryError) {
+        console.error('查詢預約資料失敗:', queryError)
+        setError('查詢預約資料失敗')
+        setLoading(false)
+        setIsDeleting(false)
+        return
+      }
+      
+      // 查詢教練和駕駛
+      const [coachesData, driversData] = await Promise.all([
+        supabase
+          .from('booking_coaches')
+          .select('coaches:coach_id(name)')
+          .eq('booking_id', booking.id),
+        supabase
+          .from('booking_drivers')
+          .select('coaches:driver_id(name)')
+          .eq('booking_id', booking.id)
+      ])
+
       // 刪除預約（CASCADE 會自動刪除相關記錄）
+      console.log('執行刪除...')
       const { error: deleteError } = await supabase
         .from('bookings')
         .delete()
@@ -669,26 +699,6 @@ export function EditBookingDialog({
       }
 
       console.log('刪除成功，記錄審計日誌...')
-      
-      // 🔥 關鍵修復：重新查詢完整的預約資料，確保不遺漏任何欄位
-      // 因為從 React 狀態傳來的 booking 物件可能不完整（coaches 可能未載入）
-      const { data: completeBooking } = await supabase
-        .from('bookings')
-        .select('*, boats:boat_id(name)')
-        .eq('id', booking.id)
-        .single()
-      
-      // 查詢教練和駕駛
-      const [coachesData, driversData] = await Promise.all([
-        supabase
-          .from('booking_coaches')
-          .select('coaches:coach_id(name)')
-          .eq('booking_id', booking.id),
-        supabase
-          .from('booking_drivers')
-          .select('coaches:driver_id(name)')
-          .eq('booking_id', booking.id)
-      ])
       
       // 記錄到審計日誌（使用表單中重新填寫的填表人）
       await logBookingDeletion({
