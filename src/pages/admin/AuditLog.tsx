@@ -123,8 +123,15 @@ function parseDetails(details: string): ParsedDetails {
   if (timeMatch) {
     info.time = timeMatch[1]
     // 提取預約日期 (MM/DD 格式)
-    const dateOnlyMatch = timeMatch[1].match(/(\d{1,2}\/\d{1,2})/)
-    if (dateOnlyMatch) info.bookingDate = dateOnlyMatch[1]
+    // 如果是完整日期格式 (YYYY/MM/DD)，提取後面的 MM/DD
+    if (/^\d{4}\//.test(timeMatch[1])) {
+      const dateOnlyMatch = timeMatch[1].match(/\/(\d{1,2}\/\d{1,2})/)
+      if (dateOnlyMatch) info.bookingDate = dateOnlyMatch[1]
+    } else {
+      // 短日期格式 (MM/DD)，直接提取
+      const dateOnlyMatch = timeMatch[1].match(/(\d{1,2}\/\d{1,2})/)
+      if (dateOnlyMatch) info.bookingDate = dateOnlyMatch[1]
+    }
   }
   
   const durationMatch = details.match(/(\d+)\s*分/)
@@ -168,7 +175,9 @@ function parseDetails(details: string): ParsedDetails {
     text = text.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
     
     // ✅ 移除活動類型和備註（方括號內容），因為已經在前面提取過了
-    text = text.replace(/\s*\[[^\]]+\]\s*/g, '').trim()
+    text = text.replace(/\s*\[[^\]]+\]\s*/g, ' ').trim()
+    // 規範化多餘空格
+    text = text.replace(/\s+/g, ' ')
     
     const pipeIndex = text.indexOf(' | ')
     if (pipeIndex > 0) {
@@ -272,7 +281,9 @@ function parseDetails(details: string): ParsedDetails {
       .trim()
     
     // 移除活動類型和備註（已在前面統一處理，包含新舊格式）
-    text = text.replace(/\s*\[[^\]]+\]\s*/g, '').trim()
+    text = text.replace(/\s*\[[^\]]+\]\s*/g, ' ').trim()
+    // 規範化多餘空格
+    text = text.replace(/\s+/g, ' ')
     
     text = text.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
     

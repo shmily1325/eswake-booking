@@ -105,8 +105,16 @@ function parseDetails(details: string): ParsedDetails {
   const timeMatch = details.match(/(\d{4}\/\d{1,2}\/\d{1,2}\s+\d{2}:\d{2}|\d{1,2}\/\d{1,2}\s+\d{2}:\d{2})/)
   if (timeMatch) {
     info.time = timeMatch[1]
-    const dateOnlyMatch = timeMatch[1].match(/(\d{1,2}\/\d{1,2})/)
-    if (dateOnlyMatch) info.bookingDate = dateOnlyMatch[1]
+    // 提取預約日期 (MM/DD 格式)
+    // 如果是完整日期格式 (YYYY/MM/DD)，提取後面的 MM/DD
+    if (/^\d{4}\//.test(timeMatch[1])) {
+      const dateOnlyMatch = timeMatch[1].match(/\/(\d{1,2}\/\d{1,2})/)
+      if (dateOnlyMatch) info.bookingDate = dateOnlyMatch[1]
+    } else {
+      // 短日期格式 (MM/DD)，直接提取
+      const dateOnlyMatch = timeMatch[1].match(/(\d{1,2}\/\d{1,2})/)
+      if (dateOnlyMatch) info.bookingDate = dateOnlyMatch[1]
+    }
   }
   
   const durationMatch = details.match(/(\d+)\s*分/)
@@ -147,7 +155,9 @@ function parseDetails(details: string): ParsedDetails {
     text = text.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
     
     // 移除活動類型和備註（已在前面提取過了）
-    text = text.replace(/\s*\[[^\]]+\]\s*/g, '').trim()
+    text = text.replace(/\s*\[[^\]]+\]\s*/g, ' ').trim()
+    // 規範化多餘空格
+    text = text.replace(/\s+/g, ' ')
     
     const pipeIndex = text.indexOf(' | ')
     if (pipeIndex > 0) {
@@ -240,7 +250,9 @@ function parseDetails(details: string): ParsedDetails {
       .trim()
     
     // 移除活動類型和備註
-    text = text.replace(/\s*\[[^\]]+\]\s*/g, '').trim()
+    text = text.replace(/\s*\[[^\]]+\]\s*/g, ' ').trim()
+    // 規範化多餘空格
+    text = text.replace(/\s+/g, ' ')
     
     text = text.replace(/\s*\([^)]*[填表人課堂][^)]*\)\s*/g, '').trim()
     
@@ -304,9 +316,7 @@ describe('AuditLog parseDetails()', () => {
       const result = parseDetails(details)
       
       expect(result.time).toBe('2025/01/15 10:00')
-      // 從完整日期格式中提取的是 "25/01" (因為正則匹配 \d{1,2}/\d{1,2})
-      // 這是預期行為，因為會先匹配到 "25/01" 而不是 "01/15"
-      expect(result.bookingDate).toBe('25/01')
+      expect(result.bookingDate).toBe('01/15')
       expect(result.duration).toBe('60分')
       expect(result.boat).toBe('G23')
       expect(result.member).toBe('張三')
@@ -339,8 +349,7 @@ describe('AuditLog parseDetails()', () => {
       
       expect(result.activityTypes).toBe('WB+WS')
       expect(result.boat).toBe('G23')
-      // 因為移除活動類型後仍保留管道符號，所以 member 可能包含管道符號
-      expect(result.member).toContain('張三')
+      expect(result.member).toBe('張三')
     })
 
     it('應該解析新格式備註（課堂人）', () => {
