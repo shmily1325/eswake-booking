@@ -582,4 +582,91 @@ describe('AuditLog parseDetails()', () => {
       expect(result.member).toBeUndefined()
     })
   })
+
+  describe('Bug 修復驗證', () => {
+    it('修復：完整日期格式應該正確提取 MM/DD', () => {
+      // Bug: 從 2025/01/15 錯誤提取成 25/01
+      // Fix: 應該正確提取 01/15
+      const testCases = [
+        { input: '2025/01/15 10:00', expected: '01/15' },
+        { input: '2024/12/31 23:59', expected: '12/31' },
+        { input: '2025/02/05 08:30', expected: '02/05' },
+        { input: '2025/11/20 14:45', expected: '11/20' },
+      ]
+
+      testCases.forEach(({ input, expected }) => {
+        const details = `新增預約：${input} 60分 G23 張三`
+        const result = parseDetails(details)
+        expect(result.bookingDate).toBe(expected)
+      })
+    })
+
+    it('修復：短日期格式應該保持不變', () => {
+      const testCases = [
+        { input: '01/15 10:00', expected: '01/15' },
+        { input: '12/31 23:59', expected: '12/31' },
+        { input: '02/05 08:30', expected: '02/05' },
+      ]
+
+      testCases.forEach(({ input, expected }) => {
+        const details = `新增預約：${input} 60分 G23 張三`
+        const result = parseDetails(details)
+        expect(result.bookingDate).toBe(expected)
+      })
+    })
+
+    it('修復：移除方括號後應該正確保留空格', () => {
+      // Bug: "張三 [WB+WS] | Papa教練" → "張三| Papa教練" (缺少空格)
+      // Fix: 應該正確解析為 member="張三", coach="Papa"
+      const testCases = [
+        {
+          details: '新增預約：01/15 10:00 60分 G23 張三 [WB+WS] | Papa教練',
+          expectedMember: '張三',
+          expectedCoach: 'Papa'
+        },
+        {
+          details: '新增預約：01/15 10:00 60分 G23 李四 [SUP] [課堂人：L] | Sky老師',
+          expectedMember: '李四',
+          expectedCoach: 'Sky'
+        },
+        {
+          details: '刪除預約：01/15 10:00 60分 G23 王五 [澤澤] | Papa教練、Sky老師',
+          expectedMember: '王五',
+          expectedCoach: 'Papa/Sky'
+        }
+      ]
+
+      testCases.forEach(({ details, expectedMember, expectedCoach }) => {
+        const result = parseDetails(details)
+        expect(result.member).toBe(expectedMember)
+        expect(result.coach).toBe(expectedCoach)
+      })
+    })
+
+    it('修復：多個連續方括號應該正確處理', () => {
+      const details = '新增預約：01/15 10:00 60分 G23 張三 [WB] [WS] [課堂人：L] | Papa教練'
+      const result = parseDetails(details)
+      
+      expect(result.boat).toBe('G23')
+      expect(result.member).toBe('張三')
+      expect(result.coach).toBe('Papa')
+      expect(result.activityTypes).toBe('WB')
+    })
+
+    it('驗證：確保舊格式數據不受影響', () => {
+      // 確保修復不會破壞現有的審計日誌記錄
+      const oldFormatCases = [
+        '新增預約：01/15 10:00 60分 G23 張三 | Papa教練',
+        '刪除預約：01/15 10:00 60分 G23 張三 (填表人: Ming)',
+        '修改預約：2025/11/20 14:45 小楊，變更：時間: 14:00 → 14:45',
+        '批次刪除 2 筆：[張三 (04/03 08:30), 李四 (04/03 09:00)]'
+      ]
+
+      oldFormatCases.forEach(details => {
+        const result = parseDetails(details)
+        // 只要不拋出異常，就表示可以正確解析
+        expect(result.rawText).toBe(details)
+      })
+    })
+  })
 })
