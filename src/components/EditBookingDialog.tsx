@@ -669,18 +669,39 @@ export function EditBookingDialog({
       }
 
       console.log('刪除成功，記錄審計日誌...')
+      
+      // 🔥 關鍵修復：重新查詢完整的預約資料，確保不遺漏任何欄位
+      // 因為從 React 狀態傳來的 booking 物件可能不完整（coaches 可能未載入）
+      const { data: completeBooking } = await supabase
+        .from('bookings')
+        .select('*, boats:boat_id(name)')
+        .eq('id', booking.id)
+        .single()
+      
+      // 查詢教練和駕駛
+      const [coachesData, driversData] = await Promise.all([
+        supabase
+          .from('booking_coaches')
+          .select('coaches:coach_id(name)')
+          .eq('booking_id', booking.id),
+        supabase
+          .from('booking_drivers')
+          .select('coaches:driver_id(name)')
+          .eq('booking_id', booking.id)
+      ])
+      
       // 記錄到審計日誌（使用表單中重新填寫的填表人）
       await logBookingDeletion({
         userEmail: user.email || '',
-        studentName: booking.contact_name,
-        boatName: booking.boats?.name || '未知',
-        startTime: booking.start_at,
-        durationMin: booking.duration_min,
+        studentName: completeBooking?.contact_name || booking.contact_name,
+        boatName: completeBooking?.boats?.name || booking.boats?.name || '未知',
+        startTime: completeBooking?.start_at || booking.start_at,
+        durationMin: completeBooking?.duration_min || booking.duration_min,
         filledBy: filledBy,  // 使用表單中重新填寫的填表人
-        notes: booking.notes || undefined,  // 保留預約的原始備註
-        coachNames: booking.coaches?.map(c => c.name) || undefined,  // 教練
-        driverNames: booking.drivers?.map(d => d.name) || undefined,  // 駕駛
-        activityTypes: booking.activity_types || undefined  // 活動類型
+        notes: completeBooking?.notes || undefined,  // 保留預約的原始備註
+        coachNames: coachesData.data?.map((c: any) => c.coaches?.name).filter(Boolean) || undefined,  // 教練
+        driverNames: driversData.data?.map((d: any) => d.coaches?.name).filter(Boolean) || undefined,  // 駕駛
+        activityTypes: completeBooking?.activity_types || undefined  // 活動類型
       })
 
       // Success
