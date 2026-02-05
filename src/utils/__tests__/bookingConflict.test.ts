@@ -7,7 +7,11 @@ import {
   checkBoatConflict,
   checkCoachConflict,
   checkDriverConflict,
-  checkCoachesConflictBatch
+  checkCoachesConflictBatch,
+  checkBoatUnavailableFromCache,
+  checkBoatConflictFromCache,
+  checkCoachConflictFromCache,
+  prefetchConflictData
 } from '../bookingConflict'
 import { supabase } from '../../lib/supabase'
 
@@ -547,6 +551,442 @@ describe('bookingConflict.ts - 預約衝突檢測', () => {
 
       expect(result.hasConflict).toBe(false)
       expect(result.conflictCoaches).toHaveLength(0)
+    })
+  })
+
+  describe('批次優化函數', () => {
+    describe('checkBoatUnavailableFromCache', () => {
+      it('✅ 全天停用應該返回不可用', () => {
+        const unavailableRecords = [{
+          boat_id: 1,
+          start_date: '2025-11-24',
+          end_date: '2025-11-24',
+          start_time: null,
+          end_time: null,
+          reason: '維修中'
+        }]
+
+        const result = checkBoatUnavailableFromCache(
+          1, '2025-11-24', '10:00', 60, unavailableRecords
+        )
+
+        expect(result.isUnavailable).toBe(true)
+        expect(result.reason).toBe('維修中')
+      })
+
+      it('✅ 時段停用且衝突應該返回不可用', () => {
+        const unavailableRecords = [{
+          boat_id: 1,
+          start_date: '2025-11-24',
+          end_date: '2025-11-24',
+          start_time: '09:00',
+          end_time: '12:00',
+          reason: '檢查維護'
+        }]
+
+        const result = checkBoatUnavailableFromCache(
+          1, '2025-11-24', '10:00', 60, unavailableRecords
+        )
+
+        expect(result.isUnavailable).toBe(true)
+        expect(result.reason).toBe('檢查維護')
+      })
+
+      it('✅ 時段停用但不衝突應該返回可用', () => {
+        const unavailableRecords = [{
+          boat_id: 1,
+          start_date: '2025-11-24',
+          end_date: '2025-11-24',
+          start_time: '09:00',
+          end_time: '10:00',
+          reason: '檢查維護'
+        }]
+
+        const result = checkBoatUnavailableFromCache(
+          1, '2025-11-24', '10:00', 60, unavailableRecords
+        )
+
+        expect(result.isUnavailable).toBe(false)
+      })
+
+      it('✅ 跨日停用且在範圍內應該返回不可用', () => {
+        const unavailableRecords = [{
+          boat_id: 1,
+          start_date: '2025-11-23',
+          end_date: '2025-11-25',
+          start_time: null,
+          end_time: null,
+          reason: '大維修'
+        }]
+
+        const result = checkBoatUnavailableFromCache(
+          1, '2025-11-24', '10:00', 60, unavailableRecords
+        )
+
+        expect(result.isUnavailable).toBe(true)
+        expect(result.reason).toBe('大維修')
+      })
+
+      it('✅ 不同船隻應該返回可用', () => {
+        const unavailableRecords = [{
+          boat_id: 2,
+          start_date: '2025-11-24',
+          end_date: '2025-11-24',
+          start_time: null,
+          end_time: null,
+          reason: '維修中'
+        }]
+
+        const result = checkBoatUnavailableFromCache(
+          1, '2025-11-24', '10:00', 60, unavailableRecords
+        )
+
+        expect(result.isUnavailable).toBe(false)
+      })
+
+      it('✅ 空記錄應該返回可用', () => {
+        const result = checkBoatUnavailableFromCache(
+          1, '2025-11-24', '10:00', 60, []
+        )
+
+        expect(result.isUnavailable).toBe(false)
+      })
+    })
+
+    describe('checkBoatConflictFromCache', () => {
+      it('✅ 有衝突的預約應該返回衝突', () => {
+        const boatBookings = [{
+          id: 1,
+          boat_id: 1,
+          start_at: '2025-11-24T10:00:00',
+          duration_min: 60,
+          cleanup_minutes: 15,
+          contact_name: '小明'
+        }]
+
+        const result = checkBoatConflictFromCache(
+          1, '2025-11-24', '10:30', 60, false, 999, 'G23', boatBookings
+        )
+
+        expect(result.hasConflict).toBe(true)
+        expect(result.reason).toContain('小明')
+      })
+
+      it('✅ 排除自己的預約不應該衝突', () => {
+        const boatBookings = [{
+          id: 1,
+          boat_id: 1,
+          start_at: '2025-11-24T10:00:00',
+          duration_min: 60,
+          cleanup_minutes: 15,
+          contact_name: '小明'
+        }]
+
+        const result = checkBoatConflictFromCache(
+          1, '2025-11-24', '10:00', 60, false, 1, 'G23', boatBookings
+        )
+
+        expect(result.hasConflict).toBe(false)
+      })
+
+      it('✅ 不同日期的預約不應該衝突', () => {
+        const boatBookings = [{
+          id: 1,
+          boat_id: 1,
+          start_at: '2025-11-23T10:00:00',
+          duration_min: 60,
+          cleanup_minutes: 15,
+          contact_name: '小明'
+        }]
+
+        const result = checkBoatConflictFromCache(
+          1, '2025-11-24', '10:00', 60, false, 999, 'G23', boatBookings
+        )
+
+        expect(result.hasConflict).toBe(false)
+      })
+
+      it('✅ 設施（無清理時間）應該正確檢查', () => {
+        const boatBookings = [{
+          id: 1,
+          boat_id: 1,
+          start_at: '2025-11-24T10:00:00',
+          duration_min: 60,
+          cleanup_minutes: 0,
+          contact_name: '小明'
+        }]
+
+        const result = checkBoatConflictFromCache(
+          1, '2025-11-24', '11:00', 30, true, 999, 'SUP板', boatBookings
+        )
+
+        expect(result.hasConflict).toBe(false)
+      })
+
+      it('✅ 接船時間衝突應該正確偵測', () => {
+        const boatBookings = [{
+          id: 1,
+          boat_id: 1,
+          start_at: '2025-11-24T10:00:00',
+          duration_min: 60,
+          cleanup_minutes: 15,
+          contact_name: '小明'
+        }]
+
+        // 11:00 結束，11:00-11:15 是接船時間
+        const result = checkBoatConflictFromCache(
+          1, '2025-11-24', '11:05', 60, false, 999, 'G23', boatBookings
+        )
+
+        expect(result.hasConflict).toBe(true)
+        expect(result.reason).toContain('接船時間')
+      })
+    })
+
+    describe('checkCoachConflictFromCache', () => {
+      it('✅ 教練有衝突應該返回衝突清單', () => {
+        const coachBookings = [{
+          coach_id: 'coach-1',
+          bookings: {
+            id: 1,
+            start_at: '2025-11-24T10:00:00',
+            duration_min: 60,
+            contact_name: '小明'
+          }
+        }]
+
+        const coachesMap = new Map([
+          ['coach-1', { name: '教練A' }]
+        ])
+
+        const result = checkCoachConflictFromCache(
+          ['coach-1'], '2025-11-24', '10:30', 60, 999,
+          coachBookings, [], coachesMap
+        )
+
+        expect(result.hasConflict).toBe(true)
+        expect(result.conflictCoaches).toHaveLength(1)
+        expect(result.conflictCoaches[0].coachName).toBe('教練A')
+        expect(result.conflictCoaches[0].reason).toContain('小明')
+      })
+
+      it('✅ 駕駛有衝突應該返回衝突清單', () => {
+        const driverBookings = [{
+          driver_id: 'coach-1',
+          bookings: {
+            id: 1,
+            start_at: '2025-11-24T10:00:00',
+            duration_min: 60,
+            contact_name: '小明'
+          }
+        }]
+
+        const coachesMap = new Map([
+          ['coach-1', { name: '教練A' }]
+        ])
+
+        const result = checkCoachConflictFromCache(
+          ['coach-1'], '2025-11-24', '10:30', 60, 999,
+          [], driverBookings, coachesMap
+        )
+
+        expect(result.hasConflict).toBe(true)
+        expect(result.conflictCoaches).toHaveLength(1)
+      })
+
+      it('✅ 排除自己的預約不應該衝突', () => {
+        const coachBookings = [{
+          coach_id: 'coach-1',
+          bookings: {
+            id: 1,
+            start_at: '2025-11-24T10:00:00',
+            duration_min: 60,
+            contact_name: '小明'
+          }
+        }]
+
+        const coachesMap = new Map([
+          ['coach-1', { name: '教練A' }]
+        ])
+
+        const result = checkCoachConflictFromCache(
+          ['coach-1'], '2025-11-24', '10:00', 60, 1,
+          coachBookings, [], coachesMap
+        )
+
+        expect(result.hasConflict).toBe(false)
+      })
+
+      it('✅ 多位教練部分衝突應該返回衝突的教練', () => {
+        const coachBookings = [
+          {
+            coach_id: 'coach-1',
+            bookings: {
+              id: 1,
+              start_at: '2025-11-24T10:00:00',
+              duration_min: 60,
+              contact_name: '小明'
+            }
+          }
+        ]
+
+        const coachesMap = new Map([
+          ['coach-1', { name: '教練A' }],
+          ['coach-2', { name: '教練B' }]
+        ])
+
+        const result = checkCoachConflictFromCache(
+          ['coach-1', 'coach-2'], '2025-11-24', '10:30', 60, 999,
+          coachBookings, [], coachesMap
+        )
+
+        expect(result.hasConflict).toBe(true)
+        expect(result.conflictCoaches).toHaveLength(1)
+        expect(result.conflictCoaches[0].coachId).toBe('coach-1')
+      })
+
+      it('✅ 空教練列表應該返回無衝突', () => {
+        const result = checkCoachConflictFromCache(
+          [], '2025-11-24', '10:00', 60, 999,
+          [], [], new Map()
+        )
+
+        expect(result.hasConflict).toBe(false)
+        expect(result.conflictCoaches).toHaveLength(0)
+      })
+
+      it('✅ 不同日期的預約不應該衝突', () => {
+        const coachBookings = [{
+          coach_id: 'coach-1',
+          bookings: {
+            id: 1,
+            start_at: '2025-11-23T10:00:00',
+            duration_min: 60,
+            contact_name: '小明'
+          }
+        }]
+
+        const coachesMap = new Map([
+          ['coach-1', { name: '教練A' }]
+        ])
+
+        const result = checkCoachConflictFromCache(
+          ['coach-1'], '2025-11-24', '10:00', 60, 999,
+          coachBookings, [], coachesMap
+        )
+
+        expect(result.hasConflict).toBe(false)
+      })
+
+      it('✅ 未知教練應該顯示「未知教練」', () => {
+        const coachBookings = [{
+          coach_id: 'unknown-coach',
+          bookings: {
+            id: 1,
+            start_at: '2025-11-24T10:00:00',
+            duration_min: 60,
+            contact_name: '小明'
+          }
+        }]
+
+        const result = checkCoachConflictFromCache(
+          ['unknown-coach'], '2025-11-24', '10:30', 60, 999,
+          coachBookings, [], new Map()
+        )
+
+        expect(result.hasConflict).toBe(true)
+        expect(result.conflictCoaches[0].coachName).toBe('未知教練')
+      })
+    })
+
+    describe('prefetchConflictData', () => {
+      it('✅ 應該正確查詢所有需要的資料', async () => {
+        const mockBoatUnavailableData = [{ id: 1, reason: '維修' }]
+        const mockBookingsData = [{ id: 1, boat_id: 1 }]
+        const mockCoachBookingsData = [{ coach_id: 'c1' }]
+        const mockDriverBookingsData = [{ driver_id: 'c1' }]
+
+        const mockFrom = vi.fn((table: string) => {
+          if (table === 'boat_unavailable_dates') {
+            return {
+              select: vi.fn(() => ({
+                in: vi.fn(() => ({
+                  eq: vi.fn(() => ({
+                    or: vi.fn(() => Promise.resolve({ data: mockBoatUnavailableData }))
+                  }))
+                }))
+              }))
+            }
+          } else if (table === 'bookings') {
+            return {
+              select: vi.fn(() => ({
+                in: vi.fn(() => ({
+                  or: vi.fn(() => Promise.resolve({ data: mockBookingsData }))
+                }))
+              }))
+            }
+          } else if (table === 'booking_coaches') {
+            return {
+              select: vi.fn(() => ({
+                in: vi.fn(() => ({
+                  gte: vi.fn(() => ({
+                    lte: vi.fn(() => Promise.resolve({ data: mockCoachBookingsData }))
+                  }))
+                }))
+              }))
+            }
+          } else if (table === 'booking_drivers') {
+            return {
+              select: vi.fn(() => ({
+                in: vi.fn(() => ({
+                  gte: vi.fn(() => ({
+                    lte: vi.fn(() => Promise.resolve({ data: mockDriverBookingsData }))
+                  }))
+                }))
+              }))
+            }
+          }
+          return {} as any
+        })
+        vi.mocked(supabase.from).mockImplementation(mockFrom as any)
+
+        const bookings = [{
+          id: 1,
+          dateStr: '2025-11-24',
+          startTime: '10:00',
+          durationMin: 60,
+          boatId: 1,
+          boatName: 'G23',
+          coachIds: ['c1']
+        }]
+
+        const result = await prefetchConflictData(bookings, 2)
+
+        expect(result.unavailableRecords).toEqual(mockBoatUnavailableData)
+        expect(result.boatBookings).toEqual(mockBookingsData)
+        expect(result.coachBookings).toEqual(mockCoachBookingsData)
+        expect(result.driverBookings).toEqual(mockDriverBookingsData)
+      })
+
+      it('✅ 沒有預約時應該返回空資料', async () => {
+        const mockFrom = vi.fn(() => ({
+          select: vi.fn(() => ({
+            in: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                or: vi.fn(() => Promise.resolve({ data: [] }))
+              }))
+            }))
+          }))
+        }))
+        vi.mocked(supabase.from).mockImplementation(mockFrom as any)
+
+        const result = await prefetchConflictData([])
+
+        expect(result.unavailableRecords).toEqual([])
+        expect(result.boatBookings).toEqual([])
+        expect(result.coachBookings).toEqual([])
+        expect(result.driverBookings).toEqual([])
+      })
     })
   })
 })
