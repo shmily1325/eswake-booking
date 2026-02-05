@@ -45,6 +45,7 @@ async function loadAllowedEmails(): Promise<string[]> {
     
     const emails = data?.map(row => row.email) || []
     allowedEmailsCache = [...SUPER_ADMINS, ...emails]
+    cacheTimestamp = Date.now()
     return allowedEmailsCache
   } catch (err) {
     logger.error('Failed to load allowed emails:', err)
@@ -75,6 +76,7 @@ async function loadEditorEmails(): Promise<string[]> {
     
     const emails: string[] = data?.map((row: any) => row.email) || []
     editorEmailsCache = emails
+    cacheTimestamp = Date.now()
     return emails
   } catch (err) {
     logger.error('Failed to load editor emails:', err)
@@ -105,6 +107,7 @@ async function loadViewUsers(): Promise<string[]> {
     
     const emails: string[] = data?.map((row: any) => row.email) || []
     viewUsersCache = emails
+    cacheTimestamp = Date.now()
     return emails
   } catch (err) {
     logger.error('Failed to load view users:', err)

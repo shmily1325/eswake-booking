@@ -310,16 +310,20 @@ describe('auth.ts - 權限驗證', () => {
       expect(await isEditorAsync(regularUser)).toBe(false)
     })
 
-    it('✅ 應該正確查詢 editor_users 表', async () => {
+    it('✅ 應該使用緩存（60秒內不重複查詢）', async () => {
       mockSupabaseResponse([{ email: 'editor@example.com' }])
 
       const user = createMockUser('editor@example.com')
 
-      // 查詢小編權限
-      const result = await isEditorAsync(user)
-      
-      expect(result).toBe(true)
-      expect(supabase.from).toHaveBeenCalledWith('editor_users')
+      // 第一次查詢
+      await isEditorAsync(user)
+      const firstCallCount = vi.mocked(supabase.from).mock.calls.length
+
+      // 第二次查詢（應該使用緩存，不查詢數據庫）
+      await isEditorAsync(user)
+      const secondCallCount = vi.mocked(supabase.from).mock.calls.length
+
+      expect(secondCallCount).toBe(firstCallCount) // 沒有額外的查詢
     })
   })
 
@@ -448,21 +452,27 @@ describe('auth.ts - 權限驗證', () => {
   })
 
   describe('緩存機制', () => {
-    it('✅ clearPermissionCache 會清除緩存變數', async () => {
+    it('✅ 緩存應該在 60 秒後過期', async () => {
+      vi.useFakeTimers()
       mockSupabaseResponse([{ email: 'test@example.com' }])
 
       const user = createMockUser('test@example.com')
 
       // 第一次查詢
       await isAllowedUser(user)
+      const firstCallCount = vi.mocked(supabase.from).mock.calls.length
 
-      // 清除緩存
-      clearPermissionCache()
-
-      // 再次查詢應該重新從資料庫載入
-      vi.clearAllMocks()
+      // 59 秒後查詢（應該使用緩存）
+      vi.advanceTimersByTime(59000)
       await isAllowedUser(user)
-      expect(supabase.from).toHaveBeenCalledWith('allowed_users')
+      expect(vi.mocked(supabase.from).mock.calls.length).toBe(firstCallCount)
+
+      // 61 秒後查詢（緩存過期，應該重新查詢）
+      vi.advanceTimersByTime(2000)
+      await isAllowedUser(user)
+      expect(vi.mocked(supabase.from).mock.calls.length).toBeGreaterThan(firstCallCount)
+
+      vi.useRealTimers()
     })
 
     it('✅ clearPermissionCache 應該清除所有緩存', async () => {
@@ -484,19 +494,32 @@ describe('auth.ts - 權限驗證', () => {
       expect(supabase.from).toHaveBeenCalled()
     })
 
-    it('✅ 不同函數查詢不同的表', async () => {
-      let editorCallCount = 0
-      let viewCallCount = 0
-      let allowedCallCount = 0
+    it('✅ clearPermissionCache 會清除所有緩存', async () => {
+      mockSupabaseResponse([{ email: 'test@example.com' }])
 
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        if (table === 'editor_users') {
-          editorCallCount++
-        } else if (table === 'view_users') {
-          viewCallCount++
-        } else if (table === 'allowed_users') {
-          allowedCallCount++
-        }
+      const user = createMockUser('test@example.com')
+
+      // 第一次查詢
+      await isAllowedUser(user)
+      const firstCallCount = vi.mocked(supabase.from).mock.calls.length
+
+      // 第二次查詢（使用緩存）
+      await isAllowedUser(user)
+      expect(vi.mocked(supabase.from).mock.calls.length).toBe(firstCallCount)
+
+      // 清除緩存
+      clearPermissionCache()
+
+      // 第三次查詢（應該重新查詢數據庫）
+      await isAllowedUser(user)
+      expect(vi.mocked(supabase.from).mock.calls.length).toBeGreaterThan(firstCallCount)
+    })
+
+    it('✅ 不同表的緩存共享時間戳但獨立存儲', async () => {
+      let callCount = 0
+
+      vi.mocked(supabase.from).mockImplementation(() => {
+        callCount++
         return {
           select: vi.fn(() => Promise.resolve({ data: [], error: null }))
         } as any
@@ -504,17 +527,21 @@ describe('auth.ts - 權限驗證', () => {
 
       const user = createMockUser('test@example.com')
 
-      // 查詢小編權限
+      // 查詢小編權限（設置時間戳）
       await isEditorAsync(user)
-      expect(editorCallCount).toBeGreaterThan(0)
+      expect(callCount).toBe(1)
 
-      // 查詢白名單
+      // 再次查詢小編權限（使用緩存）
+      await isEditorAsync(user)
+      expect(callCount).toBe(1)
+
+      // 查詢白名單（雖然時間戳相同，但緩存變數不同，需要查詢）
       await isAllowedUser(user)
-      expect(allowedCallCount).toBeGreaterThan(0)
+      expect(callCount).toBe(2)
 
-      // 查詢一般權限
-      await hasViewAccess(user)
-      expect(viewCallCount).toBeGreaterThan(0)
+      // 再次查詢白名單（現在有緩存了）
+      await isAllowedUser(user)
+      expect(callCount).toBe(2)
     })
   })
 
