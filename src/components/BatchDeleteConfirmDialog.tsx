@@ -168,19 +168,31 @@ export function BatchDeleteConfirmDialog({
             const totalCoaches = new Set<string>()
             const totalDrivers = new Set<string>()
             const totalActivities = new Set<string>()
-            let hasNotes = false
+            const allNotes: string[] = []
             
             bookingsData?.forEach((b: any) => {
               coachesMap.get(b.id)?.forEach(c => totalCoaches.add(c))
               driversMap.get(b.id)?.forEach(d => totalDrivers.add(d))
               b.activity_types?.forEach((a: string) => totalActivities.add(a))
-              if (b.notes) hasNotes = true
+              if (b.notes && b.notes.trim()) {
+                // 記錄每筆預約的備註（帶上預約標識）
+                const member = b.members as any
+                const name = member?.nickname || member?.name || '未知'
+                const noteText = b.notes.length > 30 ? b.notes.substring(0, 30) + '...' : b.notes
+                allNotes.push(`${name}:[${noteText}]`)
+              }
             })
             
             if (totalCoaches.size > 0) infoItems.push(`教練:${Array.from(totalCoaches).join('、')}`)
             if (totalDrivers.size > 0) infoItems.push(`駕駛:${Array.from(totalDrivers).join('、')}`)
             if (totalActivities.size > 0) infoItems.push(`活動:${Array.from(totalActivities).join('+')}`)
-            if (hasNotes) infoItems.push('含備註')
+            if (allNotes.length > 0) {
+              // 如果備註太多，只顯示前3筆
+              const notesDisplay = allNotes.length <= 3 
+                ? allNotes.join('、')
+                : `${allNotes.slice(0, 3).join('、')} 等${allNotes.length}筆備註`
+              infoItems.push(`備註:${notesDisplay}`)
+            }
             
             if (infoItems.length > 0) {
               details += ` (${infoItems.join('、')})`

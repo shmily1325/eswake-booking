@@ -1210,12 +1210,17 @@ export function AuditLog() {
                       return parts.join(' · ')
                     }
                     
-                    // 一般預約：顯示預約時間 + 船隻 + 會員
+                    // 一般預約：顯示預約時間 + 船隻 + 會員 + 備註預覽
                     const parts: string[] = []
                     if (parsed.time) parts.push(parsed.time)  // 預約日期時間
                     if (parsed.boat) parts.push(parsed.boat)
                     if (parsed.member) parts.push(parsed.member)
                     if (parsed.coach) parts.push(parsed.coach + '教練')
+                    // 如果是刪除操作且有備註，在摘要中顯示備註預覽
+                    if (log.action === 'delete' && parsed.notes) {
+                      const notePreview = parsed.notes.length > 15 ? parsed.notes.substring(0, 15) + '...' : parsed.notes
+                      parts.push(`[${notePreview}]`)
+                    }
                     return parts.join(' · ') || getOperationText(log.action, log.table_name || '', log.details || '')
                   })()
                   
