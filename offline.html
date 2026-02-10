@@ -1340,12 +1340,14 @@
         function handleMenuClick(action) {
             if (action === 'coach-daily') {
                 showCoachDailyView();
-            } else if (action === 'bao') {
-                showBaoHub();
             } else if (action === 'day') {
                 showDayView();
+            } else if (action === 'search') {
+                showSearchBookings();
+            } else if (action === 'bao') {
+                showBaoHub();
             } else {
-                alert(`功能「${action}」正在開發中\n\n此為離線版本，目前僅提供資料庫載入和今日預約功能。\n完整功能請使用線上版本。`);
+                alert(`功能「${action}」正在開發中\n\n此為離線版本，目前僅提供資料庫載入、今日預約與基本預約查詢功能。\n完整功能請使用線上版本。`);
             }
         }
         
@@ -2021,6 +2023,785 @@
         function handleCoachFilterChange(coachId) {
             selectedCoachId = coachId;
             loadAndDisplayBookings(currentDate);
+        }
+
+        // ==================== 預約查詢（參考線上版 SearchBookings） ====================
+
+        // 預約查詢目前選中的分頁：member | boat | coach
+        let searchActiveTab = 'member';
+        let searchHasSearched = false;
+        let currentSearchBookings = [];
+
+        // 日期時間格式化（與線上版邏輯一致，避免時區誤差）
+        function formatBookingDateTime(isoString) {
+            if (!isoString) return '';
+            const datetime = isoString.substring(0, 16); // "2025-11-01T13:55"
+            const parts = datetime.split('T');
+            if (parts.length !== 2) return isoString;
+            const dateStr = parts[0];
+            const timeStr = parts[1];
+            const ymd = dateStr.split('-');
+            if (ymd.length !== 3) return isoString;
+            const year = ymd[0];
+            const month = ymd[1];
+            const day = ymd[2];
+            const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+            const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const weekday = weekdays[date.getDay()];
+            return year + '/' + month + '/' + day + '(' + weekday + ') ' + timeStr;
+        }
+
+        function isPastBooking(isoString) {
+            if (!isoString) return false;
+            const datetime = isoString.substring(0, 16);
+            const now = new Date();
+            const nowStr = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + 'T' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0');
+            return datetime < nowStr;
+        }
+
+        // 顯示預約查詢頁面
+        async function showSearchBookings(initialTab) {
+            const mainContent = document.getElementById('main-content');
+            const appContainer = document.getElementById('app');
+
+            appContainer.style.maxWidth = '100%';
+            appContainer.style.padding = '0';
+            appContainer.classList.add('full-width');
+
+            searchActiveTab = initialTab || 'member';
+            searchHasSearched = false;
+            currentSearchBookings = [];
+
+            mainContent.innerHTML = `
+                <div style="min-height: 100vh; background: #f5f5f5; padding-bottom: 80px;">
+                    <!-- PageHeader -->
+                    <div style="position: sticky; top: 0; z-index: 100; background: #f5f5f5; margin: 0; padding: 20px; border-bottom: 1px solid #e0e0e0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto;">
+                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">🔍 預約查詢</h1>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button onclick="showCoachDailyView()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">📋 今日預約</button>
+                                <button onclick="showHomePage()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">HOME</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="search-bookings-content" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+                        <!-- Tabs -->
+                        <div style="
+                            display: flex;
+                            gap: 0;
+                            margin-bottom: 15px;
+                            background: white;
+                            border-radius: 12px;
+                            padding: 4px;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                        ">
+                            <button id="search-tab-member" type="button" onclick="switchSearchTab('member')" style="
+                                flex: 1;
+                                padding: 12px 10px;
+                                border: none;
+                                border-radius: 8px;
+                                font-size: 14px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            ">👤 預約人</button>
+                            <button id="search-tab-boat" type="button" onclick="switchSearchTab('boat')" style="
+                                flex: 1;
+                                padding: 12px 10px;
+                                border: none;
+                                border-radius: 8px;
+                                font-size: 14px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            ">🚤 船</button>
+                            <button id="search-tab-coach" type="button" onclick="switchSearchTab('coach')" style="
+                                flex: 1;
+                                padding: 12px 10px;
+                                border: none;
+                                border-radius: 8px;
+                                font-size: 14px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            ">🎓 教練</button>
+                        </div>
+
+                        <!-- 搜尋表單 -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                            <!-- 預約人搜尋 -->
+                            <form id="search-form-member" onsubmit="handleMemberBookingSearch(event)">
+                                <div style="margin-bottom: 16px;">
+                                    <label style="display: block; margin-bottom: 8px; font-size: 13px; color: #868e96; font-weight: 500;">預約人</label>
+                                    <input id="search-member-name" type="text" placeholder="搜尋會員或直接輸入姓名、電話" required style="
+                                        width: 100%;
+                                        padding: 14px 16px;
+                                        font-size: 15px;
+                                        border: 2px solid #e0e0e0;
+                                        border-radius: 8px;
+                                        outline: none;
+                                        box-sizing: border-box;
+                                    ">
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                                    <div>
+                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">開始日期（選填）</label>
+                                        <input id="search-member-start" type="date" style="
+                                            width: 100%;
+                                            padding: 10px 12px;
+                                            font-size: 14px;
+                                            border: 2px solid #e0e0e0;
+                                            border-radius: 8px;
+                                            outline: none;
+                                            box-sizing: border-box;
+                                        ">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">結束日期（選填）</label>
+                                        <input id="search-member-end" type="date" style="
+                                            width: 100%;
+                                            padding: 10px 12px;
+                                            font-size: 14px;
+                                            border: 2px solid #e0e0e0;
+                                            border-radius: 8px;
+                                            outline: none;
+                                            box-sizing: border-box;
+                                        ">
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                                    <button type="button" onclick="resetBookingSearchForm('member')" style="
+                                        padding: 10px 18px;
+                                        border-radius: 8px;
+                                        border: 1px solid #dee2e6;
+                                        background: white;
+                                        color: #495057;
+                                        font-size: 14px;
+                                        cursor: pointer;
+                                    ">清除</button>
+                                    <button type="submit" style="
+                                        padding: 10px 18px;
+                                        border-radius: 8px;
+                                        border: none;
+                                        background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%);
+                                        color: white;
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                        cursor: pointer;
+                                    ">開始搜尋</button>
+                                </div>
+                            </form>
+
+                            <!-- 船隻搜尋 -->
+                            <form id="search-form-boat" onsubmit="handleBoatBookingSearch(event)" style="display: none;">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                                    <div>
+                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">船隻</label>
+                                        <select id="search-boat-select" required style="
+                                            width: 100%;
+                                            padding: 10px 12px;
+                                            font-size: 14px;
+                                            border: 2px solid #e0e0e0;
+                                            border-radius: 8px;
+                                            outline: none;
+                                            box-sizing: border-box;
+                                            background: white;
+                                        ">
+                                            <option value="">請選擇船隻</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">開始日期（選填）</label>
+                                        <input id="search-boat-start" type="date" style="
+                                            width: 100%;
+                                            padding: 10px 12px;
+                                            font-size: 14px;
+                                            border: 2px solid #e0e0e0;
+                                            border-radius: 8px;
+                                            outline: none;
+                                            box-sizing: border-box;
+                                        ">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">結束日期（選填）</label>
+                                        <input id="search-boat-end" type="date" style="
+                                            width: 100%;
+                                            padding: 10px 12px;
+                                            font-size: 14px;
+                                            border: 2px solid #e0e0e0;
+                                            border-radius: 8px;
+                                            outline: none;
+                                            box-sizing: border-box;
+                                        ">
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                                    <button type="button" onclick="resetBookingSearchForm('boat')" style="
+                                        padding: 10px 18px;
+                                        border-radius: 8px;
+                                        border: 1px solid #dee2e6;
+                                        background: white;
+                                        color: #495057;
+                                        font-size: 14px;
+                                        cursor: pointer;
+                                    ">清除</button>
+                                    <button type="submit" style="
+                                        padding: 10px 18px;
+                                        border-radius: 8px;
+                                        border: none;
+                                        background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%);
+                                        color: white;
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                        cursor: pointer;
+                                    ">開始搜尋</button>
+                                </div>
+                            </form>
+
+                            <!-- 教練搜尋 -->
+                            <form id="search-form-coach" onsubmit="handleCoachBookingSearch(event)" style="display: none;">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                                    <div>
+                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">教練</label>
+                                        <select id="search-coach-select" required style="
+                                            width: 100%;
+                                            padding: 10px 12px;
+                                            font-size: 14px;
+                                            border: 2px solid #e0e0e0;
+                                            border-radius: 8px;
+                                            outline: none;
+                                            box-sizing: border-box;
+                                            background: white;
+                                        ">
+                                            <option value="">請選擇教練</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">開始日期（選填）</label>
+                                        <input id="search-coach-start" type="date" style="
+                                            width: 100%;
+                                            padding: 10px 12px;
+                                            font-size: 14px;
+                                            border: 2px solid #e0e0e0;
+                                            border-radius: 8px;
+                                            outline: none;
+                                            box-sizing: border-box;
+                                        ">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">結束日期（選填）</label>
+                                        <input id="search-coach-end" type="date" style="
+                                            width: 100%;
+                                            padding: 10px 12px;
+                                            font-size: 14px;
+                                            border: 2px solid #e0e0e0;
+                                            border-radius: 8px;
+                                            outline: none;
+                                            box-sizing: border-box;
+                                        ">
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                                    <button type="button" onclick="resetBookingSearchForm('coach')" style="
+                                        padding: 10px 18px;
+                                        border-radius: 8px;
+                                        border: 1px solid #dee2e6;
+                                        background: white;
+                                        color: #495057;
+                                        font-size: 14px;
+                                        cursor: pointer;
+                                    ">清除</button>
+                                    <button type="submit" style="
+                                        padding: 10px 18px;
+                                        border-radius: 8px;
+                                        border: none;
+                                        background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%);
+                                        color: white;
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                        cursor: pointer;
+                                    ">開始搜尋</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- 結果摘要 -->
+                        <div id="booking-search-summary" style="margin-bottom: 10px; font-size: 14px; color: #666;"></div>
+
+                        <!-- 搜尋結果列表 -->
+                        <div id="booking-search-results" style="display: flex; flex-direction: column; gap: 12px;"></div>
+                    </div>
+                </div>
+            `;
+
+            // 初始化 Tab 樣式與下拉選單
+            switchSearchTab(searchActiveTab);
+            await initSearchFilters();
+            // 初始沒有結果
+            renderBookingSearchResults([]);
+        }
+
+        // 初始化船隻、教練下拉選單
+        async function initSearchFilters() {
+            try {
+                if (!db) await initDatabase();
+                const boats = await getAllFromStore('boats').catch(function () { return []; });
+                const coaches = await getAllFromStore('coaches').catch(function () { return []; });
+
+                const boatSelect = document.getElementById('search-boat-select');
+                if (boatSelect && boats && boats.length > 0) {
+                    boatSelect.innerHTML = '<option value=\"\">請選擇船隻</option>' + boats.map(function (boat) {
+                        return '<option value=\"' + boat.id + '\">' + boat.name + '</option>';
+                    }).join('');
+                }
+
+                const coachSelect = document.getElementById('search-coach-select');
+                if (coachSelect && coaches && coaches.length > 0) {
+                    // 只顯示啟用教練
+                    const activeCoaches = coaches.filter(function (c) { return !c.status || c.status === 'active'; });
+                    coachSelect.innerHTML = '<option value=\"\">請選擇教練</option>' + activeCoaches.map(function (coach) {
+                        return '<option value=\"' + coach.id + '\">' + coach.name + '</option>';
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('初始化預約查詢篩選條件失敗:', error);
+            }
+        }
+
+        // 切換分頁
+        function switchSearchTab(tab) {
+            searchActiveTab = tab;
+            const memberBtn = document.getElementById('search-tab-member');
+            const boatBtn = document.getElementById('search-tab-boat');
+            const coachBtn = document.getElementById('search-tab-coach');
+            const memberForm = document.getElementById('search-form-member');
+            const boatForm = document.getElementById('search-form-boat');
+            const coachForm = document.getElementById('search-form-coach');
+
+            if (!memberBtn || !boatBtn || !coachBtn || !memberForm || !boatForm || !coachForm) {
+                return;
+            }
+
+            // 更新按鈕樣式
+            const activeBg = '#5a5a5a';
+            const activeColor = 'white';
+            const inactiveBg = 'transparent';
+            const inactiveColor = '#666';
+
+            memberBtn.style.background = (tab === 'member') ? activeBg : inactiveBg;
+            memberBtn.style.color = (tab === 'member') ? activeColor : inactiveColor;
+            boatBtn.style.background = (tab === 'boat') ? activeBg : inactiveBg;
+            boatBtn.style.color = (tab === 'boat') ? activeColor : inactiveColor;
+            coachBtn.style.background = (tab === 'coach') ? activeBg : inactiveBg;
+            coachBtn.style.color = (tab === 'coach') ? activeColor : inactiveColor;
+
+            // 顯示對應表單
+            memberForm.style.display = (tab === 'member') ? 'block' : 'none';
+            boatForm.style.display = (tab === 'boat') ? 'block' : 'none';
+            coachForm.style.display = (tab === 'coach') ? 'block' : 'none';
+        }
+
+        // 重設表單
+        function resetBookingSearchForm(type) {
+            searchHasSearched = false;
+            currentSearchBookings = [];
+            renderBookingSearchResults([]);
+
+            if (type === 'member') {
+                const nameInput = document.getElementById('search-member-name');
+                const startInput = document.getElementById('search-member-start');
+                const endInput = document.getElementById('search-member-end');
+                if (nameInput) nameInput.value = '';
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+            } else if (type === 'boat') {
+                const boatSelect = document.getElementById('search-boat-select');
+                const startInput = document.getElementById('search-boat-start');
+                const endInput = document.getElementById('search-boat-end');
+                if (boatSelect) boatSelect.value = '';
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+            } else if (type === 'coach') {
+                const coachSelect = document.getElementById('search-coach-select');
+                const startInput = document.getElementById('search-coach-start');
+                const endInput = document.getElementById('search-coach-end');
+                if (coachSelect) coachSelect.value = '';
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+            }
+        }
+
+        // 將預約加上詳細資訊（船、教練、會員）
+        async function enrichBookingsWithDetails(baseBookings) {
+            if (!baseBookings || baseBookings.length === 0) {
+                return [];
+            }
+            if (!db) await initDatabase();
+
+            const boats = await getAllFromStore('boats').catch(function () { return []; });
+            const coaches = await getAllFromStore('coaches').catch(function () { return []; });
+            const activeCoaches = coaches.filter(function (c) { return !c.status || c.status === 'active'; });
+            const bookingIds = baseBookings.map(function (b) { return b.id; });
+
+            const bookingCoaches = await getBookingCoaches(bookingIds);
+            const bookingDrivers = await getBookingDrivers(bookingIds);
+            const bookingMembers = await getBookingMembers(bookingIds);
+
+            return baseBookings.map(function (booking) {
+                const boat = boats.find(function (b) { return b.id === booking.boat_id; }) || null;
+                const coachesForBooking = bookingCoaches
+                    .filter(function (bc) { return bc.booking_id === booking.id; })
+                    .map(function (bc) { return activeCoaches.find(function (c) { return c.id === bc.coach_id; }); })
+                    .filter(function (c) { return !!c; });
+                const driversForBooking = bookingDrivers
+                    .filter(function (bd) { return bd.booking_id === booking.id; })
+                    .map(function (bd) { return activeCoaches.find(function (c) { return c.id === bd.driver_id; }); })
+                    .filter(function (d) { return !!d; });
+
+                const membersForBooking = bookingMembers
+                    .filter(function (bm) { return bm.booking_id === booking.id; })
+                    .map(function (bm) {
+                        const member = bm.members || null;
+                        return member ? { member_id: bm.member_id, members: member } : null;
+                    })
+                    .filter(function (m) { return !!m; });
+
+                return Object.assign({}, booking, {
+                    boats: boat,
+                    coaches: coachesForBooking,
+                    drivers: driversForBooking,
+                    booking_members: membersForBooking
+                });
+            });
+        }
+
+        // 依預約人搜尋
+        async function handleMemberBookingSearch(event) {
+            event.preventDefault();
+            try {
+                if (!db) await initDatabase();
+
+                const input = document.getElementById('search-member-name');
+                const startInput = document.getElementById('search-member-start');
+                const endInput = document.getElementById('search-member-end');
+                const searchTerm = (input && input.value ? input.value.trim() : '');
+                const startDate = startInput && startInput.value ? startInput.value : '';
+                const endDate = endInput && endInput.value ? endInput.value : '';
+
+                if (!searchTerm) {
+                    alert('請輸入預約人關鍵字（姓名或電話）');
+                    return;
+                }
+
+                const allBookings = await getAllFromStore('bookings').catch(function () { return []; });
+                if (!allBookings || allBookings.length === 0) {
+                    searchHasSearched = true;
+                    renderBookingSearchResults([]);
+                    return;
+                }
+
+                const allMembers = await getAllFromStore('members').catch(function () { return []; });
+                const membersMap = {};
+                allMembers.forEach(function (m) { membersMap[m.id] = m; });
+
+                const allBookingMembers = await getAllFromStore('booking_members').catch(function () { return []; });
+
+                const termLower = searchTerm.toLowerCase();
+                const matchedIdsSet = new Set();
+
+                // 從 booking_members + members 比對
+                allBookingMembers.forEach(function (bm) {
+                    const member = membersMap[bm.member_id];
+                    if (!member) return;
+                    const name = (member.name || '').toLowerCase();
+                    const nickname = (member.nickname || '').toLowerCase();
+                    const phone = member.phone || '';
+                    if ((name && name.indexOf(termLower) !== -1) ||
+                        (nickname && nickname.indexOf(termLower) !== -1) ||
+                        (phone && phone.indexOf(searchTerm) !== -1)) {
+                        matchedIdsSet.add(bm.booking_id);
+                    }
+                });
+
+                // 從 bookings.contact_name 比對
+                allBookings.forEach(function (b) {
+                    const contact = (b.contact_name || '').toLowerCase();
+                    if (contact && contact.indexOf(termLower) !== -1) {
+                        matchedIdsSet.add(b.id);
+                    }
+                });
+
+                let matchedBookings = allBookings.filter(function (b) { return matchedIdsSet.has(b.id); });
+
+                // 日期篩選
+                if (startDate || endDate) {
+                    const startStr = startDate ? (startDate + 'T00:00:00') : null;
+                    const endStr = endDate ? (endDate + 'T23:59:59') : null;
+                    matchedBookings = matchedBookings.filter(function (b) {
+                        const t = b.start_at;
+                        if (startStr && t < startStr) return false;
+                        if (endStr && t > endStr) return false;
+                        return true;
+                    });
+                } else {
+                    // 若無日期區間，預設只顯示尚未開始的預約
+                    const now = new Date();
+                    const nowStr = now.getFullYear() + '-' +
+                        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(now.getDate()).padStart(2, '0') + 'T' +
+                        String(now.getHours()).padStart(2, '0') + ':' +
+                        String(now.getMinutes()).padStart(2, '0') + ':00';
+                    matchedBookings = matchedBookings.filter(function (b) {
+                        return b.start_at >= nowStr;
+                    });
+                }
+
+                // 限制最大筆數，避免畫面太慢
+                const MAX_RESULTS = 100;
+                if (matchedBookings.length > MAX_RESULTS) {
+                    matchedBookings = matchedBookings.slice(0, MAX_RESULTS);
+                }
+
+                const enriched = await enrichBookingsWithDetails(matchedBookings);
+                searchHasSearched = true;
+                currentSearchBookings = enriched;
+                renderBookingSearchResults(enriched);
+            } catch (error) {
+                console.error('預約查詢（預約人）失敗:', error);
+                alert('預約查詢失敗：' + error.message);
+            }
+        }
+
+        // 依船隻搜尋
+        async function handleBoatBookingSearch(event) {
+            event.preventDefault();
+            try {
+                if (!db) await initDatabase();
+                const boatSelect = document.getElementById('search-boat-select');
+                const startInput = document.getElementById('search-boat-start');
+                const endInput = document.getElementById('search-boat-end');
+                const boatIdStr = boatSelect && boatSelect.value ? boatSelect.value : '';
+                if (!boatIdStr) {
+                    alert('請選擇船隻');
+                    return;
+                }
+                const boatId = isNaN(parseInt(boatIdStr, 10)) ? boatIdStr : parseInt(boatIdStr, 10);
+                const startDate = startInput && startInput.value ? startInput.value : '';
+                const endDate = endInput && endInput.value ? endInput.value : '';
+
+                let allBookings = await getAllFromStore('bookings').catch(function () { return []; });
+                allBookings = allBookings.filter(function (b) { return b.boat_id === boatId; });
+
+                if (startDate || endDate) {
+                    const startStr = startDate ? (startDate + 'T00:00:00') : null;
+                    const endStr = endDate ? (endDate + 'T23:59:59') : null;
+                    allBookings = allBookings.filter(function (b) {
+                        const t = b.start_at;
+                        if (startStr && t < startStr) return false;
+                        if (endStr && t > endStr) return false;
+                        return true;
+                    });
+                } else {
+                    const today = new Date();
+                    const todayStr = today.getFullYear() + '-' +
+                        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(today.getDate()).padStart(2, '0') + 'T00:00:00';
+                    allBookings = allBookings.filter(function (b) {
+                        return b.start_at >= todayStr;
+                    });
+                }
+
+                const MAX_RESULTS = 100;
+                if (allBookings.length > MAX_RESULTS) {
+                    allBookings = allBookings.slice(0, MAX_RESULTS);
+                }
+
+                const enriched = await enrichBookingsWithDetails(allBookings);
+                searchHasSearched = true;
+                currentSearchBookings = enriched;
+                renderBookingSearchResults(enriched);
+            } catch (error) {
+                console.error('預約查詢（船隻）失敗:', error);
+                alert('預約查詢失敗：' + error.message);
+            }
+        }
+
+        // 依教練搜尋（包含擔任教練或駕駛）
+        async function handleCoachBookingSearch(event) {
+            event.preventDefault();
+            try {
+                if (!db) await initDatabase();
+                const coachSelect = document.getElementById('search-coach-select');
+                const startInput = document.getElementById('search-coach-start');
+                const endInput = document.getElementById('search-coach-end');
+                const coachId = coachSelect && coachSelect.value ? coachSelect.value : '';
+                if (!coachId) {
+                    alert('請選擇教練');
+                    return;
+                }
+                const startDate = startInput && startInput.value ? startInput.value : '';
+                const endDate = endInput && endInput.value ? endInput.value : '';
+
+                const allBookings = await getAllFromStore('bookings').catch(function () { return []; });
+                if (!allBookings || allBookings.length === 0) {
+                    searchHasSearched = true;
+                    renderBookingSearchResults([]);
+                    return;
+                }
+
+                const bookingIds = allBookings.map(function (b) { return b.id; });
+                const bookingCoaches = await getBookingCoaches(bookingIds);
+                const bookingDrivers = await getBookingDrivers(bookingIds);
+
+                const filteredIds = new Set();
+                bookingCoaches.forEach(function (bc) {
+                    if (bc.coach_id === coachId) filteredIds.add(bc.booking_id);
+                });
+                bookingDrivers.forEach(function (bd) {
+                    if (bd.driver_id === coachId) filteredIds.add(bd.booking_id);
+                });
+
+                let matchedBookings = allBookings.filter(function (b) { return filteredIds.has(b.id); });
+
+                if (startDate || endDate) {
+                    const startStr = startDate ? (startDate + 'T00:00:00') : null;
+                    const endStr = endDate ? (endDate + 'T23:59:59') : null;
+                    matchedBookings = matchedBookings.filter(function (b) {
+                        const t = b.start_at;
+                        if (startStr && t < startStr) return false;
+                        if (endStr && t > endStr) return false;
+                        return true;
+                    });
+                } else {
+                    const today = new Date();
+                    const todayStr = today.getFullYear() + '-' +
+                        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(today.getDate()).padStart(2, '0') + 'T00:00:00';
+                    matchedBookings = matchedBookings.filter(function (b) {
+                        return b.start_at >= todayStr;
+                    });
+                }
+
+                const MAX_RESULTS = 100;
+                if (matchedBookings.length > MAX_RESULTS) {
+                    matchedBookings = matchedBookings.slice(0, MAX_RESULTS);
+                }
+
+                const enriched = await enrichBookingsWithDetails(matchedBookings);
+                searchHasSearched = true;
+                currentSearchBookings = enriched;
+                renderBookingSearchResults(enriched);
+            } catch (error) {
+                console.error('預約查詢（教練）失敗:', error);
+                alert('預約查詢失敗：' + error.message);
+            }
+        }
+
+        // 渲染預約查詢結果列表
+        function renderBookingSearchResults(bookings) {
+            const summaryEl = document.getElementById('booking-search-summary');
+            const container = document.getElementById('booking-search-results');
+            if (!summaryEl || !container) return;
+
+            if (!bookings || bookings.length === 0) {
+                if (searchHasSearched) {
+                    summaryEl.innerHTML = '😔 沒有找到相關預約記錄';
+                } else {
+                    summaryEl.innerHTML = '';
+                }
+                container.innerHTML = '';
+                return;
+            }
+
+            summaryEl.innerHTML = '找到 <strong style="color: #5a5a5a;">' + bookings.length + '</strong> 筆預約';
+
+            // 依開始時間排序
+            const sorted = bookings.slice().sort(function (a, b) {
+                return a.start_at.localeCompare(b.start_at);
+            });
+
+            container.innerHTML = sorted.map(function (booking) {
+                const isPast = isPastBooking(booking.start_at);
+                const dateTimeText = formatBookingDateTime(booking.start_at);
+                const displayName = getDisplayContactName(booking);
+                const boatName = booking.boats && booking.boats.name ? booking.boats.name : '未指定';
+                const coachNames = booking.coaches && booking.coaches.length > 0
+                    ? booking.coaches.map(function (c) { return c.name; }).join(' / ')
+                    : '未指定';
+                const driverNames = booking.drivers && booking.drivers.length > 0
+                    ? booking.drivers.map(function (d) { return d.name; }).join(' / ')
+                    : '';
+                const durationText = (booking.duration_min || 0) + ' 分';
+                // 活動類型：IndexedDB 可能是字串或陣列，統一轉成乾淨的字串顯示
+                let activitiesText = '';
+                if (Array.isArray(booking.activity_types)) {
+                    if (booking.activity_types.length > 0) {
+                        activitiesText = booking.activity_types.join(' + ');
+                    }
+                } else if (typeof booking.activity_types === 'string') {
+                    let s = booking.activity_types.trim();
+                    if (s) {
+                        // 移除前綴 "ARRAY[" 和尾端 "]"
+                        if (s.toUpperCase().indexOf('ARRAY[') === 0 && s.endsWith(']')) {
+                            s = s.substring(6, s.length - 1);
+                        }
+                        // 移除大括號 { ... }
+                        if (s.startsWith('{') && s.endsWith('}')) {
+                            s = s.substring(1, s.length - 1);
+                        }
+                        // 嘗試以逗號分隔，再去掉引號
+                        const parts = s.split(',').map(function (p) {
+                            return p.replace(/['"\s]/g, '').trim();
+                        }).filter(function (p) { return p; });
+                        if (parts.length > 0) {
+                            activitiesText = parts.join(' + ');
+                        } else {
+                            activitiesText = s;
+                        }
+                    }
+                }
+                const boatColor = booking.boats && booking.boats.color ? booking.boats.color : '#ccc';
+
+                return (
+                    '<div style="padding: 16px; background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); ' +
+                    'border-left: 4px solid ' + boatColor + '; ' +
+                    (isPast ? 'opacity: 0.75;' : '') +
+                    '">' +
+                        '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">' +
+                            '<div>' +
+                                '<div style="font-size: 18px; font-weight: 600; color: #000; margin-bottom: 4px;">' + displayName + '</div>' +
+                                '<div style="font-size: 14px; color: #666;">' + dateTimeText + '</div>' +
+                            '</div>' +
+                            (isPast
+                                ? '<span style="padding: 4px 8px; background-color: #6c757d; color: white; border-radius: 4px; font-size: 12px; font-weight: 500;">已結束</span>'
+                                : ''
+                            ) +
+                        '</div>' +
+                        '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 14px;">' +
+                            '<div><span style="color: #666;">🚤 船隻：</span><span style="font-weight: 500; color: #000;">' + boatName + '</span></div>' +
+                            '<div><span style="color: #666;">🎓 教練：</span><span style="font-weight: 500; color: #000;">' + coachNames + '</span></div>' +
+                            (driverNames
+                                ? '<div><span style="color: #666;">🚤 駕駛：</span><span style="font-weight: 500; color: #000;">' + driverNames + '</span></div>'
+                                : ''
+                            ) +
+                            '<div><span style="color: #666;">⏱️ 時長：</span><span style="font-weight: 500; color: #000;">' + durationText + '</span></div>' +
+                            (activitiesText
+                                ? '<div><span style="color: #666;">🏄 活動：</span><span style="font-weight: 500; color: #000;">' + activitiesText + '</span></div>'
+                                : ''
+                            ) +
+                        '</div>' +
+                        (booking.notes
+                            ? '<div style="margin-top: 12px; padding: 8px; background-color: #f8f9fa; border-radius: 4px; font-size: 13px; color: #666;">📝 ' + booking.notes + '</div>'
+                            : ''
+                        ) +
+                    '</div>'
+                );
+            }).join('');
         }
         
         // ==================== BAO Hub 功能頁面 ====================
