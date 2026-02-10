@@ -1344,6 +1344,8 @@
                 showDayView();
             } else if (action === 'search') {
                 showSearchBookings();
+            } else if (action === 'tomorrow') {
+                showTomorrowReminder();
             } else if (action === 'bao') {
                 showBaoHub();
             } else {
@@ -1712,6 +1714,19 @@
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return year + '-' + month + '-' + day;
+        }
+        
+        // 獲取日期的星期幾（明日提醒用）
+        function getWeekdayText(dateString) {
+            try {
+                const parts = dateString.split('-').map(Number);
+                if (parts.length !== 3) return '';
+                const date = new Date(parts[0], parts[1] - 1, parts[2]);
+                const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+                return weekdays[date.getDay()];
+            } catch (e) {
+                return '';
+            }
         }
         
         // 獲取顯示名稱（與網頁版一致）
@@ -2802,6 +2817,385 @@
                     '</div>'
                 );
             }).join('');
+        }
+        
+        // ==================== 明日提醒（與線上版介面功能一致） ====================
+        
+        // 明日提醒預設日期：凌晨 3 點前算今天，之後算明天
+        function getTomorrowDefaultDate() {
+            var now = new Date();
+            if (now.getHours() < 3) {
+                return getLocalDateString(now);
+            }
+            var tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            return getLocalDateString(tomorrow);
+        }
+        
+        // 載入指定日期的預約（排除教練練習），並組合教練/駕駛/會員，更新 contact_name
+        async function loadTomorrowBookings(selectedDate) {
+            if (!db) await initDatabase();
+            var startOfDay = selectedDate + 'T00:00:00';
+            var endOfDay = selectedDate + 'T23:59:59';
+            var allBookings = await getAllFromStore('bookings').catch(function() { return []; });
+            var dateBookings = allBookings.filter(function(b) {
+                if (b.status !== 'confirmed') return false;
+                if (b.is_coach_practice) return false;
+                var startAt = b.start_at;
+                return startAt >= startOfDay && startAt <= endOfDay;
+            }).sort(function(a, b) { return a.start_at.localeCompare(b.start_at); });
+            
+            if (dateBookings.length === 0) return [];
+            
+            var boats = await getAllFromStore('boats').catch(function() { return []; });
+            var coaches = await getAllFromStore('coaches').catch(function() { return []; });
+            var activeCoaches = coaches.filter(function(c) { return !c.status || c.status === 'active'; });
+            var bookingIds = dateBookings.map(function(b) { return b.id; });
+            var bookingCoaches = await getBookingCoaches(bookingIds);
+            var bookingDrivers = await getBookingDrivers(bookingIds);
+            var bookingMembers = await getBookingMembers(bookingIds);
+            
+            return dateBookings.map(function(booking) {
+                var boat = boats.find(function(b) { return b.id === booking.boat_id; }) || null;
+                var coachesForBooking = bookingCoaches.filter(function(bc) { return bc.booking_id === booking.id; })
+                    .map(function(bc) { return activeCoaches.find(function(c) { return c.id === bc.coach_id; }); })
+                    .filter(Boolean);
+                var driversForBooking = bookingDrivers.filter(function(bd) { return bd.booking_id === booking.id; })
+                    .map(function(bd) { return activeCoaches.find(function(c) { return c.id === bd.driver_id; }); })
+                    .filter(Boolean);
+                var membersForBooking = bookingMembers.filter(function(bm) { return bm.booking_id === booking.id; })
+                    .map(function(bm) { return bm.members ? { id: bm.member_id, name: bm.members.name, nickname: bm.members.nickname } : null; })
+                    .filter(Boolean);
+                
+                var contactName = booking.contact_name || '';
+                if (membersForBooking.length > 0) {
+                    var originalNames = contactName.split(',').map(function(n) { return n.trim(); });
+                    if (membersForBooking.length === originalNames.length) {
+                        contactName = membersForBooking.map(function(m) { return m.nickname || m.name; }).join(', ');
+                    } else {
+                        var updatedNames = [];
+                        var processed = {};
+                        originalNames.forEach(function(name) {
+                            var matched = membersForBooking.find(function(m) {
+                                if (name === m.name || name === m.nickname) return true;
+                                var parts = name.split('/').map(function(p) { return p.trim(); });
+                                return parts.some(function(part) { return part === m.name || part === m.nickname; });
+                            });
+                            if (matched && !processed[matched.id]) {
+                                updatedNames.push(matched.nickname || matched.name);
+                                processed[matched.id] = true;
+                            } else if (!matched) {
+                                updatedNames.push(name);
+                            }
+                        });
+                        membersForBooking.forEach(function(m) {
+                            if (!processed[m.id]) updatedNames.push(m.nickname || m.name);
+                        });
+                        if (updatedNames.length > 0) contactName = updatedNames.join(', ');
+                    }
+                }
+                
+                return {
+                    id: booking.id,
+                    boat_id: booking.boat_id,
+                    contact_name: contactName,
+                    start_at: booking.start_at,
+                    duration_min: booking.duration_min,
+                    activity_types: booking.activity_types,
+                    notes: booking.notes,
+                    boats: boat,
+                    coaches: coachesForBooking,
+                    drivers: driversForBooking
+                };
+            });
+        }
+        
+        function formatTimeNoColon(dateString) {
+            var datetime = (dateString || '').substring(0, 16);
+            var parts = datetime.split('T');
+            if (parts.length !== 2) return '';
+            var timeStr = parts[1];
+            var hm = timeStr.split(':');
+            return (hm[0] || '00') + (hm[1] || '00');
+        }
+        
+        function getArrivalTimeNoColon(dateString) {
+            var datetime = (dateString || '').substring(0, 16);
+            var parts = datetime.split('T');
+            if (parts.length !== 2) return '';
+            var hm = parts[1].split(':').map(Number);
+            var totalMinutes = (hm[0] || 0) * 60 + (hm[1] || 0) - 30;
+            var h = Math.floor(totalMinutes / 60);
+            var m = totalMinutes % 60;
+            return String(h).padStart(2, '0') + String(m).padStart(2, '0');
+        }
+        
+        var SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小'];
+        
+        function generateTomorrowMessageForStudent(studentName, bookings, includeWeatherWarning, weatherWarning, footerText) {
+            var studentBookings = bookings.filter(function(b) {
+                var names = (b.contact_name || '').split(',').map(function(n) { return n.trim(); });
+                return names.indexOf(studentName) !== -1;
+            }).sort(function(a, b) { return a.start_at.localeCompare(b.start_at); });
+            
+            var hasPapaCoach = studentBookings.some(function(b) {
+                return (b.coaches || []).some(function(c) { return (c.name || '').toUpperCase() === 'PAPA'; });
+            });
+            
+            var message = studentName + '你好\n提醒你，明天有預約\n';
+            if (hasPapaCoach) message += '請幫我帶現金直接給Papa\n';
+            message += '\n';
+            
+            if (SPECIAL_MEMBERS_FOR_BOAT_INFO.indexOf(studentName) !== -1 && studentBookings.length > 0) {
+                var first = studentBookings[0];
+                var boatName = first.boats && first.boats.name ? first.boats.name : '';
+                var driverNames = (first.drivers && first.drivers.length > 0)
+                    ? first.drivers.map(function(d) { return d.name; }).join('/')
+                    : (first.coaches && first.coaches.length > 0 ? first.coaches.map(function(c) { return c.name; }).join('/') : '');
+                if (boatName) {
+                    if (driverNames) message += '船：' + boatName + ' / 開船：' + driverNames + '\n';
+                    else message += '船：' + boatName + '\n';
+                }
+            }
+            
+            var previousCoachNames = '';
+            var boatCount = 0;
+            studentBookings.forEach(function(booking, index) {
+                var hasCoach = booking.coaches && booking.coaches.length > 0;
+                var coachNames = hasCoach ? booking.coaches.map(function(c) { return c.name; }).join('/') : '';
+                var startTime = formatTimeNoColon(booking.start_at);
+                var boatName = (booking.boats && booking.boats.name) || '';
+                var isFacility = boatName.indexOf('彈簧床') !== -1;
+                if (!isFacility) boatCount++;
+                
+                if (index === 0) {
+                    if (hasCoach) message += coachNames + '教練\n';
+                    message += getArrivalTimeNoColon(booking.start_at) + '抵達\n';
+                    message += isFacility ? (startTime + '彈簧床\n') : (startTime + '下水\n');
+                    previousCoachNames = coachNames;
+                } else {
+                    if (!isFacility && boatCount >= 2) {
+                        var shipLabel = boatCount === 2 ? '第二船' : boatCount === 3 ? '第三船' : '第' + boatCount + '船';
+                        message += '\n' + shipLabel + '\n';
+                    }
+                    if (coachNames === previousCoachNames) {
+                        message += isFacility ? (startTime + '彈簧床\n') : (startTime + '下水\n');
+                    } else {
+                        if (hasCoach) message += coachNames + '教練\n';
+                        message += isFacility ? (startTime + '彈簧床\n') : (startTime + '下水\n');
+                        previousCoachNames = coachNames;
+                    }
+                }
+            });
+            message += '\n';
+            if (includeWeatherWarning) message += weatherWarning + '\n\n';
+            message += footerText;
+            return message;
+        }
+        
+        function getTomorrowStudentList(bookings) {
+            var students = {};
+            bookings.forEach(function(b) {
+                (b.contact_name || '').split(',').map(function(n) { return n.trim(); }).forEach(function(name) {
+                    if (name) students[name] = true;
+                });
+            });
+            return Object.keys(students).sort();
+        }
+        
+        var tomorrowReminderSelectedStudent = null;
+        var tomorrowReminderCopiedStudent = null;
+        
+        async function showTomorrowReminder() {
+            var mainContent = document.getElementById('main-content');
+            var appContainer = document.getElementById('app');
+            appContainer.style.maxWidth = '900px';
+            appContainer.style.padding = '20px';
+            appContainer.classList.remove('full-width');
+            
+            var defaultDate = getTomorrowDefaultDate();
+            var includeWeather = localStorage.getItem('includeWeatherWarning');
+            var includeWeatherWarning = includeWeather !== null ? JSON.parse(includeWeather) : true;
+            var weatherWarning = localStorage.getItem('weatherWarning') || '由於近期天氣變化較大，請務必在『啟程前』\n透過官方訊息與我們確認最新天氣狀況\n別忘了在出發前查收最新訊息哦！';
+            var footerText = localStorage.getItem('footerText') || '再麻煩幫我們準時抵達哦！謝謝！\n明天見哦😊\n抵達時 再麻煩幫我按開門鍵提醒教練們幫你開啟停車場鐵閘門 \n進來後再麻煩幫我停黃色停車格 \n白色的不能停 煩請配合🙏';
+            
+            mainContent.innerHTML = '<div style="min-height: 100vh; background: #f8f9fa; padding-bottom: 80px;">' +
+                '<div style="position: sticky; top: 0; z-index: 100; background: #f8f9fa; padding: 20px; border-bottom: 1px solid #e0e0e0;">' +
+                    '<div style="display: flex; justify-content: space-between; align-items: center; max-width: 900px; margin: 0 auto;">' +
+                        '<h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">⏰ 明日提醒</h1>' +
+                        '<button onclick="showHomePage()" style="padding: 6px 12px; background: rgba(255,255,255,0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer;">HOME</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div id="tomorrow-reminder-content" style="max-width: 900px; margin: 0 auto; padding: 20px;">' +
+                    '<div class="spinner"></div><p style="text-align: center;">載入中...</p>' +
+                '</div></div>';
+            
+            var content = document.getElementById('tomorrow-reminder-content');
+            
+            function renderTomorrowPage(bookings, selectedDate, includeW, weatherW, footerT) {
+                var weekday = getWeekdayText(selectedDate);
+                var studentList = getTomorrowStudentList(bookings);
+                
+                var dateSection = '<div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">' +
+                    '<label style="display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #333;">選擇日期</label>' +
+                    '<div style="display: flex; align-items: center; gap: 10px;">' +
+                    '<input type="date" id="tomorrow-date-picker" value="' + selectedDate + '" style="padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px;">' +
+                    '<span style="padding: 10px 14px; border-radius: 8px; background: #5a5a5a; color: white; font-size: 14px; font-weight: 600;">' + weekday + '</span>' +
+                    '</div></div>';
+                
+                var templateSection = '<div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">' +
+                    '<h2 style="font-size: 16px; font-weight: 600; color: #34495e; margin-bottom: 15px;">編輯文字模板</h2>' +
+                    '<div style="margin-bottom: 18px; padding: 14px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e0e0e0;">' +
+                    '<label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; font-weight: 500; gap: 10px;">' +
+                    '<input type="checkbox" id="tomorrow-include-weather" ' + (includeW ? 'checked' : '') + ' style="width: 16px; height: 16px; cursor: pointer;"> <span>🌥️ 包含天氣警告</span></label></div>' +
+                    '<div style="margin-bottom: 15px;"><label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">天氣警告文字</label>' +
+                    '<textarea id="tomorrow-weather-warning" style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px; box-sizing: border-box; resize: vertical;" ' + (includeW ? '' : 'disabled') + '>' + (weatherW || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea></div>' +
+                    '<div><label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">結尾提醒文字</label>' +
+                    '<textarea id="tomorrow-footer-text" style="width: 100%; min-height: 140px; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px; box-sizing: border-box; resize: vertical;">' + (footerT || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea></div>' +
+                    '<div style="margin-top: 15px; padding: 12px; background: #e8f5e9; border-radius: 4px; font-size: 13px; color: #2e7d32;">✓ 您的修改會自動保存，下次打開時繼續使用</div></div>';
+                
+                var studentSection = '';
+                if (bookings.length === 0) {
+                    studentSection = '<div style="background: white; border-radius: 8px; padding: 40px 20px; text-align: center; color: #666; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">' +
+                        '<div style="font-size: 48px; margin-bottom: 15px;">📅</div><div style="font-size: 16px; font-weight: 500;">選擇的日期沒有預約記錄</div></div>';
+                } else {
+                    studentSection = '<div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">' +
+                        '<h2 style="font-size: 16px; font-weight: 600; color: #34495e; margin-bottom: 15px;">預約人提醒訊息 (' + studentList.length + ' 位)</h2>' +
+                        '<div style="display: grid; gap: 12px;">' +
+                        studentList.map(function(studentName) {
+                            var studentBookings = bookings.filter(function(b) {
+                                var names = (b.contact_name || '').split(',').map(function(n) { return n.trim(); });
+                                return names.indexOf(studentName) !== -1;
+                            });
+                            var uniqueKeys = {};
+                            studentBookings.forEach(function(b) { uniqueKeys[b.boat_id + '-' + b.start_at + '-' + b.duration_min] = true; });
+                            var count = Object.keys(uniqueKeys).length;
+                            var expanded = tomorrowReminderSelectedStudent === studentName;
+                            var copied = tomorrowReminderCopiedStudent === studentName;
+                            var msg = generateTomorrowMessageForStudent(studentName, bookings, includeW, weatherW, footerT);
+                            var nameAttr = (studentName || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            return '<div class="tomorrow-student-card" data-student-name="' + nameAttr + '" style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">' +
+                                '<div class="tomorrow-student-header" style="padding: 16px; background: ' + (expanded ? '#f8f9fa' : 'white') + '; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">' +
+                                '<div><div style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 4px;">' + (studentName.replace(/</g, '&lt;').replace(/>/g, '&gt;')) + '</div><div style="font-size: 13px; color: #666;">' + count + ' 個預約</div></div>' +
+                                '<span style="font-size: 18px; color: #999; transform: ' + (expanded ? 'rotate(180deg)' : 'rotate(0)') + ';">▼</span></div>' +
+                                (expanded ? '<div style="padding: 16px; border-top: 1px solid #e0e0e0; background: white;">' +
+                                    '<div style="background: #f8f9fa; padding: 14px; border-radius: 6px; border: 1px solid #dee2e6; white-space: pre-wrap; font-size: 14px; line-height: 1.6; margin-bottom: 14px; max-height: 400px; overflow-y: auto;">' + (msg || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
+                                    '<button type="button" class="tomorrow-copy-btn" style="width: 100%; padding: 10px; background: ' + (copied ? '#28a745' : '#007bff') + '; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">' + (copied ? '✓ 已複製' : '📋 複製訊息') + '</button></div>' : '') +
+                                '</div>';
+                        }).join('') +
+                        '</div></div>';
+                }
+                
+                var bookingListSection = '';
+                if (bookings.length > 0) {
+                    var actDisplay = function(act) {
+                        if (!act) return '';
+                        if (Array.isArray(act)) return act.length ? act.join(' + ') : '';
+                        var s = String(act).trim();
+                        if (s.toUpperCase().indexOf('ARRAY[') === 0 && s.endsWith(']')) s = s.substring(6, s.length - 1);
+                        if (s.startsWith('{') && s.endsWith('}')) s = s.substring(1, s.length - 1);
+                        var parts = s.split(',').map(function(p) { return p.replace(/[\'"\s]/g, '').trim(); }).filter(Boolean);
+                        return parts.length ? parts.join(' + ') : s;
+                    };
+                    bookingListSection = '<div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">' +
+                        '<h2 style="font-size: 16px; font-weight: 600; color: #34495e; margin-bottom: 15px;">當日預約明細 (' + bookings.length + ' 筆)</h2>' +
+                        '<div style="display: grid; gap: 10px;">' +
+                        bookings.map(function(b) {
+                            var startTime = formatTimeNoColon(b.start_at);
+                            var arrivalTime = getArrivalTimeNoColon(b.start_at);
+                            var allCoaches = (b.coaches && b.coaches.length > 0) ? b.coaches.map(function(c) { return c.name; }).join(' / ') : '';
+                            var actStr = actDisplay(b.activity_types);
+                            return '<div style="padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; font-size: 14px;">' +
+                                '<div style="color: #666;"><div style="font-weight: 600; color: #333;">' + arrivalTime + ' 抵達</div><div style="font-size: 12px; margin-top: 2px;">' + startTime + ' 下水</div></div>' +
+                                '<div><div style="font-weight: 600; color: #333;">' + (b.contact_name || '') + '</div><div style="font-size: 12px; color: #666; margin-top: 2px;">' + (allCoaches ? allCoaches + ' · ' : '') + (b.boats && b.boats.name ? b.boats.name : '') + ' · ' + (b.duration_min || 0) + '分</div></div>' +
+                                (actStr ? '<div style="font-size: 11px; padding: 3px 8px; background: #e3f2fd; border-radius: 3px; color: #1976d2; font-weight: 600;">' + actStr + '</div>' : '') +
+                                '</div>';
+                        }).join('') +
+                        '</div></div>';
+                }
+                
+                content.innerHTML = dateSection + templateSection + studentSection + bookingListSection;
+                window._tomorrowSelectedDate = selectedDate;
+                
+                content.querySelectorAll('.tomorrow-student-header').forEach(function(el) {
+                    el.onclick = function() {
+                        var card = el.closest('.tomorrow-student-card');
+                        var name = card && card.getAttribute('data-student-name');
+                        if (name) toggleTomorrowStudent(name);
+                    };
+                });
+                content.querySelectorAll('.tomorrow-copy-btn').forEach(function(btn) {
+                    btn.onclick = function(e) {
+                        e.stopPropagation();
+                        var card = e.target.closest('.tomorrow-student-card');
+                        var name = card && card.getAttribute('data-student-name');
+                        if (name) copyTomorrowMessage(name);
+                    };
+                });
+                
+                document.getElementById('tomorrow-date-picker').onchange = function() {
+                    var newDate = this.value;
+                    saveTomorrowTemplates();
+                    loadTomorrowBookings(newDate).then(function(list) {
+                        var inc = document.getElementById('tomorrow-include-weather');
+                        var wea = document.getElementById('tomorrow-weather-warning');
+                        var foot = document.getElementById('tomorrow-footer-text');
+                        renderTomorrowPage(list, newDate, inc ? inc.checked : true, wea ? wea.value : weatherW, foot ? foot.value : footerT);
+                    });
+                };
+                document.getElementById('tomorrow-include-weather').onchange = function() {
+                    var inc = this.checked;
+                    localStorage.setItem('includeWeatherWarning', JSON.stringify(inc));
+                    var wea = document.getElementById('tomorrow-weather-warning');
+                    wea.disabled = !inc;
+                };
+                document.getElementById('tomorrow-weather-warning').oninput = function() { localStorage.setItem('weatherWarning', this.value); };
+                document.getElementById('tomorrow-footer-text').oninput = function() { localStorage.setItem('footerText', this.value); };
+            }
+            
+            function saveTomorrowTemplates() {
+                var inc = document.getElementById('tomorrow-include-weather');
+                var wea = document.getElementById('tomorrow-weather-warning');
+                var foot = document.getElementById('tomorrow-footer-text');
+                if (inc) localStorage.setItem('includeWeatherWarning', JSON.stringify(inc.checked));
+                if (wea) localStorage.setItem('weatherWarning', wea.value);
+                if (foot) localStorage.setItem('footerText', foot.value);
+            }
+            
+            window.toggleTomorrowStudent = function(name) {
+                tomorrowReminderSelectedStudent = tomorrowReminderSelectedStudent === name ? null : name;
+                var inc = document.getElementById('tomorrow-include-weather');
+                var wea = document.getElementById('tomorrow-weather-warning');
+                var foot = document.getElementById('tomorrow-footer-text');
+                var curDate = window._tomorrowSelectedDate || defaultDate;
+                var incW = inc ? inc.checked : true;
+                var weaW = wea ? wea.value : weatherWarning;
+                var footT = foot ? foot.value : footerText;
+                renderTomorrowPage(window._tomorrowBookings || [], curDate, incW, weaW, footT);
+            };
+            window.copyTomorrowMessage = function(name) {
+                var inc = document.getElementById('tomorrow-include-weather');
+                var wea = document.getElementById('tomorrow-weather-warning');
+                var foot = document.getElementById('tomorrow-footer-text');
+                var msg = generateTomorrowMessageForStudent(name, window._tomorrowBookings || [], inc ? inc.checked : true, wea ? wea.value : '', foot ? foot.value : '');
+                navigator.clipboard.writeText(msg).then(function() {
+                    tomorrowReminderCopiedStudent = name;
+                    setTimeout(function() { tomorrowReminderCopiedStudent = null; }, 2000);
+                    var curDate = window._tomorrowSelectedDate || defaultDate;
+                    var incW = inc ? inc.checked : true;
+                    var weaW = wea ? wea.value : '';
+                    var footT = foot ? foot.value : '';
+                    renderTomorrowPage(window._tomorrowBookings || [], curDate, incW, weaW, footT);
+                });
+            };
+            window._tomorrowBookings = [];
+            window._tomorrowDefaultDate = defaultDate;
+            window._tomorrowWeatherWarning = weatherWarning;
+            window._tomorrowFooterText = footerText;
+            
+            var list = await loadTomorrowBookings(defaultDate);
+            window._tomorrowBookings = list;
+            renderTomorrowPage(list, defaultDate, includeWeatherWarning, weatherWarning, footerText);
         }
         
         // ==================== BAO Hub 功能頁面 ====================
