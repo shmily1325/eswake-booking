@@ -6,6 +6,7 @@ import { MEMBER_SEARCH_DEBOUNCE_MS } from '../constants/booking'
 import type { Booking, Boat, Coach, Member } from '../types/booking'
 import { isFacility } from '../utils/facility'
 import { getFilledByName } from '../utils/filledByHelper'
+import { getLocalDateString } from '../utils/date'
 
 interface UseBookingFormProps {
     initialBooking?: Booking
@@ -240,9 +241,15 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         else setMembers(data || [])
     }, [])
 
+    // 用於教練休假的日期：避免彈窗剛打開時 startDate 尚未從 defaultDate/initialBooking 更新，導致用空字串查詢而沒帶入休假資料（手機版較易出現）
+    const dateForCoachTimeOff = startDate
+        || (defaultDate ? defaultDate.split('T')[0] : '')
+        || (initialBooking?.start_at ? initialBooking.start_at.substring(0, 10) : '')
+        || getLocalDateString()
+
     const fetchAllData = useCallback(async () => {
-        await Promise.all([fetchBoats(), fetchCoaches(startDate), fetchMembers()])
-    }, [fetchBoats, fetchCoaches, fetchMembers, startDate])
+        await Promise.all([fetchBoats(), fetchCoaches(dateForCoachTimeOff), fetchMembers()])
+    }, [fetchBoats, fetchCoaches, fetchMembers, dateForCoachTimeOff])
     
     // 當日期改變時，重新查詢教練休假狀態
     const refreshCoachTimeOff = useCallback(async () => {
