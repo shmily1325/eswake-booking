@@ -350,10 +350,13 @@ export function Statistics() {
 
         const monthData = coach.bookings.find(b => b.month === bookingMonth)
         
-        // 每個會員分別計算時數（時數平分給每個會員）
-        const perMemberMinutes = memberNames.length > 0 ? Math.round(durationMin / memberNames.length) : durationMin
-        
-        memberNames.forEach(memberName => {
+        // 每個會員分別計算時數：平分且加總嚴格等於該筆預約時數（無四捨五入誤差）
+        const n = memberNames.length
+        const baseMin = n > 0 ? Math.floor(durationMin / n) : 0
+        const remainder = n > 0 ? durationMin % n : 0
+
+        memberNames.forEach((memberName, idx) => {
+          const perMemberMinutes = n > 0 ? baseMin + (idx < remainder ? 1 : 0) : durationMin
           if (monthData) {
             if (!monthData.contactMap.has(memberName)) {
               monthData.contactMap.set(memberName, { minutes: 0, count: 0 })

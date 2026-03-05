@@ -62,6 +62,14 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
     .filter(c => c.coachId !== 'unassigned' && getFilteredValue(c, 'minutes') > 0)
     .sort((a, b) => getFilteredValue(b, 'minutes') - getFilteredValue(a, 'minutes'))
 
+  // 篩選後每位教練的「參與人次」（與展開的會員時數分布加總一致）
+  const getFilteredContactCount = (coach: CoachFutureBooking) => {
+    const contactStats = monthFilter === 'all'
+      ? coach.contactStats
+      : coach.bookings.find(b => b.month === monthFilter)?.contactStats || []
+    return contactStats.reduce((sum, c) => sum + c.count, 0)
+  }
+
   // 月份標籤
   const monthLabel = monthFilter === 'all'
     ? '未來3個月'
@@ -140,7 +148,7 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
           id: coach.coachId,
           name: coach.coachName,
           value: getFilteredValue(coach, 'minutes'),
-          count: getFilteredValue(coach, 'count')
+          count: getFilteredContactCount(coach)
         }))}
         accentColor="#4a90e2"
         emptyText="目前沒有未來預約"
