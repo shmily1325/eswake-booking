@@ -729,9 +729,26 @@ export function AnnouncementManagement() {
                               color: '#333',
                               lineHeight: '1.5',
                               whiteSpace: 'pre-wrap',
-                              wordBreak: 'break-word'
+                              wordBreak: 'break-word',
+                              display: 'flex',
+                              alignItems: 'baseline',
+                              gap: '8px',
+                              flexWrap: 'wrap'
                             }}>
-                              {announcement.content}
+                              <span>{announcement.content}</span>
+                              {announcement.show_one_day_early && (
+                                <span style={{
+                                  fontSize: isMobile ? '12px' : '11px',
+                                  padding: '2px 6px',
+                                  borderRadius: '3px',
+                                  background: '#fff3e0',
+                                  color: '#e65100',
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0
+                                }}>
+                                  {isMobile ? '[提前]' : '[提前一天顯示]'}
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div style={{ 
@@ -741,18 +758,6 @@ export function AnnouncementManagement() {
                             flexWrap: 'wrap',
                             flexShrink: 0
                           }}>
-                            {announcement.show_one_day_early && (
-                              <span style={{
-                                fontSize: isMobile ? '12px' : '11px',
-                                color: '#999',
-                                padding: '2px 6px',
-                                borderRadius: '3px',
-                                background: '#f5f5f5',
-                                whiteSpace: 'nowrap'
-                              }}>
-                                {isMobile ? '[提前]' : '[提前一天顯示]'}
-                              </span>
-                            )}
                             <button
                               onClick={() => startEdit(announcement)}
                               style={{
