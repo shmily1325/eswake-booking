@@ -543,7 +543,7 @@ export function AnnouncementManagement() {
               <div key={date} style={{ marginBottom: '24px' }}>
                 {/* 日期標題 */}
                 <div style={{
-                  padding: '8px 12px',
+                  padding: isMobile ? '10px 14px' : '8px 12px',
                   background: '#f5f5f5',
                   borderRadius: '6px',
                   marginBottom: '10px',
@@ -552,14 +552,14 @@ export function AnnouncementManagement() {
                   gap: '8px'
                 }}>
                   <span style={{
-                    fontSize: '14px',
+                    fontSize: isMobile ? '15px' : '14px',
                     fontWeight: '600',
                     color: '#555'
                   }}>
                     {formatDateHeader(date)}
                   </span>
                   <span style={{
-                    fontSize: '12px',
+                    fontSize: isMobile ? '13px' : '12px',
                     color: '#999'
                   }}>
                     ({dateAnnouncements.length} 條)
@@ -573,7 +573,7 @@ export function AnnouncementManagement() {
                   <div
                     key={announcement.id}
                     style={{
-                      padding: isMobile ? '14px' : '12px',
+                      padding: isMobile ? '16px' : '12px',
                       background: 'white',
                       borderRadius: '6px',
                       marginBottom: '8px',
@@ -706,7 +706,7 @@ export function AnnouncementManagement() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {dateLabel.isRange && (
                               <div style={{
-                                fontSize: '11px',
+                                fontSize: isMobile ? '12px' : '11px',
                                 color: '#888',
                                 marginBottom: '4px',
                                 display: 'flex',
@@ -714,7 +714,7 @@ export function AnnouncementManagement() {
                                 gap: '6px'
                               }}>
                                 <span style={{
-                                  padding: '2px 8px',
+                                  padding: isMobile ? '3px 8px' : '2px 8px',
                                   borderRadius: '4px',
                                   background: '#e3f2fd',
                                   color: '#1976d2',
@@ -725,7 +725,7 @@ export function AnnouncementManagement() {
                               </div>
                             )}
                             <div style={{ 
-                              fontSize: '14px',
+                              fontSize: isMobile ? '15px' : '14px',
                               color: '#333',
                               lineHeight: '1.5',
                               whiteSpace: 'pre-wrap',
@@ -739,14 +739,14 @@ export function AnnouncementManagement() {
                               {announcement.show_one_day_early && (
                                 <span style={{
                                   fontSize: isMobile ? '12px' : '11px',
-                                  padding: '2px 6px',
+                                  padding: isMobile ? '3px 8px' : '2px 6px',
                                   borderRadius: '3px',
                                   background: '#fff3e0',
                                   color: '#e65100',
                                   whiteSpace: 'nowrap',
                                   flexShrink: 0
                                 }}>
-                                  {isMobile ? '[提前]' : '[提前一天顯示]'}
+                                  [提前一天顯示]
                                 </span>
                               )}
                             </div>
@@ -761,13 +761,13 @@ export function AnnouncementManagement() {
                             <button
                               onClick={() => startEdit(announcement)}
                               style={{
-                                padding: isMobile ? '10px 14px' : '5px 10px',
+                                padding: isMobile ? '12px 16px' : '5px 10px',
                                 minHeight: isMobile ? 44 : undefined,
                                 background: '#f5f5f5',
                                 color: '#666',
                                 border: '1px solid #ddd',
                                 borderRadius: '6px',
-                                fontSize: isMobile ? '14px' : '12px',
+                                fontSize: isMobile ? '15px' : '12px',
                                 fontWeight: '500',
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap'
@@ -778,13 +778,13 @@ export function AnnouncementManagement() {
                             <button
                               onClick={() => handleDelete(announcement.id)}
                               style={{
-                                padding: isMobile ? '10px 14px' : '5px 10px',
+                                padding: isMobile ? '12px 16px' : '5px 10px',
                                 minHeight: isMobile ? 44 : undefined,
                                 background: '#fff',
                                 color: '#f44336',
                                 border: '1px solid #f44336',
                                 borderRadius: '6px',
-                                fontSize: isMobile ? '14px' : '12px',
+                                fontSize: isMobile ? '15px' : '12px',
                                 fontWeight: '500',
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap'
