@@ -704,38 +704,24 @@ export function AnnouncementManagement() {
                           gap: isMobile ? '10px' : '12px'
                         }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            {(dateLabel.isRange || announcement.show_one_day_early) && (
+                            {dateLabel.isRange && (
                               <div style={{
                                 fontSize: '11px',
                                 color: '#888',
                                 marginBottom: '4px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '6px',
-                                flexWrap: 'wrap'
+                                gap: '6px'
                               }}>
-                                {dateLabel.isRange && (
-                                  <span style={{
-                                    padding: '2px 8px',
-                                    borderRadius: '4px',
-                                    background: '#e3f2fd',
-                                    color: '#1976d2',
-                                    fontWeight: '500'
-                                  }}>
-                                    {dateLabel.text}
-                                  </span>
-                                )}
-                                {announcement.show_one_day_early && (
-                                  <span style={{
-                                    padding: '2px 8px',
-                                    borderRadius: '4px',
-                                    background: '#fff3e0',
-                                    color: '#e65100',
-                                    fontWeight: '500'
-                                  }}>
-                                    提前一天
-                                  </span>
-                                )}
+                                <span style={{
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  background: '#e3f2fd',
+                                  color: '#1976d2',
+                                  fontWeight: '500'
+                                }}>
+                                  {dateLabel.text}
+                                </span>
                               </div>
                             )}
                             <div style={{ 
@@ -750,10 +736,23 @@ export function AnnouncementManagement() {
                           </div>
                           <div style={{ 
                             display: 'flex', 
+                            alignItems: 'center',
                             gap: '8px', 
                             flexWrap: 'wrap',
                             flexShrink: 0
                           }}>
+                            {announcement.show_one_day_early && (
+                              <span style={{
+                                fontSize: isMobile ? '12px' : '11px',
+                                color: '#999',
+                                padding: '2px 6px',
+                                borderRadius: '3px',
+                                background: '#f5f5f5',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {isMobile ? '[提前]' : '[提前一天顯示]'}
+                              </span>
+                            )}
                             <button
                               onClick={() => startEdit(announcement)}
                               style={{
