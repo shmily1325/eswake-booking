@@ -57,11 +57,11 @@ export function computeDisplayDate(eventStartDate: string, showOneDayEarly: bool
  * - 混合：多則公告的事項日期不完全相同
  *
  * 顯示規則：
- * | 情境           | 標題               | 每則內容        |
- * |----------------|--------------------|-----------------|
- * | 全部同一天且今天 | 交辦事項：         | 只顯示內容      |
- * | 全部同一天非今天 | 交辦事項 (3/17)：  | 只顯示內容      |
- * | 混合多日       | 交辦事項：         | 每則顯示日期+內容 |
+ * | 情境               | 標題               | 每則內容        |
+ * |--------------------|--------------------|-----------------|
+ * | 全部同一天且今天   | 交辦事項：         | 只顯示內容      |
+ * | 全部同一天非今天   | 交辦事項 (3/17)：  | 只顯示內容      |
+ * | 混合（區間+單日等）| 交辦事項：         | 每則顯示日期+內容 |
  */
 export function getAnnouncementListDisplay(
   announcements: AnnouncementRecord[],
@@ -78,9 +78,17 @@ export function getAnnouncementListDisplay(
     formatDateShort(getEventStartDate(a)) === todayShort
   )
 
+  // 區間與單日混合時（prefix 有 null 有非 null）不合併，每則顯示日期
+  const hasMixedRangeAndSingleDay = prefixes.some(p => p === null) && prefixes.some(p => p !== null)
+
   // sharedPrefix：有值時表示標題可共用，每則不重複顯示日期
-  const sharedPrefix =
-    allSame && prefixes[0] ? prefixes[0] : allEventDatesToday ? todayShort : null
+  const sharedPrefix = hasMixedRangeAndSingleDay
+    ? null
+    : allSame && prefixes[0]
+      ? prefixes[0]
+      : allSame && allEventDatesToday
+        ? todayShort
+        : null
 
   const showDateInHeader = !!(sharedPrefix && sharedPrefix !== todayShort)
 
