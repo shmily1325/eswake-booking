@@ -49,6 +49,23 @@ export function isDateExpired(dateStr: string | null | undefined): boolean {
 }
 
 /**
+ * 日期加減天數
+ * @param dateStr - YYYY-MM-DD 格式
+ * @param days - 要加的天數（負數為減）
+ * @returns YYYY-MM-DD 格式，若輸入無效則回傳原字串
+ */
+export function addDaysToDate(dateStr: string, days: number): string {
+  if (!dateStr || typeof dateStr !== 'string') return dateStr
+  const parts = dateStr.split('-')
+  if (parts.length !== 3) return dateStr
+  const [y, m, d] = parts.map(Number)
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return dateStr
+  const date = new Date(y, m - 1, d + days)
+  if (isNaN(date.getTime())) return dateStr
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+/**
  * 獲取日期的星期幾
  * @param dateString - 日期字串 (YYYY-MM-DD)
  * @returns 星期幾的中文表示 (星期一、星期二...星期日)

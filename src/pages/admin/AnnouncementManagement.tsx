@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { getLocalDateString, getWeekdayText } from '../../utils/date'
+import { getLocalDateString, getWeekdayText, addDaysToDate } from '../../utils/date'
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { validateRequired } from '../../utils/errorHandler'
 import { useToast, ToastContainer } from '../../components/ui'
@@ -36,11 +36,13 @@ export function AnnouncementManagement() {
   }, [user, navigate, toast])
   const [editingId, setEditingId] = useState<number | null>(null)
   const [newContent, setNewContent] = useState('')
-  const [newDisplayDate, setNewDisplayDate] = useState(getLocalDateString())
+  const [newStartDate, setNewStartDate] = useState(getLocalDateString())
   const [newEndDate, setNewEndDate] = useState(getLocalDateString())
+  const [newShowOneDayEarly, setNewShowOneDayEarly] = useState(false)
   const [editContent, setEditContent] = useState('')
-  const [editDisplayDate, setEditDisplayDate] = useState('')
+  const [editStartDate, setEditStartDate] = useState('')
   const [editEndDate, setEditEndDate] = useState('')
+  const [editShowOneDayEarly, setEditShowOneDayEarly] = useState(false)
   
   // 搜尋和過濾
   const [searchText, setSearchText] = useState('')
@@ -66,7 +68,8 @@ export function AnnouncementManagement() {
       const lastDay = new Date(year, month, 0).getDate()
       const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
       
-      const { data } = await supabase
+      // 查詢 1：display_date 在選定月份內
+      const { data: data1 } = await supabase
         .from('daily_announcements')
         .select('*')
         .gte('display_date', startDate)
@@ -74,7 +77,41 @@ export function AnnouncementManagement() {
         .order('display_date', { ascending: sortOrder === 'asc' })
         .order('created_at', { ascending: sortOrder === 'asc' })
 
-      if (data) setAnnouncements(data as Announcement[])
+      // 查詢 2：display_date 在月初前，但 end_date 在選定月份內（提前顯示的公告）
+      const { data: data2 } = await supabase
+        .from('daily_announcements')
+        .select('*')
+        .lt('display_date', startDate)
+        .gte('end_date', startDate)
+        .lte('end_date', endDate)
+        .order('display_date', { ascending: sortOrder === 'asc' })
+        .order('created_at', { ascending: sortOrder === 'asc' })
+
+      // 查詢 3：橫跨整個月（display_date 在月初前，end_date 在月底後）
+      const { data: data3 } = await supabase
+        .from('daily_announcements')
+        .select('*')
+        .lt('display_date', startDate)
+        .gt('end_date', endDate)
+        .order('display_date', { ascending: sortOrder === 'asc' })
+        .order('created_at', { ascending: sortOrder === 'asc' })
+
+      // 合併並去重（以 id 為準）
+      const seen = new Set<number>()
+      const merged = [...(data1 || []), ...(data2 || []), ...(data3 || [])]
+        .filter((a: Announcement) => {
+          if (seen.has(a.id)) return false
+          seen.add(a.id)
+          return true
+        })
+        .sort((a: Announcement, b: Announcement) => {
+          const cmp = sortOrder === 'asc'
+            ? a.display_date.localeCompare(b.display_date)
+            : b.display_date.localeCompare(a.display_date)
+          return cmp !== 0 ? cmp : (a.created_at || '').localeCompare(b.created_at || '')
+        })
+
+      setAnnouncements(merged as Announcement[])
     } catch (error) {
       console.error('載入公告失敗:', error)
     } finally {
@@ -83,16 +120,22 @@ export function AnnouncementManagement() {
   }
 
   const handleAdd = async () => {
+    if (!user) {
+      toast.error('請先登入')
+      return
+    }
     const validation = validateRequired(newContent, '交辦事項內容')
     if (!validation.valid) {
       toast.warning(validation.error || '請填寫交辦事項內容')
       return
     }
 
-    if (newEndDate < newDisplayDate) {
+    if (newEndDate < newStartDate) {
       toast.warning('結束日期不能早於開始日期')
       return
     }
+
+    const displayDate = newShowOneDayEarly ? addDaysToDate(newStartDate, -1) : newStartDate
 
     await executeAsync(
       async () => {
@@ -100,7 +143,7 @@ export function AnnouncementManagement() {
           .from('daily_announcements')
           .insert({
             content: newContent.trim(),
-            display_date: newDisplayDate,
+            display_date: displayDate,
             end_date: newEndDate,
             created_by: user.id
           })
@@ -113,8 +156,9 @@ export function AnnouncementManagement() {
         onComplete: () => {
           setNewContent('')
           const today = getLocalDateString()
-          setNewDisplayDate(today)
+          setNewStartDate(today)
           setNewEndDate(today)
+          setNewShowOneDayEarly(false)
           loadAnnouncements()
         }
       }
@@ -122,10 +166,12 @@ export function AnnouncementManagement() {
   }
 
   const handleEdit = async (id: number) => {
-    if (editEndDate < editDisplayDate) {
+    if (editEndDate < editStartDate) {
       toast.warning('結束日期不能早於開始日期')
       return
     }
+
+    const displayDate = editShowOneDayEarly ? addDaysToDate(editStartDate, -1) : editStartDate
 
     await executeAsync(
       async () => {
@@ -133,7 +179,7 @@ export function AnnouncementManagement() {
           .from('daily_announcements')
           .update({
             content: editContent.trim(),
-            display_date: editDisplayDate,
+            display_date: displayDate,
             end_date: editEndDate
           })
           .eq('id', id)
@@ -176,20 +222,29 @@ export function AnnouncementManagement() {
   const startEdit = (announcement: Announcement) => {
     setEditingId(announcement.id)
     setEditContent(announcement.content)
-    setEditDisplayDate(announcement.display_date)
-    setEditEndDate(announcement.end_date || announcement.display_date)
+    const end = announcement.end_date || announcement.display_date
+    const isEarly = announcement.display_date < end
+    setEditStartDate(isEarly ? addDaysToDate(announcement.display_date, 1) : announcement.display_date)
+    setEditEndDate(end)
+    setEditShowOneDayEarly(isEarly)
   }
 
   const cancelEdit = () => {
     setEditingId(null)
   }
 
-  // 按日期分組公告
+  // 取得事項開始日（用於分組，讓 3/16 的事項都出現在 3/16 底下）
+  const getEventStartDate = (a: Announcement) => {
+    const end = a.end_date || a.display_date
+    return a.display_date < end ? addDaysToDate(a.display_date, 1) : a.display_date
+  }
+
+  // 按事項開始日分組（而非 display_date，更直覺）
   const groupAnnouncementsByDate = (announcements: Announcement[]) => {
     const grouped = new Map<string, Announcement[]>()
     
     announcements.forEach(announcement => {
-      const date = announcement.display_date
+      const date = getEventStartDate(announcement)
       if (!grouped.has(date)) {
         grouped.set(date, [])
       }
@@ -210,6 +265,24 @@ export function AnnouncementManagement() {
   const formatDateHeader = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-')
     return `${year}/${parseInt(month)}/${parseInt(day)}`
+  }
+
+  // 取得每則公告的日期標籤（單日 vs 區間，顯示事項日期）
+  const getAnnouncementDateLabel = (a: Announcement) => {
+    const toShort = (d: string) => {
+      const [, m, day] = d.split('-')
+      return `${parseInt(m)}/${parseInt(day)}`
+    }
+    const end = a.end_date || a.display_date
+    if (a.display_date === end) {
+      return { text: `單日 ${toShort(a.display_date)}`, isRange: false }
+    }
+    // 提前一天：事項開始 = display_date + 1
+    const eventStart = addDaysToDate(a.display_date, 1)
+    if (eventStart === end) {
+      return { text: `單日 ${toShort(eventStart)}`, isRange: false }
+    }
+    return { text: `${toShort(eventStart)} - ${toShort(end)}`, isRange: true }
   }
 
   return (
@@ -257,7 +330,7 @@ export function AnnouncementManagement() {
             />
           </div>
 
-          <div style={{ marginBottom: '15px' }}>
+          <div style={{ marginBottom: '12px' }}>
             <label style={{
               display: 'block',
               fontSize: '13px',
@@ -265,18 +338,15 @@ export function AnnouncementManagement() {
               marginBottom: '8px',
               fontWeight: '500'
             }}>
-              顯示日期
+              事項日期
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <input
                 type="date"
-                value={newDisplayDate}
+                value={newStartDate}
                 onChange={(e) => {
-                  setNewDisplayDate(e.target.value)
-                  // 如果結束日期早於開始日期，自動調整
-                  if (e.target.value > newEndDate) {
-                    setNewEndDate(e.target.value)
-                  }
+                  setNewStartDate(e.target.value)
+                  if (e.target.value > newEndDate) setNewEndDate(e.target.value)
                 }}
                 style={{
                   flex: isMobile ? 1 : 'none',
@@ -293,7 +363,7 @@ export function AnnouncementManagement() {
                 type="date"
                 value={newEndDate}
                 onChange={(e) => setNewEndDate(e.target.value)}
-                min={newDisplayDate}
+                min={newStartDate}
                 style={{
                   flex: isMobile ? 1 : 'none',
                   minWidth: 0,
@@ -304,7 +374,6 @@ export function AnnouncementManagement() {
                   boxSizing: 'border-box'
                 }}
               />
-              {/* 星期幾徽章 */}
               <span style={{
                 padding: '10px 14px',
                 borderRadius: '8px',
@@ -315,12 +384,31 @@ export function AnnouncementManagement() {
                 whiteSpace: 'nowrap',
                 flexShrink: 0
               }}>
-                {newDisplayDate === newEndDate 
-                  ? getWeekdayText(newDisplayDate)
-                  : `${getWeekdayText(newDisplayDate)} ~ ${getWeekdayText(newEndDate)}`
+                {newStartDate === newEndDate 
+                  ? getWeekdayText(newStartDate)
+                  : `${getWeekdayText(newStartDate)} ~ ${getWeekdayText(newEndDate)}`
                 }
               </span>
             </div>
+          </div>
+
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              color: '#555'
+            }}>
+              <input
+                type="checkbox"
+                checked={newShowOneDayEarly}
+                onChange={(e) => setNewShowOneDayEarly(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <span>提前一天顯示（讓大家今天就能看到明天的事項）</span>
+            </label>
           </div>
 
           <button
@@ -493,7 +581,9 @@ export function AnnouncementManagement() {
                 </div>
 
                 {/* 該日期的所有事項 */}
-                {dateAnnouncements.map((announcement) => (
+                {dateAnnouncements.map((announcement) => {
+                  const dateLabel = getAnnouncementDateLabel(announcement)
+                  return (
                   <div
                     key={announcement.id}
                     style={{
@@ -521,42 +611,61 @@ export function AnnouncementManagement() {
                             fontFamily: 'inherit'
                           }}
                         />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                          <input
-                            type="date"
-                            value={editDisplayDate}
-                            onChange={(e) => {
-                              setEditDisplayDate(e.target.value)
-                              if (e.target.value > editEndDate) {
-                                setEditEndDate(e.target.value)
-                              }
-                            }}
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              padding: '10px',
-                              border: '1px solid #e0e0e0',
-                              borderRadius: '8px',
-                              fontSize: '16px',
-                              boxSizing: 'border-box'
-                            }}
-                          />
-                          <span style={{ color: '#999', fontSize: '14px' }}>～</span>
-                          <input
-                            type="date"
-                            value={editEndDate}
-                            onChange={(e) => setEditEndDate(e.target.value)}
-                            min={editDisplayDate}
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              padding: '10px',
-                              border: '1px solid #e0e0e0',
-                              borderRadius: '8px',
-                              fontSize: '16px',
-                              boxSizing: 'border-box'
-                            }}
-                          />
+                        <div style={{ marginBottom: '10px' }}>
+                          <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>事項日期</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <input
+                              type="date"
+                              value={editStartDate}
+                              onChange={(e) => {
+                                setEditStartDate(e.target.value)
+                                if (e.target.value > editEndDate) setEditEndDate(e.target.value)
+                              }}
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                padding: '10px',
+                                border: '1px solid #e0e0e0',
+                                borderRadius: '8px',
+                                fontSize: '16px',
+                                boxSizing: 'border-box'
+                              }}
+                            />
+                            <span style={{ color: '#999', fontSize: '14px' }}>～</span>
+                            <input
+                              type="date"
+                              value={editEndDate}
+                              onChange={(e) => setEditEndDate(e.target.value)}
+                              min={editStartDate}
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                padding: '10px',
+                                border: '1px solid #e0e0e0',
+                                borderRadius: '8px',
+                                fontSize: '16px',
+                                boxSizing: 'border-box'
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: '10px' }}>
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            color: '#555'
+                          }}>
+                            <input
+                              type="checkbox"
+                              checked={editShowOneDayEarly}
+                              onChange={(e) => setEditShowOneDayEarly(e.target.checked)}
+                              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            />
+                            <span>提前一天顯示</span>
+                          </label>
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
@@ -602,15 +711,34 @@ export function AnnouncementManagement() {
                           alignItems: 'start',
                           gap: '12px'
                         }}>
-                          <div style={{ 
-                            flex: 1,
-                            fontSize: '14px',
-                            color: '#333',
-                            lineHeight: '1.5',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word'
-                          }}>
-                            {announcement.content}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: '11px',
+                              color: '#888',
+                              marginBottom: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              <span style={{
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                background: dateLabel.isRange ? '#e3f2fd' : '#f5f5f5',
+                                color: dateLabel.isRange ? '#1976d2' : '#666',
+                                fontWeight: '500'
+                              }}>
+                                {dateLabel.text}
+                              </span>
+                            </div>
+                            <div style={{ 
+                              fontSize: '14px',
+                              color: '#333',
+                              lineHeight: '1.5',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word'
+                            }}>
+                              {announcement.content}
+                            </div>
                           </div>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
                             <button
@@ -650,7 +778,8 @@ export function AnnouncementManagement() {
                       </>
                     )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             ))
           })()}

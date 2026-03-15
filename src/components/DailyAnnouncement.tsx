@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString } from '../utils/date'
+import { getLocalDateString, addDaysToDate } from '../utils/date'
 
 interface Announcement {
   id: number
   content: string
+  display_date: string
+  end_date: string | null
 }
 
 interface Birthday {
@@ -120,8 +122,8 @@ export function DailyAnnouncement() {
     ])
 
     // 處理查詢結果
-    if (announcementResult.data) setAnnouncements(announcementResult.data)
-    
+    if (announcementResult.data) setAnnouncements(announcementResult.data as Announcement[])
+
     if (timeOffResult.data) {
       // 只顯示啟用中的教練，過濾掉已停用或已隱藏的教練
       const coachNames = timeOffResult.data
@@ -143,7 +145,7 @@ export function DailyAnnouncement() {
       
       setBirthdays(filtered)
     }
-    
+
     if (boatUnavailableResult.data) {
       // 只顯示啟用中的船隻
       const boats = boatUnavailableResult.data
@@ -164,6 +166,19 @@ export function DailyAnnouncement() {
 
   const hasAnyData = announcements.length > 0 || timeOffCoaches.length > 0 || 
                       birthdays.length > 0 || unavailableBoats.length > 0
+
+  // 取得公告顯示文字（區間時加日期前綴）
+  const getAnnouncementDisplayText = (ann: Announcement): string => {
+    const end = ann.end_date || ann.display_date
+    if (ann.display_date === end) return ann.content
+    const toShort = (d: string) => {
+      const [, m, day] = d.split('-')
+      return `${parseInt(m)}/${parseInt(day)}`
+    }
+    const eventStart = addDaysToDate(ann.display_date, 1)
+    const prefix = eventStart === end ? `${toShort(eventStart)} ` : `${toShort(eventStart)} - ${toShort(end)} `
+    return prefix + ann.content
+  }
 
   if (!hasAnyData) return null
 
@@ -229,7 +244,7 @@ export function DailyAnnouncement() {
                     marginBottom: idx < announcements.length - 1 ? '2px' : '0'
                   }}
                 >
-                  {ann.content}
+                  {getAnnouncementDisplayText(ann)}
                 </div>
               ))}
             </div>
