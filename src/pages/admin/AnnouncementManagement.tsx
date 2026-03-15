@@ -704,24 +704,38 @@ export function AnnouncementManagement() {
                           gap: isMobile ? '10px' : '12px'
                         }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            {dateLabel.isRange && (
+                            {(dateLabel.isRange || announcement.show_one_day_early) && (
                               <div style={{
                                 fontSize: '11px',
                                 color: '#888',
                                 marginBottom: '4px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '6px'
+                                gap: '6px',
+                                flexWrap: 'wrap'
                               }}>
-                                <span style={{
-                                  padding: '2px 8px',
-                                  borderRadius: '4px',
-                                  background: '#e3f2fd',
-                                  color: '#1976d2',
-                                  fontWeight: '500'
-                                }}>
-                                  {dateLabel.text}
-                                </span>
+                                {dateLabel.isRange && (
+                                  <span style={{
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    background: '#e3f2fd',
+                                    color: '#1976d2',
+                                    fontWeight: '500'
+                                  }}>
+                                    {dateLabel.text}
+                                  </span>
+                                )}
+                                {announcement.show_one_day_early && (
+                                  <span style={{
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    background: '#fff3e0',
+                                    color: '#e65100',
+                                    fontWeight: '500'
+                                  }}>
+                                    提前一天
+                                  </span>
+                                )}
                               </div>
                             )}
                             <div style={{ 
