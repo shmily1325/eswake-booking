@@ -223,8 +223,9 @@ export function AnnouncementManagement() {
     setEditingId(announcement.id)
     setEditContent(announcement.content)
     const end = announcement.end_date || announcement.display_date
-    const isEarly = announcement.display_date < end
-    setEditStartDate(isEarly ? addDaysToDate(announcement.display_date, 1) : announcement.display_date)
+    const nextDay = addDaysToDate(announcement.display_date, 1)
+    const isEarly = announcement.display_date < end && nextDay === end  // 僅差1天=提前單日
+    setEditStartDate(isEarly ? end : announcement.display_date)
     setEditEndDate(end)
     setEditShowOneDayEarly(isEarly)
   }
@@ -233,10 +234,13 @@ export function AnnouncementManagement() {
     setEditingId(null)
   }
 
-  // 取得事項開始日（用於分組，讓 3/16 的事項都出現在 3/16 底下）
+  // 取得事項開始日（用於分組）
+  // 僅「提前一天單日」時 display_date+1=end；區間時 事項開始=display_date
   const getEventStartDate = (a: Announcement) => {
     const end = a.end_date || a.display_date
-    return a.display_date < end ? addDaysToDate(a.display_date, 1) : a.display_date
+    if (a.display_date === end) return a.display_date
+    const nextDay = addDaysToDate(a.display_date, 1)
+    return nextDay === end ? end : a.display_date  // 差1天=提前單日，否則=區間
   }
 
   // 按事項開始日分組（而非 display_date，更直覺）
@@ -277,8 +281,8 @@ export function AnnouncementManagement() {
     if (a.display_date === end) {
       return { text: `單日 ${toShort(a.display_date)}`, isRange: false }
     }
-    // 提前一天：事項開始 = display_date + 1
-    const eventStart = addDaysToDate(a.display_date, 1)
+    const nextDay = addDaysToDate(a.display_date, 1)
+    const eventStart = nextDay === end ? end : a.display_date  // 差1天=提前單日，否則=區間
     if (eventStart === end) {
       return { text: `單日 ${toShort(eventStart)}`, isRange: false }
     }
@@ -289,7 +293,7 @@ export function AnnouncementManagement() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f5',
-      padding: isMobile ? '12px' : '20px'
+      padding: isMobile ? '16px' : '20px'
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         <PageHeader title="📢 公告" user={user} showBaoLink={true} />
@@ -320,12 +324,13 @@ export function AnnouncementManagement() {
               rows={3}
               style={{
                 width: '100%',
-                padding: '10px',
+                padding: isMobile ? '12px' : '10px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
-                fontSize: '14px',
+                fontSize: isMobile ? '16px' : '14px',
                 resize: 'vertical',
-                fontFamily: 'inherit'
+                fontFamily: 'inherit',
+                boxSizing: 'border-box'
               }}
             />
           </div>
@@ -349,25 +354,25 @@ export function AnnouncementManagement() {
                   if (e.target.value > newEndDate) setNewEndDate(e.target.value)
                 }}
                 style={{
-                  flex: isMobile ? 1 : 'none',
+                  flex: '1 1 120px',
                   minWidth: 0,
-                  padding: '10px',
+                  padding: isMobile ? '12px' : '10px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '8px',
                   fontSize: isMobile ? '16px' : '14px',
                   boxSizing: 'border-box'
                 }}
               />
-              <span style={{ color: '#999', fontSize: '14px' }}>～</span>
+              <span style={{ color: '#999', fontSize: '14px', flexShrink: 0 }}>～</span>
               <input
                 type="date"
                 value={newEndDate}
                 onChange={(e) => setNewEndDate(e.target.value)}
                 min={newStartDate}
                 style={{
-                  flex: isMobile ? 1 : 'none',
+                  flex: '1 1 120px',
                   minWidth: 0,
-                  padding: '10px',
+                  padding: isMobile ? '12px' : '10px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '8px',
                   fontSize: isMobile ? '16px' : '14px',
@@ -396,18 +401,20 @@ export function AnnouncementManagement() {
             <label style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '10px',
               cursor: 'pointer',
-              fontSize: '14px',
-              color: '#555'
+              fontSize: isMobile ? '15px' : '14px',
+              color: '#555',
+              padding: isMobile ? '8px 0' : 0,
+              minHeight: isMobile ? 44 : undefined
             }}>
               <input
                 type="checkbox"
                 checked={newShowOneDayEarly}
                 onChange={(e) => setNewShowOneDayEarly(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0 }}
               />
-              <span>提前一天顯示（讓大家今天就能看到明天的事項）</span>
+              <span>提前一天顯示</span>
             </label>
           </div>
 
@@ -415,12 +422,13 @@ export function AnnouncementManagement() {
             onClick={handleAdd}
             style={{
               width: '100%',
-              padding: '12px',
+              padding: isMobile ? '14px' : '12px',
+              minHeight: isMobile ? 48 : undefined,
               background: 'white',
               color: '#666',
               border: '2px solid #e0e0e0',
               borderRadius: '8px',
-              fontSize: '15px',
+              fontSize: isMobile ? '16px' : '15px',
               fontWeight: '600',
               cursor: 'pointer',
               transition: 'all 0.2s'
@@ -434,7 +442,7 @@ export function AnnouncementManagement() {
         <div style={{
           background: 'white',
           borderRadius: '12px',
-          padding: isMobile ? '12px' : '20px',
+          padding: isMobile ? '16px' : '20px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           minHeight: '200px',
           overflow: 'hidden'
@@ -444,6 +452,7 @@ export function AnnouncementManagement() {
             alignItems: 'center',
             marginBottom: '15px',
             gap: '8px',
+            flexWrap: 'wrap'
           }}>
             <h2 style={{
               margin: 0,
@@ -461,9 +470,9 @@ export function AnnouncementManagement() {
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
               style={{
-                flex: 1,
+                flex: '1 1 140px',
                 minWidth: 0,
-                padding: '10px',
+                padding: isMobile ? '12px' : '10px',
                 border: '1px solid #e0e0e0',
                 borderRadius: '8px',
                 fontSize: '16px',
@@ -490,11 +499,12 @@ export function AnnouncementManagement() {
                 onChange={(e) => setSearchText(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
+                  padding: isMobile ? '12px 14px' : '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
-                  fontSize: '14px',
-                  transition: 'border-color 0.2s'
+                  fontSize: isMobile ? '16px' : '14px',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#2196F3'}
                 onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
@@ -505,12 +515,13 @@ export function AnnouncementManagement() {
             <button
               onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
               style={{
-                padding: '10px 16px',
+                padding: isMobile ? '12px 18px' : '10px 16px',
+                minHeight: isMobile ? 44 : undefined,
                 background: '#f5f5f5',
                 color: '#666',
                 border: '1px solid #ddd',
                 borderRadius: '6px',
-                fontSize: '14px',
+                fontSize: isMobile ? '15px' : '14px',
                 fontWeight: '500',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
@@ -587,7 +598,7 @@ export function AnnouncementManagement() {
                   <div
                     key={announcement.id}
                     style={{
-                      padding: '12px',
+                      padding: isMobile ? '14px' : '12px',
                       background: 'white',
                       borderRadius: '6px',
                       marginBottom: '8px',
@@ -603,12 +614,13 @@ export function AnnouncementManagement() {
                           rows={3}
                           style={{
                             width: '100%',
-                            padding: '8px',
+                            padding: isMobile ? '12px' : '8px',
                             border: '1px solid #ddd',
-                            borderRadius: '4px',
-                            fontSize: '14px',
+                            borderRadius: '6px',
+                            fontSize: isMobile ? '16px' : '14px',
                             marginBottom: '10px',
-                            fontFamily: 'inherit'
+                            fontFamily: 'inherit',
+                            boxSizing: 'border-box'
                           }}
                         />
                         <div style={{ marginBottom: '10px' }}>
@@ -622,25 +634,25 @@ export function AnnouncementManagement() {
                                 if (e.target.value > editEndDate) setEditEndDate(e.target.value)
                               }}
                               style={{
-                                flex: 1,
+                                flex: '1 1 120px',
                                 minWidth: 0,
-                                padding: '10px',
+                                padding: isMobile ? '12px' : '10px',
                                 border: '1px solid #e0e0e0',
                                 borderRadius: '8px',
                                 fontSize: '16px',
                                 boxSizing: 'border-box'
                               }}
                             />
-                            <span style={{ color: '#999', fontSize: '14px' }}>～</span>
+                            <span style={{ color: '#999', fontSize: '14px', flexShrink: 0 }}>～</span>
                             <input
                               type="date"
                               value={editEndDate}
                               onChange={(e) => setEditEndDate(e.target.value)}
                               min={editStartDate}
                               style={{
-                                flex: 1,
+                                flex: '1 1 120px',
                                 minWidth: 0,
-                                padding: '10px',
+                                padding: isMobile ? '12px' : '10px',
                                 border: '1px solid #e0e0e0',
                                 borderRadius: '8px',
                                 fontSize: '16px',
@@ -653,16 +665,18 @@ export function AnnouncementManagement() {
                           <label style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '8px',
+                            gap: '10px',
                             cursor: 'pointer',
-                            fontSize: '14px',
-                            color: '#555'
+                            fontSize: isMobile ? '15px' : '14px',
+                            color: '#555',
+                            padding: isMobile ? '8px 0' : 0,
+                            minHeight: isMobile ? 44 : undefined
                           }}>
                             <input
                               type="checkbox"
                               checked={editShowOneDayEarly}
                               onChange={(e) => setEditShowOneDayEarly(e.target.checked)}
-                              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                              style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0 }}
                             />
                             <span>提前一天顯示</span>
                           </label>
@@ -672,12 +686,13 @@ export function AnnouncementManagement() {
                             onClick={() => handleEdit(announcement.id)}
                             style={{
                               flex: 1,
-                              padding: '8px',
+                              padding: isMobile ? '12px' : '8px',
+                              minHeight: isMobile ? 44 : undefined,
                               background: '#2196F3',
                               color: 'white',
                               border: 'none',
-                              borderRadius: '4px',
-                              fontSize: '13px',
+                              borderRadius: '6px',
+                              fontSize: isMobile ? '15px' : '13px',
                               fontWeight: '600',
                               cursor: 'pointer'
                             }}
@@ -688,12 +703,13 @@ export function AnnouncementManagement() {
                             onClick={cancelEdit}
                             style={{
                               flex: 1,
-                              padding: '8px',
+                              padding: isMobile ? '12px' : '8px',
+                              minHeight: isMobile ? 44 : undefined,
                               background: '#f5f5f5',
                               color: '#666',
                               border: '1px solid #ddd',
-                              borderRadius: '4px',
-                              fontSize: '13px',
+                              borderRadius: '6px',
+                              fontSize: isMobile ? '15px' : '13px',
                               fontWeight: '600',
                               cursor: 'pointer'
                             }}
@@ -707,29 +723,32 @@ export function AnnouncementManagement() {
                       <>
                         <div style={{
                           display: 'flex',
+                          flexDirection: isMobile ? 'column' : 'row',
                           justifyContent: 'space-between',
-                          alignItems: 'start',
-                          gap: '12px'
+                          alignItems: isMobile ? 'stretch' : 'start',
+                          gap: isMobile ? '10px' : '12px'
                         }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{
-                              fontSize: '11px',
-                              color: '#888',
-                              marginBottom: '4px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}>
-                              <span style={{
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                background: dateLabel.isRange ? '#e3f2fd' : '#f5f5f5',
-                                color: dateLabel.isRange ? '#1976d2' : '#666',
-                                fontWeight: '500'
+                            {dateLabel.isRange && (
+                              <div style={{
+                                fontSize: '11px',
+                                color: '#888',
+                                marginBottom: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
                               }}>
-                                {dateLabel.text}
-                              </span>
-                            </div>
+                                <span style={{
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  background: '#e3f2fd',
+                                  color: '#1976d2',
+                                  fontWeight: '500'
+                                }}>
+                                  {dateLabel.text}
+                                </span>
+                              </div>
+                            )}
                             <div style={{ 
                               fontSize: '14px',
                               color: '#333',
@@ -740,16 +759,22 @@ export function AnnouncementManagement() {
                               {announcement.content}
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
+                          <div style={{ 
+                            display: 'flex', 
+                            gap: '8px', 
+                            flexWrap: 'wrap',
+                            flexShrink: 0
+                          }}>
                             <button
                               onClick={() => startEdit(announcement)}
                               style={{
-                                padding: '5px 10px',
+                                padding: isMobile ? '10px 14px' : '5px 10px',
+                                minHeight: isMobile ? 44 : undefined,
                                 background: '#f5f5f5',
                                 color: '#666',
                                 border: '1px solid #ddd',
-                                borderRadius: '4px',
-                                fontSize: '12px',
+                                borderRadius: '6px',
+                                fontSize: isMobile ? '14px' : '12px',
                                 fontWeight: '500',
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap'
@@ -760,12 +785,13 @@ export function AnnouncementManagement() {
                             <button
                               onClick={() => handleDelete(announcement.id)}
                               style={{
-                                padding: '5px 10px',
+                                padding: isMobile ? '10px 14px' : '5px 10px',
+                                minHeight: isMobile ? 44 : undefined,
                                 background: '#fff',
                                 color: '#f44336',
                                 border: '1px solid #f44336',
-                                borderRadius: '4px',
-                                fontSize: '12px',
+                                borderRadius: '6px',
+                                fontSize: isMobile ? '14px' : '12px',
                                 fontWeight: '500',
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap'

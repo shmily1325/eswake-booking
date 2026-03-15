@@ -167,17 +167,26 @@ export function DailyAnnouncement() {
   const hasAnyData = announcements.length > 0 || timeOffCoaches.length > 0 || 
                       birthdays.length > 0 || unavailableBoats.length > 0
 
-  // 取得公告顯示文字（區間時加日期前綴）
-  const getAnnouncementDisplayText = (ann: Announcement): string => {
+  const toShort = (d: string) => {
+    const [, m, day] = d.split('-')
+    return `${parseInt(m)}/${parseInt(day)}`
+  }
+
+  // 取得單則公告的日期前綴（無則回傳 null）
+  const getDatePrefix = (ann: Announcement): string | null => {
     const end = ann.end_date || ann.display_date
-    if (ann.display_date === end) return ann.content
-    const toShort = (d: string) => {
-      const [, m, day] = d.split('-')
-      return `${parseInt(m)}/${parseInt(day)}`
-    }
-    const eventStart = addDaysToDate(ann.display_date, 1)
-    const prefix = eventStart === end ? `${toShort(eventStart)} ` : `${toShort(eventStart)} - ${toShort(end)} `
-    return prefix + ann.content
+    if (ann.display_date === end) return null
+    const nextDay = addDaysToDate(ann.display_date, 1)
+    const eventStart = nextDay === end ? end : ann.display_date
+    return eventStart === end ? toShort(eventStart) : `${toShort(eventStart)} - ${toShort(end)}`
+  }
+
+  // 取得公告顯示文字（若 sharedPrefix 有值則不重複加日期）
+  const getAnnouncementDisplayText = (ann: Announcement, sharedPrefix: string | null): string => {
+    const prefix = getDatePrefix(ann)
+    if (sharedPrefix) return ann.content  // 已在外層顯示，不重複
+    if (prefix) return `${prefix} ${ann.content}`
+    return ann.content
   }
 
   if (!hasAnyData) return null
@@ -223,14 +232,18 @@ export function DailyAnnouncement() {
           color: '#555',
           lineHeight: '1.7'
         }}>
-          {announcements.length > 0 && (
+          {announcements.length > 0 && (() => {
+            const prefixes = announcements.map(a => getDatePrefix(a))
+            const allSame = prefixes.length >= 1 && prefixes.every(p => p === prefixes[0])
+            const sharedPrefix = allSame && prefixes[0] ? prefixes[0] : null
+            return (
             <div style={{ marginBottom: '6px' }}>
               <div style={{ 
                 color: '#667eea', 
                 fontWeight: '500',
                 marginBottom: '2px'
               }}>
-                📋 交辦事項：
+                📋 交辦事項{sharedPrefix ? ` (${sharedPrefix})` : ''}：
               </div>
               {announcements.map((ann, idx) => (
                 <div 
@@ -244,11 +257,12 @@ export function DailyAnnouncement() {
                     marginBottom: idx < announcements.length - 1 ? '2px' : '0'
                   }}
                 >
-                  {getAnnouncementDisplayText(ann)}
+                  {getAnnouncementDisplayText(ann, sharedPrefix)}
                 </div>
               ))}
             </div>
-          )}
+            )
+          })()}
 
           {timeOffCoaches.length > 0 && (
             <div style={{ marginBottom: '6px' }}>
