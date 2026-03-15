@@ -49,6 +49,51 @@ export function computeDisplayDate(eventStartDate: string, showOneDayEarly: bool
 }
 
 /**
+ * 今日公告：計算交辦事項的顯示邏輯
+ *
+ * 情境說明：
+ * - 單日：display_date === end_date，事項只有一天
+ * - 多日/區間：display_date < end_date，事項有日期範圍
+ * - 混合：多則公告的事項日期不完全相同
+ *
+ * 顯示規則：
+ * | 情境           | 標題               | 每則內容        |
+ * |----------------|--------------------|-----------------|
+ * | 全部同一天且今天 | 交辦事項：         | 只顯示內容      |
+ * | 全部同一天非今天 | 交辦事項 (3/17)：  | 只顯示內容      |
+ * | 混合多日       | 交辦事項：         | 每則顯示日期+內容 |
+ */
+export function getAnnouncementListDisplay(
+  announcements: AnnouncementRecord[],
+  today: string
+): {
+  headerPrefix: string | null
+  showDateInHeader: boolean
+  getItemText: (a: AnnouncementRecord & { content: string }) => string
+} {
+  const todayShort = formatDateShort(today)
+  const prefixes = announcements.map(a => getEventDateLabel(a))
+  const allSame = prefixes.length >= 1 && prefixes.every(p => p === prefixes[0])
+  const allEventDatesToday = announcements.every(a =>
+    formatDateShort(getEventStartDate(a)) === todayShort
+  )
+
+  // sharedPrefix：有值時表示標題可共用，每則不重複顯示日期
+  const sharedPrefix =
+    allSame && prefixes[0] ? prefixes[0] : allEventDatesToday ? todayShort : null
+
+  const showDateInHeader = !!(sharedPrefix && sharedPrefix !== todayShort)
+
+  const getItemText = (a: AnnouncementRecord & { content: string }): string => {
+    if (sharedPrefix) return a.content
+    const label = getEventDateLabel(a) ?? formatDateShort(getEventStartDate(a))
+    return `${label} ${a.content}`
+  }
+
+  return { headerPrefix: sharedPrefix, showDateInHeader, getItemText }
+}
+
+/**
  * 從 DB 資料還原表單的「事項開始日」與「提前一天顯示」
  */
 export function parseForEdit(a: AnnouncementRecord): {

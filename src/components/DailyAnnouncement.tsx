@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
-import { getEventDateLabel } from '../utils/announcement'
+import { getAnnouncementListDisplay } from '../utils/announcement'
 
 interface Announcement {
   id: number
@@ -169,15 +169,6 @@ export function DailyAnnouncement() {
   const hasAnyData = announcements.length > 0 || timeOffCoaches.length > 0 || 
                       birthdays.length > 0 || unavailableBoats.length > 0
 
-  const getDatePrefix = (ann: Announcement) => getEventDateLabel(ann)
-
-  const getAnnouncementDisplayText = (ann: Announcement, sharedPrefix: string | null): string => {
-    const prefix = getDatePrefix(ann)
-    if (sharedPrefix) return ann.content
-    if (prefix) return `${prefix} ${ann.content}`
-    return ann.content
-  }
-
   if (!hasAnyData) return null
 
   return (
@@ -222,9 +213,10 @@ export function DailyAnnouncement() {
           lineHeight: '1.7'
         }}>
           {announcements.length > 0 && (() => {
-            const prefixes = announcements.map(a => getDatePrefix(a))
-            const allSame = prefixes.length >= 1 && prefixes.every(p => p === prefixes[0])
-            const sharedPrefix = allSame && prefixes[0] ? prefixes[0] : null
+            const { showDateInHeader, headerPrefix, getItemText } = getAnnouncementListDisplay(
+              announcements,
+              getLocalDateString()
+            )
             return (
             <div style={{ marginBottom: '6px' }}>
               <div style={{ 
@@ -232,7 +224,7 @@ export function DailyAnnouncement() {
                 fontWeight: '500',
                 marginBottom: '2px'
               }}>
-                📋 交辦事項{sharedPrefix ? ` (${sharedPrefix})` : ''}：
+                📋 交辦事項{showDateInHeader && headerPrefix ? ` (${headerPrefix})` : ''}：
               </div>
               {announcements.map((ann, idx) => (
                 <div 
@@ -246,7 +238,7 @@ export function DailyAnnouncement() {
                     marginBottom: idx < announcements.length - 1 ? '2px' : '0'
                   }}
                 >
-                  {getAnnouncementDisplayText(ann, sharedPrefix)}
+                  {getItemText(ann)}
                 </div>
               ))}
             </div>
