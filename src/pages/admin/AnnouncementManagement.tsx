@@ -5,7 +5,8 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { getLocalDateString, getWeekdayText, addDaysToDate } from '../../utils/date'
+import { getLocalDateString, getWeekdayText } from '../../utils/date'
+import { getEventStartDate, getEventDateLabel, parseForEdit, formatDateShort, computeDisplayDate } from '../../utils/announcement'
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { validateRequired } from '../../utils/errorHandler'
 import { useToast, ToastContainer } from '../../components/ui'
@@ -16,6 +17,7 @@ interface Announcement {
   content: string
   display_date: string
   end_date: string | null
+  show_one_day_early?: boolean | null
   created_at: string | null
 }
 
@@ -135,16 +137,15 @@ export function AnnouncementManagement() {
       return
     }
 
-    const displayDate = newShowOneDayEarly ? addDaysToDate(newStartDate, -1) : newStartDate
-
     await executeAsync(
       async () => {
         const { error } = await supabase
           .from('daily_announcements')
           .insert({
             content: newContent.trim(),
-            display_date: displayDate,
+            display_date: computeDisplayDate(newStartDate, newShowOneDayEarly),
             end_date: newEndDate,
+            show_one_day_early: newShowOneDayEarly,
             created_by: user.id
           })
 
@@ -171,16 +172,15 @@ export function AnnouncementManagement() {
       return
     }
 
-    const displayDate = editShowOneDayEarly ? addDaysToDate(editStartDate, -1) : editStartDate
-
     await executeAsync(
       async () => {
         const { error } = await supabase
           .from('daily_announcements')
           .update({
             content: editContent.trim(),
-            display_date: displayDate,
-            end_date: editEndDate
+            display_date: computeDisplayDate(editStartDate, editShowOneDayEarly),
+            end_date: editEndDate,
+            show_one_day_early: editShowOneDayEarly
           })
           .eq('id', id)
 
@@ -222,28 +222,15 @@ export function AnnouncementManagement() {
   const startEdit = (announcement: Announcement) => {
     setEditingId(announcement.id)
     setEditContent(announcement.content)
-    const end = announcement.end_date || announcement.display_date
-    const nextDay = addDaysToDate(announcement.display_date, 1)
-    const isEarly = announcement.display_date < end && nextDay === end  // 僅差1天=提前單日
-    setEditStartDate(isEarly ? end : announcement.display_date)
-    setEditEndDate(end)
-    setEditShowOneDayEarly(isEarly)
+    const { eventStartDate, eventEndDate, showOneDayEarly } = parseForEdit(announcement)
+    setEditStartDate(eventStartDate)
+    setEditEndDate(eventEndDate)
+    setEditShowOneDayEarly(showOneDayEarly)
   }
 
-  const cancelEdit = () => {
-    setEditingId(null)
-  }
+  const cancelEdit = () => setEditingId(null)
 
-  // 取得事項開始日（用於分組）
-  // 僅「提前一天單日」時 display_date+1=end；區間時 事項開始=display_date
-  const getEventStartDate = (a: Announcement) => {
-    const end = a.end_date || a.display_date
-    if (a.display_date === end) return a.display_date
-    const nextDay = addDaysToDate(a.display_date, 1)
-    return nextDay === end ? end : a.display_date  // 差1天=提前單日，否則=區間
-  }
-
-  // 按事項開始日分組（而非 display_date，更直覺）
+  // 按事項開始日分組
   const groupAnnouncementsByDate = (announcements: Announcement[]) => {
     const grouped = new Map<string, Announcement[]>()
     
@@ -265,28 +252,16 @@ export function AnnouncementManagement() {
     return sortedGroups
   }
 
-  // 格式化日期顯示
   const formatDateHeader = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-')
     return `${year}/${parseInt(month)}/${parseInt(day)}`
   }
 
-  // 取得每則公告的日期標籤（單日 vs 區間，顯示事項日期）
   const getAnnouncementDateLabel = (a: Announcement) => {
-    const toShort = (d: string) => {
-      const [, m, day] = d.split('-')
-      return `${parseInt(m)}/${parseInt(day)}`
-    }
-    const end = a.end_date || a.display_date
-    if (a.display_date === end) {
-      return { text: `單日 ${toShort(a.display_date)}`, isRange: false }
-    }
-    const nextDay = addDaysToDate(a.display_date, 1)
-    const eventStart = nextDay === end ? end : a.display_date  // 差1天=提前單日，否則=區間
-    if (eventStart === end) {
-      return { text: `單日 ${toShort(eventStart)}`, isRange: false }
-    }
-    return { text: `${toShort(eventStart)} - ${toShort(end)}`, isRange: true }
+    const label = getEventDateLabel(a)
+    if (!label) return { text: `單日 ${formatDateShort(a.display_date)}`, isRange: false }
+    const isRange = label.includes(' - ')
+    return { text: isRange ? label : `單日 ${label}`, isRange }
   }
 
   return (

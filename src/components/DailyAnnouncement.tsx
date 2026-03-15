@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString, addDaysToDate } from '../utils/date'
+import { getLocalDateString } from '../utils/date'
+import { getEventDateLabel } from '../utils/announcement'
 
 interface Announcement {
   id: number
   content: string
   display_date: string
   end_date: string | null
+  show_one_day_early?: boolean | null
 }
 
 interface Birthday {
@@ -167,24 +169,11 @@ export function DailyAnnouncement() {
   const hasAnyData = announcements.length > 0 || timeOffCoaches.length > 0 || 
                       birthdays.length > 0 || unavailableBoats.length > 0
 
-  const toShort = (d: string) => {
-    const [, m, day] = d.split('-')
-    return `${parseInt(m)}/${parseInt(day)}`
-  }
+  const getDatePrefix = (ann: Announcement) => getEventDateLabel(ann)
 
-  // 取得單則公告的日期前綴（無則回傳 null）
-  const getDatePrefix = (ann: Announcement): string | null => {
-    const end = ann.end_date || ann.display_date
-    if (ann.display_date === end) return null
-    const nextDay = addDaysToDate(ann.display_date, 1)
-    const eventStart = nextDay === end ? end : ann.display_date
-    return eventStart === end ? toShort(eventStart) : `${toShort(eventStart)} - ${toShort(end)}`
-  }
-
-  // 取得公告顯示文字（若 sharedPrefix 有值則不重複加日期）
   const getAnnouncementDisplayText = (ann: Announcement, sharedPrefix: string | null): string => {
     const prefix = getDatePrefix(ann)
-    if (sharedPrefix) return ann.content  // 已在外層顯示，不重複
+    if (sharedPrefix) return ann.content
     if (prefix) return `${prefix} ${ann.content}`
     return ann.content
   }
