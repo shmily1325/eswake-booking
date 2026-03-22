@@ -216,23 +216,52 @@ export function DailyAnnouncement() {
             const today = getLocalDateString()
             const { today: todayGroup, tomorrow: tomorrowGroup } = groupAnnouncementsForDisplay(announcements, today)
 
-            const renderItem = (ann: Announcement, isRange: boolean) => {
-              if (isRange) {
-                const label = getEventDateLabel(ann)
-                return label ? `[${label}] ${ann.content}` : ann.content
-              }
-              return ann.content
+            /** 依 date label 分組：null 單日 | "3/24" 單日區間 | "3/24 - 3/27" 多日區間 */
+            const groupByDateLabel = (single: Announcement[], range: Announcement[]) => {
+              const byLabel = new Map<string | null, Announcement[]>()
+              single.forEach(a => {
+                const k: string | null = null
+                if (!byLabel.has(k)) byLabel.set(k, [])
+                byLabel.get(k)!.push(a)
+              })
+              range.forEach(a => {
+                const label = getEventDateLabel(a)
+                const k = label ?? '__single'
+                if (!byLabel.has(k)) byLabel.set(k, [])
+                byLabel.get(k)!.push(a)
+              })
+              return byLabel
             }
 
-            const renderGroup = (single: Announcement[], range: Announcement[]) => {
-              const items: { key: string; content: string }[] = []
-              single.forEach(a => items.push({ key: `s-${a.id}`, content: ` - ${renderItem(a, false)}` }))
-              range.forEach(a => items.push({ key: `r-${a.id}`, content: renderItem(a, true) }))
-              return items
+            const itemStyle = {
+              color: '#667eea' as const,
+              fontWeight: '500' as const,
+              wordBreak: 'break-word' as const,
+              whiteSpace: 'pre-wrap' as const,
+              paddingLeft: '1.5em',
+              marginBottom: '4px'
             }
 
-            const todayItems = renderGroup(todayGroup.single, todayGroup.range)
-            const tomorrowItems = renderGroup(tomorrowGroup.single, tomorrowGroup.range)
+            const renderSection = (single: Announcement[], range: Announcement[]) => {
+              const byLabel = groupByDateLabel(single, range)
+              const entries = Array.from(byLabel.entries())
+              return entries.flatMap(([label, items]) => {
+                if (label === null || label === '__single') {
+                  return items.map(a => <div key={a.id} style={itemStyle}> - {a.content}</div>)
+                }
+                const isMultiDay = label.includes(' - ')
+                if (isMultiDay) {
+                  return items.map(a => <div key={a.id} style={itemStyle}>[{label}] {a.content}</div>)
+                }
+                return [
+                  <div key={`${label}-h`} style={itemStyle}>[{label}]</div>,
+                  ...items.map(a => <div key={a.id} style={itemStyle}> - {a.content}</div>)
+                ]
+              })
+            }
+
+            const todayEls = renderSection(todayGroup.single, todayGroup.range)
+            const tomorrowEls = renderSection(tomorrowGroup.single, tomorrowGroup.range)
 
             return (
             <div style={{ marginBottom: '6px' }}>
@@ -243,50 +272,22 @@ export function DailyAnnouncement() {
               }}>
                 📋 交辦事項
               </div>
-              {todayItems.length > 0 && (
-                <div style={{ marginBottom: tomorrowItems.length > 0 ? '10px' : '0' }}>
-                  {todayItems.map(({ key, content }) => (
-                    <div 
-                      key={key} 
-                      style={{ 
-                        color: '#667eea', 
-                        fontWeight: '500',
-                        wordBreak: 'break-word',
-                        whiteSpace: 'pre-wrap',
-                        paddingLeft: '1.5em',
-                        marginBottom: '4px'
-                      }}
-                    >
-                      {content}
-                    </div>
-                  ))}
+              {todayEls.length > 0 && (
+                <div style={{ marginBottom: tomorrowEls.length > 0 ? '10px' : '0' }}>
+                  {todayEls}
                 </div>
               )}
-              {tomorrowItems.length > 0 && (
+              {tomorrowEls.length > 0 && (
                 <>
                   <div style={{ 
                     color: '#667eea', 
                     fontWeight: '500',
                     marginBottom: '4px',
-                    marginTop: todayItems.length > 0 ? '12px' : '0'
+                    marginTop: todayEls.length > 0 ? '12px' : '0'
                   }}>
                     📋 明日提醒
                   </div>
-                  {tomorrowItems.map(({ key, content }) => (
-                    <div 
-                      key={key} 
-                      style={{ 
-                        color: '#667eea', 
-                        fontWeight: '500',
-                        wordBreak: 'break-word',
-                        whiteSpace: 'pre-wrap',
-                        paddingLeft: '1.5em',
-                        marginBottom: '4px'
-                      }}
-                    >
-                      {content}
-                    </div>
-                  ))}
+                  {tomorrowEls}
                 </>
               )}
             </div>
