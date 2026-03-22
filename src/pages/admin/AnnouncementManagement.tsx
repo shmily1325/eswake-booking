@@ -736,7 +736,7 @@ export function AnnouncementManagement() {
                               flexWrap: 'wrap'
                             }}>
                               <span>{announcement.content}</span>
-                              {announcement.show_one_day_early && (
+                              {parseForEdit(announcement).showOneDayEarly && (
                                 <span style={{
                                   fontSize: isMobile ? '12px' : '11px',
                                   padding: isMobile ? '3px 8px' : '2px 6px',

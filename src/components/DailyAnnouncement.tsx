@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
-import { getAnnouncementListDisplay } from '../utils/announcement'
+import { groupAnnouncementsForDisplay, getEventDateLabel } from '../utils/announcement'
 
 interface Announcement {
   id: number
@@ -213,34 +213,82 @@ export function DailyAnnouncement() {
           lineHeight: '1.7'
         }}>
           {announcements.length > 0 && (() => {
-            const { showDateInHeader, headerPrefix, getItemText } = getAnnouncementListDisplay(
-              announcements,
-              getLocalDateString()
-            )
+            const today = getLocalDateString()
+            const { today: todayGroup, tomorrow: tomorrowGroup } = groupAnnouncementsForDisplay(announcements, today)
+
+            const renderItem = (ann: Announcement, isRange: boolean) => {
+              if (isRange) {
+                const label = getEventDateLabel(ann)
+                return label ? `[${label}] ${ann.content}` : ann.content
+              }
+              return ann.content
+            }
+
+            const renderGroup = (single: Announcement[], range: Announcement[]) => {
+              const items: { key: string; content: string }[] = []
+              single.forEach(a => items.push({ key: `s-${a.id}`, content: `· ${renderItem(a, false)}` }))
+              range.forEach(a => items.push({ key: `r-${a.id}`, content: renderItem(a, true) }))
+              return items
+            }
+
+            const todayItems = renderGroup(todayGroup.single, todayGroup.range)
+            const tomorrowItems = renderGroup(tomorrowGroup.single, tomorrowGroup.range)
+
             return (
             <div style={{ marginBottom: '6px' }}>
               <div style={{ 
                 color: '#667eea', 
                 fontWeight: '500',
-                marginBottom: '2px'
+                marginBottom: '4px'
               }}>
-                📋 交辦事項{showDateInHeader && headerPrefix ? ` (${headerPrefix})` : ''}：
+                📋 交辦事項
               </div>
-              {announcements.map((ann, idx) => (
-                <div 
-                  key={ann.id} 
-                  style={{ 
-                    color: '#667eea', 
-                    fontWeight: '500',
-                    wordBreak: 'break-word',
-                    whiteSpace: 'pre-wrap',
-                    paddingLeft: '1.5em',
-                    marginBottom: idx < announcements.length - 1 ? '2px' : '0'
-                  }}
-                >
-                  {getItemText(ann)}
+              {todayItems.length > 0 && (
+                <div style={{ marginBottom: tomorrowItems.length > 0 ? '10px' : '0' }}>
+                  {todayItems.map(({ key, content }) => (
+                    <div 
+                      key={key} 
+                      style={{ 
+                        color: '#667eea', 
+                        fontWeight: '500',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap',
+                        paddingLeft: '1.5em',
+                        marginBottom: '4px'
+                      }}
+                    >
+                      {content}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+              {tomorrowItems.length > 0 && (
+                <>
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: '#888', 
+                    marginBottom: '4px',
+                    paddingLeft: '1.5em'
+                  }}>
+                    明日提醒
+                  </div>
+                  {tomorrowItems.map(({ key, content }) => (
+                    <div 
+                      key={key} 
+                      style={{ 
+                        color: '#667eea', 
+                        fontWeight: '500',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap',
+                        paddingLeft: '1.5em',
+                        marginBottom: '4px'
+                      }}
+                    >
+                      {content}
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
             )
           })()}

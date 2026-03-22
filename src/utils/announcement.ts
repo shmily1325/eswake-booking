@@ -2,14 +2,20 @@ import { addDaysToDate } from './date'
 
 export interface AnnouncementRecord {
   display_date: string
+  /** 結束日期；null 時視為單日（等同 display_date） */
   end_date: string | null
   show_one_day_early?: boolean | null
 }
 
 /** YYYY-MM-DD → M/D */
 export function formatDateShort(dateStr: string): string {
-  const [, m, day] = dateStr.split('-')
-  return `${parseInt(m)}/${parseInt(day)}`
+  if (!dateStr || typeof dateStr !== 'string') return dateStr
+  const parts = dateStr.split('-')
+  if (parts.length !== 3) return dateStr
+  const m = parseInt(parts[1])
+  const day = parseInt(parts[2])
+  if (isNaN(m) || isNaN(day)) return dateStr
+  return `${m}/${day}`
 }
 
 /**
@@ -49,56 +55,49 @@ export function computeDisplayDate(eventStartDate: string, showOneDayEarly: bool
 }
 
 /**
- * 今日公告：計算交辦事項的顯示邏輯
- *
- * 情境說明：
- * - 單日：display_date === end_date，事項只有一天
- * - 多日/區間：display_date < end_date，事項有日期範圍
- * - 混合：多則公告的事項日期不完全相同
- *
- * 顯示規則：
- * | 情境               | 標題               | 每則內容        |
- * |--------------------|--------------------|-----------------|
- * | 全部同一天且今天   | 交辦事項：         | 只顯示內容      |
- * | 全部同一天非今天   | 交辦事項 (3/17)：  | 只顯示內容      |
- * | 混合（區間+單日等）| 交辦事項：         | 每則顯示日期+內容 |
+ * 今日公告：分組為「今日」與「明日提醒」
+ * - 今日：今天在事項範圍內（event_start <= today <= end）
+ * - 明日提醒：event_start === 明天（即有勾「提前一天顯示」的那種）
+ * 每組內：先單日（· 內容），後區間（[3/16 - 3/21] 內容）
  */
-export function getAnnouncementListDisplay(
-  announcements: AnnouncementRecord[],
+export function groupAnnouncementsForDisplay(
+  announcements: (AnnouncementRecord & { id: number; content: string })[],
   today: string
 ): {
-  headerPrefix: string | null
-  showDateInHeader: boolean
-  getItemText: (a: AnnouncementRecord & { content: string }) => string
+  today: { single: typeof announcements; range: typeof announcements }
+  tomorrow: { single: typeof announcements; range: typeof announcements }
 } {
-  const todayShort = formatDateShort(today)
-  const prefixes = announcements.map(a => getEventDateLabel(a))
-  const allSame = prefixes.length >= 1 && prefixes.every(p => p === prefixes[0])
-  const allEventDatesToday = announcements.every(a =>
-    formatDateShort(getEventStartDate(a)) === todayShort
-  )
+  const tomorrow = addDaysToDate(today, 1)
+  const todayList: typeof announcements = []
+  const tomorrowList: typeof announcements = []
 
-  // 區間與單日混合時（prefix 有 null 有非 null）不合併，每則顯示日期
-  const hasMixedRangeAndSingleDay = prefixes.some(p => p === null) && prefixes.some(p => p !== null)
+  for (const a of announcements) {
+    const eventStart = getEventStartDate(a)
+    const end = a.end_date || a.display_date
 
-  // sharedPrefix：有值時表示標題可共用，每則不重複顯示日期
-  const sharedPrefix = hasMixedRangeAndSingleDay
-    ? null
-    : allSame && prefixes[0]
-      ? prefixes[0]
-      : allSame && allEventDatesToday
-        ? todayShort
-        : null
-
-  const showDateInHeader = !!(sharedPrefix && sharedPrefix !== todayShort)
-
-  const getItemText = (a: AnnouncementRecord & { content: string }): string => {
-    if (sharedPrefix) return a.content
-    const label = getEventDateLabel(a) ?? formatDateShort(getEventStartDate(a))
-    return `${label} ${a.content}`
+    if (eventStart === tomorrow) {
+      tomorrowList.push(a)
+    } else if (eventStart <= today && end >= today) {
+      todayList.push(a)
+    }
   }
 
-  return { headerPrefix: sharedPrefix, showDateInHeader, getItemText }
+  const split = (list: typeof announcements) => {
+    const single = list.filter(a => {
+      const end = a.end_date || a.display_date
+      return a.display_date === end
+    })
+    const range = list.filter(a => {
+      const end = a.end_date || a.display_date
+      return a.display_date !== end
+    })
+    return { single, range }
+  }
+
+  return {
+    today: split(todayList),
+    tomorrow: split(tomorrowList)
+  }
 }
 
 /**
