@@ -5,6 +5,7 @@ import { logBookingCreation, logBookingUpdate, logBookingDeletion } from '../uti
 import { getLocalTimestamp, getWeekdayText } from '../utils/date'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
+import { normalizeFilledByForSave } from '../utils/filledByHelper'
 import { useBookingConflict } from '../hooks/useBookingConflict'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import type { Booking } from '../types/booking'
@@ -274,7 +275,7 @@ export function EditBookingDialog({
           duration_min: durationMin,
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
-          filled_by: filledBy,
+          filled_by: normalizeFilledByForSave(filledBy),
           requires_driver: requiresDriver,
           is_coach_practice: isCoachPractice,
           updated_at: getLocalTimestamp(),
@@ -813,7 +814,7 @@ export function EditBookingDialog({
         activity_types: activityTypes.length > 0 ? activityTypes : null,
         notes: notes || null,
         requires_driver: requiresDriver,
-        filled_by: copyFilledBy,
+        filled_by: normalizeFilledByForSave(copyFilledBy),
         status: 'confirmed',
         created_by: user.id,
         created_at: getLocalTimestamp(),

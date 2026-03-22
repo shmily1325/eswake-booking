@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
+import { normalizeFilledByForSave } from '../utils/filledByHelper'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { BoatSelector } from './booking/BoatSelector'
 import { TimeSelector } from './booking/TimeSelector'
@@ -217,7 +218,7 @@ export function NewBookingDialog({
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
         requires_driver: requiresDriver,
-        filled_by: filledBy,                      // 新增填表人欄位
+        filled_by: normalizeFilledByForSave(filledBy),  // 新增填表人欄位（B/b 統一為 B）
         is_coach_practice: isCoachPractice,       // 教練練習標記
           status: 'confirmed',
           created_by: user.id,

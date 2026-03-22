@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getFilledByName } from '../filledByHelper'
+import { getFilledByName, normalizeFilledByForSave } from '../filledByHelper'
 
 describe('filledByHelper', () => {
   describe('getFilledByName', () => {
@@ -11,8 +11,8 @@ describe('filledByHelper', () => {
       expect(getFilledByName('stt884142000@gmail.com')).toBe('何靜')
     })
 
-    it('應該返回 L 對應的 email', () => {
-      expect(getFilledByName('lynn8046356@gmail.com')).toBe('L')
+    it('應該返回 Lynn 對應的 email', () => {
+      expect(getFilledByName('lynn8046356@gmail.com')).toBe('Lynn')
     })
 
     it('應該對未知的 email 返回空字串', () => {
@@ -45,12 +45,31 @@ describe('filledByHelper', () => {
       const knownEmails = [
         { email: 'minlin1325@gmail.com', name: 'Ming' },
         { email: 'stt884142000@gmail.com', name: '何靜' },
-        { email: 'lynn8046356@gmail.com', name: 'L' }
+        { email: 'lynn8046356@gmail.com', name: 'Lynn' }
       ]
 
       knownEmails.forEach(({ email, name }) => {
         expect(getFilledByName(email)).toBe(name)
       })
+    })
+  })
+
+  describe('normalizeFilledByForSave', () => {
+    it('B 和 b 都應統一為 B', () => {
+      expect(normalizeFilledByForSave('b')).toBe('B')
+      expect(normalizeFilledByForSave('B')).toBe('B')
+    })
+
+    it('其他值應 trim 後原樣返回', () => {
+      expect(normalizeFilledByForSave('Ming')).toBe('Ming')
+      expect(normalizeFilledByForSave('  何靜  ')).toBe('何靜')
+    })
+
+    it('空值應返回空字串', () => {
+      expect(normalizeFilledByForSave('')).toBe('')
+      expect(normalizeFilledByForSave('   ')).toBe('')
+      expect(normalizeFilledByForSave(null)).toBe('')
+      expect(normalizeFilledByForSave(undefined)).toBe('')
     })
   })
 })

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { logAction } from '../utils/auditLog'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
+import { normalizeFilledByForSave } from '../utils/filledByHelper'
 import { useBookingConflict } from '../hooks/useBookingConflict'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { useToast } from './ui'
@@ -300,7 +301,7 @@ export function RepeatBookingDialog({
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
           requires_driver: requiresDriver,
-          filled_by: filledBy,
+          filled_by: normalizeFilledByForSave(filledBy),
           is_coach_practice: isCoachPractice,
           status: 'confirmed',
           created_by: user.id,
