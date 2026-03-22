@@ -226,7 +226,7 @@ export function DailyAnnouncement() {
 
             const renderGroup = (single: Announcement[], range: Announcement[]) => {
               const items: { key: string; content: string }[] = []
-              single.forEach(a => items.push({ key: `s-${a.id}`, content: `· ${renderItem(a, false)}` }))
+              single.forEach(a => items.push({ key: `s-${a.id}`, content: ` - ${renderItem(a, false)}` }))
               range.forEach(a => items.push({ key: `r-${a.id}`, content: renderItem(a, true) }))
               return items
             }
@@ -265,12 +265,12 @@ export function DailyAnnouncement() {
               {tomorrowItems.length > 0 && (
                 <>
                   <div style={{ 
-                    fontSize: '12px', 
-                    color: '#888', 
+                    color: '#667eea', 
+                    fontWeight: '500',
                     marginBottom: '4px',
-                    paddingLeft: '1.5em'
+                    marginTop: todayItems.length > 0 ? '12px' : '0'
                   }}>
-                    明日提醒
+                    📋 明日提醒
                   </div>
                   {tomorrowItems.map(({ key, content }) => (
                     <div 
