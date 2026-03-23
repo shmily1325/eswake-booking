@@ -321,7 +321,7 @@ export function TomorrowReminder() {
       const facilityLabel = getFacilityMessageLabel(boatName)
       const isFacilityBooking = !!facilityLabel
       
-      // 如果不是設施（彈簧床、陸上課程等），船次計數增加
+      // 如果不是彈簧床、陸上課程，船次計數增加
       if (!isFacilityBooking) {
         boatCount++
       }

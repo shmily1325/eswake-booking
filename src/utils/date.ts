@@ -152,7 +152,7 @@ export function formatDurationWithPickup(
   boatName?: string,
   startTime?: string
 ): string {
-  // 設施（彈簧床、陸上課程）只顯示時長，不顯示接船時間
+  // 彈簧床、陸上課程只顯示時長，不顯示接船時間
   if (!requiresDriver || isFacility(boatName)) {
     return `${durationMin}分`
   }

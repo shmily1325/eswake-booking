@@ -8,6 +8,7 @@ import { useBookingForm } from '../hooks/useBookingForm'
 import { normalizeFilledByForSave } from '../utils/filledByHelper'
 import { useBookingConflict } from '../hooks/useBookingConflict'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
+import { isFacility } from '../utils/facility'
 import type { Booking } from '../types/booking'
 import { useToast } from './ui'
 
@@ -238,10 +239,12 @@ export function EditBookingDialog({
       return
     }
 
-    // 檢查早場預約必須指定教練
+    // 檢查教練：彈簧床、陸上課程一律必須指定；其他船隻 08:00 前必須指定
+    const boatName = boats.find(b => b.id === selectedBoatId)?.name || ''
     const [hour] = startTime.split(':').map(Number)
-    if (hour < EARLY_BOOKING_HOUR_LIMIT && selectedCoaches.length === 0) {
-      setError(`${EARLY_BOOKING_HOUR_LIMIT}:00 之前的預約必須指定教練`)
+    const needsCoach = isFacility(boatName) || hour < EARLY_BOOKING_HOUR_LIMIT
+    if (needsCoach && selectedCoaches.length === 0) {
+      setError(isFacility(boatName) ? '彈簧床、陸上課程必須指定教練' : `${EARLY_BOOKING_HOUR_LIMIT}:00 之前的預約必須指定教練`)
       return
     }
 

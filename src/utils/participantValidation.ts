@@ -150,7 +150,7 @@ export function confirmPossibleMembers(possibleMembers: PossibleMember[]): boole
  * 計算 is_teaching 值
  * 
  * 判斷該參與者是否計入教學時數。
- * - 設施（彈簧床、陸上課程）：不管指定還是不指定，都算教學時數
+ * - 彈簧床、陸上課程：不管指定還是不指定，都算教學時數
  * - 其他船隻：只有選擇「指定教練」（需收費或不需收費）才計入教學時數
  * 
  * @param lessonType - 課程類型 ('undesignated' | 'designated_paid' | 'designated_free')
@@ -171,7 +171,7 @@ export function calculateIsTeaching(lessonType: string, boatName?: string): bool
     throw new TypeError('lessonType 必須是字串')
   }
   
-  // 設施（彈簧床、陸上課程）：不管指定還是不指定，都算教學時數
+  // 彈簧床、陸上課程：不管指定還是不指定，都算教學時數
   if (boatName && isFacility(boatName)) {
     return true
   }

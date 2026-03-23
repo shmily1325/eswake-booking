@@ -418,12 +418,13 @@ export function BatchEditBookingDialog({
           }
         }
         
-        // 3. 檢查 08:00 規則
+        // 3. 檢查教練規則：設施一律必須指定；其他 08:00 前必須指定
         if (fieldsToEdit.has('coaches') && selectedCoaches.length === 0) {
-          if (hour < EARLY_BOOKING_HOUR_LIMIT) {
+          const needsCoach = isFacility(actualBoatName) || hour < EARLY_BOOKING_HOUR_LIMIT
+          if (needsCoach) {
             skippedItems.push({ 
               label: bookingLabel, 
-              reason: `${EARLY_BOOKING_HOUR_LIMIT}:00 前的預約必須指定教練` 
+              reason: isFacility(actualBoatName) ? '彈簧床、陸上課程必須指定教練' : `${EARLY_BOOKING_HOUR_LIMIT}:00 前的預約必須指定教練` 
             })
             continue
           }
@@ -799,7 +800,7 @@ export function BatchEditBookingDialog({
                   fontSize: '13px',
                   color: '#856404'
                 }}>
-                  ⚠️ 08:00 前的預約必須指定教練，不指定時該筆會被跳過
+                  ⚠️ 彈簧床、陸上課程一律必須指定教練；其他船隻 08:00 前必須指定，不指定時該筆會被跳過
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {/* 不指定教練按鈕 */}

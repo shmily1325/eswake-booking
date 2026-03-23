@@ -133,7 +133,7 @@ describe('date.ts - 日期時間工具函數', () => {
       expect(result).toBe('60分')
     })
 
-    it('設施（彈簧床、陸上課程）應該只顯示分鐘數（即使需要駕駛）', () => {
+    it('彈簧床、陸上課程應該只顯示分鐘數（即使需要駕駛）', () => {
       expect(formatDurationWithPickup(60, true, '彈簧床')).toBe('60分')
       expect(formatDurationWithPickup(60, true, '陸上課程')).toBe('60分')
     })
