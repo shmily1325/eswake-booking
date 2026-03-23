@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString } from '../utils/date'
-import { groupAnnouncementsForDisplay, getEventDateLabel } from '../utils/announcement'
+import { getLocalDateString, addDaysToDate } from '../utils/date'
+import { groupAnnouncementsForDisplay, getEventDateLabel, formatDateShort } from '../utils/announcement'
 
 interface Announcement {
   id: number
@@ -242,7 +242,9 @@ export function DailyAnnouncement() {
               marginBottom: '4px'
             }
 
-            const renderSection = (single: Announcement[], range: Announcement[]) => {
+            const tomorrowShort = formatDateShort(addDaysToDate(today, 1))
+
+            const renderSection = (single: Announcement[], range: Announcement[], omitSingleDateLabel?: string) => {
               const byLabel = groupByDateLabel(single, range)
               const entries = Array.from(byLabel.entries())
               return entries.flatMap(([label, items]) => {
@@ -253,6 +255,9 @@ export function DailyAnnouncement() {
                 if (isMultiDay) {
                   return items.map(a => <div key={a.id} style={itemStyle}>[{label}] {a.content}</div>)
                 }
+                if (omitSingleDateLabel && label === omitSingleDateLabel) {
+                  return items.map(a => <div key={a.id} style={itemStyle}> - {a.content}</div>)
+                }
                 return [
                   <div key={`${label}-h`} style={itemStyle}>[{label}]</div>,
                   ...items.map(a => <div key={a.id} style={itemStyle}> - {a.content}</div>)
@@ -261,7 +266,7 @@ export function DailyAnnouncement() {
             }
 
             const todayEls = renderSection(todayGroup.single, todayGroup.range)
-            const tomorrowEls = renderSection(tomorrowGroup.single, tomorrowGroup.range)
+            const tomorrowEls = renderSection(tomorrowGroup.single, tomorrowGroup.range, tomorrowShort)
 
             return (
             <div style={{ marginBottom: '6px' }}>
