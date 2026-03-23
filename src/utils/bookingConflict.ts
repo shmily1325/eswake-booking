@@ -214,7 +214,7 @@ export async function checkCoachConflict(
     if (checkTimeSlotConflict(newSlot, existingSlot)) {
       return {
         hasConflict: true,
-        reason: `教練已有預約：與 ${booking.contact_name} 的預約時間衝突 (${existingTime}-${minutesToTime(existingSlot.endMinutes)})`
+        reason: `教練已有預約：與 ${booking.contact_name} 的預約時間衝突 (${existingTime}-${minutesToTime(existingSlot.endMinutes)})，教練需間隔 15 分鐘`
       }
     }
   }
@@ -270,7 +270,7 @@ export async function checkDriverConflict(
     if (checkTimeSlotConflict(newSlot, existingSlot)) {
       return {
         hasConflict: true,
-        reason: `駕駛已有預約：與 ${booking.contact_name} 的預約時間衝突 (${existingTime}-${minutesToTime(existingSlot.endMinutes)})`
+        reason: `駕駛已有預約：與 ${booking.contact_name} 的預約時間衝突 (${existingTime}-${minutesToTime(existingSlot.endMinutes)})，教練需間隔 15 分鐘`
       }
     }
   }
@@ -557,7 +557,7 @@ export function checkCoachConflictFromCache(
         conflictCoaches.push({
           coachId,
           coachName: coachInfo?.name || '未知教練',
-          reason: `與 ${booking.contact_name} 的預約時間衝突 (${existingTime}-${minutesToTime(existingSlot.endMinutes)})`
+          reason: `與 ${booking.contact_name} 的預約時間衝突 (${existingTime}-${minutesToTime(existingSlot.endMinutes)})，教練需間隔 15 分鐘`
         })
         break
       }
@@ -673,7 +673,7 @@ export async function checkCoachesConflictBatch(
         conflictCoaches.push({
           coachId,
           coachName,
-          reason: `與 ${booking.contact_name} 的預約時間衝突 (${existingTime}-${minutesToTime(existingSlot.endMinutes)})`
+          reason: `與 ${booking.contact_name} 的預約時間衝突 (${existingTime}-${minutesToTime(existingSlot.endMinutes)})，教練需間隔 15 分鐘`
         })
         break // 找到一個衝突就跳出，不需要繼續檢查該教練的其他預約
       }
