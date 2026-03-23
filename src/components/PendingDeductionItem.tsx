@@ -4,6 +4,7 @@ import { useToast } from './ui'
 import { useAuthUser } from '../contexts/AuthContext'
 import { normalizeDate } from '../utils/date'
 import { useMemberSearch } from '../hooks/useMemberSearch'
+import { isFacility } from '../utils/facility'
 
 // 扣款類別
 type DeductionCategory = 
@@ -86,19 +87,19 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
   // 判斷是否為現金/匯款結清
   const isCashSettlement = report.payment_method === 'cash' || report.payment_method === 'transfer'
   
-  // 判斷是否為彈簧床不需扣款（指定不收費 或 不指定 都視為結清）
+  // 判斷是否為設施不需扣款（彈簧床、陸上課程：指定不收費 或 不指定 都視為結清）
   const boatName = report.bookings.boats?.name || ''
-  const isTrampolineFreeLesson = boatName.includes('彈簧床') && 
+  const isFacilityFreeLesson = isFacility(boatName) && 
     (report.lesson_type === 'designated_free' || report.lesson_type === 'undesignated')
   
   // 是否顯示結清按鈕
-  const showSettlementButton = isCashSettlement || isTrampolineFreeLesson
+  const showSettlementButton = isCashSettlement || isFacilityFreeLesson
   
   // 根據教練回報的付款方式和船隻判斷預設類別
   const getDefaultCategory = (): DeductionCategory => {
     const paymentMethod = report.payment_method
     
-    // 現金/匯款 或 彈簧床指定課不收費 -> 不需要扣款
+    // 現金/匯款 或 設施指定課不收費 -> 不需要扣款
     if (showSettlementButton) {
       return 'balance' // 不會用到，只是佔位
     }
@@ -235,10 +236,10 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
   const initializeItems = (): DeductionItem[] => {
     const items: DeductionItem[] = []
     const boatName = report.bookings.boats?.name || ''
-    const isTrampoline = boatName.includes('彈簧床')
+    const isNoBoatFee = isFacility(boatName)  // 彈簧床、陸上課程不收船費
     
-    // 🎯 如果是現金/匯款/彈簧床免費指定課，預設為直接結清（但用戶可以改）
-    if (isCashSettlement || isTrampolineFreeLesson) {
+    // 🎯 如果是現金/匯款/設施免費指定課，預設為直接結清（但用戶可以改）
+    if (isCashSettlement || isFacilityFreeLesson) {
       items.push({
         id: '1',
         category: 'direct_settlement',
@@ -249,8 +250,8 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
       return items
     }
     
-    // 如果是彈簧床 + 指定課需收費，只扣指定課，不扣船費
-    if (isTrampoline && report.lesson_type === 'designated_paid') {
+    // 如果是設施 + 指定課需收費，只扣指定課，不扣船費
+    if (isNoBoatFee && report.lesson_type === 'designated_paid') {
       const designatedAmount = calculateDesignatedLessonAmount(report.duration_min)
       items.push({
         id: '1',
@@ -270,7 +271,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
       description: generateDescription(false)
     })
     
-    // 如果是指定課需收費（非彈簧床），自動新增第二筆：指定課扣款
+    // 如果是指定課需收費（非設施），自動新增第二筆：指定課扣款
     if (report.lesson_type === 'designated_paid') {
       const designatedAmount = calculateDesignatedLessonAmount(report.duration_min)
       items.push({
@@ -349,7 +350,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
         const price = coachResult.data.designated_lesson_price_30min
         setCoachPrice30min(price)
         
-        // 更新所有指定課扣款的金額（包括彈簧床指定課）
+        // 更新所有指定課扣款的金額（包括設施指定課）
         if (report.lesson_type === 'designated_paid') {
           setItems(prevItems => 
             prevItems.map(item => {
@@ -553,7 +554,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
     ))
   }
 
-  // 結清處理（現金/匯款/彈簧床指定課不收費）
+  // 結清處理（現金/匯款/設施指定課不收費）
   const handleSettlement = async () => {
     // 驗證用戶登入狀態
     if (!user?.email) {
@@ -569,7 +570,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
         settlementLabel = '現金結清'
       } else if (report.payment_method === 'transfer') {
         settlementLabel = '匯款結清'
-      } else if (isTrampolineFreeLesson) {
+      } else if (isFacilityFreeLesson) {
         settlementLabel = '指定課不收費'
       } else {
         settlementLabel = '結清'
@@ -927,15 +928,15 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
       {/* 展開內容 */}
       {isExpanded && (
         <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
-          {/* 結清提示（現金/匯款/彈簧床指定課不收費） */}
+          {/* 結清提示（現金/匯款/設施指定課不收費） */}
           {showSettlementButton && (
             <div style={{ 
               padding: '16px',
-              background: isTrampolineFreeLesson 
+              background: isFacilityFreeLesson 
                 ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
                 : 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
               borderRadius: '12px',
-              border: isTrampolineFreeLesson ? '2px solid #bbf7d0' : '2px solid #bae6fd',
+              border: isFacilityFreeLesson ? '2px solid #bbf7d0' : '2px solid #bae6fd',
               marginBottom: '16px',
               display: 'flex',
               justifyContent: 'space-between',
@@ -945,13 +946,13 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 <div style={{ 
                   fontSize: '15px', 
                   fontWeight: '600', 
-                  color: isTrampolineFreeLesson ? '#15803d' : '#0369a1', 
+                  color: isFacilityFreeLesson ? '#15803d' : '#0369a1', 
                   marginBottom: '4px' 
                 }}>
-                  {isTrampolineFreeLesson ? '🎓 指定課不收費' : `💵 ${report.payment_method === 'cash' ? '現金' : '匯款'}結清`}
+                  {isFacilityFreeLesson ? '🎓 指定課不收費' : `💵 ${report.payment_method === 'cash' ? '現金' : '匯款'}結清`}
                 </div>
-                <div style={{ fontSize: '13px', color: isTrampolineFreeLesson ? '#166534' : '#075985' }}>
-                  {isTrampolineFreeLesson ? '彈簧床指定課（免費），點擊確認結清' : '此筆記錄為現金/匯款付款'}
+                <div style={{ fontSize: '13px', color: isFacilityFreeLesson ? '#166534' : '#075985' }}>
+                  {isFacilityFreeLesson ? '設施指定課（免費），點擊確認結清' : '此筆記錄為現金/匯款付款'}
                 </div>
               </div>
               <button
@@ -959,7 +960,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 disabled={loading}
                 style={{
                   padding: '10px 20px',
-                  background: isTrampolineFreeLesson 
+                  background: isFacilityFreeLesson 
                     ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
                     : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
                   border: 'none',
@@ -969,7 +970,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   fontSize: '14px',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   opacity: loading ? 0.6 : 1,
-                  boxShadow: isTrampolineFreeLesson 
+                  boxShadow: isFacilityFreeLesson 
                     ? '0 2px 8px rgba(34,197,94,0.3)'
                     : '0 2px 8px rgba(14,165,233,0.3)',
                   whiteSpace: 'nowrap',

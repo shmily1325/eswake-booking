@@ -1,3 +1,5 @@
+import { isFacility } from './facility'
+
 /**
  * 獲取本地日期字串（避免時區偏移）
  * @param date - Date 對象，默認為當前時間
@@ -140,7 +142,7 @@ export function compareDateTimeStr(dt1: string, dt2: string): number {
  * 格式化時長顯示（統一格式）
  * @param durationMin - 預約時長（分鐘）
  * @param requiresDriver - 是否需要駕駛
- * @param boatName - 船隻名稱（用於判斷是否為彈簧床）
+ * @param boatName - 船隻名稱（用於判斷是否為設施）
  * @param startTime - 開始時間（用於計算接船時間）
  * @returns 格式化的時長字串，例如：「165分，接船至 14:15」或「60分」
  */
@@ -150,10 +152,8 @@ export function formatDurationWithPickup(
   boatName?: string,
   startTime?: string
 ): string {
-  const isFacility = boatName === '彈簧床'
-  
-  // 如果不需要駕駛或是彈簧床，只顯示時長
-  if (!requiresDriver || isFacility) {
+  // 設施（彈簧床、陸上課程）只顯示時長，不顯示接船時間
+  if (!requiresDriver || isFacility(boatName)) {
     return `${durationMin}分`
   }
   

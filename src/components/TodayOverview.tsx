@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { Booking } from '../types/booking'
+import { isFacility } from '../utils/facility'
 
 interface TodayOverviewProps {
     bookings: Booking[]
@@ -34,8 +35,8 @@ export function TodayOverview({ bookings, isMobile }: TodayOverviewProps) {
         // 駕駛使用統計（筆數 + 總時長）- 排除彈簧床
         const driverStats = new Map<string, { count: number, totalMinutes: number }>()
         safeBookings.forEach(booking => {
-            // 彈簧床不需要駕駛，不計入駕駛統計
-            if (booking.boats?.name === '彈簧床') return
+            // 設施不需要駕駛，不計入駕駛統計
+            if (isFacility(booking.boats?.name)) return
 
             booking.drivers?.forEach(driver => {
                 // 安全檢查：確保 driver 不是 null 且有 name

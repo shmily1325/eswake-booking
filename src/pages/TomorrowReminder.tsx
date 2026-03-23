@@ -7,6 +7,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getWeekdayText } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { hasViewAccess } from '../utils/auth'
+import { getFacilityMessageLabel } from '../utils/facility'
 
 interface Booking {
   id: number
@@ -317,30 +318,27 @@ export function TomorrowReminder() {
         : ''
       const startTime = formatTimeNoColon(booking.start_at)
       const boatName = booking.boats?.name || ''
-      const isFacility = boatName.includes('彈簧床')
+      const facilityLabel = getFacilityMessageLabel(boatName)
+      const isFacilityBooking = !!facilityLabel
       
-      // 如果不是彈簧床，船次計數增加
-      if (!isFacility) {
+      // 如果不是設施（彈簧床、陸上課程等），船次計數增加
+      if (!isFacilityBooking) {
         boatCount++
       }
       
       if (index === 0) {
-        // 第一個預約：教練 + 抵達時間 + 下水時間（或彈簧床）
+        // 第一個預約：教練 + 抵達時間 + 下水時間（或設施標籤）
         const arrivalTime = getArrivalTimeNoColon(booking.start_at)
         if (hasCoach) {
           message += `${coachNames}教練\n`
         }
         message += `${arrivalTime}抵達\n`
-        if (isFacility) {
-          message += `${startTime}彈簧床\n`
-        } else {
-          message += `${startTime}下水\n`
-        }
+        message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
         previousCoachNames = coachNames
       } else {
         // 第二個預約之後
-        // 如果當前是船（不是彈簧床）且船次 >= 2，空一行並標註船次
-        if (!isFacility && boatCount >= 2) {
+        // 如果當前是船（不是設施）且船次 >= 2，空一行並標註船次
+        if (!isFacilityBooking && boatCount >= 2) {
           const shipLabel = boatCount === 2 ? '第二船' : boatCount === 3 ? '第三船' : `第${boatCount}船`
           message += `\n${shipLabel}\n`
         }
@@ -348,21 +346,13 @@ export function TomorrowReminder() {
         // 檢查是否同一個教練（空字串也視為相同，避免重複顯示空內容）
         if (coachNames === previousCoachNames) {
           // 同一個教練：只顯示時間，不顯示教練名稱
-          if (isFacility) {
-            message += `${startTime}彈簧床\n`
-          } else {
-            message += `${startTime}下水\n`
-          }
+          message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
         } else {
           // 不同教練：顯示教練名稱 + 時間（如果有教練才顯示）
           if (hasCoach) {
             message += `${coachNames}教練\n`
           }
-          if (isFacility) {
-            message += `${startTime}彈簧床\n`
-          } else {
-            message += `${startTime}下水\n`
-          }
+          message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
           previousCoachNames = coachNames
         }
       }

@@ -9,6 +9,7 @@ import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../uti
 import { useToast, ToastContainer } from '../../components/ui'
 import { designSystem, getCardStyle } from '../../styles/designSystem'
 import { isAdmin } from '../../utils/auth'
+import { getFacilityMessageLabel } from '../../utils/facility'
 
 interface Booking {
   id: number
@@ -340,9 +341,10 @@ export function LineSettings() {
         : '未指定'
       const startTime = formatTimeNoColon(booking.start_at)
       const boatName = booking.boats?.name || ''
-      const isFacility = boatName.includes('彈簧床')
+      const facilityLabel = getFacilityMessageLabel(boatName)
+      const isFacilityBooking = !!facilityLabel
       
-      if (!isFacility) {
+      if (!isFacilityBooking) {
         boatCount++
       }
       
@@ -350,31 +352,19 @@ export function LineSettings() {
         const arrivalTime = getArrivalTimeNoColon(booking.start_at)
         message += `${coachNames}教練\n`
         message += `${arrivalTime}抵達\n`
-        if (isFacility) {
-          message += `${startTime}彈簧床\n`
-        } else {
-          message += `${startTime}下水\n`
-        }
+        message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
         previousCoachNames = coachNames
       } else {
-        if (!isFacility && boatCount >= 2) {
+        if (!isFacilityBooking && boatCount >= 2) {
           const shipLabel = boatCount === 2 ? '第二船' : boatCount === 3 ? '第三船' : `第${boatCount}船`
           message += `\n${shipLabel}\n`
         }
         
         if (coachNames === previousCoachNames) {
-          if (isFacility) {
-            message += `${startTime}彈簧床\n`
-          } else {
-            message += `${startTime}下水\n`
-          }
+          message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
         } else {
           message += `${coachNames}教練\n`
-          if (isFacility) {
-            message += `${startTime}彈簧床\n`
-          } else {
-            message += `${startTime}下水\n`
-          }
+          message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
           previousCoachNames = coachNames
         }
       }

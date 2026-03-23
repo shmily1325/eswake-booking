@@ -359,7 +359,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                 <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>💰 儲值</th>
                 <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>💎 VIP</th>
                 <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>🚤 G23船券</th>
-                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>⛵ G21船券</th>
+                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>⛵ G21/黑豹船券</th>
               </tr>
             </thead>
             <tbody>

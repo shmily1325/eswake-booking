@@ -10,6 +10,7 @@ import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
 import { designSystem } from '../../styles/designSystem'
 import { isEditorAsync } from '../../utils/auth'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
+import { isFacility } from '../../utils/facility'
 
 export function BoatManagement() {
     const user = useAuthUser()
@@ -672,7 +673,7 @@ export function BoatManagement() {
                                             gap: '10px'
                                         }}>
                                             {boat.name}
-                                            {boat.name.includes('彈簧床') && (
+                                            {isFacility(boat.name) && (
                                                 <Badge variant="info" size="small">
                                                     不收船費
                                                 </Badge>

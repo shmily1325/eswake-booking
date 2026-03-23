@@ -3,7 +3,7 @@
  */
 
 // 船隻顯示順序（與 DayView 一致）
-export const BOAT_DISPLAY_ORDER = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床']
+export const BOAT_DISPLAY_ORDER = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床', '陸上課程']
 
 /**
  * 根據預設順序排序船隻陣列

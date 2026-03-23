@@ -21,6 +21,7 @@ import { inspectData, safeMapArray, tryCatch } from '../utils/debugHelpers'
 import { injectAnimationStyles } from '../utils/animations'
 import { isEditorAsync, hasViewAccess } from '../utils/auth'
 import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
+import { isFacility } from '../utils/facility'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
 
@@ -360,10 +361,9 @@ export function DayView() {
         bMap.set(key, booking)
       }
 
-      // 填入清理時段
+      // 填入清理時段（設施不需清理時間）
       const boat = boats.find(b => b.id === booking.boat_id)
-      // 添加 null 檢查,防止 boat 為 undefined
-      if (boat && boat.name && boat.name !== '彈簧床') {
+      if (boat && boat.name && !isFacility(boat.name)) {
         const cleanupEndMinutes = endMinutes + 15
         for (let m = endMinutes; m < cleanupEndMinutes; m += 15) {
           const hour = Math.floor(m / 60)
@@ -438,8 +438,7 @@ export function DayView() {
 
           // 計算結束時間（包含清理時間）
           const boat = boats.find(b => b.id === booking.boat_id)
-          // 添加 null 檢查,如果找不到船隻則使用預設清理時間
-          const cleanupTime = (boat && boat.name === '彈簧床') ? 0 : 15 // 彈簧床不需要清理時間
+          const cleanupTime = (boat && isFacility(boat.name)) ? 0 : 15
           const startMinutes = timeToMinutes(bookingTime)
           const endMinutes = startMinutes + booking.duration_min + cleanupTime
           const endHour = Math.ceil(endMinutes / 60)
@@ -780,10 +779,10 @@ export function DayView() {
                 color: '#6c757d',
                 lineHeight: '1.8',
               }}>
-                <div>• 船跟船間隔至少 15 分鐘，彈簧床不需要接船時間</div>
+                <div>• 船跟船間隔至少 15 分鐘，設施（彈簧床、陸上課程）不需要接船時間</div>
                 <div>• 教練可用時間計算包含接船時間</div>
                 <div>• 08:00 前的預約必須指定教練</div>
-                <div>• 需先指定教練才能勾選需要駕駛，彈簧床不需要駕駛</div>
+                <div>• 需先指定教練才能勾選需要駕駛，設施不需要駕駛</div>
               </div>
             </div>
           </>
@@ -968,8 +967,8 @@ export function DayView() {
                                     textAlign: 'center',
                                   }}>
                                     {(() => {
-                                      const isFacility = booking.boats?.name === '彈簧床'
-                                      if (isFacility) {
+                                      const isFacilityBooking = isFacility(booking.boats?.name)
+                                      if (isFacilityBooking) {
                                         return `(${booking.duration_min}分)`
                                       } else {
                                         const start = new Date(booking.start_at)
@@ -1185,10 +1184,10 @@ export function DayView() {
                     color: '#6c757d',
                     lineHeight: '1.8',
                   }}>
-                    <div>• 船跟船間隔至少 15 分鐘，彈簧床不需要接船時間</div>
+                    <div>• 船跟船間隔至少 15 分鐘，設施（彈簧床、陸上課程）不需要接船時間</div>
                     <div>• 教練可用時間計算包含接船時間</div>
                     <div>• 08:00 前的預約必須指定教練</div>
-                    <div>• 需先指定教練才能勾選需要駕駛，彈簧床不需要駕駛</div>
+                    <div>• 需先指定教練才能勾選需要駕駛，設施不需要駕駛</div>
                   </div>
                 </div>
 

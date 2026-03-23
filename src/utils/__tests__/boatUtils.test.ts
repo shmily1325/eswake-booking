@@ -4,11 +4,11 @@ import { BOAT_DISPLAY_ORDER, sortBoatsByDisplayOrder } from '../boatUtils'
 describe('boatUtils', () => {
   describe('BOAT_DISPLAY_ORDER', () => {
     it('應該包含所有預設船隻', () => {
-      expect(BOAT_DISPLAY_ORDER).toEqual(['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床'])
+      expect(BOAT_DISPLAY_ORDER).toEqual(['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床', '陸上課程'])
     })
 
-    it('應該有 6 個船隻', () => {
-      expect(BOAT_DISPLAY_ORDER).toHaveLength(6)
+    it('應該有 7 個船隻/設施', () => {
+      expect(BOAT_DISPLAY_ORDER).toHaveLength(7)
     })
   })
 
@@ -28,6 +28,7 @@ describe('boatUtils', () => {
 
     it('應該將所有預設船隻按正確順序排序', () => {
       const boats = [
+        { name: '陸上課程' },
         { name: '彈簧床' },
         { name: '200' },
         { name: '粉紅' },
@@ -38,7 +39,7 @@ describe('boatUtils', () => {
 
       const sorted = sortBoatsByDisplayOrder(boats)
 
-      expect(sorted.map(b => b.name)).toEqual(['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床'])
+      expect(sorted.map(b => b.name)).toEqual(['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床', '陸上課程'])
     })
 
     it('應該將不在列表中的船隻放最後', () => {

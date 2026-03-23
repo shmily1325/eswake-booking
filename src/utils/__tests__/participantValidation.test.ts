@@ -448,9 +448,10 @@ describe('participantValidation.ts - 參與者驗證工具', () => {
       expect(calculateIsTeaching('designated_free', '彈簧床')).toBe(true)
     })
 
-    it('✅ 彈簧床：名稱包含「彈簧床」即可', () => {
-      expect(calculateIsTeaching('undesignated', '彈簧床01')).toBe(true)
-      expect(calculateIsTeaching('undesignated', '室內彈簧床')).toBe(true)
+    it('✅ 陸上課程：不管什麼類型都計入教學時數', () => {
+      expect(calculateIsTeaching('undesignated', '陸上課程')).toBe(true)
+      expect(calculateIsTeaching('designated_paid', '陸上課程')).toBe(true)
+      expect(calculateIsTeaching('designated_free', '陸上課程')).toBe(true)
     })
 
     it('✅ 非彈簧床：undesignated 不計入教學時數', () => {

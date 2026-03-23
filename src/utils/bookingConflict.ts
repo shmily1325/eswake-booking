@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { logger } from './logger'
+import { isOverlapAllowed } from './facility'
 
 interface TimeSlot {
   startMinutes: number
@@ -97,6 +98,11 @@ export async function checkBoatConflict(
   excludeBookingId?: number,
   boatName?: string
 ): Promise<ConflictResult> {
+  // 可重疊預約的設施（如陸上課程）：無固定場地，略過船衝突檢查，教練衝突仍會檢查
+  if (boatName && isOverlapAllowed(boatName)) {
+    return { hasConflict: false, reason: '' }
+  }
+
   const cleanupMinutes = isFacility ? 0 : 15
   const newSlot = calculateTimeSlot(startTime, durationMin, cleanupMinutes)
 
@@ -452,6 +458,11 @@ export function checkBoatConflictFromCache(
   boatName: string,
   boatBookings: any[]
 ): ConflictResult {
+  // 可重疊預約的設施：略過船衝突檢查
+  if (isOverlapAllowed(boatName)) {
+    return { hasConflict: false, reason: '' }
+  }
+
   const cleanupMinutes = isFacility ? 0 : 15
   const newSlot = calculateTimeSlot(startTime, durationMin, cleanupMinutes)
   

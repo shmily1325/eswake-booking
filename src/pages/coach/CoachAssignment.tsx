@@ -1335,7 +1335,7 @@ export function CoachAssignment() {
           const driverStats = new Map<string, { count: number, totalMinutes: number }>()
           bookings.forEach(booking => {
             // 彈簧床不需要駕駛，不計入駕駛統計
-            if (booking.boats?.name === '彈簧床') return
+            if (isFacility(booking.boats?.name)) return
             
             const assignment = assignments[booking.id]
             if (assignment?.driverIds) {

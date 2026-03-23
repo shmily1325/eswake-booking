@@ -1458,7 +1458,7 @@ export function EditBookingDialog({
                 </span>
                 {!canRequireDriver && (
                   <div style={{ fontSize: '12px', color: '#f59e0b', marginTop: '4px' }}>
-                    {isSelectedBoatFacility ? '⚠️ 彈簧床不需要駕駛' : '⚠️ 未指定教練不能選駕駛'}
+                    {isSelectedBoatFacility ? '⚠️ 設施不需要駕駛' : '⚠️ 未指定教練不能選駕駛'}
                   </div>
                 )}
               </div>
