@@ -267,7 +267,7 @@ export function EditBookingDialog({
 
       // ... existing update logic ...
 
-      // 更新預約
+      // 更新預約（設施不需清理時間，船隻需要15分鐘）
       const { error: updateError } = await supabase
         .from('bookings')
         .update({
@@ -276,6 +276,7 @@ export function EditBookingDialog({
           contact_name: finalStudentName,
           start_at: newStartAt,
           duration_min: durationMin,
+          cleanup_minutes: isSelectedBoatFacility ? 0 : 15,
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
           filled_by: normalizeFilledByForSave(filledBy),

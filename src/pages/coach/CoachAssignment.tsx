@@ -245,9 +245,9 @@ export function CoachAssignment() {
     if (!currentBooking) return conflicts
 
     const currentStart = new Date(currentBooking.start_at)
-    // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
-    const cleanupTime = isFacility(currentBooking.boats?.name) ? 0 : 15
-    const currentEnd = new Date(currentStart.getTime() + (currentBooking.duration_min + cleanupTime) * 60000)
+    // 教練可用時間：一律卡結束+15分鐘（場地不需整理，但教練需緩衝時間）
+    const coachBufferMinutes = 15
+    const currentEnd = new Date(currentStart.getTime() + (currentBooking.duration_min + coachBufferMinutes) * 60000)
 
     // 1. 檢查教練與駕駛是否為同一人（同一艘船可以）
     // 注意：這個檢查只對不同船才有意義，同一艘船的教練和駕駛可以是同一人
@@ -267,9 +267,7 @@ export function CoachAssignment() {
         
         if (isCoachInOther || isDriverInOther) {
           const otherStart = new Date(otherBooking.start_at)
-          // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
-          const otherCleanupTime = isFacility(otherBooking.boats?.name) ? 0 : 15
-          const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
+          const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + coachBufferMinutes) * 60000)
 
           if (currentStart < otherEnd && currentEnd > otherStart) {
             const otherEndTime = `${String(otherEnd.getHours()).padStart(2, '0')}:${String(otherEnd.getMinutes()).padStart(2, '0')}`
@@ -295,9 +293,7 @@ export function CoachAssignment() {
         
         if (isCoachInOther || isDriverInOther) {
           const otherStart = new Date(otherBooking.start_at)
-          // 加上整理船時間（彈簧床除外）
-          const otherCleanupTime = isFacility(otherBooking.boats?.name) ? 0 : 15
-          const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
+          const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + coachBufferMinutes) * 60000)
 
           if (currentStart < otherEnd && currentEnd > otherStart) {
             const otherEndTime = `${String(otherEnd.getHours()).padStart(2, '0')}:${String(otherEnd.getMinutes()).padStart(2, '0')}`
@@ -318,9 +314,9 @@ export function CoachAssignment() {
     if (!currentBooking) return true
 
     const currentStart = new Date(currentBooking.start_at)
-    // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
-    const cleanupTime = isFacility(currentBooking.boats?.name) ? 0 : 15
-    const currentEnd = new Date(currentStart.getTime() + (currentBooking.duration_min + cleanupTime) * 60000)
+    // 教練可用時間：一律卡結束+15分鐘
+    const coachBufferMinutes = 15
+    const currentEnd = new Date(currentStart.getTime() + (currentBooking.duration_min + coachBufferMinutes) * 60000)
 
     // 檢查這個教練是否在其他預約中有時間衝突
     for (const otherBooking of bookings) {
@@ -334,9 +330,7 @@ export function CoachAssignment() {
       
       if (isInOther) {
         const otherStart = new Date(otherBooking.start_at)
-        // 加上整理船時間（彈簧床除外），因為教練會被卡在船上整理
-        const otherCleanupTime = isFacility(otherBooking.boats?.name) ? 0 : 15
-        const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + otherCleanupTime) * 60000)
+        const otherEnd = new Date(otherStart.getTime() + (otherBooking.duration_min + coachBufferMinutes) * 60000)
 
         // 如果時間有重疊，則不可用
         if (currentStart < otherEnd && currentEnd > otherStart) {
@@ -527,12 +521,11 @@ export function CoachAssignment() {
             
             const bookingMap = dbPersonBookings[personId]
             if (!bookingMap.has(other.id)) {
-              // 計算結束時間（加上整理船時間，彈簧床除外）
+              // 計算結束時間（教練一律+15分鐘緩衝）
               const [, timePart] = other.start_at.split('T')
               const [hours, minutes] = timePart.split(':').map(Number)
-              const otherBoat = (other as any).boats
-              const cleanupTime = isFacility(otherBoat?.name) ? 0 : 15
-              const totalMinutes = hours * 60 + minutes + other.duration_min + cleanupTime
+              const coachBufferMinutes = 15
+              const totalMinutes = hours * 60 + minutes + other.duration_min + coachBufferMinutes
               const endHours = Math.floor(totalMinutes / 60)
               const endMinutes = totalMinutes % 60
               const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`
@@ -565,12 +558,11 @@ export function CoachAssignment() {
             
             const bookingMap = dbPersonBookings[personId]
             if (!bookingMap.has(other.id)) {
-              // 計算結束時間（加上整理船時間，彈簧床除外）
+              // 計算結束時間（教練/駕駛一律+15分鐘緩衝）
               const [, timePart] = other.start_at.split('T')
               const [hours, minutes] = timePart.split(':').map(Number)
-              const otherBoat = (other as any).boats
-              const cleanupTime = isFacility(otherBoat?.name) ? 0 : 15
-              const totalMinutes = hours * 60 + minutes + other.duration_min + cleanupTime
+              const coachBufferMinutes = 15
+              const totalMinutes = hours * 60 + minutes + other.duration_min + coachBufferMinutes
               const endHours = Math.floor(totalMinutes / 60)
               const endMinutes = totalMinutes % 60
               const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`
@@ -597,12 +589,12 @@ export function CoachAssignment() {
           const assignment = assignments[booking.id]
           if (!assignment) continue
           
-          // 計算當前預約的時間（加上整理船時間，彈簧床除外）
+          // 計算當前預約的時間（教練/駕駛一律+15分鐘緩衝）
           const [, timePart] = booking.start_at.split('T')
           const thisStart = timePart.substring(0, 5)
           const [hours, minutes] = thisStart.split(':').map(Number)
-          const cleanupTime = isFacility(booking.boats?.name) ? 0 : 15
-          const totalMinutes = hours * 60 + minutes + booking.duration_min + cleanupTime
+          const coachBufferMinutes = 15
+          const totalMinutes = hours * 60 + minutes + booking.duration_min + coachBufferMinutes
           const endHours = Math.floor(totalMinutes / 60)
           const endMinutes = totalMinutes % 60
           const thisEnd = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`

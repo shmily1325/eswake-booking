@@ -340,13 +340,13 @@ export function BatchEditBookingDialog({
             }
           }
           
-          // 檢查教練衝突
+          // 檢查教練衝突（教練一律 15 分鐘緩衝；場地可接著使用）
           if (coachIds.length > 0 && updated.coachIds.length > 0) {
             const sharedCoachIds = coachIds.filter(c => updated.coachIds.includes(c))
             if (sharedCoachIds.length > 0) {
-              // 教練不需要清理時間
-              const newCoachSlot = calculateTimeSlot(startTime, duration, 0)
-              const existCoachSlot = calculateTimeSlot(updated.startTime, updated.duration, 0)
+              const coachBufferMin = 15
+              const newCoachSlot = calculateTimeSlot(startTime, duration, coachBufferMin)
+              const existCoachSlot = calculateTimeSlot(updated.startTime, updated.duration, coachBufferMin)
               if (checkTimeSlotConflict(newCoachSlot, existCoachSlot)) {
                 const coachName = coachesMap.get(sharedCoachIds[0])?.name || '教練'
                 return { 
@@ -452,8 +452,9 @@ export function BatchEditBookingDialog({
         try {
           const updateData: Record<string, any> = {}
           
-          if (fieldsToEdit.has('boat') && selectedBoatId) {
+          if (fieldsToEdit.has('boat') && selectedBoatId && targetBoat) {
             updateData.boat_id = selectedBoatId
+            updateData.cleanup_minutes = isFacility(targetBoat.name) ? 0 : 15
           }
           if (fieldsToEdit.has('notes')) {
             updateData.notes = notes.trim() || null
