@@ -1,6 +1,7 @@
 // 預約訊息格式化工具
 
 import { deduplicateNames } from './memberUtils'
+import { isFacility } from './facility'
 
 interface BookingFormatData {
   start_at: string
@@ -30,13 +31,14 @@ export function formatBookingForLine(booking: BookingFormatData): string {
 
   // 船名
   const boatName = booking.boats?.name || '?'
+  const timeLabel = isFacility(boatName) ? '開始' : '下水'
 
   // 教練（只有指定教練時才顯示）
   const coachPart = booking.coaches && booking.coaches.length > 0
     ? `, ${booking.coaches.filter(c => c && c.name).map(c => c.name + '教練').join('/')}`
     : ''
 
-  return `${month}/${day} ${arrivalTimeStr}抵達, ${timeStr}下水, ${booking.duration_min}分鐘, ${boatName}${coachPart}`
+  return `${month}/${day} ${arrivalTimeStr}抵達, ${timeStr}${timeLabel}, ${booking.duration_min}分鐘, ${boatName}${coachPart}`
 }
 
 /**
@@ -198,11 +200,12 @@ export function formatBookingForCopy(booking: BookingCopyData): string {
   
   // 船名
   const boatName = booking.boats?.name || '?'
-  
+  const timeLabel = isFacility(boatName) ? '開始' : '下水'
+
   // 教練（只有指定教練時才顯示）
   const coachPart = booking.coaches && booking.coaches.length > 0
     ? `, ${booking.coaches.filter(c => c && c.name).map(c => c.name + '教練').join('/')}`
     : ''
-  
-  return `${month}/${day} ${displayName}, ${arrivalTimeStr}抵達, ${timeStr}下水, ${booking.duration_min}分鐘, ${boatName}${coachPart}`
+
+  return `${month}/${day} ${displayName}, ${arrivalTimeStr}抵達, ${timeStr}${timeLabel}, ${booking.duration_min}分鐘, ${boatName}${coachPart}`
 }

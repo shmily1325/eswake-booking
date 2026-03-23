@@ -95,6 +95,24 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       const result = formatBookingForLine(booking)
       expect(result).toBe('01/05 08:35抵達, 09:05下水, 60分鐘, G23, ED教練')
     })
+
+    it('設施（彈簧床、陸上課程）應顯示「開始」而非「下水」', () => {
+      const trampolineBooking = {
+        start_at: '2025-11-24T10:00:00',
+        duration_min: 60,
+        boats: { name: '彈簧床' },
+        coaches: [{ name: '阿寶' }]
+      }
+      expect(formatBookingForLine(trampolineBooking)).toBe('11/24 09:30抵達, 10:00開始, 60分鐘, 彈簧床, 阿寶教練')
+
+      const landCourseBooking = {
+        start_at: '2025-11-24T14:30:00',
+        duration_min: 60,
+        boats: { name: '陸上課程' },
+        coaches: [{ name: '阿美' }]
+      }
+      expect(formatBookingForLine(landCourseBooking)).toBe('11/24 14:00抵達, 14:30開始, 60分鐘, 陸上課程, 阿美教練')
+    })
   })
 
   describe('formatSingleBookingWithName', () => {

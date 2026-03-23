@@ -7,7 +7,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getWeekdayText } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { hasViewAccess } from '../utils/auth'
-import { getFacilityMessageLabel } from '../utils/facility'
+import { getFacilityMessageLabel, isFacility } from '../utils/facility'
 
 interface Booking {
   id: number
@@ -794,6 +794,7 @@ export function TomorrowReminder() {
                 {bookings.map((booking) => {
                   const startTime = formatTimeNoColon(booking.start_at)
                   const arrivalTime = getArrivalTimeNoColon(booking.start_at)
+                  const isFacilityBooking = isFacility(booking.boats?.name)
                   
                   // 直接使用 booking.coaches 數組（如果沒有教練就不顯示）
                   const allCoaches = booking.coaches && booking.coaches.length > 0
@@ -820,7 +821,7 @@ export function TomorrowReminder() {
                           {arrivalTime} 抵達
                         </div>
                         <div style={{ fontSize: isMobile ? '12px' : '12px', marginTop: '2px' }}>
-                          {startTime} 下水
+                          {startTime} {isFacilityBooking ? '開始' : '下水'}
                         </div>
                       </div>
                       

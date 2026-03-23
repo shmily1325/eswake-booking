@@ -1,5 +1,6 @@
 // 預約卡片組件
 
+import { isFacility } from '../../../utils/facility'
 import type { Booking } from '../types'
 
 interface BookingCardProps {
@@ -20,6 +21,7 @@ export function BookingCard({
   getEndTime
 }: BookingCardProps) {
   const coachNames = booking.coaches.map(c => c.name).join('、')
+  const isFacilityBooking = isFacility(booking.boats?.name)
 
   return (
     <div
@@ -44,7 +46,7 @@ export function BookingCard({
         📅 {formatDate(booking.start_at)}
       </div>
       
-      {/* 抵達時間 & 下水時間 */}
+      {/* 抵達時間 & 開始/下水時間 */}
       <div style={{
         display: 'flex',
         gap: '16px',
@@ -62,7 +64,9 @@ export function BookingCard({
           </div>
         )}
         <div style={isFirstOfDay ? { borderLeft: '1px solid #d0d0d0', paddingLeft: '16px' } : {}}>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>下水時間</div>
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>
+            {isFacilityBooking ? '開始時間' : '下水時間'}
+          </div>
           <div style={{ fontSize: '20px', fontWeight: '700', color: '#333' }}>
             {getStartTime(booking.start_at)}
           </div>
