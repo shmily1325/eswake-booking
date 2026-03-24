@@ -417,12 +417,29 @@ export function Statistics() {
     setFutureWeekdayStats({ weekdayCount, weekdayMinutes, weekendCount, weekendMinutes })
   }
 
-  // 載入平日/假日統計（月度）
-  const loadWeekdayStats = async () => {
+  // 取得月報日期範圍（當月只到昨天，與歷史趨勢一致）
+  const getMonthlyDateRange = () => {
     const [year, month] = selectedPeriod.split('-')
     const startDate = `${selectedPeriod}-01`
+    const now = new Date()
+    const isCurrentMonth = parseInt(year) === now.getFullYear() && parseInt(month) === now.getMonth() + 1
+    if (isCurrentMonth) {
+      const yesterday = getLocalDateString(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))
+      if (yesterday < startDate) return null
+      return { startDate, endDateStr: yesterday }
+    }
     const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
-    const endDateStr = `${selectedPeriod}-${String(endDate).padStart(2, '0')}`
+    return { startDate, endDateStr: `${selectedPeriod}-${String(endDate).padStart(2, '0')}` }
+  }
+
+  // 載入平日/假日統計（月度）
+  const loadWeekdayStats = async () => {
+    const range = getMonthlyDateRange()
+    if (!range) {
+      setWeekdayStats({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
+      return
+    }
+    const { startDate, endDateStr } = range
 
     const { data } = await supabase
       .from('bookings')
@@ -454,10 +471,12 @@ export function Statistics() {
 
   // 載入教練時數統計
   const loadCoachStats = async () => {
-    const [year, month] = selectedPeriod.split('-')
-    const startDate = `${selectedPeriod}-01`
-    const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
-    const endDateStr = `${selectedPeriod}-${String(endDate).padStart(2, '0')}`
+    const range = getMonthlyDateRange()
+    if (!range) {
+      setCoachStats([])
+      return
+    }
+    const { startDate, endDateStr } = range
 
     // 載入教學記錄
     const { data: teachingData } = await supabase
@@ -576,26 +595,52 @@ export function Statistics() {
     setCoachStats(sorted)
   }
 
-  // 載入會員統計
+  // 載入會員統計（含代扣：非會員由會員代扣時，計入代扣會員）
   const loadMemberStats = async () => {
-    const [year, month] = selectedPeriod.split('-')
-    const startDate = `${selectedPeriod}-01`
-    const endDate = new Date(parseInt(year), parseInt(month), 0).getDate()
-    const endDateStr = `${selectedPeriod}-${String(endDate).padStart(2, '0')}`
+    const range = getMonthlyDateRange()
+    if (!range) {
+      setMemberStats([])
+      return
+    }
+    const { startDate, endDateStr } = range
 
+    // 1. 所有已處理參與者（含非會員，用於代扣情境）
     const { data: participantData } = await supabase
       .from('booking_participants')
       .select(`
-        member_id, duration_min, coach_id, lesson_type, is_teaching,
+        id, member_id, duration_min, coach_id, lesson_type, is_teaching,
         members:member_id(id, name, nickname),
         coaches:coach_id(id, name),
         bookings!inner(start_at, boats(id, name))
       `)
       .eq('status', 'processed')
       .eq('is_deleted', false)
-      .not('member_id', 'is', null)
       .gte('bookings.start_at', `${startDate}T00:00:00`)
       .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+
+    // 2. 非會員參與者：從 consume 交易取得代扣會員（實際扣款人）
+    const nonMemberIds = participantData?.filter((r: any) => !r.member_id).map((r: any) => r.id) || []
+    const proxyMemberMap = new Map<number, { memberId: string; memberName: string }>()
+    if (nonMemberIds.length > 0) {
+      const { data: proxyTxData } = await supabase
+        .from('transactions')
+        .select('booking_participant_id, member_id, members:member_id(id, name, nickname)')
+        .eq('transaction_type', 'consume')
+        .in('booking_participant_id', nonMemberIds)
+      // 每筆參與可能有多筆 consume（船費+指定課等），member_id 相同，取第一筆即可
+      const seen = new Set<number>()
+      proxyTxData?.forEach((tx: any) => {
+        const pid = tx.booking_participant_id
+        if (pid && tx.member_id && !seen.has(pid)) {
+          seen.add(pid)
+          const m = tx.members
+          proxyMemberMap.set(pid, {
+            memberId: tx.member_id,
+            memberName: m?.nickname || m?.name || '未知'
+          })
+        }
+      })
+    }
 
     const memberMap = new Map<string, {
       memberId: string
@@ -609,10 +654,12 @@ export function Statistics() {
     }>()
 
     participantData?.forEach((record: any) => {
-      const memberId = record.member_id
-      if (!memberId || !record.members) return
+      // 會員直接計入本人；非會員若有代扣則計入代扣會員
+      const memberId = record.member_id || proxyMemberMap.get(record.id)?.memberId
+      if (!memberId) return // 非會員且尚未扣款（如現金結清）則略過
 
-      const memberName = record.members.nickname || record.members.name || '未知'
+      const memberName = record.members?.nickname || record.members?.name ||
+        proxyMemberMap.get(record.id)?.memberName || '未知'
       const duration = record.duration_min || 0
       const isDesignated = record.lesson_type === 'designated_paid' || record.lesson_type === 'designated_free'
 
