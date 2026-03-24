@@ -157,6 +157,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                         return (
                                             <div
                                                 key={booking.id}
+                                                data-track="day_edit_booking"
                                                 style={{
                                                     padding: isMobile ? '12px' : '14px 16px',
                                                     borderBottom: bookingIndex < boatBookings.length - 1 ? '1px solid #f0f0f0' : 'none',
@@ -295,6 +296,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
 
                                                 {/* 複製按鈕 - 靠右 */}
                                                 <button
+                                                    data-track="day_copy_booking"
                                                     onClick={(e) => handleCopyBooking(e, booking)}
                                                     title="複製預約資訊"
                                                     style={{

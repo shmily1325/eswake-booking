@@ -273,6 +273,7 @@ export function HomePage() {
             <Link
               key={index}
               to={item.link}
+              data-track={`nav_${item.link.replace(/^\//, '') || 'home'}`}
               style={{
                 textDecoration: 'none',
                 background: 'rgba(255, 255, 255, 0.7)',

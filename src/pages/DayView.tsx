@@ -679,6 +679,7 @@ export function DayView() {
                 gap: '8px',
               }}>
                 <button
+                  data-track="day_new_booking"
                   onClick={() => {
                     setSelectedBoatId(0)
                     const now = new Date()
@@ -711,6 +712,7 @@ export function DayView() {
                 {/* 重複預約按鈕 - 只有小編可見 */}
                 {isEditor && (
                   <button
+                    data-track="day_repeat_booking"
                     onClick={() => {
                       setSelectedBoatId(0)
                       const now = new Date()
@@ -1201,6 +1203,7 @@ export function DayView() {
         {
           viewMode === 'list' && (
             <button
+              data-track="day_new_booking_fab"
               onClick={() => {
                 setSelectedBoatId(0)
                 const now = new Date()

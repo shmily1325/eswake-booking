@@ -72,6 +72,7 @@ import { CoachDailyView } from './pages/coach/CoachDailyView'
 // import { PermissionManagement } from './pages/admin/PermissionManagement' // 暫時停用
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { LiffMyBookings } from './pages/LiffMyBookings'
+import { ClickTrackProvider } from './components/ClickTrackProvider'
 
 function AppContent() {
   const { user, loading } = useAuth()
@@ -92,6 +93,7 @@ function AppContent() {
   }
 
   return (
+    <ClickTrackProvider user={user}>
     <ErrorBoundary>
       {/* 離線狀態提示 */}
       {!isOnline && (
@@ -132,6 +134,7 @@ function AppContent() {
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
       </Routes>
     </ErrorBoundary>
+    </ClickTrackProvider>
   )
 }
 
