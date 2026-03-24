@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString } from '../../utils/date'
-import { hasViewAccess } from '../../utils/auth'
+import { hasViewAccess, SUPER_ADMIN_DISPLAY_LABELS } from '../../utils/auth'
 
 interface AuditLogEntry {
   id: number
@@ -31,6 +31,41 @@ interface ParsedDetails {
   notes?: string          // 預約的原始備註
   activityTypes?: string  // 活動類型
   rawText: string
+}
+
+type PermissionRow = { email: string; display_name: string | null }
+
+/** 人員管理 → 權限管理：view_users（一般）＋ editor_users（小編，有 display_name 時覆蓋） */
+function buildPermissionDisplayMap(
+  viewRows: PermissionRow[] | null | undefined,
+  editorRows: PermissionRow[] | null | undefined
+): Record<string, string> {
+  const map: Record<string, string> = {}
+  for (const row of viewRows || []) {
+    const key = row.email?.trim().toLowerCase()
+    if (!key) continue
+    const name = row.display_name?.trim()
+    if (name) map[key] = name
+  }
+  for (const row of editorRows || []) {
+    const key = row.email?.trim().toLowerCase()
+    if (!key) continue
+    const name = row.display_name?.trim()
+    if (name) map[key] = name
+  }
+  return map
+}
+
+/** audit_log.user_email → 顯示名稱：超級管理員寫死 → 權限表 → 原 email */
+function actorLabelFromPermissionTables(
+  userEmail: string | null | undefined,
+  permissionDisplayByEmail: Record<string, string>
+): string {
+  if (!userEmail?.trim()) return '?'
+  const key = userEmail.trim().toLowerCase()
+  const superLabel = SUPER_ADMIN_DISPLAY_LABELS[key]
+  if (superLabel) return superLabel
+  return permissionDisplayByEmail[key] || userEmail
 }
 
 /**
@@ -456,6 +491,32 @@ export function AuditLog() {
   // 是否有設定進階篩選
   const hasAdvancedFilters = filter !== 'all' || selectedFilledBy !== 'all'
 
+  /** 與人員管理「權限管理」分頁相同資料來源：view_users + editor_users */
+  const [permissionDisplayByEmail, setPermissionDisplayByEmail] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    void (async () => {
+      const [viewRes, editorRes] = await Promise.all([
+        supabase.from('view_users').select('email, display_name'),
+        supabase.from('editor_users').select('email, display_name'),
+      ])
+      if (cancelled) return
+      if (viewRes.error) console.error('載入 view_users 失敗:', viewRes.error)
+      if (editorRes.error) console.error('載入 editor_users 失敗:', editorRes.error)
+      setPermissionDisplayByEmail(
+        buildPermissionDisplayMap(
+          viewRes.data as PermissionRow[] | null,
+          editorRes.data as PermissionRow[] | null
+        )
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
   useEffect(() => {
     fetchLogs()
   }, [filter, startDate, endDate])
@@ -564,8 +625,12 @@ export function AuditLog() {
         // 搜尋原始 details（包含日期、時間、會員名等）
         const detailsMatch = log.details && log.details.toLowerCase().includes(query)
         const emailMatch = log.user_email && log.user_email.toLowerCase().includes(query)
+        const operatorLabel = log.user_email
+          ? actorLabelFromPermissionTables(log.user_email, permissionDisplayByEmail)
+          : ''
+        const operatorMatch = operatorLabel.toLowerCase().includes(query)
         
-        if (!log.details) return detailsMatch || emailMatch
+        if (!log.details) return detailsMatch || emailMatch || operatorMatch
         
         const parsed = parseDetails(log.details)
         const filledByMatch = parsed.filledBy && parsed.filledBy.toLowerCase().includes(query)
@@ -577,12 +642,12 @@ export function AuditLog() {
         const activityMatch = parsed.activityTypes && parsed.activityTypes.toLowerCase().includes(query)
         const notesMatch = parsed.notes && parsed.notes.toLowerCase().includes(query)
         
-        return detailsMatch || emailMatch || filledByMatch || memberMatch || boatMatch || timeMatch || coachMatch || driverMatch || activityMatch || notesMatch
+        return detailsMatch || emailMatch || operatorMatch || filledByMatch || memberMatch || boatMatch || timeMatch || coachMatch || driverMatch || activityMatch || notesMatch
       })
     }
     
     return filtered
-  }, [logs, selectedFilledBy, searchQuery, bookingDateFilter])
+  }, [logs, selectedFilledBy, searchQuery, bookingDateFilter, permissionDisplayByEmail])
 
   // 按日期分組
   const groupedLogs = useMemo(() => {
@@ -1175,7 +1240,8 @@ export function AuditLog() {
                   // 生成摘要
                   const summary = (() => {
                     if (log.table_name === 'coach_assignment') {
-                      return log.details?.replace('教練排班: ', '') || '排班調整'
+                      // logCoachAssignment 格式：排班：2025/11/20 14:45 G23 會員，變更：…
+                      return log.details?.replace(/^排班[:：]\s*/, '') || '排班調整'
                     }
                     
                     // 批次操作和重複預約：顯示筆數 + 內容 + 預約列表預覽
@@ -1332,7 +1398,8 @@ export function AuditLog() {
                               whiteSpace: 'nowrap',
                               flexShrink: 0,
                             }}>
-                              {parsed.filledBy || (log.user_email?.split('@')[0]?.slice(0, 8) || '?')}
+                              {parsed.filledBy ||
+                                actorLabelFromPermissionTables(log.user_email, permissionDisplayByEmail)}
                             </span>
                           )}
 
@@ -1576,7 +1643,9 @@ export function AuditLog() {
                               {log.table_name === 'coach_assignment' ? (
                                 <>
                                   <span style={{ color: '#999' }}>操作者：</span>
-                                  <span>{log.user_email || '未知'}</span>
+                                  <span title={log.user_email || undefined}>
+                                    {actorLabelFromPermissionTables(log.user_email, permissionDisplayByEmail)}
+                                  </span>
                                 </>
                               ) : parsed.filledBy ? (
                                 <>
@@ -1599,7 +1668,9 @@ export function AuditLog() {
                               ) : (
                                 <>
                                   <span style={{ color: '#999' }}>操作者：</span>
-                                  <span>{log.user_email || '未知'}</span>
+                                  <span title={log.user_email || undefined}>
+                                    {actorLabelFromPermissionTables(log.user_email, permissionDisplayByEmail)}
+                                  </span>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSelectedFilledBy('（無填表人）') }}
                                     style={{

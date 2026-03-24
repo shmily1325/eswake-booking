@@ -15,6 +15,13 @@ export const SUPER_ADMINS = [
   'minlin1325@gmail.com',
 ]
 
+/** 編輯記錄「操作者」顯示用，key 為小寫 email（與 SUPER_ADMINS 一一對應） */
+export const SUPER_ADMIN_DISPLAY_LABELS: Record<string, string> = {
+  'callumbao1122@gmail.com': 'B',
+  'pjpan0511@gmail.com': 'PJ',
+  'minlin1325@gmail.com': 'Ming',
+}
+
 // 權限緩存
 let allowedEmailsCache: string[] | null = null
 let editorEmailsCache: string[] | null = null
