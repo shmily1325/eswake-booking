@@ -1080,6 +1080,7 @@ export function BatchEditBookingDialog({
           </button>
           <button
             type="button"
+            data-track="search_batch_edit_confirm"
             onClick={handleSubmit}
             disabled={
               loading || 

@@ -670,6 +670,7 @@ export function TomorrowReminder() {
                     }}
                   >
                     <div
+                      data-track="tomorrow_expand"
                       onClick={() => setSelectedStudent(isExpanded ? null : studentName)}
                       style={{
                         padding: isMobile ? '14px' : '16px',
@@ -737,6 +738,7 @@ export function TomorrowReminder() {
                         
                         {/* Copy Button */}
                         <button
+                          data-track="tomorrow_copy"
                           onClick={() => handleCopyForStudent(studentName)}
                           style={{
                             width: '100%',

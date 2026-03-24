@@ -34,6 +34,7 @@ export function LastUpdated({ timestamp, onRefresh, isRefreshing = false }: Last
     }}>
       <span>更新於 {formatTime(timestamp)}</span>
       <button
+        data-track="dashboard_refresh"
         onClick={onRefresh}
         disabled={isRefreshing}
         style={{

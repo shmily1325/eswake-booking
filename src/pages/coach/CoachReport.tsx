@@ -1246,6 +1246,7 @@ export function CoachReport({
           }}>
             {/* 全部未回報按鈕 */}
             <button
+              data-track="coach_report_view_unreported"
               onClick={() => setViewMode('unreported')}
               style={{
                 padding: isMobile ? '10px 16px' : '10px 20px',
@@ -1409,6 +1410,7 @@ export function CoachReport({
                 size="medium"
                 onClick={exportToCSV}
                 icon={<span>📊</span>}
+                data-track="coach_report_export"
               >
                 匯出回報記錄
               </Button>
@@ -1494,6 +1496,7 @@ export function CoachReport({
                         return (
                           <button
                             key={coach.id}
+                            data-track="coach_report_start"
                             onClick={() => startReportWithCoach(booking, coach.id)}
                             style={{
                               display: 'inline-flex',
@@ -1543,6 +1546,7 @@ export function CoachReport({
                         return (
                           <button
                             key={driver.id}
+                            data-track="coach_report_start"
                             onClick={() => startReportWithCoach(booking, driver.id)}
                             style={{
                               display: 'inline-flex',

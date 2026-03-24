@@ -743,6 +743,7 @@ export function MemberManagement() {
             )}
           </div>
           <button
+            data-track="member_add"
             onClick={() => setAddDialogOpen(true)}
             style={{
               padding: isMobile ? '12px 16px' : '12px 20px',
@@ -1449,6 +1450,7 @@ export function MemberManagement() {
         flexWrap: 'wrap'
       }}>
         <button
+          data-track="member_export"
           onClick={handleExportMembers}
           style={{
             padding: '10px 20px',
@@ -1466,6 +1468,7 @@ export function MemberManagement() {
           📤 匯出會員資料
         </button>
         <button
+          data-track="member_boards_link"
           onClick={() => navigate('/boards')}
           style={{
             padding: '10px 20px',

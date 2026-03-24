@@ -1807,6 +1807,7 @@ export function EditBookingDialog({
             <button
               type="submit"
               form="edit-booking-form"
+              data-track="booking_edit_save"
               disabled={loading || conflictStatus === 'conflict'}
               style={{
                 flex: 1,

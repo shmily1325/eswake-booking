@@ -172,6 +172,7 @@ export function BaoHub() {
           }}>
             <Link
               to="/"
+              data-track="bao_home"
               style={{
                 padding: '10px 20px',
                 background: 'rgba(255, 255, 255, 0.7)',
@@ -307,6 +308,7 @@ export function BaoHub() {
                   <Link
                     key={feature.title}
                     to={feature.link}
+                    data-track={`bao_${feature.link.replace(/^\//, '')}`}
                     style={{
                       textDecoration: 'none',
                       background: 'rgba(255, 255, 255, 0.7)',

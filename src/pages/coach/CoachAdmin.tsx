@@ -757,6 +757,7 @@ export function CoachAdmin() {
           flexWrap: 'wrap'
         }}>
           <button
+            data-track="coach_admin_tab_pending"
             onClick={() => setActiveTab('pending')}
             style={{
               padding: '12px 24px',
@@ -789,6 +790,7 @@ export function CoachAdmin() {
             )}
           </button>
           <button
+            data-track="coach_admin_tab_completed"
             onClick={() => setActiveTab('completed')}
             style={{
               padding: '12px 24px',
@@ -806,6 +808,7 @@ export function CoachAdmin() {
             ✅ 已處理
           </button>
           <button
+            data-track="coach_admin_tab_statistics"
             onClick={() => setActiveTab('statistics')}
             style={{
               padding: '12px 24px',
@@ -823,6 +826,7 @@ export function CoachAdmin() {
             📊 統計報表
           </button>
           <button
+            data-track="coach_admin_tab_billing"
             onClick={() => setActiveTab('billing')}
             style={{
               padding: '12px 24px',

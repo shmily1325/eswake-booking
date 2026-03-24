@@ -503,6 +503,7 @@ export function LineSettings() {
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
+                data-track="line_filter_bound"
                 onClick={() => setShowBindingList(showBindingList === 'bound' ? null : 'bound')}
                 style={{
                   padding: '6px 12px',
@@ -517,6 +518,7 @@ export function LineSettings() {
                 ✅ 已綁定 ({bindingStats?.bound || 0})
               </button>
               <button
+                data-track="line_filter_unbound"
                 onClick={() => setShowBindingList(showBindingList === 'unbound' ? null : 'unbound')}
                 style={{
                   padding: '6px 12px',
@@ -718,6 +720,7 @@ export function LineSettings() {
                     }}
                   >
                     <div
+                      data-track="line_expand"
                       onClick={() => setSelectedStudent(isExpanded ? null : studentName)}
                       style={{
                         padding: '14px 16px',
@@ -780,6 +783,7 @@ export function LineSettings() {
                         <div style={{ display: 'flex', gap: '8px' }}>
                           {lineInfo.hasLine && !isSent && (
                             <button
+                              data-track="line_send"
                               onClick={() => handleSendLine(studentName, generateMessageForStudent(studentName))}
                               disabled={isSending}
                               style={{
@@ -798,6 +802,7 @@ export function LineSettings() {
                             </button>
                           )}
                           <button
+                            data-track="line_copy"
                             onClick={() => handleCopy(generateMessageForStudent(studentName))}
                             style={{
                               flex: 1,
@@ -826,6 +831,7 @@ export function LineSettings() {
         {/* 進階設定 */}
         <div style={getCardStyle(isMobile)}>
           <button
+            data-track="line_settings_toggle"
             onClick={() => setShowSettings(!showSettings)}
             style={{
               width: '100%',
@@ -919,6 +925,7 @@ export function LineSettings() {
               </div>
 
               <button
+                data-track="line_settings_save"
                 onClick={handleSaveSettings}
                 disabled={saving}
                 style={{

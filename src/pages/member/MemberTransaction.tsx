@@ -538,6 +538,7 @@ export function MemberTransaction() {
         }}>
           {/* 使用說明按鈕 */}
           <button
+            data-track="transaction_help"
             onClick={() => setShowHelp(!showHelp)}
             style={{
               padding: '8px 14px',
@@ -557,6 +558,7 @@ export function MemberTransaction() {
 
           {/* 匯出按鈕 */}
           <button
+            data-track="transaction_export_finance"
             onClick={handleExportFinance}
             style={{
               padding: '8px 14px',
@@ -574,6 +576,7 @@ export function MemberTransaction() {
             📤 匯出金流
           </button>
           <button
+            data-track="transaction_export_all"
             onClick={() => setShowExportDialog(true)}
             style={{
               padding: '8px 14px',
@@ -1278,6 +1281,7 @@ export function MemberTransaction() {
                 取消
               </button>
               <button
+                data-track="transaction_export_confirm"
                 onClick={handleExportAll}
                 disabled={exporting || !exportStartDate || !exportEndDate}
                 style={{
@@ -1491,6 +1495,7 @@ export function MemberTransaction() {
                 取消
               </button>
               <button
+                data-track="transaction_import_finance"
                 onClick={handleImportFinance}
                 disabled={importing || !importFile}
                 style={{

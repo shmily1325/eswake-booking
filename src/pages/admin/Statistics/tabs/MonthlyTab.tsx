@@ -67,6 +67,7 @@ export function MonthlyTab({
           {quickMonths.slice(0, isMobile ? 4 : 6).map(m => (
             <button
               key={m.value}
+              data-track="dashboard_month"
               onClick={() => setSelectedPeriod(m.value)}
               style={{
                 padding: isMobile ? '8px 12px' : '10px 16px',
@@ -132,6 +133,7 @@ export function MonthlyTab({
           padding: '4px'
         }}>
           <button
+            data-track="dashboard_month_sub_coach"
             onClick={() => setSubTab('coach')}
             style={{
               flex: 1,
@@ -150,6 +152,7 @@ export function MonthlyTab({
             🎓 教練統計
           </button>
           <button
+            data-track="dashboard_month_sub_member"
             onClick={() => setSubTab('member')}
             style={{
               flex: 1,

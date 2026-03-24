@@ -4,8 +4,10 @@
  */
 import { supabase } from '../lib/supabase'
 
+const TRACK_EXCLUDE_EMAILS = ['minlin1325@gmail.com']
+
 export function trackClick(iconId: string, userEmail: string | undefined) {
-  if (!userEmail) return
+  if (!userEmail || TRACK_EXCLUDE_EMAILS.includes(userEmail)) return
   setTimeout(() => {
     void (async () => {
       try {

@@ -682,6 +682,7 @@ export function MemberImport() {
                   </p>
           </div>
           <button
+            data-track="member_import_template"
             onClick={downloadTemplate}
             style={{
               ...getButtonStyle('outline', 'small', isMobile),
@@ -939,6 +940,7 @@ export function MemberImport() {
                 取消
               </button>
               <button
+                data-track="member_import_confirm"
                 onClick={handleImport}
                 disabled={importing}
                 style={{
@@ -984,6 +986,7 @@ export function MemberImport() {
                 </div>
               </div>
               <button
+                data-track="member_import_delete_nodata"
                 onClick={() => setDeleteDialogOpen(true)}
                 style={{
                   ...getButtonStyle('danger', 'medium', isMobile),
@@ -1014,6 +1017,7 @@ export function MemberImport() {
                 </div>
               </div>
               <button
+                data-track="member_import_delete_all"
                 onClick={() => setDeleteAllDialogOpen(true)}
                 style={{
                   ...getButtonStyle('danger', 'medium', isMobile),

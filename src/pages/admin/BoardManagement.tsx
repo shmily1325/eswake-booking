@@ -802,6 +802,7 @@ export function BoardManagement() {
         <Button
           variant="outline"
           size="medium"
+          data-track="board_import"
           onClick={() => setShowImportDialog(true)}
           icon={<span>📥</span>}
           style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
@@ -812,6 +813,7 @@ export function BoardManagement() {
         <Button
           variant="outline"
           size="medium"
+          data-track="board_export"
           onClick={handleExportBoards}
           icon={<span>📤</span>}
           style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}

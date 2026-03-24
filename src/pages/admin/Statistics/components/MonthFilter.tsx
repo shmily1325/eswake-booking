@@ -40,6 +40,7 @@ export function MonthFilter({
     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
       {showAll && (
         <button
+          data-track="dashboard_filter_all"
           onClick={() => onSelect('all')}
           style={buttonStyle(selected === 'all')}
         >
@@ -60,6 +61,7 @@ export function MonthFilter({
       {options.map(option => (
         <button
           key={option.value}
+          data-track={`dashboard_filter_${option.value}`}
           onClick={() => onSelect(option.value)}
           style={buttonStyle(selected === option.value)}
         >

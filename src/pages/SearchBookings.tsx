@@ -759,6 +759,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       }}>
         <button
           type="button"
+          data-track="search_tab_member"
           onClick={() => {
             setActiveTab('member')
             setBookings([])
@@ -807,6 +808,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         </button>
         <button
           type="button"
+          data-track="search_tab_coach"
           onClick={() => {
             setActiveTab('coach')
             setBookings([])
@@ -1067,6 +1069,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           {/* 搜尋按鈕 */}
           <button
             type="submit"
+            data-track="search_submit_member"
             disabled={loading || !searchName.trim()}
             style={{
               width: '100%',
@@ -1265,6 +1268,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           {/* 搜尋按鈕 */}
           <button
             type="submit"
+            data-track="search_submit_boat"
             disabled={loading || !selectedBoatId}
             style={{
               width: '100%',
@@ -1456,6 +1460,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           {/* 搜尋按鈕 */}
           <button
             type="submit"
+            data-track="search_submit_coach"
             disabled={loading || !selectedCoachId}
             style={{
               width: '100%',
@@ -1514,6 +1519,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     gap: '6px', 
                   }}>
                     <button
+                      data-track="search_select_all"
                       onClick={selectedBookingIds.size === bookings.length ? deselectAll : selectAll}
                       style={{
                         padding: '5px 10px',
@@ -1532,6 +1538,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     {selectedBookingIds.size > 0 && (
                       <>
                         <button
+                          data-track="search_batch_edit"
                           onClick={() => setBatchEditDialogOpen(true)}
                           style={{
                             padding: '5px 10px',
@@ -1547,6 +1554,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                           ✏️ 修改
                         </button>
                         <button
+                          data-track="search_batch_delete"
                           onClick={() => setBatchDeleteDialogOpen(true)}
                           style={{
                             padding: '5px 10px',
@@ -1611,6 +1619,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     }}>
                       {/* 排序按鈕 */}
                       <button
+                        data-track="search_sort"
                         onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                         style={{
                           padding: isMobile ? '6px 8px' : '6px 10px',
@@ -1657,6 +1666,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       {/* 批次選擇 - 只有小編可見 */}
                       {isEditor && (
                         <button
+                          data-track="search_batch_toggle"
                           onClick={toggleSelectionMode}
                           style={{
                             padding: isMobile ? '6px 8px' : '6px 10px',
@@ -1677,6 +1687,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       {/* 複製 LINE 格式按鈕 - 只在預約人頁面顯示 */}
                       {activeTab === 'member' && (
                         <button
+                          data-track="search_copy"
                           onClick={handleCopyToClipboard}
                           style={{
                             padding: isMobile ? '6px 8px' : '6px 10px',

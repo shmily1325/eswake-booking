@@ -15,6 +15,8 @@ export function ClickTrackProvider({
 }) {
   useEffect(() => {
     if (!user?.email) return
+    // 設為 false 可暫時關閉追蹤以排查效能
+    if (import.meta.env.VITE_TRACK_DISABLED === 'true') return
     const handler = (e: MouseEvent) => {
       const el = (e.target as Element).closest('[data-track]')
       if (!el) return

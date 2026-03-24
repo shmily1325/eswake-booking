@@ -780,6 +780,7 @@ export function AuditLog() {
 
         {/* 進階篩選按鈕 */}
         <button
+          data-track="audit_advanced_filters"
           onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
           style={{
             width: '100%',
@@ -857,6 +858,7 @@ export function AuditLog() {
                 ].map(({ key, label }) => (
                   <button
                     key={key}
+                    data-track={`audit_filter_${key}`}
                     onClick={() => setFilter(key as any)}
                     style={{
                       padding: '10px 16px',
@@ -922,6 +924,7 @@ export function AuditLog() {
                   return (
                     <button
                       key={key}
+                      data-track={`audit_quick_${key}`}
                       onClick={() => setQuickDateRange(key as any)}
                       style={{
                         padding: '10px 16px',

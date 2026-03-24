@@ -1011,6 +1011,7 @@ export function BackupPage() {
           )}
 
           <button
+            data-track="backup_export_csv"
             onClick={handleExport}
             disabled={isAnyLoading}
             style={{
@@ -1047,6 +1048,7 @@ export function BackupPage() {
           </p>
           
           <button
+            data-track="backup_cloud_drive"
             onClick={backupToCloudDrive}
             disabled={isAnyLoading}
             style={{
@@ -1096,6 +1098,7 @@ export function BackupPage() {
           </p>
 
           <button
+            data-track="backup_full_download"
             onClick={backupFullDatabase}
             disabled={isAnyLoading}
             style={{

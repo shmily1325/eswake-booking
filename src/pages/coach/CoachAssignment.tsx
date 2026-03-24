@@ -1182,6 +1182,7 @@ export function CoachAssignment() {
             
             {/* 儲存按鈕 */}
             <button
+              data-track="coach_assignment_save"
               onClick={handleSaveAll}
               disabled={saving || loading}
               style={{
@@ -1196,6 +1197,7 @@ export function CoachAssignment() {
             
             {/* 回預約表 */}
             <button
+              data-track="coach_assignment_day_link"
               onClick={() => navigate(`/day?date=${selectedDate}`)}
               style={{
                 ...getButtonStyle('secondary', 'medium', false),
@@ -1216,6 +1218,7 @@ export function CoachAssignment() {
           }}>
             {/* 儲存按鈕 */}
             <button
+              data-track="coach_assignment_save"
               onClick={handleSaveAll}
               disabled={saving || loading}
               style={{
@@ -1243,6 +1246,7 @@ export function CoachAssignment() {
 
             {/* 回預約表按鈕 */}
             <button
+              data-track="coach_assignment_day_link"
               onClick={() => navigate(`/day?date=${selectedDate}`)}
               style={{
                 flex: 1,

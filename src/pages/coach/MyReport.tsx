@@ -96,6 +96,7 @@ export function MyReport() {
           flexWrap: 'wrap'
         }}>
           <button
+            data-track="my_report_tab_report"
             onClick={() => setActiveTab('report')}
             style={{
               padding: '12px 24px',
@@ -116,6 +117,7 @@ export function MyReport() {
             📝 回報
           </button>
           <button
+            data-track="my_report_tab_history"
             onClick={() => setActiveTab('history')}
             style={{
               padding: '12px 24px',

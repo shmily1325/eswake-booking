@@ -764,6 +764,7 @@ export function Statistics() {
             {tabs.map(tab => (
               <button
                 key={tab.key}
+                data-track={`dashboard_tab_${tab.key}`}
                 onClick={() => setActiveTab(tab.key)}
                 style={tabStyle(activeTab === tab.key)}
               >

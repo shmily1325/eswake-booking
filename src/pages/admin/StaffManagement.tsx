@@ -777,6 +777,7 @@ export function StaffManagement() {
           borderBottom: '2px solid #e0e0e0'
         }}>
           <button
+            data-track="staff_tab_coaches"
             onClick={() => setActiveTab('coaches')}
             style={{
               padding: isMobile ? '12px 16px' : '14px 28px',
@@ -795,6 +796,7 @@ export function StaffManagement() {
             教練管理
           </button>
           <button
+            data-track="staff_tab_accounts"
             onClick={() => setActiveTab('accounts')}
             style={{
               padding: isMobile ? '12px 16px' : '14px 28px',
@@ -813,6 +815,7 @@ export function StaffManagement() {
             帳號配對
           </button>
           <button
+            data-track="staff_tab_pricing"
             onClick={() => setActiveTab('pricing')}
             style={{
               padding: isMobile ? '12px 16px' : '14px 28px',
@@ -831,6 +834,7 @@ export function StaffManagement() {
             指定課價格
           </button>
           <button
+            data-track="staff_tab_permissions"
             onClick={() => setActiveTab('permissions')}
             style={{
               padding: isMobile ? '12px 16px' : '14px 28px',
@@ -923,6 +927,7 @@ export function StaffManagement() {
               <Button
                 variant="outline"
                 size="medium"
+                data-track="staff_add_coach"
                 onClick={() => setAddDialogOpen(true)}
                 icon={<span>➕</span>}
               >

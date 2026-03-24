@@ -318,6 +318,7 @@ export function BoatManagement() {
                         <Button
                             variant="outline"
                             size="medium"
+                            data-track="boat_add"
                             onClick={() => setAddDialogOpen(true)}
                             icon={<span>➕</span>}
                         >
@@ -334,6 +335,7 @@ export function BoatManagement() {
                     marginBottom: '20px'
                 }}>
                     <button
+                        data-track="boat_tab_list"
                         onClick={() => setActiveTab('boats')}
                         style={{
                             padding: isMobile ? '12px 16px' : '14px 28px',
@@ -352,6 +354,7 @@ export function BoatManagement() {
                         船隻列表
                     </button>
                     <button
+                        data-track="boat_tab_pricing"
                         onClick={() => setActiveTab('pricing')}
                         style={{
                             padding: isMobile ? '12px 16px' : '14px 28px',
@@ -386,6 +389,7 @@ export function BoatManagement() {
                             cursor: 'pointer',
                             transition: 'all 0.2s'
                         }}
+                        data-track="boat_help_toggle"
                         onClick={() => setShowHelp(!showHelp)}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -488,6 +492,7 @@ export function BoatManagement() {
                                         <Button
                                             variant={isActive ? 'danger' : 'success'}
                                             size="small"
+                                            data-track="boat_toggle_status"
                                             onClick={() => handleToggleStatus(boat)}
                                             style={isActive ? { background: '#fff', color: designSystem.colors.danger[500], border: `1px solid ${designSystem.colors.danger[500]}` } : {}}
                                         >
@@ -577,6 +582,7 @@ export function BoatManagement() {
                                                 <Button
                                                     variant="danger"
                                                     size="small"
+                                                    data-track="boat_delete_unavailable"
                                                     onClick={() => handleDeleteUnavailable(record)}
                                                     style={{ alignSelf: isMobile ? 'flex-start' : 'center' }}
                                                 >
@@ -591,6 +597,7 @@ export function BoatManagement() {
                                 <Button
                                     variant="outline"
                                     size="medium"
+                                    data-track="boat_unavailable_dialog"
                                     onClick={() => openUnavailableDialog(boat)}
                                     fullWidth
                                     style={{
@@ -808,6 +815,7 @@ export function BoatManagement() {
                                         <Button
                                             variant="primary"
                                             size="medium"
+                                            data-track="boat_save_price"
                                             onClick={() => handleUpdatePrice(boat)}
                                             disabled={saving}
                                             fullWidth
@@ -855,7 +863,7 @@ export function BoatManagement() {
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <Button variant="outline" onClick={() => setAddDialogOpen(false)} style={{ flex: 1 }}>取消</Button>
-                            <Button variant="primary" onClick={handleAddBoat} disabled={addLoading} style={{ flex: 1 }}>確定</Button>
+                            <Button variant="primary" data-track="boat_add_confirm" onClick={handleAddBoat} disabled={addLoading} style={{ flex: 1 }}>確定</Button>
                         </div>
                     </div>
                 </div>
@@ -1014,7 +1022,7 @@ export function BoatManagement() {
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <Button variant="outline" onClick={() => setUnavailableDialogOpen(false)} style={{ flex: 1 }}>取消</Button>
-                            <Button variant="warning" onClick={handleAddUnavailable} disabled={unavailableLoading} style={{ flex: 1, background: '#e65100' }}>確定</Button>
+                            <Button variant="warning" data-track="boat_unavailable_confirm" onClick={handleAddUnavailable} disabled={unavailableLoading} style={{ flex: 1, background: '#e65100' }}>確定</Button>
                         </div>
                     </div>
                 </div>

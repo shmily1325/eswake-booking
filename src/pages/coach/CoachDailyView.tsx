@@ -629,6 +629,7 @@ export function CoachDailyView() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
           }}>
             <button
+              data-track="coach_daily_prev"
               onClick={() => handleDateChange(-1)}
               style={{
                 background: 'transparent',
@@ -687,6 +688,7 @@ export function CoachDailyView() {
             </div>
 
             <button
+              data-track="coach_daily_next"
               onClick={() => handleDateChange(1)}
               style={{
                 background: 'transparent',
@@ -708,6 +710,7 @@ export function CoachDailyView() {
             </button>
 
             <button
+              data-track="coach_daily_today"
               onClick={goToToday}
               style={{
                 background: dateParam === getLocalDateString() ? '#e8e8e8' : '#f0f7ff',

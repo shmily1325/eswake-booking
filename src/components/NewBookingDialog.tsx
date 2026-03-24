@@ -543,6 +543,7 @@ export function NewBookingDialog({
           <button
             type="submit"
             form="new-booking-form"
+            data-track="booking_new_confirm"
             disabled={loading || conflictStatus === 'conflict'}
             style={{
               flex: 1,

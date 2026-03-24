@@ -2,12 +2,20 @@
 -- 僅供管理員從 Supabase 後台查詢，無 App 介面
 --
 -- icon_id 對照：
---   nav_*        首頁選單（nav_coach-daily=今日預約, nav_day=預約表, nav_my-report=教練回報...）
---   day_new_booking    新增預約按鈕
---   day_repeat_booking 重複預約按鈕
---   day_new_booking_fab 右下角 FAB +
---   day_edit_booking   點預約卡片編輯
---   day_copy_booking   複製預約
+--   nav_*, header_*, bao_*  導航
+--   day_*, booking_*, search_*  預約/搜尋相關
+--   deduction_*  待扣款
+--   coach_report_*, coach_admin_*, coach_assignment_*, coach_daily_*, my_report_*  教練回報
+--   announcement_*  公告
+--   boat_*  船隻管理
+--   dashboard_*  Dashboard 統計
+--   staff_*  人員管理
+--   member_*, transaction_*  會員/儲值
+--   board_*  置板管理
+--   backup_*  匯出/備份
+--   tomorrow_*  明日提醒
+--   audit_*  操作紀錄
+--   line_*, line_binding_*  LINE 設定/綁定
 
 CREATE TABLE user_click_events (
   id SERIAL PRIMARY KEY,

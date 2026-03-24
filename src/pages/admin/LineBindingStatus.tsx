@@ -171,6 +171,7 @@ export function LineBindingStatus() {
                   </span>
                 </div>
                 <button
+                  data-track="line_binding_refresh"
                   onClick={loadLineBindings}
                   style={{
                     padding: '8px 16px',
@@ -206,6 +207,7 @@ export function LineBindingStatus() {
               {/* 切換按鈕 */}
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                 <button
+                  data-track="line_binding_filter_bound"
                   onClick={() => setShowBindingList(showBindingList === 'bound' ? null : 'bound')}
                   style={{
                     flex: 1,
@@ -222,6 +224,7 @@ export function LineBindingStatus() {
                   ✅ 已綁定 ({boundMembersList.length})
                 </button>
                 <button
+                  data-track="line_binding_filter_unbound"
                   onClick={() => setShowBindingList(showBindingList === 'unbound' ? null : 'unbound')}
                   style={{
                     flex: 1,

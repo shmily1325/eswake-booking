@@ -956,6 +956,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 </div>
               </div>
               <button
+                data-track="deduction_settlement"
                 onClick={handleSettlement}
                 disabled={loading}
                 style={{
@@ -1335,6 +1336,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   gap: '12px'
                 }}>
                 <button
+                  data-track="deduction_add_item"
                   onClick={addItem}
                   style={{
                     flex: 1,
@@ -1350,6 +1352,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   ➕ 新增項目
                 </button>
                 <button
+                  data-track="deduction_confirm"
                   onClick={handleConfirm}
                   disabled={loading || (!report.member_id && !proxyMemberId)}
                   style={{

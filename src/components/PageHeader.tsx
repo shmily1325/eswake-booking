@@ -91,17 +91,17 @@ export function PageHeader({ title, user, showBaoLink = false, showHomeLink = tr
         </h1>
         <div style={{ display: 'flex', gap: designSystem.spacing.sm, alignItems: 'center' }}>
           {extraLinks && extraLinks.map((link, index) => (
-            <Link key={index} to={link.link} style={navButtonStyle}>
+            <Link key={index} to={link.link} style={navButtonStyle} data-track={`header_nav_${(link.link || '').replace(/^\//, '').replace(/\//g, '_') || 'link'}`}>
               {link.label}
             </Link>
           ))}
           {showBaoLink && (
-            <Link to="/bao" style={navButtonStyle}>
+            <Link to="/bao" style={navButtonStyle} data-track="header_bao">
               ← BAO
             </Link>
           )}
           {showHomeLink && (
-            <Link to="/" style={navButtonStyle}>
+            <Link to="/" style={navButtonStyle} data-track="header_home">
               ← HOME
             </Link>
           )}

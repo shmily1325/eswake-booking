@@ -295,6 +295,7 @@ export function CoachReportFormDialog({
             取消
           </button>
           <button
+            data-track="coach_report_submit"
             onClick={onSubmit}
             disabled={isSubmitting}
             style={{

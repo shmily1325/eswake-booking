@@ -394,6 +394,7 @@ export function AnnouncementManagement() {
           </div>
 
           <button
+            data-track="announcement_add"
             onClick={handleAdd}
             style={{
               width: '100%',
@@ -488,6 +489,7 @@ export function AnnouncementManagement() {
 
             {/* 排序按鈕 */}
             <button
+              data-track="announcement_sort"
               onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
               style={{
                 padding: isMobile ? '12px 18px' : '10px 16px',
@@ -658,6 +660,7 @@ export function AnnouncementManagement() {
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
+                            data-track="announcement_edit"
                             onClick={() => handleEdit(announcement.id)}
                             style={{
                               flex: 1,
@@ -675,6 +678,7 @@ export function AnnouncementManagement() {
                             儲存
                           </button>
                           <button
+                            data-track="announcement_edit_cancel"
                             onClick={cancelEdit}
                             style={{
                               flex: 1,
@@ -759,6 +763,7 @@ export function AnnouncementManagement() {
                             flexShrink: 0
                           }}>
                             <button
+                              data-track="announcement_edit"
                               onClick={() => startEdit(announcement)}
                               style={{
                                 padding: isMobile ? '12px 16px' : '5px 10px',
@@ -776,6 +781,7 @@ export function AnnouncementManagement() {
                               編輯
                             </button>
                             <button
+                              data-track="announcement_delete"
                               onClick={() => handleDelete(announcement.id)}
                               style={{
                                 padding: isMobile ? '12px 16px' : '5px 10px',
