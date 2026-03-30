@@ -110,7 +110,7 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
       }}
     >
       <LiffPageHint>
-        以下為綁定本 LINE 的會員資料；儲值與票券請至「儲值」分頁。若資料有誤，請私訊官方帳號協助更新。
+        以下為綁定此 LINE 帳號的會員資料，若資料有誤，請私訊官方帳號協助更新。
       </LiffPageHint>
 
       <Row label="會員類型" value={membershipTypeLine(member)} />
