@@ -1,4 +1,4 @@
-// LIFF 頁首組件
+// LIFF 頁首組件（分頁名稱已在 LiffTabs，此處不重複）
 
 import type { Member } from '../types'
 
@@ -21,16 +21,18 @@ export function LiffHeader({ member, refreshing, onRefresh }: LiffHeaderProps) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '8px'
+        gap: '12px'
       }}>
-        <h1 style={{
-          fontSize: '20px',
+        <div style={{
+          fontSize: '18px',
           fontWeight: '600',
-          margin: 0
+          lineHeight: 1.3,
+          flex: 1,
+          minWidth: 0
         }}>
-          我的預約
-        </h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {(member?.nickname || member?.name) ? `${member.nickname || member.name} 您好！` : '您好！'}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
           <button
             onClick={onRefresh}
             disabled={refreshing}
@@ -55,24 +57,17 @@ export function LiffHeader({ member, refreshing, onRefresh }: LiffHeaderProps) {
               🔄
             </span>
           </button>
-          <img 
-            src="/logo_circle (white).png" 
-            alt="ES Wake Logo" 
-            style={{ 
-              width: '40px', 
+          <img
+            src="/logo_circle (white).png"
+            alt="ES Wake Logo"
+            style={{
+              width: '40px',
               height: '40px',
               objectFit: 'contain'
-            }} 
+            }}
           />
         </div>
-      </div>
-      <div style={{
-        fontSize: '14px',
-        opacity: 0.9
-      }}>
-        {member?.nickname || member?.name} 您好！
       </div>
     </div>
   )
 }
-

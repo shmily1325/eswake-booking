@@ -144,7 +144,7 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
           lineHeight: 1.5
         }}
       >
-        若資料有誤，請聯絡館方由人員協助更新。
+        若資料有誤，請私訊官方帳號協助更新。
       </div>
     </div>
   )

@@ -2,9 +2,11 @@
 
 interface ErrorViewProps {
   error: string
+  /** 例如整頁重新載入，略過 LIFF WebView 冷啟動偶發失敗 */
+  onRetry?: () => void
 }
 
-export function ErrorView({ error }: ErrorViewProps) {
+export function ErrorView({ error, onRetry }: ErrorViewProps) {
   return (
     <div style={{
       minHeight: '100vh',
@@ -29,6 +31,25 @@ export function ErrorView({ error }: ErrorViewProps) {
         <div style={{ fontSize: '14px', color: '#666' }}>
           {error}
         </div>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            style={{
+              marginTop: '20px',
+              padding: '12px 24px',
+              fontSize: '15px',
+              fontWeight: 600,
+              color: 'white',
+              background: '#5a5a5a',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
+          >
+            重新整理
+          </button>
+        )}
       </div>
     </div>
   )

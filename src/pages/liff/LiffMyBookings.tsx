@@ -21,6 +21,43 @@ import {
 const LIFF_MEMBER_SELECT =
   'id, name, nickname, phone, birthday, membership_type, membership_partner_id, membership_end_date, board_slot_number, board_expiry_date, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours'
 
+const LIFF_INIT_MAX_ATTEMPTS = 3
+const LIFF_INIT_RETRY_DELAYS_MS = [400, 800]
+
+function sleep(ms: number) {
+  return new Promise<void>(resolve => setTimeout(resolve, ms))
+}
+
+/** 第一次從 LINE 開進來是 navigate；自動 reload 後變成 reload，避免無限迴圈。等同使用者「按兩次連結」裡的第二次。 */
+function isFirstDocumentLoadThisNavigation(): boolean {
+  try {
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+    if (nav?.type === 'reload') return false
+    return true
+  } catch {
+    return true
+  }
+}
+
+/** 久未開啟時 LINE WebView 與原生橋接尚未就緒，liff.init 常短暫失敗；重試可大幅減少「Unable to load client features」。 */
+async function initLiffSdk(liffId: string): Promise<void> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt < LIFF_INIT_MAX_ATTEMPTS; attempt++) {
+    try {
+      await liff.init({ liffId })
+      return
+    } catch (e) {
+      lastErr = e
+      if (attempt < LIFF_INIT_MAX_ATTEMPTS - 1) {
+        const delay = LIFF_INIT_RETRY_DELAYS_MS[attempt] ?? 600
+        console.warn(`LIFF init 第 ${attempt + 1} 次失敗，${delay}ms 後重試`, e)
+        await sleep(delay)
+      }
+    }
+  }
+  throw lastErr
+}
+
 async function enrichMemberForLiff(raw: Record<string, unknown>): Promise<Member> {
   const r = raw as {
     id: string
@@ -109,7 +146,7 @@ export function LiffMyBookings() {
   const [birthDay, setBirthDay] = useState('')
   const [binding, setBinding] = useState(false)
   const [bindingError, setBindingError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<TabType>('bookings')
+  const [activeTab, setActiveTab] = useState<TabType>('profile')
   
   // 交易記錄彈出框
   const [showTransactions, setShowTransactions] = useState(false)
@@ -153,7 +190,7 @@ export function LiffMyBookings() {
       const version = '20251208-002'
       console.log('🚀 LIFF 版本:', version)
 
-      await liff.init({ liffId })
+      await initLiffSdk(liffId)
 
       if (!liff.isLoggedIn()) {
         liff.login()
@@ -167,6 +204,12 @@ export function LiffMyBookings() {
       await checkBinding(profile.userId)
     } catch (err: any) {
       console.error('LIFF 初始化失敗:', err)
+      const msg = String(err?.message || '')
+      if (msg.includes('Unable to load client features') && isFirstDocumentLoadThisNavigation()) {
+        console.warn('LIFF 冷啟動失敗，自動重新載入一次（等同再開一次連結）')
+        window.location.reload()
+        return
+      }
       setError(err.message || 'LIFF 初始化失敗')
       setLoading(false)
     }
@@ -492,7 +535,14 @@ export function LiffMyBookings() {
 
   // 錯誤頁面
   if (error) {
-    return <ErrorView error={error} />
+    return (
+      <ErrorView
+        error={error}
+        onRetry={() => {
+          window.location.reload()
+        }}
+      />
+    )
   }
 
   // 載入中
