@@ -109,7 +109,7 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
       }}
     >
       <p style={{ fontSize: '13px', color: '#888', margin: '0 0 16px 0' }}>
-        以下為綁定於本 LINE 帳號的會員資料；儲值與票券請至「查儲值」分頁。
+        以下為綁定於本 LINE 帳號的會員資料；儲值與票券請至「儲值」分頁。
       </p>
 
       <Row label="會員類型" value={membershipTypeLine(member)} />

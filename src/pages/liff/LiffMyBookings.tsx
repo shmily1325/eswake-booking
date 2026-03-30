@@ -146,7 +146,8 @@ export function LiffMyBookings() {
   const [birthDay, setBirthDay] = useState('')
   const [binding, setBinding] = useState(false)
   const [bindingError, setBindingError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<TabType>('profile')
+  // 預設「我的預約」：最常使用；Tab 列亦將此分頁置左方便點選
+  const [activeTab, setActiveTab] = useState<TabType>('bookings')
   
   // 交易記錄彈出框
   const [showTransactions, setShowTransactions] = useState(false)
@@ -589,9 +590,8 @@ export function LiffMyBookings() {
         setActiveTab={setActiveTab}
       />
 
-      {/* Content */}
+      {/* Content（順序與 LiffTabs：預約 → 儲值 → 會員） */}
       <div style={{ padding: '16px' }}>
-        {/* Tab: 我的預約 */}
         {activeTab === 'bookings' && (
           <BookingsList
             bookings={bookings}
@@ -602,7 +602,6 @@ export function LiffMyBookings() {
           />
         )}
 
-        {/* Tab: 查儲值 */}
         {activeTab === 'balance' && member && (
           <BalanceView
             member={member}
