@@ -1,4 +1,4 @@
-// LIFF 頁首組件（分頁名稱已在 LiffTabs，此處不重複）
+// LIFF 頁首：固定大標「會員中心」；分頁名稱僅在 LiffTabs，內容區不重複標題
 
 import type { Member } from '../types'
 
@@ -21,18 +21,16 @@ export function LiffHeader({ member, refreshing, onRefresh }: LiffHeaderProps) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '12px'
+        marginBottom: '8px'
       }}>
-        <div style={{
-          fontSize: '18px',
+        <h1 style={{
+          fontSize: '20px',
           fontWeight: '600',
-          lineHeight: 1.3,
-          flex: 1,
-          minWidth: 0
+          margin: 0
         }}>
-          {(member?.nickname || member?.name) ? `${member.nickname || member.name} 您好！` : '您好！'}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+          會員中心
+        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
             onClick={onRefresh}
             disabled={refreshing}
@@ -67,6 +65,12 @@ export function LiffHeader({ member, refreshing, onRefresh }: LiffHeaderProps) {
             }}
           />
         </div>
+      </div>
+      <div style={{
+        fontSize: '14px',
+        opacity: 0.9
+      }}>
+        {(member?.nickname || member?.name) ? `${member.nickname || member.name} 您好！` : '您好！'}
       </div>
     </div>
   )

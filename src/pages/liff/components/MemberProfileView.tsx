@@ -69,19 +69,6 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
       }}
     >
-      <h2
-        style={{
-          fontSize: '18px',
-          fontWeight: 600,
-          color: '#333',
-          margin: '0 0 8px 0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px'
-        }}
-      >
-        👤 會員資訊
-      </h2>
       <p style={{ fontSize: '13px', color: '#888', margin: '0 0 16px 0' }}>
         以下為綁定於本 LINE 帳號的會員資料；儲值與票券請至「查儲值」分頁。
       </p>

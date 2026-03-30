@@ -16,18 +16,6 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
       padding: '20px',
       boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
     }}>
-      <h2 style={{
-        fontSize: '18px',
-        fontWeight: '600',
-        color: '#333',
-        marginBottom: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px'
-      }}>
-        💰 我的儲值
-      </h2>
-
       {/* 提示 */}
       <div style={{
         padding: '10px 12px',
