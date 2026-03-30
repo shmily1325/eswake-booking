@@ -103,7 +103,7 @@ export function buildLiffExpiryBannerLines(member: Member | null): LiffExpiryBan
       id: 'board-soon',
       emoji: '🏄',
       text: `置板即將到期（${EXPIRING_SOON_DAYS} 天內），請留意續約。`,
-      tone: 'info'
+      tone: 'warning'
     })
   }
 

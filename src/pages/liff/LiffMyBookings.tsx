@@ -601,6 +601,7 @@ export function LiffMyBookings() {
         {member && expiryBannerLines.length > 0 && (
           <LiffExpiryBanner
             lines={expiryBannerLines}
+            isOnProfileTab={activeTab === 'profile'}
             onOpenProfile={() => {
               triggerHaptic('light')
               setActiveTab('profile')

@@ -45,13 +45,7 @@ function membershipTypeLine(member: Member): string {
   return label
 }
 
-function ExpiryBadge({
-  status,
-  variant
-}: {
-  status: LiffExpiryRowStatus
-  variant: 'membership' | 'board'
-}) {
+function ExpiryBadge({ status }: { status: LiffExpiryRowStatus }) {
   if (status === 'none') return null
   if (status === 'expired') {
     return (
@@ -71,18 +65,17 @@ function ExpiryBadge({
       </span>
     )
   }
-  const board = variant === 'board'
   return (
     <span
       style={{
         flexShrink: 0,
         fontSize: '11px',
         fontWeight: 700,
-        color: board ? '#1565c0' : '#e65100',
-        background: board ? '#e3f2fd' : '#fff8e1',
+        color: '#e65100',
+        background: '#fff8e1',
         padding: '2px 8px',
         borderRadius: '999px',
-        border: `1px solid ${board ? '#90caf9' : '#ffcc80'}`
+        border: '1px solid #ffcc80'
       }}
     >
       即將到期
@@ -119,7 +112,7 @@ function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number;
     boardStatus === 'expired'
       ? '4px solid #c62828'
       : boardStatus === 'soon'
-        ? '4px solid #1976d2'
+        ? '4px solid #ff9800'
         : '4px solid transparent'
 
   return (
@@ -155,7 +148,7 @@ function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number;
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '12px', color: '#64748b' }}>到期</span>
-          <ExpiryBadge status={boardStatus} variant="board" />
+          <ExpiryBadge status={boardStatus} />
         </div>
         <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', lineHeight: 1.35 }}>
           {expiryLabel}
@@ -186,10 +179,7 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
         label="會員到期日"
         value={formatDateSlash(member.membership_end_date)}
         badge={
-          <ExpiryBadge
-            status={getMembershipExpiryRowStatus(member.membership_end_date)}
-            variant="membership"
-          />
+          <ExpiryBadge status={getMembershipExpiryRowStatus(member.membership_end_date)} />
         }
       />
 
