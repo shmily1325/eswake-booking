@@ -8,7 +8,13 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useToast, ToastContainer } from '../../components/ui'
-import { getLocalDateString, normalizeDate, isDateExpired } from '../../utils/date'
+import {
+  getLocalDateString,
+  normalizeDate,
+  isDateExpired,
+  isEndDateInExpiryReminderWindow,
+  EXPIRING_SOON_DAYS
+} from '../../utils/date'
 
 interface Member {
   id: string
@@ -82,12 +88,6 @@ export function MemberManagement() {
   }
 
   const loadExpiringData = async () => {
-    // 計算30天後的日期
-    const todayDate = new Date()
-    const thirtyDaysLater = new Date(todayDate)
-    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30)
-    const thirtyDaysLaterStr = `${thirtyDaysLater.getFullYear()}-${String(thirtyDaysLater.getMonth() + 1).padStart(2, '0')}-${String(thirtyDaysLater.getDate()).padStart(2, '0')}`
-
     const [membershipResult, boardResult] = await Promise.all([
       // 獲取所有有會籍截止日的會員
       supabase
@@ -106,23 +106,17 @@ export function MemberManagement() {
     ])
 
     if (membershipResult.data) {
-      // 在客戶端過濾：所有已過期 + 未來30天內到期
-      const filtered = membershipResult.data.filter((m: any) => {
-        if (!m.membership_end_date) return false
-        const normalized = normalizeDate(m.membership_end_date)
-        // 只顯示 <= 今天+30天 的（包含所有已過期和即將到期）
-        return normalized && normalized <= thirtyDaysLaterStr
-      })
+      const filtered = membershipResult.data.filter((m: any) =>
+        isEndDateInExpiryReminderWindow(m.membership_end_date, EXPIRING_SOON_DAYS)
+      )
       
       setExpiringMemberships(filtered)
     }
     
     if (boardResult.data) {
-      // 在客戶端過濾：所有已過期 + 未來30天內到期
-      const filtered = boardResult.data.filter((b: any) => {
-        if (!b.expires_at) return false
-        return b.expires_at <= thirtyDaysLaterStr
-      })
+      const filtered = boardResult.data.filter((b: any) =>
+        isEndDateInExpiryReminderWindow(b.expires_at, EXPIRING_SOON_DAYS)
+      )
       
       const boardList = filtered.map((b: any) => {
         const member = b.members

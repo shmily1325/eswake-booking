@@ -1,7 +1,13 @@
 // 會員基本資料（LIFF）
 
+import type { ReactNode } from 'react'
 import { getMembershipTypeLabel, type Member } from '../types'
 import { LiffPageHint } from './LiffPageHint'
+import {
+  getBoardExpiryRowStatus,
+  getMembershipExpiryRowStatus,
+  type LiffExpiryRowStatus
+} from '../liffExpiryAlerts'
 
 interface MemberProfileViewProps {
   member: Member
@@ -39,7 +45,52 @@ function membershipTypeLine(member: Member): string {
   return label
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function ExpiryBadge({
+  status,
+  variant
+}: {
+  status: LiffExpiryRowStatus
+  variant: 'membership' | 'board'
+}) {
+  if (status === 'none') return null
+  if (status === 'expired') {
+    return (
+      <span
+        style={{
+          flexShrink: 0,
+          fontSize: '11px',
+          fontWeight: 700,
+          color: '#b71c1c',
+          background: '#ffebee',
+          padding: '2px 8px',
+          borderRadius: '999px',
+          border: '1px solid #ef9a9a'
+        }}
+      >
+        已過期
+      </span>
+    )
+  }
+  const board = variant === 'board'
+  return (
+    <span
+      style={{
+        flexShrink: 0,
+        fontSize: '11px',
+        fontWeight: 700,
+        color: board ? '#1565c0' : '#e65100',
+        background: board ? '#e3f2fd' : '#fff8e1',
+        padding: '2px 8px',
+        borderRadius: '999px',
+        border: `1px solid ${board ? '#90caf9' : '#ffcc80'}`
+      }}
+    >
+      即將到期
+    </span>
+  )
+}
+
+function Row({ label, value, badge }: { label: string; value: string; badge?: ReactNode }) {
   return (
     <div
       style={{
@@ -50,7 +101,10 @@ function Row({ label, value }: { label: string; value: string }) {
         borderBottom: '1px solid #f0f0f0'
       }}
     >
-      <span style={{ fontSize: '13px', color: '#888' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <span style={{ fontSize: '13px', color: '#888' }}>{label}</span>
+        {badge}
+      </div>
       <span style={{ fontSize: '16px', color: '#333', fontWeight: 500, wordBreak: 'break-all' }}>
         {value || '—'}
       </span>
@@ -60,6 +114,14 @@ function Row({ label, value }: { label: string; value: string }) {
 
 function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number; expiresAt: string | null | undefined }) {
   const expiryLabel = formatDateSlash(expiresAt)
+  const boardStatus = getBoardExpiryRowStatus(expiresAt)
+  const accent =
+    boardStatus === 'expired'
+      ? '4px solid #c62828'
+      : boardStatus === 'soon'
+        ? '4px solid #1976d2'
+        : '4px solid transparent'
+
   return (
     <div
       style={{
@@ -70,7 +132,8 @@ function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number;
         padding: '12px 14px',
         background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
         borderRadius: '10px',
-        border: '1px solid #e2e8f0'
+        border: '1px solid #e2e8f0',
+        borderLeft: accent
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
@@ -90,7 +153,10 @@ function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number;
           minWidth: 0
         }}
       >
-        <span style={{ fontSize: '12px', color: '#64748b' }}>到期</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12px', color: '#64748b' }}>到期</span>
+          <ExpiryBadge status={boardStatus} variant="board" />
+        </div>
         <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', lineHeight: 1.35 }}>
           {expiryLabel}
         </span>
@@ -116,7 +182,16 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
       <Row label="會員類型" value={membershipTypeLine(member)} />
       <Row label="手機號碼" value={member.phone?.trim() || '—'} />
       <Row label="生日" value={formatMonthDaySlash(member.birthday)} />
-      <Row label="會員到期日" value={formatDateSlash(member.membership_end_date)} />
+      <Row
+        label="會員到期日"
+        value={formatDateSlash(member.membership_end_date)}
+        badge={
+          <ExpiryBadge
+            status={getMembershipExpiryRowStatus(member.membership_end_date)}
+            variant="membership"
+          />
+        }
+      />
 
       <div
         style={{

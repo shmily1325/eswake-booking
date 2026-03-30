@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import liff from '@line/liff'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
@@ -15,8 +15,10 @@ import {
   BalanceView,
   MemberProfileView,
   TransactionModal,
-  LiffStyles
+  LiffStyles,
+  LiffExpiryBanner
 } from './components'
+import { buildLiffExpiryBannerLines } from './liffExpiryAlerts'
 
 const LIFF_MEMBER_SELECT =
   'id, name, nickname, phone, birthday, membership_type, membership_partner_id, membership_end_date, board_slot_number, board_expiry_date, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours'
@@ -26,6 +28,11 @@ const LIFF_INIT_RETRY_DELAYS_MS = [400, 800]
 
 function sleep(ms: number) {
   return new Promise<void>(resolve => setTimeout(resolve, ms))
+}
+
+function unknownErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message
+  return fallback
 }
 
 /** 第一次從 LINE 開進來是 navigate；自動 reload 後變成 reload，避免無限迴圈。等同使用者「按兩次連結」裡的第二次。 */
@@ -174,9 +181,7 @@ export function LiffMyBookings() {
     return `${date.getMonth() + 1}/${date.getDate()}`
   }
 
-  useEffect(() => {
-    initLiff()
-  }, [])
+  const expiryBannerLines = useMemo(() => buildLiffExpiryBannerLines(member), [member])
 
   const initLiff = async () => {
     try {
@@ -203,18 +208,24 @@ export function LiffMyBookings() {
 
       // 查詢綁定資訊
       await checkBinding(profile.userId)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('LIFF 初始化失敗:', err)
-      const msg = String(err?.message || '')
+      const msg = unknownErrorMessage(err, '')
       if (msg.includes('Unable to load client features') && isFirstDocumentLoadThisNavigation()) {
         console.warn('LIFF 冷啟動失敗，自動重新載入一次（等同再開一次連結）')
         window.location.reload()
         return
       }
-      setError(err.message || 'LIFF 初始化失敗')
+      setError(unknownErrorMessage(err, 'LIFF 初始化失敗'))
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    void initLiff()
+    // 僅掛載時初始化 LIFF；避免依賴整包 handler 造成重複 init
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
+  }, [])
 
   const checkBinding = async (userId: string) => {
     try {
@@ -234,7 +245,7 @@ export function LiffMyBookings() {
         setShowBindingForm(true)
         setLoading(false)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('查詢綁定失敗:', err)
       setShowBindingForm(true)
       setLoading(false)
@@ -287,24 +298,19 @@ export function LiffMyBookings() {
             .in('booking_id', bookingsData.map(b => b.id))
         ])
 
-        // 組合資料
-        const formattedBookings = bookingsData.map((booking: any) => {
-          const coaches = coachData
-            ?.filter(c => c.booking_id === booking.id)
-            .map(c => (c as any).coaches)
-            .filter(Boolean) || []
+        type StaffJoin = { booking_id: number; coaches: { name: string } | null }
+        const coachRows = (coachData ?? []) as unknown as StaffJoin[]
+        const driverRows = (driverData ?? []) as unknown as StaffJoin[]
 
-          const drivers = driverData
-            ?.filter(d => d.booking_id === booking.id)
-            .map(d => (d as any).coaches)
-            .filter(Boolean) || []
-
-          return {
-            ...booking,
-            coaches,
-            drivers
-          }
-        })
+        const formattedBookings: Booking[] = bookingsData.map(booking => ({
+          ...booking,
+          coaches: coachRows.filter(c => c.booking_id === booking.id).map(c => c.coaches).filter(Boolean) as {
+            name: string
+          }[],
+          drivers: driverRows.filter(d => d.booking_id === booking.id).map(d => d.coaches).filter(Boolean) as {
+            name: string
+          }[]
+        }))
 
         setBookings(formattedBookings)
       } else {
@@ -312,7 +318,7 @@ export function LiffMyBookings() {
       }
 
       setLoading(false)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('載入預約失敗:', err)
       setError('載入預約失敗')
       setLoading(false)
@@ -344,7 +350,7 @@ export function LiffMyBookings() {
         await loadBookings(memberData.id as string)
         toast.success('資料已更新')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('刷新失敗:', err)
       toast.error('刷新失敗')
     } finally {
@@ -382,7 +388,7 @@ export function LiffMyBookings() {
       setTransactions(result)
       // 存入快取
       setTransactionCache(prev => ({ ...prev, [cacheKey]: result }))
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('載入交易記錄失敗:', err)
       toast.error('載入交易記錄失敗')
     } finally {
@@ -498,7 +504,7 @@ export function LiffMyBookings() {
       
       setShowBindingForm(false)
       await loadBookings(memberData.id)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('綁定失敗:', err)
       toast.error('綁定失敗')
     } finally {
@@ -592,6 +598,15 @@ export function LiffMyBookings() {
 
       {/* Content（順序與 LiffTabs：預約 → 儲值 → 會員） */}
       <div style={{ padding: '16px' }}>
+        {member && expiryBannerLines.length > 0 && (
+          <LiffExpiryBanner
+            lines={expiryBannerLines}
+            onOpenProfile={() => {
+              triggerHaptic('light')
+              setActiveTab('profile')
+            }}
+          />
+        )}
         {activeTab === 'bookings' && (
           <BookingsList
             bookings={bookings}

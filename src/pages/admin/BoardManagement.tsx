@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { getLocalDateString } from '../../utils/date'
+import { getLocalDateString, EXPIRING_SOON_DAYS } from '../../utils/date'
 import type { MemberBasic, ImportRecord, BoardExportData } from '../../types/common'
 import { Button, useToast, ToastContainer } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
@@ -561,7 +561,7 @@ export function BoardManagement() {
       const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
       
       if (daysUntilExpiry < 0) return 'expired'
-      if (daysUntilExpiry <= 30) return 'expiring'
+      if (daysUntilExpiry <= EXPIRING_SOON_DAYS) return 'expiring'
       return 'normal'
     }
     

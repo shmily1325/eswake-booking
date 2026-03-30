@@ -68,6 +68,37 @@ export function addDaysToDate(dateStr: string, days: number): string {
 }
 
 /**
+ * 會籍／置板「快到期」天數，與後台會員管理「到期詳情」、置板管理格子色階一致（自今天起算，含當日）。
+ */
+export const EXPIRING_SOON_DAYS = 30
+
+/**
+ * 結束日是否落在提醒視窗內：已過期或今天起算 {@link EXPIRING_SOON_DAYS} 天內（含）。
+ * 對應後台載入到期清單時的篩選（`<= 今天 + N`）。
+ */
+export function isEndDateInExpiryReminderWindow(
+  dateStr: string | null | undefined,
+  days: number = EXPIRING_SOON_DAYS
+): boolean {
+  const normalized = normalizeDate(dateStr)
+  if (!normalized) return false
+  const limit = addDaysToDate(getLocalDateString(), days)
+  return normalized <= limit
+}
+
+/**
+ * 「即將到期」：尚未過期（結束日 ≥ 今天），且在上述視窗內。
+ * 對應後台「⏰ 即將到期」「🏄 即將到期置板」列（非「已過期」子集）。
+ */
+export function isEndDateExpiringSoon(
+  dateStr: string | null | undefined,
+  days: number = EXPIRING_SOON_DAYS
+): boolean {
+  if (isDateExpired(dateStr)) return false
+  return isEndDateInExpiryReminderWindow(dateStr, days)
+}
+
+/**
  * 獲取日期的星期幾
  * @param dateString - 日期字串 (YYYY-MM-DD)
  * @returns 星期幾的中文表示 (星期一、星期二...星期日)

@@ -13,4 +13,5 @@ export { MemberProfileView } from './MemberProfileView'
 export { TransactionModal } from './TransactionModal'
 export { LiffStyles } from './LiffStyles'
 export { LiffPageHint } from './LiffPageHint'
+export { LiffExpiryBanner } from './LiffExpiryBanner'
 
