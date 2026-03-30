@@ -2,7 +2,6 @@
 
 import type { Member } from './types'
 import {
-  EXPIRING_SOON_DAYS,
   getLocalDateString,
   isDateExpired,
   isEndDateExpiringSoon,
@@ -29,7 +28,7 @@ function daysUntilLocalEnd(dateStr: string): number | null {
   return Math.round((end.getTime() - start.getTime()) / 86400000)
 }
 
-/** 會員到期列、置板卡片用 */
+/** 會籍到期列、置板卡片用 */
 export type LiffExpiryRowStatus = 'none' | 'expired' | 'soon'
 
 export function getMembershipExpiryRowStatus(
@@ -82,27 +81,37 @@ export function buildLiffExpiryBannerLines(member: Member | null): LiffExpiryBan
 
   let anyBoardExpired = false
   let anyBoardSoon = false
+  /** 多格時取剩餘天數最小者（最急），與會籍列同格式 */
+  let boardSoonMinDays: number | null = null
   for (const s of slotSources) {
     const e = s.expires_at
     if (!e) continue
     if (!isEndDateInExpiryReminderWindow(e)) continue
     if (isDateExpired(e)) anyBoardExpired = true
-    else if (isEndDateExpiringSoon(e)) anyBoardSoon = true
+    else if (isEndDateExpiringSoon(e)) {
+      anyBoardSoon = true
+      const d = daysUntilLocalEnd(e)
+      if (d != null && d >= 0) {
+        boardSoonMinDays = boardSoonMinDays === null ? d : Math.min(boardSoonMinDays, d)
+      }
+    }
   }
 
   if (anyBoardExpired) {
     lines.push({
       id: 'board-expired',
       emoji: '🏄',
-      text: '置板已過期，請私訊官方協助處理。',
+      text: '置板已過期，請私訊官方協助續約。',
       tone: 'danger'
     })
   }
   if (anyBoardSoon) {
+    const suffix =
+      boardSoonMinDays != null && boardSoonMinDays >= 0 ? `（剩 ${boardSoonMinDays} 天）` : ''
     lines.push({
       id: 'board-soon',
       emoji: '🏄',
-      text: `置板即將到期（${EXPIRING_SOON_DAYS} 天內），請留意續約。`,
+      text: `置板即將到期${suffix}，請留意續約。`,
       tone: 'warning'
     })
   }

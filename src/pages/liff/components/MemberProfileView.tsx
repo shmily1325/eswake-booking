@@ -176,7 +176,7 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
       <Row label="手機號碼" value={member.phone?.trim() || '—'} />
       <Row label="生日" value={formatMonthDaySlash(member.birthday)} />
       <Row
-        label="會員到期日"
+        label="會籍到期日"
         value={formatDateSlash(member.membership_end_date)}
         badge={
           <ExpiryBadge status={getMembershipExpiryRowStatus(member.membership_end_date)} />
