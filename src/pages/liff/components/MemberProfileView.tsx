@@ -1,6 +1,7 @@
 // 會員基本資料（LIFF）
 
 import { getMembershipTypeLabel, type Member } from '../types'
+import { LiffPageHint } from './LiffPageHint'
 
 interface MemberProfileViewProps {
   member: Member
@@ -108,9 +109,9 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
       }}
     >
-      <p style={{ fontSize: '13px', color: '#888', margin: '0 0 16px 0' }}>
-        以下為綁定於本 LINE 帳號的會員資料；儲值與票券請至「儲值」分頁。
-      </p>
+      <LiffPageHint>
+        以下為綁定本 LINE 的會員資料；儲值與票券請至「儲值」分頁。若資料有誤，請私訊官方帳號協助更新。
+      </LiffPageHint>
 
       <Row label="會員類型" value={membershipTypeLine(member)} />
       <Row label="手機號碼" value={member.phone?.trim() || '—'} />
@@ -177,20 +178,6 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
             尚無置板資料
           </div>
         )}
-      </div>
-
-      <div
-        style={{
-          marginTop: '16px',
-          padding: '10px 12px',
-          background: '#fafafa',
-          borderRadius: '8px',
-          fontSize: '12px',
-          color: '#999',
-          lineHeight: 1.5
-        }}
-      >
-        若資料有誤，請私訊官方帳號協助更新。
       </div>
     </div>
   )

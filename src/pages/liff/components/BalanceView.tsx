@@ -2,6 +2,7 @@
 
 import type { Member } from '../types'
 import { BalanceCard } from './BalanceCard'
+import { LiffPageHint } from './LiffPageHint'
 
 interface BalanceViewProps {
   member: Member
@@ -16,20 +17,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
       padding: '20px',
       boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
     }}>
-      {/* 提示 */}
-      <div style={{
-        padding: '10px 12px',
-        background: '#f0f7ff',
-        borderRadius: '6px',
-        marginBottom: '12px',
-        fontSize: '13px',
-        color: '#666',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px'
-      }}>
-        💡 點擊任一項目查看兩個月內的交易明細
-      </div>
+      <LiffPageHint>點擊任一項目查看兩個月內的交易明細。</LiffPageHint>
 
       {/* 儲值數據 */}
       <div style={{

@@ -2,6 +2,10 @@
 
 import type { Booking } from '../types'
 import { BookingCard } from './BookingCard'
+import { LiffPageHint } from './LiffPageHint'
+
+const BOOKINGS_PAGE_HINT =
+  '以下為與本 LINE 綁定的即將到來預約；若要更改請私訊官方帳號。'
 
 interface BookingsListProps {
   bookings: Booking[]
@@ -22,11 +26,12 @@ export function BookingsList({
     return (
       <div style={{
         background: 'white',
-        padding: '60px 20px',
+        padding: '20px 20px 60px',
         borderRadius: '12px',
         textAlign: 'center',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
       }}>
+        <LiffPageHint>{BOOKINGS_PAGE_HINT}</LiffPageHint>
         <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
         <div style={{ fontSize: '18px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
           目前沒有預約
@@ -47,6 +52,7 @@ export function BookingsList({
       flexDirection: 'column',
       gap: '12px'
     }}>
+      <LiffPageHint>{BOOKINGS_PAGE_HINT}</LiffPageHint>
       {bookings.map((booking) => {
         // 檢查是否為當天第一個預約
         const bookingDate = booking.start_at.split('T')[0]
