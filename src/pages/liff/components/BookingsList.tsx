@@ -6,7 +6,7 @@ import { BookingCard } from './BookingCard'
 import { LiffPageHint } from './LiffPageHint'
 
 const BOOKINGS_PAGE_HINT =
-  '以下為即將到來的預約，若要更改請私訊官方帳號。'
+  '以下為即將到來的預約，若要更改請私訊官方。'
 
 /** 與 BalanceView / MemberProfileView 外層一致 */
 const liffContentPanel: CSSProperties = {
