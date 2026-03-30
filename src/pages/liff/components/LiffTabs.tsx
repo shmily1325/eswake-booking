@@ -25,12 +25,12 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
         }}
         style={{
           flex: 1,
-          padding: '16px',
+          padding: '16px 8px',
           border: 'none',
           background: 'transparent',
           color: activeTab === 'bookings' ? '#5a5a5a' : '#999',
           fontWeight: activeTab === 'bookings' ? '600' : '400',
-          fontSize: '15px',
+          fontSize: '14px',
           cursor: 'pointer',
           borderBottom: activeTab === 'bookings' ? '3px solid #5a5a5a' : '3px solid transparent',
           transition: 'all 0.2s'
@@ -45,18 +45,38 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
         }}
         style={{
           flex: 1,
-          padding: '16px',
+          padding: '16px 8px',
           border: 'none',
           background: 'transparent',
           color: activeTab === 'balance' ? '#5a5a5a' : '#999',
           fontWeight: activeTab === 'balance' ? '600' : '400',
-          fontSize: '15px',
+          fontSize: '14px',
           cursor: 'pointer',
           borderBottom: activeTab === 'balance' ? '3px solid #5a5a5a' : '3px solid transparent',
           transition: 'all 0.2s'
         }}
       >
         💰 查儲值
+      </button>
+      <button
+        onClick={() => {
+          triggerHaptic('light')
+          setActiveTab('profile')
+        }}
+        style={{
+          flex: 1,
+          padding: '16px 8px',
+          border: 'none',
+          background: 'transparent',
+          color: activeTab === 'profile' ? '#5a5a5a' : '#999',
+          fontWeight: activeTab === 'profile' ? '600' : '400',
+          fontSize: '14px',
+          cursor: 'pointer',
+          borderBottom: activeTab === 'profile' ? '3px solid #5a5a5a' : '3px solid transparent',
+          transition: 'all 0.2s'
+        }}
+      >
+        👤 會員資訊
       </button>
       {/* 暫時隱藏取消預約功能
       <button

@@ -9,6 +9,7 @@ export { BookingCard } from './BookingCard'
 export { BookingsList } from './BookingsList'
 export { BalanceCard } from './BalanceCard'
 export { BalanceView } from './BalanceView'
+export { MemberProfileView } from './MemberProfileView'
 export { TransactionModal } from './TransactionModal'
 export { LiffStyles } from './LiffStyles'
 

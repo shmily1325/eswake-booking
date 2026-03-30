@@ -4,7 +4,6 @@ import liff from '@line/liff'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { useToast } from '../../components/ui'
 import { triggerHaptic } from '../../utils/haptic'
-
 import type { Booking, Member, Transaction, TabType } from './types'
 import {
   ErrorView,
@@ -14,9 +13,87 @@ import {
   LiffTabs,
   BookingsList,
   BalanceView,
+  MemberProfileView,
   TransactionModal,
   LiffStyles
 } from './components'
+
+const LIFF_MEMBER_SELECT =
+  'id, name, nickname, phone, birthday, membership_type, membership_partner_id, membership_end_date, board_slot_number, board_expiry_date, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours'
+
+async function enrichMemberForLiff(raw: Record<string, unknown>): Promise<Member> {
+  const r = raw as {
+    id: string
+    name: string
+    nickname: string | null
+    phone: string | null
+    birthday?: string | null
+    membership_type?: string | null
+    membership_partner_id?: string | null
+    membership_end_date?: string | null
+    board_slot_number?: string | null
+    board_expiry_date?: string | null
+    balance?: number | null
+    vip_voucher_amount?: number | null
+    designated_lesson_minutes?: number | null
+    boat_voucher_g23_minutes?: number | null
+    boat_voucher_g21_panther_minutes?: number | null
+    gift_boat_hours?: number | null
+  }
+
+  const boardsRes = await supabase
+    .from('board_storage')
+    .select('id, slot_number, start_date, expires_at')
+    .eq('member_id', r.id)
+    .eq('status', 'active')
+    .order('slot_number', { ascending: true })
+
+  if (boardsRes.error) {
+    console.warn('LIFF 置板查詢失敗（將僅顯示會員表備用欄位）:', boardsRes.error.message)
+  }
+
+  const board_slots = (boardsRes.error ? [] : boardsRes.data ?? []).map(b => ({
+    id: b.id,
+    slot_number: b.slot_number,
+    start_date: b.start_date,
+    expires_at: b.expires_at
+  }))
+
+  let partner: Member['partner'] = null
+  if (r.membership_type === 'dual' && r.membership_partner_id) {
+    const partnerRes = await supabase
+      .from('members')
+      .select('name, nickname')
+      .eq('id', r.membership_partner_id)
+      .single()
+    if (partnerRes.error) {
+      console.warn('LIFF 雙人配對會員查詢失敗:', partnerRes.error.message)
+    } else if (partnerRes.data) {
+      partner = { name: partnerRes.data.name, nickname: partnerRes.data.nickname }
+    }
+  }
+
+  return {
+    id: r.id,
+    name: r.name,
+    nickname: r.nickname,
+    phone: r.phone,
+    birthday: r.birthday ?? undefined,
+    membership_type: r.membership_type ?? null,
+    membership_partner_id: r.membership_partner_id ?? null,
+    membership_end_date: r.membership_end_date ?? null,
+    board_slot_number: r.board_slot_number ?? null,
+    board_expiry_date: r.board_expiry_date ?? null,
+    board_slots,
+    partner,
+    balance: r.balance ?? undefined,
+    vip_voucher_amount: r.vip_voucher_amount ?? undefined,
+    designated_lesson_minutes: r.designated_lesson_minutes ?? undefined,
+    boat_voucher_g23_minutes: r.boat_voucher_g23_minutes ?? undefined,
+    boat_voucher_g21_panther_minutes: r.boat_voucher_g21_panther_minutes ?? undefined,
+    gift_boat_hours: r.gift_boat_hours ?? undefined,
+  }
+}
 
 export function LiffMyBookings() {
   const toast = useToast()
@@ -100,15 +177,15 @@ export function LiffMyBookings() {
       // 查詢 line_bindings 表
       const { data: binding } = await supabase
         .from('line_bindings')
-        .select('member_id, members(id, name, nickname, phone, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours)')
+        .select(`member_id, members(${LIFF_MEMBER_SELECT})`)
         .eq('line_user_id', userId)
         .eq('status', 'active')
         .single()
 
       if (binding && binding.members) {
-        const memberData = binding.members as any
-        setMember(memberData)
-        await loadBookings(memberData.id)
+        const memberData = binding.members as Record<string, unknown>
+        setMember(await enrichMemberForLiff(memberData))
+        await loadBookings(memberData.id as string)
       } else {
         setShowBindingForm(true)
         setLoading(false)
@@ -212,15 +289,15 @@ export function LiffMyBookings() {
       // 重新查詢會員資料
       const { data: binding } = await supabase
         .from('line_bindings')
-        .select('member_id, members(id, name, nickname, phone, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours)')
+        .select(`member_id, members(${LIFF_MEMBER_SELECT})`)
         .eq('line_user_id', lineUserId)
         .eq('status', 'active')
         .single()
 
       if (binding && binding.members) {
-        const memberData = binding.members as any
-        setMember(memberData)
-        await loadBookings(memberData.id)
+        const memberData = binding.members as Record<string, unknown>
+        setMember(await enrichMemberForLiff(memberData))
+        await loadBookings(memberData.id as string)
         toast.success('資料已更新')
       }
     } catch (err: any) {
@@ -365,25 +442,14 @@ export function LiffMyBookings() {
       
       const { data: fullMemberData } = await supabase
         .from('members')
-        .select('id, name, nickname, phone, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours')
+        .select(LIFF_MEMBER_SELECT)
         .eq('id', memberData.id)
         .single()
       
       if (fullMemberData) {
-        setMember({
-          id: fullMemberData.id,
-          name: fullMemberData.name,
-          nickname: fullMemberData.nickname,
-          phone: fullMemberData.phone,
-          balance: fullMemberData.balance ?? undefined,
-          vip_voucher_amount: fullMemberData.vip_voucher_amount ?? undefined,
-          designated_lesson_minutes: fullMemberData.designated_lesson_minutes ?? undefined,
-          boat_voucher_g23_minutes: fullMemberData.boat_voucher_g23_minutes ?? undefined,
-          boat_voucher_g21_panther_minutes: fullMemberData.boat_voucher_g21_panther_minutes ?? undefined,
-          gift_boat_hours: fullMemberData.gift_boat_hours ?? undefined,
-        })
+        setMember(await enrichMemberForLiff(fullMemberData as Record<string, unknown>))
       } else {
-        setMember(memberData)
+        setMember(await enrichMemberForLiff(memberData as unknown as Record<string, unknown>))
       }
       
       setShowBindingForm(false)
@@ -492,6 +558,10 @@ export function LiffMyBookings() {
             member={member}
             onCategoryClick={handleCategoryClick}
           />
+        )}
+
+        {activeTab === 'profile' && member && (
+          <MemberProfileView member={member} />
         )}
       </div>
 
