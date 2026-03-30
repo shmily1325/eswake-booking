@@ -6,28 +6,26 @@ interface MemberProfileViewProps {
   member: Member
 }
 
-/** 生日僅顯示月日 */
-function formatBirthdayMonthDay(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const part = iso.trim().split('T')[0]
-  const [, m, d] = part.split('-').map(Number)
-  if (!m || !d) return iso
-  return `${m} 月 ${d} 日`
-}
-
-/** 到期日等：含年份 */
-function formatDateWithYear(iso: string | null | undefined): string {
-  if (!iso) return '—'
+function parseYmd(iso: string | null | undefined): { y: number; m: number; d: number } | null {
+  if (!iso) return null
   const part = iso.trim().split('T')[0]
   const [y, m, d] = part.split('-').map(Number)
-  if (!y || !m || !d) return iso
-  return `${y} 年 ${m} 月 ${d} 日`
+  if (!y || !m || !d) return null
+  return { y, m, d }
 }
 
-/** 置板起迄：缺資料時顯示 ?（與後台列表一致） */
-function formatBoardSegment(iso: string | null | undefined): string {
-  if (!iso || !String(iso).trim()) return '?'
-  return formatDateWithYear(iso)
+/** 完整日期：2026/06/04 */
+function formatDateSlash(iso: string | null | undefined): string {
+  const p = parseYmd(iso)
+  if (!p) return '—'
+  return `${p.y}/${String(p.m).padStart(2, '0')}/${String(p.d).padStart(2, '0')}`
+}
+
+/** 生日（不含年）：06/19 */
+function formatMonthDaySlash(iso: string | null | undefined): string {
+  const p = parseYmd(iso)
+  if (!p) return '—'
+  return `${String(p.m).padStart(2, '0')}/${String(p.d).padStart(2, '0')}`
 }
 
 function membershipTypeLine(member: Member): string {
@@ -59,6 +57,47 @@ function Row({ label, value }: { label: string; value: string }) {
   )
 }
 
+function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number; expiresAt: string | null | undefined }) {
+  const expiryLabel = formatDateSlash(expiresAt)
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'stretch',
+        justifyContent: 'space-between',
+        gap: '12px',
+        padding: '12px 14px',
+        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+        borderRadius: '10px',
+        border: '1px solid #e2e8f0'
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+        <span style={{ fontSize: '12px', color: '#64748b', letterSpacing: '0.02em' }}>位子</span>
+        <span style={{ fontSize: '17px', fontWeight: 700, color: '#334155', fontVariantNumeric: 'tabular-nums' }}>
+          #{slotNumber}
+        </span>
+      </div>
+      <div
+        style={{
+          flex: 1,
+          textAlign: 'right',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px',
+          justifyContent: 'center',
+          minWidth: 0
+        }}
+      >
+        <span style={{ fontSize: '12px', color: '#64748b' }}>到期</span>
+        <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', lineHeight: 1.35 }}>
+          {expiryLabel}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export function MemberProfileView({ member }: MemberProfileViewProps) {
   return (
     <div
@@ -75,48 +114,68 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
 
       <Row label="會員類型" value={membershipTypeLine(member)} />
       <Row label="手機號碼" value={member.phone?.trim() || '—'} />
-      <Row label="生日" value={formatBirthdayMonthDay(member.birthday)} />
-      <Row label="會員到期日" value={formatDateWithYear(member.membership_end_date)} />
+      <Row label="生日" value={formatMonthDaySlash(member.birthday)} />
+      <Row label="會員到期日" value={formatDateSlash(member.membership_end_date)} />
 
       <div
         style={{
-          padding: '14px 0',
-          borderBottom: '1px solid #f0f0f0'
+          padding: '14px 0 0 0',
+          borderBottom: '1px solid #f0f0f0',
+          paddingBottom: '14px'
         }}
       >
-        <span style={{ fontSize: '13px', color: '#888' }}>置板</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+          <span style={{ fontSize: '18px' }} aria-hidden>🏄</span>
+          <span style={{ fontSize: '13px', color: '#888', fontWeight: 600 }}>置板</span>
+          {member.board_slots && member.board_slots.length > 1 && (
+            <span
+              style={{
+                marginLeft: '4px',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#64748b',
+                background: '#e2e8f0',
+                padding: '2px 8px',
+                borderRadius: '999px'
+              }}
+            >
+              {member.board_slots.length} 格
+            </span>
+          )}
+        </div>
         {member.board_slots && member.board_slots.length > 0 ? (
           <div
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px',
-              marginTop: '8px'
+              gap: '10px'
             }}
           >
-            {member.board_slots.map(s => (
-              <div
-                key={s.id}
-                style={{
-                  fontSize: '15px',
-                  color: '#333',
-                  fontWeight: 500,
-                  lineHeight: 1.45,
-                  wordBreak: 'break-word'
-                }}
-              >
-                🏄 位子 #{s.slot_number}：{formatBoardSegment(s.start_date)} →{' '}
-                {formatBoardSegment(s.expires_at)}
-              </div>
-            ))}
+            {[...member.board_slots]
+              .sort((a, b) => a.slot_number - b.slot_number)
+              .map(s => (
+                <BoardSlotCard key={s.id} slotNumber={s.slot_number} expiresAt={s.expires_at} />
+              ))}
           </div>
         ) : member.board_slot_number?.trim() || member.board_expiry_date ? (
-          <div style={{ marginTop: '8px', fontSize: '15px', color: '#333', fontWeight: 500, lineHeight: 1.5 }}>
-            <div>位子：{member.board_slot_number?.trim() || '—'}</div>
-            <div style={{ marginTop: '6px' }}>到期：{formatDateWithYear(member.board_expiry_date)}</div>
-          </div>
+          <BoardSlotCard
+            slotNumber={member.board_slot_number?.trim() || '—'}
+            expiresAt={member.board_expiry_date}
+          />
         ) : (
-          <div style={{ marginTop: '8px', fontSize: '16px', color: '#333', fontWeight: 500 }}>—</div>
+          <div
+            style={{
+              padding: '14px',
+              textAlign: 'center',
+              color: '#94a3b8',
+              fontSize: '14px',
+              background: '#f8fafc',
+              borderRadius: '10px',
+              border: '1px dashed #e2e8f0'
+            }}
+          >
+            尚無置板資料
+          </div>
         )}
       </div>
 
