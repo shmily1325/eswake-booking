@@ -19,6 +19,7 @@ import {
   LiffExpiryBanner
 } from './components'
 import { buildLiffExpiryBannerLines } from './liffExpiryAlerts'
+import { liffTrack, liffTrackFlushQueueNow } from './track'
 
 const LIFF_MEMBER_SELECT =
   'id, name, nickname, phone, birthday, membership_type, membership_partner_id, membership_end_date, board_slot_number, board_expiry_date, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours'
@@ -205,6 +206,8 @@ export function LiffMyBookings() {
 
       const profile = await liff.getProfile()
       setLineUserId(profile.userId)
+      // 嘗試送出任何離線佇列
+      void liffTrackFlushQueueNow()
 
       // 查詢綁定資訊
       await checkBinding(profile.userId)
@@ -240,10 +243,14 @@ export function LiffMyBookings() {
       if (binding && binding.members) {
         const memberData = binding.members as Record<string, unknown>
         setMember(await enrichMemberForLiff(memberData))
+        // 開啟頁面事件（已綁定）
+        liffTrack({ icon_id: 'liff_open', line_user_id: userId, member_id: (memberData.id as string) ?? null })
         await loadBookings(memberData.id as string)
       } else {
         setShowBindingForm(true)
         setLoading(false)
+        // 開啟頁面事件（尚未綁定）
+        liffTrack({ icon_id: 'liff_open', line_user_id: userId })
       }
     } catch (err: unknown) {
       console.error('查詢綁定失敗:', err)
@@ -331,6 +338,7 @@ export function LiffMyBookings() {
     
     setRefreshing(true)
     triggerHaptic('light')
+    liffTrack({ icon_id: 'liff_refresh', line_user_id: lineUserId, member_id: member?.id })
     
     // 清除交易記錄快取
     setTransactionCache({})
@@ -399,6 +407,7 @@ export function LiffMyBookings() {
   const handleCategoryClick = (category: string) => {
     if (!member) return
     triggerHaptic('light')
+    liffTrack({ icon_id: `liff_category_click:${category}`, line_user_id: lineUserId, member_id: member.id })
     setSelectedCategory(category)
     setShowTransactions(true)
     loadTransactions(member.id, category)
@@ -501,6 +510,8 @@ export function LiffMyBookings() {
       } else {
         setMember(await enrichMemberForLiff(memberData as unknown as Record<string, unknown>))
       }
+      // 綁定成功事件
+      liffTrack({ icon_id: 'liff_bind_success', line_user_id: lineUserId, member_id: memberData.id })
       
       setShowBindingForm(false)
       await loadBookings(memberData.id)
@@ -593,7 +604,12 @@ export function LiffMyBookings() {
       {/* Tabs */}
       <LiffTabs
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab)
+          if (lineUserId) {
+            liffTrack({ icon_id: `liff_tab_${tab}`, line_user_id: lineUserId, member_id: member?.id })
+          }
+        }}
       />
 
       {/* Content（順序與 LiffTabs：預約 → 儲值 → 會員） */}
