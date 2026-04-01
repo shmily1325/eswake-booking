@@ -21,6 +21,34 @@ type UserClickEventInsert = {
 
 const LOCAL_QUEUE_KEY = 'liff_click_queue_v1'
 
+function parseIdList(envValue: string | undefined): Set<string> {
+  if (!envValue) return new Set()
+  return new Set(
+    envValue
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+  )
+}
+
+// 以環境變數設定排除名單（逗號分隔）
+const EXCLUDED_LINE_IDS = parseIdList(import.meta.env.VITE_TRACK_EXCLUDE_LINE_IDS)
+const EXCLUDED_MEMBER_IDS = parseIdList(import.meta.env.VITE_TRACK_EXCLUDE_MEMBER_IDS)
+
+// 內建固定排除（維運帳號等）
+const DEFAULT_EXCLUDED_LINE_IDS = new Set<string>([
+  'Uf0f65ceb2b67c999e33051ef57d9e589', // requested exclusion
+])
+const DEFAULT_EXCLUDED_MEMBER_IDS = new Set<string>([
+  '3ba83648-1f69-418a-8939-76a83e7014cb', // requested exclusion
+])
+
+function isExcluded(lineUserId: string | null | undefined, memberId: string | null | undefined): boolean {
+  if (lineUserId && (EXCLUDED_LINE_IDS.has(lineUserId) || DEFAULT_EXCLUDED_LINE_IDS.has(lineUserId))) return true
+  if (memberId && (EXCLUDED_MEMBER_IDS.has(memberId) || DEFAULT_EXCLUDED_MEMBER_IDS.has(memberId))) return true
+  return false
+}
+
 function enqueueLocal(payload: UserClickEventInsert) {
   try {
     const raw = localStorage.getItem(LOCAL_QUEUE_KEY)
@@ -50,6 +78,9 @@ async function flushLocalQueue() {
 }
 
 export function liffTrack(payload: LiffTrackPayload) {
+  if (isExcluded(payload.line_user_id, payload.member_id)) {
+    return
+  }
   const row: UserClickEventInsert = {
     source: 'liff',
     icon_id: payload.icon_id,
