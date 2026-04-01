@@ -147,6 +147,7 @@ export function LiffMyBookings() {
   const [member, setMember] = useState<Member | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [lineUserId, setLineUserId] = useState<string | null>(null)
+  const [lineDisplayName, setLineDisplayName] = useState<string | null>(null)
   const [showBindingForm, setShowBindingForm] = useState(false)
   const [phone, setPhone] = useState('')
   const [birthYear, setBirthYear] = useState('')
@@ -206,6 +207,7 @@ export function LiffMyBookings() {
 
       const profile = await liff.getProfile()
       setLineUserId(profile.userId)
+      setLineDisplayName(profile.displayName ?? null)
       // 嘗試送出任何離線佇列
       void liffTrackFlushQueueNow()
 
@@ -244,13 +246,22 @@ export function LiffMyBookings() {
         const memberData = binding.members as Record<string, unknown>
         setMember(await enrichMemberForLiff(memberData))
         // 開啟頁面事件（已綁定）
-        liffTrack({ icon_id: 'liff_open', line_user_id: userId, member_id: (memberData.id as string) ?? null })
+        liffTrack({
+          icon_id: 'liff_open',
+          line_user_id: userId,
+          member_id: (memberData.id as string) ?? null,
+          extras: { display_name: lineDisplayName ?? undefined, member_name: (memberData.name as string) ?? undefined }
+        })
         await loadBookings(memberData.id as string)
       } else {
         setShowBindingForm(true)
         setLoading(false)
         // 開啟頁面事件（尚未綁定）
-        liffTrack({ icon_id: 'liff_open', line_user_id: userId })
+        liffTrack({
+          icon_id: 'liff_open',
+          line_user_id: userId,
+          extras: { display_name: lineDisplayName ?? undefined }
+        })
       }
     } catch (err: unknown) {
       console.error('查詢綁定失敗:', err)
