@@ -1474,16 +1474,25 @@ export function CoachAssignment() {
                 {/* 總時長（教練＋駕駛） */}
                 <div style={{
                   padding: isMobile ? '10px' : '12px',
-                  backgroundColor: '#faf5ff',
+                  backgroundColor: '#F1F5F9',
                   borderRadius: '8px',
-                  border: '1px solid #e9d5ff',
+                  border: '1px solid #CBD5E1',
                   gridColumn: isMobile ? 'span 2' : 'auto',
                 }}>
-                  <div style={{ fontSize: '11px', color: '#6b21a8', marginBottom: '4px' }}>總時長（教練＋駕駛）</div>
-                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#581c87', lineHeight: '1.6' }}>
-                    {sortedCombined.length > 0
-                      ? sortedCombined.map(([name, s]) => `${name}×${s.count}｜${s.totalMinutes}分`).join('、')
-                      : '—'}
+                  <div style={{ fontSize: '11px', color: '#334155', marginBottom: '4px' }}>總時長（教練＋駕駛）</div>
+                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#334155', lineHeight: '1.8' }}>
+                    {sortedCombined.length > 0 ? (
+                      <>
+                        {sortedCombined.map(([name, s], idx) => (
+                          <span key={`combined-${name}`}>
+                            <span>{name}</span>
+                            <span style={{ marginLeft: '2px', color: '#64748b' }}>×{s.count}</span>
+                            <span style={{ marginLeft: '6px', color: '#0f172a', fontWeight: 700 }}>{s.totalMinutes}分</span>
+                            {idx < sortedCombined.length - 1 && <span style={{ margin: '0 6px', color: '#94a3b8' }}>·</span>}
+                          </span>
+                        ))}
+                      </>
+                    ) : '—'}
                   </div>
                 </div>
                 
@@ -1495,11 +1504,20 @@ export function CoachAssignment() {
                   border: '1px solid #bbf7d0',
                   gridColumn: isMobile ? 'span 2' : 'auto',
                 }}>
-                  <div style={{ fontSize: '11px', color: '#15803d', marginBottom: '4px' }}>教練（依總分）</div>
-                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#166534', lineHeight: '1.6' }}>
-                    {sortedCoaches.length > 0 
-                      ? sortedCoaches.map(([name, s]) => `${name}×${s.count}｜${s.totalMinutes}分`).join('、')
-                      : '—'}
+                  <div style={{ fontSize: '11px', color: '#15803d', marginBottom: '4px' }}>教練</div>
+                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#166534', lineHeight: '1.8' }}>
+                    {sortedCoaches.length > 0 ? (
+                      <>
+                        {sortedCoaches.map(([name, s], idx) => (
+                          <span key={`coach-${name}`}>
+                            <span>{name}</span>
+                            <span style={{ marginLeft: '2px', color: '#65a30d' }}>×{s.count}</span>
+                            <span style={{ marginLeft: '6px', color: '#14532d', fontWeight: 700 }}>{s.totalMinutes}分</span>
+                            {idx < sortedCoaches.length - 1 && <span style={{ margin: '0 6px', color: '#86efac' }}>·</span>}
+                          </span>
+                        ))}
+                      </>
+                    ) : '—'}
                   </div>
                 </div>
                 
@@ -1511,11 +1529,20 @@ export function CoachAssignment() {
                   border: '1px solid #bfdbfe',
                   gridColumn: isMobile ? 'span 2' : 'auto',
                 }}>
-                  <div style={{ fontSize: '11px', color: '#1e40af', marginBottom: '4px' }}>駕駛（依總分）</div>
-                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#1e3a8a', lineHeight: '1.6' }}>
-                    {sortedDrivers.length > 0 
-                      ? sortedDrivers.map(([name, s]) => `${name}×${s.count}｜${s.totalMinutes}分`).join('、')
-                      : '—'}
+                  <div style={{ fontSize: '11px', color: '#1e40af', marginBottom: '4px' }}>駕駛</div>
+                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#1e3a8a', lineHeight: '1.8' }}>
+                    {sortedDrivers.length > 0 ? (
+                      <>
+                        {sortedDrivers.map(([name, s], idx) => (
+                          <span key={`driver-${name}`}>
+                            <span>{name}</span>
+                            <span style={{ marginLeft: '2px', color: '#60a5fa' }}>×{s.count}</span>
+                            <span style={{ marginLeft: '6px', color: '#1e3a8a', fontWeight: 700 }}>{s.totalMinutes}分</span>
+                            {idx < sortedDrivers.length - 1 && <span style={{ margin: '0 6px', color: '#93c5fd' }}>·</span>}
+                          </span>
+                        ))}
+                      </>
+                    ) : '—'}
                   </div>
                 </div>
                 
@@ -1527,9 +1554,16 @@ export function CoachAssignment() {
                   border: '1px solid #fde68a',
                   gridColumn: isMobile ? 'span 2' : 'auto',
                 }}>
-                  <div style={{ fontSize: '11px', color: '#92400e', marginBottom: '4px' }}>船（依總分）</div>
-                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#78350f', lineHeight: '1.6' }}>
-                    {sortedBoats.map(([name, s]) => `${name}×${s.count}｜${s.totalMinutes}分`).join('、')}
+                  <div style={{ fontSize: '11px', color: '#92400e', marginBottom: '4px' }}>船</div>
+                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#78350f', lineHeight: '1.8' }}>
+                    {sortedBoats.map(([name, s], idx) => (
+                      <span key={`boat-${name}`}>
+                        <span>{name}</span>
+                        <span style={{ marginLeft: '2px', color: '#f59e0b' }}>×{s.count}</span>
+                        <span style={{ marginLeft: '6px', color: '#92400e', fontWeight: 700 }}>{s.totalMinutes}分</span>
+                        {idx < sortedBoats.length - 1 && <span style={{ margin: '0 6px', color: '#facc15' }}>·</span>}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
