@@ -10,7 +10,6 @@ import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { isFacility } from '../utils/facility'
 import { useToast } from './ui'
 import { BoatSelector } from './booking/BoatSelector'
-import { TimeSelector } from './booking/TimeSelector'
 import { MemberSelector } from './booking/MemberSelector'
 import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
@@ -50,11 +49,8 @@ export function RepeatBookingDialog({
     }
   }, [isOpen])
 
-  // 重複預約設定
-  const [repeatMode, setRepeatMode] = useState<'count' | 'endDate' | 'custom'>('endDate')
-  const [repeatCount, setRepeatCount] = useState(8)
-  const [repeatEndDate, setRepeatEndDate] = useState('')
-  const [customDates, setCustomDates] = useState<string[]>([])  // 自選日期模式
+  // 重複預約設定（僅保留自選日期）
+  const [customDates, setCustomDates] = useState<string[]>([])
 
   // 結果對話框
   const [showResultDialog, setShowResultDialog] = useState(false)
@@ -75,7 +71,6 @@ export function RepeatBookingDialog({
     showMemberDropdown,
     manualStudentName,
     manualNames,
-    startDate,
     startTime,
     durationMin,
     activityTypes,
@@ -103,7 +98,6 @@ export function RepeatBookingDialog({
     setShowMemberDropdown,
     setManualStudentName,
     setManualNames,
-    setStartDate,
     setStartTime,
     setDurationMin,
     setNotes,
@@ -131,51 +125,24 @@ export function RepeatBookingDialog({
     }
   }, [isOpen, fetchAllData])
 
-  // 生成重複日期列表 - 使用 useCallback 確保穩定性
+  // 生成重複日期列表 - 僅依自選日期
   const generateRepeatDates = useCallback((): Date[] => {
     if (!startTime) return []
     
     const [hour, minute] = startTime.split(':').map(Number)
 
-    // 自選日期模式
-    if (repeatMode === 'custom') {
-      if (customDates.length === 0) return []
-      return customDates.map(dateStr => {
-        const [y, m, d] = dateStr.split('-').map(Number)
-        return new Date(y, m - 1, d, hour, minute, 0)
-      })
-    }
-
-    // 每週重複模式需要 startDate
-    if (!startDate) return []
-    
-    const [year, month, day] = startDate.split('-').map(Number)
-    const baseDateTime = new Date(year, month - 1, day, hour, minute, 0)
-    
-    const dates: Date[] = []
-    const currentDate = new Date(baseDateTime)
-
-    if (repeatMode === 'endDate') {
-      // 每週重複模式：必須有結束日期
-      if (!repeatEndDate) return []
-      const [endYear, endMonth, endDay] = repeatEndDate.split('-').map(Number)
-      const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59)
-      while (currentDate <= endDate) {
-        dates.push(new Date(currentDate))
-        currentDate.setDate(currentDate.getDate() + 7)
-      }
-    } else {
-      // count 模式（保留邏輯但目前 UI 不使用）
-      for (let i = 0; i < repeatCount; i++) {
-        dates.push(new Date(currentDate))
-        currentDate.setDate(currentDate.getDate() + 7)
-      }
-    }
-
-    return dates
-  }, [startDate, startTime, repeatMode, repeatCount, repeatEndDate, customDates])
+    if (customDates.length === 0) return []
+    return customDates.map(dateStr => {
+      const [y, m, d] = dateStr.split('-').map(Number)
+      return new Date(y, m - 1, d, hour, minute, 0)
+    })
+  }, [startTime, customDates])
 
   if (!isOpen) return null
+  
+  // 與 New/Edit 對齊：不做即時禁用送出，沿用提交時檢查
+  // 保留取得名稱以利日後擴充（目前未直接使用）
+  // const selectedBoatName = boats.find(b => b.id === selectedBoatId)?.name || ''
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -213,21 +180,10 @@ export function RepeatBookingDialog({
       return
     }
 
-    // 檢查重複模式的必填欄位
-    if (repeatMode === 'endDate') {
-      if (!startDate) {
-        setError('請選擇開始日期')
-        return
-      }
-      if (!repeatEndDate) {
-        setError('請選擇結束日期')
-        return
-      }
-    } else if (repeatMode === 'custom') {
-      if (customDates.length === 0) {
-        setError('請至少選擇一個日期')
-        return
-      }
+    // 檢查必填：至少一個日期
+    if (customDates.length === 0) {
+      setError('請至少選擇一個日期')
+      return
     }
 
     // 立即設置 loading 防止重複點擊
@@ -424,9 +380,6 @@ export function RepeatBookingDialog({
 
   // 重置重複預約專用的 state
   const resetRepeatState = () => {
-    setRepeatMode('endDate')
-    setRepeatCount(8)  // 保留以防後續需要
-    setRepeatEndDate('')
     setCustomDates([])
   }
 
@@ -570,11 +523,70 @@ export function RepeatBookingDialog({
             isSelectedBoatFacility={isSelectedBoatFacility}
           />
 
-          {/* 時間選擇 - 自選日期模式下只顯示時間和時長 */}
-          {repeatMode === 'custom' ? (
-            <>
-              {/* 開始時間 */}
-              <div style={{ marginBottom: '18px' }}>
+          {/* 自選日期與時間（與新增預約邏輯對齊：先日期後時間） */}
+          <>
+            {/* 自選日期（取代開始日期概念） */}
+            <div style={{ marginBottom: isMobile ? '14px' : '18px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '6px',
+                color: '#000',
+                fontSize: '15px',
+                fontWeight: '600',
+              }}>
+                日期（可多選）
+              </label>
+              <DateMultiPicker
+                selectedDates={customDates}
+                onDatesChange={setCustomDates}
+              />
+              {/* 已選日期摘要與清除 */}
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: customDates.length > 0 ? '6px' : '0' }}>
+                  已選 {customDates.length} 天
+                </div>
+                {customDates.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                    {customDates.slice(0, 3).map((d, i) => (
+                      <span key={i} style={{
+                        padding: '4px 8px',
+                        background: '#f5f5f5',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        color: '#333'
+                      }}>
+                        {d}
+                      </span>
+                    ))}
+                    {customDates.length > 3 && (
+                      <span style={{ fontSize: '12px', color: '#666' }}>
+                        ...還有 {customDates.length - 3} 天
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setCustomDates([])}
+                      style={{
+                        marginLeft: '6px',
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        border: '1px solid #ccc',
+                        background: 'white',
+                        color: '#666',
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      清除
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 開始時間 */}
+            <div style={{ marginBottom: isMobile ? '14px' : '18px' }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '6px',
@@ -636,10 +648,10 @@ export function RepeatBookingDialog({
                     <option value="45">45</option>
                   </select>
                 </div>
-              </div>
+            </div>
 
-              {/* 時長 */}
-              <div style={{ marginBottom: '18px' }}>
+            {/* 時長 */}
+            <div style={{ marginBottom: isMobile ? '14px' : '18px' }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '10px',
@@ -655,7 +667,7 @@ export function RepeatBookingDialog({
                   gap: '8px',
                   marginBottom: '12px',
                 }}>
-                  {[30, 60, 90, 120, 150, 180, 210, 240].map(minutes => {
+                  {[30, 40, 60, 90, 120, 150, 180, 210].map(minutes => {
                     const isSelected = durationMin === minutes
                     return (
                       <button
@@ -710,135 +722,11 @@ export function RepeatBookingDialog({
                   />
                   <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>分</span>
                 </div>
-              </div>
-            </>
-          ) : (
-            <TimeSelector
-              startDate={startDate}
-              startTime={startTime}
-              durationMin={durationMin}
-              setStartDate={setStartDate}
-              setStartTime={setStartTime}
-              setDurationMin={setDurationMin}
-            />
-          )}
-
-          {/* 重複設定 */}
-          <div style={{
-            marginBottom: '18px',
-            padding: '16px',
-            backgroundColor: '#fff3cd',
-            borderRadius: '8px',
-            border: '2px solid #ffc107',
-          }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '12px',
-              color: '#000',
-              fontSize: '16px',
-              fontWeight: '600',
-            }}>
-              🔁 重複設定
-            </label>
-
-            {/* 重複模式選擇 - 兩個按鈕 */}
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              marginBottom: '14px',
-            }}>
-              <button
-                type="button"
-                onClick={() => setRepeatMode('endDate')}
-                style={{
-                  flex: 1,
-                  padding: '14px 12px',
-                  borderRadius: '8px',
-                  border: repeatMode === 'endDate' ? '2px solid #d97706' : '2px solid #e0e0e0',
-                  background: repeatMode === 'endDate' ? '#fef3c7' : 'white',
-                  color: repeatMode === 'endDate' ? '#92400e' : '#666',
-                  fontSize: '14px',
-                  fontWeight: repeatMode === 'endDate' ? '700' : '500',
-                  cursor: 'pointer',
-                  touchAction: 'manipulation',
-                  transition: 'all 0.15s',
-                }}
-              >
-                每週重複
-              </button>
-              <button
-                type="button"
-                onClick={() => setRepeatMode('custom')}
-                style={{
-                  flex: 1,
-                  padding: '14px 12px',
-                  borderRadius: '8px',
-                  border: repeatMode === 'custom' ? '2px solid #d97706' : '2px solid #e0e0e0',
-                  background: repeatMode === 'custom' ? '#fef3c7' : 'white',
-                  color: repeatMode === 'custom' ? '#92400e' : '#666',
-                  fontSize: '14px',
-                  fontWeight: repeatMode === 'custom' ? '700' : '500',
-                  cursor: 'pointer',
-                  touchAction: 'manipulation',
-                  transition: 'all 0.15s',
-                }}
-              >
-                自選日期
-              </button>
             </div>
+          </>
 
-            {/* 結束日期設定 */}
-            {repeatMode === 'endDate' && (
-              <div>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                }}>
-                  結束日期
-                </label>
-                <div style={{ display: 'flex' }}>
-                  <input
-                    type="date"
-                    value={repeatEndDate}
-                    onChange={(e) => setRepeatEndDate(e.target.value)}
-                    min={startDate}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #ccc',
-                      fontSize: '16px',
-                      boxSizing: 'border-box',
-                      touchAction: 'manipulation',
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* 自選日期設定 */}
-            {repeatMode === 'custom' && (
-              <div>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                }}>
-                  選擇日期（點選月曆多選）
-                </label>
-                <DateMultiPicker
-                  selectedDates={customDates}
-                  onDatesChange={setCustomDates}
-                />
-              </div>
-            )}
-
-            {/* 預覽 - 自選日期模式不需要，因為已經在 DateMultiPicker 中顯示 */}
-            {repeatMode !== 'custom' && previewDates.length > 0 && (
+          {/* 預覽（取前5個） */}
+          {previewDates.length > 0 && (
               <div style={{ marginTop: '12px', fontSize: '13px', color: '#666' }}>
                 <div style={{ fontWeight: '600', marginBottom: '6px' }}>預覽（前5個）：</div>
                 {previewDates.map((date, i) => (
@@ -852,8 +740,7 @@ export function RepeatBookingDialog({
                   </div>
                 )}
               </div>
-            )}
-          </div>
+          )}
 
           {/* 活動類型和註解 */}
           <BookingDetails
@@ -891,7 +778,7 @@ export function RepeatBookingDialog({
 
         {/* 按鈕欄 - 固定底部 */}
         <div style={{
-          padding: isMobile ? '12px 20px' : '20px 30px',
+          padding: isMobile ? '12px 18px' : '20px 30px',
           borderTop: '1px solid #e0e0e0',
           background: 'white',
           display: 'flex',
@@ -905,17 +792,17 @@ export function RepeatBookingDialog({
             disabled={loading}
             style={{
               flex: 1,
-              padding: isMobile ? '14px' : '12px 24px',
+              padding: isMobile ? '12px' : '12px 24px',
               borderRadius: '8px',
               border: '1px solid #ccc',
-              backgroundColor: 'white',
+              background: 'white',
               color: '#333',
               fontSize: isMobile ? '16px' : '15px',
               fontWeight: '500',
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.5 : 1,
               touchAction: 'manipulation',
-              minHeight: isMobile ? '48px' : '44px',
+              minHeight: isMobile ? '44px' : '44px',
               minWidth: isMobile ? 'auto' : '120px',
             }}
           >
@@ -927,7 +814,7 @@ export function RepeatBookingDialog({
             disabled={loading}
             style={{
               flex: 1,
-              padding: isMobile ? '14px' : '12px 24px',
+              padding: isMobile ? '12px' : '12px 24px',
               borderRadius: '8px',
               border: 'none',
               background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
@@ -936,7 +823,7 @@ export function RepeatBookingDialog({
               fontWeight: '600',
               cursor: loading ? 'not-allowed' : 'pointer',
               touchAction: 'manipulation',
-              minHeight: isMobile ? '48px' : '44px',
+              minHeight: isMobile ? '44px' : '44px',
               minWidth: isMobile ? 'auto' : '120px',
               display: 'flex',
               alignItems: 'center',

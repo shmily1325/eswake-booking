@@ -1314,8 +1314,9 @@ export function EditBookingDialog({
               gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '10px',
             }}>
-              {boats.map(boat => {
+              {boats.map((boat, index) => {
                 const isSelected = selectedBoatId === boat.id
+                const isFirstFacility = isFacility(boat.name) && index === boats.findIndex(b => isFacility(b.name))
                 return (
                   <button
                     key={boat.id}
@@ -1330,6 +1331,7 @@ export function EditBookingDialog({
                       fontSize: '15px',
                       fontWeight: isSelected ? '600' : '500',
                       cursor: 'pointer',
+                      gridColumn: isFirstFacility ? '1 / span 1' : undefined,
                     }}
                     onTouchStart={(e) => {
                       e.currentTarget.style.background = isSelected ? '#dbeafe' : '#fafafa'

@@ -188,7 +188,23 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             .order('id')
 
         if (error) console.error('Error fetching boats:', error)
-        else setBoats(data || [])
+        else {
+            // 統一顯示順序
+            const desiredOrder = ['G23', 'G21', '黑豹', '粉紅', '200', '彈簧床', '陸上課程']
+            const indexOfName = (name?: string) => {
+                if (!name) return Number.MAX_SAFE_INTEGER
+                const idx = desiredOrder.findIndex(label => name.includes(label))
+                return idx === -1 ? Number.MAX_SAFE_INTEGER : idx
+            }
+            const sorted = (data || []).slice().sort((a, b) => {
+                const ia = indexOfName(a.name)
+                const ib = indexOfName(b.name)
+                if (ia !== ib) return ia - ib
+                // 次排序：原本的 id 順序，確保穩定
+                return (a.id || 0) - (b.id || 0)
+            })
+            setBoats(sorted)
+        }
     }, [])
 
     const fetchCoaches = useCallback(async (dateToCheck?: string) => {

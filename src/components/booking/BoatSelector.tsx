@@ -1,4 +1,5 @@
 import type { Boat } from '../../types/booking'
+import { isFacility } from '../../utils/facility'
 
 interface BoatSelectorProps {
     boats: Pick<Boat, 'id' | 'name' | 'color'>[]
@@ -25,8 +26,9 @@ export function BoatSelector({ boats, selectedBoatId, onSelect }: BoatSelectorPr
                 gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '10px',
             }}>
-                {safeBoats.map(boat => {
+                {safeBoats.map((boat, index) => {
                     const isSelected = selectedBoatId === boat.id
+                    const isFirstFacility = isFacility(boat.name) && index === safeBoats.findIndex(b => isFacility(b.name))
                     return (
                         <button
                             key={boat.id}
@@ -42,6 +44,7 @@ export function BoatSelector({ boats, selectedBoatId, onSelect }: BoatSelectorPr
                                 fontWeight: isSelected ? '600' : '500',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
+                                gridColumn: isFirstFacility ? '1 / span 1' : undefined,
                             }}
                             onTouchStart={(e) => {
                                 e.currentTarget.style.background = isSelected ? '#dbeafe' : '#fafafa'
