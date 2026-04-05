@@ -1306,6 +1306,7 @@ export function CoachAssignment() {
         {!loading && bookings.length > 0 && (() => {
           // 統計數據
           const totalBookings = bookings.length
+          const totalMinutes = bookings.reduce((t, b) => t + (b.duration_min || 0), 0)
           
           // 教練使用統計（筆數 + 總時長）
           const coachStats = new Map<string, { count: number, totalMinutes: number }>()
@@ -1324,8 +1325,8 @@ export function CoachAssignment() {
               })
             }
           })
-          const topCoaches = Array.from(coachStats.entries())
-            .sort((a, b) => b[1].count - a[1].count)
+          const sortedCoaches = Array.from(coachStats.entries())
+            .sort((a, b) => b[1].totalMinutes - a[1].totalMinutes || a[0].localeCompare(b[0], 'zh-Hant'))
           
           // 駕駛使用統計（筆數 + 總時長）- 排除彈簧床
           const driverStats = new Map<string, { count: number, totalMinutes: number }>()
@@ -1347,8 +1348,29 @@ export function CoachAssignment() {
               })
             }
           })
-          const topDrivers = Array.from(driverStats.entries())
-            .sort((a, b) => b[1].count - a[1].count)
+          const sortedDrivers = Array.from(driverStats.entries())
+            .sort((a, b) => b[1].totalMinutes - a[1].totalMinutes || a[0].localeCompare(b[0], 'zh-Hant'))
+
+          // 合併：教練 + 駕駛（同一人同一筆只算一次）
+          const combinedStats = new Map<string, { count: number, totalMinutes: number }>()
+          bookings.forEach(booking => {
+            const assignment = assignments[booking.id] || { coachIds: [], driverIds: [] }
+            const uniquePeople = new Set<string>([...assignment.coachIds])
+            if (!isFacility(booking.boats?.name)) {
+              assignment.driverIds.forEach(id => uniquePeople.add(id))
+            }
+            for (const id of uniquePeople) {
+              const person = coaches.find(c => c.id === id)
+              if (!person) continue
+              const current = combinedStats.get(person.name) || { count: 0, totalMinutes: 0 }
+              combinedStats.set(person.name, {
+                count: current.count + 1,
+                totalMinutes: current.totalMinutes + booking.duration_min
+              })
+            }
+          })
+          const sortedCombined = Array.from(combinedStats.entries())
+            .sort((a, b) => b[1].totalMinutes - a[1].totalMinutes || a[0].localeCompare(b[0], 'zh-Hant'))
           
           // 船隻使用統計（筆數 + 總時長）
           const boatStats = new Map<string, { count: number, totalMinutes: number }>()
@@ -1361,8 +1383,8 @@ export function CoachAssignment() {
               })
             }
           })
-          const topBoats = Array.from(boatStats.entries())
-            .sort((a, b) => b[1].count - a[1].count)
+          const sortedBoats = Array.from(boatStats.entries())
+            .sort((a, b) => b[1].totalMinutes - a[1].totalMinutes || a[0].localeCompare(b[0], 'zh-Hant'))
           
           // 未排班統計
           // 規則：
@@ -1430,6 +1452,7 @@ export function CoachAssignment() {
                   <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#0c4a6e' }}>
                     {totalBookings} 筆
                   </div>
+                  <div style={{ fontSize: '11px', color: '#0c4a6e', marginTop: '2px' }}>合計 {totalMinutes} 分</div>
                 </div>
                 
                 {/* 未排班 */}
@@ -1448,6 +1471,22 @@ export function CoachAssignment() {
                   </div>
                 )}
                 
+                {/* 總時長（教練＋駕駛） */}
+                <div style={{
+                  padding: isMobile ? '10px' : '12px',
+                  backgroundColor: '#faf5ff',
+                  borderRadius: '8px',
+                  border: '1px solid #e9d5ff',
+                  gridColumn: isMobile ? 'span 2' : 'auto',
+                }}>
+                  <div style={{ fontSize: '11px', color: '#6b21a8', marginBottom: '4px' }}>總時長（教練＋駕駛）</div>
+                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#581c87', lineHeight: '1.6' }}>
+                    {sortedCombined.length > 0
+                      ? sortedCombined.map(([name, s]) => `${name}×${s.count}｜${s.totalMinutes}分`).join('、')
+                      : '—'}
+                  </div>
+                </div>
+                
                 {/* 教練使用 */}
                 <div style={{
                   padding: isMobile ? '10px' : '12px',
@@ -1456,11 +1495,11 @@ export function CoachAssignment() {
                   border: '1px solid #bbf7d0',
                   gridColumn: isMobile ? 'span 2' : 'auto',
                 }}>
-                  <div style={{ fontSize: '11px', color: '#15803d', marginBottom: '4px' }}>教練</div>
+                  <div style={{ fontSize: '11px', color: '#15803d', marginBottom: '4px' }}>教練（依總分）</div>
                   <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#166534', lineHeight: '1.6' }}>
-                    {topCoaches.length > 0 
-                      ? topCoaches.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')
-                      : '無'}
+                    {sortedCoaches.length > 0 
+                      ? sortedCoaches.map(([name, s]) => `${name}×${s.count}｜${s.totalMinutes}分`).join('、')
+                      : '—'}
                   </div>
                 </div>
                 
@@ -1472,11 +1511,11 @@ export function CoachAssignment() {
                   border: '1px solid #bfdbfe',
                   gridColumn: isMobile ? 'span 2' : 'auto',
                 }}>
-                  <div style={{ fontSize: '11px', color: '#1e40af', marginBottom: '4px' }}>駕駛</div>
+                  <div style={{ fontSize: '11px', color: '#1e40af', marginBottom: '4px' }}>駕駛（依總分）</div>
                   <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#1e3a8a', lineHeight: '1.6' }}>
-                    {topDrivers.length > 0 
-                      ? topDrivers.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')
-                      : '無'}
+                    {sortedDrivers.length > 0 
+                      ? sortedDrivers.map(([name, s]) => `${name}×${s.count}｜${s.totalMinutes}分`).join('、')
+                      : '—'}
                   </div>
                 </div>
                 
@@ -1488,9 +1527,9 @@ export function CoachAssignment() {
                   border: '1px solid #fde68a',
                   gridColumn: isMobile ? 'span 2' : 'auto',
                 }}>
-                  <div style={{ fontSize: '11px', color: '#92400e', marginBottom: '4px' }}>船</div>
+                  <div style={{ fontSize: '11px', color: '#92400e', marginBottom: '4px' }}>船（依總分）</div>
                   <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#78350f', lineHeight: '1.6' }}>
-                    {topBoats.map(([name, stats]) => `${name}(${stats.count}筆, 共${stats.totalMinutes}分)`).join('、')}
+                    {sortedBoats.map(([name, s]) => `${name}×${s.count}｜${s.totalMinutes}分`).join('、')}
                   </div>
                 </div>
               </div>
