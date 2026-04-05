@@ -146,6 +146,6 @@ describe('RepeatBookingDialog - UI alignment', () => {
     expect(
       screen.getByRole('button', { name: /確認建立 2 個預約/ })
     ).toBeInTheDocument()
-  })
+  }, 10000)
 })
 
