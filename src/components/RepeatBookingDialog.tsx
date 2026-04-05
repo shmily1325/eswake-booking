@@ -540,49 +540,6 @@ export function RepeatBookingDialog({
                 selectedDates={customDates}
                 onDatesChange={setCustomDates}
               />
-              {/* 已選日期摘要與清除 */}
-              <div style={{ marginTop: '8px' }}>
-                <div style={{ fontSize: '13px', color: '#666', marginBottom: customDates.length > 0 ? '6px' : '0' }}>
-                  已選 {customDates.length} 天
-                </div>
-                {customDates.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                    {customDates.slice(0, 3).map((d, i) => (
-                      <span key={i} style={{
-                        padding: '4px 8px',
-                        background: '#f5f5f5',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        color: '#333'
-                      }}>
-                        {d}
-                      </span>
-                    ))}
-                    {customDates.length > 3 && (
-                      <span style={{ fontSize: '12px', color: '#666' }}>
-                        ...還有 {customDates.length - 3} 天
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setCustomDates([])}
-                      style={{
-                        marginLeft: '6px',
-                        padding: '4px 10px',
-                        borderRadius: '12px',
-                        border: '1px solid #ccc',
-                        background: 'white',
-                        color: '#666',
-                        fontSize: '12px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      清除
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* 開始時間 */}
@@ -725,21 +682,26 @@ export function RepeatBookingDialog({
             </div>
           </>
 
-          {/* 預覽（取前5個） */}
+          {/* 預覽區塊移至按鈕列上方（僅顯示前 5 個） */}
           {previewDates.length > 0 && (
-              <div style={{ marginTop: '12px', fontSize: '13px', color: '#666' }}>
-                <div style={{ fontWeight: '600', marginBottom: '6px' }}>預覽（前5個）：</div>
-                {previewDates.map((date, i) => (
-                  <div key={i}>
-                    {i + 1}. {date.getFullYear()}/{String(date.getMonth() + 1).padStart(2, '0')}/{String(date.getDate()).padStart(2, '0')} {String(date.getHours()).padStart(2, '0')}:{String(date.getMinutes()).padStart(2, '0')}
-                  </div>
-                ))}
-                {totalDatesCount > 5 && (
-                  <div style={{ marginTop: '4px', fontStyle: 'italic' }}>
-                    ...還有 {totalDatesCount - 5} 個
-                  </div>
-                )}
-              </div>
+            <div style={{ 
+              marginTop: '8px', 
+              marginBottom: '8px', 
+              fontSize: '13px', 
+              color: '#666' 
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '6px' }}>預覽（前5個）：</div>
+              {previewDates.map((date, i) => (
+                <div key={i}>
+                  {i + 1}. {date.getFullYear()}/{String(date.getMonth() + 1).padStart(2, '0')}/{String(date.getDate()).padStart(2, '0')} {String(date.getHours()).padStart(2, '0')}:{String(date.getMinutes()).padStart(2, '0')}
+                </div>
+              ))}
+              {totalDatesCount > 5 && (
+                <div style={{ marginTop: '4px', fontStyle: 'italic' }}>
+                  ...還有 {totalDatesCount - 5} 個
+                </div>
+              )}
+            </div>
           )}
 
           {/* 活動類型和註解 */}
