@@ -124,24 +124,24 @@ export function LineBindingStatus() {
   }
 
   const filteredBoundMembers = boundMembersList.filter(m => {
-    if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
-    const byText = (
+    const byText =
+      !searchQuery ||
       m.name.toLowerCase().includes(query) ||
       (m.nickname?.toLowerCase() || '').includes(query) ||
       (m.phone || '').includes(query)
-    )
+
     return byText && matchMemberFilter(m.membership_type)
   })
   
   const filteredUnboundMembers = unboundMembers.filter(m => {
-    if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
-    const byText = (
+    const byText =
+      !searchQuery ||
       m.name.toLowerCase().includes(query) ||
       (m.nickname?.toLowerCase() || '').includes(query) ||
       (m.phone || '').includes(query)
-    )
+
     return byText && matchMemberFilter(m.membership_type)
   })
 
