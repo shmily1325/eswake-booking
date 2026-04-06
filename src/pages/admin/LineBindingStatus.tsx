@@ -278,13 +278,22 @@ export function LineBindingStatus() {
             {/* 會員類型過濾 */}
             {(() => {
               const currentList = showBindingList === 'bound' ? boundMembersList : unboundMembers
+              const query = searchQuery.toLowerCase()
+              const listBySearch = currentList.filter(m => {
+                if (!searchQuery) return true
+                return (
+                  m.name.toLowerCase().includes(query) ||
+                  (m.nickname?.toLowerCase() || '').includes(query) ||
+                  (m.phone || '').includes(query)
+                )
+              })
               const counts = {
-                all: currentList.length,
-                member: currentList.filter(m => (m.membership_type === 'general' || m.membership_type === 'dual')).length,
-                general: currentList.filter(m => m.membership_type === 'general').length,
-                dual: currentList.filter(m => m.membership_type === 'dual').length,
-                guest: currentList.filter(m => m.membership_type === 'guest').length,
-                es: currentList.filter(m => m.membership_type === 'es').length,
+                all: listBySearch.length,
+                member: listBySearch.filter(m => (m.membership_type === 'general' || m.membership_type === 'dual')).length,
+                general: listBySearch.filter(m => m.membership_type === 'general').length,
+                dual: listBySearch.filter(m => m.membership_type === 'dual').length,
+                guest: listBySearch.filter(m => m.membership_type === 'guest').length,
+                es: listBySearch.filter(m => m.membership_type === 'es').length,
               }
 
               const pillStyle = (active: boolean) => ({
