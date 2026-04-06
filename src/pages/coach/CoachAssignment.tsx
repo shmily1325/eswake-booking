@@ -353,6 +353,16 @@ export function CoachAssignment() {
       return
     }
 
+    // 進一步的同步級保護（在 setSaving(true) 之前）
+    // 使用 ref 避免在點擊之初的競態造成重入
+    ;(window as any).__coachAssignSavingRef ??= { current: false }
+    const savingRef: { current: boolean } = (window as any).__coachAssignSavingRef
+    if (savingRef.current) {
+      console.log('保存進行中（ref），忽略重複請求')
+      return
+    }
+    savingRef.current = true
+
     console.log('開始保存排班...')
 
     try {
@@ -904,9 +914,12 @@ export function CoachAssignment() {
         }
       }
 
-      // 記錄 audit log（非阻塞）
+      // 記錄 audit log（非阻塞）— 以 booking 維度去重，避免偶發重複
       if (user?.email && changedBookingsInfo.length > 0) {
+        const loggedBookingIds = new Set<number>()
         for (const { booking, changes } of changedBookingsInfo) {
+          if (loggedBookingIds.has(booking.id)) continue
+          loggedBookingIds.add(booking.id)
           logCoachAssignment({
             userEmail: user.email,
             studentName: getDisplayContactName(booking),
@@ -927,6 +940,7 @@ export function CoachAssignment() {
       setError('❌ 儲存失敗: ' + (err.message || '未知錯誤'))
     } finally {
       setSaving(false)
+      ;(window as any).__coachAssignSavingRef.current = false
     }
   }
 

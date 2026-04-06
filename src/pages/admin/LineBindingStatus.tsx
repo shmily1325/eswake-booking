@@ -21,6 +21,7 @@ interface BoundMember {
   nickname: string | null
   phone: string | null
   line_user_id: string
+  membership_type?: string | null
 }
 
 interface UnboundMember {
@@ -28,6 +29,7 @@ interface UnboundMember {
   name: string
   nickname: string | null
   phone: string | null
+  membership_type?: string | null
 }
 
 export function LineBindingStatus() {
@@ -51,6 +53,7 @@ export function LineBindingStatus() {
   const [unboundMembers, setUnboundMembers] = useState<UnboundMember[]>([])
   const [showBindingList, setShowBindingList] = useState<'bound' | 'unbound' | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [memberFilter, setMemberFilter] = useState<'all' | 'member' | 'general' | 'dual' | 'guest' | 'es'>('all')
   
   useEffect(() => {
     loadLineBindings()
@@ -62,7 +65,7 @@ export function LineBindingStatus() {
       // 查詢所有 LINE 綁定
       const { data: bindings } = await supabase
         .from('line_bindings')
-        .select('member_id, line_user_id, phone, members:member_id(id, name, nickname, phone)')
+        .select('member_id, line_user_id, phone, members:member_id(id, name, nickname, phone, membership_type)')
         .eq('status', 'active')
       
       // 建立會員綁定列表（包含 line_user_id）
@@ -75,7 +78,8 @@ export function LineBindingStatus() {
             name: member.name,
             nickname: member.nickname,
             phone: member.phone,
-            line_user_id: b.line_user_id 
+            line_user_id: b.line_user_id,
+            membership_type: member.membership_type
           })
         }
       })
@@ -99,7 +103,7 @@ export function LineBindingStatus() {
       const boundIds = bindings?.map(b => b.member_id).filter(Boolean) || []
       const { data: unbound } = await supabase
         .from('members')
-        .select('id, name, nickname, phone')
+        .select('id, name, nickname, phone, membership_type')
         .eq('status', 'active')
         .not('id', 'in', `(${boundIds.length > 0 ? boundIds.join(',') : 'null'})`)
         .order('name')
@@ -113,24 +117,32 @@ export function LineBindingStatus() {
   }
   
   // 過濾會員
+  const matchMemberFilter = (type?: string | null) => {
+    if (memberFilter === 'all') return true
+    if (memberFilter === 'member') return type === 'general' || type === 'dual'
+    return type === memberFilter
+  }
+
   const filteredBoundMembers = boundMembersList.filter(m => {
     if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
-    return (
+    const byText = (
       m.name.toLowerCase().includes(query) ||
       (m.nickname?.toLowerCase() || '').includes(query) ||
       (m.phone || '').includes(query)
     )
+    return byText && matchMemberFilter(m.membership_type)
   })
   
   const filteredUnboundMembers = unboundMembers.filter(m => {
     if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
-    return (
+    const byText = (
       m.name.toLowerCase().includes(query) ||
       (m.nickname?.toLowerCase() || '').includes(query) ||
       (m.phone || '').includes(query)
     )
+    return byText && matchMemberFilter(m.membership_type)
   })
 
   const lineGreen = '#06C755'
@@ -262,6 +274,53 @@ export function LineBindingStatus() {
                 boxSizing: 'border-box'
               }}
             />
+
+            {/* 會員類型過濾 */}
+            {(() => {
+              const currentList = showBindingList === 'bound' ? boundMembersList : unboundMembers
+              const counts = {
+                all: currentList.length,
+                member: currentList.filter(m => (m.membership_type === 'general' || m.membership_type === 'dual')).length,
+                general: currentList.filter(m => m.membership_type === 'general').length,
+                dual: currentList.filter(m => m.membership_type === 'dual').length,
+                guest: currentList.filter(m => m.membership_type === 'guest').length,
+                es: currentList.filter(m => m.membership_type === 'es').length,
+              }
+
+              const pillStyle = (active: boolean) => ({
+                padding: '8px 12px',
+                borderRadius: '16px',
+                border: `1px solid ${active ? designSystem.colors.primary[500] : designSystem.colors.border.main}`,
+                background: active ? designSystem.colors.primary[50] : 'white',
+                color: active ? designSystem.colors.primary[700] : designSystem.colors.text.primary,
+                fontSize: '13px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              } as const)
+
+              return (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', overflowX: 'auto' }}>
+                  <button onClick={() => setMemberFilter('all')} style={pillStyle(memberFilter === 'all')}>
+                    全部 ({counts.all})
+                  </button>
+                  <button onClick={() => setMemberFilter('member')} style={pillStyle(memberFilter === 'member')}>
+                    會員 ({counts.member})
+                  </button>
+                  <button onClick={() => setMemberFilter('general')} style={pillStyle(memberFilter === 'general')}>
+                    一般會員 ({counts.general})
+                  </button>
+                  <button onClick={() => setMemberFilter('dual')} style={pillStyle(memberFilter === 'dual')}>
+                    雙人會員 ({counts.dual})
+                  </button>
+                  <button onClick={() => setMemberFilter('guest')} style={pillStyle(memberFilter === 'guest')}>
+                    非會員 ({counts.guest})
+                  </button>
+                  <button onClick={() => setMemberFilter('es')} style={pillStyle(memberFilter === 'es')}>
+                    ES ({counts.es})
+                  </button>
+                </div>
+              )
+            })()}
           </div>
         )}
 

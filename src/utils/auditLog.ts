@@ -334,6 +334,26 @@ export async function logCoachAssignment(params: CoachAssignmentLogParams) {
   // 格式：2025/11/20 14:45 G23 小楊，變更：...
   const details = `排班：${formattedTime} ${boatName} ${studentName}，變更：${changes.join('、')}`
 
+  // 在極短時間內的去重保護，避免重複寫入（例如連點或重入）
+  // key 以操作者與完整 details 為準，窗口 2 秒
+  const DEDUPE_WINDOW_MS = 2000
+  // 模組層級快取（不影響伺服端資料）
+  ;(globalThis as any).__coachAssignRecentLogs ??= new Map<string, number>()
+  const recentMap: Map<string, number> = (globalThis as any).__coachAssignRecentLogs
+  const nowMs = Date.now()
+  const key = `${userEmail || ''}|${details}`
+  const lastAt = recentMap.get(key)
+  if (lastAt && nowMs - lastAt < DEDUPE_WINDOW_MS) {
+    return
+  }
+  recentMap.set(key, nowMs)
+  // 簡單清理過舊項
+  if (recentMap.size > 200) {
+    for (const [k, t] of recentMap) {
+      if (nowMs - t > DEDUPE_WINDOW_MS * 3) recentMap.delete(k)
+    }
+  }
+
   // 非阻塞寫入
   void (async () => {
     const now = new Date()
