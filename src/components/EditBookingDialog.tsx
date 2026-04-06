@@ -396,13 +396,9 @@ export function EditBookingDialog({
       })()
 
       // 準備合併檢查：是否需要清除既有資料或提示
-      const [driverCheck, coachAssignCheck, coachReportCheck, participantsResult] = await Promise.all([
+      const [driverCheck, coachReportCheck, participantsResult] = await Promise.all([
         supabase
           .from('booking_drivers')
-          .select('id', { count: 'exact', head: true })
-          .eq('booking_id', booking.id),
-        supabase
-          .from('booking_coaches')
           .select('id', { count: 'exact', head: true })
           .eq('booking_id', booking.id),
         supabase
@@ -417,10 +413,9 @@ export function EditBookingDialog({
       ])
 
       const hasDriverAssignment = (driverCheck.count || 0) > 0
-      const hasCoachAssignment = (coachAssignCheck.count || 0) > 0
       const hasCoachReports = (coachReportCheck.count || 0) > 0
       const hasParticipants = (participantsResult.data || []).length > 0
-      const hasAnyAssignment = hasDriverAssignment || hasCoachAssignment
+      // 排班定義僅限駕駛（drivers）
 
       // 檢查有交易記錄的參與者（只為了提示用）
       let participantsWithTransactions: any[] = []
@@ -447,7 +442,7 @@ export function EditBookingDialog({
       // - 若偵測到已排人員時間重疊（mustClearByPersonConflict）一定需要清除 → 跳出
       // - 若資料庫中確實存在任何「排班/回報/參與者」將被刪除，才跳出
       //   （無論是因為關鍵欄位變動或最終不需要駕駛）
-      const hasRecordsToBeCleared = hasAnyAssignment || hasCoachReports || hasParticipants
+      const hasRecordsToBeCleared = hasDriverAssignment || hasCoachReports || hasParticipants
       const needConfirm = mustClearByPersonConflict || hasRecordsToBeCleared
 
       if (needConfirm) {
@@ -458,7 +453,7 @@ export function EditBookingDialog({
         if (coachesChanged) changedFields.push('教練')
 
         const warnings = []
-        if (hasAnyAssignment) warnings.push('已排班/駕駛')
+        if (hasDriverAssignment) warnings.push('已排班/駕駛')
         if (hasCoachReports) warnings.push('已有教練回報')
         if (hasParticipants) warnings.push('已有參與者記錄')
 
@@ -481,7 +476,7 @@ export function EditBookingDialog({
         }
         // 合併刪除說明（取超集，確保一致性）
         confirmMessage += `\n修改後將刪除：\n`
-        if (hasAnyAssignment) confirmMessage += `• 所有排班記錄（教練＋駕駛）\n`
+        if (hasDriverAssignment) confirmMessage += `• 所有排班記錄（教練＋駕駛）\n`
         if (hasCoachReports) confirmMessage += `• 所有回報記錄\n`
         if (hasParticipants) confirmMessage += `• 所有參與者記錄\n`
         if (participantsWithTransactions.length > 0) {
