@@ -395,12 +395,14 @@ export function EditBookingDialog({
         return oldDatetime !== newStartAt.substring(0, 16)
       })()
 
-      const keyFieldsChanged = coachesChanged || contactNameChanged || boatChanged || timeChanged
-
       // 準備合併檢查：是否需要清除既有資料或提示
-      const [driverCheck, coachReportCheck, participantsResult] = await Promise.all([
+      const [driverCheck, coachAssignCheck, coachReportCheck, participantsResult] = await Promise.all([
         supabase
           .from('booking_drivers')
+          .select('id', { count: 'exact', head: true })
+          .eq('booking_id', booking.id),
+        supabase
+          .from('booking_coaches')
           .select('id', { count: 'exact', head: true })
           .eq('booking_id', booking.id),
         supabase
@@ -415,8 +417,10 @@ export function EditBookingDialog({
       ])
 
       const hasDriverAssignment = (driverCheck.count || 0) > 0
+      const hasCoachAssignment = (coachAssignCheck.count || 0) > 0
       const hasCoachReports = (coachReportCheck.count || 0) > 0
       const hasParticipants = (participantsResult.data || []).length > 0
+      const hasAnyAssignment = hasDriverAssignment || hasCoachAssignment
 
       // 檢查有交易記錄的參與者（只為了提示用）
       let participantsWithTransactions: any[] = []
@@ -439,7 +443,12 @@ export function EditBookingDialog({
       const finalRequiresDriver = isSelectedBoatFacility ? false : requiresDriver
 
       // 是否需要合併彈窗確認
-      const needConfirm = keyFieldsChanged || mustClearByPersonConflict || (!finalRequiresDriver && (hasDriverAssignment || hasCoachReports || hasParticipants))
+      // 需求：只有「真的需要清掉既有排班/回報/參與者」時才跳出
+      // - 若偵測到已排人員時間重疊（mustClearByPersonConflict）一定需要清除 → 跳出
+      // - 若資料庫中確實存在任何「排班/回報/參與者」將被刪除，才跳出
+      //   （無論是因為關鍵欄位變動或最終不需要駕駛）
+      const hasRecordsToBeCleared = hasAnyAssignment || hasCoachReports || hasParticipants
+      const needConfirm = mustClearByPersonConflict || hasRecordsToBeCleared
 
       if (needConfirm) {
         const changedFields = []
@@ -449,16 +458,17 @@ export function EditBookingDialog({
         if (coachesChanged) changedFields.push('教練')
 
         const warnings = []
-        if (hasDriverAssignment) warnings.push('已排班/駕駛')
+        if (hasAnyAssignment) warnings.push('已排班/駕駛')
         if (hasCoachReports) warnings.push('已有教練回報')
         if (hasParticipants) warnings.push('已有參與者記錄')
 
         const reasons: string[] = []
+        // 僅作背景說明：哪些欄位有變更（非觸發條件）
         if (changedFields.length > 0) reasons.push(`修改了 ${changedFields.join('、')}`)
         if (mustClearByPersonConflict && personConflictDetails.length > 0) {
           reasons.push('偵測已排人員與其他預約時間重疊（含+15 分緩衝）')
         }
-        if (!finalRequiresDriver) {
+        if (!finalRequiresDriver && hasRecordsToBeCleared) {
           reasons.push(`最終狀態為「不需要駕駛」${isSelectedBoatFacility ? '（設施）' : ''}`)
         }
 
@@ -470,10 +480,10 @@ export function EditBookingDialog({
           confirmMessage += `\n衝突明細：\n${personConflictDetails.map(c => `• ${c}`).join('\n')}\n`
         }
         // 合併刪除說明（取超集，確保一致性）
-        confirmMessage += `\n修改後將刪除：\n• 所有排班記錄（教練＋駕駛）\n`
-        if (hasCoachReports || hasParticipants || !finalRequiresDriver) {
-          confirmMessage += `• 所有回報記錄\n• 所有參與者記錄\n`
-        }
+        confirmMessage += `\n修改後將刪除：\n`
+        if (hasAnyAssignment) confirmMessage += `• 所有排班記錄（教練＋駕駛）\n`
+        if (hasCoachReports) confirmMessage += `• 所有回報記錄\n`
+        if (hasParticipants) confirmMessage += `• 所有參與者記錄\n`
         if (participantsWithTransactions.length > 0) {
           const names = participantsWithTransactions.map((p: any) => p.participant_name).join('、')
           confirmMessage += `\n💰 ${names} 有交易記錄\n（交易記錄會保留，請到「會員儲值」檢查並處理）\n`
