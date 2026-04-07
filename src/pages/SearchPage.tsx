@@ -4,6 +4,7 @@ import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
 import { SearchBookings } from './SearchBookings'
 import { hasViewAccess } from '../utils/auth'
+import { trackClick } from '../utils/trackClick'
 
 export function SearchPage() {
   const user = useAuthUser()
@@ -21,6 +22,11 @@ export function SearchPage() {
     }
     checkAccess()
   }, [user, navigate])
+
+  useEffect(() => {
+    if (!user?.email) return
+    trackClick('search_page_open', user.email)
+  }, [user?.email])
   
   return (
     <div style={{

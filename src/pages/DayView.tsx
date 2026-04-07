@@ -538,6 +538,7 @@ export function DayView() {
             flexWrap: 'wrap',
           }}>
             <button
+            data-track="day_prev"
               onClick={() => changeDate(-1)}
               style={{
                 ...getButtonStyle('outline', 'medium', false),
@@ -572,6 +573,7 @@ export function DayView() {
               {getWeekdayText(dateParam)}
             </span>
             <button
+              data-track="day_next"
               onClick={() => changeDate(1)}
               style={{
                 ...getButtonStyle('outline', 'medium', false),
@@ -582,6 +584,7 @@ export function DayView() {
               →
             </button>
             <button
+              data-track="day_today"
               onClick={goToToday}
               style={{
                 ...getButtonStyle('secondary', 'medium', false),
@@ -595,6 +598,7 @@ export function DayView() {
             {/* 排班按鈕 - 只有小編可見 */}
             {isEditor && (
               <Link
+                data-track="day_to_assignment"
                 to={`/coach-assignment?date=${dateParam}`}
                 style={{
                   ...getButtonStyle('secondary', 'medium', false),
@@ -616,6 +620,7 @@ export function DayView() {
               flex: '0 0 auto'
             }}>
               <button
+                data-track="day_view_list"
                 onClick={() => setViewMode('list')}
                 style={{
                   padding: '8px 16px',
@@ -633,6 +638,7 @@ export function DayView() {
                 📋 列表
               </button>
               <button
+                data-track="day_view_timeline"
                 onClick={() => setViewMode('timeline')}
                 style={{
                   padding: '8px 16px',

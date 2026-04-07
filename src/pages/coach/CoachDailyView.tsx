@@ -9,6 +9,7 @@ import { getLocalDateString, getWeekdayText } from '../../utils/date'
 import { getBookingCardStyle, bookingCardContentStyles } from '../../styles/designSystem'
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
+import { trackClick } from '../../utils/trackClick'
 
 interface Boat {
   id: number
@@ -248,6 +249,11 @@ export function CoachDailyView() {
   const goToToday = () => {
     const today = getLocalDateString()
     setSearchParams({ date: today })
+  }
+
+  const handleCoachFilterChange = (coachId: string) => {
+    setSelectedCoachId(coachId)
+    trackClick(`coach_daily_filter_coach:${coachId || 'all'}`, user?.email ?? undefined)
   }
 
   // 獲取某個時間點的預約
@@ -747,8 +753,9 @@ export function CoachDailyView() {
               篩選教練：
             </label>
             <select
+              data-track="coach_daily_filter_coach"
               value={selectedCoachId}
-              onChange={(e) => setSelectedCoachId(e.target.value)}
+              onChange={(e) => handleCoachFilterChange(e.target.value)}
               style={{
                 flex: 1,
                 padding: '8px 12px',
