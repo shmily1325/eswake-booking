@@ -1188,9 +1188,60 @@ export type Database = {
         }
         Relationships: []
       }
+      reservation_restrictions: {
+        Row: {
+          id: number
+          announcement_id: number
+          start_date: string
+          start_time: string | null
+          end_date: string
+          end_time: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          announcement_id: number
+          start_date: string
+          start_time?: string | null
+          end_date: string
+          end_time?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          announcement_id?: number
+          start_date?: string
+          start_time?: string | null
+          end_date?: string
+          end_time?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_restrictions_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: true
+            referencedRelation: "daily_announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      reservation_restrictions_with_announcement_view: {
+        Row: {
+          announcement_id: number
+          start_date: string
+          start_time: string | null
+          end_date: string
+          end_time: string | null
+          is_active: boolean
+          content: string
+        }
+      }
     }
     Functions: {
       is_boat_available: {

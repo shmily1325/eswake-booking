@@ -29,6 +29,13 @@ interface BoatUnavailable {
 export function DailyAnnouncement() {
   const { isMobile } = useResponsive()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [restrictionsByAnnouncementId, setRestrictionsByAnnouncementId] = useState<Record<number, {
+    start_date: string
+    start_time: string | null
+    end_date: string
+    end_time: string | null
+    is_active: boolean
+  }>>({})
   const [timeOffCoaches, setTimeOffCoaches] = useState<string[]>([])
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
   const [unavailableBoats, setUnavailableBoats] = useState<BoatUnavailable[]>([])
@@ -88,6 +95,7 @@ export function DailyAnnouncement() {
     // 並行執行所有查詢（重要：從串行改為並行，大幅提升速度）
     const [
       announcementResult,
+      restrictionResult,
       timeOffResult,
       birthdayResult,
       boatUnavailableResult
@@ -99,6 +107,12 @@ export function DailyAnnouncement() {
         .lte('display_date', today)
         .or(`end_date.gte.${today},end_date.is.null`)
         .order('created_at', { ascending: true }),
+
+      // 讀取所有啟用中的預約限制（與公告關聯）
+      supabase
+        .from('reservation_restrictions')
+        .select('announcement_id, start_date, start_time, end_date, end_time, is_active')
+        .eq('is_active', true),
       
       // 獲取今日休假教練（排除已隱藏的教練）
       supabase
@@ -125,6 +139,14 @@ export function DailyAnnouncement() {
 
     // 處理查詢結果
     if (announcementResult.data) setAnnouncements(announcementResult.data as Announcement[])
+
+    if (restrictionResult.data) {
+      const map: Record<number, any> = {}
+      for (const r of restrictionResult.data as any[]) {
+        map[r.announcement_id] = r
+      }
+      setRestrictionsByAnnouncementId(map)
+    }
 
     if (timeOffResult.data) {
       // 只顯示啟用中的教練，過濾掉已停用或已隱藏的教練
@@ -170,6 +192,36 @@ export function DailyAnnouncement() {
                       birthdays.length > 0 || unavailableBoats.length > 0
 
   if (!hasAnyData) return null
+
+  // 小字：格式化預約限制提示
+  const formatRestrictionNote = (today: string, r: { start_date: string; start_time: string | null; end_date: string; end_time: string | null }): string => {
+    const sameDay = r.start_date === r.end_date
+    const fmtDate = (d: string) => {
+      const [, m, dd] = d.split('-')
+      return `${parseInt(m)}/${parseInt(dd)}`
+    }
+    const fmtTime = (t: string | null, fallback: string) => {
+      if (!t) return fallback
+      const [h, m] = t.split(':')
+      return `${parseInt(h)}:${m}`
+    }
+
+    if (!sameDay) {
+      const left = `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}`
+      const right = `${fmtDate(r.end_date)} ${fmtTime(r.end_time, '23:59')}`
+      return `${left} – ${right} 不約船`
+    }
+
+    if (today === r.start_date) {
+      // 當天：僅顯示時間或「全天」
+      if (!r.start_time && !r.end_time) return '全天不約船'
+      return `${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')} 不約船`
+    }
+
+    // 提前顯示日或其他日：顯示絕對日期 + 時間/全天
+    if (!r.start_time && !r.end_time) return `${fmtDate(r.start_date)} 全天不約船`
+    return `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')} 不約船`
+  }
 
   return (
     <div style={{
@@ -259,18 +311,66 @@ export function DailyAnnouncement() {
               })
               return sorted.flatMap(([label, items]) => {
                 if (label === null || label === '__single') {
-                  return items.map(a => <div key={a.id} style={itemStyle}> - {a.content}</div>)
+                  return items.map(a => {
+                    const r = restrictionsByAnnouncementId[a.id]
+                    return (
+                      <div key={a.id} style={itemStyle}>
+                        {' - '}{a.content}
+                        {r ? (
+                          <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
+                            {formatRestrictionNote(today, r)}
+                          </span>
+                        ) : null}
+                      </div>
+                    )
+                  })
                 }
                 const isMultiDay = label.includes(' - ')
                 if (isMultiDay) {
-                  return items.map(a => <div key={a.id} style={itemStyle}>[{label}] {a.content}</div>)
+                  return items.map(a => {
+                    const r = restrictionsByAnnouncementId[a.id]
+                    return (
+                      <div key={a.id} style={itemStyle}>
+                        [{label}] {a.content}
+                        {r ? (
+                          <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
+                            {formatRestrictionNote(today, r)}
+                          </span>
+                        ) : null}
+                      </div>
+                    )
+                  })
                 }
                 if (omitSingleDateLabel && label === omitSingleDateLabel) {
-                  return items.map(a => <div key={a.id} style={itemStyle}> - {a.content}</div>)
+                  return items.map(a => {
+                    const r = restrictionsByAnnouncementId[a.id]
+                    return (
+                      <div key={a.id} style={itemStyle}>
+                        {' - '}{a.content}
+                        {r ? (
+                          <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
+                            {formatRestrictionNote(today, r)}
+                          </span>
+                        ) : null}
+                      </div>
+                    )
+                  })
                 }
                 return [
                   <div key={`${label}-h`} style={itemStyle}>[{label}]</div>,
-                  ...items.map(a => <div key={a.id} style={itemStyle}> - {a.content}</div>)
+                  ...items.map(a => {
+                    const r = restrictionsByAnnouncementId[a.id]
+                    return (
+                      <div key={a.id} style={itemStyle}>
+                        {' - '}{a.content}
+                        {r ? (
+                          <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
+                            {formatRestrictionNote(today, r)}
+                          </span>
+                        ) : null}
+                      </div>
+                    )
+                  })
                 ]
               })
             }

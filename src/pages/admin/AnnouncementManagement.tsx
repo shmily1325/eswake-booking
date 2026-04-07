@@ -41,10 +41,34 @@ export function AnnouncementManagement() {
   const [newStartDate, setNewStartDate] = useState(getLocalDateString())
   const [newEndDate, setNewEndDate] = useState(getLocalDateString())
   const [newShowOneDayEarly, setNewShowOneDayEarly] = useState(false)
+  // 預約限制（新增）
+  const [newRestrictEnabled, setNewRestrictEnabled] = useState(false)
+  const [newRestrictAllDay, setNewRestrictAllDay] = useState(true)
+  const [newRestrictStartDate, setNewRestrictStartDate] = useState(getLocalDateString())
+  const [newRestrictStartTime, setNewRestrictStartTime] = useState('13:00')
+  const [newRestrictEndDate, setNewRestrictEndDate] = useState(getLocalDateString())
+  const [newRestrictEndTime, setNewRestrictEndTime] = useState('14:00')
+  // 受影響清單（新增表單用試算）
+  const [impactLoading, setImpactLoading] = useState(false)
+  const [impactedBookings, setImpactedBookings] = useState<Array<{
+    id: number
+    start_at: string
+    duration_min: number
+    contact_name: string
+    boat_name?: string
+    coach_names?: string
+  }>>([])
   const [editContent, setEditContent] = useState('')
   const [editStartDate, setEditStartDate] = useState('')
   const [editEndDate, setEditEndDate] = useState('')
   const [editShowOneDayEarly, setEditShowOneDayEarly] = useState(false)
+  // 預約限制（編輯）
+  const [editRestrictEnabled, setEditRestrictEnabled] = useState(false)
+  const [editRestrictAllDay, setEditRestrictAllDay] = useState(true)
+  const [editRestrictStartDate, setEditRestrictStartDate] = useState('')
+  const [editRestrictStartTime, setEditRestrictStartTime] = useState('13:00')
+  const [editRestrictEndDate, setEditRestrictEndDate] = useState('')
+  const [editRestrictEndTime, setEditRestrictEndTime] = useState('14:00')
   
   // 搜尋和過濾
   const [searchText, setSearchText] = useState('')
@@ -139,7 +163,7 @@ export function AnnouncementManagement() {
 
     await executeAsync(
       async () => {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('daily_announcements')
           .insert({
             content: newContent.trim(),
@@ -148,8 +172,25 @@ export function AnnouncementManagement() {
             show_one_day_early: newShowOneDayEarly,
             created_by: user.id
           })
+          .select()
 
         if (error) throw error
+
+        // 若啟用預約限制，同步建立 restriction（與公告關聯）
+        const inserted = Array.isArray(data) ? (data[0] as any) : null
+        if (inserted && newRestrictEnabled) {
+          const { error: rerr } = await supabase
+            .from('reservation_restrictions')
+            .upsert({
+              announcement_id: inserted.id,
+              start_date: newRestrictStartDate,
+              start_time: newRestrictAllDay ? null : newRestrictStartTime,
+              end_date: newRestrictEndDate,
+              end_time: newRestrictAllDay ? null : newRestrictEndTime,
+              is_active: true
+            }, { onConflict: 'announcement_id' })
+          if (rerr) throw rerr
+        }
       },
       {
         successMessage: '新增成功',
@@ -160,6 +201,11 @@ export function AnnouncementManagement() {
           setNewStartDate(today)
           setNewEndDate(today)
           setNewShowOneDayEarly(false)
+          // reset 限制欄位
+          setNewRestrictEnabled(false)
+          setNewRestrictAllDay(true)
+          setNewRestrictStartDate(today)
+          setNewRestrictEndDate(today)
           loadAnnouncements()
         }
       }
@@ -185,6 +231,27 @@ export function AnnouncementManagement() {
           .eq('id', id)
 
         if (error) throw error
+
+        // 同步更新或刪除限制
+        if (editRestrictEnabled) {
+          const { error: rerr } = await supabase
+            .from('reservation_restrictions')
+            .upsert({
+              announcement_id: id,
+              start_date: editRestrictStartDate || editStartDate,
+              start_time: editRestrictAllDay ? null : editRestrictStartTime,
+              end_date: editRestrictEndDate || editEndDate,
+              end_time: editRestrictAllDay ? null : editRestrictEndTime,
+              is_active: true
+            }, { onConflict: 'announcement_id' })
+          if (rerr) throw rerr
+        } else {
+          // 若關閉限制，直接刪除綁定
+          await supabase
+            .from('reservation_restrictions')
+            .delete()
+            .eq('announcement_id', id)
+        }
       },
       {
         successMessage: '更新成功',
@@ -226,6 +293,30 @@ export function AnnouncementManagement() {
     setEditStartDate(eventStartDate)
     setEditEndDate(eventEndDate)
     setEditShowOneDayEarly(showOneDayEarly)
+    // 載入限制（若有）
+    ;(async () => {
+      const { data } = await supabase
+        .from('reservation_restrictions')
+        .select('*')
+        .eq('announcement_id', announcement.id)
+        .limit(1)
+        .maybeSingle()
+      if (data) {
+        setEditRestrictEnabled(true)
+        setEditRestrictAllDay(!data.start_time && !data.end_time)
+        setEditRestrictStartDate(data.start_date)
+        setEditRestrictStartTime(data.start_time || '00:00')
+        setEditRestrictEndDate(data.end_date)
+        setEditRestrictEndTime(data.end_time || '23:59')
+      } else {
+        setEditRestrictEnabled(false)
+        setEditRestrictAllDay(true)
+        setEditRestrictStartDate(eventStartDate)
+        setEditRestrictStartTime('13:00')
+        setEditRestrictEndDate(eventEndDate)
+        setEditRestrictEndTime('14:00')
+      }
+    })()
   }
 
   const cancelEdit = () => setEditingId(null)
@@ -392,6 +483,178 @@ export function AnnouncementManagement() {
               <span>提前一天顯示</span>
             </label>
           </div>
+
+          {/* 預約限制（簡易） */}
+          <div style={{ marginBottom: '12px', borderTop: '1px dashed #eee', paddingTop: '12px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer',
+              fontSize: isMobile ? '15px' : '14px',
+              color: '#333',
+              padding: isMobile ? '8px 0' : 0,
+              minHeight: isMobile ? 44 : undefined,
+              fontWeight: 600
+            }}>
+              <input
+                type="checkbox"
+                checked={newRestrictEnabled}
+                onChange={(e) => setNewRestrictEnabled(e.target.checked)}
+                style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0 }}
+              />
+              <span>啟用預約限制（與公告內容一起顯示）</span>
+            </label>
+
+            {newRestrictEnabled && (
+              <div style={{ marginTop: '8px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <input
+                    type="date"
+                    value={newRestrictStartDate}
+                    onChange={(e) => {
+                      setNewRestrictStartDate(e.target.value)
+                      if (e.target.value > newRestrictEndDate) setNewRestrictEndDate(e.target.value)
+                    }}
+                    style={{ flex: '1 1 120px', minWidth: 0, padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                  />
+                  {!newRestrictAllDay && (
+                    <input
+                      type="time"
+                      value={newRestrictStartTime}
+                      onChange={(e) => setNewRestrictStartTime(e.target.value)}
+                      style={{ flex: '0 1 120px', minWidth: 0, padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                    />
+                  )}
+                  <span style={{ color: '#999', fontSize: '14px', flexShrink: 0 }}>～</span>
+                  <input
+                    type="date"
+                    value={newRestrictEndDate}
+                    onChange={(e) => setNewRestrictEndDate(e.target.value)}
+                    min={newRestrictStartDate}
+                    style={{ flex: '1 1 120px', minWidth: 0, padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                  />
+                  {!newRestrictAllDay && (
+                    <input
+                      type="time"
+                      value={newRestrictEndTime}
+                      onChange={(e) => setNewRestrictEndTime(e.target.value)}
+                      style={{ flex: '0 1 120px', minWidth: 0, padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                    />
+                  )}
+                </div>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  cursor: 'pointer',
+                  fontSize: isMobile ? '15px' : '14px',
+                  color: '#555'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={newRestrictAllDay}
+                    onChange={(e) => setNewRestrictAllDay(e.target.checked)}
+                    style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer' }}
+                  />
+                  <span>全天</span>
+                </label>
+              </div>
+            )}
+          </div>
+
+          {newRestrictEnabled && (
+            <div style={{ marginBottom: '12px' }}>
+              <button
+                data-track="announcement_restriction_preview"
+                onClick={async () => {
+                  try {
+                    setImpactLoading(true)
+                    setImpactedBookings([])
+                    // 組合限制起訖時間（ISO 字串）
+                    const startIso = `${newRestrictStartDate}T${newRestrictAllDay ? '00:00:00' : `${newRestrictStartTime}:00`}`
+                    const endIso = `${newRestrictEndDate}T${newRestrictAllDay ? '23:59:59' : `${newRestrictEndTime}:00`}`
+
+                    // 取回這段日期內的候選預約（粗範圍，交由前端計算重疊）
+                    const { data } = await supabase
+                      .from('bookings')
+                      .select('id, start_at, duration_min, contact_name, boats:boat_id(name), booking_coaches ( coaches(name) )')
+                      .gte('start_at', `${newRestrictStartDate}T00:00:00`)
+                      .lte('start_at', `${newRestrictEndDate}T23:59:59`)
+
+                    const overlaps = (bk: any) => {
+                      const bkStart = new Date(bk.start_at).getTime()
+                      const bkEnd = bkStart + (bk.duration_min || 0) * 60 * 1000
+                      const rStart = new Date(startIso).getTime()
+                      const rEnd = new Date(endIso).getTime()
+                      return !(bkEnd <= rStart || bkStart >= rEnd)
+                    }
+
+                    const list = (data || [])
+                      .filter(overlaps)
+                      .map((bk: any) => ({
+                        id: bk.id,
+                        start_at: bk.start_at,
+                        duration_min: bk.duration_min,
+                        contact_name: bk.contact_name,
+                        boat_name: bk.boats?.name,
+                        coach_names: Array.isArray(bk.booking_coaches)
+                          ? bk.booking_coaches.map((c: any) => c.coaches?.name).filter(Boolean).join('、')
+                          : undefined
+                      }))
+                      .sort((a: any, b: any) => a.start_at.localeCompare(b.start_at))
+
+                    setImpactedBookings(list)
+                  } finally {
+                    setImpactLoading(false)
+                  }
+                }}
+                style={{
+                  padding: isMobile ? '12px' : '10px',
+                  minHeight: isMobile ? 44 : undefined,
+                  background: '#fff',
+                  color: '#666',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: isMobile ? '15px' : '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                試算受影響預約
+              </button>
+
+              {/* 清單 */}
+              <div style={{
+                marginTop: '10px',
+                background: '#fafafa',
+                border: '1px solid #eee',
+                borderRadius: '6px',
+                padding: '10px'
+              }}>
+                <div style={{ fontSize: '13px', color: '#333', fontWeight: 600, marginBottom: '6px' }}>
+                  受影響預約 {impactLoading ? '（載入中…）' : `（${impactedBookings.length} 筆）`}
+                </div>
+                {impactedBookings.length === 0 && !impactLoading && (
+                  <div style={{ fontSize: '13px', color: '#888' }}>無</div>
+                )}
+                {impactedBookings.length > 0 && (
+                  <div style={{ display: 'grid', rowGap: '6px' }}>
+                    {impactedBookings.map(item => (
+                      <div key={item.id} style={{ fontSize: '13px', color: '#555' }}>
+                        <span style={{ color: '#1976d2', fontWeight: 600 }}>
+                          {new Date(item.start_at).toLocaleString()}
+                        </span>
+                        {' · '}{item.contact_name}
+                        {item.boat_name ? ` · 船：${item.boat_name}` : ''}
+                        {item.coach_names ? ` · 教練：${item.coach_names}` : ''}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <button
             data-track="announcement_add"
@@ -657,6 +920,70 @@ export function AnnouncementManagement() {
                             />
                             <span>提前一天顯示</span>
                           </label>
+                        </div>
+                        {/* 預約限制（編輯） */}
+                        <div style={{ marginBottom: '10px', borderTop: '1px dashed #eee', paddingTop: '10px' }}>
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            cursor: 'pointer',
+                            fontSize: isMobile ? '15px' : '14px',
+                            color: '#333',
+                            fontWeight: 600
+                          }}>
+                            <input
+                              type="checkbox"
+                              checked={editRestrictEnabled}
+                              onChange={(e) => setEditRestrictEnabled(e.target.checked)}
+                              style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0 }}
+                            />
+                            <span>啟用預約限制</span>
+                          </label>
+                          {editRestrictEnabled && (
+                            <div style={{ marginTop: '8px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <input
+                                  type="date"
+                                  value={editRestrictStartDate || editStartDate}
+                                  onChange={(e) => setEditRestrictStartDate(e.target.value)}
+                                  style={{ flex: '1 1 120px', minWidth: 0, padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                                />
+                                {!editRestrictAllDay && (
+                                  <input
+                                    type="time"
+                                    value={editRestrictStartTime}
+                                    onChange={(e) => setEditRestrictStartTime(e.target.value)}
+                                    style={{ flex: '0 1 120px', minWidth: 0, padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                                  />
+                                )}
+                                <span style={{ color: '#999', fontSize: '14px', flexShrink: 0 }}>～</span>
+                                <input
+                                  type="date"
+                                  value={editRestrictEndDate || editEndDate}
+                                  onChange={(e) => setEditRestrictEndDate(e.target.value)}
+                                  style={{ flex: '1 1 120px', minWidth: 0, padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                                />
+                                {!editRestrictAllDay && (
+                                  <input
+                                    type="time"
+                                    value={editRestrictEndTime}
+                                    onChange={(e) => setEditRestrictEndTime(e.target.value)}
+                                    style={{ flex: '0 1 120px', minWidth: 0, padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                                  />
+                                )}
+                              </div>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: isMobile ? '15px' : '14px', color: '#555' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={editRestrictAllDay}
+                                  onChange={(e) => setEditRestrictAllDay(e.target.checked)}
+                                  style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer' }}
+                                />
+                                <span>全天</span>
+                              </label>
+                            </div>
+                          )}
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button

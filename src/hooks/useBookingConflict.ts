@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { checkBoatConflict, checkCoachesConflictBatch } from '../utils/bookingConflict'
 import { checkBoatUnavailable } from '../utils/availability'
 import { isFacility } from '../utils/facility'
+import { checkGlobalRestriction } from '../utils/restriction'
 
 interface UseBookingConflictProps {
     boatId: number
@@ -37,6 +38,21 @@ export function useBookingConflict() {
         setError(null)
 
         try {
+            // 0. 預約限制（公告啟用的限制）
+            const restriction = await checkGlobalRestriction(
+                date,
+                startTime,
+                undefined,
+                durationMin
+            )
+            if (restriction.isRestricted) {
+                const reason = restriction.reason
+                    ? `${restriction.reason}`
+                    : '此時段暫停受理預約'
+                setError(reason)
+                return { hasConflict: true, reason }
+            }
+
             // 1. 檢查船隻是否維修/停用
             const availability = await checkBoatUnavailable(
                 boatId,
