@@ -78,10 +78,9 @@ export async function checkGlobalRestriction(
 		}
 
 		// 查出今日覆蓋的所有限制（活躍）
-		const { data, error } = await supabase
+		// 這裡使用 any 以避免與型別生成器耦合（不影響執行邏輯）
+		const { data, error } = await (supabase as any)
 			.from('reservation_restrictions_with_announcement_view')
-			// 建議建立一個視圖把 restriction 與 announcement 內容 join 起來，便於顯示理由
-			// 欄位：announcement_id, start_date, start_time, end_date, end_time, is_active, content
 			.select('*')
 			.eq('is_active', true)
 			.lte('start_date', date)

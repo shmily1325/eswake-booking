@@ -1231,17 +1231,7 @@ export type Database = {
       }
     }
     Views: {
-      reservation_restrictions_with_announcement_view: {
-        Row: {
-          announcement_id: number
-          start_date: string
-          start_time: string | null
-          end_date: string
-          end_time: string | null
-          is_active: boolean
-          content: string
-        }
-      }
+      [_ in never]: never
     }
     Functions: {
       is_boat_available: {
