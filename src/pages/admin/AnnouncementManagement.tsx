@@ -81,6 +81,14 @@ export function AnnouncementManagement() {
   const today = new Date()
   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
+  // 限制資料快取（announcement_id -> restriction row）
+  const [restrictionsMap, setRestrictionsMap] = useState<Record<number, {
+    start_date: string
+    start_time: string | null
+    end_date: string
+    end_time: string | null
+    is_active: boolean
+  }>>({})
 
   useEffect(() => {
     loadAnnouncements()
@@ -139,6 +147,21 @@ export function AnnouncementManagement() {
         })
 
       setAnnouncements(merged as Announcement[])
+
+      // 同步讀取限制（僅當前月的公告即可）
+      const ids = (merged || []).map((a: any) => a.id)
+      if (ids.length > 0) {
+        const { data: rData } = await supabase
+          .from('reservation_restrictions')
+          .select('announcement_id, start_date, start_time, end_date, end_time, is_active')
+          .in('announcement_id', ids)
+          .eq('is_active', true)
+        const map: Record<number, any> = {}
+        ;(rData || []).forEach((r: any) => { map[r.announcement_id] = r })
+        setRestrictionsMap(map)
+      } else {
+        setRestrictionsMap({})
+      }
     } catch (error) {
       console.error('載入公告失敗:', error)
     } finally {
@@ -354,6 +377,32 @@ export function AnnouncementManagement() {
     if (!label) return { text: `單日 ${formatDateShort(a.display_date)}`, isRange: false }
     const isRange = label.includes(' - ')
     return { text: isRange ? label : `單日 ${label}`, isRange }
+  }
+
+  // 格式化限制小字
+  const formatRestrictionNote = (todayStr: string, r: { start_date: string; start_time: string | null; end_date: string; end_time: string | null }): string => {
+    const sameDay = r.start_date === r.end_date
+    const fmtDate = (d: string) => {
+      const [, m, dd] = d.split('-')
+      return `${parseInt(m)}/${parseInt(dd)}`
+    }
+    const fmtTime = (t: string | null, fallback: string) => {
+      if (!t) return fallback
+      const [h, m] = t.split(':')
+      return `${parseInt(h)}:${m}`
+    }
+    if (!sameDay) {
+      const left = `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}`
+      const right = `${fmtDate(r.end_date)} ${fmtTime(r.end_time, '23:59')}`
+      return `${left} – ${right} 不約船`
+    }
+    // 同日
+    if (todayStr === r.start_date) {
+      if (!r.start_time && !r.end_time) return '全天不約船'
+      return `${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')} 不約船`
+    }
+    if (!r.start_time && !r.end_time) return `${fmtDate(r.start_date)} 全天不約船`
+    return `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')} 不約船`
   }
 
   return (
@@ -1124,6 +1173,16 @@ export function AnnouncementManagement() {
                               flexWrap: 'wrap'
                             }}>
                               <span>{announcement.content}</span>
+                              {/* 若此公告有啟用中的限制，顯示小字 */}
+                              {restrictionsMap[announcement.id] && (
+                                <span style={{
+                                  fontSize: isMobile ? '12px' : '11px',
+                                  color: '#888'
+                                }}>
+                                  {' '}
+                                  {formatRestrictionNote(getLocalDateString(), restrictionsMap[announcement.id])}
+                                </span>
+                              )}
                               {parseForEdit(announcement).showOneDayEarly && (
                                 <span style={{
                                   fontSize: isMobile ? '12px' : '11px',
