@@ -314,6 +314,46 @@ export function CoachDailyView() {
 			}
 		}
 
+		// 船隻維修/停用 - 單次抓取當日依船別比對
+		const { data: boatUnavailableData, error: boatUnavailableError } = await supabase
+			.from('boat_unavailable_dates')
+			.select('boat_id, start_date, start_time, end_date, end_time, reason, is_active')
+			.eq('is_active', true)
+			.lte('start_date', targetDate)
+			.gte('end_date', targetDate)
+
+		if (!boatUnavailableError && boatUnavailableData && boatUnavailableData.length > 0) {
+			type BoatBlock = { boatId: number; startMin: number; endMin: number; reason?: string }
+			const blocks: BoatBlock[] = boatUnavailableData.map((rec: any) => {
+				let rStart = 0
+				let rEnd = 24 * 60
+				if (rec.start_date === targetDate && rec.start_time) {
+					const [sh, sm] = String(rec.start_time).split(':').map(Number)
+					rStart = sh * 60 + sm
+				}
+				if (rec.end_date === targetDate && rec.end_time) {
+					const [eh, em] = String(rec.end_time).split(':').map(Number)
+					rEnd = eh * 60 + em
+				}
+				return { boatId: rec.boat_id as number, startMin: rStart, endMin: rEnd, reason: rec.reason as string | undefined }
+			})
+
+			for (const bk of dayBookings) {
+				const start = new Date(bk.start_at)
+				const startMin = start.getHours() * 60 + start.getMinutes()
+				const endMin = startMin + bk.duration_min
+				const hit = blocks.find(b => b.boatId === bk.boat_id && !(endMin <= b.startMin || startMin >= b.endMin))
+				if (hit) {
+					conflictSet.add(bk.id)
+					if (hit.reason && !reasons.has(bk.id)) {
+						reasons.set(bk.id, `維修：${hit.reason}`)
+					} else if (!reasons.has(bk.id)) {
+						reasons.set(bk.id, '維修/停用中')
+					}
+				}
+			}
+		}
+
       setConflictedIds(conflictSet)
 		setConflictReasons(reasons)
     } catch (e) {
@@ -479,27 +519,12 @@ export function CoachDailyView() {
           <div style={{
             fontSize: '14px',
             fontWeight: '700',
-            color: isConflict ? '#e53935' : boat.color,
+            color: boat.color,
             display: 'flex',
             alignItems: 'center',
             gap: '4px'
           }}>
-            {isConflict ? (
-              <span
-                aria-hidden="true"
-                style={{
-                  display: 'inline-block',
-                  width: '1em',
-                  textAlign: 'center',
-                  transform: 'scale(1.25)',
-                  transformOrigin: 'center',
-                  lineHeight: 1,
-                  verticalAlign: '-0.1em',
-                }}
-              >
-                💣
-              </span>
-            ) : '🚤'} {boat.name}
+            🚤 {boat.name}
             <span style={{
               fontSize: '12px',
               fontWeight: '600',
@@ -640,27 +665,10 @@ export function CoachDailyView() {
         )}
 
         {/* 時間範圍 */}
-		<div style={{
+        <div style={{
           ...bookingCardContentStyles.timeRange(isMobile),
-          color: isConflict ? '#e53935' : bookingCardContentStyles.timeRange(isMobile).color
+          color: bookingCardContentStyles.timeRange(isMobile).color
         }}>
-          {isConflict && (
-            <span
-              aria-hidden="true"
-              style={{
-                display: 'inline-block',
-                width: '1em',
-                textAlign: 'center',
-                transform: 'scale(1.25)',
-                transformOrigin: 'center',
-                lineHeight: 1,
-                verticalAlign: '-0.1em',
-                marginRight: '4px',
-              }}
-            >
-              💣
-            </span>
-          )}
           {startTime} - {endTimeStr}
         </div>
 
@@ -678,8 +686,17 @@ export function CoachDailyView() {
 		)}
 
         {/* 聯絡人姓名 */}
-        <div style={bookingCardContentStyles.contactName(isMobile)}>
-          {getDisplayContactName(booking)}
+        <div style={{ 
+          ...bookingCardContentStyles.contactName(isMobile),
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: isMobile ? 'flex-start' : 'center',
+          gap: '6px'
+        }}>
+          {isConflict && <span aria-hidden="true" style={{ lineHeight: 1 }}>💣</span>}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {getDisplayContactName(booking)}
+          </span>
         </div>
 
         {/* 註解 */}

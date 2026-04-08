@@ -22,7 +22,7 @@ import { injectAnimationStyles } from '../utils/animations'
 import { isEditorAsync, hasViewAccess } from '../utils/auth'
 import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
 import { isFacility } from '../utils/facility'
-import { checkGlobalRestriction } from '../utils/restriction'
+// import { checkGlobalRestriction } from '../utils/restriction'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
 
@@ -400,6 +400,46 @@ export function DayView() {
               reasons.set(bk.id, hit.reason)
             } else if (!reasons.has(bk.id)) {
               reasons.set(bk.id, '受公告限制')
+            }
+          }
+        }
+      }
+
+      // 3) 船隻維修/停用 - 依當日單次抓取，依船別本地比對
+      const { data: boatUnavailableData, error: boatUnavailableError } = await supabase
+        .from('boat_unavailable_dates')
+        .select('boat_id, start_date, start_time, end_date, end_time, reason, is_active')
+        .eq('is_active', true)
+        .lte('start_date', targetDate)
+        .gte('end_date', targetDate)
+
+      if (!boatUnavailableError && boatUnavailableData && boatUnavailableData.length > 0) {
+        type BoatBlock = { boatId: number; startMin: number; endMin: number; reason?: string }
+        const blocks: BoatBlock[] = boatUnavailableData.map((rec: any) => {
+          let rStart = 0
+          let rEnd = 24 * 60
+          if (rec.start_date === targetDate && rec.start_time) {
+            const [sh, sm] = String(rec.start_time).split(':').map(Number)
+            rStart = sh * 60 + sm
+          }
+          if (rec.end_date === targetDate && rec.end_time) {
+            const [eh, em] = String(rec.end_time).split(':').map(Number)
+            rEnd = eh * 60 + em
+          }
+          return { boatId: rec.boat_id as number, startMin: rStart, endMin: rEnd, reason: rec.reason as string | undefined }
+        })
+
+        for (const bk of dayBookings) {
+          const start = new Date(bk.start_at)
+          const startMin = start.getHours() * 60 + start.getMinutes()
+          const endMin = startMin + bk.duration_min
+          const hit = blocks.find(b => b.boatId === bk.boat_id && !(endMin <= b.startMin || startMin >= b.endMin))
+          if (hit) {
+            conflictSet.add(bk.id)
+            if (hit.reason && !reasons.has(bk.id)) {
+              reasons.set(bk.id, `維修：${hit.reason}`)
+            } else if (!reasons.has(bk.id)) {
+              reasons.set(bk.id, '維修/停用中')
             }
           }
         }
@@ -1067,23 +1107,6 @@ export function DayView() {
                                     textAlign: 'center',
                                     lineHeight: '1.3',
                                   }}>
-                                    {isConflict && (
-                                      <span
-                                        aria-hidden="true"
-                                        style={{
-                                          display: 'inline-block',
-                                          width: '1em',
-                                          textAlign: 'center',
-                                          transform: 'scale(1.25)',
-                                          transformOrigin: 'center',
-                                          lineHeight: 1,
-                                          verticalAlign: '-0.1em',
-                                          marginRight: '4px',
-                                        }}
-                                      >
-                                        💣
-                                      </span>
-                                    )}
                                     {(() => {
                                       const start = new Date(booking.start_at)
                                       const actualEndTime = new Date(start.getTime() + booking.duration_min * 60000)
@@ -1153,7 +1176,22 @@ export function DayView() {
                                     textAlign: 'center',
                                     color: '#1a1a1a',
                                   }}>
-                                    {getDisplayContactName(booking)}
+                                    <span style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      maxWidth: '100%',
+                                    }}>
+                                      {isConflict && <span aria-hidden="true" style={{ lineHeight: 1 }}>💣</span>}
+                                      <span style={{
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        maxWidth: '100%',
+                                        display: 'inline-block',
+                                        verticalAlign: 'bottom'
+                                      }}>{getDisplayContactName(booking)}</span>
+                                    </span>
                                   </div>
 
                                   {/* 第四行：備註 */}

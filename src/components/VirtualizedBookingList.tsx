@@ -199,26 +199,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                     lineHeight: '1.3',
                                                     flexShrink: 0,
                                                 }}>
-													<div>
-														{conflictedBookingIds?.has(booking.id) && (
-															<span
-																aria-hidden="true"
-																style={{
-																	display: 'inline-block',
-																	width: '1em',
-																	textAlign: 'center',
-																	transform: 'scale(1.25)',
-																	transformOrigin: 'center',
-																	lineHeight: 1,
-																	verticalAlign: '-0.1em',
-																	marginRight: '4px',
-																}}
-															>
-																💣
-															</span>
-														)}
-														{startTimeStr}
-													</div>
+													<div>{startTimeStr}</div>
                                                     <div style={{ fontSize: '10px', opacity: 0.7, margin: '2px 0' }}>↓</div>
                                                     <div>{endTimeStr}</div>
                                                     <div style={{
@@ -253,34 +234,32 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                     )}
                                                     
                                                     {/* 第一行：預約人 */}
-													<div style={{
-                                                        fontSize: isMobile ? '14px' : '16px',
-                                                        fontWeight: '700',
-                                                        color: '#2c3e50',
-                                                        marginBottom: '4px',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap',
-                                                    }}>
-														{conflictedBookingIds?.has(booking.id) && (
-															<span
-																aria-hidden="true"
-																style={{
-																	display: 'inline-block',
-																	width: '1em',
-																	textAlign: 'center',
-																	transform: 'scale(1.25)',
-																	transformOrigin: 'center',
-																	lineHeight: 1,
-																	verticalAlign: '-0.1em',
-																	marginRight: '4px',
-																}}
-															>
-																💣
-															</span>
-														)}
+												<div style={{
+													fontSize: isMobile ? '14px' : '16px',
+													fontWeight: '700',
+													color: '#2c3e50',
+													marginBottom: '4px',
+													display: 'flex',
+													alignItems: 'center',
+													gap: '6px',
+													minWidth: 0,
+												}}>
+													{conflictedBookingIds?.has(booking.id) && (
+														<span aria-hidden="true" style={{
+															flex: '0 0 auto',
+															lineHeight: 1,
+															display: 'inline-block'
+														}}>💣</span>
+													)}
+													<span style={{
+														overflow: 'hidden',
+														textOverflow: 'ellipsis',
+														whiteSpace: 'nowrap',
+														minWidth: 0
+													}}>
 														{getDisplayContactName(booking) || '未命名'}
-                                                    </div>
+													</span>
+												</div>
 
 													{/* 手機顯示衝突原因（簡短行） */}
 													{isMobile && conflictedBookingIds?.has(booking.id) && conflictReasons?.get(booking.id) && (
