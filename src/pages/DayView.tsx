@@ -22,6 +22,7 @@ import { injectAnimationStyles } from '../utils/animations'
 import { isEditorAsync, hasViewAccess } from '../utils/auth'
 import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
 import { isFacility } from '../utils/facility'
+import { checkGlobalRestriction } from '../utils/restriction'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
 
@@ -83,6 +84,8 @@ export function DayView() {
   const [boats, setBoats] = useState<Boat[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  const [conflictedIds, setConflictedIds] = useState<Set<number>>(new Set())
+	const [conflictReasons, setConflictReasons] = useState<Map<number, string>>(new Map())
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [repeatDialogOpen, setRepeatDialogOpen] = useState(false)
@@ -303,6 +306,9 @@ export function DayView() {
 
     console.log('[fetchBookingsWithCoaches] Final bookings with clean data:', bookingsWithCoaches.length)
     setBookings(bookingsWithCoaches)
+
+    // 異步計算衝突（教練/駕駛衝突 + 全域限制）
+    computeConflicts(bookingsWithCoaches).catch(err => console.error('computeConflicts error:', err))
   }
 
   // 當組件掛載或日期參數改變時，載入資料
@@ -310,6 +316,104 @@ export function DayView() {
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateParam])
+  // 計算當日衝突：
+  // 1) 教練/駕駛跨船重疊時段
+  // 2) 與全域限制（公告）重疊
+  const computeConflicts = async (dayBookings: Booking[]) => {
+    try {
+      const conflictSet = new Set<number>()
+			const reasons = new Map<number, string>()
+
+      // 1) 教練/駕駛重疊
+      type Span = { start: number; end: number; bookingId: number; boatId: number }
+      const personToSpans = new Map<string, Span[]>()
+			const personIdToName = new Map<string, string>()
+
+      for (const bk of dayBookings) {
+        const start = new Date(bk.start_at)
+        const startMin = start.getHours() * 60 + start.getMinutes()
+        const endMin = startMin + bk.duration_min
+
+        const addSpan = (personId: string) => {
+          if (!personToSpans.has(personId)) personToSpans.set(personId, [])
+          personToSpans.get(personId)!.push({ start: startMin, end: endMin, bookingId: bk.id, boatId: bk.boat_id })
+        }
+
+				for (const c of bk.coaches || []) { addSpan(c.id); if (c.name) personIdToName.set(c.id, c.name) }
+				for (const d of bk.drivers || []) { addSpan(d.id); if (d.name) personIdToName.set(d.id, d.name) }
+      }
+
+			for (const [personId, spans] of personToSpans) {
+        spans.sort((a, b) => a.start - b.start)
+        for (let i = 0; i < spans.length; i++) {
+          for (let j = i + 1; j < spans.length; j++) {
+            const a = spans[i], b = spans[j]
+            if (b.start >= a.end) break
+            if (a.boatId !== b.boatId) {
+              conflictSet.add(a.bookingId)
+              conflictSet.add(b.bookingId)
+							const name = personIdToName.get(personId) || '人員'
+							const toTime = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`
+							const overlapText = `${name} 時間重疊 ${toTime(Math.max(a.start, b.start))}-${toTime(Math.min(a.end, b.end))}`
+							if (!reasons.has(a.bookingId)) reasons.set(a.bookingId, overlapText)
+							if (!reasons.has(b.bookingId)) reasons.set(b.bookingId, overlapText)
+            }
+          }
+        }
+      }
+
+      // 2) 全域限制（公告） - 單次抓取當日限制後本地比對
+      const targetDate = dateParam
+      const { data: restrictionData, error: restrictionError } = await (supabase as any)
+        .from('reservation_restrictions_with_announcement_view')
+        .select('*')
+        .eq('is_active', true)
+        .lte('start_date', targetDate)
+        .gte('end_date', targetDate)
+
+      if (!restrictionError && restrictionData && restrictionData.length > 0) {
+        // 預先計算當日每條限制的分鐘範圍
+        type RestrictionRange = { startMin: number, endMin: number, reason?: string }
+        const dayRanges: RestrictionRange[] = restrictionData.map((rec: any) => {
+          // 若為跨日中間天，視為全天
+          let rStart = 0
+          let rEnd = 24 * 60
+          if (rec.start_date === targetDate && rec.start_time) {
+            const [sh, sm] = String(rec.start_time).split(':').map(Number)
+            rStart = sh * 60 + sm
+          }
+          if (rec.end_date === targetDate && rec.end_time) {
+            const [eh, em] = String(rec.end_time).split(':').map(Number)
+            rEnd = eh * 60 + em
+          }
+          return { startMin: rStart, endMin: rEnd, reason: rec.content as string | undefined }
+        })
+
+        for (const bk of dayBookings) {
+          const start = new Date(bk.start_at)
+          const startMin = start.getHours() * 60 + start.getMinutes()
+          const endMin = startMin + bk.duration_min
+          const hit = dayRanges.find(r => !(endMin <= r.startMin || startMin >= r.endMin))
+          if (hit) {
+            conflictSet.add(bk.id)
+            if (hit.reason && !reasons.has(bk.id)) {
+              reasons.set(bk.id, hit.reason)
+            } else if (!reasons.has(bk.id)) {
+              reasons.set(bk.id, '受公告限制')
+            }
+          }
+        }
+      }
+
+      setConflictedIds(conflictSet)
+			setConflictReasons(reasons)
+    } catch (e) {
+      console.error('Failed to compute conflicts:', e)
+      setConflictedIds(new Set())
+			setConflictReasons(new Map())
+    }
+  }
+
 
   const timeToMinutes = (timeStr: string): number => {
     const [hour, minute] = timeStr.split(':').map(Number)
@@ -762,6 +866,8 @@ export function DayView() {
               bookings={bookings}
               isMobile={isMobile}
               onBookingClick={handleCellClick}
+              conflictedBookingIds={conflictedIds}
+							conflictReasons={conflictReasons}
             />
 
             {/* 預約規則說明 */}
@@ -920,6 +1026,8 @@ export function DayView() {
                             const isCleanup = isCleanupTime(boat.id, timeSlot)
 
                             if (booking && isStart) {
+                              const isConflict = conflictedIds.has(booking.id)
+                              const reason = conflictReasons.get(booking.id)
                               const slots = Math.ceil(booking.duration_min / 15)
 
                               return (
@@ -932,14 +1040,15 @@ export function DayView() {
                                     borderBottom: '1px solid #e9ecef',
                                     borderRight: '1px solid #e9ecef',
                                     background: `linear-gradient(135deg, ${boat.color}08 0%, ${boat.color}15 100%)`,
-                                    border: `2px solid ${boat.color || '#ccc'}`,
+                                    border: isConflict ? '2px solid #e53935' : `2px solid ${boat.color || '#ccc'}`,
                                     cursor: 'pointer',
                                     verticalAlign: 'top',
                                     position: 'relative',
                                     borderRadius: isMobile ? '8px' : '10px',
-                                    boxShadow: '0 3px 10px rgba(0,0,0,0.1)',
+                                    boxShadow: isConflict ? '0 0 0 1px rgba(229,57,53,0.15) inset, 0 3px 10px rgba(0,0,0,0.1)' : '0 3px 10px rgba(0,0,0,0.1)',
                                     transition: 'all 0.2s',
                                   }}
+                                  title={!isMobile && isConflict ? reason : undefined}
                                   onMouseEnter={(e) => {
                                     e.currentTarget.style.transform = 'translateY(-3px)'
                                     e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.15)'
@@ -953,11 +1062,28 @@ export function DayView() {
                                   <div style={{
                                     fontSize: isMobile ? '12px' : '14px',
                                     fontWeight: '600',
-                                    color: '#2c3e50',
+                                    color: isConflict ? '#e53935' : '#2c3e50',
                                     marginBottom: '4px',
                                     textAlign: 'center',
                                     lineHeight: '1.3',
                                   }}>
+                                    {isConflict && (
+                                      <span
+                                        aria-hidden="true"
+                                        style={{
+                                          display: 'inline-block',
+                                          width: '1em',
+                                          textAlign: 'center',
+                                          transform: 'scale(1.25)',
+                                          transformOrigin: 'center',
+                                          lineHeight: 1,
+                                          verticalAlign: '-0.1em',
+                                          marginRight: '4px',
+                                        }}
+                                      >
+                                        💣
+                                      </span>
+                                    )}
                                     {(() => {
                                       const start = new Date(booking.start_at)
                                       const actualEndTime = new Date(start.getTime() + booking.duration_min * 60000)
@@ -967,6 +1093,20 @@ export function DayView() {
                                       return `${startTime} - ${endTime}`
                                     })()}
                                   </div>
+
+                                  {/* 衝突原因（手機顯示） */}
+                                  {isMobile && isConflict && reason && (
+                                    <div style={{
+                                      fontSize: '12px',
+                                      color: '#e53935',
+                                      fontWeight: 600,
+                                      lineHeight: 1.3,
+                                      marginBottom: '6px',
+                                      textAlign: 'center',
+                                    }}>
+                                      {reason}
+                                    </div>
+                                  )}
 
                                   {/* 第二行：時長說明 */}
                                   <div style={{

@@ -10,6 +10,7 @@ import { getBookingCardStyle, bookingCardContentStyles } from '../../styles/desi
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import { trackClick } from '../../utils/trackClick'
+import { checkGlobalRestriction } from '../../utils/restriction'
 
 interface Boat {
   id: number
@@ -74,6 +75,8 @@ export function CoachDailyView() {
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [conflictedIds, setConflictedIds] = useState<Set<number>>(new Set())
+	const [conflictReasons, setConflictReasons] = useState<Map<number, string>>(new Map())
 
   useEffect(() => {
     // 並行載入所有資料以加快速度
@@ -218,10 +221,105 @@ export function CoachDailyView() {
 
       setBookings(formattedData)
       setLastUpdate(new Date())
+
+      // 計算當日衝突（教練/駕駛跨船重疊 + 全域限制）
+      computeConflicts(formattedData).catch(err => console.error('CoachDailyView computeConflicts error:', err))
     } catch (error) {
       console.error('載入預約失敗:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const computeConflicts = async (dayBookings: Booking[]) => {
+    try {
+      const conflictSet = new Set<number>()
+		const reasons = new Map<number, string>()
+
+      type Span = { start: number; end: number; bookingId: number; boatId: number }
+      const personToSpans = new Map<string, Span[]>()
+		const personIdToName = new Map<string, string>()
+
+      for (const bk of dayBookings) {
+        const start = new Date(bk.start_at)
+        const startMin = start.getHours() * 60 + start.getMinutes()
+        const endMin = startMin + bk.duration_min
+
+        const addSpan = (personId: string) => {
+          if (!personToSpans.has(personId)) personToSpans.set(personId, [])
+          personToSpans.get(personId)!.push({ start: startMin, end: endMin, bookingId: bk.id, boatId: bk.boat_id })
+        }
+
+			for (const c of bk.coaches || []) { addSpan(c.id); if (c.name) personIdToName.set(c.id, c.name) }
+			for (const d of bk.drivers || []) { addSpan(d.id); if (d.name) personIdToName.set(d.id, d.name) }
+      }
+
+		for (const [personId, spans] of personToSpans) {
+        spans.sort((a, b) => a.start - b.start)
+        for (let i = 0; i < spans.length; i++) {
+          for (let j = i + 1; j < spans.length; j++) {
+            const a = spans[i], b = spans[j]
+            if (b.start >= a.end) break
+            if (a.boatId !== b.boatId) {
+              conflictSet.add(a.bookingId)
+              conflictSet.add(b.bookingId)
+						const name = personIdToName.get(personId) || '人員'
+						const toTime = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`
+						const overlapText = `${name} 時間重疊 ${toTime(Math.max(a.start, b.start))}-${toTime(Math.min(a.end, b.end))}`
+						if (!reasons.has(a.bookingId)) reasons.set(a.bookingId, overlapText)
+						if (!reasons.has(b.bookingId)) reasons.set(b.bookingId, overlapText)
+            }
+          }
+        }
+      }
+
+		// 全域限制 - 單次抓取當日限制後本地比對
+		const targetDate = dateParam
+		const { data: restrictionData, error: restrictionError } = await (supabase as any)
+			.from('reservation_restrictions_with_announcement_view')
+			.select('*')
+			.eq('is_active', true)
+			.lte('start_date', targetDate)
+			.gte('end_date', targetDate)
+
+		if (!restrictionError && restrictionData && restrictionData.length > 0) {
+			type RestrictionRange = { startMin: number, endMin: number, reason?: string }
+			const dayRanges: RestrictionRange[] = restrictionData.map((rec: any) => {
+				let rStart = 0
+				let rEnd = 24 * 60
+				if (rec.start_date === targetDate && rec.start_time) {
+					const [sh, sm] = String(rec.start_time).split(':').map(Number)
+					rStart = sh * 60 + sm
+				}
+				if (rec.end_date === targetDate && rec.end_time) {
+					const [eh, em] = String(rec.end_time).split(':').map(Number)
+					rEnd = eh * 60 + em
+				}
+				return { startMin: rStart, endMin: rEnd, reason: rec.content as string | undefined }
+			})
+
+			for (const bk of dayBookings) {
+				const start = new Date(bk.start_at)
+				const startMin = start.getHours() * 60 + start.getMinutes()
+				const endMin = startMin + bk.duration_min
+				const hit = dayRanges.find(r => !(endMin <= r.startMin || startMin >= r.endMin))
+				if (hit) {
+					conflictSet.add(bk.id)
+					if (hit.reason && !reasons.has(bk.id)) {
+						reasons.set(bk.id, hit.reason)
+					} else if (!reasons.has(bk.id)) {
+						reasons.set(bk.id, '受公告限制')
+					}
+				}
+			}
+		}
+
+      setConflictedIds(conflictSet)
+		setConflictReasons(reasons)
+    } catch (e) {
+      console.error('Failed to compute conflicts:', e)
+      setConflictedIds(new Set())
+		setConflictReasons(new Map())
     }
   }
 
@@ -358,6 +456,8 @@ export function CoachDailyView() {
       roleLabel = '🚤 駕駛'
     }
 
+    const isConflict = conflictedIds.has(booking.id)
+
     return (
       <div
         key={booking.id}
@@ -365,6 +465,7 @@ export function CoachDailyView() {
           ...getBookingCardStyle(boat.color, true, false),
           marginBottom: index < total - 1 ? '12px' : '0',
           padding: '12px 14px',
+          border: isConflict ? '2px solid #e53935' : undefined
         }}
       >
         {/* 第一行：船隻 + 角色 + 教練練習標識 */}
@@ -378,12 +479,27 @@ export function CoachDailyView() {
           <div style={{
             fontSize: '14px',
             fontWeight: '700',
-            color: boat.color,
+            color: isConflict ? '#e53935' : boat.color,
             display: 'flex',
             alignItems: 'center',
             gap: '4px'
           }}>
-            🚤 {boat.name}
+            {isConflict ? (
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block',
+                  width: '1em',
+                  textAlign: 'center',
+                  transform: 'scale(1.25)',
+                  transformOrigin: 'center',
+                  lineHeight: 1,
+                  verticalAlign: '-0.1em',
+                }}
+              >
+                💣
+              </span>
+            ) : '🚤'} {boat.name}
             <span style={{
               fontSize: '12px',
               fontWeight: '600',
@@ -425,10 +541,10 @@ export function CoachDailyView() {
           <div style={{
             fontSize: '14px',
             fontWeight: '700',
-            color: '#333',
+            color: isConflict ? '#e53935' : '#333',
             whiteSpace: 'nowrap',
           }}>
-            {startTime} - {endTimeStr}
+            {isConflict ? '💣 ' : ''}{startTime} - {endTimeStr}
           </div>
           <div style={{
             fontSize: '14px',
@@ -484,11 +600,17 @@ export function CoachDailyView() {
     const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
     const endTimeStr = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
 
-    return (
+    const isConflict = conflictedIds.has(booking.id)
+
+	return (
       <td
         key={boat.id}
         rowSpan={slots}
-        style={getBookingCardStyle(boat.color, isMobile, false)}
+        style={{
+          ...getBookingCardStyle(boat.color, isMobile, false),
+          border: isConflict ? '2px solid #e53935' : undefined
+        }}
+		title={!isMobile ? (conflictReasons.get(booking.id) || undefined) : undefined}
       >
         {/* 教練練習標識 */}
         {booking.is_coach_practice && (
@@ -518,9 +640,42 @@ export function CoachDailyView() {
         )}
 
         {/* 時間範圍 */}
-        <div style={bookingCardContentStyles.timeRange(isMobile)}>
+		<div style={{
+          ...bookingCardContentStyles.timeRange(isMobile),
+          color: isConflict ? '#e53935' : bookingCardContentStyles.timeRange(isMobile).color
+        }}>
+          {isConflict && (
+            <span
+              aria-hidden="true"
+              style={{
+                display: 'inline-block',
+                width: '1em',
+                textAlign: 'center',
+                transform: 'scale(1.25)',
+                transformOrigin: 'center',
+                lineHeight: 1,
+                verticalAlign: '-0.1em',
+                marginRight: '4px',
+              }}
+            >
+              💣
+            </span>
+          )}
           {startTime} - {endTimeStr}
         </div>
+
+		{/* 手機顯示衝突原因（簡短行） */}
+		{isConflict && isMobile && conflictReasons.get(booking.id) && (
+		  <div style={{
+			fontSize: '12px',
+			color: '#e53935',
+			fontWeight: 600,
+			lineHeight: 1.3,
+			marginBottom: '6px'
+		  }}>
+			{conflictReasons.get(booking.id)}
+		  </div>
+		)}
 
         {/* 聯絡人姓名 */}
         <div style={bookingCardContentStyles.contactName(isMobile)}>

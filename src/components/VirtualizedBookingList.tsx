@@ -8,9 +8,11 @@ interface VirtualizedBookingListProps {
     bookings: Booking[]
     isMobile: boolean
     onBookingClick: (boatId: number, timeSlot: string, booking: Booking) => void
+    conflictedBookingIds?: Set<number>
+	conflictReasons?: Map<number, string>
 }
 
-export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingClick }: VirtualizedBookingListProps) {
+export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingClick, conflictedBookingIds, conflictReasons }: VirtualizedBookingListProps) {
     // 複製成功的預約 ID
     const [copiedBookingId, setCopiedBookingId] = useState<number | null>(null)
 
@@ -155,7 +157,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                         const endTimeStr = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`
 
                                         return (
-                                            <div
+											<div
                                                 key={booking.id}
                                                 data-track="day_edit_booking"
                                                 style={{
@@ -167,7 +169,13 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                     gap: isMobile ? '10px' : '14px',
                                                     alignItems: 'center',
                                                     backgroundColor: 'white',
+                                                    border: conflictedBookingIds?.has(booking.id) ? '2px solid #e53935' : '1px solid transparent',
+                                                    borderRadius: '8px',
+                                                    boxShadow: conflictedBookingIds?.has(booking.id)
+                                                        ? '0 0 0 1px rgba(229,57,53,0.15) inset'
+                                                        : undefined,
                                                 }}
+												title={!isMobile ? (conflictReasons?.get(booking.id) || undefined) : undefined}
                                                 onClick={() => onBookingClick(booking.boat_id, booking.start_at.substring(11, 16), booking)}
                                                 onMouseEnter={(e) => {
                                                     e.currentTarget.style.backgroundColor = '#f8f9fa'
@@ -191,7 +199,26 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                     lineHeight: '1.3',
                                                     flexShrink: 0,
                                                 }}>
-                                                    <div>{startTimeStr}</div>
+													<div>
+														{conflictedBookingIds?.has(booking.id) && (
+															<span
+																aria-hidden="true"
+																style={{
+																	display: 'inline-block',
+																	width: '1em',
+																	textAlign: 'center',
+																	transform: 'scale(1.25)',
+																	transformOrigin: 'center',
+																	lineHeight: 1,
+																	verticalAlign: '-0.1em',
+																	marginRight: '4px',
+																}}
+															>
+																💣
+															</span>
+														)}
+														{startTimeStr}
+													</div>
                                                     <div style={{ fontSize: '10px', opacity: 0.7, margin: '2px 0' }}>↓</div>
                                                     <div>{endTimeStr}</div>
                                                     <div style={{
@@ -207,7 +234,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                 </div>
 
                                                 {/* 預約內容 */}
-                                                <div style={{ flex: 1, minWidth: 0 }}>
+												<div style={{ flex: 1, minWidth: 0 }}>
                                                     {/* 教練練習標識 */}
                                                     {booking.is_coach_practice && (
                                                         <div style={{
@@ -226,7 +253,7 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                     )}
                                                     
                                                     {/* 第一行：預約人 */}
-                                                    <div style={{
+													<div style={{
                                                         fontSize: isMobile ? '14px' : '16px',
                                                         fontWeight: '700',
                                                         color: '#2c3e50',
@@ -235,8 +262,38 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                                                         textOverflow: 'ellipsis',
                                                         whiteSpace: 'nowrap',
                                                     }}>
-                                                        {getDisplayContactName(booking) || '未命名'}
+														{conflictedBookingIds?.has(booking.id) && (
+															<span
+																aria-hidden="true"
+																style={{
+																	display: 'inline-block',
+																	width: '1em',
+																	textAlign: 'center',
+																	transform: 'scale(1.25)',
+																	transformOrigin: 'center',
+																	lineHeight: 1,
+																	verticalAlign: '-0.1em',
+																	marginRight: '4px',
+																}}
+															>
+																💣
+															</span>
+														)}
+														{getDisplayContactName(booking) || '未命名'}
                                                     </div>
+
+													{/* 手機顯示衝突原因（簡短行） */}
+													{isMobile && conflictedBookingIds?.has(booking.id) && conflictReasons?.get(booking.id) && (
+														<div style={{
+															fontSize: '12px',
+															color: '#e53935',
+															marginBottom: '4px',
+															fontWeight: 600,
+															lineHeight: 1.3,
+														}}>
+															{conflictReasons.get(booking.id)}
+														</div>
+													)}
 
                                                     {/* 第二行：教練 + 駕駛 + 活動類型 */}
                                                     <div style={{
