@@ -60,8 +60,8 @@ function getThreeMonthRangeLabel(monthKeys: string[]): string {
 }
 
 export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePreviewTableProps) {
-  const fontTitle = 16
-  const fontBody = 14
+  const fontTitle = 15
+  const fontBody = 13
   const fontMeta = 12
   const [loading, setLoading] = useState(false)
   const [bookings, setBookings] = useState<ScheduleBooking[]>([])
@@ -316,7 +316,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                     cursor: 'pointer',
                     fontSize: `${fontBody}px`,
                     fontWeight: 600,
-                    color: '#475569',
+                    color: '#64748b',
                     padding: '2px 2px 8px',
                     display: 'flex',
                     alignItems: 'center',
@@ -334,27 +334,26 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                   {group.date}（{group.weekday}） • {group.count} 堂 • {group.minutes} 分
                 </button>
                 {expandedDates.has(group.date) && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {group.items.map(booking => (
                       <div
                         key={booking.id}
                         style={{
-                          padding: '10px 12px',
-                          background: '#f8f9fa',
-                          borderRadius: '8px',
+                          padding: '9px 4px',
                           display: 'grid',
                           gridTemplateColumns: isMobile ? '66px 1fr auto' : '74px 1fr auto',
                           alignItems: 'center',
-                          gap: '10px'
+                          gap: '10px',
+                          borderBottom: '1px solid #eef2f6'
                         }}
                       >
-                        <div style={{ fontWeight: 700, color: '#334155', fontSize: '14px' }}>
+                        <div style={{ fontWeight: 600, color: '#334155', fontSize: `${fontBody}px` }}>
                           {extractTime(booking.start_at)}
                         </div>
                         <div style={{ color: '#666', fontSize: `${fontBody}px`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {booking.contact_name || '-'} ｜ {booking.boats?.name || '-'}
                         </div>
-                        <div style={{ color: '#4a90e2', fontWeight: '600', fontSize: `${fontBody}px`, flexShrink: 0 }}>
+                        <div style={{ color: '#4a90e2', fontWeight: '500', fontSize: `${fontBody}px`, flexShrink: 0 }}>
                           {booking.duration_min || 0} 分
                         </div>
                       </div>
