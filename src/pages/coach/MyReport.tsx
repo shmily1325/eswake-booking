@@ -6,13 +6,14 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { useToast } from '../../components/ui'
 import { CoachReport } from './CoachReport'
 import { StatisticsTab } from '../../components/StatisticsTab'
+import { CoachSchedulePreviewTable } from './CoachSchedulePreviewTable'
 
 export function MyReport() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
   const toast = useToast()
   
-  const [activeTab, setActiveTab] = useState<'report' | 'history'>('report')
+  const [activeTab, setActiveTab] = useState<'report' | 'history' | 'schedule'>('report')
   const [coachId, setCoachId] = useState<string | null>(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
 
@@ -134,6 +135,24 @@ export function MyReport() {
           >
             📊 細帳
           </button>
+          <button
+            data-track="my_report_tab_schedule"
+            onClick={() => setActiveTab('schedule')}
+            style={{
+              padding: '12px 24px',
+              background: activeTab === 'schedule' ? '#7b61ff' : 'transparent',
+              color: activeTab === 'schedule' ? 'white' : '#666',
+              border: 'none',
+              borderBottom: activeTab === 'schedule' ? '3px solid #7b61ff' : 'none',
+              borderRadius: '8px 8px 0 0',
+              cursor: 'pointer',
+              fontSize: isMobile ? '14px' : '16px',
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}
+          >
+            📅 排程
+          </button>
         </div>
 
         {/* Tab 內容區 */}
@@ -151,6 +170,11 @@ export function MyReport() {
           {/* 細帳 Tab */}
           {activeTab === 'history' && coachId && (
             <StatisticsTab isMobile={isMobile} autoFilterCoachId={coachId} />
+          )}
+
+          {/* 排程預覽 Tab */}
+          {activeTab === 'schedule' && coachId && (
+            <CoachSchedulePreviewTable coachId={coachId} isMobile={isMobile} />
           )}
         </div>
       </div>
