@@ -28,7 +28,7 @@ export function LiffHeader({ member, refreshing, onRefresh }: LiffHeaderProps) {
           fontWeight: '600',
           margin: 0
         }}>
-          會員中心
+          ES WAKE 會員專區
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button

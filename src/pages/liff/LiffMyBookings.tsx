@@ -155,7 +155,7 @@ export function LiffMyBookings() {
   const [birthDay, setBirthDay] = useState('')
   const [binding, setBinding] = useState(false)
   const [bindingError, setBindingError] = useState<string | null>(null)
-  // 預設「我的預約」：最常使用；Tab 列亦將此分頁置左方便點選
+  // 預設「預約」分頁：最常使用；Tab 列亦將此分頁置左方便點選
   const [activeTab, setActiveTab] = useState<TabType>('bookings')
   
   // 交易記錄彈出框

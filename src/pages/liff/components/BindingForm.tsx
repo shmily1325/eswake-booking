@@ -1,4 +1,5 @@
 // 綁定表單組件
+import { liffTrack } from '../track'
 
 interface BindingFormProps {
   phone: string
@@ -30,6 +31,21 @@ export function BindingForm({
   onSubmit
 }: BindingFormProps) {
   const isFormValid = phone && birthYear && birthMonth && birthDay
+  const oaUrl = import.meta.env.VITE_LINE_OA_URL as string | undefined
+
+  function openOfficialContact() {
+    if (!oaUrl) return
+    try {
+      liffTrack({ icon_id: 'liff_contact_official', line_user_id: null })
+    } catch {
+      // ignore
+    }
+    try {
+      window.open(oaUrl, '_blank', 'noopener,noreferrer')
+    } catch {
+      window.location.href = oaUrl
+    }
+  }
 
   return (
     <div style={{
@@ -68,7 +84,7 @@ export function BindingForm({
             color: '#333',
             margin: '0 0 8px'
           }}>
-            ES Wake 預約查詢
+            ES WAKE 會員專區
           </h1>
           <p style={{
             fontSize: '14px',
@@ -266,6 +282,45 @@ export function BindingForm({
           </div>
           • 請輸入您的手機與生日<br/>
           • 綁定後即可查看預約與儲值紀錄
+        </div>
+
+        {/* 非會員提示與官方聯絡 */}
+        <div style={{ marginTop: '12px' }}>
+          <div style={{
+            background: '#fff7e6',
+            border: '1px solid #ffd591',
+            borderRadius: '8px',
+            padding: '14px 16px',
+            color: '#8c6d1f',
+            fontSize: '13px',
+            lineHeight: 1.6
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>
+              不是會員嗎？
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              若您尚未加入 ES Wake 會員，請私訊官方帳號洽詢加入流程，我們會盡快回覆您。
+            </div>
+            {oaUrl && (
+              <button
+                type="button"
+                onClick={openOfficialContact}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#00b900',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                私訊官方帳號
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
