@@ -43,12 +43,13 @@ export function TransactionModal({
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          maxHeight: '70vh',
+          maxHeight: '70dvh',
           background: 'white',
           borderRadius: '16px 16px 0 0',
           padding: '20px',
           overflowY: 'auto',
-          animation: 'slideUp 0.3s ease-out'
+          animation: 'slideUp 0.3s ease-out',
+          paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
         }}
       >
         {/* 標題欄 */}

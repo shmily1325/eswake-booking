@@ -682,7 +682,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         borderRadius: isMobile ? '12px 12px 0 0' : '12px',
         maxWidth: isMobile ? '100%' : '600px',
         width: '100%',
-        maxHeight: isMobile ? '95vh' : '90vh',
+        maxHeight: isMobile ? '95dvh' : '90vh',
         overflow: 'hidden',
         boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
         margin: isMobile ? 'auto 0 0 0' : 'auto',
@@ -764,7 +764,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         {activeTab === 'transaction' && (
           <div style={{ 
             padding: isMobile ? '16px' : '20px', 
-            paddingBottom: isMobile ? '100px' : '20px',  // 為底部按鈕留空間
+            paddingBottom: isMobile ? 'calc(100px + env(safe-area-inset-bottom))' : '20px',  // 為底部按鈕與安全區留空間
             overflow: 'auto',
             flex: 1,
           }}>
@@ -1078,7 +1078,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         {activeTab === 'history' && (
           <div style={{ 
             padding: isMobile ? '16px' : '20px',
-            paddingBottom: isMobile ? '40px' : '20px',  // 手機版增加底部留白，確保最後一筆可以完整顯示
+            paddingBottom: isMobile ? 'max(40px, env(safe-area-inset-bottom))' : '20px',  // 手機版增加底部留白與安全區
             overflow: 'auto',
             flex: 1,
           }}>

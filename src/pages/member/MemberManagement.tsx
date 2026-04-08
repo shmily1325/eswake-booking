@@ -571,8 +571,9 @@ export function MemberManagement() {
     return (
       <div style={{ 
         padding: isMobile ? '12px' : '20px',
-        minHeight: '100vh',
-        background: '#f5f5f5'
+        minHeight: '100dvh',
+        background: '#f5f5f5',
+        paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <PageHeader 
@@ -658,8 +659,9 @@ export function MemberManagement() {
   return (
     <div style={{ 
       padding: isMobile ? '12px 16px' : '20px',
-      minHeight: '100vh',
-      background: '#f5f5f5'
+      minHeight: '100dvh',
+      background: '#f5f5f5',
+      paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
     }}>
       {/* PageHeader + 篩選列一起 sticky */}
       <div style={{

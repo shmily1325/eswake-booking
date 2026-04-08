@@ -378,45 +378,67 @@ export function LineBindingStatus() {
               }}>
                 {filteredBoundMembers.map((m) => (
                   <div key={m.id} style={{ 
-                    padding: '12px 16px',
+                    padding: '12px 14px',
                     background: designSystem.colors.success[50],
                     borderRadius: '8px',
                     border: `1px solid ${designSystem.colors.success[500]}40`
                   }}>
-                    <div style={{ 
-                      fontSize: '14px', 
-                      fontWeight: '600',
-                      color: designSystem.colors.success[700]
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px'
                     }}>
-                      ✅ {m.nickname || m.name}
-                    </div>
-                    {m.nickname && m.name !== m.nickname && (
-                      <div style={{ fontSize: '12px', color: designSystem.colors.success[500] }}>
-                        {m.name}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', minWidth: 0, flex: 1 }}>
+                        <div aria-hidden style={{ fontSize: '16px', lineHeight: 1.2 }}>✅</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
+                          <div style={{ 
+                            fontSize: '14px', 
+                            fontWeight: 700, 
+                            color: designSystem.colors.success[700],
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {m.nickname || m.name}
+                          </div>
+                          {m.nickname && m.name !== m.nickname && (
+                            <div style={{ 
+                              fontSize: '12px', 
+                              color: designSystem.colors.success[500],
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {m.name}
+                            </div>
+                          )}
+                          {m.phone && (
+                            <div style={{ fontSize: '12px', color: designSystem.colors.success[500] }}>
+                              📞 {m.phone}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    {m.phone && (
-                      <div style={{ fontSize: '12px', color: designSystem.colors.success[500], marginTop: '2px' }}>
-                        📞 {m.phone}
+
+                      <div style={{ flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => handleUnbind(m.line_user_id, m.nickname || m.name)}
+                          style={{
+                            padding: '6px 12px',
+                            background: '#fdecec',
+                            color: '#b91c1c',
+                            border: '1px solid #f8b4b4',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          移除綁定
+                        </button>
                       </div>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleUnbind(m.line_user_id, m.nickname || m.name)}
-                        style={{
-                          padding: '6px 10px',
-                          background: '#fef2f2',
-                          color: '#b91c1c',
-                          border: '1px solid #fecaca',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        移除綁定
-                      </button>
                     </div>
                   </div>
                 ))}

@@ -463,8 +463,9 @@ export function MemberTransaction() {
   return (
     <div style={{
       padding: isMobile ? '12px' : '20px',
-      minHeight: '100vh',
-      background: '#f5f5f5'
+      minHeight: '100dvh',
+      background: '#f5f5f5',
+      paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
     }}>
       {/* PageHeader + 控制區一起 sticky */}
       <div style={{
