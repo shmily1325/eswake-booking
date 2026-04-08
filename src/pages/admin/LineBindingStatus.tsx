@@ -147,6 +147,27 @@ export function LineBindingStatus() {
 
   const lineGreen = '#06C755'
 
+  const handleUnbind = async (lineUserId: string, memberName: string) => {
+    try {
+      const confirmed = window.confirm(`確定要移除「${memberName}」的 LINE 綁定嗎？`)
+      if (!confirmed) return
+
+      const { error } = await supabase
+        .from('line_bindings')
+        .update({ status: 'revoked' })
+        .eq('line_user_id', lineUserId)
+        .eq('status', 'active')
+
+      if (error) throw error
+
+      toast.success('已移除綁定')
+      await loadLineBindings()
+    } catch (err) {
+      console.error('移除綁定失敗:', err)
+      toast.error('移除綁定失敗')
+    }
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -379,6 +400,24 @@ export function LineBindingStatus() {
                         📞 {m.phone}
                       </div>
                     )}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleUnbind(m.line_user_id, m.nickname || m.name)}
+                        style={{
+                          padding: '6px 10px',
+                          background: '#fef2f2',
+                          color: '#b91c1c',
+                          border: '1px solid #fecaca',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        移除綁定
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
