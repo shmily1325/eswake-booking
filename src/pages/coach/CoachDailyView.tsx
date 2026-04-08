@@ -679,7 +679,8 @@ export function CoachDailyView() {
 			color: '#e53935',
 			fontWeight: 600,
 			lineHeight: 1.3,
-			marginBottom: '6px'
+			marginBottom: '6px',
+			textAlign: 'center'
 		  }}>
 			{conflictReasons.get(booking.id)}
 		  </div>
@@ -690,7 +691,7 @@ export function CoachDailyView() {
           ...bookingCardContentStyles.contactName(isMobile),
           display: 'flex', 
           alignItems: 'center', 
-          justifyContent: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'center',
           gap: '6px'
         }}>
           {isConflict && <span aria-hidden="true" style={{ lineHeight: 1 }}>💣</span>}
