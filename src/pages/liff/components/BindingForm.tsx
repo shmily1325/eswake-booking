@@ -93,14 +93,7 @@ export function BindingForm({
           }}>
             首次使用需要綁定您的電話號碼
           </p>
-          <p style={{
-            fontSize: '11px',
-            color: '#999',
-            margin: '8px 0 0',
-            fontFamily: 'monospace'
-          }}>
-            v20251208-003
-          </p>
+          
         </div>
 
         {/* 錯誤提示 */}
@@ -299,7 +292,7 @@ export function BindingForm({
               不是會員嗎？
             </div>
             <div style={{ marginBottom: 10 }}>
-              若您尚未加入 ES Wake 會員，請私訊官方帳號洽詢加入流程，我們會盡快回覆您。
+              若您尚未加入 ES Wake 會員，請私訊官方洽詢加入流程，我們會盡快回覆您。
             </div>
             {oaUrl && (
               <button
