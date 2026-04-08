@@ -17,6 +17,21 @@ interface FutureTabProps {
   futureWeekdayStats: WeekdayStats
 }
 
+function getThreeMonthRangeLabel(monthKeys: string[]): string {
+  if (monthKeys.length === 0) return '未來三個月'
+
+  const first = monthKeys[0]
+  const last = monthKeys[monthKeys.length - 1]
+  const firstYear = parseInt(first.substring(0, 4), 10)
+  const lastYear = parseInt(last.substring(0, 4), 10)
+  const firstMonth = parseInt(first.substring(5, 7), 10)
+  const lastMonth = parseInt(last.substring(5, 7), 10)
+
+  return firstYear === lastYear
+    ? `${firstMonth}-${lastMonth}月`
+    : `${firstYear}年${firstMonth}月-${lastYear}年${lastMonth}月`
+}
+
 export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps) {
   const { isMobile } = useResponsive()
   const [monthFilter, setMonthFilter] = useState<string>('all')
@@ -29,6 +44,7 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
       sum + (c.bookings.find(cb => cb.month === b.month)?.count || 0), 0
     )
   })) || []
+  const allLabel = getThreeMonthRangeLabel(monthOptions.map(m => m.value))
 
   // 根據月份篩選計算數據
   const getFilteredValue = (coach: CoachFutureBooking, key: 'count' | 'minutes') => {
@@ -134,7 +150,7 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
           options={monthOptions}
           selected={monthFilter}
           onSelect={setMonthFilter}
-          allLabel="全部"
+          allLabel={allLabel}
           allCount={futureBookings.reduce((sum, c) => sum + c.totalCount, 0)}
         />
       </div>

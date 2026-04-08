@@ -41,10 +41,27 @@ function getFutureThreeMonthWindow() {
   }
 }
 
+function getThreeMonthRangeLabel(monthKeys: string[]): string {
+  if (monthKeys.length === 0) return '未來三個月'
+
+  const first = monthKeys[0]
+  const last = monthKeys[monthKeys.length - 1]
+  const firstYear = parseInt(first.substring(0, 4), 10)
+  const lastYear = parseInt(last.substring(0, 4), 10)
+  const firstMonth = parseInt(first.substring(5, 7), 10)
+  const lastMonth = parseInt(last.substring(5, 7), 10)
+  const isCrossYear = firstYear !== lastYear
+
+  return isCrossYear
+    ? `${firstYear}年${firstMonth}月-${lastYear}年${lastMonth}月`
+    : `${firstMonth}-${lastMonth}月`
+}
+
 export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePreviewTableProps) {
   const [loading, setLoading] = useState(false)
   const [bookings, setBookings] = useState<ScheduleBooking[]>([])
   const [monthOptions, setMonthOptions] = useState<MonthOption[]>([])
+  const [rangeLabel, setRangeLabel] = useState('未來三個月')
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
 
   useEffect(() => {
@@ -53,6 +70,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
       setLoading(true)
       try {
         const window = getFutureThreeMonthWindow()
+        setRangeLabel(getThreeMonthRangeLabel(window.futureMonthsList))
         setMonthOptions(
           window.futureMonthsList.map(month => ({
             key: month,
@@ -76,17 +94,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
 
         if (error) throw error
 
-        const { data: reportedBookings, error: reportsError } = await supabase
-          .from('coach_reports')
-          .select('booking_id')
-          .gte('bookings!inner.start_at', `${window.startDay}T00:00:00`)
-          .lte('bookings!inner.start_at', `${window.endDay}T23:59:59`)
-
-        if (reportsError) throw reportsError
-
-        const reportedBookingIds = new Set((reportedBookings || []).map(item => item.booking_id))
         const myBookings = ((data || []) as ScheduleBooking[]).filter(booking => {
-          if (reportedBookingIds.has(booking.id)) return false
           return (booking.booking_coaches || []).some(assignment => assignment.coach_id === coachId)
         })
         setBookings(myBookings)
@@ -166,10 +174,11 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
   }, [filteredBookings])
 
   return (
-    <div style={{ background: '#fff', borderRadius: '12px', padding: isMobile ? '12px' : '16px' }}>
+    <div style={{ background: '#fff', borderRadius: '12px', padding: isMobile ? '12px' : '16px', border: '1px solid #f0f0f0' }}>
       <div style={{ marginBottom: '12px', fontWeight: 600, color: '#333' }}>篩選月份</div>
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <button
+          data-track="coach_schedule_month_filter_all"
           onClick={() => setSelectedMonth('all')}
           style={{
             border: '1px solid #d9d9d9',
@@ -179,13 +188,14 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
             padding: '6px 12px'
           }}
         >
-          全部 <span style={{ opacity: 0.85 }}>{bookings.length}</span>
+          {rangeLabel} <span style={{ opacity: 0.85 }}>{bookings.length}</span>
         </button>
         {monthOptions.map(option => {
           const count = bookings.filter(b => b.start_at.startsWith(option.key)).length
           return (
             <button
               key={option.key}
+              data-track={`coach_schedule_month_filter_${option.key}`}
               onClick={() => setSelectedMonth(option.key)}
               style={{
                 border: '1px solid #d9d9d9',
@@ -201,7 +211,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '14px', color: '#444' }}>
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '14px', color: '#444', fontWeight: 600 }}>
         <span>總堂數：{stats.totalSessions}</span>
         <span>總分鐘：{stats.totalMinutes}</span>
       </div>
