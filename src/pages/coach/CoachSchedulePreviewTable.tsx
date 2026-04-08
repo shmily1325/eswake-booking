@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { getLocalDateString, getWeekdayText } from '../../utils/date'
 import { extractTime } from '../../utils/formatters'
 import { getCardStyle } from '../../styles/designSystem'
-import { MonthFilter, RankingCard } from '../admin/Statistics/components'
+import { MonthFilter } from '../admin/Statistics/components'
 
 interface CoachSchedulePreviewTableProps {
   coachId: string
@@ -184,6 +184,32 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
     return [...filteredBookings].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
   }, [filteredBookings])
 
+  const groupedBookings = useMemo(() => {
+    const groups = new Map<string, ScheduleBooking[]>()
+    sortedBookings.forEach(booking => {
+      const dateKey = booking.start_at.substring(0, 10)
+      if (!groups.has(dateKey)) groups.set(dateKey, [])
+      groups.get(dateKey)!.push(booking)
+    })
+
+    return Array.from(groups.entries()).map(([date, items]) => ({
+      date,
+      weekday: getWeekdayText(date),
+      count: items.length,
+      minutes: items.reduce((sum, item) => sum + (item.duration_min || 0), 0),
+      items
+    }))
+  }, [sortedBookings])
+
+  const summarizeNames = (contactName: string | null) => {
+    const names = (contactName || '')
+      .split(/[,，]/)
+      .map(name => name.trim())
+      .filter(Boolean)
+    if (names.length <= 2) return names.join(', ') || '-'
+    return `${names.slice(0, 2).join(', ')} +${names.length - 2}`
+  }
+
   return (
     <div>
       <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
@@ -215,19 +241,42 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
         </div>
       </div>
 
-      <RankingCard
-        title="會員時數分布"
-        icon="👥"
-        subtitle="依時數高→低"
-        items={memberDistribution.map(item => ({
-          id: `${item.rank}-${item.name}`,
-          name: item.name,
-          value: item.minutes,
-          count: item.count
-        }))}
-        accentColor="#4a90e2"
-        emptyText={loading ? '載入中...' : '這個月份沒有資料'}
-      />
+      <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
+        <h3 style={{
+          margin: '0 0 12px 0',
+          fontSize: isMobile ? '15px' : '17px',
+          fontWeight: '700',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          👥 會員時數分布
+        </h3>
+        {memberDistribution.length === 0 && !loading ? (
+          <div style={{ color: '#999', padding: '8px 0' }}>這個月份沒有資料</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {memberDistribution.map(item => (
+              <div
+                key={`${item.rank}-${item.name}`}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  background: '#fafafa'
+                }}
+              >
+                <span style={{ color: '#222' }}>
+                  {item.rank}. {item.name} <span style={{ color: '#8c8c8c' }}>({item.count}筆)</span>
+                </span>
+                <span style={{ color: '#1677ff', fontWeight: 600 }}>{item.minutes} 分</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div style={{ ...getCardStyle(isMobile) }}>
         <h3 style={{
@@ -247,33 +296,45 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           }} />
           📋 預約列表（依日期時間）
         </h3>
-        {sortedBookings.length === 0 && !loading ? (
+        {groupedBookings.length === 0 && !loading ? (
           <div style={{ color: '#999', padding: '8px 0' }}>這個月份沒有預約</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {sortedBookings.map(booking => (
-              <div
-                key={booking.id}
-                style={{
-                  padding: '12px',
-                  background: '#f8f9fa',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '12px'
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
-                    {booking.start_at.substring(0, 10)} ({getWeekdayText(booking.start_at.substring(0, 10))}) {extractTime(booking.start_at)}
-                  </div>
-                  <div style={{ color: '#666', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {booking.contact_name || '-'} ｜ {booking.boats?.name || '-'}
-                  </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {groupedBookings.map(group => (
+              <div key={group.date}>
+                <div style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#475569',
+                  padding: '2px 2px 8px'
+                }}>
+                  {group.date}（{group.weekday}） • {group.count} 堂 • {group.minutes} 分
                 </div>
-                <div style={{ color: '#4a90e2', fontWeight: '600', fontSize: '13px', flexShrink: 0 }}>
-                  {booking.duration_min || 0} 分
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {group.items.map(booking => (
+                    <div
+                      key={booking.id}
+                      style={{
+                        padding: '10px 12px',
+                        background: '#f8f9fa',
+                        borderRadius: '8px',
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '66px 1fr auto' : '74px 1fr auto',
+                        alignItems: 'center',
+                        gap: '10px'
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, color: '#334155', fontSize: '14px' }}>
+                        {extractTime(booking.start_at)}
+                      </div>
+                      <div style={{ color: '#666', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {summarizeNames(booking.contact_name)} ｜ {booking.boats?.name || '-'}
+                      </div>
+                      <div style={{ color: '#4a90e2', fontWeight: '600', fontSize: '13px', flexShrink: 0 }}>
+                        {booking.duration_min || 0} 分
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
