@@ -60,11 +60,15 @@ function getThreeMonthRangeLabel(monthKeys: string[]): string {
 }
 
 export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePreviewTableProps) {
+  const fontTitle = 16
+  const fontBody = 14
+  const fontMeta = 12
   const [loading, setLoading] = useState(false)
   const [bookings, setBookings] = useState<ScheduleBooking[]>([])
   const [monthOptions, setMonthOptions] = useState<MonthOption[]>([])
   const [rangeLabel, setRangeLabel] = useState('未來三個月')
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const load = async () => {
@@ -201,13 +205,13 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
     }))
   }, [sortedBookings])
 
-  const summarizeNames = (contactName: string | null) => {
-    const names = (contactName || '')
-      .split(/[,，]/)
-      .map(name => name.trim())
-      .filter(Boolean)
-    if (names.length <= 2) return names.join(', ') || '-'
-    return `${names.slice(0, 2).join(', ')} +${names.length - 2}`
+  const toggleDateGroup = (date: string) => {
+    setExpandedDates(prev => {
+      const next = new Set(prev)
+      if (next.has(date)) next.delete(date)
+      else next.add(date)
+      return next
+    })
   }
 
   return (
@@ -217,7 +221,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           display: 'block',
           marginBottom: '8px',
           fontWeight: '600',
-          fontSize: '15px'
+          fontSize: `${fontBody}px`
         }}>
           篩選月份
         </label>
@@ -244,7 +248,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
       <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
         <h3 style={{
           margin: '0 0 12px 0',
-          fontSize: isMobile ? '15px' : '17px',
+          fontSize: `${fontTitle}px`,
           fontWeight: '700',
           display: 'flex',
           alignItems: 'center',
@@ -271,7 +275,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                 <span style={{ color: '#222' }}>
                   {item.rank}. {item.name} <span style={{ color: '#8c8c8c' }}>({item.count}筆)</span>
                 </span>
-                <span style={{ color: '#1677ff', fontWeight: 600 }}>{item.minutes} 分</span>
+                <span style={{ color: '#1677ff', fontWeight: 600, fontSize: `${fontBody}px` }}>{item.minutes} 分</span>
               </div>
             ))}
           </div>
@@ -281,7 +285,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
       <div style={{ ...getCardStyle(isMobile) }}>
         <h3 style={{
           margin: '0 0 16px 0',
-          fontSize: isMobile ? '15px' : '17px',
+          fontSize: `${fontTitle}px`,
           fontWeight: '700',
           display: 'flex',
           alignItems: 'center',
@@ -302,40 +306,61 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {groupedBookings.map(group => (
               <div key={group.date}>
-                <div style={{
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#475569',
-                  padding: '2px 2px 8px'
-                }}>
+                <button
+                  onClick={() => toggleDateGroup(group.date)}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: `${fontBody}px`,
+                    fontWeight: 600,
+                    color: '#475569',
+                    padding: '2px 2px 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span style={{
+                    display: 'inline-block',
+                    transform: expandedDates.has(group.date) ? 'rotate(90deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.15s ease',
+                    fontSize: `${fontMeta}px`
+                  }}>
+                    ▶
+                  </span>
                   {group.date}（{group.weekday}） • {group.count} 堂 • {group.minutes} 分
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {group.items.map(booking => (
-                    <div
-                      key={booking.id}
-                      style={{
-                        padding: '10px 12px',
-                        background: '#f8f9fa',
-                        borderRadius: '8px',
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? '66px 1fr auto' : '74px 1fr auto',
-                        alignItems: 'center',
-                        gap: '10px'
-                      }}
-                    >
-                      <div style={{ fontWeight: 700, color: '#334155', fontSize: '14px' }}>
-                        {extractTime(booking.start_at)}
+                </button>
+                {expandedDates.has(group.date) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {group.items.map(booking => (
+                      <div
+                        key={booking.id}
+                        style={{
+                          padding: '10px 12px',
+                          background: '#f8f9fa',
+                          borderRadius: '8px',
+                          display: 'grid',
+                          gridTemplateColumns: isMobile ? '66px 1fr auto' : '74px 1fr auto',
+                          alignItems: 'center',
+                          gap: '10px'
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: '#334155', fontSize: '14px' }}>
+                          {extractTime(booking.start_at)}
+                        </div>
+                        <div style={{ color: '#666', fontSize: `${fontBody}px`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {booking.contact_name || '-'} ｜ {booking.boats?.name || '-'}
+                        </div>
+                        <div style={{ color: '#4a90e2', fontWeight: '600', fontSize: `${fontBody}px`, flexShrink: 0 }}>
+                          {booking.duration_min || 0} 分
+                        </div>
                       </div>
-                      <div style={{ color: '#666', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {summarizeNames(booking.contact_name)} ｜ {booking.boats?.name || '-'}
-                      </div>
-                      <div style={{ color: '#4a90e2', fontWeight: '600', fontSize: '13px', flexShrink: 0 }}>
-                        {booking.duration_min || 0} 分
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
