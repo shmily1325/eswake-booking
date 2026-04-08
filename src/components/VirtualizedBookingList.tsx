@@ -261,8 +261,8 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
 													</span>
 												</div>
 
-													{/* 手機顯示衝突原因（簡短行） */}
-													{isMobile && conflictedBookingIds?.has(booking.id) && conflictReasons?.get(booking.id) && (
+													{/* 衝突原因（行內顯示） */}
+													{conflictedBookingIds?.has(booking.id) && conflictReasons?.get(booking.id) && (
 														<div style={{
 															fontSize: '12px',
 															color: '#e53935',

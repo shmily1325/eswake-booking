@@ -672,8 +672,8 @@ export function CoachDailyView() {
           {startTime} - {endTimeStr}
         </div>
 
-		{/* 手機顯示衝突原因（簡短行） */}
-		{isConflict && isMobile && conflictReasons.get(booking.id) && (
+		{/* 衝突原因（行內顯示） */}
+		{isConflict && conflictReasons.get(booking.id) && (
 		  <div style={{
 			fontSize: '12px',
 			color: '#e53935',

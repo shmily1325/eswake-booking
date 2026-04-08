@@ -1117,8 +1117,8 @@ export function DayView() {
                                     })()}
                                   </div>
 
-                                  {/* 衝突原因（手機顯示） */}
-                                  {isMobile && isConflict && reason && (
+                                  {/* 衝突原因（行內顯示） */}
+                                  {isConflict && reason && (
                                     <div style={{
                                       fontSize: '12px',
                                       color: '#e53935',
