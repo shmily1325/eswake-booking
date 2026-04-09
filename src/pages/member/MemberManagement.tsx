@@ -1330,41 +1330,6 @@ export function MemberManagement() {
                       </span>
                     )}
 
-                    {/* LINE 綁定狀態與移除 */}
-                    <span
-                      style={{
-                        fontSize: '12px',
-                        color: member.is_line_bound ? '#2e7d32' : '#666',
-                        background: member.is_line_bound ? '#e6ffed' : '#f0f0f0',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        fontWeight: 600
-                      }}
-                      title={member.is_line_bound ? `已綁定 (${member.line_binding_user_id})` : '未綁定'}
-                    >
-                      {member.is_line_bound ? '✅ LINE 已綁定' : '❌ LINE 未綁定'}
-                    </span>
-                    {member.is_line_bound && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUnbindLine(member.id, member.nickname || member.name)
-                        }}
-                        style={{
-                          padding: '2px 8px',
-                          background: '#fdecec',
-                          color: '#b91c1c',
-                          border: '1px solid #f8b4b4',
-                          borderRadius: '10px',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
-                        title="移除 LINE 綁定"
-                      >
-                        移除 LINE
-                      </button>
-                    )}
                     {/* 本月壽星標記 */}
                     {member.birthday && (() => {
                       const today = new Date()
@@ -1418,7 +1383,7 @@ export function MemberManagement() {
                         </div>
                       )}
                     </div>
-                    {/* LINE 綁定狀態 */}
+                    {/* LINE 綁定狀態（資訊區塊） */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span
                         title={member.is_line_bound ? '已綁定 LINE' : '未綁定 LINE'}
