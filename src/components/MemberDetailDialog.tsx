@@ -34,6 +34,9 @@ interface Member {
   created_at: string | null
   updated_at: string | null
   partner?: { id: string, name: string, nickname: string | null } | null
+  // 衍生欄位：LINE 綁定
+  is_line_bound?: boolean
+  line_binding_user_id?: string | null
 }
 
 interface BoardStorage {
@@ -125,6 +128,10 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
   const [quickEditPhone, setQuickEditPhone] = useState('')
   const [savingPhone, setSavingPhone] = useState(false)
 
+  // LINE 綁定狀態
+  const [lineBound, setLineBound] = useState(false)
+  const [lineUserId, setLineUserId] = useState<string | null>(null)
+
   useEffect(() => {
     if (!open) {
       setEditDialogOpen(false)
@@ -152,8 +159,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
     
     setLoading(true)
     try {
-      // 優化：只載入會員和置板資料，交易記錄延遲載入
-      const [memberResult, boardResult] = await Promise.all([
+      // 載入會員、置板與 LINE 綁定
+      const [memberResult, boardResult, lineBindingResult] = await Promise.all([
         supabase
           .from('members')
           .select('*')
@@ -164,12 +171,22 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
           .select('*')
           .eq('member_id', memberId)
           .eq('status', 'active')
-          .order('slot_number', { ascending: true })
+          .order('slot_number', { ascending: true }),
+        supabase
+          .from('line_bindings')
+          .select('line_user_id')
+          .eq('member_id', memberId)
+          .eq('status', 'active')
       ])
 
       if (memberResult.error) throw memberResult.error
       
       const memberData = memberResult.data
+
+      // LINE 綁定狀態
+      const activeBinding = (lineBindingResult.data || [])[0]
+      setLineBound(Boolean(activeBinding))
+      setLineUserId(activeBinding?.line_user_id || null)
       
       // 如果有配對會員，載入配對會員資料
       let partnerData = null
@@ -182,7 +199,12 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
         partnerData = partner
       }
       
-      setMember({ ...memberData, partner: partnerData })
+      setMember({ 
+        ...memberData, 
+        partner: partnerData,
+        is_line_bound: Boolean(activeBinding),
+        line_binding_user_id: activeBinding?.line_user_id || null
+      })
 
       if (boardResult.error) throw boardResult.error
       setBoardStorage(boardResult.data || [])
@@ -875,6 +897,61 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                             >
                               ✏️
                             </button>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span
+                              title={lineBound ? (lineUserId ? `已綁定 (${lineUserId})` : '已綁定') : '未綁定'}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '2px 8px',
+                                borderRadius: '999px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                background: lineBound ? '#e8f5e9' : '#f5f5f5',
+                                color: lineBound ? '#2e7d32' : '#9e9e9e',
+                                border: `1px solid ${lineBound ? '#a5d6a7' : '#e0e0e0'}`
+                              }}
+                            >
+                              {lineBound ? '✅ LINE 已綁定' : '❌ LINE 未綁定'}
+                            </span>
+                            {lineBound && (
+                              <button
+                                onClick={async () => {
+                                  if (!memberId) return
+                                  const confirmed = window.confirm(`確定要移除「${member.nickname || member.name}」的 LINE 綁定嗎？`)
+                                  if (!confirmed) return
+                                  try {
+                                    const { error } = await supabase
+                                      .from('line_bindings')
+                                      .update({ status: 'revoked' })
+                                      .eq('member_id', memberId)
+                                      .eq('status', 'active')
+                                    if (error) throw error
+                                    toast.success('已移除 LINE 綁定')
+                                    await loadMemberData()
+                                    onUpdate()
+                                  } catch (err) {
+                                    console.error('移除 LINE 綁定失敗:', err)
+                                    toast.error('移除 LINE 綁定失敗')
+                                  }
+                                }}
+                                style={{
+                                  padding: '4px 8px',
+                                  background: '#fdecec',
+                                  color: '#b91c1c',
+                                  border: '1px solid #f8b4b4',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  fontWeight: 700
+                                }}
+                                title="移除 LINE 綁定"
+                              >
+                                移除綁定
+                              </button>
+                            )}
                           </div>
                           {member.birthday && <div><span style={{ color: '#666' }}>生日：</span>{formatDate(member.birthday)}</div>}
                           <div>
