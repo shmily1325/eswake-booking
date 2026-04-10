@@ -62,7 +62,7 @@ export function BoatUsageHoursPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: isMobile ? '16px' : '24px' }}>
+      <div style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '16px' : '24px' }}>
         <PageHeader
           title="⏱️ 區間時數合計"
           user={user}
@@ -125,25 +125,84 @@ export function BoatUsageHoursPage() {
         </div>
 
         {result && !error && (
-          <div style={{ ...getCardStyle(isMobile), marginTop: '20px', textAlign: 'center' }}>
-            <p style={{ margin: '0 0 16px 0', fontSize: '15px', color: '#666' }}>
-              {startDate} ~ {endDate}
-            </p>
-            <p
-              style={{
-                margin: 0,
-                fontSize: isMobile ? '28px' : '34px',
-                fontWeight: 800,
-                color: '#1976d2',
-                letterSpacing: '-0.5px'
-              }}
-            >
-              {formatDuration(result.totalMinutes)}
-            </p>
-            <p style={{ margin: '8px 0 0 0', fontSize: '18px', color: '#555' }}>
-              {formatHoursOneDecimal(result.totalMinutes)} 小時
-            </p>
-          </div>
+            <div style={{ ...getCardStyle(isMobile), marginTop: '20px' }}>
+              <h3
+                style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '17px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span
+                  style={{
+                    width: '4px',
+                    height: '20px',
+                    background: '#1976d2',
+                    borderRadius: '2px',
+                    display: 'inline-block'
+                  }}
+                />
+                各船時數
+              </h3>
+              <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#666' }}>
+                {startDate} ~ {endDate}
+              </p>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ background: '#f8f9fa' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>
+                        船隻
+                      </th>
+                      <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                        教練練習
+                      </th>
+                      <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                        營運
+                      </th>
+                      <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                        合計
+                      </th>
+                      <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                        小時
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.boats.map((row, idx) => (
+                      <tr key={row.boatId} style={{ background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{row.boatName}</td>
+                        <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                          {formatDuration(row.practiceMinutes)}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                          {formatDuration(row.operationalMinutes)}
+                        </td>
+                        <td
+                          style={{
+                            padding: '12px',
+                            textAlign: 'right',
+                            borderBottom: '1px solid #eee',
+                            fontWeight: 600
+                          }}
+                        >
+                          {formatDuration(row.totalMinutes)}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                          {formatHoursOneDecimal(row.totalMinutes)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {result.boats.length === 0 && (
+                <p style={{ margin: '16px 0 0 0', color: '#888', fontSize: '14px' }}>此區間無資料。</p>
+              )}
+            </div>
         )}
 
         <Footer />
