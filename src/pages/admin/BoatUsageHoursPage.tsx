@@ -71,7 +71,9 @@ export function BoatUsageHoursPage() {
 
         <div style={getCardStyle(isMobile)}>
           <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#555', lineHeight: 1.55 }}>
-            計算方式與 Dashboard「歷史趨勢」<strong>月份數據明細</strong>相同：預約表上<strong>未取消</strong>、且<strong>排除教練練習</strong>的預約，每筆以預約上的時長（分鐘）加總至各船。選擇與趨勢圖同一區間（例如整月 1 號～月底）時，各船分鐘數應一致。
+            <strong>一般預約</strong>與 Dashboard「歷史趨勢」月份明細相同：未取消、排除教練練習，以預約表時長加總。
+            <strong> 教練練習</strong>為同區間內標記為教練練習且未取消之預約，同樣以預約表時長加總。
+            <strong> 總和</strong>為兩者相加。選與趨勢圖相同區間時，「一般預約」欄應與趨勢圖各船分鐘數一致。
           </p>
           <div
             style={{
@@ -157,10 +159,16 @@ export function BoatUsageHoursPage() {
                       船隻
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
-                      時數
+                      一般預約
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
-                      小時
+                      教練練習
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                      總和
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                      總和（小時）
                     </th>
                   </tr>
                 </thead>
@@ -173,14 +181,34 @@ export function BoatUsageHoursPage() {
                           padding: '12px',
                           textAlign: 'right',
                           borderBottom: '1px solid #eee',
-                          fontWeight: row.minutes > 0 ? 600 : 400,
-                          color: row.minutes > 0 ? '#2196f3' : '#999'
+                          color: row.generalMinutes > 0 ? '#2196f3' : '#999'
                         }}
                       >
-                        {formatDuration(row.minutes)}
+                        {formatDuration(row.generalMinutes)}
+                      </td>
+                      <td
+                        style={{
+                          padding: '12px',
+                          textAlign: 'right',
+                          borderBottom: '1px solid #eee',
+                          color: row.practiceMinutes > 0 ? '#7b1fa2' : '#999'
+                        }}
+                      >
+                        {formatDuration(row.practiceMinutes)}
+                      </td>
+                      <td
+                        style={{
+                          padding: '12px',
+                          textAlign: 'right',
+                          borderBottom: '1px solid #eee',
+                          fontWeight: 600,
+                          color: row.totalMinutes > 0 ? '#333' : '#999'
+                        }}
+                      >
+                        {formatDuration(row.totalMinutes)}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
-                        {formatHoursOneDecimal(row.minutes)}
+                        {formatHoursOneDecimal(row.totalMinutes)}
                       </td>
                     </tr>
                   ))}
