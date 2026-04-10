@@ -263,7 +263,14 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                 <tr style={{ background: '#f8f9fa' }}>
                   <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
                   <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>已結帳筆數</th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>總時數（已扣款）</th>
+                  <th style={{
+                    padding: '12px',
+                    textAlign: 'right',
+                    borderBottom: '2px solid #e0e0e0',
+                    borderRight: '1px solid #e0e0e0',
+                    whiteSpace: 'nowrap',
+                    minWidth: '7.5rem'
+                  }}>總時數（已扣款）</th>
                   {allBoatsData.map(boat => (
                     <th key={boat.boatId} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
                       {boat.boatName}
@@ -282,7 +289,12 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                     <td style={{ padding: '12px', textAlign: 'right' }}>
                       {stat.bookingCount}
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid #e0e0e0' }}>
+                    <td style={{
+                      padding: '12px',
+                      textAlign: 'right',
+                      borderRight: '1px solid #e0e0e0',
+                      whiteSpace: 'nowrap'
+                    }}>
                       {formatDuration(stat.totalMinutes)}
                     </td>
                     {allBoatsData.map(boat => {
