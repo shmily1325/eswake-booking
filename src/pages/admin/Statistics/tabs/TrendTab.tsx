@@ -233,7 +233,6 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip
                 allowEscapeViewBox={{ x: true, y: true }}
-                portal={typeof document !== 'undefined' ? document.body : null}
                 content={(props: any) => (
                   <TrendLineTooltipContent
                     {...props}
@@ -241,7 +240,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                     allBoatsData={allBoatsData}
                   />
                 )}
-                wrapperStyle={{ zIndex: 10050, pointerEvents: 'auto' }}
+                wrapperStyle={{ zIndex: 20, pointerEvents: 'auto' }}
               />
               <Line
                 type="monotone"
