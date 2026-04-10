@@ -38,7 +38,9 @@ function TrendLineTooltipContent({
         borderRadius: '8px',
         padding: '12px 14px',
         boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
-        minWidth: '176px'
+        minWidth: '176px',
+        maxHeight: 'min(70vh, 520px)',
+        overflowY: 'auto'
       }}>
         <div style={{ fontWeight: '600', marginBottom: '10px', color: '#333' }}>
           {label}
@@ -87,7 +89,7 @@ function TrendLineTooltipContent({
             color: '#666'
           }}>
             <div style={{ marginBottom: '6px', fontWeight: '500' }}>🚤 各船／設施</div>
-            <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            <div style={{ maxHeight: 260, overflowY: 'auto' }}>
               {allBoatsData.map(boat => {
                 const bm = data.boatMinutes?.find(b => b.boatId === boat.boatId)
                 const minutes = bm?.minutes ?? 0
@@ -103,15 +105,14 @@ function TrendLineTooltipContent({
                   </div>
                 )
               })}
-            </div>
-            {(() => {
-              const columnSum = allBoatsData.reduce((s, boat) => {
-                const bm = data.boatMinutes?.find(b => b.boatId === boat.boatId)
-                return s + (bm?.minutes ?? 0)
-              }, 0)
-              const total = data.totalMinutes ?? 0
-              const orphan = total - columnSum
-              if (orphan > 0) {
+              {(() => {
+                const columnSum = allBoatsData.reduce((s, boat) => {
+                  const bm = data.boatMinutes?.find(b => b.boatId === boat.boatId)
+                  return s + (bm?.minutes ?? 0)
+                }, 0)
+                const total = data.totalMinutes ?? 0
+                const orphan = total - columnSum
+                if (orphan <= 0) return null
                 return (
                   <div style={{
                     marginTop: '6px',
@@ -126,9 +127,8 @@ function TrendLineTooltipContent({
                     <span>{formatDuration(orphan)}</span>
                   </div>
                 )
-              }
-              return null
-            })()}
+              })()}
+            </div>
           </div>
         )}
       </div>
@@ -189,10 +189,11 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
         />
       </SummaryCardsGrid>
 
-      {/* 預約量折線圖 */}
+      {/* 預約量折線圖 — 卡片預設 overflow:hidden 會裁切 Hover Tooltip，此處放開 */}
       <div style={{
         ...getCardStyle(isMobile),
-        marginBottom: '24px'
+        marginBottom: '24px',
+        overflow: 'visible'
       }}>
         <h3 style={{
           margin: '0 0 20px 0',
@@ -214,7 +215,16 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             （已扣款、不含教練練習 · Hover 詳情）
           </span>
         </h3>
-        <div style={{ width: '100%', height: isMobile ? 280 : 320 }}>
+        <div
+          className="trend-line-chart-unclip"
+          style={{ width: '100%', height: isMobile ? 280 : 320, overflow: 'visible' }}
+        >
+          <style>{`
+            .trend-line-chart-unclip .recharts-responsive-container,
+            .trend-line-chart-unclip .recharts-wrapper {
+              overflow: visible !important;
+            }
+          `}</style>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={monthlyStats} margin={{ top: 36, right: 8, left: 0, bottom: 8 }}>
               <Legend verticalAlign="top" wrapperStyle={{ fontSize: 12 }} />
@@ -222,6 +232,8 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               <XAxis dataKey="label" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip
+                allowEscapeViewBox={{ x: true, y: true }}
+                portal={typeof document !== 'undefined' ? document.body : null}
                 content={(props: any) => (
                   <TrendLineTooltipContent
                     {...props}
@@ -229,7 +241,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                     allBoatsData={allBoatsData}
                   />
                 )}
-                wrapperStyle={{ zIndex: 20 }}
+                wrapperStyle={{ zIndex: 10050, pointerEvents: 'auto' }}
               />
               <Line
                 type="monotone"
