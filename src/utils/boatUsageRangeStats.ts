@@ -1,15 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sortBoatsByDisplayOrder } from './boatUtils'
 import { isFacility } from './facility'
-import { loadSettledNonPracticeBookingsForRange } from './settledNonPracticeBookings'
+import { loadPaidOperationalParticipantsForRange } from './settledNonPracticeBookings'
 
 export type BoatUsageRangeRow = {
   boatId: number
   boatName: string
   /**
-   * 營運（已結帳）：非教練練習預約中，參與者已處理且已結帳
-   * （會員、或非會員 consume、或非會員現金／匯款等直接結清備註），
-   * 每筆預約加預約表 duration_min 一次。與 Dashboard「歷史趨勢」相同口徑。
+   * 營運（已結帳）：已結帳參與者之回報分鐘加總（booking_participants.duration_min），
+   * 與 Dashboard「歷史趨勢」各船欄相同口徑。
    */
   generalMinutes: number
   /** 教練練習：未取消、is_coach_practice = true，預約表 duration_min（內部用船，不以此欄看收錢） */
@@ -69,11 +68,11 @@ export async function loadBoatUsageRangeStats(
 
   if (practiceErr) throw practiceErr
 
-  const settledList = await loadSettledNonPracticeBookingsForRange(supabase, startDate, endDate)
+  const settledParts = await loadPaidOperationalParticipantsForRange(supabase, startDate, endDate)
   const settledByBoat = new Map<number, { boatName: string; minutes: number }>()
-  for (const row of settledList) {
+  for (const row of settledParts) {
     if (isFacility(row.boatName)) continue
-    addByBoat(settledByBoat, row.boatId, row.boatName, row.duration_min)
+    addByBoat(settledByBoat, row.boatId, row.boatName, row.participantMinutes)
   }
 
   const practiceByBoat = new Map<number, { boatName: string; minutes: number }>()

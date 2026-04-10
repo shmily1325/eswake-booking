@@ -57,7 +57,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               {p.name}
             </span>
             <span style={{ fontWeight: '600' }}>
-              {p.dataKey === 'bookingCount' ? `${p.value} 筆` : `${p.value} 分`}
+              {p.dataKey === 'bookingCount' ? `${p.value} 筆` : formatDuration(Number(p.value))}
             </span>
           </div>
         ))}
@@ -80,8 +80,8 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             </div>
           </div>
         )}
-        {/* 各船分布 */}
-        {data?.boatMinutes && data.boatMinutes.length > 0 && (
+        {/* 各船／設施：與下方表格欄位順序一致，加總應等於已扣款時數 */}
+        {data && allBoatsData.length > 0 && (
           <div style={{
             marginTop: '10px',
             paddingTop: '10px',
@@ -89,17 +89,49 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             fontSize: '12px',
             color: '#666'
           }}>
-            <div style={{ marginBottom: '6px', fontWeight: '500' }}>🚤 各船／設施時數</div>
-            {data.boatMinutes.slice(0, 3).map(boat => (
-              <div key={boat.boatId} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between',
-                marginBottom: '2px'
-              }}>
-                <span>{boat.boatName}</span>
-                <span>{formatDuration(boat.minutes)}</span>
-              </div>
-            ))}
+            <div style={{ marginBottom: '6px', fontWeight: '500' }}>🚤 各船／設施</div>
+            <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+              {allBoatsData.map(boat => {
+                const bm = data.boatMinutes?.find(b => b.boatId === boat.boatId)
+                const minutes = bm?.minutes ?? 0
+                return (
+                  <div key={boat.boatId} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '2px',
+                    color: minutes > 0 ? '#333' : '#aaa'
+                  }}>
+                    <span>{boat.boatName}</span>
+                    <span>{formatDuration(minutes)}</span>
+                  </div>
+                )
+              })}
+            </div>
+            {(() => {
+              const columnSum = allBoatsData.reduce((s, boat) => {
+                const bm = data.boatMinutes?.find(b => b.boatId === boat.boatId)
+                return s + (bm?.minutes ?? 0)
+              }, 0)
+              const total = data.totalMinutes ?? 0
+              const orphan = total - columnSum
+              if (orphan > 0) {
+                return (
+                  <div style={{
+                    marginTop: '6px',
+                    paddingTop: '6px',
+                    borderTop: '1px dashed #eee',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    color: '#e65100',
+                    fontSize: '11px'
+                  }}>
+                    <span>其他（未在表頭的船）</span>
+                    <span>{formatDuration(orphan)}</span>
+                  </div>
+                )
+              }
+              return null
+            })()}
           </div>
         )}
       </div>
@@ -122,7 +154,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
           } : undefined}
         />
         <SummaryCard
-          label="本月時數（已扣款）"
+          label="本月已扣款時數"
           value={currentMonth?.totalMinutes || 0}
           unit="分"
           accentColor="#50c878"
@@ -191,7 +223,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               <Line
                 type="monotone"
                 dataKey="totalMinutes"
-                name="時數（分，已扣款）"
+                name="已扣款時數"
                 stroke="#50c878"
                 strokeWidth={3}
                 dot={{ fill: '#50c878', strokeWidth: 2, r: 5 }}

@@ -12,6 +12,22 @@ export type SettledNonPracticeBooking = {
   boatName: string
 }
 
+/**
+ * 已結帳且符合營運條件之參與者（每人一列）。
+ * 時數以 booking_participants.duration_min 為準（與教練回報一致）。
+ */
+export type PaidOperationalParticipant = {
+  participantId: number
+  bookingId: number
+  start_at: string
+  /** 參與者回報／帳務拆分分鐘 */
+  participantMinutes: number
+  /** 預約表 duration_min（筆數語意用，每筆預約一筆） */
+  bookingDurationMin: number
+  boatId: number
+  boatName: string
+}
+
 function normalizeBoats(v: unknown): { id: number; name: string } | null {
   if (!v) return null
   if (Array.isArray(v)) {
@@ -33,15 +49,29 @@ export function isDirectSettlementParticipantNotes(notes: string | null | undefi
   )
 }
 
-/**
- * 區間內：參與者已處理、已結帳（會員／非會員 consume／非會員直接結清備註）、預約未取消且非教練練習。
- * 每筆預約回傳一次，時長為預約表 duration_min。
- */
-export async function loadSettledNonPracticeBookingsForRange(
+type BookingJoin = {
+  id: number
+  duration_min: number | null
+  boat_id: number
+  start_at: string
+  status: string | null
+  is_coach_practice: boolean | null
+  boats: { id: number; name: string } | null
+}
+
+type PRow = {
+  id: number
+  member_id: string | null
+  notes: string | null
+  participant_duration_min: number
+  bookings: BookingJoin
+}
+
+async function loadPaidOperationalRows(
   supabase: SupabaseClient,
   startDate: string,
   endDate: string
-): Promise<SettledNonPracticeBooking[]> {
+): Promise<PRow[]> {
   const startIso = `${startDate}T00:00:00`
   const endIso = `${endDate}T23:59:59`
 
@@ -51,6 +81,7 @@ export async function loadSettledNonPracticeBookingsForRange(
       id,
       member_id,
       notes,
+      duration_min,
       bookings!inner(
         id,
         duration_min,
@@ -67,23 +98,6 @@ export async function loadSettledNonPracticeBookingsForRange(
     .lte('bookings.start_at', endIso)
 
   if (partErr) throw partErr
-
-  type BookingJoin = {
-    id: number
-    duration_min: number | null
-    boat_id: number
-    start_at: string
-    status: string | null
-    is_coach_practice: boolean | null
-    boats: { id: number; name: string } | null
-  }
-
-  type PRow = {
-    id: number
-    member_id: string | null
-    notes: string | null
-    bookings: BookingJoin
-  }
 
   const rows: PRow[] = (participants || [])
     .map((raw: Record<string, unknown>) => {
@@ -105,6 +119,7 @@ export async function loadSettledNonPracticeBookingsForRange(
         id: raw.id as number,
         member_id: (raw.member_id as string | null) ?? null,
         notes: (raw.notes as string | null) ?? null,
+        participant_duration_min: Number(raw.duration_min) || 0,
         bookings: booking
       }
     })
@@ -137,39 +152,67 @@ export async function loadSettledNonPracticeBookingsForRange(
     })
   }
 
-  type Meta = {
-    duration_min: number
-    boatId: number
-    boatName: string
-    start_at: string
-  }
-  const byBookingId = new Map<number, Meta>()
-
-  for (const r of operationalCandidates) {
+  return operationalCandidates.filter((r) => {
     const paid =
       Boolean(r.member_id) ||
       consumePid.has(r.id) ||
       isDirectSettlementParticipantNotes(r.notes)
-    if (!paid) continue
+    return paid
+  })
+}
+
+/**
+ * 已結帳參與者列（每人一列），分鐘為回報值。
+ */
+export async function loadPaidOperationalParticipantsForRange(
+  supabase: SupabaseClient,
+  startDate: string,
+  endDate: string
+): Promise<PaidOperationalParticipant[]> {
+  const paidRows = await loadPaidOperationalRows(supabase, startDate, endDate)
+  return paidRows.map((r) => {
     const b = r.bookings
-    const durationMin = b.duration_min || 0
     const boatId = b.boats?.id ?? b.boat_id ?? 0
     const boatName = b.boats?.name || '未知'
+    return {
+      participantId: r.id,
+      bookingId: b.id,
+      start_at: b.start_at,
+      participantMinutes: r.participant_duration_min,
+      bookingDurationMin: b.duration_min || 0,
+      boatId,
+      boatName
+    }
+  })
+}
+
+/**
+ * 區間內：每筆已結帳一般預約一列（筆數用）；duration_min 為預約表欄位。
+ * 各船／總分鐘請用 loadPaidOperationalParticipantsForRange 加總 participantMinutes。
+ */
+export async function loadSettledNonPracticeBookingsForRange(
+  supabase: SupabaseClient,
+  startDate: string,
+  endDate: string
+): Promise<SettledNonPracticeBooking[]> {
+  const paidRows = await loadPaidOperationalRows(supabase, startDate, endDate)
+  const byBookingId = new Map<number, SettledNonPracticeBooking>()
+
+  for (const r of paidRows) {
+    const b = r.bookings
+    const boatId = b.boats?.id ?? b.boat_id ?? 0
+    const boatName = b.boats?.name || '未知'
+    const bookingDurationMin = b.duration_min || 0
     if (!byBookingId.has(b.id)) {
       byBookingId.set(b.id, {
-        duration_min: durationMin,
+        bookingId: b.id,
+        start_at: b.start_at,
+        duration_min: bookingDurationMin,
         boatId,
-        boatName,
-        start_at: b.start_at
+        boatName
       })
     }
   }
 
-  return Array.from(byBookingId.entries()).map(([bookingId, m]) => ({
-    bookingId,
-    start_at: m.start_at,
-    duration_min: m.duration_min,
-    boatId: m.boatId,
-    boatName: m.boatName
-  }))
+  return Array.from(byBookingId.values())
 }

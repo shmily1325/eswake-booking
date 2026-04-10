@@ -8,7 +8,7 @@ import { useResponsive } from '../../../hooks/useResponsive'
 import { getLocalDateString } from '../../../utils/date'
 import { sortBoatsByDisplayOrder } from '../../../utils/boatUtils'
 import { isAdmin } from '../../../utils/auth'
-import { loadSettledNonPracticeBookingsForRange } from '../../../utils/settledNonPracticeBookings'
+import { loadPaidOperationalParticipantsForRange } from '../../../utils/settledNonPracticeBookings'
 
 import { LoadingSkeleton, LastUpdated } from './components'
 import { TrendTab, MonthlyTab, FutureTab } from './tabs'
@@ -109,30 +109,37 @@ export function Statistics() {
         endDateStr = `${monthStr}-${String(lastDayOfMonth).padStart(2, '0')}`
       }
 
-      const settled = await loadSettledNonPracticeBookingsForRange(supabase, startDate, endDateStr)
-      const totalMinutes = settled.reduce((sum, b) => sum + b.duration_min, 0)
+      const participants = await loadPaidOperationalParticipantsForRange(supabase, startDate, endDateStr)
+      const bookingCount = new Set(participants.map((p) => p.bookingId)).size
 
-      let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
+      const totalMinutes = participants.reduce((sum, p) => sum + p.participantMinutes, 0)
+
+      const weekdayBookingIds = new Set<number>()
+      const weekendBookingIds = new Set<number>()
+      let weekdayMinutes = 0, weekendMinutes = 0
       const boatMap = new Map<number, { boatName: string; minutes: number }>()
 
-      settled.forEach((b) => {
-        const d = new Date(b.start_at)
+      participants.forEach((p) => {
+        const d = new Date(p.start_at)
         const dayOfWeek = d.getDay()
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-        const minutes = b.duration_min
+        const minutes = p.participantMinutes
 
         if (isWeekend) {
-          weekendCount++
+          weekendBookingIds.add(p.bookingId)
           weekendMinutes += minutes
         } else {
-          weekdayCount++
+          weekdayBookingIds.add(p.bookingId)
           weekdayMinutes += minutes
         }
 
-        const existing = boatMap.get(b.boatId)
+        const existing = boatMap.get(p.boatId)
         if (existing) existing.minutes += minutes
-        else boatMap.set(b.boatId, { boatName: b.boatName, minutes })
+        else boatMap.set(p.boatId, { boatName: p.boatName, minutes })
       })
+
+      const weekdayCount = weekdayBookingIds.size
+      const weekendCount = weekendBookingIds.size
 
       const boatMinutes = Array.from(boatMap.entries())
         .map(([boatId, d]) => ({ boatId, boatName: d.boatName, minutes: d.minutes }))
@@ -141,7 +148,7 @@ export function Statistics() {
       months.push({
         month: monthStr,
         label: `${month}月`,
-        bookingCount: settled.length,
+        bookingCount,
         totalMinutes,
         totalHours: Math.round(totalMinutes / 60 * 10) / 10,
         boatMinutes,
@@ -426,24 +433,29 @@ export function Statistics() {
     }
     const { startDate, endDateStr } = range
 
-    const settled = await loadSettledNonPracticeBookingsForRange(supabase, startDate, endDateStr)
+    const participants = await loadPaidOperationalParticipantsForRange(supabase, startDate, endDateStr)
 
-    let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
+    const weekdayBookingIds = new Set<number>()
+    const weekendBookingIds = new Set<number>()
+    let weekdayMinutes = 0, weekendMinutes = 0
 
-    settled.forEach((booking) => {
-      const date = new Date(booking.start_at)
+    participants.forEach((p) => {
+      const date = new Date(p.start_at)
       const dayOfWeek = date.getDay()
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-      const minutes = booking.duration_min
+      const minutes = p.participantMinutes
 
       if (isWeekend) {
-        weekendCount++
+        weekendBookingIds.add(p.bookingId)
         weekendMinutes += minutes
       } else {
-        weekdayCount++
+        weekdayBookingIds.add(p.bookingId)
         weekdayMinutes += minutes
       }
     })
+
+    const weekdayCount = weekdayBookingIds.size
+    const weekendCount = weekendBookingIds.size
 
     setWeekdayStats({ weekdayCount, weekdayMinutes, weekendCount, weekendMinutes })
   }

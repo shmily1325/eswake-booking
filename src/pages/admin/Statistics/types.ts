@@ -5,6 +5,7 @@ export interface MonthlyStats {
   label: string
   /** 已結帳／已扣款之一般預約筆數（每筆預約計一次，不含教練練習） */
   bookingCount: number
+  /** 已結帳參與者回報分鐘加總（與月報教練／各船欄一致） */
   totalMinutes: number
   totalHours: number
   boatMinutes: { boatId: number; boatName: string; minutes: number }[]
