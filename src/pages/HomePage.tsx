@@ -109,7 +109,7 @@ export function HomePage() {
     loadAllPermissions()
   }, [user, userIsAdmin])
   
-  const menuItems: Array<{
+  type HomeMenuItem = {
     title: string
     icon: string
     link: string
@@ -117,14 +117,16 @@ export function HomePage() {
     isAdmin?: boolean
     isCoach?: boolean
     isEditor?: boolean
-    requiresViewAccess?: boolean  // 需要一般權限
-    alwaysShow?: boolean          // 是否總是顯示（如今日預約）
-  }> = [
+    requiresViewAccess?: boolean
+    alwaysShow?: boolean
+  }
+
+  const menuItemsMain: HomeMenuItem[] = [
     {
       title: '今日預約',
       icon: '📅',
       link: '/coach-daily',
-      alwaysShow: true  // 所有登入用戶都能看到
+      alwaysShow: true
     },
     {
       title: '預約表',
@@ -169,18 +171,35 @@ export function HomePage() {
       isEditor: true
     },
     {
-      title: '區間時數合計',
-      icon: '⏱️',
-      link: '/boat-usage-hours',
-      alwaysShow: true
-    },
-    {
       title: 'BAO',
       icon: '🔧',
       link: '/bao',
       isAdmin: true
     }
   ]
+
+  /** 橫線下方：僅區間時數合計 */
+  const menuItemsBelowDivider: HomeMenuItem[] = [
+    {
+      title: '區間時數合計',
+      icon: '⏱️',
+      link: '/boat-usage-hours',
+      alwaysShow: true
+    }
+  ]
+
+  const filterVisibleMenuItems = (items: HomeMenuItem[]) =>
+    items.filter((item) => {
+      if (item.alwaysShow) return true
+      if (item.isAdmin && !userIsAdmin) return false
+      if (item.isCoach && !isCoach) return false
+      if (item.isEditor && !isEditorUser) return false
+      if (item.requiresViewAccess) return hasViewPermission
+      return true
+    })
+
+  const visibleMainMenu = filterVisibleMenuItems(menuItemsMain)
+  const visibleBelowDivider = filterVisibleMenuItems(menuItemsBelowDivider)
 
   return (
     <div style={{ 
@@ -259,83 +278,143 @@ export function HomePage() {
               ))}
             </>
           ) : (
-            menuItems
-              .filter(item => {
-                // 總是顯示的項目（如今日預約）
-                if (item.alwaysShow) return true
-                // 管理員專用
-                if (item.isAdmin && !userIsAdmin) return false
-                // 教練專用
-                if (item.isCoach && !isCoach) return false
-                // 小編專用
-                if (item.isEditor && !isEditorUser) return false
-                // 需要一般權限的項目
-                if (item.requiresViewAccess) {
-                  return hasViewPermission
-                }
-                return true
-              })
-              .map((item, index) => (
-            <Link
-              key={index}
-              to={item.link}
-              data-track={`nav_${item.link.replace(/^\//, '') || 'home'}`}
-              style={{
-                textDecoration: 'none',
-                background: 'rgba(255, 255, 255, 0.7)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: '16px',
-                padding: '35px 20px',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '12px',
-                cursor: 'pointer',
-                border: '1px solid rgba(224, 224, 224, 0.5)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-5px)'
-                e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
-                e.currentTarget.style.borderColor = '#000'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                e.currentTarget.style.borderColor = '#e0e0e0'
-              }}
-            >
-              <div style={{
-                fontSize: '42px',
-                marginBottom: '5px',
-              }}>
-                {item.icon}
-              </div>
+            <>
+              {visibleMainMenu.map((item) => (
+                <Link
+                  key={`main-${item.link}-${item.title}`}
+                  to={item.link}
+                  data-track={`nav_${item.link.replace(/^\//, '') || 'home'}`}
+                  style={{
+                    textDecoration: 'none',
+                    background: 'rgba(255, 255, 255, 0.7)',
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: '16px',
+                    padding: '35px 20px',
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                    transition: 'all 0.3s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    border: '1px solid rgba(224, 224, 224, 0.5)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-5px)'
+                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
+                    e.currentTarget.style.borderColor = '#000'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
+                    e.currentTarget.style.borderColor = '#e0e0e0'
+                  }}
+                >
+                  <div style={{
+                    fontSize: '42px',
+                    marginBottom: '5px',
+                  }}>
+                    {item.icon}
+                  </div>
 
-              <h2 style={{
-                margin: 0,
-                fontSize: isMobile ? '16px' : '18px',
-                fontWeight: '600',
-                color: '#000',
-                letterSpacing: '0.5px'
-              }}>
-                {item.title}
-              </h2>
-              
-              {item.subtitle && (
-                <p style={{
-                  margin: 0,
-                  fontSize: isMobile ? '12px' : '13px',
-                  color: '#999',
-                  fontStyle: 'italic'
-                }}>
-                  {item.subtitle}
-                </p>
+                  <h2 style={{
+                    margin: 0,
+                    fontSize: isMobile ? '16px' : '18px',
+                    fontWeight: '600',
+                    color: '#000',
+                    letterSpacing: '0.5px'
+                  }}>
+                    {item.title}
+                  </h2>
+
+                  {item.subtitle && (
+                    <p style={{
+                      margin: 0,
+                      fontSize: isMobile ? '12px' : '13px',
+                      color: '#999',
+                      fontStyle: 'italic'
+                    }}>
+                      {item.subtitle}
+                    </p>
+                  )}
+                </Link>
+              ))}
+
+              {visibleBelowDivider.length > 0 && (
+                <>
+                  <div
+                    style={{
+                      gridColumn: '1 / -1',
+                      margin: '8px 0 4px',
+                      borderTop: '1px solid rgba(0, 0, 0, 0.12)',
+                      width: '100%'
+                    }}
+                  />
+                  {visibleBelowDivider.map((item) => (
+                    <Link
+                      key={`below-${item.link}-${item.title}`}
+                      to={item.link}
+                      data-track={`nav_${item.link.replace(/^\//, '') || 'home'}`}
+                      style={{
+                        textDecoration: 'none',
+                        background: 'rgba(255, 255, 255, 0.7)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        padding: '35px 20px',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                        transition: 'all 0.3s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        border: '1px solid rgba(224, 224, 224, 0.5)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-5px)'
+                        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
+                        e.currentTarget.style.borderColor = '#000'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)'
+                        e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
+                        e.currentTarget.style.borderColor = '#e0e0e0'
+                      }}
+                    >
+                      <div style={{
+                        fontSize: '42px',
+                        marginBottom: '5px',
+                      }}>
+                        {item.icon}
+                      </div>
+
+                      <h2 style={{
+                        margin: 0,
+                        fontSize: isMobile ? '16px' : '18px',
+                        fontWeight: '600',
+                        color: '#000',
+                        letterSpacing: '0.5px'
+                      }}>
+                        {item.title}
+                      </h2>
+
+                      {item.subtitle && (
+                        <p style={{
+                          margin: 0,
+                          fontSize: isMobile ? '12px' : '13px',
+                          color: '#999',
+                          fontStyle: 'italic'
+                        }}>
+                          {item.subtitle}
+                        </p>
+                      )}
+                    </Link>
+                  ))}
+                </>
               )}
-            </Link>
-          ))
+            </>
           )}
         </div>
 
