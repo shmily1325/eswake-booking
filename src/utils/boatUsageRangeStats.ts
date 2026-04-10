@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sortBoatsByDisplayOrder } from './boatUtils'
+import { isFacility } from './facility'
 
 export type BoatUsageRangeRow = {
   boatId: number
@@ -60,6 +61,7 @@ function aggregateBookings(
  * - 一般預約：與 Statistics `loadMonthlyTrend` 相同（未取消、排除教練練習）。
  * - 教練練習：未取消、is_coach_practice = true，預約表時數。
  * - 總和：兩者相加。
+ * - 僅列出實際船隻：排除設施（彈簧床、陸上課程，見 `isFacility`）。
  */
 export async function loadBoatUsageRangeStats(
   supabase: SupabaseClient,
@@ -91,7 +93,7 @@ export async function loadBoatUsageRangeStats(
   const { data: allBoats, error: boatsErr } = await supabase.from('boats').select('id, name')
   if (boatsErr) throw boatsErr
 
-  const sorted = sortBoatsByDisplayOrder(allBoats || [])
+  const sorted = sortBoatsByDisplayOrder(allBoats || []).filter((b) => !isFacility(b.name))
   const boats: BoatUsageRangeRow[] = sorted.map((b) => {
     const g = generalByBoat.get(b.id)?.minutes ?? 0
     const p = practiceByBoat.get(b.id)?.minutes ?? 0
