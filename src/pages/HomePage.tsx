@@ -169,6 +169,12 @@ export function HomePage() {
       isEditor: true
     },
     {
+      title: '區間時數合計',
+      icon: '⏱️',
+      link: '/boat-usage-hours',
+      alwaysShow: true
+    },
+    {
       title: 'BAO',
       icon: '🔧',
       link: '/bao',

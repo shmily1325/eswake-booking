@@ -68,6 +68,7 @@ import { AnnouncementManagement } from './pages/admin/AnnouncementManagement'
 import { LineBindingStatus } from './pages/admin/LineBindingStatus'
 import { LineSettings } from './pages/admin/LineSettings'
 import { Statistics } from './pages/admin/Statistics'
+import { BoatUsageHoursPage } from './pages/admin/BoatUsageHoursPage'
 import { CoachDailyView } from './pages/coach/CoachDailyView'
 // import { PermissionManagement } from './pages/admin/PermissionManagement' // 暫時停用
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
@@ -130,6 +131,7 @@ function AppContent() {
         {/* <Route path="/permissions" element={<PermissionManagement />} /> */}
         <Route path="/boats" element={<BoatManagement />} />
         <Route path="/statistics" element={<Statistics />} />
+        <Route path="/boat-usage-hours" element={<BoatUsageHoursPage />} />
         {/* <Route path="/editor" element={<EditorHub />} /> */}
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
       </Routes>

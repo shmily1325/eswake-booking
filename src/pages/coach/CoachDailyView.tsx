@@ -10,7 +10,6 @@ import { getBookingCardStyle, bookingCardContentStyles } from '../../styles/desi
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import { trackClick } from '../../utils/trackClick'
-import { checkGlobalRestriction } from '../../utils/restriction'
 
 interface Boat {
   id: number
