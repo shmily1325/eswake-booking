@@ -71,9 +71,9 @@ export function BoatUsageHoursPage() {
 
         <div style={getCardStyle(isMobile)}>
           <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#555', lineHeight: 1.55 }}>
-            <strong>一般預約</strong>與 Dashboard「歷史趨勢」月份明細相同：未取消、排除教練練習，以預約表時長加總。
-            <strong> 教練練習</strong>為同區間內標記為教練練習且未取消之預約，同樣以預約表時長加總。
-            <strong> 總和</strong>為兩者相加。僅列出實際船隻（不含彈簧床、陸上課程）。選與趨勢圖相同區間時，「一般預約」欄應與趨勢圖各船分鐘數一致。
+            <strong> 營運</strong>：有收錢的船使用時數。
+            <strong> 教練練習</strong>：同區間內標記為教練練習且未取消，以預約表時長加總。
+            <strong> 總和</strong>為兩者相加。僅列出實際船隻。
           </p>
           <div
             style={{
@@ -159,7 +159,7 @@ export function BoatUsageHoursPage() {
                       船隻
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
-                      一般預約
+                      營運（已扣款）
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
                       教練練習

@@ -89,7 +89,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             fontSize: '12px',
             color: '#666'
           }}>
-            <div style={{ marginBottom: '6px', fontWeight: '500' }}>🚤 各船時數</div>
+            <div style={{ marginBottom: '6px', fontWeight: '500' }}>🚤 各船／設施時數</div>
             {data.boatMinutes.slice(0, 3).map(boat => (
               <div key={boat.boatId} style={{ 
                 display: 'flex', 
@@ -111,7 +111,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
       {/* 摘要卡片 */}
       <SummaryCardsGrid>
         <SummaryCard
-          label="本月預約"
+          label="本月已結帳"
           value={currentMonth?.bookingCount || 0}
           unit="筆"
           accentColor="#4a90e2"
@@ -122,7 +122,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
           } : undefined}
         />
         <SummaryCard
-          label="本月時數"
+          label="本月時數（已扣款）"
           value={currentMonth?.totalMinutes || 0}
           unit="分"
           accentColor="#50c878"
@@ -133,13 +133,13 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
           } : undefined}
         />
         <SummaryCard
-          label="6個月平均"
+          label="6個月平均（已結帳）"
           value={Math.round(monthlyStats.reduce((sum, m) => sum + m.bookingCount, 0) / Math.max(monthlyStats.length, 1))}
           unit="筆/月"
           accentColor="#ffd93d"
         />
         <SummaryCard
-          label="6個月總計"
+          label="6個月總計（已結帳）"
           value={monthlyStats.reduce((sum, m) => sum + m.bookingCount, 0)}
           unit="筆"
           accentColor="#6c5ce7"
@@ -166,9 +166,9 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             borderRadius: '2px',
             display: 'inline-block'
           }} />
-          近6個月預約趨勢
+          近6個月已結帳趨勢
           <span style={{ fontSize: '12px', color: '#999', fontWeight: '400' }}>
-            (Hover 查看詳情)
+            （已扣款、不含教練練習 · Hover 詳情）
           </span>
         </h3>
         <div style={{ width: '100%', height: isMobile ? 250 : 300 }}>
@@ -182,7 +182,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               <Line
                 type="monotone"
                 dataKey="bookingCount"
-                name="預約數"
+                name="已結帳筆數"
                 stroke="#4a90e2"
                 strokeWidth={3}
                 dot={{ fill: '#4a90e2', strokeWidth: 2, r: 5 }}
@@ -191,7 +191,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               <Line
                 type="monotone"
                 dataKey="totalMinutes"
-                name="時數(分)"
+                name="時數（分，已扣款）"
                 stroke="#50c878"
                 strokeWidth={3}
                 dot={{ fill: '#50c878', strokeWidth: 2, r: 5 }}
@@ -221,14 +221,17 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               display: 'inline-block'
             }} />
             月份數據明細
+            <span style={{ fontSize: '12px', color: '#999', fontWeight: '400' }}>
+              （已結帳／已扣款）
+            </span>
           </h3>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', tableLayout: 'fixed' }}>
               <thead>
                 <tr style={{ background: '#f8f9fa' }}>
                   <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>筆數</th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>總時數</th>
+                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>已結帳筆數</th>
+                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>總時數（已扣款）</th>
                   {allBoatsData.map(boat => (
                     <th key={boat.boatId} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
                       {boat.boatName}
@@ -286,6 +289,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               display: 'inline-block'
             }} />
             月份數據明細
+            <span style={{ fontSize: '11px', color: '#999', fontWeight: '400' }}>（已結帳）</span>
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {monthlyStats.slice().reverse().map((stat, idx) => (

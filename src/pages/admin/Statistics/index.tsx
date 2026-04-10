@@ -8,6 +8,7 @@ import { useResponsive } from '../../../hooks/useResponsive'
 import { getLocalDateString } from '../../../utils/date'
 import { sortBoatsByDisplayOrder } from '../../../utils/boatUtils'
 import { isAdmin } from '../../../utils/auth'
+import { loadSettledNonPracticeBookingsForRange } from '../../../utils/settledNonPracticeBookings'
 
 import { LoadingSkeleton, LastUpdated } from './components'
 import { TrendTab, MonthlyTab, FutureTab } from './tabs'
@@ -108,63 +109,47 @@ export function Statistics() {
         endDateStr = `${monthStr}-${String(lastDayOfMonth).padStart(2, '0')}`
       }
 
-      const { data } = await supabase
-        .from('bookings')
-        .select('id, duration_min, start_at, boats(id, name)')
-        .gte('start_at', `${startDate}T00:00:00`)
-        .lte('start_at', `${endDateStr}T23:59:59`)
-        .neq('status', 'cancelled')
-        .or('is_coach_practice.is.null,is_coach_practice.eq.false')  // 排除教練練習
+      const settled = await loadSettledNonPracticeBookingsForRange(supabase, startDate, endDateStr)
+      const totalMinutes = settled.reduce((sum, b) => sum + b.duration_min, 0)
 
-      if (data) {
-        const totalMinutes = data.reduce((sum, b) => sum + (b.duration_min || 0), 0)
+      let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
+      const boatMap = new Map<number, { boatName: string; minutes: number }>()
 
-        // 平日/假日統計
-        let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
-        const boatMap = new Map<number, { boatName: string; minutes: number }>()
+      settled.forEach((b) => {
+        const d = new Date(b.start_at)
+        const dayOfWeek = d.getDay()
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+        const minutes = b.duration_min
 
-        data.forEach((b: any) => {
-          const d = new Date(b.start_at)
-          const dayOfWeek = d.getDay()
-          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-          const minutes = b.duration_min || 0
+        if (isWeekend) {
+          weekendCount++
+          weekendMinutes += minutes
+        } else {
+          weekdayCount++
+          weekdayMinutes += minutes
+        }
 
-          if (isWeekend) {
-            weekendCount++
-            weekendMinutes += minutes
-          } else {
-            weekdayCount++
-            weekdayMinutes += minutes
-          }
+        const existing = boatMap.get(b.boatId)
+        if (existing) existing.minutes += minutes
+        else boatMap.set(b.boatId, { boatName: b.boatName, minutes })
+      })
 
-          // 各船統計
-          const boatId = b.boats?.id || 0
-          const boatName = b.boats?.name || '未知'
-          const existing = boatMap.get(boatId)
-          if (existing) {
-            existing.minutes += minutes
-          } else {
-            boatMap.set(boatId, { boatName, minutes })
-          }
-        })
+      const boatMinutes = Array.from(boatMap.entries())
+        .map(([boatId, d]) => ({ boatId, boatName: d.boatName, minutes: d.minutes }))
+        .sort((a, b) => a.boatId - b.boatId)
 
-        const boatMinutes = Array.from(boatMap.entries())
-          .map(([boatId, d]) => ({ boatId, boatName: d.boatName, minutes: d.minutes }))
-          .sort((a, b) => a.boatId - b.boatId)
-
-        months.push({
-          month: monthStr,
-          label: `${month}月`,
-          bookingCount: data.length,
-          totalMinutes,
-          totalHours: Math.round(totalMinutes / 60 * 10) / 10,
-          boatMinutes,
-          weekdayCount,
-          weekdayMinutes,
-          weekendCount,
-          weekendMinutes
-        })
-      }
+      months.push({
+        month: monthStr,
+        label: `${month}月`,
+        bookingCount: settled.length,
+        totalMinutes,
+        totalHours: Math.round(totalMinutes / 60 * 10) / 10,
+        boatMinutes,
+        weekdayCount,
+        weekdayMinutes,
+        weekendCount,
+        weekendMinutes
+      })
     }
 
     setMonthlyStats(months)
@@ -441,21 +426,15 @@ export function Statistics() {
     }
     const { startDate, endDateStr } = range
 
-    const { data } = await supabase
-      .from('bookings')
-      .select('id, duration_min, start_at')
-      .gte('start_at', `${startDate}T00:00:00`)
-      .lte('start_at', `${endDateStr}T23:59:59`)
-      .neq('status', 'cancelled')
-      .or('is_coach_practice.is.null,is_coach_practice.eq.false')  // 排除教練練習
+    const settled = await loadSettledNonPracticeBookingsForRange(supabase, startDate, endDateStr)
 
     let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
 
-    data?.forEach(booking => {
+    settled.forEach((booking) => {
       const date = new Date(booking.start_at)
       const dayOfWeek = date.getDay()
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-      const minutes = booking.duration_min || 0
+      const minutes = booking.duration_min
 
       if (isWeekend) {
         weekendCount++
@@ -478,7 +457,7 @@ export function Statistics() {
     }
     const { startDate, endDateStr } = range
 
-    // 載入教學記錄
+    // 月報教練統計：與回報一致——已處理之教學／駕駛紀錄（非「已扣款預約清單」口徑）
     const { data: teachingData } = await supabase
       .from('booking_participants')
       .select(`

@@ -3,6 +3,7 @@
 export interface MonthlyStats {
   month: string
   label: string
+  /** 已結帳／已扣款之一般預約筆數（每筆預約計一次，不含教練練習） */
   bookingCount: number
   totalMinutes: number
   totalHours: number

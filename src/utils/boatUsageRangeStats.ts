@@ -1,15 +1,20 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sortBoatsByDisplayOrder } from './boatUtils'
 import { isFacility } from './facility'
+import { loadSettledNonPracticeBookingsForRange } from './settledNonPracticeBookings'
 
 export type BoatUsageRangeRow = {
   boatId: number
   boatName: string
-  /** 與歷史趨勢相同：未取消、非教練練習，預約表 duration_min 加總 */
+  /**
+   * 營運（已結帳）：非教練練習預約中，參與者已處理且已結帳
+   * （會員、或非會員 consume、或非會員現金／匯款等直接結清備註），
+   * 每筆預約加預約表 duration_min 一次。與 Dashboard「歷史趨勢」相同口徑。
+   */
   generalMinutes: number
-  /** 教練練習：未取消、is_coach_practice = true，預約表 duration_min 加總 */
+  /** 教練練習：未取消、is_coach_practice = true，預約表 duration_min（內部用船，不以此欄看收錢） */
   practiceMinutes: number
-  /** 各船總和（一般 + 教練練習） */
+  /** 各船總和（已扣款 + 教練練習） */
   totalMinutes: number
 }
 
@@ -17,8 +22,7 @@ export type BoatUsageRangeResult = {
   boats: BoatUsageRangeRow[]
 }
 
-const selectBookings =
-  'id, duration_min, boat_id, boats(id, name)'
+const bookingSelect = 'id, duration_min, boat_id, boats(id, name)'
 
 function normalizeBoats(v: unknown): { id: number; name: string } | null {
   if (!v) return null
@@ -41,27 +45,11 @@ function addByBoat(
   else map.set(boatId, { boatName, minutes: delta })
 }
 
-function aggregateBookings(
-  rows: unknown[] | null
-): Map<number, { boatName: string; minutes: number }> {
-  const map = new Map<number, { boatName: string; minutes: number }>()
-  for (const row of rows || []) {
-    const raw = row as Record<string, unknown>
-    const boats = normalizeBoats(raw.boats)
-    const boatId = (raw.boat_id as number) ?? boats?.id ?? 0
-    const boatName = boats?.name || '未知'
-    const m = (raw.duration_min as number | null) || 0
-    addByBoat(map, boatId, boatName, m)
-  }
-  return map
-}
-
 /**
- * 各船區間時數：
- * - 一般預約：與 Statistics `loadMonthlyTrend` 相同（未取消、排除教練練習）。
- * - 教練練習：未取消、is_coach_practice = true，預約表時數。
- * - 總和：兩者相加。
- * - 僅列出實際船隻：排除設施（彈簧床、陸上課程，見 `isFacility`）。
+ * 各船區間時數（實際船隻，不含彈簧床／陸上課程）：
+ * - generalMinutes：已結帳／已扣款之一般預約時數（見型別註解）。
+ * - practiceMinutes：教練練習預約表時數。
+ * - totalMinutes：兩者相加。
  */
 export async function loadBoatUsageRangeStats(
   supabase: SupabaseClient,
@@ -71,31 +59,40 @@ export async function loadBoatUsageRangeStats(
   const startIso = `${startDate}T00:00:00`
   const endIso = `${endDate}T23:59:59`
 
-  const base = () =>
-    supabase
-      .from('bookings')
-      .select(selectBookings)
-      .gte('start_at', startIso)
-      .lte('start_at', endIso)
-      .neq('status', 'cancelled')
+  const { data: practiceBookings, error: practiceErr } = await supabase
+    .from('bookings')
+    .select(bookingSelect)
+    .gte('start_at', startIso)
+    .lte('start_at', endIso)
+    .neq('status', 'cancelled')
+    .eq('is_coach_practice', true)
 
-  const [generalRes, practiceRes] = await Promise.all([
-    base().or('is_coach_practice.is.null,is_coach_practice.eq.false'),
-    base().eq('is_coach_practice', true)
-  ])
+  if (practiceErr) throw practiceErr
 
-  if (generalRes.error) throw generalRes.error
-  if (practiceRes.error) throw practiceRes.error
+  const settledList = await loadSettledNonPracticeBookingsForRange(supabase, startDate, endDate)
+  const settledByBoat = new Map<number, { boatName: string; minutes: number }>()
+  for (const row of settledList) {
+    if (isFacility(row.boatName)) continue
+    addByBoat(settledByBoat, row.boatId, row.boatName, row.duration_min)
+  }
 
-  const generalByBoat = aggregateBookings(generalRes.data)
-  const practiceByBoat = aggregateBookings(practiceRes.data)
+  const practiceByBoat = new Map<number, { boatName: string; minutes: number }>()
+  for (const row of practiceBookings || []) {
+    const raw = row as Record<string, unknown>
+    const boats = normalizeBoats(raw.boats)
+    const boatId = (raw.boat_id as number) ?? boats?.id ?? 0
+    const boatName = boats?.name || '未知'
+    if (isFacility(boatName)) continue
+    const m = (raw.duration_min as number | null) || 0
+    addByBoat(practiceByBoat, boatId, boatName, m)
+  }
 
   const { data: allBoats, error: boatsErr } = await supabase.from('boats').select('id, name')
   if (boatsErr) throw boatsErr
 
   const sorted = sortBoatsByDisplayOrder(allBoats || []).filter((b) => !isFacility(b.name))
   const boats: BoatUsageRangeRow[] = sorted.map((b) => {
-    const g = generalByBoat.get(b.id)?.minutes ?? 0
+    const g = settledByBoat.get(b.id)?.minutes ?? 0
     const p = practiceByBoat.get(b.id)?.minutes ?? 0
     return {
       boatId: b.id,
