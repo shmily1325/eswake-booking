@@ -14,34 +14,31 @@ interface TrendTabProps {
   allBoatsData: BoatData[]
 }
 
-export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabProps) {
-  const { isMobile } = useResponsive()
+function TrendLineTooltipContent({
+  active,
+  payload,
+  label,
+  monthlyStats,
+  allBoatsData
+}: {
+  active?: boolean
+  payload?: any[]
+  label?: string
+  monthlyStats: MonthlyStats[]
+  allBoatsData: BoatData[]
+}) {
+  if (!active || !payload || !payload.length) return null
 
-  const currentMonth = monthlyStats[monthlyStats.length - 1]
-  const previousMonth = monthlyStats[monthlyStats.length - 2]
+  const data = monthlyStats.find(m => m.label === label)
 
-  // 計算變化
-  const bookingChange = previousMonth
-    ? calculateChange(currentMonth?.bookingCount || 0, previousMonth.bookingCount)
-    : undefined
-  const minutesChange = previousMonth
-    ? calculateChange(currentMonth?.totalMinutes || 0, previousMonth.totalMinutes)
-    : undefined
-
-  // 自定義 Tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload || !payload.length) return null
-
-    const data = monthlyStats.find(m => m.label === label)
-
-    return (
+  return (
       <div style={{
-        background: 'white',
-        border: 'none',
-        borderRadius: '12px',
-        padding: '14px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-        minWidth: '180px'
+        backgroundColor: '#fff',
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        padding: '12px 14px',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+        minWidth: '176px'
       }}>
         <div style={{ fontWeight: '600', marginBottom: '10px', color: '#333' }}>
           {label}
@@ -135,8 +132,22 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
           </div>
         )}
       </div>
-    )
-  }
+  )
+}
+
+export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabProps) {
+  const { isMobile } = useResponsive()
+
+  const currentMonth = monthlyStats[monthlyStats.length - 1]
+  const previousMonth = monthlyStats[monthlyStats.length - 2]
+
+  // 計算變化
+  const bookingChange = previousMonth
+    ? calculateChange(currentMonth?.bookingCount || 0, previousMonth.bookingCount)
+    : undefined
+  const minutesChange = previousMonth
+    ? calculateChange(currentMonth?.totalMinutes || 0, previousMonth.totalMinutes)
+    : undefined
 
   return (
     <>
@@ -203,14 +214,23 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             （已扣款、不含教練練習 · Hover 詳情）
           </span>
         </h3>
-        <div style={{ width: '100%', height: isMobile ? 250 : 300 }}>
-          <ResponsiveContainer>
-            <LineChart data={monthlyStats}>
+        <div style={{ width: '100%', height: isMobile ? 280 : 320 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={monthlyStats} margin={{ top: 36, right: 8, left: 0, bottom: 8 }}>
+              <Legend verticalAlign="top" wrapperStyle={{ fontSize: 12 }} />
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="label" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
+              <Tooltip
+                content={(props: any) => (
+                  <TrendLineTooltipContent
+                    {...props}
+                    monthlyStats={monthlyStats}
+                    allBoatsData={allBoatsData}
+                  />
+                )}
+                wrapperStyle={{ zIndex: 20 }}
+              />
               <Line
                 type="monotone"
                 dataKey="bookingCount"
@@ -257,22 +277,49 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               （已結帳／已扣款）
             </span>
           </h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', tableLayout: 'fixed' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{
+              width: 'max-content',
+              minWidth: '100%',
+              borderCollapse: 'collapse',
+              fontSize: '14px',
+              tableLayout: 'auto'
+            }}>
               <thead>
                 <tr style={{ background: '#f8f9fa' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>已結帳筆數</th>
                   <th style={{
-                    padding: '12px',
+                    padding: '12px 16px 12px 12px',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    whiteSpace: 'nowrap',
+                    verticalAlign: 'middle'
+                  }}>月份</th>
+                  <th style={{
+                    padding: '12px 16px',
+                    textAlign: 'right',
+                    borderBottom: '2px solid #e0e0e0',
+                    whiteSpace: 'nowrap',
+                    verticalAlign: 'middle'
+                  }} title="每筆已結帳預約計一次">已結帳筆數</th>
+                  <th style={{
+                    padding: '12px 20px 12px 16px',
                     textAlign: 'right',
                     borderBottom: '2px solid #e0e0e0',
                     borderRight: '1px solid #e0e0e0',
                     whiteSpace: 'nowrap',
-                    minWidth: '7.5rem'
-                  }}>總時數（已扣款）</th>
+                    verticalAlign: 'middle'
+                  }} title="已結帳參與者回報分鐘加總">總時數</th>
                   {allBoatsData.map(boat => (
-                    <th key={boat.boatId} style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                    <th key={boat.boatId} style={{
+                      padding: '12px 10px',
+                      textAlign: 'right',
+                      borderBottom: '2px solid #e0e0e0',
+                      whiteSpace: 'nowrap',
+                      verticalAlign: 'middle',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#444'
+                    }}>
                       {boat.boatName}
                     </th>
                   ))}
@@ -283,17 +330,30 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                   <tr key={stat.month} style={{
                     background: idx === monthlyStats.length - 1 ? '#e3f2fd' : 'white'
                   }}>
-                    <td style={{ padding: '12px', fontWeight: idx === monthlyStats.length - 1 ? '600' : '400' }}>
+                    <td style={{
+                      padding: '12px 16px 12px 12px',
+                      fontWeight: idx === monthlyStats.length - 1 ? '600' : '400',
+                      whiteSpace: 'nowrap',
+                      verticalAlign: 'middle'
+                    }}>
                       {stat.month}
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                    <td style={{
+                      padding: '12px 16px',
+                      textAlign: 'right',
+                      whiteSpace: 'nowrap',
+                      verticalAlign: 'middle',
+                      fontVariantNumeric: 'tabular-nums'
+                    }}>
                       {stat.bookingCount}
                     </td>
                     <td style={{
-                      padding: '12px',
+                      padding: '12px 20px 12px 16px',
                       textAlign: 'right',
                       borderRight: '1px solid #e0e0e0',
-                      whiteSpace: 'nowrap'
+                      whiteSpace: 'nowrap',
+                      verticalAlign: 'middle',
+                      fontVariantNumeric: 'tabular-nums'
                     }}>
                       {formatDuration(stat.totalMinutes)}
                     </td>
@@ -301,7 +361,15 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                       const boatData = stat.boatMinutes?.find(b => b.boatId === boat.boatId)
                       const minutes = boatData?.minutes || 0
                       return (
-                        <td key={boat.boatId} style={{ padding: '12px', textAlign: 'right', color: minutes > 0 ? '#2196f3' : '#999' }}>
+                        <td key={boat.boatId} style={{
+                          padding: '12px 10px',
+                          textAlign: 'right',
+                          whiteSpace: 'nowrap',
+                          verticalAlign: 'middle',
+                          fontVariantNumeric: 'tabular-nums',
+                          fontSize: '13px',
+                          color: minutes > 0 ? '#1976d2' : '#9e9e9e'
+                        }}>
                           {formatDuration(minutes)}
                         </td>
                       )
