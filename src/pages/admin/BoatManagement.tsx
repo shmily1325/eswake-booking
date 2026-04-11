@@ -33,6 +33,7 @@ export function BoatManagement() {
     const [endTime, setEndTime] = useState('')
     const [reason, setReason] = useState('')
     const [unavailableLoading, setUnavailableLoading] = useState(false)
+    const [editingUnavailableId, setEditingUnavailableId] = useState<number | null>(null)
     const { isMobile } = useResponsive()
     
     // 月份篩選
@@ -177,32 +178,55 @@ export function BoatManagement() {
 
         setUnavailableLoading(true)
         try {
-            const { error } = await supabase
-                .from('boat_unavailable_dates')
-                .insert([{
-                    boat_id: selectedBoat.id,
-                    start_date: startDate,
-                    end_date: endDate,
-                    start_time: startTime || null,
-                    end_time: endTime || null,
-                    reason: reason || '維修保養',
-                    created_by: user?.id || null,
-                    created_at: getLocalTimestamp()
-                }])
+            if (editingUnavailableId != null) {
+                const { error } = await supabase
+                    .from('boat_unavailable_dates')
+                    .update({
+                        boat_id: selectedBoat.id,
+                        start_date: startDate,
+                        end_date: endDate,
+                        start_time: startTime || null,
+                        end_time: endTime || null,
+                        reason: reason || '維修保養',
+                        updated_at: getLocalTimestamp(),
+                    })
+                    .eq('id', editingUnavailableId)
 
-            if (error) throw error
+                if (error) throw error
+                toast.success('維修/停用時段已更新')
+            } else {
+                const { error } = await supabase
+                    .from('boat_unavailable_dates')
+                    .insert([{
+                        boat_id: selectedBoat.id,
+                        start_date: startDate,
+                        end_date: endDate,
+                        start_time: startTime || null,
+                        end_time: endTime || null,
+                        reason: reason || '維修保養',
+                        created_by: user?.id || null,
+                        created_at: getLocalTimestamp()
+                    }])
+
+                if (error) throw error
+                toast.success('維修/停用時段已設定')
+            }
 
             setUnavailableDialogOpen(false)
+            setEditingUnavailableId(null)
             setSelectedBoat(null)
             setStartDate('')
             setEndDate('')
             setStartTime('')
             setEndTime('')
             setReason('')
-            toast.success('維修/停用時段已設定')
             loadData()
         } catch (error) {
-            toast.error('設定維修/停用失敗：' + (error as Error).message)
+            toast.error(
+                editingUnavailableId != null
+                    ? '更新維修/停用失敗：' + (error as Error).message
+                    : '設定維修/停用失敗：' + (error as Error).message
+            )
         } finally {
             setUnavailableLoading(false)
         }
@@ -214,7 +238,7 @@ export function BoatManagement() {
         try {
             const { error } = await supabase
                 .from('boat_unavailable_dates')
-                .update({ is_active: false }) // 軟刪除
+                .delete()
                 .eq('id', record.id)
 
             if (error) throw error
@@ -226,7 +250,15 @@ export function BoatManagement() {
         }
     }
 
+    const unavailableTimeToForm = (t: string | null | undefined): string => {
+        if (!t) return ''
+        const m = t.match(/^(\d{1,2}):(\d{2})/)
+        if (!m) return ''
+        return `${m[1].padStart(2, '0')}:${m[2]}`
+    }
+
     const openUnavailableDialog = (boat: Boat) => {
+        setEditingUnavailableId(null)
         setSelectedBoat(boat)
         const dateStr = getLocalDateString()
         setStartDate(dateStr)
@@ -235,6 +267,28 @@ export function BoatManagement() {
         setEndTime('')
         setReason('')
         setUnavailableDialogOpen(true)
+    }
+
+    const openEditUnavailableDialog = (boat: Boat, record: BoatUnavailableDate) => {
+        setEditingUnavailableId(record.id)
+        setSelectedBoat(boat)
+        setStartDate(record.start_date)
+        setEndDate(record.end_date)
+        setStartTime(unavailableTimeToForm(record.start_time))
+        setEndTime(unavailableTimeToForm(record.end_time))
+        setReason(record.reason || '')
+        setUnavailableDialogOpen(true)
+    }
+
+    const closeUnavailableDialog = () => {
+        setUnavailableDialogOpen(false)
+        setEditingUnavailableId(null)
+        setSelectedBoat(null)
+        setStartDate('')
+        setEndDate('')
+        setStartTime('')
+        setEndTime('')
+        setReason('')
     }
 
     // 初始化編輯價格
@@ -579,15 +633,29 @@ export function BoatManagement() {
                                                         {record.reason}
                                                     </span>
                                                 </span>
-                                                <Button
-                                                    variant="danger"
-                                                    size="small"
-                                                    data-track="boat_delete_unavailable"
-                                                    onClick={() => handleDeleteUnavailable(record)}
-                                                    style={{ alignSelf: isMobile ? 'flex-start' : 'center' }}
-                                                >
-                                                    刪除
-                                                </Button>
+                                                <div style={{
+                                                    display: 'flex',
+                                                    gap: '8px',
+                                                    flexShrink: 0,
+                                                    alignSelf: isMobile ? 'flex-start' : 'center'
+                                                }}>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="small"
+                                                        data-track="boat_edit_unavailable"
+                                                        onClick={() => openEditUnavailableDialog(boat, record)}
+                                                    >
+                                                        編輯
+                                                    </Button>
+                                                    <Button
+                                                        variant="danger"
+                                                        size="small"
+                                                        data-track="boat_delete_unavailable"
+                                                        onClick={() => handleDeleteUnavailable(record)}
+                                                    >
+                                                        刪除
+                                                    </Button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -881,7 +949,12 @@ export function BoatManagement() {
                         background: 'white', borderRadius: '12px', padding: '30px',
                         maxWidth: '400px', width: '100%', overflow: 'hidden'
                     }}>
-                        <h2 style={{ marginTop: 0 }}>設定維修/停用</h2>
+                        <h2 style={{ marginTop: 0 }}>
+                            {editingUnavailableId != null ? '編輯維修/停用' : '設定維修/停用'}
+                        </h2>
+                        {selectedBoat && (
+                            <p style={{ margin: '-6px 0 14px', fontSize: '14px', color: '#666' }}>{selectedBoat.name}</p>
+                        )}
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', marginBottom: '5px' }}>開始日期</label>
                             <div style={{ display: 'flex' }}>
@@ -1021,8 +1094,10 @@ export function BoatManagement() {
                             />
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
-                            <Button variant="outline" onClick={() => setUnavailableDialogOpen(false)} style={{ flex: 1 }}>取消</Button>
-                            <Button variant="warning" data-track="boat_unavailable_confirm" onClick={handleAddUnavailable} disabled={unavailableLoading} style={{ flex: 1, background: '#e65100' }}>確定</Button>
+                            <Button variant="outline" onClick={closeUnavailableDialog} style={{ flex: 1 }}>取消</Button>
+                            <Button variant="warning" data-track="boat_unavailable_confirm" onClick={handleAddUnavailable} disabled={unavailableLoading} style={{ flex: 1, background: '#e65100' }}>
+                                {editingUnavailableId != null ? '儲存' : '確定'}
+                            </Button>
                         </div>
                     </div>
                 </div>

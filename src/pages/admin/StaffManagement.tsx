@@ -28,6 +28,9 @@ interface TimeOff {
   notes: string | null
 }
 
+/** 合併連續休假後的顯示列（刪除時會一併刪除合併範圍內的所有資料列） */
+type TimeOffDisplayRow = TimeOff & { displayText: string; mergedRecordIds: number[] }
+
 interface EditorUser {
   id: string
   email: string
@@ -65,7 +68,7 @@ export function StaffManagement() {
   }, [user, navigate, toast])
   const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'archived'>('active') // 狀態篩選
   const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing' | 'permissions'>('coaches') // Tab 切換
-  const [expandedCoachIds, setExpandedCoachIds] = useState<Set<string>>(new Set()) // 展開的教練ID
+  const [expandedCoachIds, setExpandedCoachIds] = useState<Set<string>>(new Set())
   
   // 一般權限管理
   const [viewUsers, setViewUsers] = useState<ViewUser[]>([])
@@ -121,7 +124,6 @@ export function StaffManagement() {
     loadData()
   }, [])
 
-  // 格式化日期為 MM/DD 或 YYYY/MM/DD（跨年時）
   const formatShortDate = (dateStr: string, showYear: boolean = false): string => {
     const [year, month, day] = dateStr.split('-')
     if (showYear) {
@@ -130,78 +132,53 @@ export function StaffManagement() {
     return `${parseInt(month)}/${parseInt(day)}`
   }
 
-  // 合併連續的休假日期
-  const mergeConsecutiveTimeOffs = (timeOffs: TimeOff[]): (TimeOff & { displayText: string })[] => {
-    if (timeOffs.length === 0) return []
-
-    // 按日期排序
-    const sorted = [...timeOffs].sort((a, b) => a.start_date.localeCompare(b.start_date))
-    
-    const merged: (TimeOff & { displayText: string })[] = []
-    let currentGroup: TimeOff[] = [sorted[0]]
+  const mergeConsecutiveTimeOffs = (rows: TimeOff[]): TimeOffDisplayRow[] => {
+    if (rows.length === 0) return []
+    const sorted = [...rows].sort((a, b) => a.start_date.localeCompare(b.start_date))
+    const merged: TimeOffDisplayRow[] = []
+    let group: TimeOff[] = [sorted[0]]
 
     for (let i = 1; i < sorted.length; i++) {
       const current = sorted[i]
-      const previous = currentGroup[currentGroup.length - 1]
-
-      // 檢查是否為連續日期（且原因相同）
-      const prevEndDate = new Date(previous.end_date)
-      const currStartDate = new Date(current.start_date)
-      const dayDiff = (currStartDate.getTime() - prevEndDate.getTime()) / (1000 * 60 * 60 * 24)
-      
-      const isSameReason = (previous.reason || '') === (current.reason || '')
-      const isConsecutive = dayDiff <= 1 && isSameReason
-
-      if (isConsecutive) {
-        currentGroup.push(current)
+      const previous = group[group.length - 1]
+      const prevEnd = new Date(previous.end_date)
+      const currStart = new Date(current.start_date)
+      const dayDiff = (currStart.getTime() - prevEnd.getTime()) / (1000 * 60 * 60 * 24)
+      const sameReason = (previous.reason || '') === (current.reason || '')
+      if (dayDiff <= 1 && sameReason) {
+        group.push(current)
       } else {
-        // 合併當前組
-        merged.push(createMergedTimeOff(currentGroup))
-        currentGroup = [current]
+        merged.push(createMergedTimeOff(group))
+        group = [current]
       }
     }
-
-    // 合併最後一組
-    if (currentGroup.length > 0) {
-      merged.push(createMergedTimeOff(currentGroup))
-    }
-
+    if (group.length > 0) merged.push(createMergedTimeOff(group))
     return merged
   }
 
-  const createMergedTimeOff = (group: TimeOff[]): TimeOff & { displayText: string } => {
+  const createMergedTimeOff = (group: TimeOff[]): TimeOffDisplayRow => {
     const first = group[0]
     const last = group[group.length - 1]
-    
-    // 檢查是否跨年
     const startYear = first.start_date.split('-')[0]
     const endYear = last.end_date.split('-')[0]
     const isCrossYear = startYear !== endYear
-    
     const startStr = formatShortDate(first.start_date, isCrossYear)
     const endStr = formatShortDate(last.end_date, isCrossYear)
-    
-    let displayText = startStr === endStr ? startStr : `${startStr} - ${endStr}`
-    
+    const displayText = startStr === endStr ? startStr : `${startStr} - ${endStr}`
     return {
-      ...first, // 保留第一個的 ID 等資訊
-      end_date: last.end_date, // 使用最後一個的結束日期
+      ...first,
+      end_date: last.end_date,
       displayText,
-      // 將組內所有 ID 保存起來（用於刪除時參考）
-      notes: group.map(t => t.id).join(',') // 臨時存儲所有相關 ID
+      mergedRecordIds: group.map(t => t.id),
     }
   }
 
-  // 切換展開/收起
   const toggleExpandCoach = (coachId: string) => {
     setExpandedCoachIds(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(coachId)) {
-        newSet.delete(coachId)
-      } else {
-        newSet.add(coachId)
-      }
-      return newSet
+      const next = new Set(prev)
+      if (next.has(coachId)) next.delete(coachId)
+      else next.add(coachId)
+      return next
     })
   }
 
@@ -418,14 +395,15 @@ export function StaffManagement() {
 
     setTimeOffLoading(true)
     try {
+      const reasonVal = timeOffReason.trim() || null
       const { error } = await supabase
         .from('coach_time_off')
         .insert([{
           coach_id: selectedCoach.id,
           start_date: timeOffStartDate,
           end_date: timeOffEndDate,
-          reason: timeOffReason,
-          created_at: getLocalTimestamp()  // coach_time_off 表使用 TEXT
+          reason: reasonVal,
+          created_at: getLocalTimestamp()
         }])
 
       if (error) throw error
@@ -444,14 +422,14 @@ export function StaffManagement() {
     }
   }
 
-  const handleDeleteTimeOff = async (timeOff: TimeOff) => {
+  const handleDeleteTimeOff = async (row: TimeOffDisplayRow) => {
     if (!confirm('確定要刪除這個休假記錄嗎？')) return
 
     try {
       const { error } = await supabase
         .from('coach_time_off')
         .delete()
-        .eq('id', timeOff.id)
+        .in('id', row.mergedRecordIds)
 
       if (error) throw error
 
@@ -994,7 +972,6 @@ export function StaffManagement() {
                 </button>
               </div>
 
-              {/* 月份選擇器 */}
               <input
                 type="month"
                 value={selectedMonth}
@@ -1208,13 +1185,9 @@ export function StaffManagement() {
 
                 {/* 不在期間記錄 */}
                 {!isArchived && coachTimeOffs.length > 0 && (() => {
-                  // 先按月份篩選
                   const filteredTimeOffs = filterTimeOffsByMonth(coachTimeOffs, selectedMonth)
-                  
-                  // 如果該月份沒有休假記錄，不顯示區塊
                   if (filteredTimeOffs.length === 0) return null
-                  
-                  // 合併連續日期
+
                   const mergedTimeOffs = mergeConsecutiveTimeOffs(filteredTimeOffs)
                   const isExpanded = expandedCoachIds.has(coach.id)
                   const maxDisplay = 3
@@ -1229,17 +1202,17 @@ export function StaffManagement() {
                       borderRadius: '10px',
                       border: '1px solid #ffecb3'
                     }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '600', 
-                        marginBottom: '10px', 
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        marginBottom: '10px',
                         color: '#f57c00'
                       }}>
                         不在期間
                       </div>
                       {displayTimeOffs.map((timeOff, idx) => (
                         <div
-                          key={timeOff.id}
+                          key={timeOff.mergedRecordIds.join('-')}
                           style={{
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -1251,7 +1224,7 @@ export function StaffManagement() {
                             borderBottom: idx === displayTimeOffs.length - 1 && !hasMore ? 'none' : '1px solid #ffe082'
                           }}
                         >
-                          <span style={{ 
+                          <span style={{
                             flex: 1,
                             color: '#555',
                             lineHeight: '1.4',
@@ -1262,7 +1235,7 @@ export function StaffManagement() {
                           }}>
                             <span style={{ fontWeight: '600' }}>{timeOff.displayText}</span>
                             {timeOff.reason && (
-                              <span style={{ 
+                              <span style={{
                                 padding: '3px 10px',
                                 background: '#fff',
                                 borderRadius: '6px',
@@ -1276,6 +1249,8 @@ export function StaffManagement() {
                             )}
                           </span>
                           <button
+                            type="button"
+                            data-track="staff_delete_time_off"
                             onClick={() => handleDeleteTimeOff(timeOff)}
                             style={{
                               padding: '6px 12px',
@@ -1295,10 +1270,9 @@ export function StaffManagement() {
                           </button>
                         </div>
                       ))}
-                      
-                      {/* 展開/收起按鈕 */}
                       {hasMore && (
                         <button
+                          type="button"
                           onClick={() => toggleExpandCoach(coach.id)}
                           style={{
                             width: '100%',
@@ -1321,9 +1295,10 @@ export function StaffManagement() {
                   )
                 })()}
 
-                {/* 設定休假按鈕 - 只對未歸檔教練顯示 */}
                 {!isArchived && (
                   <button
+                    type="button"
+                    data-track="staff_time_off_dialog"
                     onClick={() => openTimeOffDialog(coach)}
                     style={{
                       width: '100%',
@@ -2289,6 +2264,9 @@ export function StaffManagement() {
                 onClick={() => {
                   setTimeOffDialogOpen(false)
                   setSelectedCoach(null)
+                  setTimeOffStartDate('')
+                  setTimeOffEndDate('')
+                  setTimeOffReason('')
                 }}
                 disabled={timeOffLoading}
                 style={{ flex: 1 }}
