@@ -4,6 +4,7 @@ import { getLocalDateString, getWeekdayText } from '../../utils/date'
 import { extractTime } from '../../utils/formatters'
 import { getCardStyle } from '../../styles/designSystem'
 import { MonthFilter } from '../admin/Statistics/components'
+import { splitMinutesEqually } from '../../utils/teachingMinutesAllocation'
 
 interface CoachSchedulePreviewTableProps {
   coachId: string
@@ -57,6 +58,17 @@ function getThreeMonthRangeLabel(monthKeys: string[]): string {
   return isCrossYear
     ? `${firstYear}年${firstMonth}月-${lastYear}年${lastMonth}月`
     : `${firstMonth}-${lastMonth}月`
+}
+
+/** 與 Dashboard「未來預約」相同：依 booking_coaches 人數等分該堂總分鐘 */
+function coachShareMinutesForBooking(booking: ScheduleBooking, coachId: string): number {
+  const list = booking.booking_coaches || []
+  const total = booking.duration_min || 0
+  if (list.length === 0) return total
+  const idx = list.findIndex(bc => bc.coach_id === coachId)
+  if (idx < 0) return 0
+  const shares = splitMinutesEqually(total, list.length)
+  return shares[idx] ?? 0
 }
 
 export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePreviewTableProps) {
@@ -124,18 +136,18 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
     return filteredBookings.reduce(
       (acc, booking) => {
         acc.totalSessions += 1
-        acc.totalMinutes += booking.duration_min || 0
+        acc.totalMinutes += coachShareMinutesForBooking(booking, coachId)
         return acc
       },
       { totalSessions: 0, totalMinutes: 0 }
     )
-  }, [filteredBookings])
+  }, [filteredBookings, coachId])
 
   const memberDistribution = useMemo(() => {
     const map = new Map<string, { name: string; minutes: number; count: number }>()
 
     filteredBookings.forEach(booking => {
-      const durationMin = booking.duration_min || 0
+      const shareMin = coachShareMinutesForBooking(booking, coachId)
       const bookingMembers = booking.booking_members || []
       const memberNamesFromBookingMembers = bookingMembers
         .map(bm => bm.members?.nickname || bm.members?.name || '未知會員')
@@ -160,12 +172,10 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
             .filter(Boolean)
 
       const names = allNames.length > 0 ? allNames : ['未知']
-      const n = names.length
-      const baseMin = n > 0 ? Math.floor(durationMin / n) : 0
-      const remainder = n > 0 ? durationMin % n : 0
+      const perMemberSplits = splitMinutesEqually(shareMin, names.length)
 
       names.forEach((name, idx) => {
-        const perMemberMinutes = n > 0 ? baseMin + (idx < remainder ? 1 : 0) : durationMin
+        const perMemberMinutes = perMemberSplits[idx] ?? 0
         const prev = map.get(name)
         if (prev) {
           prev.minutes += perMemberMinutes
@@ -182,7 +192,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
         rank: idx + 1,
         ...item
       }))
-  }, [filteredBookings])
+  }, [filteredBookings, coachId])
 
   const sortedBookings = useMemo(() => {
     return [...filteredBookings].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
@@ -200,10 +210,10 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
       date,
       weekday: getWeekdayText(date),
       count: items.length,
-      minutes: items.reduce((sum, item) => sum + (item.duration_min || 0), 0),
+      minutes: items.reduce((sum, item) => sum + coachShareMinutesForBooking(item, coachId), 0),
       items
     }))
-  }, [sortedBookings])
+  }, [sortedBookings, coachId])
 
   const toggleDateGroup = (date: string) => {
     setExpandedDates(prev => {
@@ -414,7 +424,12 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                           {booking.contact_name || '-'} ｜ {booking.boats?.name || '-'}
                         </div>
                         <div style={{ color: '#4a90e2', fontWeight: '500', fontSize: `${fontBody}px`, flexShrink: 0 }}>
-                          {booking.duration_min || 0} 分
+                          {coachShareMinutesForBooking(booking, coachId)} 分
+                          {(booking.booking_coaches || []).length > 1 && (
+                            <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: `${fontMeta}px` }}>
+                              {' '}（堂 {(booking.duration_min || 0)}）
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -449,7 +464,10 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                             {day.bookings.map(booking => (
                               <div key={booking.id} style={{ borderTop: '1px dashed #eef2f6', paddingTop: '4px' }}>
                                 <div style={{ fontSize: `${fontMeta}px`, color: '#1e293b', fontWeight: 600 }}>
-                                  {extractTime(booking.start_at)} / {booking.duration_min || 0}分
+                                  {extractTime(booking.start_at)} / {coachShareMinutesForBooking(booking, coachId)}分
+                                  {(booking.booking_coaches || []).length > 1 && (
+                                    <span style={{ color: '#94a3b8', fontWeight: 400 }}>（堂{booking.duration_min || 0}）</span>
+                                  )}
                                 </div>
                                 <div style={{ fontSize: `${fontMeta}px`, color: '#667085', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {booking.contact_name || '-'} ｜ {booking.boats?.name || '-'}

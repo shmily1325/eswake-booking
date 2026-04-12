@@ -9,6 +9,7 @@ import { getLocalDateString } from '../../../utils/date'
 import { sortBoatsByDisplayOrder } from '../../../utils/boatUtils'
 import { isAdmin } from '../../../utils/auth'
 import { loadPaidOperationalParticipantsForRange } from '../../../utils/settledNonPracticeBookings'
+import { splitMinutesEqually } from '../../../utils/teachingMinutesAllocation'
 
 import { LoadingSkeleton, LastUpdated } from './components'
 import { TrendTab, MonthlyTab, FutureTab } from './tabs'
@@ -334,7 +335,12 @@ export function Statistics() {
         weekdayMinutes += durationMin
       }
 
-      const addToCoach = (coachId: string, coachName: string) => {
+      // 多教練：預約總時數依教練人數等分（與 teachingMinutesAllocation 一致）；未指派仍計整筆
+      const coachShares = coaches.length > 0 ? splitMinutesEqually(durationMin, coaches.length) : null
+
+      const addToCoach = (coachId: string, coachName: string, coachIndex: number) => {
+        const shareMin = coachShares ? (coachShares[coachIndex] ?? 0) : durationMin
+
         if (!coachMap.has(coachId)) {
           coachMap.set(coachId, initCoach(coachId, coachName))
         }
@@ -342,13 +348,13 @@ export function Statistics() {
 
         const monthData = coach.bookings.find(b => b.month === bookingMonth)
         
-        // 每個會員分別計算時數：平分且加總嚴格等於該筆預約時數（無四捨五入誤差）
+        // 每位聯絡人／會員：在該教練此筆分攤時數內平分，加總嚴格等於 shareMin（無四捨五入誤差）
         const n = memberNames.length
-        const baseMin = n > 0 ? Math.floor(durationMin / n) : 0
-        const remainder = n > 0 ? durationMin % n : 0
+        const baseMin = n > 0 ? Math.floor(shareMin / n) : 0
+        const remainder = n > 0 ? shareMin % n : 0
 
         memberNames.forEach((memberName, idx) => {
-          const perMemberMinutes = n > 0 ? baseMin + (idx < remainder ? 1 : 0) : durationMin
+          const perMemberMinutes = n > 0 ? baseMin + (idx < remainder ? 1 : 0) : shareMin
           if (monthData) {
             if (!monthData.contactMap.has(memberName)) {
               monthData.contactMap.set(memberName, { minutes: 0, count: 0 })
@@ -368,18 +374,18 @@ export function Statistics() {
 
         if (monthData) {
           monthData.count += 1
-          monthData.minutes += durationMin
+          monthData.minutes += shareMin
         }
 
         coach.totalCount += 1
-        coach.totalMinutes += durationMin
+        coach.totalMinutes += shareMin
       }
 
       if (coaches.length === 0) {
-        addToCoach('unassigned', '未指派')
+        addToCoach('unassigned', '未指派', 0)
       } else {
-        coaches.forEach((bc: any) => {
-          addToCoach(bc.coach_id, bc.coaches?.name || '未知')
+        coaches.forEach((bc: any, coachIndex: number) => {
+          addToCoach(bc.coach_id, bc.coaches?.name || '未知', coachIndex)
         })
       }
     })
