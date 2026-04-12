@@ -180,11 +180,12 @@ export function HomePage() {
     }
   ]
 
-  /** 橫線下方：區間時數合計（已停用） */
+  /** 橫線下方：區間時數合計（已停用，主視覺維持原樣，小標提示已燒毀） */
   const menuItemsBelowDivider: HomeMenuItem[] = [
     {
-      title: '💣 已燒毀',
-      icon: '💣',
+      title: '區間時數合計',
+      icon: '⏱️',
+      subtitle: '💣 已燒毀',
       link: '/boat-usage-hours',
       alwaysShow: true,
       disabled: true
@@ -400,10 +401,9 @@ export function HomePage() {
                     }
                     const disabledExtra: CSSProperties = item.disabled
                       ? {
-                          opacity: 0.5,
+                          opacity: 0.62,
                           pointerEvents: 'none',
-                          cursor: 'not-allowed',
-                          filter: 'grayscale(0.35)'
+                          cursor: 'not-allowed'
                         }
                       : { cursor: 'pointer' }
 
@@ -412,8 +412,7 @@ export function HomePage() {
                         <div
                           style={{
                             fontSize: '42px',
-                            marginBottom: '5px',
-                            ...(item.disabled ? { filter: 'grayscale(1)' } : {})
+                            marginBottom: '5px'
                           }}
                         >
                           {item.icon}
@@ -424,7 +423,7 @@ export function HomePage() {
                             margin: 0,
                             fontSize: isMobile ? '16px' : '18px',
                             fontWeight: '600',
-                            color: item.disabled ? '#666' : '#000',
+                            color: item.disabled ? '#444' : '#000',
                             letterSpacing: '0.5px'
                           }}
                         >
@@ -435,9 +434,12 @@ export function HomePage() {
                           <p
                             style={{
                               margin: 0,
+                              marginTop: '2px',
                               fontSize: isMobile ? '12px' : '13px',
-                              color: '#999',
-                              fontStyle: 'italic'
+                              color: item.disabled ? '#6a4c93' : '#999',
+                              fontStyle: item.disabled ? 'normal' : 'italic',
+                              fontWeight: item.disabled ? 600 : 400,
+                              letterSpacing: '0.02em'
                             }}
                           >
                             {item.subtitle}
