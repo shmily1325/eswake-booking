@@ -6,7 +6,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
 import { isAdmin, isEditorAsync, hasViewAccess } from '../utils/auth'
 import { supabase } from '../lib/supabase'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 
 // 菜單按鈕 Skeleton 組件
 function MenuButtonSkeleton({ isMobile }: { isMobile: boolean }) {
@@ -119,6 +119,8 @@ export function HomePage() {
     isEditor?: boolean
     requiresViewAccess?: boolean
     alwaysShow?: boolean
+    /** 顯示為停用卡片，不可點擊 */
+    disabled?: boolean
   }
 
   const menuItemsMain: HomeMenuItem[] = [
@@ -178,13 +180,14 @@ export function HomePage() {
     }
   ]
 
-  /** 橫線下方：僅區間時數合計 */
+  /** 橫線下方：區間時數合計（已停用） */
   const menuItemsBelowDivider: HomeMenuItem[] = [
     {
-      title: '區間時數合計',
-      icon: '⏱️',
+      title: '💣 已燒毀',
+      icon: '💣',
       link: '/boat-usage-hours',
-      alwaysShow: true
+      alwaysShow: true,
+      disabled: true
     }
   ]
 
@@ -346,72 +349,138 @@ export function HomePage() {
                   <div
                     style={{
                       gridColumn: '1 / -1',
-                      margin: '8px 0 4px',
-                      borderTop: '1px solid rgba(0, 0, 0, 0.12)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      margin: '12px 0 8px',
                       width: '100%'
                     }}
-                  />
-                  {visibleBelowDivider.map((item) => (
-                    <Link
-                      key={`below-${item.link}-${item.title}`}
-                      to={item.link}
-                      data-track={`nav_${item.link.replace(/^\//, '') || 'home'}`}
+                  >
+                    <div
                       style={{
-                        textDecoration: 'none',
-                        background: 'rgba(255, 255, 255, 0.7)',
-                        backdropFilter: 'blur(10px)',
-                        borderRadius: '16px',
-                        padding: '35px 20px',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                        transition: 'all 0.3s ease',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                        gap: '12px',
-                        cursor: 'pointer',
-                        border: '1px solid rgba(224, 224, 224, 0.5)'
+                        flex: 1,
+                        height: '1px',
+                        background: 'rgba(0, 0, 0, 0.12)'
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-5px)'
-                        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
-                        e.currentTarget.style.borderColor = '#000'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                        e.currentTarget.style.borderColor = '#e0e0e0'
+                    />
+                    <span
+                      style={{
+                        fontSize: isMobile ? '11px' : '12px',
+                        fontWeight: 600,
+                        color: 'rgba(0, 0, 0, 0.45)',
+                        letterSpacing: '0.12em',
+                        whiteSpace: 'nowrap'
                       }}
                     >
-                      <div style={{
-                        fontSize: '42px',
-                        marginBottom: '5px',
-                      }}>
-                        {item.icon}
-                      </div>
+                      小胖
+                    </span>
+                    <div
+                      style={{
+                        flex: 1,
+                        height: '1px',
+                        background: 'rgba(0, 0, 0, 0.12)'
+                      }}
+                    />
+                  </div>
+                  {visibleBelowDivider.map((item) => {
+                    const cardBaseStyle: CSSProperties = {
+                      textDecoration: 'none',
+                      background: 'rgba(255, 255, 255, 0.7)',
+                      backdropFilter: 'blur(10px)',
+                      borderRadius: '16px',
+                      padding: '35px 20px',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                      transition: 'all 0.3s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      gap: '12px',
+                      border: '1px solid rgba(224, 224, 224, 0.5)'
+                    }
+                    const disabledExtra: CSSProperties = item.disabled
+                      ? {
+                          opacity: 0.5,
+                          pointerEvents: 'none',
+                          cursor: 'not-allowed',
+                          filter: 'grayscale(0.35)'
+                        }
+                      : { cursor: 'pointer' }
 
-                      <h2 style={{
-                        margin: 0,
-                        fontSize: isMobile ? '16px' : '18px',
-                        fontWeight: '600',
-                        color: '#000',
-                        letterSpacing: '0.5px'
-                      }}>
-                        {item.title}
-                      </h2>
+                    const inner = (
+                      <>
+                        <div
+                          style={{
+                            fontSize: '42px',
+                            marginBottom: '5px',
+                            ...(item.disabled ? { filter: 'grayscale(1)' } : {})
+                          }}
+                        >
+                          {item.icon}
+                        </div>
 
-                      {item.subtitle && (
-                        <p style={{
-                          margin: 0,
-                          fontSize: isMobile ? '12px' : '13px',
-                          color: '#999',
-                          fontStyle: 'italic'
-                        }}>
-                          {item.subtitle}
-                        </p>
-                      )}
-                    </Link>
-                  ))}
+                        <h2
+                          style={{
+                            margin: 0,
+                            fontSize: isMobile ? '16px' : '18px',
+                            fontWeight: '600',
+                            color: item.disabled ? '#666' : '#000',
+                            letterSpacing: '0.5px'
+                          }}
+                        >
+                          {item.title}
+                        </h2>
+
+                        {item.subtitle && (
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: isMobile ? '12px' : '13px',
+                              color: '#999',
+                              fontStyle: 'italic'
+                            }}
+                          >
+                            {item.subtitle}
+                          </p>
+                        )}
+                      </>
+                    )
+
+                    if (item.disabled) {
+                      return (
+                        <div
+                          key={`below-${item.link}-${item.title}`}
+                          role="group"
+                          aria-disabled
+                          aria-label={`${item.title}（已停用）`}
+                          style={{ ...cardBaseStyle, ...disabledExtra }}
+                        >
+                          {inner}
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <Link
+                        key={`below-${item.link}-${item.title}`}
+                        to={item.link}
+                        data-track={`nav_${item.link.replace(/^\//, '') || 'home'}`}
+                        style={{ ...cardBaseStyle, ...disabledExtra }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-5px)'
+                          e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
+                          e.currentTarget.style.borderColor = '#000'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)'
+                          e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
+                          e.currentTarget.style.borderColor = '#e0e0e0'
+                        }}
+                      >
+                        {inner}
+                      </Link>
+                    )
+                  })}
                 </>
               )}
             </>
