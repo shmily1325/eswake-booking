@@ -146,7 +146,7 @@ export function BoatManagement() {
 
             if (error) throw error
 
-            toast.success(boat.is_active ? '船隻已停用' : '船隻已啟用')
+            toast.success(boat.is_active ? '💣船隻已燒毀' : '船隻已啟用')
             loadData()
         } catch (error) {
             toast.error('更新狀態失敗：' + (error as Error).message)
@@ -535,7 +535,7 @@ export function BoatManagement() {
                                             {boat.name}
                                             {!isActive && (
                                                 <Badge variant="danger" size="small">
-                                                    已停用
+                                                    💣已燒毀
                                                 </Badge>
                                             )}
                                         </h3>
@@ -550,7 +550,7 @@ export function BoatManagement() {
                                             onClick={() => handleToggleStatus(boat)}
                                             style={isActive ? { background: '#fff', color: designSystem.colors.danger[500], border: `1px solid ${designSystem.colors.danger[500]}` } : {}}
                                         >
-                                            {isActive ? '停用' : '啟用'}
+                                            {isActive ? '💣燒毀' : '啟用'}
                                         </Button>
                                     </div>
                                 </div>
