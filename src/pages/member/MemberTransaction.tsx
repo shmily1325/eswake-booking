@@ -8,6 +8,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import type { Member } from '../../types/booking'
 import { handleError } from '../../utils/errorHandler'
 import { useToast } from '../../components/ui'
+import { isAdmin } from '../../utils/auth'
 
 // 擴展 Member 類型，加入最後交易日期和更新日期
 interface MemberWithLastTransaction extends Member {
@@ -485,7 +486,11 @@ export function MemberTransaction() {
           title="💰 會員儲值" 
           user={user} 
           showBaoLink={true}
-          extraLinks={[{ label: isMobile ? '👥' : '👥 會員管理', link: '/members' }]}
+          extraLinks={
+            isAdmin(user)
+              ? [{ label: isMobile ? '👥' : '👥 會員管理', link: '/members' }]
+              : undefined
+          }
         />
         {/* 數據總覽 */}
         <div style={{

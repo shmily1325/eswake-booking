@@ -15,6 +15,7 @@ import {
   isEndDateInExpiryReminderWindow,
   EXPIRING_SOON_DAYS
 } from '../../utils/date'
+import { isAdmin } from '../../utils/auth'
 
 interface Member {
   id: string
@@ -57,6 +58,7 @@ interface MemberNote {
 
 export function MemberManagement() {
   const user = useAuthUser()
+  const userIsAdmin = isAdmin(user)
   const toast = useToast()
   const { isMobile } = useResponsive()
   const navigate = useNavigate()
@@ -77,14 +79,26 @@ export function MemberManagement() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc') // 升冪/降冪
 
   useEffect(() => {
+    if (!user || !userIsAdmin) return
     loadMembers()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showInactive])
+  }, [showInactive, user, userIsAdmin])
 
   useEffect(() => {
+    if (!user || !userIsAdmin) return
     loadExpiringData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [user, userIsAdmin])
+
+  /** 會員管理僅限超級管理員（SUPER_ADMINS）；小編與其他帳號請用首頁「會員電話」等對應功能 */
+  useEffect(() => {
+    if (!user) return
+    if (!userIsAdmin) {
+      setLoading(false)
+      toast.error('會員管理僅限管理員使用')
+      navigate('/')
+    }
+  }, [user, userIsAdmin, navigate, toast])
 
   // 格式化日期為 YYYY-MM-DD（顯示用）
   const formatDate = (dateStr: string) => {

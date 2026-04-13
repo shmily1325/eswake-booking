@@ -12,7 +12,7 @@ import { useToast } from '../components/ui'
 export const SUPER_ADMINS = [
   'callumbao1122@gmail.com',
   'pjpan0511@gmail.com',
-  'minlin1325@gmail.com',
+  // 'minlin1325@gmail.com',
 ]
 
 /** 編輯記錄「操作者」顯示用，key 為小寫 email（與 SUPER_ADMINS 一一對應） */
@@ -20,6 +20,42 @@ export const SUPER_ADMIN_DISPLAY_LABELS: Record<string, string> = {
   'callumbao1122@gmail.com': 'B',
   'pjpan0511@gmail.com': 'PJ',
   'minlin1325@gmail.com': 'Ming',
+}
+
+function parseCommaSeparatedEmails(raw: string | undefined): string[] {
+  if (!raw) return []
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+/**
+ * 可使用「會員電話」專用畫面（首頁圖示）的帳號。
+ * 若另設 VITE_MEMBER_PHONE_ONLY_EDITORS（逗號分隔），會與此清單合併（多出的人也能看到圖示）。
+ */
+export const MEMBER_PHONE_ONLY_EDITORS: string[] = [
+  'callumbao1122@gmail.com',
+  'pjpan0511@gmail.com',
+  'minlin1325@gmail.com',
+  'stt884142000@gmail.com',
+  'lynn8046356@gmail.com',
+]
+
+const MEMBER_PHONE_ONLY_EDITORS_FROM_ENV = parseCommaSeparatedEmails(
+  import.meta.env.VITE_MEMBER_PHONE_ONLY_EDITORS
+)
+
+/**
+ * 是否可使用「會員電話」專用畫面（email 須在 MEMBER_PHONE_ONLY_EDITORS，或於環境變數 VITE_MEMBER_PHONE_ONLY_EDITORS 中列出）。
+ */
+export function isMemberPhoneOnlyEditor(user: User | null): boolean {
+  if (!user?.email) return false
+  const email = user.email.toLowerCase()
+  const all = new Set(
+    [...MEMBER_PHONE_ONLY_EDITORS, ...MEMBER_PHONE_ONLY_EDITORS_FROM_ENV].map((e) => e.toLowerCase())
+  )
+  return all.has(email)
 }
 
 // 權限緩存

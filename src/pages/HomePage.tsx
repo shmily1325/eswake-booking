@@ -4,7 +4,7 @@ import { UserMenu } from '../components/UserMenu'
 import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
-import { isAdmin, isEditorAsync, hasViewAccess } from '../utils/auth'
+import { isAdmin, isEditorAsync, hasViewAccess, isMemberPhoneOnlyEditor } from '../utils/auth'
 import { supabase } from '../lib/supabase'
 import { useState, useEffect, type CSSProperties } from 'react'
 
@@ -121,6 +121,8 @@ export function HomePage() {
     alwaysShow?: boolean
     /** 顯示為停用卡片，不可點擊 */
     disabled?: boolean
+    /** 僅列在 MEMBER_PHONE_ONLY_EDITORS（或環境變數）的帳號可見 */
+    phoneEditorOnly?: boolean
   }
 
   const menuItemsMain: HomeMenuItem[] = [
@@ -173,6 +175,12 @@ export function HomePage() {
       isEditor: true
     },
     {
+      title: '會員電話',
+      icon: '📱',
+      link: '/member-phone-edit',
+      phoneEditorOnly: true
+    },
+    {
       title: 'BAO',
       icon: '🔧',
       link: '/bao',
@@ -195,6 +203,9 @@ export function HomePage() {
   const filterVisibleMenuItems = (items: HomeMenuItem[]) =>
     items.filter((item) => {
       if (item.alwaysShow) return true
+      if (item.phoneEditorOnly) {
+        return Boolean(user && isMemberPhoneOnlyEditor(user))
+      }
       if (item.isAdmin && !userIsAdmin) return false
       if (item.isCoach && !isCoach) return false
       if (item.isEditor && !isEditorUser) return false

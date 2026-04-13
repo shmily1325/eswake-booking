@@ -57,6 +57,7 @@ import { AuditLog } from './pages/admin/AuditLog'
 import { TomorrowReminder } from './pages/TomorrowReminder'
 import { BackupPage } from './pages/admin/BackupPage'
 import { MemberManagement } from './pages/member/MemberManagement'
+import { MemberPhoneEditPage } from './pages/member/MemberPhoneEditPage'
 import { BoardManagement } from './pages/admin/BoardManagement'
 import { BaoHub } from './pages/BaoHub'
 import { StaffManagement } from './pages/admin/StaffManagement'
@@ -122,6 +123,7 @@ function AppContent() {
         <Route path="/member-transaction" element={<MemberTransaction />} />
         <Route path="/bao" element={<BaoHub />} />
         <Route path="/members" element={<MemberManagement />} />
+        <Route path="/member-phone-edit" element={<MemberPhoneEditPage />} />
         <Route path="/boards" element={<BoardManagement />} />
         <Route path="/staff" element={<StaffManagement />} />
         <Route path="/announcements" element={<AnnouncementManagement />} />
