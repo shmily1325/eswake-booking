@@ -15,9 +15,6 @@ interface MemberRow {
   nickname: string | null
   phone: string | null
   birthday: string | null
-  balance: number
-  membership_end_date: string | null
-  membership_start_date: string | null
   membership_type: string
   membership_partner_id: string | null
   partner?: { name: string; nickname: string | null } | null
@@ -36,10 +33,6 @@ function membershipLabel(type: string): string {
     default:
       return type || '—'
   }
-}
-
-function formatMoney(n: number | null | undefined): string {
-  return Number(n ?? 0).toLocaleString('zh-TW')
 }
 
 function digitsOnly(s: string): string {
@@ -76,6 +69,8 @@ export function MemberPhoneEditPage() {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  /** 正在編輯手機的會員 id（須先按「編輯」才會解鎖輸入，避免誤觸） */
+  const [editingMemberIds, setEditingMemberIds] = useState<Set<string>>(() => new Set())
 
   useEffect(() => {
     if (user && !isMemberPhoneOnlyEditor(user)) {
@@ -92,7 +87,6 @@ export function MemberPhoneEditPage() {
         .select(
           `
             id, name, nickname, phone, birthday,
-            balance, membership_end_date, membership_start_date,
             membership_type, membership_partner_id,
             status
           `
@@ -125,6 +119,7 @@ export function MemberPhoneEditPage() {
         drafts[m.id] = m.phone || ''
       }
       setPhoneDrafts(drafts)
+      setEditingMemberIds(new Set())
     } catch (e) {
       console.error(e)
       toast.error('載入會員失敗')
@@ -179,6 +174,11 @@ export function MemberPhoneEditPage() {
       setMembers((prev) =>
         prev.map((m) => (m.id === memberId ? { ...m, phone: toSave } : m))
       )
+      setEditingMemberIds((prev) => {
+        const next = new Set(prev)
+        next.delete(memberId)
+        return next
+      })
       toast.success('手機號碼已更新')
     } catch (e) {
       console.error(e)
@@ -211,8 +211,7 @@ export function MemberPhoneEditPage() {
           lineHeight: 1.5,
         }}
       >
-        以下欄位與會員資料相同，僅手機號碼可修改。可貼上含空格、橫線或 +886 的號碼，儲存會整理成
-        09 開頭；手機欄按 Enter 可儲存。
+        先按「編輯」再改手機；可貼含空格或 +886，儲存會整理成 09 開頭。編輯中按 Enter 可儲存。
       </p>
 
       <div style={{ marginBottom: '12px' }}>
@@ -249,6 +248,7 @@ export function MemberPhoneEditPage() {
             const draftInvalid = draftNorm !== '' && !/^09\d{8}$/.test(draftNorm)
             const saveDisabled =
               savingId === m.id || draftInvalid || draftNorm === storedNorm
+            const isEditing = editingMemberIds.has(m.id)
             return (
               <div
                 key={m.id}
@@ -286,18 +286,6 @@ export function MemberPhoneEditPage() {
                     {membershipLabel(m.membership_type)}
                     {partnerLine ? `（配對：${partnerLine}）` : ''}
                   </div>
-                  <div>
-                    <span style={{ color: '#888' }}>會籍起日：</span>
-                    {normalizeDate(m.membership_start_date) || '—'}
-                  </div>
-                  <div>
-                    <span style={{ color: '#888' }}>會籍迄日：</span>
-                    {normalizeDate(m.membership_end_date) || '—'}
-                  </div>
-                  <div>
-                    <span style={{ color: '#888' }}>餘額：</span>
-                    {formatMoney(m.balance)} 元
-                  </div>
                 </div>
 
                 <div
@@ -321,59 +309,133 @@ export function MemberPhoneEditPage() {
                   >
                     手機
                   </span>
-                  <input
-                    type="tel"
-                    inputMode="tel"
-                    enterKeyHint="done"
-                    autoComplete="tel"
-                    value={phoneDrafts[m.id] ?? ''}
-                    onChange={(e) =>
-                      setPhoneDrafts((prev) => ({ ...prev, [m.id]: e.target.value }))
-                    }
-                    onBlur={() => {
-                      const raw = phoneDrafts[m.id] ?? ''
-                      const n = toStoredTaiwanMobile(raw)
-                      if (n === raw.trim() || !isValidTwMobile10(n)) return
-                      setPhoneDrafts((prev) => ({ ...prev, [m.id]: n }))
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return
-                      e.preventDefault()
-                      void savePhone(m.id)
-                    }}
-                    placeholder="0912345678 或貼上 +886…"
-                    style={{
-                      flex: isMobile ? 'none' : '1 1 200px',
-                      width: isMobile ? '100%' : undefined,
-                      minWidth: isMobile ? undefined : '160px',
-                      minHeight: isMobile ? 48 : 44,
-                      padding: isMobile ? '14px 14px' : '12px 14px',
-                      border: '1px solid #bbb',
-                      borderRadius: '10px',
-                      fontSize: isMobile ? '16px' : '16px',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => savePhone(m.id)}
-                    disabled={saveDisabled}
-                    style={{
-                      padding: isMobile ? '14px 20px' : '12px 22px',
-                      minHeight: isMobile ? 48 : 44,
-                      background: '#5a5a5a',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '10px',
-                      fontSize: isMobile ? '16px' : '15px',
-                      fontWeight: 600,
-                      cursor: savingId === m.id ? 'wait' : 'pointer',
-                      opacity: savingId === m.id ? 0.7 : 1,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {savingId === m.id ? '儲存中…' : '儲存'}
-                  </button>
+                  {isEditing ? (
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      enterKeyHint="done"
+                      autoComplete="tel"
+                      autoFocus
+                      value={phoneDrafts[m.id] ?? ''}
+                      onChange={(e) =>
+                        setPhoneDrafts((prev) => ({ ...prev, [m.id]: e.target.value }))
+                      }
+                      onBlur={() => {
+                        const raw = phoneDrafts[m.id] ?? ''
+                        const n = toStoredTaiwanMobile(raw)
+                        if (n === raw.trim() || !isValidTwMobile10(n)) return
+                        setPhoneDrafts((prev) => ({ ...prev, [m.id]: n }))
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return
+                        e.preventDefault()
+                        if (!saveDisabled) void savePhone(m.id)
+                      }}
+                      placeholder="0912345678 或貼上 +886…"
+                      style={{
+                        flex: isMobile ? 'none' : '1 1 200px',
+                        width: isMobile ? '100%' : undefined,
+                        minWidth: isMobile ? undefined : '160px',
+                        minHeight: isMobile ? 48 : 44,
+                        padding: isMobile ? '14px 14px' : '12px 14px',
+                        border: '1px solid #bbb',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '16px' : '16px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  ) : (
+                    <span
+                      style={{
+                        flex: isMobile ? 'none' : '1 1 200px',
+                        width: isMobile ? '100%' : undefined,
+                        minHeight: isMobile ? 48 : 44,
+                        padding: isMobile ? '14px 14px' : '12px 14px',
+                        border: '1px solid #e8e8e8',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '16px' : '16px',
+                        boxSizing: 'border-box',
+                        background: '#fafafa',
+                        color: m.phone ? '#222' : '#999',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      {m.phone?.trim() || '未填寫'}
+                    </span>
+                  )}
+                  {isEditing ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => savePhone(m.id)}
+                        disabled={saveDisabled}
+                        style={{
+                          padding: isMobile ? '14px 20px' : '12px 22px',
+                          minHeight: isMobile ? 48 : 44,
+                          background: '#5a5a5a',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '10px',
+                          fontSize: isMobile ? '16px' : '15px',
+                          fontWeight: 600,
+                          cursor: savingId === m.id ? 'wait' : 'pointer',
+                          opacity: saveDisabled && savingId !== m.id ? 0.45 : 1,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {savingId === m.id ? '儲存中…' : '儲存'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={savingId === m.id}
+                        onClick={() => {
+                          setPhoneDrafts((prev) => ({ ...prev, [m.id]: m.phone || '' }))
+                          setEditingMemberIds((prev) => {
+                            const next = new Set(prev)
+                            next.delete(m.id)
+                            return next
+                          })
+                        }}
+                        style={{
+                          padding: isMobile ? '14px 20px' : '12px 22px',
+                          minHeight: isMobile ? 48 : 44,
+                          background: 'white',
+                          color: '#555',
+                          border: '1px solid #ccc',
+                          borderRadius: '10px',
+                          fontSize: isMobile ? '16px' : '15px',
+                          fontWeight: 600,
+                          cursor: savingId === m.id ? 'not-allowed' : 'pointer',
+                          flexShrink: 0,
+                        }}
+                      >
+                        取消
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhoneDrafts((prev) => ({ ...prev, [m.id]: m.phone || '' }))
+                        setEditingMemberIds((prev) => new Set(prev).add(m.id))
+                      }}
+                      style={{
+                        padding: isMobile ? '14px 20px' : '12px 22px',
+                        minHeight: isMobile ? 48 : 44,
+                        background: 'white',
+                        color: '#333',
+                        border: '1px solid #888',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '16px' : '15px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    >
+                      編輯
+                    </button>
+                  )}
                 </div>
               </div>
             )

@@ -12,7 +12,7 @@ import { useToast } from '../components/ui'
 export const SUPER_ADMINS = [
   'callumbao1122@gmail.com',
   'pjpan0511@gmail.com',
-  // 'minlin1325@gmail.com',
+  'minlin1325@gmail.com',
 ]
 
 /** 編輯記錄「操作者」顯示用，key 為小寫 email（與 SUPER_ADMINS 一一對應） */
