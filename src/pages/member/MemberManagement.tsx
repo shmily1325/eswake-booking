@@ -71,6 +71,7 @@ export function MemberManagement() {
   const [expiringBoards, setExpiringBoards] = useState<any[]>([])
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 'all', 'general', 'dual', 'guest'
   const [expiringFilter, setExpiringFilter] = useState<string>('none') // 'none', 'membership', 'board'
+  const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
   const [showExpiringDetails, setShowExpiringDetails] = useState(false) // 收合/展開到期詳情
   const [sortBy, setSortBy] = useState<string>('nickname') // 'nickname', 'balance', 'membership_end_date'
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc') // 升冪/降冪
@@ -548,6 +549,12 @@ export function MemberManagement() {
       )
     }
 
+    if (lineBindingFilter === 'bound') {
+      result = result.filter(m => m.is_line_bound)
+    } else if (lineBindingFilter === 'unbound') {
+      result = result.filter(m => !m.is_line_bound)
+    }
+
     // 排序
     result = [...result].sort((a, b) => {
       let comparison = 0
@@ -611,7 +618,7 @@ export function MemberManagement() {
     })
     
     return result
-  }, [members, searchTerm, membershipTypeFilter, expiringFilter, expiringMemberships, expiringBoards, sortBy, sortOrder])
+  }, [members, searchTerm, membershipTypeFilter, expiringFilter, lineBindingFilter, expiringMemberships, expiringBoards, sortBy, sortOrder])
 
 
   if (loading) {
@@ -848,7 +855,7 @@ export function MemberManagement() {
                     backgroundPosition: 'right 12px center',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                     color: '#333',
-                    fontWeight: (membershipTypeFilter !== 'all' || expiringFilter !== 'none') ? '500' : 'normal',
+                    fontWeight: (membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') ? '500' : 'normal',
                   }}
                 >
                   <option value="all">全部 ({members.length})</option>
@@ -863,6 +870,35 @@ export function MemberManagement() {
                   {expiringBoards.length > 0 && (
                     <option value="expiring-board">置板到期 ({expiringBoards.length})</option>
                   )}
+                </select>
+              </div>
+
+              {/* LINE 綁定狀態 */}
+              <div style={{ flex: '1 1 100%' }}>
+                <select
+                  value={lineBindingFilter}
+                  onChange={(e) => setLineBindingFilter(e.target.value as 'all' | 'bound' | 'unbound')}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    paddingRight: '32px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    color: '#333',
+                    fontWeight: lineBindingFilter !== 'all' ? '500' : 'normal',
+                  }}
+                >
+                  <option value="all">LINE 全部 ({members.length})</option>
+                  <option value="bound">LINE 已綁定 ({members.filter(m => m.is_line_bound).length})</option>
+                  <option value="unbound">LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})</option>
                 </select>
               </div>
 
@@ -937,7 +973,7 @@ export function MemberManagement() {
             </div>
 
             {/* 手機版結果數量 */}
-            {(searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none') && (
+            {(searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') && (
               <div style={{
                 fontSize: '13px',
                 color: '#666',
@@ -1030,6 +1066,40 @@ export function MemberManagement() {
               }}
             >
               🏄 置板到期 ({expiringBoards.length})
+            </button>
+
+            <button
+              data-track="member_filter_line_bound"
+              onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
+              style={{
+                padding: '6px 12px',
+                background: lineBindingFilter === 'bound' ? '#06C755' : 'white',
+                color: lineBindingFilter === 'bound' ? 'white' : '#06C755',
+                border: `1px solid ${lineBindingFilter === 'bound' ? '#06C755' : '#06C755'}`,
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: 'pointer',
+                fontWeight: lineBindingFilter === 'bound' ? '600' : 'normal',
+              }}
+            >
+              LINE 已綁定 ({members.filter(m => m.is_line_bound).length})
+            </button>
+
+            <button
+              data-track="member_filter_line_unbound"
+              onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
+              style={{
+                padding: '6px 12px',
+                background: lineBindingFilter === 'unbound' ? '#888' : 'white',
+                color: lineBindingFilter === 'unbound' ? 'white' : '#666',
+                border: `1px solid ${lineBindingFilter === 'unbound' ? '#888' : '#ddd'}`,
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: 'pointer',
+                fontWeight: lineBindingFilter === 'unbound' ? '600' : 'normal',
+              }}
+            >
+              LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})
             </button>
             
             {/* 分隔線 */}
