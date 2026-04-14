@@ -44,7 +44,26 @@ vi.mock('../../utils/memberUtils', () => ({
   splitAndDeduplicateNames: vi.fn((s: string) => {
     if (!s) return []
     return s.split(/[,，]/).map((n: string) => n.trim()).filter(Boolean)
-  })
+  }),
+  stripManualNamesMatchingSelectedMembers: vi.fn(
+    (members: any[], selectedMemberIds: string[], manualNames: string[]) => {
+      if (selectedMemberIds.length === 0 || manualNames.length === 0) return manualNames
+      const memberDisplays = new Set<string>()
+      for (const id of selectedMemberIds) {
+        const m = members.find((mm: any) => mm.id === id)
+        if (!m) continue
+        const primary = (m.nickname || m.name).trim()
+        if (primary) memberDisplays.add(primary)
+        if (m.name?.trim()) memberDisplays.add(m.name.trim())
+        if (m.nickname?.trim()) memberDisplays.add(m.nickname.trim())
+      }
+      return manualNames.filter((name: string) => {
+        const t = name.trim()
+        if (!t) return false
+        return !memberDisplays.has(t)
+      })
+    }
+  )
 }))
 
 // Mock facility
@@ -198,7 +217,8 @@ describe('useBookingForm', () => {
 
       const { result } = renderHook(() => useBookingForm({ initialBooking: initial }))
 
-      expect(result.current.manualNames).toEqual(['水晶'])
+      // 有 member_id 但無嵌套 members 時先延後解析，避免錯誤橘標一幀
+      expect(result.current.manualNames).toEqual([])
 
       await act(async () => {
         await result.current.fetchAllData()

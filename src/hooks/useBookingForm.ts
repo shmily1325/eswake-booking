@@ -53,6 +53,9 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
 
     // Initialization tracking
     const isInitializedRef = useRef(false)
+    /** 已用 contact_name + 會員名冊還原過手動名（避免 members 異動時重覆覆寫使用者編輯） */
+    const contactManualParsedKeyRef = useRef<string | null>(null)
+    const prevEditBookingIdRef = useRef<number | null>(null)
 
     // Search Debounce
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -84,6 +87,11 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     // Initialize from initialBooking or defaults
     useEffect(() => {
         if (initialBooking) {
+            if (prevEditBookingIdRef.current !== initialBooking.id) {
+                contactManualParsedKeyRef.current = null
+                prevEditBookingIdRef.current = initialBooking.id
+            }
+
             // Edit Mode Initialization
             setSelectedBoatId(initialBooking.boat_id)
             setDurationMin(initialBooking.duration_min)
@@ -111,27 +119,30 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
 
             // Initialize manual names - 從 contact_name 中提取非會員名字
             if (initialBooking.contact_name) {
-                // 使用去重函數處理 contact_name
                 const contactNames = splitAndDeduplicateNames(initialBooking.contact_name)
-                
-                // 取得已選會員的名字和暱稱（用於比對）
+
                 const memberNamesSet = new Set<string>()
                 if (initialBooking.booking_members && initialBooking.booking_members.length > 0) {
                     initialBooking.booking_members.forEach((bm: any) => {
                         if (bm.members) {
-                            if (bm.members.name) memberNamesSet.add(bm.members.name)
-                            if (bm.members.nickname) memberNamesSet.add(bm.members.nickname)
+                            if (bm.members.name) memberNamesSet.add(String(bm.members.name).trim())
+                            if (bm.members.nickname) memberNamesSet.add(String(bm.members.nickname).trim())
                         }
                     })
                 }
-                
-                // 從 contact_name 中過濾出非會員（不在會員名字/暱稱中的名字）
-                const nonMemberNames = contactNames.filter(name => !memberNamesSet.has(name))
-                setManualNames(nonMemberNames)
+
+                const nonMemberNames = contactNames.filter(name => !memberNamesSet.has(name.trim()))
+                // 有關聯會員但嵌套資料比對不到姓名時，先不把手動名寫入 state，等 members 載入後再解析，避免橘標閃一下又消失
+                const deferUntilMembers =
+                    initialMemberIds.length > 0 && memberNamesSet.size === 0
+                setManualNames(deferUntilMembers ? [] : nonMemberNames)
             } else {
                 setManualNames([])
             }
         } else {
+            prevEditBookingIdRef.current = null
+            contactManualParsedKeyRef.current = null
+
             // Create Mode Initialization
             if (defaultBoatId) setSelectedBoatId(defaultBoatId)
 
@@ -157,6 +168,55 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             isInitializedRef.current = true
         })
     }, [initialBooking, defaultDate, defaultBoatId])
+
+    // 編輯模式：會員名冊載入後一次從 contact_name 還原手動名（與預約上的 member 比對），避免先畫錯誤橘標
+    useEffect(() => {
+        if (!initialBooking?.contact_name || members.length === 0) {
+            if (!initialBooking) contactManualParsedKeyRef.current = null
+            return
+        }
+
+        const parseKey = `${initialBooking.id}|${initialBooking.contact_name}`
+        if (contactManualParsedKeyRef.current === parseKey) return
+
+        const ids = new Set<string>()
+        if (initialBooking.member_id) ids.add(initialBooking.member_id)
+        if (initialBooking.booking_members?.length) {
+            initialBooking.booking_members.forEach((bm: any) => {
+                if (bm.member_id) ids.add(bm.member_id)
+            })
+        }
+
+        const memberLabels = new Set<string>()
+        if (initialBooking.booking_members?.length) {
+            initialBooking.booking_members.forEach((bm: any) => {
+                if (bm.members) {
+                    if (bm.members.name) memberLabels.add(String(bm.members.name).trim())
+                    if (bm.members.nickname) memberLabels.add(String(bm.members.nickname).trim())
+                }
+            })
+        }
+        for (const id of ids) {
+            const m = members.find(mm => mm.id === id)
+            if (!m) continue
+            if (m.name?.trim()) memberLabels.add(m.name.trim())
+            if (m.nickname?.trim()) memberLabels.add(m.nickname.trim())
+            memberLabels.add((m.nickname || m.name).trim())
+        }
+
+        const contactNames = splitAndDeduplicateNames(initialBooking.contact_name)
+        const nonMemberNames = contactNames.filter((name) => {
+            const t = name.trim()
+            if (!t) return false
+            if (memberLabels.has(t)) return false
+            return ![...memberLabels].some(
+                (ml) => ml && (t.includes(ml) || ml.includes(t))
+            )
+        })
+
+        setManualNames(nonMemberNames)
+        contactManualParsedKeyRef.current = parseKey
+    }, [initialBooking, members])
 
     // 會員名冊載入後：contact_name 拆出的手動名若與已選會員本名／暱稱相同則移除，避免同一人出現藍標＋橘標
     useEffect(() => {
