@@ -228,6 +228,101 @@ describe('useBookingForm', () => {
         expect(result.current.manualNames).toEqual([])
       })
     })
+
+    it('booking_members 有嵌套 members 時應立即從 contact_name 拆出非會員（不需等名冊）', async () => {
+      const initial: any = {
+        id: 42,
+        boat_id: 1,
+        duration_min: 60,
+        notes: '',
+        requires_driver: false,
+        activity_types: [],
+        is_coach_practice: false,
+        start_at: '2026-02-10T14:00:00',
+        coaches: [],
+        member_id: 'm1',
+        booking_members: [
+          { member_id: 'm1', members: { id: 'm1', name: '王', nickname: '水晶' } },
+        ],
+        contact_name: '水晶, 訪客A',
+      }
+      const mockBoats = [{ id: 1, name: 'G23', color: '#red' }]
+      const mockCoaches: any[] = []
+      const mockMembers = [{ id: 'm1', name: '王', nickname: '水晶', phone: null }]
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'boats') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: mockBoats, error: null })
+              })
+            })
+          } as any
+        }
+        if (table === 'coaches') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: mockCoaches, error: null })
+              })
+            })
+          } as any
+        }
+        if (table === 'coach_time_off') {
+          return {
+            select: vi.fn().mockReturnValue({
+              lte: vi.fn().mockReturnValue({
+                gte: vi.fn().mockResolvedValue({ data: [], error: null })
+              })
+            })
+          } as any
+        }
+        if (table === 'members') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
+              })
+            })
+          } as any
+        }
+        return {} as any
+      })
+
+      const { result } = renderHook(() => useBookingForm({ initialBooking: initial }))
+
+      expect(result.current.manualNames).toEqual(['訪客A'])
+
+      await act(async () => {
+        await result.current.fetchAllData()
+      })
+
+      await waitFor(() => {
+        expect(result.current.manualNames).toEqual(['訪客A'])
+      })
+    })
+
+    it('無 member_id 且無 booking_members 時 contact_name 應立即全部當成手動名', () => {
+      const initial: any = {
+        id: 43,
+        boat_id: 1,
+        duration_min: 60,
+        notes: '',
+        requires_driver: false,
+        activity_types: [],
+        is_coach_practice: false,
+        start_at: '2026-02-10T15:00:00',
+        coaches: [],
+        member_id: null,
+        booking_members: [],
+        contact_name: '訪客甲, 訪客乙',
+      }
+
+      const { result } = renderHook(() => useBookingForm({ initialBooking: initial }))
+
+      expect(result.current.manualNames).toEqual(['訪客甲', '訪客乙'])
+    })
   })
 
   describe('衍生狀態', () => {
