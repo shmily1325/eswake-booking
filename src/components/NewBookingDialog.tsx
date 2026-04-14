@@ -12,6 +12,7 @@ import { TimeSelector } from './booking/TimeSelector'
 import { MemberSelector } from './booking/MemberSelector'
 import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
+import { scheduleCoachTimeOffReminderToast } from '../utils/coachTimeOffWarning'
 
 interface NewBookingDialogProps {
   isOpen: boolean
@@ -310,11 +311,12 @@ export function NewBookingDialog({
           notes: notes || undefined  // 備註
         })
 
-      // Success
+      // Success（先關閉，再以 toast 提示休假，避免 alert 阻塞手機體驗）
       resetForm()
       setLoading(false)
       onSuccess()
       onClose()
+      scheduleCoachTimeOffReminderToast(selectedCoaches, dateStr, '預約已建立。')
     } catch (err: any) {
       setError(err.message || '新增失敗')
       setLoading(false)

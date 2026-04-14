@@ -5,7 +5,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useResponsive } from '../hooks/useResponsive'
 import { Footer } from '../components/Footer'
 import { formatBookingsForLine, getDisplayContactName } from '../utils/bookingFormat'
-import { useToast } from '../components/ui'
+import { useToast, ToastContainer } from '../components/ui'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { BatchEditBookingDialog } from '../components/BatchEditBookingDialog'
 import { BatchDeleteConfirmDialog } from '../components/BatchDeleteConfirmDialog'
@@ -2012,6 +2012,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         bookingIds={Array.from(selectedBookingIds)}
         user={user}
       />
+
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }

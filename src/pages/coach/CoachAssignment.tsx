@@ -931,7 +931,6 @@ export function CoachAssignment() {
       }
 
       setSuccess('✅ 所有排班已儲存！')
-      // 儲存成功後跳轉回預約表
       setTimeout(() => {
         navigate(`/day?date=${selectedDate}`)
       }, 500)

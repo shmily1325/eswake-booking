@@ -16,6 +16,11 @@ import { BookingDetails } from './booking/BookingDetails'
 import { getLocalTimestamp } from '../utils/date'
 import { BatchResultDialog } from './BatchResultDialog'
 import { DateMultiPicker } from './booking/DateMultiPicker'
+import {
+  fetchCoachNamesOnTimeOffForDate,
+  formatCoachTimeOffReminderMessage,
+  scheduleCoachTimeOffLinesToast,
+} from '../utils/coachTimeOffWarning'
 
 
 interface RepeatBookingDialogProps {
@@ -206,6 +211,7 @@ export function RepeatBookingDialog({
       
       // 收集成功創建的預約時間（用於審計日誌）
       const successTimes: string[] = []
+      const timeOffWarningLines: string[] = []
 
       // 獲取船名稱
       const { data: boatData } = await supabase
@@ -310,6 +316,13 @@ export function RepeatBookingDialog({
         successTimes.push(`${shortDate} ${timeStr}`)
 
         results.success.push(displayDate)
+
+        if (selectedCoaches.length > 0) {
+          const offNames = await fetchCoachNamesOnTimeOffForDate(selectedCoaches, dateStr)
+          if (offNames.length > 0) {
+            timeOffWarningLines.push(formatCoachTimeOffReminderMessage(offNames, dateStr))
+          }
+        }
       }
 
       // 記錄審計日誌（批次記錄）
@@ -348,7 +361,7 @@ export function RepeatBookingDialog({
         console.log('[重複預約] 寫入 Audit Log:', details)
         await logAction(user.email, 'create', 'bookings', details)
       }
-      
+
       // 顯示結果
       if (results.success.length > 0 && results.skipped.length === 0) {
         // 全部成功：用簡短 toast
@@ -370,6 +383,9 @@ export function RepeatBookingDialog({
         if (results.success.length > 0) {
           onSuccess()
         }
+      }
+      if (timeOffWarningLines.length > 0) {
+        scheduleCoachTimeOffLinesToast(timeOffWarningLines, '預約已建立。')
       }
     } catch (err: any) {
       setError(err.message || '建立失敗')

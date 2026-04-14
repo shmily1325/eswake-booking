@@ -150,7 +150,6 @@ export function CoachSelector({
                         {/* 教練列表 */}
                         {safeCoaches.map((coach) => {
                             const isSelected = selectedCoachesSet.has(coach.id)
-                            const isOnTimeOff = coach.isOnTimeOff
                             return (
                                 <button
                                     key={coach.id}
@@ -174,9 +173,6 @@ export function CoachSelector({
                                     }}
                                 >
                                     {coach.name}
-                                    {isOnTimeOff && (
-                                        <span style={{ marginLeft: '4px', opacity: 0.4 }}>🏖️</span>
-                                    )}
                                 </button>
                             )
                         })}

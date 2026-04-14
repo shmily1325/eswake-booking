@@ -87,6 +87,7 @@ const Toast: React.FC<ToastProps> = ({ message, onClose }) => {
     flex: 1,
     fontSize: '14px',
     lineHeight: '1.5',
+    whiteSpace: 'pre-line',
   }
 
   return (

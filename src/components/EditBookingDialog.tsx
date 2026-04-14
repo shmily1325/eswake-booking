@@ -13,6 +13,7 @@ import type { Booking } from '../types/booking'
 import { useToast } from './ui'
 
 import { BookingDetails } from './booking/BookingDetails'
+import { scheduleCoachTimeOffReminderToast } from '../utils/coachTimeOffWarning'
 
 interface EditBookingDialogProps {
   isOpen: boolean
@@ -653,12 +654,12 @@ export function EditBookingDialog({
         })
       }
 
-      // Success
-      // Success
+      // Success（先關閉再以 toast 提示休假）
       resetForm()
       setLoading(false)
       onSuccess()
       onClose()
+      scheduleCoachTimeOffReminderToast(selectedCoaches, newStartAt.substring(0, 10), '預約已更新。')
     } catch (err: any) {
       setError(err.message || '更新失敗')
       setLoading(false)
@@ -996,7 +997,7 @@ export function EditBookingDialog({
         notes: notes || undefined  // 備註
       })
 
-      // Success
+      // Success（先關流程再以 toast 提示休假）
       setCopyLoading(false)
       setShowCopyDialog(false)
       setCopyToDate('')
@@ -1006,6 +1007,7 @@ export function EditBookingDialog({
       setCopyConflictStatus(null)
       toast.success(`預約已複製到 ${copyToDate} ${copyToTime}`)
       onSuccess()
+      scheduleCoachTimeOffReminderToast(selectedCoaches, copyToDate, '預約已建立。')
     } catch (err: any) {
       setCopyError(err.message || '複製失敗')
       setCopyLoading(false)

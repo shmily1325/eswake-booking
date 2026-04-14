@@ -15,6 +15,11 @@ import {
 import { isFacility } from '../utils/facility'
 import { BatchResultDialog } from './BatchResultDialog'
 import { getFilledByName } from '../utils/filledByHelper'
+import {
+  collectCoachTimeOffReminderLines,
+  scheduleCoachTimeOffLinesToast,
+} from '../utils/coachTimeOffWarning'
+import { checkGlobalRestriction } from '../utils/restriction'
 
 interface Coach {
   id: string
@@ -360,6 +365,17 @@ export function BatchEditBookingDialog({
         }
         return { hasConflict: false, type: null, reason: '' }
       }
+
+      const globalRestrictionCache = new Map<string, Awaited<ReturnType<typeof checkGlobalRestriction>>>()
+      const getCachedGlobalRestriction = async (d: string, t: string, dur: number) => {
+        const key = `${d}\u0000${t}\u0000${dur}`
+        let cached = globalRestrictionCache.get(key)
+        if (!cached) {
+          cached = await checkGlobalRestriction(d, t, undefined, dur)
+          globalRestrictionCache.set(key, cached)
+        }
+        return cached
+      }
       
       // 5️⃣ 逐個預約進行衝突檢查（純內存計算，無額外 DB 查詢）
       for (const booking of bookingsForCheck) {
@@ -372,8 +388,18 @@ export function BatchEditBookingDialog({
         if (actualBoatName) bookingLabel += ` · ${actualBoatName}`
         if (actualDuration) bookingLabel += ` · ${actualDuration}分`
         bookingLabel += ')'
+
+        // 0. 全站預約限制（與 useBookingConflict 相同，優先於船／教練衝突）
+        const restriction = await getCachedGlobalRestriction(dateStr, startTime, actualDuration)
+        if (restriction.isRestricted) {
+          skippedItems.push({
+            label: bookingLabel,
+            reason: restriction.reason?.trim() ? restriction.reason : '此時段暫停受理預約',
+          })
+          continue
+        }
         
-        // 0. 檢查與本批次內已更新預約的衝突
+        // 1. 檢查與本批次內已更新預約的衝突
         if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration') || fieldsToEdit.has('coaches')) {
           const internalConflict = checkInternalConflict(
             actualBoatId,
@@ -390,7 +416,7 @@ export function BatchEditBookingDialog({
           }
         }
         
-        // 1. 檢查船隻維修/停用（改船或改時長都要檢查）
+        // 2. 檢查船隻維修/停用（改船或改時長都要檢查）
         if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration')) {
           const availability = checkBoatUnavailableFromCache(
             actualBoatId, dateStr, startTime, actualDuration,
@@ -405,7 +431,7 @@ export function BatchEditBookingDialog({
           }
         }
         
-        // 2. 檢查船隻時間衝突（改船或改時長都要檢查）
+        // 3. 檢查船隻時間衝突（改船或改時長都要檢查）
         if (fieldsToEdit.has('boat') || fieldsToEdit.has('duration')) {
           const boatConflict = checkBoatConflictFromCache(
             actualBoatId, dateStr, startTime, actualDuration,
@@ -418,7 +444,7 @@ export function BatchEditBookingDialog({
           }
         }
         
-        // 3. 檢查教練規則：設施一律必須指定；其他 08:00 前必須指定
+        // 4. 檢查教練規則：設施一律必須指定；其他 08:00 前必須指定
         if (fieldsToEdit.has('coaches') && selectedCoaches.length === 0) {
           const needsCoach = isFacility(actualBoatName) || hour < EARLY_BOOKING_HOUR_LIMIT
           if (needsCoach) {
@@ -430,7 +456,7 @@ export function BatchEditBookingDialog({
           }
         }
         
-        // 4. 檢查教練衝突（改教練或改時長都要檢查）
+        // 5. 檢查教練衝突（改教練或改時長都要檢查）
         const needCheckCoachConflict = 
           (fieldsToEdit.has('coaches') && selectedCoaches.length > 0) ||
           (fieldsToEdit.has('duration') && originalCoachIds.length > 0)
@@ -518,6 +544,8 @@ export function BatchEditBookingDialog({
         }
       }
       
+      let timeOffLinesForReminder: string[] = []
+
       // 記錄 Audit Log（包含每筆預約的詳細資訊）
       if (successCount > 0) {
         if (user?.email) {
@@ -562,6 +590,10 @@ export function BatchEditBookingDialog({
         } else {
           console.warn('[批次修改] 無法寫入 Audit Log: user.email 為空', { user })
         }
+
+        timeOffLinesForReminder = await collectCoachTimeOffReminderLines(
+          updatedBookings.map(ub => ({ coachIds: ub.coachIds, dateYmd: ub.dateStr }))
+        )
       }
       
       console.log('[批次修改] 結果:', { successCount, skipped: skippedItems.length, errorCount })
@@ -579,6 +611,7 @@ export function BatchEditBookingDialog({
           onSuccess()
         }
       }
+      scheduleCoachTimeOffLinesToast(timeOffLinesForReminder, '預約已更新。')
     } catch (err) {
       console.error('批次更新失敗:', err)
       toast.error('批次更新失敗')
