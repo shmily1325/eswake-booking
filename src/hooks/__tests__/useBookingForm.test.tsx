@@ -137,6 +137,77 @@ describe('useBookingForm', () => {
       expect(result.current.selectedCoaches).toEqual(['c1'])
       expect(result.current.selectedMemberIds).toEqual(['m1'])
     })
+
+    it('載入 members 後應移除與已選會員顯示名重複的手動姓名', async () => {
+      const initial: any = {
+        boat_id: 1,
+        duration_min: 60,
+        notes: '',
+        requires_driver: false,
+        activity_types: [],
+        is_coach_practice: false,
+        start_at: '2026-02-10T14:00:00',
+        coaches: [],
+        member_id: 'm1',
+        booking_members: [],
+        contact_name: '水晶',
+      }
+      const mockBoats = [{ id: 1, name: 'G23', color: '#red' }]
+      const mockCoaches: any[] = []
+      const mockMembers = [{ id: 'm1', name: '王水晶', nickname: '水晶', phone: null }]
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'boats') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: mockBoats, error: null })
+              })
+            })
+          } as any
+        }
+        if (table === 'coaches') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: mockCoaches, error: null })
+              })
+            })
+          } as any
+        }
+        if (table === 'coach_time_off') {
+          return {
+            select: vi.fn().mockReturnValue({
+              lte: vi.fn().mockReturnValue({
+                gte: vi.fn().mockResolvedValue({ data: [], error: null })
+              })
+            })
+          } as any
+        }
+        if (table === 'members') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
+              })
+            })
+          } as any
+        }
+        return {} as any
+      })
+
+      const { result } = renderHook(() => useBookingForm({ initialBooking: initial }))
+
+      expect(result.current.manualNames).toEqual(['水晶'])
+
+      await act(async () => {
+        await result.current.fetchAllData()
+      })
+
+      await waitFor(() => {
+        expect(result.current.manualNames).toEqual([])
+      })
+    })
   })
 
   describe('衍生狀態', () => {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBookingConflict } from './useBookingConflict'
-import { filterMembers, composeFinalStudentName, toggleSelection, splitAndDeduplicateNames } from '../utils/memberUtils'
+import { filterMembers, composeFinalStudentName, toggleSelection, splitAndDeduplicateNames, stripManualNamesMatchingSelectedMembers } from '../utils/memberUtils'
 import { MEMBER_SEARCH_DEBOUNCE_MS } from '../constants/booking'
 import type { Booking, Boat, Coach, Member } from '../types/booking'
 import { isFacility } from '../utils/facility'
@@ -157,6 +157,16 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             isInitializedRef.current = true
         })
     }, [initialBooking, defaultDate, defaultBoatId])
+
+    // 會員名冊載入後：contact_name 拆出的手動名若與已選會員本名／暱稱相同則移除，避免同一人出現藍標＋橘標
+    useEffect(() => {
+        if (selectedMemberIds.length === 0 || members.length === 0) return
+        setManualNames(prev => {
+            const next = stripManualNamesMatchingSelectedMembers(members, selectedMemberIds, prev)
+            if (next.length === prev.length && next.every((n, i) => n === prev[i])) return prev
+            return next
+        })
+    }, [members, selectedMemberIds])
 
     // Auto-disable requiresDriver if conditions not met (but not during initialization or data loading)
     useEffect(() => {

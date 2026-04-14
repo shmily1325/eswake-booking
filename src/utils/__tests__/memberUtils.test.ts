@@ -5,6 +5,7 @@ import {
   toggleSelection,
   deduplicateNames,
   splitAndDeduplicateNames,
+  stripManualNamesMatchingSelectedMembers,
   type BasicMember
 } from '../memberUtils'
 
@@ -244,6 +245,26 @@ describe('memberUtils.ts - 會員工具函數', () => {
     it('應該處理會員+非會員的組合', () => {
       const result = splitAndDeduplicateNames('大貓咪, 訪客A, 訪客B')
       expect(result).toEqual(['大貓咪', '訪客A', '訪客B'])
+    })
+  })
+
+  describe('stripManualNamesMatchingSelectedMembers', () => {
+    it('應移除與已選會員暱稱相同的手動名', () => {
+      const members: BasicMember[] = [{ id: 'm1', name: '王水晶', nickname: '水晶', phone: null }]
+      const result = stripManualNamesMatchingSelectedMembers(members, ['m1'], ['水晶', '訪客A'])
+      expect(result).toEqual(['訪客A'])
+    })
+
+    it('應移除與已選會員本名相同的手動名', () => {
+      const members: BasicMember[] = [{ id: 'm1', name: '李大華', nickname: null, phone: null }]
+      const result = stripManualNamesMatchingSelectedMembers(members, ['m1'], ['李大華'])
+      expect(result).toEqual([])
+    })
+
+    it('無已選會員或無手動名時應原樣返回', () => {
+      const members: BasicMember[] = [{ id: 'm1', name: 'A', nickname: null, phone: null }]
+      expect(stripManualNamesMatchingSelectedMembers(members, [], ['訪客'])).toEqual(['訪客'])
+      expect(stripManualNamesMatchingSelectedMembers(members, ['m1'], [])).toEqual([])
     })
   })
 })

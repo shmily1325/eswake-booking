@@ -125,6 +125,36 @@ export function splitAndDeduplicateNames(nameString: string): string[] {
 }
 
 /**
+ * 從手動輸入名單移除與「已選會員」本名或暱稱相同者（trim 後比對），
+ * 避免編輯預約時 contact_name 與會員 ID 併存，畫面上出現藍標＋橘標同一人。
+ */
+export function stripManualNamesMatchingSelectedMembers<T extends BasicMember>(
+  members: T[],
+  selectedMemberIds: string[],
+  manualNames: string[]
+): string[] {
+  if (selectedMemberIds.length === 0 || manualNames.length === 0) {
+    return manualNames
+  }
+
+  const memberDisplays = new Set<string>()
+  for (const id of selectedMemberIds) {
+    const m = members.find(mm => mm.id === id)
+    if (!m) continue
+    const primary = (m.nickname || m.name).trim()
+    if (primary) memberDisplays.add(primary)
+    if (m.name?.trim()) memberDisplays.add(m.name.trim())
+    if (m.nickname?.trim()) memberDisplays.add(m.nickname.trim())
+  }
+
+  return manualNames.filter(name => {
+    const t = name.trim()
+    if (!t) return false
+    return !memberDisplays.has(t)
+  })
+}
+
+/**
  * 切換項目選擇狀態（用於多選）
  * 如果項目已選中則移除，否則添加
  * 
