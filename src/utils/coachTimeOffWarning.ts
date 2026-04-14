@@ -3,7 +3,8 @@ import { toast } from './toast'
 
 /** 先讓成功 toast／關閉 dialog 有機會渲染，再顯示休假提醒（非阻塞）。 */
 const REMINDER_DEFER_MS = 420
-const REMINDER_TOAST_DURATION_MS = 12000
+/** 休假提醒：比一般成功 toast（2s）略長一點 */
+const REMINDER_TOAST_DURATION_MS = 3000
 
 function runAfterFrameAndDelay(fn: () => void): void {
   requestAnimationFrame(() => {
