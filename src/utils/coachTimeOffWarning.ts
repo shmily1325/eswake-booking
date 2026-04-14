@@ -1,17 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { toast } from './toast'
 
-/** 先讓成功 toast／關閉 dialog 有機會渲染，再顯示休假提醒（非阻塞）。 */
-const REMINDER_DEFER_MS = 420
-/** 休假提醒：比一般成功 toast（2s）略長一點 */
-const REMINDER_TOAST_DURATION_MS = 3000
-
-function runAfterFrameAndDelay(fn: () => void): void {
-  requestAnimationFrame(() => {
-    setTimeout(fn, REMINDER_DEFER_MS)
-  })
-}
-
 /**
  * 依 coach_time_off 查詢：指定日期有哪些教練在休假（僅限傳入的 coachIds）。
  * 回傳名稱順序與 coachIds 相同（略過不在休假名單者）。
@@ -57,7 +46,7 @@ export function formatCoachTimeOffReminderMessage(names: string[], dateYmd: stri
 }
 
 /**
- * 預約已成功寫入後呼叫：若有教練當日休假，於短暫延遲後以 toast 提示（不阻塞關閉／成功訊息）。
+ * 預約已成功寫入後呼叫：若有教練當日休假則以 toast 提示（不傳 duration，與其他 toast 同為預設約 2s）。
  * 需頁面有訂閱 {@link toast} 的 ToastContainer 才會顯示。
  */
 export function scheduleCoachTimeOffReminderToast(
@@ -66,16 +55,11 @@ export function scheduleCoachTimeOffReminderToast(
   heading: string = '預約已建立。'
 ): void {
   if (!dateYmd || coachIds.length === 0) return
-  runAfterFrameAndDelay(() => {
-    void (async () => {
-      const names = await fetchCoachNamesOnTimeOffForDate(coachIds, dateYmd)
-      if (names.length === 0) return
-      toast.warning(
-        `${heading}\n\n${formatCoachTimeOffReminderMessage(names, dateYmd)}`,
-        REMINDER_TOAST_DURATION_MS
-      )
-    })()
-  })
+  void (async () => {
+    const names = await fetchCoachNamesOnTimeOffForDate(coachIds, dateYmd)
+    if (names.length === 0) return
+    toast.warning(`${heading}\n\n${formatCoachTimeOffReminderMessage(names, dateYmd)}`)
+  })()
 }
 
 /**
@@ -100,11 +84,9 @@ export async function collectCoachTimeOffReminderLines(
   return lines
 }
 
-/** 已彙整好的休假提示列：延遲後以 toast 顯示（與 scheduleCoachTimeOffReminderToast 相同 UX）。 */
+/** 已彙整好的休假提示列：以 toast 顯示（與其他 warning 相同預設時長）。 */
 export function scheduleCoachTimeOffLinesToast(lines: string[], heading: string): void {
   if (lines.length === 0) return
   const text = `${heading}\n\n休假提醒：\n${lines.join('\n')}`
-  runAfterFrameAndDelay(() => {
-    toast.warning(text, REMINDER_TOAST_DURATION_MS)
-  })
+  toast.warning(text)
 }
