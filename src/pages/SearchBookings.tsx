@@ -11,6 +11,16 @@ import { BatchEditBookingDialog } from '../components/BatchEditBookingDialog'
 import { BatchDeleteConfirmDialog } from '../components/BatchDeleteConfirmDialog'
 import { isEditorAsync } from '../utils/auth'
 import type { Booking as FullBooking } from '../types/booking'
+import { isFacility } from '../utils/facility'
+import {
+  enumerateDatesInclusive,
+  buildBoatAvailabilityLines,
+  type BoatAvailabilityDayFilter,
+} from '../utils/boatAvailabilitySearch'
+import {
+  AVAILABILITY_SEARCH_CLIP_END_MINUTES,
+  AVAILABILITY_SEARCH_CLIP_START_MINUTES,
+} from '../constants/booking'
 
 interface Booking {
   id: number
@@ -41,16 +51,11 @@ interface Boat {
   color: string
 }
 
-interface Coach {
-  id: string
-  name: string
-}
-
 interface SearchBookingsProps {
   isEmbedded?: boolean
 }
 
-type SearchTab = 'member' | 'boat' | 'coach'
+type SearchTab = 'member' | 'availability'
 
 export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const user = useAuthUser()
@@ -83,17 +88,21 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const [showMemberDropdown, setShowMemberDropdown] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   
-  // 船隻搜尋相關狀態
   const [boats, setBoats] = useState<Boat[]>([])
-  const [selectedBoatId, setSelectedBoatId] = useState<number | null>(null)
-  const [boatStartDate, setBoatStartDate] = useState('')
-  const [boatEndDate, setBoatEndDate] = useState('')
-  
-  // 教練搜尋相關狀態
-  const [coaches, setCoaches] = useState<Coach[]>([])
-  const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null)
-  const [coachStartDate, setCoachStartDate] = useState('')
-  const [coachEndDate, setCoachEndDate] = useState('')
+
+  // 船隻空檔搜尋（僅查船，不含設施／教練）
+  const [slotFromDate, setSlotFromDate] = useState('')
+  const [slotToDate, setSlotToDate] = useState('')
+  const [slotDayFilter, setSlotDayFilter] = useState<BoatAvailabilityDayFilter>('all')
+  const [slotTimeFrom, setSlotTimeFrom] = useState('08:00')
+  const [slotTimeTo, setSlotTimeTo] = useState('12:00')
+  const [slotDurationMin, setSlotDurationMin] = useState(120)
+  const [slotSearchBufferMin, setSlotSearchBufferMin] = useState<15 | 30>(30)
+  const [slotSelectedBoatIds, setSlotSelectedBoatIds] = useState<Set<number>>(new Set())
+  const [slotResultLines, setSlotResultLines] = useState<string[]>([])
+  const [slotSearchDone, setSlotSearchDone] = useState(false)
+  const [slotSearching, setSlotSearching] = useState(false)
+  const [slotCopyOk, setSlotCopyOk] = useState(false)
   
   // 編輯對話框狀態
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -122,7 +131,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   useEffect(() => {
     loadMembers()
     loadBoats()
-    loadCoaches()
   }, [])
 
   const loadMembers = async () => {
@@ -151,59 +159,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     if (data) {
       setBoats(data)
     }
-  }
-
-  const loadCoaches = async () => {
-    const { data, error } = await supabase
-      .from('coaches')
-      .select('id, name')
-      .eq('status', 'active')
-      .order('name')
-    
-    if (error) {
-      console.error('載入教練失敗:', error)
-    }
-    
-    if (data) {
-      setCoaches(data)
-    }
-  }
-
-  // 快速日期選擇輔助函數
-  const formatDate = (date: Date) => {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-  }
-
-  // 船隻查詢的快速日期選擇
-  const setBoatQuickDateRange = (type: 'today' | 'tomorrow') => {
-    const today = new Date()
-    let targetDate: Date
-
-    if (type === 'today') {
-      targetDate = today
-    } else {
-      targetDate = new Date(today)
-      targetDate.setDate(today.getDate() + 1)
-    }
-
-    setBoatStartDate(formatDate(targetDate))
-    setBoatEndDate(formatDate(targetDate))
-  }
-
-  // 教練查詢的快速日期選擇
-  const setCoachQuickDateRange = (type: 'today' | 'tomorrow') => {
-    const today = new Date()
-    let targetDate: Date
-
-    if (type === 'today') {
-      targetDate = today
-    } else {
-      targetDate = new Date(today)
-      targetDate.setDate(today.getDate() + 1)
-    }
-
-    setCoachStartDate(formatDate(targetDate))
-    setCoachEndDate(formatDate(targetDate))
   }
 
   useEffect(() => {
@@ -348,224 +303,113 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     }
   }
 
-  // 船隻預約搜尋
-  const handleBoatSearch = async (e: React.FormEvent) => {
+  const toggleSlotBoat = (boatId: number) => {
+    setSlotSelectedBoatIds(prev => {
+      const next = new Set(prev)
+      if (next.has(boatId)) next.delete(boatId)
+      else next.add(boatId)
+      return next
+    })
+  }
+
+  /** 船隻空檔：僅一般船、不含教練；接船緩衝為搜尋用參數 */
+  const handleSlotSearch = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!selectedBoatId) {
-      toast.error('請選擇船隻')
+    if (!slotFromDate || !slotToDate) {
+      toast.error('請選擇日期區間')
       return
     }
-    
-    setLoading(true)
-    setHasSearched(true)
-    setCopySuccess(false)
+    if (slotFromDate > slotToDate) {
+      toast.error('起始日期不能晚於結束日期')
+      return
+    }
+    if (slotSelectedBoatIds.size === 0) {
+      toast.error('請至少選擇一艘船')
+      return
+    }
+
+    const ids = [...slotSelectedBoatIds]
+    const selectedBoatsMeta = boats.filter(b => ids.includes(b.id) && !isFacility(b.name))
+    if (selectedBoatsMeta.length === 0) {
+      toast.error('請選擇一般船隻（設施不列入空檔查詢）')
+      return
+    }
+    if (!slotDurationMin || slotDurationMin <= 0) {
+      toast.error('請設定有效的預約時長（分鐘）')
+      return
+    }
+
+    setSlotSearching(true)
+    setSlotSearchDone(false)
+    setSlotCopyOk(false)
 
     try {
-      const MAX_RESULTS = 100
-      
-      // 步驟 1: 查詢該船的預約（如有日期區間則篩選，否則只顯示未來預約）
-      let detailQuery = supabase
-        .from('bookings')
-        .select('id, start_at, duration_min, contact_name, notes, activity_types, status, boats:boat_id(name, color)')
-        .eq('boat_id', selectedBoatId)
-      
-      if (boatStartDate && boatEndDate) {
-        // 有設定日期區間
-        detailQuery = detailQuery
-          .gte('start_at', `${boatStartDate}T00:00:00`)
-          .lte('start_at', `${boatEndDate}T23:59:59`)
-      } else {
-        // 沒有設定日期區間，預設只顯示未來預約
-        const today = new Date()
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-        detailQuery = detailQuery.gte('start_at', `${todayStr}T00:00:00`)
-      }
-      
-      const bookingsResult = await detailQuery.order('start_at', { ascending: true }).limit(MAX_RESULTS)
-
-      if (bookingsResult.error) {
-        console.error('Error fetching bookings:', bookingsResult.error)
-        setBookings([])
+      const dates = enumerateDatesInclusive(slotFromDate, slotToDate)
+      if (dates.length === 0) {
+        toast.error('日期區間無效')
         return
       }
-      
-      if (!bookingsResult.data || bookingsResult.data.length === 0) {
-        setBookings([])
+      if (dates.length > 120) {
+        toast.error('查詢範圍請縮短在 120 天內')
         return
       }
 
-      const bookingIds = bookingsResult.data.map(b => b.id)
-      
-      // 步驟 2: 並行查詢教練和會員資訊
-      const [coachesResult, membersResult] = await Promise.all([
+      const minD = dates[0]
+      const maxD = dates[dates.length - 1]
+      const boatIds = selectedBoatsMeta.map(b => b.id)
+
+      const [bookRes, unRes] = await Promise.all([
         supabase
-          .from('booking_coaches')
-          .select('booking_id, coaches:coach_id(id, name)')
-          .in('booking_id', bookingIds),
+          .from('bookings')
+          .select('boat_id, start_at, duration_min, cleanup_minutes')
+          .in('boat_id', boatIds)
+          .gte('start_at', `${minD}T00:00:00`)
+          .lte('start_at', `${maxD}T23:59:59`),
         supabase
-          .from('booking_members')
-          .select('booking_id, member_id, members:member_id(id, name, nickname)')
-          .in('booking_id', bookingIds)
+          .from('boat_unavailable_dates')
+          .select('*')
+          .in('boat_id', boatIds)
+          .eq('is_active', true)
+          .lte('start_date', maxD)
+          .gte('end_date', minD),
       ])
 
-      // 建構教練對照表
-      const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
-      for (const item of coachesResult.data || []) {
-        const bookingId = item.booking_id
-        const coach = (item as any).coaches
-        if (coach) {
-          if (!coachesByBooking[bookingId]) {
-            coachesByBooking[bookingId] = []
-          }
-          coachesByBooking[bookingId].push(coach)
-        }
-      }
-      
-      // 建構會員對照表
-      const membersByBooking: { [key: number]: any[] } = {}
-      for (const item of membersResult.data || []) {
-        const bookingId = item.booking_id
-        if (!membersByBooking[bookingId]) {
-          membersByBooking[bookingId] = []
-        }
-        membersByBooking[bookingId].push(item)
-      }
+      if (bookRes.error) throw bookRes.error
+      if (unRes.error) throw unRes.error
 
-      // 合併所有資料
-      const finalBookings = bookingsResult.data.map(booking => ({
-        ...booking,
-        coaches: coachesByBooking[booking.id] || [],
-        booking_members: membersByBooking[booking.id] || []
-      }))
+      const lines = buildBoatAvailabilityLines({
+        dates,
+        dayFilter: slotDayFilter,
+        timeFrom: slotTimeFrom,
+        timeTo: slotTimeTo,
+        durationMin: slotDurationMin,
+        searchBufferMinutes: slotSearchBufferMin,
+        stepMinutes: 15,
+        boats: selectedBoatsMeta.map(b => ({ id: b.id, name: b.name })),
+        bookings: bookRes.data || [],
+        unavailable: unRes.data || [],
+      })
 
-      setBookings(finalBookings as Booking[])
-    } catch (err) {
-      console.error('Search error:', err)
-      setBookings([])
+      setSlotResultLines(lines)
+      setSlotSearchDone(true)
+    } catch (err: unknown) {
+      console.error('Slot search error:', err)
+      toast.error(err instanceof Error ? err.message : '查詢失敗')
+      setSlotResultLines([])
+      setSlotSearchDone(true)
     } finally {
-      setLoading(false)
+      setSlotSearching(false)
     }
   }
 
-  // 教練預約搜尋
-  const handleCoachSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!selectedCoachId) {
-      toast.error('請選擇教練')
-      return
-    }
-    
-    setLoading(true)
-    setHasSearched(true)
-    setCopySuccess(false)
-
+  const handleCopySlotLines = async () => {
+    const text = slotResultLines.join('\n')
     try {
-      const MAX_RESULTS = 100
-      
-      // 步驟 1: 查詢該教練的預約（透過 booking_coaches 表）
-      let bookingCoachesQuery = supabase
-        .from('booking_coaches')
-        .select('booking_id')
-        .eq('coach_id', selectedCoachId)
-      
-      const bookingCoachesResult = await bookingCoachesQuery
-
-      if (bookingCoachesResult.error) {
-        console.error('Error fetching booking coaches:', bookingCoachesResult.error)
-        setBookings([])
-        return
-      }
-
-      if (!bookingCoachesResult.data || bookingCoachesResult.data.length === 0) {
-        setBookings([])
-        return
-      }
-
-      const bookingIds = bookingCoachesResult.data.map(bc => bc.booking_id)
-
-      // 步驟 2: 查詢這些預約的詳細資料
-      let detailQuery = supabase
-        .from('bookings')
-        .select('id, start_at, duration_min, contact_name, notes, activity_types, status, boats:boat_id(name, color)')
-        .in('id', bookingIds)
-      
-      if (coachStartDate && coachEndDate) {
-        // 有設定日期區間
-        detailQuery = detailQuery
-          .gte('start_at', `${coachStartDate}T00:00:00`)
-          .lte('start_at', `${coachEndDate}T23:59:59`)
-      } else {
-        // 沒有設定日期區間，預設只顯示未來預約
-        const today = new Date()
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-        detailQuery = detailQuery.gte('start_at', `${todayStr}T00:00:00`)
-      }
-      
-      const bookingsResult = await detailQuery.order('start_at', { ascending: true }).limit(MAX_RESULTS)
-
-      if (bookingsResult.error) {
-        console.error('Error fetching bookings:', bookingsResult.error)
-        setBookings([])
-        return
-      }
-      
-      if (!bookingsResult.data || bookingsResult.data.length === 0) {
-        setBookings([])
-        return
-      }
-
-      const finalBookingIds = bookingsResult.data.map(b => b.id)
-
-      // 步驟 3: 並行查詢教練和會員資訊
-      const [coachesResult, membersResult] = await Promise.all([
-        supabase
-          .from('booking_coaches')
-          .select('booking_id, coaches:coach_id(id, name)')
-          .in('booking_id', finalBookingIds),
-        supabase
-          .from('booking_members')
-          .select('booking_id, member_id, members:member_id(id, name, nickname)')
-          .in('booking_id', finalBookingIds)
-      ])
-
-      // 建構教練對照表
-      const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
-      for (const item of coachesResult.data || []) {
-        const bookingId = item.booking_id
-        const coach = (item as any).coaches
-        if (coach) {
-          if (!coachesByBooking[bookingId]) {
-            coachesByBooking[bookingId] = []
-          }
-          coachesByBooking[bookingId].push(coach)
-        }
-      }
-      
-      // 建構會員對照表
-      const membersByBooking: { [key: number]: any[] } = {}
-      for (const item of membersResult.data || []) {
-        const bookingId = item.booking_id
-        if (!membersByBooking[bookingId]) {
-          membersByBooking[bookingId] = []
-        }
-        membersByBooking[bookingId].push(item)
-      }
-
-      // 合併所有資料
-      const finalBookings = bookingsResult.data.map(booking => ({
-        ...booking,
-        coaches: coachesByBooking[booking.id] || [],
-        booking_members: membersByBooking[booking.id] || []
-      }))
-
-      setBookings(finalBookings as Booking[])
-    } catch (err) {
-      console.error('Search error:', err)
-      setBookings([])
-    } finally {
-      setLoading(false)
+      await navigator.clipboard.writeText(text)
+      setSlotCopyOk(true)
+      setTimeout(() => setSlotCopyOk(false), 2000)
+    } catch {
+      toast.error('複製失敗，請手動複製')
     }
   }
 
@@ -593,22 +437,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   // 生成 LINE 格式的文字（簡化版）
   const generateLineMessage = () => {
     if (bookings.length === 0) return ''
-    
-    // 根據搜尋模式決定標題
-    if (activeTab === 'boat') {
-      const boatName = boats.find(b => b.id === selectedBoatId)?.name || '船隻'
-      const dateRange = boatStartDate === boatEndDate 
-        ? boatStartDate 
-        : `${boatStartDate} ~ ${boatEndDate}`
-      return formatBookingsForLine(bookings, `${boatName} ${dateRange}`)
-    }
-    if (activeTab === 'coach') {
-      const coachName = coaches.find(c => c.id === selectedCoachId)?.name || '教練'
-      const dateRange = coachStartDate === coachEndDate 
-        ? coachStartDate 
-        : `${coachStartDate} ~ ${coachEndDate}`
-      return formatBookingsForLine(bookings, `${coachName} ${dateRange}`)
-    }
     return formatBookingsForLine(bookings, `${searchName}的預約`)
   }
 
@@ -685,10 +513,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     const fakeEvent = { preventDefault: () => {} } as React.FormEvent
     if (activeTab === 'member' && searchName.trim()) {
       handleSearch(fakeEvent)
-    } else if (activeTab === 'boat' && selectedBoatId) {
-      handleBoatSearch(fakeEvent)
-    } else if (activeTab === 'coach' && selectedCoachId) {
-      handleCoachSearch(fakeEvent)
     }
   }
 
@@ -730,10 +554,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     const fakeEvent = { preventDefault: () => {} } as React.FormEvent
     if (activeTab === 'member' && searchName.trim()) {
       handleSearch(fakeEvent)
-    } else if (activeTab === 'boat' && selectedBoatId) {
-      handleBoatSearch(fakeEvent)
-    } else if (activeTab === 'coach' && selectedCoachId) {
-      handleCoachSearch(fakeEvent)
     }
   }
 
@@ -764,6 +584,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             setActiveTab('member')
             setBookings([])
             setHasSearched(false)
+            setSlotSearchDone(false)
+            setSlotResultLines([])
             setSelectionMode(false)
             setSelectedBookingIds(new Set())
           }}
@@ -784,8 +606,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         </button>
         <button
           type="button"
+          data-track="search_tab_availability"
           onClick={() => {
-            setActiveTab('boat')
+            setActiveTab('availability')
             setBookings([])
             setHasSearched(false)
             setSelectionMode(false)
@@ -800,36 +623,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            background: activeTab === 'boat' ? '#5a5a5a' : 'transparent',
-            color: activeTab === 'boat' ? 'white' : '#666',
+            background: activeTab === 'availability' ? '#5a5a5a' : 'transparent',
+            color: activeTab === 'availability' ? 'white' : '#666',
           }}
         >
-          {isMobile ? '船' : '🚤 船'}
-        </button>
-        <button
-          type="button"
-          data-track="search_tab_coach"
-          onClick={() => {
-            setActiveTab('coach')
-            setBookings([])
-            setHasSearched(false)
-            setSelectionMode(false)
-            setSelectedBookingIds(new Set())
-          }}
-          style={{
-            flex: 1,
-            padding: '12px 10px',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            background: activeTab === 'coach' ? '#5a5a5a' : 'transparent',
-            color: activeTab === 'coach' ? 'white' : '#666',
-          }}
-        >
-          {isMobile ? '教練' : '🎓 教練'}
+          {isMobile ? '空檔' : '📅 船空檔'}
         </button>
       </div>
 
@@ -1092,400 +890,395 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         </form>
         )}
 
-        {/* 船隻搜尋表單 */}
-        {activeTab === 'boat' && (
-        <form onSubmit={handleBoatSearch}>
-          {/* 船隻選擇 */}
+        {activeTab === 'availability' && (
+        <form onSubmit={handleSlotSearch}>
+          <div style={{
+            marginBottom: '20px',
+            padding: '12px 14px',
+            backgroundColor: '#f8f9fa',
+            borderRadius: '8px',
+            border: '1px solid #e9ecef',
+            fontSize: '13px',
+            color: '#666',
+            lineHeight: 1.55,
+          }}>
+            僅查詢<strong style={{ color: '#495057' }}>一般船隻</strong>可預約時段（不含彈簧床／陸上課程）；不含教練排程。接船緩衝為搜尋用假設，與實際建單無關。
+          </div>
+
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
               marginBottom: '8px',
               fontSize: '13px',
               color: '#868e96',
-              fontWeight: '500'
+              fontWeight: '500',
             }}>
-              選擇船隻
+              船隻（可多選）
             </label>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '8px',
-            }}>
-              {boats.map(boat => (
-                <button
-                  key={boat.id}
-                  type="button"
-                  onClick={() => setSelectedBoatId(boat.id)}
-                  style={{
-                    padding: '10px 16px',
-                    border: selectedBoatId === boat.id ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
-                    borderRadius: '20px',
-                    background: selectedBoatId === boat.id ? '#f0f0f0' : 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <span style={{
-                    width: '10px',
-                    height: '10px',
-                    borderRadius: '50%',
-                    backgroundColor: boat.color || '#ccc',
-                    flexShrink: 0
-                  }} />
-                  <span style={{
-                    fontSize: '14px',
-                    fontWeight: selectedBoatId === boat.id ? '600' : '500',
-                    color: selectedBoatId === boat.id ? '#5a5a5a' : '#333'
-                  }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {boats.filter(b => !isFacility(b.name)).map(boat => {
+                const on = slotSelectedBoatIds.has(boat.id)
+                return (
+                  <button
+                    key={boat.id}
+                    type="button"
+                    onClick={() => toggleSlotBoat(boat.id)}
+                    style={{
+                      padding: '8px 16px',
+                      border: on ? '2px solid #5a5a5a' : '1px solid #dee2e6',
+                      borderRadius: '20px',
+                      background: on ? '#f0f0f0' : 'white',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '14px',
+                      fontWeight: on ? '600' : '500',
+                      color: on ? '#5a5a5a' : '#333',
+                      minHeight: '36px',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '50%',
+                        backgroundColor: boat.color || '#ccc',
+                        flexShrink: 0,
+                      }}
+                    />
                     {boat.name}
-                  </span>
-                </button>
-              ))}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          {/* 日期區間篩選 */}
           <div style={{ marginBottom: '16px' }}>
-            <div style={{ 
+            <div style={{
               display: 'flex',
               flexWrap: 'wrap',
               justifyContent: 'space-between',
               alignItems: 'center',
               gap: '8px',
-              marginBottom: '8px'
+              marginBottom: '8px',
             }}>
-              <span style={{ 
-                fontSize: '14px', 
-                fontWeight: '500', 
+              <span style={{
+                fontSize: '14px',
+                fontWeight: '500',
                 color: '#495057',
               }}>
                 📅 日期區間
-                {(boatStartDate || boatEndDate) 
+                {(slotFromDate || slotToDate)
                   ? <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>(已設定)</span>
-                  : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>(不設定則顯示未來預約)</span>
+                  : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>(必填)</span>
                 }
               </span>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {(slotFromDate || slotToDate) && (
                 <button
                   type="button"
-                  onClick={() => setBoatQuickDateRange('today')}
+                  onClick={() => { setSlotFromDate(''); setSlotToDate('') }}
                   style={{
-                    padding: '8px 16px',
-                    border: '1px solid #dee2e6',
-                    background: 'white',
-                    borderRadius: '20px',
+                    padding: '4px 10px',
+                    border: 'none',
+                    background: '#dc3545',
+                    color: 'white',
+                    borderRadius: '12px',
                     cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#495057',
-                    minHeight: '36px',
+                    fontSize: '12px',
+                    fontWeight: '600',
                   }}
                 >
-                  今天
+                  清除
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setBoatQuickDateRange('tomorrow')}
-                  style={{
-                    padding: '8px 16px',
-                    border: '1px solid #dee2e6',
-                    background: 'white',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#495057',
-                    minHeight: '36px',
-                  }}
-                >
-                  明天
-                </button>
-                {(boatStartDate || boatEndDate) && (
-                  <button
-                    type="button"
-                    onClick={() => { setBoatStartDate(''); setBoatEndDate(''); }}
-                    style={{
-                      padding: '8px 16px',
-                      border: 'none',
-                      background: '#dc3545',
-                      color: 'white',
-                      borderRadius: '20px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      minHeight: '36px',
-                    }}
-                  >
-                    清除
-                  </button>
-                )}
-              </div>
+              )}
             </div>
-            
-            <div style={{ 
-              display: 'flex', 
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
               gap: '8px',
-              alignItems: 'center',
+              alignItems: isMobile ? 'stretch' : 'center',
               width: '100%',
             }}>
-              <input
-                type="date"
-                value={boatStartDate}
-                onChange={(e) => setBoatStartDate(e.target.value)}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: '12px 10px',
-                  border: boatStartDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  backgroundColor: boatStartDate ? '#f0f7ff' : 'white',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <span style={{ fontSize: '14px', color: '#999', flexShrink: 0 }}>→</span>
-              <input
-                type="date"
-                value={boatEndDate}
-                onChange={(e) => setBoatEndDate(e.target.value)}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: '12px 10px',
-                  border: boatEndDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  backgroundColor: boatEndDate ? '#f0f7ff' : 'white',
-                  boxSizing: 'border-box',
-                }}
-              />
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>從</span>
+                <input
+                  type="date"
+                  value={slotFromDate}
+                  onChange={e => setSlotFromDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    width: '100%',
+                    padding: '10px',
+                    border: slotFromDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: slotFromDate ? '#f0f7ff' : 'white',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>到</span>
+                <input
+                  type="date"
+                  value={slotToDate}
+                  onChange={e => setSlotToDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    width: '100%',
+                    padding: '10px',
+                    border: slotToDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: slotToDate ? '#f0f7ff' : 'white',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
             </div>
           </div>
 
-          {/* 搜尋按鈕 */}
-          <button
-            type="submit"
-            data-track="search_submit_boat"
-            disabled={loading || !selectedBoatId}
-            style={{
-              width: '100%',
-              padding: '12px',
-              fontSize: '16px',
-              fontWeight: '600',
-              background: (!loading && selectedBoatId) ? 'white' : '#f5f5f5',
-              color: (!loading && selectedBoatId) ? '#666' : '#999',
-              border: (!loading && selectedBoatId) ? '2px solid #e0e0e0' : '2px solid #ddd',
-              borderRadius: '8px',
-              cursor: (!loading && selectedBoatId) ? 'pointer' : 'not-allowed',
-              touchAction: 'manipulation',
-              transition: 'transform 0.1s'
-            }}
-            onTouchStart={(e) => !loading && selectedBoatId && (e.currentTarget.style.transform = 'scale(0.98)')}
-            onTouchEnd={(e) => !loading && selectedBoatId && (e.currentTarget.style.transform = 'scale(1)')}
-          >
-            {loading ? '搜尋中...' : '🔍 搜尋'}
-          </button>
-        </form>
-        )}
+          <div style={{ marginBottom: '16px' }}>
+            <span style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#495057',
+            }}>
+              星期
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {([
+                { v: 'all' as const, l: '全部' },
+                { v: 'weekday' as const, l: '周間' },
+                { v: 'weekend' as const, l: '週末' },
+              ]).map(({ v, l }) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setSlotDayFilter(v)}
+                  style={{
+                    padding: '8px 16px',
+                    border: slotDayFilter === v ? '2px solid #5a5a5a' : '1px solid #dee2e6',
+                    background: slotDayFilter === v ? '#f0f0f0' : 'white',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#495057',
+                    minHeight: '36px',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {/* 教練搜尋表單 */}
-        {activeTab === 'coach' && (
-        <form onSubmit={handleCoachSearch}>
-          {/* 教練選擇 */}
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <span style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#495057',
+            }}>
+              每日可排時段（整段課程須落在區間內）
+            </span>
+            <div style={{
+              fontSize: '12px',
+              color: '#868e96',
+              marginBottom: '8px',
+              lineHeight: 1.45,
+            }}>
+              實際掃描會與您輸入的區間取交集，並限制在約{' '}
+              {String(Math.floor(AVAILABILITY_SEARCH_CLIP_START_MINUTES / 60)).padStart(2, '0')}:00–
+              {String(Math.floor(AVAILABILITY_SEARCH_CLIP_END_MINUTES / 60)).padStart(2, '0')}:00（與日視圖營運帶一致），整日寬區間也不會列出過早／過晚格點。
+            </div>
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: '8px',
+              alignItems: isMobile ? 'stretch' : 'center',
+              width: '100%',
+            }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>從</span>
+                <input
+                  type="time"
+                  value={slotTimeFrom}
+                  onChange={e => setSlotTimeFrom(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: 'white',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <span style={{ fontSize: '13px', color: '#666', flexShrink: 0 }}>到</span>
+                <input
+                  type="time"
+                  value={slotTimeTo}
+                  onChange={e => setSlotTimeTo(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: 'white',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
             <label style={{
               display: 'block',
               marginBottom: '8px',
               fontSize: '13px',
               color: '#868e96',
-              fontWeight: '500'
+              fontWeight: '500',
             }}>
-              選擇教練
+              預約時長（分鐘）
             </label>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '8px',
-            }}>
-              {coaches.map(coach => (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+              {[60, 90, 120, 150, 180].map(m => (
                 <button
-                  key={coach.id}
+                  key={m}
                   type="button"
-                  onClick={() => setSelectedCoachId(coach.id)}
+                  onClick={() => setSlotDurationMin(m)}
                   style={{
-                    padding: '10px 16px',
-                    border: selectedCoachId === coach.id ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
+                    padding: '8px 16px',
+                    border: slotDurationMin === m ? '2px solid #5a5a5a' : '1px solid #dee2e6',
+                    background: slotDurationMin === m ? '#f0f0f0' : 'white',
                     borderRadius: '20px',
-                    background: selectedCoachId === coach.id ? '#f0f0f0' : 'white',
                     cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#495057',
+                    minHeight: '36px',
                     transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
                   }}
                 >
-                  <span style={{
+                  {m}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={slotDurationMin || ''}
+                onChange={e => {
+                  const v = e.target.value.replace(/\D/g, '')
+                  const n = Number(v)
+                  if (v === '') setSlotDurationMin(0)
+                  else if (n > 0 && n <= 600) setSlotDurationMin(n)
+                }}
+                placeholder="自訂分鐘"
+                style={{
+                  flex: 1,
+                  minWidth: '120px',
+                  maxWidth: '280px',
+                  padding: '14px 16px',
+                  fontSize: isMobile ? '16px' : '15px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <span style={{ fontSize: '14px', color: '#666' }}>分</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <span style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#495057',
+            }}>
+              搜尋用接船緩衝（分鐘）
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {([30, 15] as const).map(m => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setSlotSearchBufferMin(m)}
+                  style={{
+                    padding: '8px 16px',
+                    border: slotSearchBufferMin === m ? '2px solid #5a5a5a' : '1px solid #dee2e6',
+                    background: slotSearchBufferMin === m ? '#f0f0f0' : 'white',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: selectedCoachId === coach.id ? '600' : '500',
-                    color: selectedCoachId === coach.id ? '#5a5a5a' : '#333'
-                  }}>
-                    {coach.name}
-                  </span>
+                    fontWeight: '500',
+                    color: '#495057',
+                    minHeight: '36px',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {m}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 日期區間篩選 */}
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ 
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '8px'
-            }}>
-              <span style={{ 
-                fontSize: '14px', 
-                fontWeight: '500', 
-                color: '#495057',
-              }}>
-                📅 日期區間
-                {(coachStartDate || coachEndDate) 
-                  ? <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>(已設定)</span>
-                  : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>(不設定則顯示未來預約)</span>
-                }
-              </span>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => setCoachQuickDateRange('today')}
-                  style={{
-                    padding: '8px 16px',
-                    border: '1px solid #dee2e6',
-                    background: 'white',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#495057',
-                    minHeight: '36px',
-                  }}
-                >
-                  今天
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCoachQuickDateRange('tomorrow')}
-                  style={{
-                    padding: '8px 16px',
-                    border: '1px solid #dee2e6',
-                    background: 'white',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#495057',
-                    minHeight: '36px',
-                  }}
-                >
-                  明天
-                </button>
-                {(coachStartDate || coachEndDate) && (
-                  <button
-                    type="button"
-                    onClick={() => { setCoachStartDate(''); setCoachEndDate(''); }}
-                    style={{
-                      padding: '8px 16px',
-                      border: 'none',
-                      background: '#dc3545',
-                      color: 'white',
-                      borderRadius: '20px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      minHeight: '36px',
-                    }}
-                  >
-                    清除
-                  </button>
-                )}
-              </div>
-            </div>
-            
-            <div style={{ 
-              display: 'flex', 
-              gap: '8px',
-              alignItems: 'center',
-              width: '100%',
-            }}>
-              <input
-                type="date"
-                value={coachStartDate}
-                onChange={(e) => setCoachStartDate(e.target.value)}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: '12px 10px',
-                  border: coachStartDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  backgroundColor: coachStartDate ? '#f0f7ff' : 'white',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <span style={{ fontSize: '14px', color: '#999', flexShrink: 0 }}>→</span>
-              <input
-                type="date"
-                value={coachEndDate}
-                onChange={(e) => setCoachEndDate(e.target.value)}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: '12px 10px',
-                  border: coachEndDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  backgroundColor: coachEndDate ? '#f0f7ff' : 'white',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-          </div>
-
-          {/* 搜尋按鈕 */}
           <button
             type="submit"
-            data-track="search_submit_coach"
-            disabled={loading || !selectedCoachId}
+            data-track="search_submit_availability"
+            disabled={slotSearching || slotSelectedBoatIds.size === 0 || !slotFromDate || !slotToDate || !slotDurationMin}
             style={{
               width: '100%',
               padding: '12px',
               fontSize: '16px',
               fontWeight: '600',
-              background: (!loading && selectedCoachId) ? 'white' : '#f5f5f5',
-              color: (!loading && selectedCoachId) ? '#666' : '#999',
-              border: (!loading && selectedCoachId) ? '2px solid #e0e0e0' : '2px solid #ddd',
+              background: (!slotSearching && slotSelectedBoatIds.size > 0 && slotFromDate && slotToDate && slotDurationMin) ? 'white' : '#f5f5f5',
+              color: (!slotSearching && slotSelectedBoatIds.size > 0 && slotFromDate && slotToDate && slotDurationMin) ? '#666' : '#999',
+              border: (!slotSearching && slotSelectedBoatIds.size > 0 && slotFromDate && slotToDate && slotDurationMin) ? '2px solid #e0e0e0' : '2px solid #ddd',
               borderRadius: '8px',
-              cursor: (!loading && selectedCoachId) ? 'pointer' : 'not-allowed',
+              cursor: (!slotSearching && slotSelectedBoatIds.size > 0 && slotFromDate && slotToDate && slotDurationMin) ? 'pointer' : 'not-allowed',
               touchAction: 'manipulation',
-              transition: 'transform 0.1s'
+              transition: 'transform 0.1s',
             }}
-            onTouchStart={(e) => !loading && selectedCoachId && (e.currentTarget.style.transform = 'scale(0.98)')}
-            onTouchEnd={(e) => !loading && selectedCoachId && (e.currentTarget.style.transform = 'scale(1)')}
+            onTouchStart={(e) => {
+              if (!slotSearching && slotSelectedBoatIds.size > 0 && slotFromDate && slotToDate && slotDurationMin) {
+                e.currentTarget.style.transform = 'scale(0.98)'
+              }
+            }}
+            onTouchEnd={(e) => {
+              e.currentTarget.style.transform = 'scale(1)'
+            }}
           >
-            {loading ? '搜尋中...' : '🔍 搜尋'}
+            {slotSearching ? '搜尋中...' : '🔍 搜尋'}
           </button>
         </form>
         )}
       </div>
 
       {/* Results */}
-      {hasSearched && (
+      {activeTab !== 'availability' && hasSearched && (
         <div>
           {/* 只在非載入狀態時顯示結果統計和操作列 */}
           {!loading && (
@@ -1976,6 +1769,135 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               })}
             </div>
           ) : null}
+        </div>
+      )}
+
+      {activeTab === 'availability' && (slotSearching || slotSearchDone) && (
+        <div>
+          {!slotSearching && (
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: isMobile ? 'stretch' : 'center',
+              gap: '8px',
+              marginBottom: '12px',
+              padding: '0 4px',
+            }}>
+              <div style={{
+                fontSize: '14px',
+                color: '#666',
+              }}>
+                共 <strong style={{ color: '#5a5a5a' }}>{slotResultLines.length}</strong> 行結果
+              </div>
+              <button
+                type="button"
+                data-track="search_copy_availability"
+                onClick={handleCopySlotLines}
+                style={{
+                  padding: isMobile ? '6px 8px' : '6px 10px',
+                  fontSize: isMobile ? '12px' : '13px',
+                  fontWeight: '500',
+                  background: slotCopyOk ? '#28a745' : '#5a5a5a',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  alignSelf: isMobile ? 'stretch' : 'auto',
+                }}
+              >
+                {slotCopyOk ? '✓ 已複製' : '📋 複製'}
+              </button>
+            </div>
+          )}
+
+          {slotSearching && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: '16px',
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    borderLeft: '4px solid #e9ecef',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div>
+                      <div
+                        style={{
+                          width: '120px',
+                          height: '20px',
+                          backgroundColor: '#e9ecef',
+                          borderRadius: '4px',
+                          marginBottom: '8px',
+                          animation: 'pulse 1.5s ease-in-out infinite',
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: '180px',
+                          height: '16px',
+                          backgroundColor: '#e9ecef',
+                          borderRadius: '4px',
+                          animation: 'pulse 1.5s ease-in-out infinite',
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                    {[1, 2, 3, 4].map((j) => (
+                      <div
+                        key={j}
+                        style={{
+                          width: '100px',
+                          height: '14px',
+                          backgroundColor: '#e9ecef',
+                          borderRadius: '4px',
+                          animation: 'pulse 1.5s ease-in-out infinite',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <style>{`
+                @keyframes pulse {
+                  0%, 100% { opacity: 1; }
+                  50% { opacity: 0.5; }
+                }
+              `}</style>
+            </div>
+          )}
+
+          {!slotSearching && slotSearchDone && (
+            <div
+              style={{
+                padding: '16px',
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                borderLeft: '4px solid #5a5a5a',
+              }}
+            >
+              <pre
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontSize: isMobile ? '15px' : '15px',
+                  lineHeight: 1.65,
+                  margin: 0,
+                  fontFamily: 'inherit',
+                  color: '#222',
+                }}
+              >
+                {slotResultLines.join('\n')}
+              </pre>
+            </div>
+          )}
         </div>
       )}
 
