@@ -30,15 +30,23 @@ function ymdToMdLabel(ymd: string): string {
   return `${m}/${d}`
 }
 
+/** 一～日（與「週間＝一至五」視覺一致） */
 const SLOT_WEEKDAY_DEFS: { w: number; label: string }[] = [
-  { w: 0, label: '日' },
   { w: 1, label: '一' },
   { w: 2, label: '二' },
   { w: 3, label: '三' },
   { w: 4, label: '四' },
   { w: 5, label: '五' },
   { w: 6, label: '六' },
+  { w: 0, label: '日' },
 ]
+
+function deriveSlotWeekdayPresetMode(set: Set<number>): 'all' | 'weekday' | 'weekend' | 'custom' {
+  if (set.size === 7 && [0, 1, 2, 3, 4, 5, 6].every(d => set.has(d))) return 'all'
+  if (set.size === 5 && [1, 2, 3, 4, 5].every(d => set.has(d))) return 'weekday'
+  if (set.size === 2 && set.has(0) && set.has(6)) return 'weekend'
+  return 'custom'
+}
 
 interface Booking {
   id: number
@@ -333,6 +341,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   }
 
   const slotWeekdayKey = [...slotWeekdaySet].sort().join(',')
+
+  const slotWeekdayPresetMode = useMemo(
+    () => deriveSlotWeekdayPresetMode(slotWeekdaySet),
+    [slotWeekdayKey]
+  )
 
   const slotDateCandidates = useMemo(() => {
     if (!slotFromDate || !slotToDate || slotFromDate > slotToDate) return [] as string[]
@@ -981,7 +994,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             lineHeight: 1.45,
           }}>
             {isMobile ? (
-              <>一般船可約；不含教練。接船分鐘僅供搜尋估算。</>
+              <>一般船；不含教練。緩衝僅估算。</>
             ) : (
               <>
                 僅查詢<strong style={{ color: '#495057' }}>一般船</strong>可約時段（不含設施／陸上課）；不含教練。接船緩衝為搜尋用假設。
@@ -1055,10 +1068,13 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 color: '#495057',
               }}>
                 {isMobile ? '📅 日期' : '📅 起訖日期'}
-                {(slotFromDate || slotToDate)
-                  ? <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>·已填</span>
-                  : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>·必填</span>
-                }
+                {!slotFromDate && !slotToDate ? (
+                  <span style={{ color: '#868e96', marginLeft: '4px', fontSize: isMobile ? '11px' : '12px' }}>{isMobile ? '＊' : '·必填'}</span>
+                ) : isMobile && slotFromDate && slotToDate ? (
+                  <span style={{ color: '#40c057', marginLeft: '6px', fontSize: '14px' }}>✓</span>
+                ) : !isMobile ? (
+                  <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>·已填</span>
+                ) : null}
               </span>
               {(slotFromDate || slotToDate) && (
                 <button
@@ -1161,11 +1177,74 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             }}>
               {isMobile ? '星期' : '星期（可複選）'}
             </span>
+            <div
+              role="group"
+              aria-label="常用星期範圍"
+              style={{
+                display: 'flex',
+                width: '100%',
+                borderRadius: '10px',
+                border: '1px solid #ced4da',
+                overflow: 'hidden',
+                marginBottom: isMobile ? '6px' : '8px',
+                background: '#e9ecef',
+              }}
+            >
+              {([
+                { k: 'all' as const, t: '全週' },
+                { k: 'weekday' as const, t: '週間' },
+                { k: 'weekend' as const, t: '週末' },
+              ] as const).map(({ k, t }, i) => {
+                const active = slotWeekdayPresetMode === k
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setSlotWeekdayPreset(k)}
+                    style={{
+                      flex: 1,
+                      minHeight: isMobile ? 46 : 40,
+                      padding: isMobile ? '10px 4px' : '8px 10px',
+                      border: 'none',
+                      borderRight: i < 2 ? '1px solid #ced4da' : undefined,
+                      background: active ? '#fff' : 'transparent',
+                      cursor: 'pointer',
+                      fontSize: isMobile ? '15px' : '14px',
+                      fontWeight: active ? '700' : '500',
+                      color: active ? '#212529' : '#495057',
+                      boxShadow: active ? 'inset 0 1px 0 rgba(255,255,255,0.9)' : 'none',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    {t}
+                  </button>
+                )
+              })}
+            </div>
+            {slotWeekdayPresetMode === 'custom' && (
+              <div style={{
+                fontSize: '11px',
+                color: '#868e96',
+                marginBottom: isMobile ? '4px' : '6px',
+                lineHeight: 1.35,
+              }}>
+                {isMobile ? '自訂中；點上排復原。' : '已自訂組合；再點「全週／週間／週末」可一鍵恢復。'}
+              </div>
+            )}
+            {!isMobile && (
+            <div style={{
+              fontSize: '11px',
+              color: '#868e96',
+              marginBottom: '6px',
+              lineHeight: 1.35,
+            }}>
+              先選常用範圍，再以「一～日」微調；淺藍為納入查詢、灰底為排除。
+            </div>
+            )}
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
               gap: isMobile ? '6px' : '8px',
-              marginBottom: isMobile ? '6px' : '10px',
             }}>
               {SLOT_WEEKDAY_DEFS.map(({ w, label }) => {
                 const on = slotWeekdaySet.has(w)
@@ -1175,16 +1254,16 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     type="button"
                     onClick={() => toggleSlotWeekday(w)}
                     style={{
-                      minWidth: isMobile ? 48 : 40,
+                      minWidth: isMobile ? 46 : 40,
                       minHeight: `${slotTouchMin}px`,
                       padding: '0 12px',
-                      border: on ? '2px solid #5a5a5a' : '1px solid #dee2e6',
-                      background: on ? '#f0f0f0' : 'white',
+                      border: on ? '2px solid #228be6' : '1px solid #dee2e6',
+                      background: on ? '#e7f5ff' : '#f8f9fa',
                       borderRadius: '10px',
                       cursor: 'pointer',
                       fontSize: isMobile ? '16px' : '15px',
                       fontWeight: on ? '700' : '500',
-                      color: '#495057',
+                      color: on ? '#1864ab' : '#868e96',
                       touchAction: 'manipulation',
                     }}
                   >
@@ -1192,33 +1271,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   </button>
                 )
               })}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-              {!isMobile && <span style={{ fontSize: '12px', color: '#868e96', marginRight: '4px' }}>快速：</span>}
-              {([
-                { k: 'all' as const, t: '全週' },
-                { k: 'weekday' as const, t: '週間' },
-                { k: 'weekend' as const, t: '週末' },
-              ]).map(({ k, t }) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setSlotWeekdayPreset(k)}
-                  style={{
-                    padding: isMobile ? '8px 14px' : '6px 12px',
-                    border: '1px solid #ced4da',
-                    background: 'white',
-                    borderRadius: '16px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    color: '#495057',
-                    minHeight: isMobile ? 40 : 32,
-                    touchAction: 'manipulation',
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -1283,7 +1335,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 {isMobile ? (
                   <>
                     <strong style={{ color: '#5a5a5a' }}>{slotDatesForSearch.length}</strong>
-                    /{slotDateCandidates.length} 日 · 點日期可略過
+                    /{slotDateCandidates.length} · 點略
                   </>
                 ) : (
                   <>
@@ -1350,7 +1402,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             }}>
               {isMobile ? (
                 <>
-                  整段課落在區間內；列出起點約{' '}
+                  課在區間內；起點約{' '}
                   {String(Math.floor(AVAILABILITY_SEARCH_CLIP_START_MINUTES / 60)).padStart(2, '0')}–
                   {String(Math.floor(AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES / 60)).padStart(2, '0')} 點。
                 </>
@@ -1423,7 +1475,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               {isMobile ? '時長（分）' : '預約時長（分鐘）'}
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
-              {[60, 90, 120, 150, 180].map(m => (
+              {[60, 90, 120, 150].map(m => (
                 <button
                   key={m}
                   type="button"
@@ -1491,7 +1543,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               lineHeight: 1.4,
             }}>
               {isMobile
-                ? '與空檔掃描步長相同；30＝半小時一格。'
+                ? '同掃描步長；30＝半點格。'
                 : '空檔起點掃描步長與此相同（選 30 則不列出 15 分格點）。'}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
