@@ -971,27 +971,33 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         {activeTab === 'availability' && (
         <form onSubmit={handleSlotSearch}>
           <div style={{
-            marginBottom: '20px',
-            padding: '12px 14px',
+            marginBottom: isMobile ? '12px' : '16px',
+            padding: isMobile ? '8px 10px' : '12px 14px',
             backgroundColor: '#f8f9fa',
             borderRadius: '8px',
             border: '1px solid #e9ecef',
-            fontSize: '13px',
+            fontSize: isMobile ? '12px' : '13px',
             color: '#666',
-            lineHeight: 1.55,
+            lineHeight: 1.45,
           }}>
-            僅查詢<strong style={{ color: '#495057' }}>一般船隻</strong>可預約時段（不含彈簧床／陸上課程）；不含教練排程。接船緩衝為搜尋用假設，與實際建單無關。
+            {isMobile ? (
+              <>一般船可約；不含教練。接船分鐘僅供搜尋估算。</>
+            ) : (
+              <>
+                僅查詢<strong style={{ color: '#495057' }}>一般船</strong>可約時段（不含設施／陸上課）；不含教練。接船緩衝為搜尋用假設。
+              </>
+            )}
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: isMobile ? '12px' : '18px' }}>
             <label style={{
               display: 'block',
-              marginBottom: '8px',
-              fontSize: '13px',
+              marginBottom: isMobile ? '6px' : '8px',
+              fontSize: isMobile ? '12px' : '13px',
               color: '#868e96',
               fontWeight: '500',
             }}>
-              船隻（可多選）
+              {isMobile ? '船隻' : '船隻（可多選）'}
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {boats.filter(b => !isFacility(b.name)).map(boat => {
@@ -1034,7 +1040,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </div>
           </div>
 
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: isMobile ? '12px' : '16px' }}>
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
@@ -1048,10 +1054,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 fontWeight: '500',
                 color: '#495057',
               }}>
-                📅 日期區間
+                {isMobile ? '📅 日期' : '📅 起訖日期'}
                 {(slotFromDate || slotToDate)
-                  ? <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>(已設定)</span>
-                  : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>(必填)</span>
+                  ? <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>·已填</span>
+                  : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>·必填</span>
                 }
               </span>
               {(slotFromDate || slotToDate) && (
@@ -1141,11 +1147,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               color: '#856404',
               lineHeight: 1.5,
             }}>
-              此區間內沒有符合所選星期的日期，請調整日期或星期。
+              {isMobile ? '此區間與所選星期無交集。' : '此區間內沒有符合所選星期的日期，請調整日期或星期。'}
             </div>
           )}
 
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: isMobile ? '12px' : '16px' }}>
             <span style={{
               display: 'block',
               marginBottom: '6px',
@@ -1153,13 +1159,13 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               fontWeight: '500',
               color: '#495057',
             }}>
-              星期（可複選）
+              {isMobile ? '星期' : '星期（可複選）'}
             </span>
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
-              gap: '8px',
-              marginBottom: '10px',
+              gap: isMobile ? '6px' : '8px',
+              marginBottom: isMobile ? '6px' : '10px',
             }}>
               {SLOT_WEEKDAY_DEFS.map(({ w, label }) => {
                 const on = slotWeekdaySet.has(w)
@@ -1188,10 +1194,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               })}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-              <span style={{ fontSize: '12px', color: '#868e96', marginRight: '4px' }}>快速：</span>
+              {!isMobile && <span style={{ fontSize: '12px', color: '#868e96', marginRight: '4px' }}>快速：</span>}
               {([
                 { k: 'all' as const, t: '全週' },
-                { k: 'weekday' as const, t: '周間' },
+                { k: 'weekday' as const, t: '週間' },
                 { k: 'weekend' as const, t: '週末' },
               ]).map(({ k, t }) => (
                 <button
@@ -1217,21 +1223,21 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           </div>
 
           {slotDateCandidates.length > 0 && (
-            <div style={{ marginBottom: '16px' }}>
+            <div style={{ marginBottom: isMobile ? '12px' : '16px' }}>
               <div style={{
                 display: 'flex',
                 flexWrap: 'wrap',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 gap: '8px',
-                marginBottom: '8px',
+                marginBottom: '6px',
               }}>
                 <span style={{
                   fontSize: isMobile ? '15px' : '14px',
                   fontWeight: '500',
                   color: '#495057',
                 }}>
-                  查詢日（點一下略過）
+                  {isMobile ? '查詢日' : '查詢日（點一下略過）'}
                 </span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   <button
@@ -1248,7 +1254,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       touchAction: 'manipulation',
                     }}
                   >
-                    全選日
+                    {isMobile ? '全選' : '全選日'}
                   </button>
                   <button
                     type="button"
@@ -1264,17 +1270,26 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       touchAction: 'manipulation',
                     }}
                   >
-                    全略過
+                    {isMobile ? '全略' : '全略過'}
                   </button>
                 </div>
               </div>
               <div style={{
-                fontSize: '12px',
+                fontSize: isMobile ? '11px' : '12px',
                 color: '#868e96',
-                marginBottom: '8px',
-                lineHeight: 1.45,
+                marginBottom: '6px',
+                lineHeight: 1.4,
               }}>
-                已選 <strong style={{ color: '#5a5a5a' }}>{slotDatesForSearch.length}</strong> / {slotDateCandidates.length} 日；略過的日期不會送出查詢。
+                {isMobile ? (
+                  <>
+                    <strong style={{ color: '#5a5a5a' }}>{slotDatesForSearch.length}</strong>
+                    /{slotDateCandidates.length} 日 · 點日期可略過
+                  </>
+                ) : (
+                  <>
+                    已選 <strong style={{ color: '#5a5a5a' }}>{slotDatesForSearch.length}</strong> / {slotDateCandidates.length} 日；略過日不會送出查詢。
+                  </>
+                )}
               </div>
               <div style={{
                 display: 'flex',
@@ -1317,25 +1332,35 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </div>
           )}
 
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: isMobile ? '12px' : '16px' }}>
             <span style={{
               display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
+              marginBottom: isMobile ? '4px' : '8px',
+              fontSize: isMobile ? '15px' : '14px',
               fontWeight: '500',
               color: '#495057',
             }}>
-              每日可排時段（整段課程須落在區間內）
+              {isMobile ? '每日時段' : '每日可排時段'}
             </span>
             <div style={{
-              fontSize: '12px',
+              fontSize: isMobile ? '11px' : '12px',
               color: '#868e96',
-              marginBottom: '8px',
-              lineHeight: 1.45,
+              marginBottom: isMobile ? '6px' : '8px',
+              lineHeight: 1.4,
             }}>
-              實際掃描會與您輸入的區間取交集；列出的課程開始時間約在{' '}
-              {String(Math.floor(AVAILABILITY_SEARCH_CLIP_START_MINUTES / 60)).padStart(2, '0')}:00–
-              {String(Math.floor(AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES / 60)).padStart(2, '0')}:00 之間，整日寬區間也不會列出過早／過晚起點。
+              {isMobile ? (
+                <>
+                  整段課落在區間內；列出起點約{' '}
+                  {String(Math.floor(AVAILABILITY_SEARCH_CLIP_START_MINUTES / 60)).padStart(2, '0')}–
+                  {String(Math.floor(AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES / 60)).padStart(2, '0')} 點。
+                </>
+              ) : (
+                <>
+                  整段課須落在區間內；與您輸入的時段取交集。列出之課程開始時間約{' '}
+                  {String(Math.floor(AVAILABILITY_SEARCH_CLIP_START_MINUTES / 60)).padStart(2, '0')}:00–
+                  {String(Math.floor(AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES / 60)).padStart(2, '0')}:00。
+                </>
+              )}
             </div>
             <div style={{
               display: 'flex',
@@ -1387,15 +1412,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </div>
           </div>
 
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: isMobile ? '12px' : '16px' }}>
             <label style={{
               display: 'block',
-              marginBottom: '8px',
-              fontSize: '13px',
+              marginBottom: isMobile ? '6px' : '8px',
+              fontSize: isMobile ? '12px' : '13px',
               color: '#868e96',
               fontWeight: '500',
             }}>
-              預約時長（分鐘）
+              {isMobile ? '時長（分）' : '預約時長（分鐘）'}
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
               {[60, 90, 120, 150, 180].map(m => (
@@ -1449,18 +1474,25 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </div>
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: isMobile ? '12px' : '18px' }}>
             <span style={{
               display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
+              marginBottom: isMobile ? '4px' : '8px',
+              fontSize: isMobile ? '15px' : '14px',
               fontWeight: '500',
               color: '#495057',
             }}>
-              搜尋用接船緩衝（分鐘）
+              {isMobile ? '接船（分）' : '搜尋用接船緩衝（分鐘）'}
             </span>
-            <div style={{ fontSize: '12px', color: '#868e96', marginBottom: '8px', lineHeight: 1.45 }}>
-              空檔起點掃描步長與此相同（選 30 則不列出 15 分格點）。
+            <div style={{
+              fontSize: isMobile ? '11px' : '12px',
+              color: '#868e96',
+              marginBottom: isMobile ? '6px' : '8px',
+              lineHeight: 1.4,
+            }}>
+              {isMobile
+                ? '與空檔掃描步長相同；30＝半小時一格。'
+                : '空檔起點掃描步長與此相同（選 30 則不列出 15 分格點）。'}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {([30, 15] as const).map(m => (
