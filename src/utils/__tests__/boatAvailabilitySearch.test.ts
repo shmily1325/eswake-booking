@@ -131,7 +131,7 @@ describe('boatAvailabilitySearch', () => {
     expect(lines[0]).toContain('黑豹')
   })
 
-  it('寬時段 00:00–23:59 仍不產生 05:00 以前的格點', () => {
+  it('寬時段 00:00–23:59 仍不產生 06:00 以前的格點，且含 17:00 起點', () => {
     const lines = buildBoatAvailabilityLines({
       dates: ['2026-06-10'],
       dayFilter: 'all',
@@ -145,8 +145,25 @@ describe('boatAvailabilitySearch', () => {
       unavailable: [],
     })
     const text = lines.join('\n')
-    expect(text).toMatch(/0800-0900/)
-    expect(text).not.toMatch(/0[0-4]\d{2}-\d{4}/)
+    expect(text).toMatch(/0600-0700/)
+    expect(text).toMatch(/1700-1800/)
+    expect(text).not.toMatch(/ 0[0-5]\d{2}-\d{4}/)
+  })
+
+  it('17:00 可開始時課程結束可超過 17:00', () => {
+    const lines = buildBoatAvailabilityLines({
+      dates: ['2026-06-15'],
+      dayFilter: 'all',
+      timeFrom: '00:00',
+      timeTo: '23:59',
+      durationMin: 90,
+      searchBufferMinutes: 15,
+      stepMinutes: 60,
+      boats: [{ id: 1, name: 'G21' }],
+      bookings: [],
+      unavailable: [],
+    })
+    expect(lines.some(l => l.includes('1700-1830'))).toBe(true)
   })
 
   it('與營運裁剪無交集時回傳提示', () => {

@@ -18,7 +18,7 @@ import {
   type BoatAvailabilityDayFilter,
 } from '../utils/boatAvailabilitySearch'
 import {
-  AVAILABILITY_SEARCH_CLIP_END_MINUTES,
+  AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES,
   AVAILABILITY_SEARCH_CLIP_START_MINUTES,
 } from '../constants/booking'
 
@@ -1097,9 +1097,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               marginBottom: '8px',
               lineHeight: 1.45,
             }}>
-              實際掃描會與您輸入的區間取交集，並限制在約{' '}
+              實際掃描會與您輸入的區間取交集；列出的課程開始時間約在{' '}
               {String(Math.floor(AVAILABILITY_SEARCH_CLIP_START_MINUTES / 60)).padStart(2, '0')}:00–
-              {String(Math.floor(AVAILABILITY_SEARCH_CLIP_END_MINUTES / 60)).padStart(2, '0')}:00（與日視圖營運帶一致），整日寬區間也不會列出過早／過晚格點。
+              {String(Math.floor(AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES / 60)).padStart(2, '0')}:00 之間，整日寬區間也不會列出過早／過晚起點。
             </div>
             <div style={{
               display: 'flex',

@@ -1,6 +1,6 @@
 import { calculateTimeSlot, checkTimeSlotConflict, timeToMinutes, minutesToTime } from './bookingConflict'
 import {
-  AVAILABILITY_SEARCH_CLIP_END_MINUTES,
+  AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES,
   AVAILABILITY_SEARCH_CLIP_START_MINUTES,
 } from '../constants/booking'
 
@@ -157,11 +157,12 @@ export function buildBoatAvailabilityLines(input: BuildBoatAvailabilityLinesInpu
     return ['（請檢查日期、船隻、時段與時長設定）']
   }
 
-  // 與日視圖營運帶一致：即使用戶選 00:00–24:00「全日」掃描，也不產生過早／過晚格點
+  // 開始時間裁剪：即使用戶選 00:00–24:00，也只列約 06:00–17:00 起點，並與「到」時邊界取交集
   const effStart = Math.max(windowStart, AVAILABILITY_SEARCH_CLIP_START_MINUTES)
-  const effEnd = Math.min(windowEnd, AVAILABILITY_SEARCH_CLIP_END_MINUTES)
-  if (effEnd < effStart || effStart + durationMin > effEnd) {
-    return ['（可排時段與營運時間（約 05:00–20:00）無交集，請調整每日可排時段或時長）']
+  const lastStartFromWindow = windowEnd - durationMin
+  const effLastStart = Math.min(lastStartFromWindow, AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES)
+  if (!Number.isFinite(lastStartFromWindow) || effLastStart < effStart) {
+    return ['（可排時段與合理開始時間（約 06:00–17:00）無交集，請調整每日可排時段或時長）']
   }
 
   const slots: BoatAvailabilitySlot[] = []
@@ -174,7 +175,7 @@ export function buildBoatAvailabilityLines(input: BuildBoatAvailabilityLinesInpu
         b => b.boat_id === boat.id && b.start_at.startsWith(dateYmd)
       )
 
-      for (let sm = effStart; sm + durationMin <= effEnd; sm += stepMinutes) {
+      for (let sm = effStart; sm <= effLastStart; sm += stepMinutes) {
         const startTime = minutesToTime(sm)
         if (slotOverlapsUnavailable(boat.id, dateYmd, startTime, durationMin, unavailable)) {
           continue
