@@ -40,6 +40,59 @@ function toHmCompact(timeHHMM: string): string {
   return `${pad2(h)}${pad2(m)}`
 }
 
+function compactHmToMinutes(hm: string): number {
+  return parseInt(hm.slice(0, 2), 10) * 60 + parseInt(hm.slice(2, 4), 10)
+}
+
+/** 同日、同船且起點彼此相差 stepMinutes 時合併為一區間（顯示首起點—末堂結束） */
+function mergeConsecutiveAvailabilitySlots(
+  slots: BoatAvailabilitySlot[],
+  stepMinutes: number
+): BoatAvailabilitySlot[] {
+  if (slots.length === 0) return []
+
+  const byKey = new Map<string, BoatAvailabilitySlot[]>()
+  for (const s of slots) {
+    const k = `${s.dateYmd}\0${s.boatName}`
+    const arr = byKey.get(k) ?? []
+    arr.push(s)
+    byKey.set(k, arr)
+  }
+
+  const merged: BoatAvailabilitySlot[] = []
+  for (const arr of byKey.values()) {
+    arr.sort((a, b) => a.startHm.localeCompare(b.startHm))
+    let block: BoatAvailabilitySlot | null = null
+    let lastStartMin: number | null = null
+    for (const s of arr) {
+      const thisStart = compactHmToMinutes(s.startHm)
+      if (!block || lastStartMin == null) {
+        block = { ...s }
+        lastStartMin = thisStart
+        continue
+      }
+      if (thisStart === lastStartMin + stepMinutes) {
+        block.endHm = s.endHm
+        lastStartMin = thisStart
+      } else {
+        merged.push(block)
+        block = { ...s }
+        lastStartMin = thisStart
+      }
+    }
+    if (block) merged.push(block)
+  }
+
+  merged.sort((a, b) => {
+    const c = a.dateYmd.localeCompare(b.dateYmd)
+    if (c !== 0) return c
+    const ta = a.startHm.localeCompare(b.startHm)
+    if (ta !== 0) return ta
+    return a.boatName.localeCompare(b.boatName, 'zh-Hant')
+  })
+  return merged
+}
+
 /** 本地 YYYY-MM-DD 逐日列舉（含首尾） */
 export function enumerateDatesInclusive(fromYmd: string, toYmd: string): string[] {
   if (!fromYmd || !toYmd) return []
@@ -128,7 +181,7 @@ export interface BuildBoatAvailabilityLinesInput {
 }
 
 /**
- * 僅查船（不含設施、不含教練），回傳 LINE 風格文字行：M/D HHmm-HHmm 船名，同日多筆以 or 連接。
+ * 僅查船（不含設施、不含教練），回傳 LINE 風格文字行：同日先一行「M/D」，其下為合併後區間「HHmm-HHmm 船名」（連續可開課起點合併為一段）。
  */
 export function buildBoatAvailabilityLines(input: BuildBoatAvailabilityLinesInput): string[] {
   const {
@@ -223,12 +276,14 @@ export function buildBoatAvailabilityLines(input: BuildBoatAvailabilityLinesInpu
     return a.boatName.localeCompare(b.boatName, 'zh-Hant')
   })
 
-  if (slots.length === 0) {
+  const mergedSlots = mergeConsecutiveAvailabilitySlots(slots, stepMinutes)
+
+  if (mergedSlots.length === 0) {
     return ['（此條件下沒有可預約的船隻空檔）']
   }
 
   const linesByYmd = new Map<string, string[]>()
-  for (const s of slots) {
+  for (const s of mergedSlots) {
     const piece = `${s.startHm}-${s.endHm} ${s.boatName}`
     const arr = linesByYmd.get(s.dateYmd) || []
     arr.push(piece)
@@ -237,8 +292,8 @@ export function buildBoatAvailabilityLines(input: BuildBoatAvailabilityLinesInpu
 
   return [...linesByYmd.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([ymd, parts]) => {
+    .flatMap(([ymd, parts]) => {
       const [, m, d] = ymd.split('-').map(Number)
-      return `${m}/${d} ${parts.join(' or ')}`
+      return [`${m}/${d}`, ...parts]
     })
 }

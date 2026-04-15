@@ -106,7 +106,9 @@ describe('SearchBookings', () => {
       expect(document.body.textContent).toMatch(/共\s*\d+\s*行結果/)
     })
     await waitFor(() => {
-      expect(document.body.textContent).toMatch(/6\/2.*G21/)
+      const t = document.body.textContent ?? ''
+      expect(t).toContain('6/2')
+      expect(t).toContain('G21')
     })
   })
 

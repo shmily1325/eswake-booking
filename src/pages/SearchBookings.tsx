@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuthUser } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
@@ -15,12 +15,30 @@ import { isFacility } from '../utils/facility'
 import {
   enumerateDatesInclusive,
   buildBoatAvailabilityLines,
-  type BoatAvailabilityDayFilter,
 } from '../utils/boatAvailabilitySearch'
 import {
   AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES,
   AVAILABILITY_SEARCH_CLIP_START_MINUTES,
 } from '../constants/booking'
+
+function weekdayFromYmd(ymd: string): number {
+  return new Date(`${ymd}T12:00:00`).getDay()
+}
+
+function ymdToMdLabel(ymd: string): string {
+  const [, m, d] = ymd.split('-').map(Number)
+  return `${m}/${d}`
+}
+
+const SLOT_WEEKDAY_DEFS: { w: number; label: string }[] = [
+  { w: 0, label: '日' },
+  { w: 1, label: '一' },
+  { w: 2, label: '二' },
+  { w: 3, label: '三' },
+  { w: 4, label: '四' },
+  { w: 5, label: '五' },
+  { w: 6, label: '六' },
+]
 
 interface Booking {
   id: number
@@ -61,6 +79,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
   const toast = useToast()
+  const slotTouchMin = isMobile ? 44 : 38
   
   // Tab 切換
   const [activeTab, setActiveTab] = useState<SearchTab>('member')
@@ -93,9 +112,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   // 船隻空檔搜尋（僅查船，不含設施／教練）
   const [slotFromDate, setSlotFromDate] = useState('')
   const [slotToDate, setSlotToDate] = useState('')
-  const [slotDayFilter, setSlotDayFilter] = useState<BoatAvailabilityDayFilter>('all')
-  const [slotTimeFrom, setSlotTimeFrom] = useState('08:00')
-  const [slotTimeTo, setSlotTimeTo] = useState('12:00')
+  const [slotWeekdaySet, setSlotWeekdaySet] = useState(() => new Set<number>([0, 1, 2, 3, 4, 5, 6]))
+  const [slotExcludedDates, setSlotExcludedDates] = useState<Set<string>>(() => new Set())
+  const [slotTimeFrom, setSlotTimeFrom] = useState('06:00')
+  const [slotTimeTo, setSlotTimeTo] = useState('18:00')
   const [slotDurationMin, setSlotDurationMin] = useState(120)
   const [slotSearchBufferMin, setSlotSearchBufferMin] = useState<15 | 30>(30)
   const [slotSelectedBoatIds, setSlotSelectedBoatIds] = useState<Set<number>>(new Set())
@@ -312,6 +332,60 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     })
   }
 
+  const slotWeekdayKey = [...slotWeekdaySet].sort().join(',')
+
+  const slotDateCandidates = useMemo(() => {
+    if (!slotFromDate || !slotToDate || slotFromDate > slotToDate) return [] as string[]
+    if (slotWeekdaySet.size === 0) return [] as string[]
+    return enumerateDatesInclusive(slotFromDate, slotToDate).filter(ymd =>
+      slotWeekdaySet.has(weekdayFromYmd(ymd))
+    )
+  }, [slotFromDate, slotToDate, slotWeekdayKey])
+
+  const slotDatesForSearch = useMemo(
+    () => slotDateCandidates.filter(d => !slotExcludedDates.has(d)),
+    [slotDateCandidates, slotExcludedDates]
+  )
+
+  useEffect(() => {
+    const allowed = new Set(slotDateCandidates)
+    setSlotExcludedDates(prev => {
+      const next = new Set<string>()
+      for (const x of prev) {
+        if (allowed.has(x)) next.add(x)
+      }
+      return next
+    })
+  }, [slotDateCandidates])
+
+  const toggleSlotWeekday = useCallback((w: number) => {
+    setSlotWeekdaySet(prev => {
+      const n = new Set(prev)
+      if (n.has(w)) {
+        if (n.size <= 1) return prev
+        n.delete(w)
+      } else {
+        n.add(w)
+      }
+      return n
+    })
+  }, [])
+
+  const setSlotWeekdayPreset = useCallback((kind: 'all' | 'weekday' | 'weekend') => {
+    if (kind === 'all') setSlotWeekdaySet(new Set([0, 1, 2, 3, 4, 5, 6]))
+    else if (kind === 'weekday') setSlotWeekdaySet(new Set([1, 2, 3, 4, 5]))
+    else setSlotWeekdaySet(new Set([0, 6]))
+  }, [])
+
+  const toggleSlotDateExcluded = useCallback((ymd: string) => {
+    setSlotExcludedDates(prev => {
+      const n = new Set(prev)
+      if (n.has(ymd)) n.delete(ymd)
+      else n.add(ymd)
+      return n
+    })
+  }, [])
+
   /** 船隻空檔：僅一般船、不含教練；接船緩衝為搜尋用參數 */
   const handleSlotSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -321,6 +395,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     }
     if (slotFromDate > slotToDate) {
       toast.error('起始日期不能晚於結束日期')
+      return
+    }
+    if (slotWeekdaySet.size === 0) {
+      toast.error('請至少選一個星期')
       return
     }
     if (slotSelectedBoatIds.size === 0) {
@@ -344,9 +422,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     setSlotCopyOk(false)
 
     try {
-      const dates = enumerateDatesInclusive(slotFromDate, slotToDate)
+      const dates = [...slotDatesForSearch].sort()
       if (dates.length === 0) {
-        toast.error('日期區間無效')
+        toast.error('沒有要查詢的日期，請調整區間／星期，或點下方日期恢復查詢日')
         return
       }
       if (dates.length > 120) {
@@ -379,12 +457,12 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
       const lines = buildBoatAvailabilityLines({
         dates,
-        dayFilter: slotDayFilter,
+        dayFilter: 'all',
         timeFrom: slotTimeFrom,
         timeTo: slotTimeTo,
         durationMin: slotDurationMin,
         searchBufferMinutes: slotSearchBufferMin,
-        stepMinutes: 15,
+        stepMinutes: slotSearchBufferMin,
         boats: selectedBoatsMeta.map(b => ({ id: b.id, name: b.name })),
         bookings: bookRes.data || [],
         unavailable: unRes.data || [],
@@ -924,7 +1002,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     type="button"
                     onClick={() => toggleSlotBoat(boat.id)}
                     style={{
-                      padding: '8px 16px',
+                      padding: isMobile ? '10px 18px' : '8px 16px',
                       border: on ? '2px solid #5a5a5a' : '1px solid #dee2e6',
                       borderRadius: '20px',
                       background: on ? '#f0f0f0' : 'white',
@@ -933,16 +1011,17 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
-                      fontSize: '14px',
+                      fontSize: isMobile ? '15px' : '14px',
                       fontWeight: on ? '600' : '500',
                       color: on ? '#5a5a5a' : '#333',
-                      minHeight: '36px',
+                      minHeight: `${slotTouchMin}px`,
+                      touchAction: 'manipulation',
                     }}
                   >
                     <span
                       style={{
-                        width: '10px',
-                        height: '10px',
+                        width: '12px',
+                        height: '12px',
                         borderRadius: '50%',
                         backgroundColor: boat.color || '#ccc',
                         flexShrink: 0,
@@ -965,7 +1044,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               marginBottom: '8px',
             }}>
               <span style={{
-                fontSize: '14px',
+                fontSize: isMobile ? '15px' : '14px',
                 fontWeight: '500',
                 color: '#495057',
               }}>
@@ -978,16 +1057,21 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               {(slotFromDate || slotToDate) && (
                 <button
                   type="button"
-                  onClick={() => { setSlotFromDate(''); setSlotToDate('') }}
+                  onClick={() => {
+                    setSlotFromDate('')
+                    setSlotToDate('')
+                    setSlotExcludedDates(new Set())
+                  }}
                   style={{
-                    padding: '4px 10px',
+                    padding: isMobile ? '8px 14px' : '4px 10px',
                     border: 'none',
                     background: '#dc3545',
                     color: 'white',
                     borderRadius: '12px',
                     cursor: 'pointer',
-                    fontSize: '12px',
+                    fontSize: isMobile ? '14px' : '12px',
                     fontWeight: '600',
+                    minHeight: isMobile ? `${slotTouchMin}px` : undefined,
                   }}
                 >
                   清除
@@ -1011,10 +1095,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     flex: 1,
                     minWidth: 0,
                     width: '100%',
-                    padding: '10px',
+                    padding: isMobile ? '12px 10px' : '10px',
                     border: slotFromDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
+                    minHeight: isMobile ? `${slotTouchMin}px` : undefined,
                     backgroundColor: slotFromDate ? '#f0f7ff' : 'white',
                     boxSizing: 'border-box',
                   }}
@@ -1030,10 +1115,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     flex: 1,
                     minWidth: 0,
                     width: '100%',
-                    padding: '10px',
+                    padding: isMobile ? '12px 10px' : '10px',
                     border: slotToDate ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
+                    minHeight: isMobile ? `${slotTouchMin}px` : undefined,
                     backgroundColor: slotToDate ? '#f0f7ff' : 'white',
                     boxSizing: 'border-box',
                   }}
@@ -1042,44 +1128,194 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </div>
           </div>
 
+          {slotFromDate &&
+            slotToDate &&
+            slotFromDate <= slotToDate &&
+            slotDateCandidates.length === 0 && (
+            <div style={{
+              marginBottom: '12px',
+              padding: '10px 12px',
+              background: '#fff3cd',
+              borderRadius: '8px',
+              fontSize: isMobile ? '14px' : '13px',
+              color: '#856404',
+              lineHeight: 1.5,
+            }}>
+              此區間內沒有符合所選星期的日期，請調整日期或星期。
+            </div>
+          )}
+
           <div style={{ marginBottom: '16px' }}>
             <span style={{
               display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
+              marginBottom: '6px',
+              fontSize: isMobile ? '15px' : '14px',
               fontWeight: '500',
               color: '#495057',
             }}>
-              星期
+              星期（可複選）
             </span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+              marginBottom: '10px',
+            }}>
+              {SLOT_WEEKDAY_DEFS.map(({ w, label }) => {
+                const on = slotWeekdaySet.has(w)
+                return (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => toggleSlotWeekday(w)}
+                    style={{
+                      minWidth: isMobile ? 48 : 40,
+                      minHeight: `${slotTouchMin}px`,
+                      padding: '0 12px',
+                      border: on ? '2px solid #5a5a5a' : '1px solid #dee2e6',
+                      background: on ? '#f0f0f0' : 'white',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontSize: isMobile ? '16px' : '15px',
+                      fontWeight: on ? '700' : '500',
+                      color: '#495057',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', color: '#868e96', marginRight: '4px' }}>快速：</span>
               {([
-                { v: 'all' as const, l: '全部' },
-                { v: 'weekday' as const, l: '周間' },
-                { v: 'weekend' as const, l: '週末' },
-              ]).map(({ v, l }) => (
+                { k: 'all' as const, t: '全週' },
+                { k: 'weekday' as const, t: '周間' },
+                { k: 'weekend' as const, t: '週末' },
+              ]).map(({ k, t }) => (
                 <button
-                  key={v}
+                  key={k}
                   type="button"
-                  onClick={() => setSlotDayFilter(v)}
+                  onClick={() => setSlotWeekdayPreset(k)}
                   style={{
-                    padding: '8px 16px',
-                    border: slotDayFilter === v ? '2px solid #5a5a5a' : '1px solid #dee2e6',
-                    background: slotDayFilter === v ? '#f0f0f0' : 'white',
-                    borderRadius: '20px',
+                    padding: isMobile ? '8px 14px' : '6px 12px',
+                    border: '1px solid #ced4da',
+                    background: 'white',
+                    borderRadius: '16px',
                     cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
+                    fontSize: '13px',
                     color: '#495057',
-                    minHeight: '36px',
-                    transition: 'all 0.2s',
+                    minHeight: isMobile ? 40 : 32,
+                    touchAction: 'manipulation',
                   }}
                 >
-                  {l}
+                  {t}
                 </button>
               ))}
             </div>
           </div>
+
+          {slotDateCandidates.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '8px',
+              }}>
+                <span style={{
+                  fontSize: isMobile ? '15px' : '14px',
+                  fontWeight: '500',
+                  color: '#495057',
+                }}>
+                  查詢日（點一下略過）
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setSlotExcludedDates(new Set())}
+                    style={{
+                      padding: isMobile ? '8px 12px' : '4px 10px',
+                      border: '1px solid #5a5a5a',
+                      background: '#fff',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      color: '#495057',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    全選日
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSlotExcludedDates(new Set(slotDateCandidates))}
+                    style={{
+                      padding: isMobile ? '8px 12px' : '4px 10px',
+                      border: '1px solid #adb5bd',
+                      background: '#fff',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      color: '#868e96',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    全略過
+                  </button>
+                </div>
+              </div>
+              <div style={{
+                fontSize: '12px',
+                color: '#868e96',
+                marginBottom: '8px',
+                lineHeight: 1.45,
+              }}>
+                已選 <strong style={{ color: '#5a5a5a' }}>{slotDatesForSearch.length}</strong> / {slotDateCandidates.length} 日；略過的日期不會送出查詢。
+              </div>
+              <div style={{
+                display: 'flex',
+                flexWrap: isMobile ? 'nowrap' : 'wrap',
+                gap: '8px',
+                overflowX: isMobile ? 'auto' : 'visible',
+                WebkitOverflowScrolling: 'touch',
+                paddingBottom: '4px',
+                margin: isMobile ? '0 -4px' : 0,
+                paddingLeft: isMobile ? '4px' : 0,
+                paddingRight: isMobile ? '4px' : 0,
+              }}>
+                {slotDateCandidates.map(ymd => {
+                  const excluded = slotExcludedDates.has(ymd)
+                  return (
+                    <button
+                      key={ymd}
+                      type="button"
+                      onClick={() => toggleSlotDateExcluded(ymd)}
+                      style={{
+                        flexShrink: 0,
+                        minWidth: 56,
+                        minHeight: `${slotTouchMin}px`,
+                        padding: '0 10px',
+                        border: excluded ? '2px dashed #adb5bd' : '2px solid #5a5a5a',
+                        background: excluded ? '#f8f9fa' : '#f0f7ff',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '16px' : '15px',
+                        fontWeight: excluded ? '500' : '600',
+                        color: excluded ? '#868e96' : '#212529',
+                        touchAction: 'manipulation',
+                      }}
+                    >
+                      {ymdToMdLabel(ymd)}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <div style={{ marginBottom: '16px' }}>
             <span style={{
@@ -1118,10 +1354,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     flex: 1,
                     minWidth: 0,
                     width: '100%',
-                    padding: '10px',
+                    padding: isMobile ? '12px 10px' : '10px',
                     border: '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
+                    minHeight: isMobile ? `${slotTouchMin}px` : undefined,
                     backgroundColor: 'white',
                     boxSizing: 'border-box',
                   }}
@@ -1137,10 +1374,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     flex: 1,
                     minWidth: 0,
                     width: '100%',
-                    padding: '10px',
+                    padding: isMobile ? '12px 10px' : '10px',
                     border: '1px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
+                    minHeight: isMobile ? `${slotTouchMin}px` : undefined,
                     backgroundColor: 'white',
                     boxSizing: 'border-box',
                   }}
@@ -1166,16 +1404,17 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   type="button"
                   onClick={() => setSlotDurationMin(m)}
                   style={{
-                    padding: '8px 16px',
+                    padding: isMobile ? '10px 18px' : '8px 16px',
                     border: slotDurationMin === m ? '2px solid #5a5a5a' : '1px solid #dee2e6',
                     background: slotDurationMin === m ? '#f0f0f0' : 'white',
                     borderRadius: '20px',
                     cursor: 'pointer',
-                    fontSize: '14px',
+                    fontSize: isMobile ? '15px' : '14px',
                     fontWeight: '500',
                     color: '#495057',
-                    minHeight: '36px',
+                    minHeight: `${slotTouchMin}px`,
                     transition: 'all 0.2s',
+                    touchAction: 'manipulation',
                   }}
                 >
                   {m}
@@ -1220,6 +1459,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             }}>
               搜尋用接船緩衝（分鐘）
             </span>
+            <div style={{ fontSize: '12px', color: '#868e96', marginBottom: '8px', lineHeight: 1.45 }}>
+              空檔起點掃描步長與此相同（選 30 則不列出 15 分格點）。
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {([30, 15] as const).map(m => (
                 <button
@@ -1227,16 +1469,17 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   type="button"
                   onClick={() => setSlotSearchBufferMin(m)}
                   style={{
-                    padding: '8px 16px',
+                    padding: isMobile ? '10px 18px' : '8px 16px',
                     border: slotSearchBufferMin === m ? '2px solid #5a5a5a' : '1px solid #dee2e6',
                     background: slotSearchBufferMin === m ? '#f0f0f0' : 'white',
                     borderRadius: '20px',
                     cursor: 'pointer',
-                    fontSize: '14px',
+                    fontSize: isMobile ? '15px' : '14px',
                     fontWeight: '500',
                     color: '#495057',
-                    minHeight: '36px',
+                    minHeight: `${slotTouchMin}px`,
                     transition: 'all 0.2s',
+                    touchAction: 'manipulation',
                   }}
                 >
                   {m}
@@ -1248,22 +1491,65 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           <button
             type="submit"
             data-track="search_submit_availability"
-            disabled={slotSearching || slotSelectedBoatIds.size === 0 || !slotFromDate || !slotToDate || !slotDurationMin}
+            disabled={
+              slotSearching ||
+              slotSelectedBoatIds.size === 0 ||
+              !slotFromDate ||
+              !slotToDate ||
+              !slotDurationMin ||
+              slotDatesForSearch.length === 0
+            }
             style={{
               width: '100%',
-              padding: '12px',
-              fontSize: '16px',
+              padding: isMobile ? '14px 12px' : '12px',
+              fontSize: isMobile ? '17px' : '16px',
               fontWeight: '600',
-              background: (!slotSearching && slotSelectedBoatIds.size > 0 && slotFromDate && slotToDate && slotDurationMin) ? 'white' : '#f5f5f5',
-              color: (!slotSearching && slotSelectedBoatIds.size > 0 && slotFromDate && slotToDate && slotDurationMin) ? '#666' : '#999',
-              border: (!slotSearching && slotSelectedBoatIds.size > 0 && slotFromDate && slotToDate && slotDurationMin) ? '2px solid #e0e0e0' : '2px solid #ddd',
+              background: (
+                !slotSearching &&
+                slotSelectedBoatIds.size > 0 &&
+                slotFromDate &&
+                slotToDate &&
+                slotDurationMin &&
+                slotDatesForSearch.length > 0
+              ) ? 'white' : '#f5f5f5',
+              color: (
+                !slotSearching &&
+                slotSelectedBoatIds.size > 0 &&
+                slotFromDate &&
+                slotToDate &&
+                slotDurationMin &&
+                slotDatesForSearch.length > 0
+              ) ? '#666' : '#999',
+              border: (
+                !slotSearching &&
+                slotSelectedBoatIds.size > 0 &&
+                slotFromDate &&
+                slotToDate &&
+                slotDurationMin &&
+                slotDatesForSearch.length > 0
+              ) ? '2px solid #e0e0e0' : '2px solid #ddd',
               borderRadius: '8px',
-              cursor: (!slotSearching && slotSelectedBoatIds.size > 0 && slotFromDate && slotToDate && slotDurationMin) ? 'pointer' : 'not-allowed',
+              cursor: (
+                !slotSearching &&
+                slotSelectedBoatIds.size > 0 &&
+                slotFromDate &&
+                slotToDate &&
+                slotDurationMin &&
+                slotDatesForSearch.length > 0
+              ) ? 'pointer' : 'not-allowed',
               touchAction: 'manipulation',
               transition: 'transform 0.1s',
+              minHeight: isMobile ? 48 : undefined,
             }}
             onTouchStart={(e) => {
-              if (!slotSearching && slotSelectedBoatIds.size > 0 && slotFromDate && slotToDate && slotDurationMin) {
+              if (
+                !slotSearching &&
+                slotSelectedBoatIds.size > 0 &&
+                slotFromDate &&
+                slotToDate &&
+                slotDurationMin &&
+                slotDatesForSearch.length > 0
+              ) {
                 e.currentTarget.style.transform = 'scale(0.98)'
               }
             }}

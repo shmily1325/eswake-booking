@@ -36,10 +36,7 @@ describe('boatAvailabilitySearch', () => {
       bookings: [],
       unavailable: [],
     })
-    expect(lines.length).toBe(1)
-    expect(lines[0]).toContain('6/1')
-    expect(lines[0]).toContain('G21')
-    expect(lines[0]).toMatch(/1000-1100/)
+    expect(lines).toEqual(['6/1', '1000-1100 G21'])
   })
 
   it('有預約衝突時該起點不列入', () => {
@@ -109,7 +106,7 @@ describe('boatAvailabilitySearch', () => {
     expect(lines.some(l => l.includes('6/6'))).toBe(false)
   })
 
-  it('多艘船同日結果以 or 併成一行', () => {
+  it('多艘船同日先日期行再各空檔一行', () => {
     const lines = buildBoatAvailabilityLines({
       dates: ['2026-06-02'],
       dayFilter: 'all',
@@ -125,13 +122,14 @@ describe('boatAvailabilitySearch', () => {
       bookings: [],
       unavailable: [],
     })
-    expect(lines.length).toBe(1)
-    expect(lines[0]).toContain(' or ')
-    expect(lines[0]).toContain('G21')
-    expect(lines[0]).toContain('黑豹')
+    expect(lines[0]).toBe('6/2')
+    expect(lines).toHaveLength(3)
+    expect(lines.slice(1).every(l => /^\d{4}-\d{4} /.test(l))).toBe(true)
+    expect(lines.some(l => l.includes('G21'))).toBe(true)
+    expect(lines.some(l => l.includes('黑豹'))).toBe(true)
   })
 
-  it('寬時段 00:00–23:59 仍不產生 06:00 以前的格點，且含 17:00 起點', () => {
+  it('寬時段 00:00–23:59 連續空檔合併為一段，且最早自 06:00 起', () => {
     const lines = buildBoatAvailabilityLines({
       dates: ['2026-06-10'],
       dayFilter: 'all',
@@ -145,8 +143,7 @@ describe('boatAvailabilitySearch', () => {
       unavailable: [],
     })
     const text = lines.join('\n')
-    expect(text).toMatch(/0600-0700/)
-    expect(text).toMatch(/1700-1800/)
+    expect(text).toMatch(/6\/10\n0600-1800 G21/)
     expect(text).not.toMatch(/ 0[0-5]\d{2}-\d{4}/)
   })
 
@@ -163,7 +160,7 @@ describe('boatAvailabilitySearch', () => {
       bookings: [],
       unavailable: [],
     })
-    expect(lines.some(l => l.includes('1700-1830'))).toBe(true)
+    expect(lines.some(l => l.includes('0600-1830'))).toBe(true)
   })
 
   it('與營運裁剪無交集時回傳提示', () => {
@@ -242,6 +239,48 @@ describe('boatAvailabilitySearch', () => {
         },
       ],
     })
-    expect(lines.some(l => l.includes('1000-1100'))).toBe(true)
+    expect(lines.some(l => l.includes('1000-1200'))).toBe(true)
+  })
+
+  it('連續 step15 起點合併為單一區間', () => {
+    const lines = buildBoatAvailabilityLines({
+      dates: ['2026-06-16'],
+      dayFilter: 'all',
+      timeFrom: '08:00',
+      timeTo: '12:00',
+      durationMin: 60,
+      searchBufferMinutes: 15,
+      stepMinutes: 15,
+      boats: [{ id: 1, name: '黑豹' }],
+      bookings: [],
+      unavailable: [],
+    })
+    expect(lines.filter(l => l.includes('黑豹'))).toHaveLength(1)
+    expect(lines[1]).toMatch(/^0800-1200 黑豹$/)
+  })
+
+  it('step30 時不採 15 分起點，合併結果與 step15 不同', () => {
+    const base = {
+      dates: ['2026-06-17'],
+      dayFilter: 'all' as const,
+      timeFrom: '10:00',
+      timeTo: '11:15',
+      durationMin: 30,
+      boats: [{ id: 1, name: 'G21' }],
+      bookings: [],
+      unavailable: [],
+    }
+    const lines15 = buildBoatAvailabilityLines({
+      ...base,
+      searchBufferMinutes: 15 as const,
+      stepMinutes: 15,
+    })
+    const lines30 = buildBoatAvailabilityLines({
+      ...base,
+      searchBufferMinutes: 30 as const,
+      stepMinutes: 30,
+    })
+    expect(lines30[1]).toBe('1000-1100 G21')
+    expect(lines15[1]).toBe('1000-1115 G21')
   })
 })
