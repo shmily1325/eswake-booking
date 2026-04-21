@@ -5,8 +5,20 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+// Paths here are excluded from all linting (no rules run, no parser load).
+// Keep aligned with .gitignore for build output, deps, and generated reports.
+const ignoredPaths = [
+  '**/node_modules/**',
+  'dist/**',
+  'dist-ssr/**',
+  'coverage/**',
+  '.vercel/**',
+  'playwright-report/**',
+  'test-results/**',
+]
+
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(ignoredPaths),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
