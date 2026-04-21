@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -11,6 +11,7 @@ import { designSystem } from '../../styles/designSystem'
 import { isEditorAsync } from '../../utils/auth'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import { isFacility } from '../../utils/facility'
+import { computeBoatsMonthlyUptime } from '../../utils/boatMonthlyUptime'
 
 export function BoatManagement() {
     const user = useAuthUser()
@@ -94,6 +95,21 @@ export function BoatManagement() {
     }
 
     // 過濾該月份的維修記錄
+    const monthUptimeRows = useMemo(
+        () =>
+            computeBoatsMonthlyUptime(
+                selectedMonth,
+                boats.map((b) => ({ id: b.id, name: b.name })),
+                unavailableDates.filter((u) => u.is_active !== false)
+            ),
+        [selectedMonth, boats, unavailableDates]
+    )
+
+    const uptimeByBoatId = useMemo(
+        () => new Map(monthUptimeRows.map((r) => [r.boatId, r])),
+        [monthUptimeRows]
+    )
+
     const filterUnavailableByMonth = (unavailables: BoatUnavailableDate[], month: string): BoatUnavailableDate[] => {
         const [year, monthNum] = month.split('-').map(Number)
         const startDate = `${year}-${String(monthNum).padStart(2, '0')}-01`
@@ -539,6 +555,32 @@ export function BoatManagement() {
                                                 </Badge>
                                             )}
                                         </h3>
+                                        {!isFacility(boat.name) && uptimeByBoatId.get(boat.id) && (
+                                            <div
+                                                style={{
+                                                    marginTop: '10px',
+                                                    fontSize: '13px',
+                                                    color: '#4a148c',
+                                                    lineHeight: 1.5,
+                                                    padding: '10px 12px',
+                                                    background: '#f3e5f5',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #e1bee7',
+                                                }}
+                                            >
+                                                <strong>{selectedMonth}</strong> 妥善率{' '}
+                                                <strong>{uptimeByBoatId.get(boat.id)!.uptimePct}%</strong>
+                                                {' '}｜維修{' '}
+                                                <strong>{uptimeByBoatId.get(boat.id)!.downtimeDaysDecimal}</strong> 天（
+                                                {uptimeByBoatId.get(boat.id)!.downtimeHours} 小時）
+                                                <Link
+                                                    to="/statistics?tab=boatUptime"
+                                                    style={{ color: '#6a1b9a', marginLeft: '8px', fontWeight: 600 }}
+                                                >
+                                                    Dashboard 明細 →
+                                                </Link>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* 操作按鈕 */}
