@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -516,6 +516,7 @@ export function BoatManagement() {
                         const boatAllUnavailable = unavailableDates.filter(d => d.boat_id === boat.id)
                         const boatUnavailable = filterUnavailableByMonth(boatAllUnavailable, selectedMonth)
                         const isActive = boat.is_active
+                        const boatUptime = !isFacility(boat.name) ? uptimeByBoatId.get(boat.id) : undefined
 
                         return (
                             <div
@@ -555,30 +556,29 @@ export function BoatManagement() {
                                                 </Badge>
                                             )}
                                         </h3>
-                                        {!isFacility(boat.name) && uptimeByBoatId.get(boat.id) && (
+                                        {boatUptime && (
                                             <div
                                                 style={{
                                                     marginTop: '10px',
                                                     fontSize: '13px',
                                                     color: '#4a148c',
                                                     lineHeight: 1.5,
-                                                    padding: '10px 12px',
-                                                    background: '#f3e5f5',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid #e1bee7',
+                                                    display: 'flex',
+                                                    flexWrap: 'wrap',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
                                                 }}
                                             >
-                                                <strong>{selectedMonth}</strong> 妥善率{' '}
-                                                <strong>{uptimeByBoatId.get(boat.id)!.uptimePct}%</strong>
-                                                {' '}｜維修{' '}
-                                                <strong>{uptimeByBoatId.get(boat.id)!.downtimeDaysDecimal}</strong> 天（
-                                                {uptimeByBoatId.get(boat.id)!.downtimeHours} 小時）
-                                                <Link
-                                                    to="/statistics?tab=boatUptime"
-                                                    style={{ color: '#6a1b9a', marginLeft: '8px', fontWeight: 600 }}
-                                                >
-                                                    Dashboard 明細 →
-                                                </Link>
+                                                {boatUptime.uptimePct < 100 && (
+                                                    <span aria-hidden style={{ flexShrink: 0 }}>💣</span>
+                                                )}
+                                                <span>
+                                                    <strong>{selectedMonth}</strong> 妥善率{' '}
+                                                    <strong>{boatUptime.uptimePct}%</strong>
+                                                    {' '}｜維修{' '}
+                                                    <strong>{boatUptime.downtimeDaysDecimal}</strong> 天（
+                                                    {boatUptime.downtimeHours} 小時）
+                                                </span>
                                             </div>
                                         )}
                                     </div>
