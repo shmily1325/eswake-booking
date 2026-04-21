@@ -28,6 +28,11 @@ import {
   type BoatUnavailableBlock,
   type BoatUnavailableRow,
 } from '../utils/boatUnavailableDay'
+import {
+  mapRestrictionViewRowsToBlocks,
+  type RestrictionDayBlock,
+  type RestrictionViewRow,
+} from '../utils/restrictionDayBlocks'
 import { BoatUnavailableDaySummary } from '../components/BoatUnavailableDaySummary'
 // import { checkGlobalRestriction } from '../utils/restriction'
 
@@ -97,6 +102,7 @@ export function DayView() {
   const [conflictedIds, setConflictedIds] = useState<Set<number>>(new Set())
 	const [conflictReasons, setConflictReasons] = useState<Map<number, string>>(new Map())
   const [boatUnavailableBlocks, setBoatUnavailableBlocks] = useState<BoatUnavailableBlock[]>([])
+  const [restrictionDayBlocks, setRestrictionDayBlocks] = useState<RestrictionDayBlock[]>([])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [repeatDialogOpen, setRepeatDialogOpen] = useState(false)
@@ -384,37 +390,29 @@ export function DayView() {
         .gte('end_date', targetDate)
 
       if (!restrictionError && restrictionData && restrictionData.length > 0) {
-        // 預先計算當日每條限制的分鐘範圍
-        type RestrictionRange = { startMin: number, endMin: number, reason?: string }
-        const dayRanges: RestrictionRange[] = restrictionData.map((rec: any) => {
-          // 若為跨日中間天，視為全天
-          let rStart = 0
-          let rEnd = 24 * 60
-          if (rec.start_date === targetDate && rec.start_time) {
-            const [sh, sm] = String(rec.start_time).split(':').map(Number)
-            rStart = sh * 60 + sm
-          }
-          if (rec.end_date === targetDate && rec.end_time) {
-            const [eh, em] = String(rec.end_time).split(':').map(Number)
-            rEnd = eh * 60 + em
-          }
-          return { startMin: rStart, endMin: rEnd, reason: rec.content as string | undefined }
-        })
+        const resBlocks = mapRestrictionViewRowsToBlocks(
+          targetDate,
+          restrictionData as RestrictionViewRow[]
+        )
+        setRestrictionDayBlocks(resBlocks)
 
         for (const bk of dayBookings) {
           const start = new Date(bk.start_at)
           const startMin = start.getHours() * 60 + start.getMinutes()
           const endMin = startMin + bk.duration_min
-          const hit = dayRanges.find(r => !(endMin <= r.startMin || startMin >= r.endMin))
+          const hit = resBlocks.find(r => !(endMin <= r.startMin || startMin >= r.endMin))
           if (hit) {
             conflictSet.add(bk.id)
-            if (hit.reason && !reasons.has(bk.id)) {
-              reasons.set(bk.id, hit.reason)
+            const msg = hit.content?.trim()
+            if (msg && !reasons.has(bk.id)) {
+              reasons.set(bk.id, msg)
             } else if (!reasons.has(bk.id)) {
               reasons.set(bk.id, '受公告限制')
             }
           }
         }
+      } else {
+        setRestrictionDayBlocks([])
       }
 
       // 3) 船隻維修/停用 - 依當日單次抓取，依船別本地比對
@@ -457,6 +455,7 @@ export function DayView() {
       setConflictedIds(new Set())
 			setConflictReasons(new Map())
       setBoatUnavailableBlocks([])
+      setRestrictionDayBlocks([])
     }
   }
 
@@ -818,9 +817,28 @@ export function DayView() {
         {!isMobile && !loading && (
           <DailyStaffDisplay date={dateParam} isMobile={isMobile} unassignedCount={unassignedCount} />
         )}
+        {!isMobile && !loading && viewMode === 'list' && (
+          <BoatUnavailableDaySummary
+            blocks={boatUnavailableBlocks}
+            boats={boats}
+            isMobile={isMobile}
+            restrictionBlocks={restrictionDayBlocks}
+          />
+        )}
 
         {viewMode === 'list' && (
           <>
+            {isMobile && !loading && (
+              <>
+                <DailyStaffDisplay date={dateParam} isMobile={isMobile} unassignedCount={unassignedCount} />
+                <BoatUnavailableDaySummary
+                  blocks={boatUnavailableBlocks}
+                  boats={boats}
+                  isMobile={isMobile}
+                  restrictionBlocks={restrictionDayBlocks}
+                />
+              </>
+            )}
             <div style={{
               backgroundColor: 'white',
               borderRadius: '8px',
@@ -902,16 +920,6 @@ export function DayView() {
               </div>
             </div>
 
-            {/* 當天可上班人員 - 手機版：在新增預約下方 */}
-            {isMobile && !loading && (
-              <DailyStaffDisplay date={dateParam} isMobile={isMobile} unassignedCount={unassignedCount} />
-            )}
-
-            <BoatUnavailableDaySummary
-              blocks={boatUnavailableBlocks}
-              boats={boats}
-              isMobile={isMobile}
-            />
             <VirtualizedBookingList
               boats={boats}
               bookings={bookings}
@@ -967,6 +975,7 @@ export function DayView() {
                 blocks={boatUnavailableBlocks}
                 boats={boats}
                 isMobile={isMobile}
+                restrictionBlocks={restrictionDayBlocks}
               />
               <div style={{
                 overflow: 'auto',
