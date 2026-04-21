@@ -22,6 +22,13 @@ import { injectAnimationStyles } from '../utils/animations'
 import { isEditorAsync, hasViewAccess } from '../utils/auth'
 import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
 import { isFacility } from '../utils/facility'
+import {
+  mapBoatUnavailableRowsToBlocks,
+  findUnavailableBlockForSlot,
+  type BoatUnavailableBlock,
+  type BoatUnavailableRow,
+} from '../utils/boatUnavailableDay'
+import { BoatUnavailableDaySummary } from '../components/BoatUnavailableDaySummary'
 // import { checkGlobalRestriction } from '../utils/restriction'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
@@ -53,6 +60,9 @@ const generateTimeSlots = () => {
 }
 
 const TIME_SLOTS = generateTimeSlots()
+
+const UNAVAILABLE_SLOT_BG =
+  'repeating-linear-gradient(-45deg, #ede7f6, #ede7f6 5px, #e1d5f7 5px, #e1d5f7 10px)'
 
 export function DayView() {
   const user = useAuthUser()
@@ -86,6 +96,7 @@ export function DayView() {
   const [loading, setLoading] = useState(true)
   const [conflictedIds, setConflictedIds] = useState<Set<number>>(new Set())
 	const [conflictReasons, setConflictReasons] = useState<Map<number, string>>(new Map())
+  const [boatUnavailableBlocks, setBoatUnavailableBlocks] = useState<BoatUnavailableBlock[]>([])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [repeatDialogOpen, setRepeatDialogOpen] = useState(false)
@@ -195,6 +206,7 @@ export function DayView() {
 
     if (bookingsData.length === 0) {
       setBookings([])
+      computeConflicts([]).catch(err => console.error('computeConflicts error:', err))
       return
     }
 
@@ -414,20 +426,11 @@ export function DayView() {
         .gte('end_date', targetDate)
 
       if (!boatUnavailableError && boatUnavailableData && boatUnavailableData.length > 0) {
-        type BoatBlock = { boatId: number; startMin: number; endMin: number; reason?: string }
-        const blocks: BoatBlock[] = boatUnavailableData.map((rec: any) => {
-          let rStart = 0
-          let rEnd = 24 * 60
-          if (rec.start_date === targetDate && rec.start_time) {
-            const [sh, sm] = String(rec.start_time).split(':').map(Number)
-            rStart = sh * 60 + sm
-          }
-          if (rec.end_date === targetDate && rec.end_time) {
-            const [eh, em] = String(rec.end_time).split(':').map(Number)
-            rEnd = eh * 60 + em
-          }
-          return { boatId: rec.boat_id as number, startMin: rStart, endMin: rEnd, reason: rec.reason as string | undefined }
-        })
+        const blocks = mapBoatUnavailableRowsToBlocks(
+          targetDate,
+          boatUnavailableData as BoatUnavailableRow[]
+        )
+        setBoatUnavailableBlocks(blocks)
 
         for (const bk of dayBookings) {
           const start = new Date(bk.start_at)
@@ -443,6 +446,8 @@ export function DayView() {
             }
           }
         }
+      } else {
+        setBoatUnavailableBlocks([])
       }
 
       setConflictedIds(conflictSet)
@@ -451,6 +456,7 @@ export function DayView() {
       console.error('Failed to compute conflicts:', e)
       setConflictedIds(new Set())
 			setConflictReasons(new Map())
+      setBoatUnavailableBlocks([])
     }
   }
 
@@ -901,6 +907,11 @@ export function DayView() {
               <DailyStaffDisplay date={dateParam} isMobile={isMobile} unassignedCount={unassignedCount} />
             )}
 
+            <BoatUnavailableDaySummary
+              blocks={boatUnavailableBlocks}
+              boats={boats}
+              isMobile={isMobile}
+            />
             <VirtualizedBookingList
               boats={boats}
               bookings={bookings}
@@ -952,6 +963,11 @@ export function DayView() {
               margin: isMobile ? '0 -10px' : '0',
               padding: isMobile ? '0 10px' : '0',
             }}>
+              <BoatUnavailableDaySummary
+                blocks={boatUnavailableBlocks}
+                boats={boats}
+                isMobile={isMobile}
+              />
               <div style={{
                 overflow: 'auto',
                 maxHeight: 'calc(100vh - 250px)',
@@ -1064,6 +1080,16 @@ export function DayView() {
                             const booking = getBookingForCell(boat.id, timeSlot)
                             const isStart = isBookingStart(boat.id, timeSlot)
                             const isCleanup = isCleanupTime(boat.id, timeSlot)
+                            const slotMin = timeToMinutes(timeSlot)
+                            const unavailBlock = findUnavailableBlockForSlot(
+                              boatUnavailableBlocks,
+                              boat.id,
+                              slotMin,
+                              slotMin + 15
+                            )
+                            const unavailTitle = unavailBlock
+                              ? `船隻維修／停用${unavailBlock.reason ? `：${unavailBlock.reason}` : ''}`
+                              : undefined
 
                             if (booking && isStart) {
                               const isConflict = conflictedIds.has(booking.id)
@@ -1306,12 +1332,13 @@ export function DayView() {
                               return (
                                 <td
                                   key={boat.id}
+                                  title={unavailTitle}
                                   style={{
                                     padding: isMobile ? '4px 4px' : '6px 8px',
                                     borderTop: showPracticeLine ? '3px solid #ffc107' : 'none',
                                     borderBottom: '1px solid #e9ecef',
                                     borderRight: '1px solid #e9ecef',
-                                    backgroundColor: 'transparent',
+                                    background: unavailBlock ? UNAVAILABLE_SLOT_BG : 'transparent',
                                     textAlign: 'center',
                                     fontSize: isMobile ? '16px' : '18px',
                                     cursor: 'not-allowed',
@@ -1324,21 +1351,50 @@ export function DayView() {
                               return (
                                 <td
                                   key={boat.id}
-                                  onClick={() => handleCellClick(boat.id, timeSlot)}
+                                  onClick={() => {
+                                    if (unavailBlock) return
+                                    handleCellClick(boat.id, timeSlot)
+                                  }}
+                                  title={unavailTitle}
                                   style={{
                                     padding: isMobile ? '4px 4px' : '6px 8px',
                                     borderTop: showPracticeLine ? '3px solid #ffc107' : 'none',
                                     borderBottom: '1px solid #e9ecef',
                                     borderRight: '1px solid #e9ecef',
-                                    cursor: 'pointer',
+                                    cursor: unavailBlock ? 'not-allowed' : 'pointer',
                                     textAlign: 'center',
                                     transition: 'background 0.2s',
                                     minHeight: isMobile ? '30px' : '35px',
+                                    background: unavailBlock ? UNAVAILABLE_SLOT_BG : 'white',
                                   }}
-                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                                  onMouseEnter={
+                                    unavailBlock
+                                      ? undefined
+                                      : (e) => {
+                                          e.currentTarget.style.backgroundColor = '#f8f9fa'
+                                        }
+                                  }
+                                  onMouseLeave={
+                                    unavailBlock
+                                      ? undefined
+                                      : (e) => {
+                                          e.currentTarget.style.backgroundColor = 'white'
+                                        }
+                                  }
                                 >
-                                  {/* 空格子 */}
+                                  {!isMobile && unavailBlock && (
+                                    <span
+                                      style={{
+                                        fontSize: '10px',
+                                        fontWeight: 600,
+                                        color: '#5e35b1',
+                                        display: 'block',
+                                        lineHeight: 1.2,
+                                      }}
+                                    >
+                                      維修
+                                    </span>
+                                  )}
                                 </td>
                               )
                             }

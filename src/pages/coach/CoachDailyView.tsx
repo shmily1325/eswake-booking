@@ -10,6 +10,14 @@ import { getBookingCardStyle, bookingCardContentStyles } from '../../styles/desi
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import { trackClick } from '../../utils/trackClick'
+import {
+  mapBoatUnavailableRowsToBlocks,
+  findUnavailableBlockForSlot,
+  slotMinutesFromTimeString,
+  type BoatUnavailableBlock,
+  type BoatUnavailableRow,
+} from '../../utils/boatUnavailableDay'
+import { BoatUnavailableDaySummary } from '../../components/BoatUnavailableDaySummary'
 
 interface Boat {
   id: number
@@ -61,6 +69,9 @@ const generateTimeSlots = () => {
 
 const TIME_SLOTS = generateTimeSlots()
 
+const UNAVAILABLE_SLOT_BG =
+  'repeating-linear-gradient(-45deg, #ede7f6, #ede7f6 5px, #e1d5f7 5px, #e1d5f7 10px)'
+
 export function CoachDailyView() {
   const user = useAuthUser()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -76,6 +87,7 @@ export function CoachDailyView() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [conflictedIds, setConflictedIds] = useState<Set<number>>(new Set())
 	const [conflictReasons, setConflictReasons] = useState<Map<number, string>>(new Map())
+  const [boatUnavailableBlocks, setBoatUnavailableBlocks] = useState<BoatUnavailableBlock[]>([])
 
   useEffect(() => {
     // 並行載入所有資料以加快速度
@@ -322,20 +334,11 @@ export function CoachDailyView() {
 			.gte('end_date', targetDate)
 
 		if (!boatUnavailableError && boatUnavailableData && boatUnavailableData.length > 0) {
-			type BoatBlock = { boatId: number; startMin: number; endMin: number; reason?: string }
-			const blocks: BoatBlock[] = boatUnavailableData.map((rec: any) => {
-				let rStart = 0
-				let rEnd = 24 * 60
-				if (rec.start_date === targetDate && rec.start_time) {
-					const [sh, sm] = String(rec.start_time).split(':').map(Number)
-					rStart = sh * 60 + sm
-				}
-				if (rec.end_date === targetDate && rec.end_time) {
-					const [eh, em] = String(rec.end_time).split(':').map(Number)
-					rEnd = eh * 60 + em
-				}
-				return { boatId: rec.boat_id as number, startMin: rStart, endMin: rEnd, reason: rec.reason as string | undefined }
-			})
+			const blocks = mapBoatUnavailableRowsToBlocks(
+				targetDate,
+				boatUnavailableData as BoatUnavailableRow[]
+			)
+			setBoatUnavailableBlocks(blocks)
 
 			for (const bk of dayBookings) {
 				const start = new Date(bk.start_at)
@@ -351,6 +354,8 @@ export function CoachDailyView() {
 					}
 				}
 			}
+		} else {
+			setBoatUnavailableBlocks([])
 		}
 
       setConflictedIds(conflictSet)
@@ -359,6 +364,7 @@ export function CoachDailyView() {
       console.error('Failed to compute conflicts:', e)
       setConflictedIds(new Set())
 		setConflictReasons(new Map())
+      setBoatUnavailableBlocks([])
     }
   }
 
@@ -958,6 +964,12 @@ export function CoachDailyView() {
           </div>
         </div>
 
+        <BoatUnavailableDaySummary
+          blocks={boatUnavailableBlocks}
+          boats={boats}
+          isMobile={isMobile}
+        />
+
         {/* 時間軸表格 */}
         <div style={{ 
           overflowX: 'auto',
@@ -1167,6 +1179,16 @@ export function CoachDailyView() {
                         const booking = getBookingForCell(boat.id, timeSlot)
                         const isStart = isBookingStart(boat.id, timeSlot)
                         const isInRange = isInBookingRange(boat.id, timeSlot)
+                        const slotMin = slotMinutesFromTimeString(timeSlot)
+                        const unavailBlock = findUnavailableBlockForSlot(
+                          boatUnavailableBlocks,
+                          boat.id,
+                          slotMin,
+                          slotMin + 15
+                        )
+                        const unavailTitle = unavailBlock
+                          ? `船隻維修／停用${unavailBlock.reason ? `：${unavailBlock.reason}` : ''}`
+                          : undefined
                       
                         if (booking && isStart) {
                           return renderBookingCard(booking, boat)
@@ -1176,13 +1198,29 @@ export function CoachDailyView() {
                           return (
                             <td
                               key={boat.id}
+                              title={unavailTitle}
                               style={{
                                 padding: isMobile ? '8px 4px' : '10px 8px',
                                 borderBottom: '1px solid #e9ecef',
                                 borderRight: '1px solid #e9ecef',
-                                backgroundColor: 'white',
+                                background: unavailBlock ? UNAVAILABLE_SLOT_BG : 'white',
+                                verticalAlign: 'middle',
+                                textAlign: 'center',
                               }}
-                            />
+                            >
+                              {!isMobile && unavailBlock && (
+                                <span
+                                  style={{
+                                    fontSize: '10px',
+                                    fontWeight: 600,
+                                    color: '#5e35b1',
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  維修
+                                </span>
+                              )}
+                            </td>
                           )
                         }
                       })
