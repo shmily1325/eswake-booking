@@ -1737,7 +1737,6 @@ export function CoachAssignment() {
                       ) : (
                         coachBookings.map(booking => {
                         const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
-                        const isPreAssigned = booking.currentCoaches.includes(coach.id) || booking.currentDrivers.includes(coach.id)
                         const isCoach = assignment.coachIds.includes(coach.id)
                         const isDriver = assignment.driverIds.includes(coach.id)
                         const isCoachPractice = booking.is_coach_practice === true
@@ -1811,14 +1810,6 @@ export function CoachAssignment() {
                             <div style={{ paddingRight: '24px' }}>
                               <div style={{ fontWeight: '600', color: '#2c3e50', fontSize: isMobile ? '13px' : '14px' }}>
                                 {formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}
-                                {isPreAssigned && <span style={{ 
-                                  marginLeft: '6px',
-                                  background: '#4CAF50',
-                                  color: 'white',
-                                  padding: '2px 6px',
-                                  borderRadius: '4px',
-                                  fontSize: '11px'
-                                }}>指</span>}
                                 {isDriver && !isCoach && <span style={{ 
                                   marginLeft: '6px',
                                   fontSize: '14px'

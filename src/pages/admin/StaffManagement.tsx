@@ -997,7 +997,7 @@ export function StaffManagement() {
           gap: '15px' 
         }}>
           {coaches.filter(coach => {
-            if (statusFilter === 'active') return coach.status === 'active' || coach.status === 'inactive'
+            if (statusFilter === 'active') return coach.status === 'active'
             if (statusFilter === 'archived') return coach.status === 'archived'
             return true // 'all'
           }).map(coach => {
