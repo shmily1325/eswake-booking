@@ -559,26 +559,54 @@ export function BoatManagement() {
                                         {boatUptime && (
                                             <div
                                                 style={{
-                                                    marginTop: '10px',
-                                                    fontSize: '13px',
-                                                    color: '#4a148c',
-                                                    lineHeight: 1.5,
-                                                    display: 'flex',
-                                                    flexWrap: 'wrap',
-                                                    alignItems: 'center',
-                                                    gap: '6px',
+                                                    marginTop: '12px',
+                                                    marginBottom: '12px',
+                                                    borderLeft: '4px solid #6a1b9a',
+                                                    paddingLeft: '12px',
+                                                    paddingTop: '2px',
+                                                    paddingBottom: '2px',
                                                 }}
                                             >
-                                                {boatUptime.uptimePct < 100 && (
-                                                    <span aria-hidden style={{ flexShrink: 0 }}>💣</span>
-                                                )}
-                                                <span>
-                                                    <strong>{selectedMonth}</strong> 妥善率{' '}
-                                                    <strong>{boatUptime.uptimePct}%</strong>
-                                                    {' '}｜維修{' '}
-                                                    <strong>{boatUptime.downtimeDaysDecimal}</strong> 天（
-                                                    {boatUptime.downtimeHours} 小時）
-                                                </span>
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        flexWrap: 'wrap',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        marginBottom: '6px',
+                                                    }}
+                                                >
+                                                    {boatUptime.uptimePct < 100 && (
+                                                        <span
+                                                            aria-hidden
+                                                            title="當月有維修／停用"
+                                                            style={{ fontSize: '22px', lineHeight: 1 }}
+                                                        >
+                                                            💣
+                                                        </span>
+                                                    )}
+                                                    <span
+                                                        style={{
+                                                            fontSize: isMobile ? '26px' : '28px',
+                                                            fontWeight: 800,
+                                                            color: '#4a148c',
+                                                            letterSpacing: '-0.02em',
+                                                            lineHeight: 1.1,
+                                                        }}
+                                                    >
+                                                        {boatUptime.uptimePct}%
+                                                    </span>
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        fontSize: '13px',
+                                                        color: '#5e35b1',
+                                                        lineHeight: 1.55,
+                                                    }}
+                                                >
+                                                    維修 <strong>{boatUptime.downtimeDaysDecimal}</strong>天 ·{' '}
+                                                    <strong>{boatUptime.downtimeHours}</strong>小時
+                                                </div>
                                             </div>
                                         )}
                                     </div>
