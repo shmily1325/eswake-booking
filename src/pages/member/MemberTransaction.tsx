@@ -10,10 +10,12 @@ import { handleError } from '../../utils/errorHandler'
 import { useToast } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
 
-// 擴展 Member 類型，加入最後交易日期和更新日期
+// 擴展 Member 類型，加入最後交易日期、更新日期與 LINE 綁定（衍生欄位）
 interface MemberWithLastTransaction extends Member {
   lastTransactionDate?: string | null
   lastTransactionCreatedAt?: string | null  // 最新交易的 created_at
+  line_binding_user_id?: string | null
+  is_line_bound?: boolean
 }
 
 export function MemberTransaction() {
@@ -40,13 +42,34 @@ export function MemberTransaction() {
   const [sortBy, setSortBy] = useState<'nickname' | 'balance' | 'vip' | 'g23' | 'g21' | 'lastTransaction' | 'updatedAt'>('updatedAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
+  const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
 
-  // 載入會員列表（含最後交易日期）
+  const handleUnbindLine = async (memberId: string, memberDisplayName: string) => {
+    try {
+      const confirmed = window.confirm(`確定要移除「${memberDisplayName}」的 LINE 綁定嗎？`)
+      if (!confirmed) return
+
+      const { error } = await supabase
+        .from('line_bindings')
+        .update({ status: 'revoked' })
+        .eq('member_id', memberId)
+        .eq('status', 'active')
+
+      if (error) throw error
+
+      toast.success('已移除 LINE 綁定')
+      await loadMembers()
+    } catch (err) {
+      console.error('移除 LINE 綁定失敗:', err)
+      toast.error('移除 LINE 綁定失敗')
+    }
+  }
+
+  // 載入會員列表（含最後交易日期與 LINE 綁定）
   const loadMembers = async () => {
     setLoading(true)
     try {
-      // 並行載入會員和最後交易日期
-      const [membersResult, transactionsResult] = await Promise.all([
+      const [membersResult, transactionsResult, lineBindingsResult] = await Promise.all([
         supabase
           .from('members')
           .select('*')
@@ -55,10 +78,17 @@ export function MemberTransaction() {
         supabase
           .from('transactions')
           .select('member_id, transaction_date, created_at')
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('line_bindings')
+          .select('member_id, line_user_id')
+          .eq('status', 'active')
       ])
 
       if (membersResult.error) throw membersResult.error
+      if (lineBindingsResult.error) {
+        console.error('載入 LINE 綁定失敗:', lineBindingsResult.error)
+      }
 
       // 整理每個會員的最後交易日期和 created_at
       const lastTransactionMap: Record<string, { date: string; createdAt: string }> = {}
@@ -73,11 +103,21 @@ export function MemberTransaction() {
         }
       }
 
+      const lineBindingsData = lineBindingsResult.data || []
+      const memberIdToLineBinding: Record<string, string> = {}
+      lineBindingsData.forEach((b) => {
+        if (b.member_id) {
+          memberIdToLineBinding[b.member_id] = b.line_user_id
+        }
+      })
+
       // 合併資料
       const membersWithLastTransaction = (membersResult.data || []).map(m => ({
         ...m,
         lastTransactionDate: lastTransactionMap[m.id]?.date || null,
-        lastTransactionCreatedAt: lastTransactionMap[m.id]?.createdAt || null
+        lastTransactionCreatedAt: lastTransactionMap[m.id]?.createdAt || null,
+        line_binding_user_id: memberIdToLineBinding[m.id] || null,
+        is_line_bound: Boolean(memberIdToLineBinding[m.id])
       }))
 
       setMembers(membersWithLastTransaction)
@@ -105,6 +145,12 @@ export function MemberTransaction() {
         }
         return member.membership_type === membershipTypeFilter
       })
+    }
+
+    if (lineBindingFilter === 'bound') {
+      result = result.filter(m => m.is_line_bound)
+    } else if (lineBindingFilter === 'unbound') {
+      result = result.filter(m => !m.is_line_bound)
     }
 
     // 搜尋過濾
@@ -158,7 +204,7 @@ export function MemberTransaction() {
     })
 
     return result
-  }, [members, searchTerm, sortBy, sortOrder, membershipTypeFilter])
+  }, [members, searchTerm, sortBy, sortOrder, membershipTypeFilter, lineBindingFilter])
 
   // 計算統計數據（根據篩選結果動態計算）
   const stats = useMemo(() => {
@@ -692,7 +738,8 @@ export function MemberTransaction() {
             <div style={{ 
               display: 'flex', 
               gap: '10px',
-              alignItems: 'center'
+              alignItems: 'center',
+              flexWrap: 'wrap',
             }}>
               {/* 會員類型下拉選單 */}
               <div style={{ flex: 1 }}>
@@ -714,7 +761,7 @@ export function MemberTransaction() {
                     backgroundPosition: 'right 12px center',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                     color: '#333',
-                    fontWeight: membershipTypeFilter !== 'all' ? '500' : 'normal',
+                    fontWeight: (membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') ? '500' : 'normal',
                   }}
                 >
                   <option value="all">全部 ({members.length})</option>
@@ -723,6 +770,35 @@ export function MemberTransaction() {
                   <option value="dual">雙人 ({members.filter(m => m.membership_type === 'dual').length})</option>
                   <option value="guest">非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
                   <option value="es">ES ({members.filter(m => m.membership_type === 'es').length})</option>
+                </select>
+              </div>
+
+              {/* LINE 綁定狀態 */}
+              <div style={{ flex: '1 1 100%' }}>
+                <select
+                  value={lineBindingFilter}
+                  onChange={(e) => setLineBindingFilter(e.target.value as 'all' | 'bound' | 'unbound')}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    paddingRight: '32px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    color: '#333',
+                    fontWeight: lineBindingFilter !== 'all' ? '500' : 'normal',
+                  }}
+                >
+                  <option value="all">LINE 全部 ({members.length})</option>
+                  <option value="bound">LINE 已綁定 ({members.filter(m => m.is_line_bound).length})</option>
+                  <option value="unbound">LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})</option>
                 </select>
               </div>
 
@@ -780,7 +856,7 @@ export function MemberTransaction() {
             </div>
 
             {/* 手機版結果數量 */}
-            {(searchTerm || membershipTypeFilter !== 'all') && (
+            {(searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
               <div style={{
                 fontSize: '13px',
                 color: '#666',
@@ -825,6 +901,43 @@ export function MemberTransaction() {
                 {type.label} ({type.count})
               </button>
             ))}
+
+            {/* 分隔線 */}
+            <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+
+            <button
+              data-track="member_filter_line_bound"
+              onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
+              style={{
+                padding: '6px 12px',
+                background: lineBindingFilter === 'bound' ? '#06C755' : 'white',
+                color: lineBindingFilter === 'bound' ? 'white' : '#06C755',
+                border: `1px solid ${lineBindingFilter === 'bound' ? '#06C755' : '#06C755'}`,
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: 'pointer',
+                fontWeight: lineBindingFilter === 'bound' ? '600' : 'normal',
+              }}
+            >
+              LINE 已綁定 ({members.filter(m => m.is_line_bound).length})
+            </button>
+
+            <button
+              data-track="member_filter_line_unbound"
+              onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
+              style={{
+                padding: '6px 12px',
+                background: lineBindingFilter === 'unbound' ? '#888' : 'white',
+                color: lineBindingFilter === 'unbound' ? 'white' : '#666',
+                border: `1px solid ${lineBindingFilter === 'unbound' ? '#888' : '#ddd'}`,
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: 'pointer',
+                fontWeight: lineBindingFilter === 'unbound' ? '600' : 'normal',
+              }}
+            >
+              LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})
+            </button>
 
             {/* 分隔線 */}
             <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
@@ -875,8 +988,8 @@ export function MemberTransaction() {
         )}
       </div>
 
-      {/* 搜尋結果數量提示 */}
-      {searchTerm && (
+      {/* 篩選／搜尋結果提示（僅桌面：手機已在 sticky 區顯示筆數，避免重複） */}
+      {!isMobile && (searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
         <div style={{
           fontSize: '13px',
           color: '#666',
@@ -886,7 +999,8 @@ export function MemberTransaction() {
           borderRadius: '6px',
           border: '1px solid #d0e3ff'
         }}>
-          🔍 搜尋「{searchTerm}」找到 <strong>{filteredMembers.length}</strong> 位會員
+          {searchTerm ? `🔍 搜尋「${searchTerm}」` : '🔎 篩選結果'}
+          {' '}找到 <strong>{filteredMembers.length}</strong> 位會員
         </div>
       )}
 
@@ -943,7 +1057,9 @@ export function MemberTransaction() {
             color: '#999',
             fontSize: '16px'
           }}>
-            {searchTerm ? '沒有找到符合條件的會員' : '暫無會員資料'}
+            {(searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all')
+              ? '沒有找到符合條件的會員'
+              : '暫無會員資料'}
           </div>
         ) : (
           filteredMembers.map((member) => (
@@ -1068,6 +1184,47 @@ export function MemberTransaction() {
                           }}>
                             📱 {member.phone}
                           </span>
+                        )}
+                      </div>
+                      {/* LINE 綁定狀態（資訊區塊） */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span
+                          title={member.is_line_bound ? '已綁定 LINE' : '未綁定 LINE'}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            background: member.is_line_bound ? '#e8f5e9' : '#f5f5f5',
+                            color: member.is_line_bound ? '#2e7d32' : '#9e9e9e',
+                            border: `1px solid ${member.is_line_bound ? '#a5d6a7' : '#e0e0e0'}`
+                          }}
+                        >
+                          {member.is_line_bound ? '✅ LINE 已綁定' : '❌ LINE 未綁定'}
+                        </span>
+                        {member.is_line_bound && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleUnbindLine(member.id, member.nickname || member.name)
+                            }}
+                            style={{
+                              padding: '4px 8px',
+                              background: '#fdecec',
+                              color: '#b91c1c',
+                              border: '1px solid #f8b4b4',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              fontWeight: 700
+                            }}
+                            title="移除 LINE 綁定"
+                          >
+                            移除綁定
+                          </button>
                         )}
                       </div>
                       {/* 最後交易日期和更新日期 */}
