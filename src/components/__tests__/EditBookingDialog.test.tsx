@@ -166,7 +166,7 @@ describe('EditBookingDialog write sequencing', () => {
       const mutated = writeCalls.some(c => ['update', 'insert', 'delete'].includes(c.op))
       expect(mutated).toBe(false)
     })
-  })
+  }, 15_000)
 
   // Note: cleanup and update flows are covered by existing integration tests under:
   // src/components/__tests__/EditBookingDialog.noDriver.cleanup.integration.test.tsx

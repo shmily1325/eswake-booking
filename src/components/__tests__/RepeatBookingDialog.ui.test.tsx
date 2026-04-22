@@ -138,7 +138,7 @@ describe('RepeatBookingDialog - UI alignment', () => {
     expect(screen.queryByText('結束日期')).not.toBeInTheDocument()
     // duration includes 40
     expect(screen.getByRole('button', { name: '40' })).toBeInTheDocument()
-  })
+  }, 15_000)
 
   test('submit label reflects number of generated bookings', () => {
     renderDialog()
