@@ -259,7 +259,7 @@ export function TomorrowReminder() {
   }
   
   // ✅ 特殊會員：需要額外顯示船和開船教練資訊
-  const SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小', '火隆']
+  const SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小', '火隆', '火龍']
   
   const generateMessageForStudent = (studentName: string): string => {
     // ✅ 找出所有包含此會員的預約
