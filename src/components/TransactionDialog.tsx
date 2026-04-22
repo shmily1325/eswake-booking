@@ -682,7 +682,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         borderRadius: isMobile ? '12px 12px 0 0' : '12px',
         maxWidth: isMobile ? '100%' : '600px',
         width: '100%',
-        maxHeight: isMobile ? '95dvh' : '90vh',
+        maxHeight: isMobile ? '90dvh' : '90vh',
         overflow: 'hidden',
         boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
         margin: isMobile ? 'auto 0 0 0' : 'auto',
