@@ -20,7 +20,7 @@ export function DayViewMobileHeader({
 }: DayViewMobileHeaderProps) {
     return (
         <div style={{ marginBottom: designSystem.spacing.lg }}>
-            {/* 第一行：日期導航 */}
+            {/* 第一行：日期導航（與移除時間軸前相同；維持 iOS 日期欄 16px） */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -72,7 +72,6 @@ export function DayViewMobileHeader({
                             boxSizing: 'border-box',
                         }}
                     />
-                    {/* 星期幾徽章 - 右上角 */}
                     <div style={{
                         position: 'absolute',
                         top: '-8px',
@@ -133,8 +132,38 @@ export function DayViewMobileHeader({
                 </button>
             </div>
 
-            {/* 第二行：排班捷徑 */}
-            <div style={{ display: 'flex', gap: designSystem.spacing.sm, justifyContent: 'flex-end' }}>
+            {/* 第二行：原「列表 | 時間軸」區塊改為僅列表（外觀與已選「列表」相同）+ 排班；版面與舊版一致 */}
+            <div style={{ display: 'flex', gap: designSystem.spacing.sm }}>
+                <div style={{
+                    display: 'flex',
+                    backgroundColor: '#e0e0e0',
+                    borderRadius: designSystem.borderRadius.lg,
+                    padding: '4px',
+                    flex: 1,
+                    height: '48px',
+                    alignItems: 'center',
+                }}>
+                    <div
+                        style={{
+                            flex: 1,
+                            height: '40px',
+                            borderRadius: designSystem.borderRadius.md,
+                            background: 'white',
+                            color: designSystem.colors.primary[600],
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            boxShadow: designSystem.shadows.sm,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                        }}
+                        aria-current="page"
+                    >
+                        <span>📋</span> 列表
+                    </div>
+                </div>
+
                 <Link
                     data-track="day_to_assignment"
                     to={`/coach-assignment?date=${date}`}
