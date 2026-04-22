@@ -200,7 +200,6 @@ export function BatchDeleteConfirmDialog({
           }
           
           details += ` (填表人: ${filledBy.trim()})`
-          console.log('[批次刪除] 寫入 Audit Log:', details)
           await logAction(user.email, 'delete', 'bookings', details)
         } else {
           console.warn('[批次刪除] 無法寫入 Audit Log: user.email 為空', { user })

@@ -194,10 +194,6 @@ export function LiffMyBookings() {
         return
       }
 
-      // 強制清除快取：添加版本號
-      const version = '20251208-002'
-      console.log('🚀 LIFF 版本:', version)
-
       await initLiffSdk(liffId)
 
       if (!liff.isLoggedIn()) {
@@ -395,7 +391,7 @@ export function LiffMyBookings() {
       // 查詢該類別的交易記錄
       const { data, error } = await supabase
         .from('transactions')
-        .select('*')
+        .select('id, transaction_date, category, adjust_type, transaction_type, amount, minutes, description, notes')
         .eq('member_id', memberId)
         .eq('category', category)
         .gte('transaction_date', twoMonthsAgoStr)
@@ -433,16 +429,10 @@ export function LiffMyBookings() {
     try {
       // 清理電話號碼：移除所有非數字字符
       const cleanPhone = phone.replace(/\D/g, '')
-      console.log('🔍 輸入的電話號碼:', phone)
-      console.log('🔍 清理後的電話:', cleanPhone)
-      
       // 查詢會員：嘗試多種格式
-      const { data: allMembers, error: queryError } = await supabase
+      const { data: allMembers } = await supabase
         .from('members')
         .select('id, name, nickname, phone, status')
-      
-      console.log('📊 查詢結果:', allMembers)
-      console.log('❌ 查詢錯誤:', queryError)
       
       if (!allMembers || allMembers.length === 0) {
         toast.error('無法查詢會員資料，請稍後再試')
@@ -453,11 +443,8 @@ export function LiffMyBookings() {
       // 尋找匹配的會員（比對清理後的電話號碼）
       const memberData = allMembers.find(m => {
         const dbPhone = m.phone?.replace(/\D/g, '') || ''
-        console.log(`🔍 比對: ${m.name} - DB: ${m.phone} (${dbPhone}) vs 輸入: ${cleanPhone}`)
         return dbPhone === cleanPhone && m.status === 'active'
       })
-
-      console.log('✅ 找到的會員:', memberData)
 
       if (!memberData) {
         triggerHaptic('error')
@@ -490,9 +477,7 @@ export function LiffMyBookings() {
       // 更新會員生日
       if (birthYear && birthMonth && birthDay) {
         const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`
-        console.log('📅 準備更新生日:', birthday, '會員ID:', memberData.id)
-        
-        const { data: updateData, error: updateError } = await supabase
+        const { error: updateError } = await supabase
           .from('members')
           .update({ birthday })
           .eq('id', memberData.id)
@@ -503,7 +488,6 @@ export function LiffMyBookings() {
           // 不阻擋綁定流程，但記錄錯誤
           toast.error('生日更新失敗，請稍後在會員資料中手動更新')
         } else {
-          console.log('✅ 生日更新成功:', updateData)
         }
       }
 

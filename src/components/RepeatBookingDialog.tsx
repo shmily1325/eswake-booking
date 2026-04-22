@@ -155,7 +155,6 @@ export function RepeatBookingDialog({
 
     // 防止重複提交（最優先檢查）
     if (loading) {
-      console.log('提交進行中，忽略重複請求')
       return
     }
 
@@ -358,7 +357,6 @@ export function RepeatBookingDialog({
         // 加上填表人
         details += ` (填表人: ${filledBy})`
         
-        console.log('[重複預約] 寫入 Audit Log:', details)
         await logAction(user.email, 'create', 'bookings', details)
       }
 

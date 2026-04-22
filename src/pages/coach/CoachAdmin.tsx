@@ -444,14 +444,6 @@ export function CoachAdmin() {
           .in('booking_participant_id', participantIds)
           .eq('transaction_type', 'consume')
 
-        console.log('=== 交易記錄查詢 ===')
-        console.log('參與者數量:', participantsData.length)
-        console.log('參與者IDs:', participantIds)
-        console.log('交易記錄數量:', transactionsData?.length || 0)
-        console.log('查詢錯誤:', transactionsError)
-        if (transactionsData && transactionsData.length > 0) {
-          console.log('交易記錄範例:', transactionsData[0])
-        }
 
         if (!transactionsError && transactionsData) {
           // 將交易記錄附加到對應的參與者記錄上
@@ -459,15 +451,6 @@ export function CoachAdmin() {
             ...participant,
             transactions: transactionsData.filter(t => t.booking_participant_id === participant.id)
           }))
-          
-          // Debug: 檢查哪些記錄有/沒有交易
-          const withTx = participantsWithTransactions.filter(p => p.transactions.length > 0)
-          const withoutTx = participantsWithTransactions.filter(p => p.transactions.length === 0)
-          console.log('有交易記錄:', withTx.length, '筆')
-          console.log('無交易記錄:', withoutTx.length, '筆')
-          if (withoutTx.length > 0) {
-            console.log('無交易記錄範例:', withoutTx[0])
-          }
           
           setCompletedReports(participantsWithTransactions)
         } else {
@@ -506,14 +489,6 @@ export function CoachAdmin() {
     setLoading(true)
 
     try {
-      console.log('關聯會員 - 更新前:', {
-        report_id: report.id,
-        current_status: report.status,
-        current_member_id: report.member_id,
-        new_member_id: member.id,
-        new_member_name: member.nickname || member.name,
-        original_name: report.participant_name
-      })
 
       // 保留原始名字到備註
       const originalName = report.participant_name
@@ -521,7 +496,7 @@ export function CoachAdmin() {
         ? `${originalName} ${report.notes}` 
         : originalName
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('booking_participants')
         .update({
           member_id: member.id,
@@ -538,8 +513,6 @@ export function CoachAdmin() {
         console.error('更新失敗 - 錯誤詳情:', error)
         throw error
       }
-
-      console.log('關聯會員 - 更新後:', data)
 
       // 先關閉對話框
       setShowMemberSearchDialog(false)

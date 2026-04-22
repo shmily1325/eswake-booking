@@ -28,18 +28,21 @@ export function wrapWithErrorReport<T>(
     errorCount++
     
     console.group(`🔴 [Error #${errorCount}] ${context.component} - ${context.operation}`)
-    console.error('Error:', (error as Error).message)
-    console.error('Stack:', (error as Error).stack)
-    console.log('Context:', context)
-    if (context.data) {
+    console.log('Context:', {
+      component: context.component,
+      operation: context.operation,
+      ...(context.data !== undefined ? { data: context.data } : {}),
+    })
+    if (context.data !== undefined) {
       console.log('Data:', context.data)
     }
+    console.error('Error:', (error as Error).message)
+    console.error('Stack:', (error as Error).stack)
     console.groupEnd()
     
     // 如果是 "Cannot read properties of null" 錯誤，提供額外資訊
     if ((error as Error).message && (error as Error).message.includes('Cannot read properties of null')) {
       console.error('⚠️ NULL ACCESS DETECTED!')
-      console.log('Attempting to access property on null/undefined')
       console.trace('Full trace')
     }
     

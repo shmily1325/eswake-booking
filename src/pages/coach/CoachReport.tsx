@@ -177,7 +177,6 @@ export function CoachReport({
     if (data) {
       setUserCoachId(data.id)
       setSelectedCoachId(data.id) // 自動選擇該教練
-      console.log('✅ 自動篩選模式：已設定教練 ID =', data.id)
     } else {
       toast.error('您的帳號尚未配對教練，請聯繫管理員')
     }
@@ -520,7 +519,6 @@ export function CoachReport({
   const submitReport = async () => {
     // 防止重複提交
     if (isSubmitting) {
-      console.log('⚠️ 正在提交中，請勿重複點擊')
       return
     }
     
@@ -589,11 +587,6 @@ export function CoachReport({
     
     if (!shouldReportDriver) {
       // 如果不應該回報駕駛（例如預約現在有明確的駕駛員了），刪除舊的駕駛回報記錄
-      console.log('清除不該有的駕駛回報記錄:', {
-        booking_id: reportingBookingId,
-        coach_id: reportingCoachId
-      })
-      
       const { error: deleteError } = await supabase
         .from('coach_reports')
         .delete()
@@ -609,17 +602,8 @@ export function CoachReport({
     // 檢查駕駛時數是否有變更
     const driverDurationChanged = originalDriverDuration === null || originalDriverDuration !== driverDuration
     
-    console.log('提交駕駛回報:', {
-      booking_id: reportingBookingId,
-      coach_id: reportingCoachId,
-      driver_duration_min: driverDuration,
-      original_duration: originalDriverDuration,
-      has_changes: driverDurationChanged
-    })
-
     // 如果沒有變更，跳過更新
     if (!driverDurationChanged) {
-      console.log('駕駛時數沒有變更，跳過更新')
       return
     }
 
@@ -846,8 +830,6 @@ export function CoachReport({
 
       // 執行插入
       if (participantsToInsert.length > 0) {
-        console.log('準備插入的參與者記錄:', participantsToInsert)
-
         const { error: insertError } = await supabase
           .from('booking_participants')
           .insert(participantsToInsert)
@@ -978,10 +960,6 @@ export function CoachReport({
 
   // 導出當日回報為 CSV
   const exportToCSV = async () => {
-    // 🔍 調試：顯示 allBookings 的內容
-    console.log('📋 準備匯出的預約數量:', allBookings.length)
-    console.log('📋 所有預約 ID:', allBookings.map(b => ({ id: b.id, contact: b.contact_name, coaches: b.coaches?.length || 0, drivers: b.drivers?.length || 0 })))
-    
     if (allBookings.length === 0) {
       toast.warning('沒有資料可以匯出')
       return
@@ -995,8 +973,6 @@ export function CoachReport({
       .in('booking_id', bookingIds)
 
     // 🔍 調試：顯示所有駕駛回報記錄
-    console.log('📊 所有駕駛回報記錄:', allCoachReports)
-
     // 建立駕駛回報查找映射
     const driverReportsMap = new Map<number, Map<string, number>>()
     allCoachReports?.forEach(report => {
@@ -1031,13 +1007,7 @@ export function CoachReport({
       const contactName = booking.contact_name || ''
       const durationMin = booking.duration_min.toString()
       const coachNames = (booking.coaches || []).map(c => c.name).join('、') || ''
-      const driverNames = (booking.drivers || []).map(d => d.name).join('、') || ''
       const notes = (booking.notes || '').replace(/[\n\r]/g, ' ') // 移除換行符
-      
-      // 🔍 調試：純駕駛預約
-      if ((booking.coaches || []).length === 0 && (booking.drivers || []).length > 0) {
-        console.log('🚤 純駕駛預約:', { id: booking.id, contact: contactName, drivers: driverNames, participants: booking.participants?.length || 0 })
-      }
       
       // 獲取所有駕駛的回報時長（只顯示應該回報駕駛的人）
       const driverReports = driverReportsMap.get(booking.id)

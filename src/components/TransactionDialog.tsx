@@ -110,7 +110,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     try {
       let query = supabase
         .from('transactions')
-        .select('*')
+        .select('id, created_at, transaction_date, category, adjust_type, amount, minutes, description, notes, balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after')
         .eq('member_id', member.id)
         .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })

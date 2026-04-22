@@ -403,8 +403,6 @@ export function LineSettings() {
   // 發送 LINE 訊息
   const handleSendLine = async (studentName: string, message: string) => {
     const lineInfo = getStudentLineInfo(studentName)
-    console.log('📤 發送 LINE:', { studentName, lineInfo, messageLength: message.length })
-    
     if (!lineInfo.hasLine || !lineInfo.lineUserId) {
       toast.error('此會員未綁定 LINE')
       return
@@ -416,8 +414,6 @@ export function LineSettings() {
         lineUserId: lineInfo.lineUserId,
         message
       }
-      console.log('📤 Request body:', requestBody)
-      
       const response = await fetch('/api/line-send-single', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -425,7 +421,6 @@ export function LineSettings() {
       })
       
       const result = await response.json()
-      console.log('📤 Response:', result)
       if (result.success) {
         toast.success(`✅ 已發送給 ${studentName}`)
         setSentStudents(prev => new Set(prev).add(studentName))

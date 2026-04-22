@@ -228,7 +228,6 @@ export function EditBookingDialog({
 
     // 防止重複提交（最優先檢查）
     if (loading) {
-      console.log('更新進行中，忽略重複請求')
       return
     }
 
@@ -263,8 +262,6 @@ export function EditBookingDialog({
     setLoading(true)
 
     try {
-      console.log('開始更新預約，ID:', booking.id)
-      
       // Combine date and time into ISO format（TEXT 格式，不含時區）
       const newStartAt = `${startDate}T${startTime}:00`
 
@@ -487,7 +484,6 @@ export function EditBookingDialog({
         confirmMessage += `\n確定要修改嗎？`
 
         if (!confirm(confirmMessage)) {
-          console.log('用戶取消修改')
           setLoading(false)
           return
         }
@@ -682,11 +678,9 @@ export function EditBookingDialog({
 
     // 防止重複執行
     if (loading || isDeleting) {
-      console.log('刪除進行中，忽略重複請求')
       return
     }
 
-    console.log('開始刪除流程，預約 ID:', booking.id)
     setIsDeleting(true) // 標記刪除開始
 
     try {
@@ -772,18 +766,15 @@ export function EditBookingDialog({
       }
 
       if (!confirm(confirmMessage)) {
-        console.log('用戶取消刪除')
         setIsDeleting(false)
         return
       }
 
-      console.log('用戶確認刪除，開始執行...')
       // 用戶確認後才開始 loading
       setLoading(true)
 
       // 🔥 關鍵修復：在刪除之前先查詢完整的預約資料，確保不遺漏任何欄位
       // 因為從 React 狀態傳來的 booking 物件可能不完整（coaches 可能未載入）
-      console.log('查詢完整預約資料...')
       const { data: completeBooking, error: queryError } = await supabase
         .from('bookings')
         .select('*, boats:boat_id(name)')
@@ -811,7 +802,6 @@ export function EditBookingDialog({
       ])
 
       // 刪除預約（CASCADE 會自動刪除相關記錄）
-      console.log('執行刪除...')
       const { error: deleteError } = await supabase
         .from('bookings')
         .delete()
@@ -825,8 +815,6 @@ export function EditBookingDialog({
         return
       }
 
-      console.log('刪除成功，記錄審計日誌...')
-      
       // 記錄到審計日誌（使用表單中重新填寫的填表人）
       await logBookingDeletion({
         userEmail: user.email || '',
@@ -842,7 +830,6 @@ export function EditBookingDialog({
       })
 
       // Success
-      console.log('刪除完成，關閉對話框')
       setLoading(false)
       setIsDeleting(false) // 重置刪除狀態
       toast.success('預約已刪除')
@@ -861,7 +848,6 @@ export function EditBookingDialog({
   const handleClose = () => {
     // 如果正在刪除或更新中，不允許關閉
     if (loading || isDeleting) {
-      console.log('操作進行中，無法關閉對話框')
       return
     }
     resetForm()

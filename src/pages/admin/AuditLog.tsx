@@ -672,7 +672,7 @@ export function AuditLog() {
       
       let query = supabase
         .from('audit_log')
-        .select('*')
+        .select('id, user_email, action, table_name, details, created_at')
         .in('table_name', ['bookings', 'coach_assignment'])
         .gte('created_at', startDateStr)
         .lte('created_at', endDateStr)

@@ -91,7 +91,7 @@ export function VirtualizedBookingList({
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             border: '1px solid #e9ecef'
         }}>
-            {validBoats.map((boat) => {
+            {validBoats.map((boat, boatIndex) => {
                 const boatBookings = boatBookingsMap.get(boat.id) || []
                 const sidebarAlert = getBoatSidebarDayAlert(
                     boat.id,
@@ -104,7 +104,8 @@ export function VirtualizedBookingList({
                         key={boat.id}
                         style={{
                             display: 'flex',
-                            borderBottom: '2px solid #e9ecef',
+                            /* 分隔畫在本列上緣（非上一列下緣），線在 sticky 側欄「上方」，較不易被蓋掉；#dee2e6 比 #e9ecef 稍深，深灰／白底都較清楚 */
+                            borderTop: boatIndex > 0 ? '2px solid #dee2e6' : undefined,
                             // minHeight: isMobile ? '140px' : '160px' // 移除固定最小高度，讓內容自然撐開
                         }}
                     >

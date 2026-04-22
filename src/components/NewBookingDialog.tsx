@@ -158,7 +158,6 @@ export function NewBookingDialog({
 
     // 防止重複提交（最優先檢查）
     if (loading) {
-      console.log('提交進行中，忽略重複請求')
       return
     }
 

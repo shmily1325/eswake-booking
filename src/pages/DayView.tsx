@@ -150,7 +150,6 @@ export function DayView() {
 
       if (isInitialLoad) {
         const sortedBoats = sortBoatsByDisplayOrder(boatsData || [])
-        console.log('[DayView] Boats loaded:', sortedBoats.length)
         setBoats(sortedBoats)
       }
 
@@ -171,9 +170,6 @@ export function DayView() {
         setLoading(false)
         return
       }
-
-      console.log('[DayView] Raw bookings data:', bookingsData)
-      console.log('[DayView] Bookings count:', bookingsData?.length || 0)
 
       // 驗證資料完整性
       if (bookingsData) {
@@ -196,8 +192,6 @@ export function DayView() {
   }
 
   const fetchBookingsWithCoaches = async (bookingsData: any[]) => {
-    console.log('[fetchBookingsWithCoaches] Input length:', bookingsData.length)
-
     if (bookingsData.length === 0) {
       setBookings([])
       computeConflicts([]).catch(err => console.error('computeConflicts error:', err))
@@ -216,8 +210,6 @@ export function DayView() {
       }
       return true
     })
-
-    console.log('[fetchBookingsWithCoaches] Valid bookings:', validBookings.length)
 
     const bookingIds = validBookings.map(b => b.id)
 
@@ -310,7 +302,6 @@ export function DayView() {
         }
       })
 
-    console.log('[fetchBookingsWithCoaches] Final bookings with clean data:', bookingsWithCoaches.length)
     setBookings(bookingsWithCoaches)
 
     // 異步計算衝突（教練/駕駛衝突 + 全域限制）

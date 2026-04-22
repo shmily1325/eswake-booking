@@ -67,7 +67,6 @@ export function handleSuccess(
   showAlert: boolean = true
 ): void {
   console.log(`[成功] ${message}`)
-  
   if (showAlert) {
     toast.success(message)
   }

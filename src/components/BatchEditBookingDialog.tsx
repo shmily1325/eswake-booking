@@ -143,8 +143,6 @@ export function BatchEditBookingDialog({
   
   // 執行批次更新（優化版：使用批量預查詢）
   const handleSubmit = async () => {
-    console.log('[批次修改] 開始執行', { fieldsToEdit: Array.from(fieldsToEdit), bookingIds, selectedBoatId, durationMin })
-    
     if (fieldsToEdit.size === 0) {
       toast.warning('請至少選擇一個要修改的欄位')
       return
@@ -236,12 +234,10 @@ export function BatchEditBookingDialog({
           const confirmMessage = `⚠️ 您要修改 ${modifyingFields.join('、')}\n\n部分預約已有後續記錄：\n${warnings.join('\n')}\n\n修改後將刪除這些預約的：\n• 所有排班記錄\n• 所有回報記錄\n• 所有參與者記錄\n\n確定要繼續嗎？`
           
           if (!confirm(confirmMessage)) {
-            console.log('[批次修改] 用戶取消修改')
             setLoading(false)
             return
           }
           
-          console.log('[批次修改] 用戶確認修改，將清除相關排班和回報記錄')
         }
       }
       
@@ -289,17 +285,10 @@ export function BatchEditBookingDialog({
       })
       
       // 3️⃣ 批量預查詢所有衝突檢查需要的數據（只需 4 個 DB 查詢）
-      console.log('[批次修改] 開始預查詢衝突數據...')
       const conflictData = await prefetchConflictData(
         bookingsForCheck,
         fieldsToEdit.has('boat') && selectedBoatId ? selectedBoatId : undefined
       )
-      console.log('[批次修改] 預查詢完成:', {
-        unavailable: conflictData.unavailableRecords.length,
-        boatBookings: conflictData.boatBookings.length,
-        coachBookings: conflictData.coachBookings.length,
-        driverBookings: conflictData.driverBookings.length
-      })
       
       // 4️⃣ 追蹤已成功更新的預約，用於檢查批次內部衝突
       const updatedBookings: Array<{
@@ -585,7 +574,6 @@ export function BatchEditBookingDialog({
           }
           
           details += ` (填表人: ${filledBy.trim()})`
-          console.log('[批次修改] 寫入 Audit Log:', details)
           await logAction(user.email, 'update', 'bookings', details)
         } else {
           console.warn('[批次修改] 無法寫入 Audit Log: user.email 為空', { user })
@@ -595,8 +583,6 @@ export function BatchEditBookingDialog({
           updatedBookings.map(ub => ({ coachIds: ub.coachIds, dateYmd: ub.dateStr }))
         )
       }
-      
-      console.log('[批次修改] 結果:', { successCount, skipped: skippedItems.length, errorCount })
       
       // 顯示結果
       if (skippedItems.length === 0) {

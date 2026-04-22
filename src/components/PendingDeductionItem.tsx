@@ -411,7 +411,6 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
       }
     } catch (error) {
       // 查詢失敗時靜默處理（可能是表不存在或沒有對應記錄）
-      console.log('查詢代扣關係:', error)
     }
   }
 
