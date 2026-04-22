@@ -140,6 +140,9 @@ export function EditorHub() {
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
               }}
+              onTouchStart={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)'}
+              onTouchEnd={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+              onTouchCancel={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
             >
               ← HOME
             </Link>
@@ -179,6 +182,18 @@ export function EditorHub() {
                   e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,0,0,0.25)'
                 }}
                 onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)'
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.97)'
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)'
+                }}
+                onTouchCancel={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)'
                   e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)'
                 }}

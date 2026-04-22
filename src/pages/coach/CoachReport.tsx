@@ -1490,6 +1490,9 @@ export function CoachReport({
                               e.currentTarget.style.transform = 'translateY(0)'
                               e.currentTarget.style.boxShadow = 'none'
                             }}
+                            onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.96)'}
+                            onTouchEnd={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                            onTouchCancel={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                           >
                             {isReported && <span>✓</span>}
                             <span>{coach.name}</span>
@@ -1540,6 +1543,9 @@ export function CoachReport({
                               e.currentTarget.style.transform = 'translateY(0)'
                               e.currentTarget.style.boxShadow = 'none'
                             }}
+                            onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.96)'}
+                            onTouchEnd={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                            onTouchCancel={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                           >
                             {isReported && <span>✓</span>}
                             <span>{driver.name}</span>

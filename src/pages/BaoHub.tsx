@@ -192,6 +192,9 @@ export function BaoHub() {
                 e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
                 e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
               }}
+              onTouchStart={(e) => e.currentTarget.style.background = '#f0f0f0'}
+              onTouchEnd={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'}
+              onTouchCancel={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'}
             >
               ← HOME
             </Link>
@@ -334,6 +337,18 @@ export function BaoHub() {
                       e.currentTarget.style.transform = 'translateY(0)'
                       e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
                       e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
+                    }}
+                    onTouchStart={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.97)'
+                      e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.1)'
+                    }}
+                    onTouchEnd={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
+                    }}
+                    onTouchCancel={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
                     }}
                   >
                     <div style={{

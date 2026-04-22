@@ -1525,6 +1525,9 @@ export function CoachAdmin() {
                               }}
                               onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
                               onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                              onTouchStart={(e) => e.currentTarget.style.background = '#eeeeee'}
+                              onTouchEnd={(e) => e.currentTarget.style.background = 'white'}
+                              onTouchCancel={(e) => e.currentTarget.style.background = 'white'}
                             >
                               <div style={{ fontWeight: '600' }}>
                                 {member.nickname || member.name}
@@ -1753,6 +1756,9 @@ export function CoachAdmin() {
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      onTouchStart={(e) => e.currentTarget.style.background = '#eeeeee'}
+                      onTouchEnd={(e) => e.currentTarget.style.background = 'transparent'}
+                      onTouchCancel={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                       <div style={{ fontWeight: '600' }}>
                         {member.nickname || member.name}
