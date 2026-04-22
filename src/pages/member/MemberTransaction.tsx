@@ -582,30 +582,30 @@ export function MemberTransaction() {
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
-            gap: isMobile ? '14px' : '16px',
-            textAlign: isMobile ? 'left' : 'center'
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            gap: isMobile ? '12px' : '16px',
+            textAlign: 'center'
           }}>
-            <div style={isMobile ? { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid #eee' } : undefined}>
-              <div style={{ fontSize: '12px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>💰 總儲值</div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💰 總儲值</div>
               <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
                 ${stats.totalBalance.toLocaleString()}
               </div>
             </div>
-            <div style={isMobile ? { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid #eee' } : undefined}>
-              <div style={{ fontSize: '12px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>💎 總VIP票券</div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💎 總VIP票券</div>
               <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
                 ${stats.totalVipVoucher.toLocaleString()}
               </div>
             </div>
-            <div style={isMobile ? { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid #eee' } : undefined}>
-              <div style={{ fontSize: '12px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>🚤 總G23船券</div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>🚤 總G23船券</div>
               <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
                 {stats.totalG23.toLocaleString()}分
               </div>
             </div>
-            <div style={isMobile ? { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' } : undefined}>
-              <div style={{ fontSize: '12px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>⛵ 總G21/黑豹</div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>⛵ 總G21/黑豹</div>
               <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
                 {stats.totalG21.toLocaleString()}分
               </div>
@@ -1111,7 +1111,7 @@ export function MemberTransaction() {
                 </div>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+                  gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
                   gap: '10px',
                 }}>
                   {Array.from({ length: 6 }).map((_, j) => (
@@ -1334,89 +1334,48 @@ export function MemberTransaction() {
                 }}>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-                  gap: isMobile ? '0' : '10px',
-                  textAlign: isMobile ? 'left' : 'center'
+                  gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                  gap: isMobile ? '8px' : '10px',
+                  textAlign: 'center'
                 }}>
-                    <div style={isMobile ? {
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '10px 2px',
-                      borderBottom: '1px solid #eee',
-                    } : undefined}>
-                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>💰 儲值餘額</div>
-                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💰 儲值餘額</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         ${(member.balance || 0).toLocaleString()}
                       </div>
                     </div>
 
-                    <div style={isMobile ? {
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '10px 2px',
-                      borderBottom: '1px solid #eee',
-                    } : undefined}>
-                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>💎 VIP票券</div>
-                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💎 VIP票券</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         ${(member.vip_voucher_amount || 0).toLocaleString()}
                       </div>
                     </div>
 
-                    <div style={isMobile ? {
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '10px 2px',
-                      borderBottom: '1px solid #eee',
-                    } : undefined}>
-                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>📚 指定課</div>
-                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>📚 指定課</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         {(member.designated_lesson_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
-                    <div style={isMobile ? {
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '10px 2px',
-                      borderBottom: '1px solid #eee',
-                    } : undefined}>
-                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>🚤 G23船券</div>
-                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>🚤 G23船券</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
-                    <div style={isMobile ? {
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '10px 2px',
-                      borderBottom: '1px solid #eee',
-                    } : undefined}>
-                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>⛵ 黑豹/G21</div>
-                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>⛵ 黑豹/G21</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
-                    <div style={isMobile ? {
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '10px 2px',
-                    } : undefined}>
-                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>🎁 贈送大船</div>
-                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                         {(member.gift_boat_hours || 0).toLocaleString()}分
                       </div>
                     </div>

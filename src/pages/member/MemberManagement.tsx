@@ -1290,7 +1290,7 @@ export function MemberManagement() {
               key={member.id}
               style={{
                 background: member.status === 'inactive' ? '#f5f5f5' : 'white',
-                padding: '20px',
+                padding: isMobile ? '14px' : '20px',
                 borderRadius: '12px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 transition: 'all 0.2s',
@@ -1320,7 +1320,7 @@ export function MemberManagement() {
                 {/* 第一層：會籍資料 */}
                 <div style={{ 
                   background: '#f8f9fa',
-                  padding: isMobile ? '12px' : '16px',
+                  padding: isMobile ? '10px' : '14px 16px',
                   borderRadius: '8px',
                   marginBottom: '12px',
                   position: 'relative',

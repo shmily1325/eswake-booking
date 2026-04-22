@@ -699,7 +699,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           background: 'white',
           flexShrink: 0,
         }}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
+          <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: 'bold' }}>
             💳 {member.nickname || member.name}
           </h2>
           <button
@@ -814,7 +814,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
             <form onSubmit={handleSubmit}>
               {/* 選擇項目 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
                   項目 *
                 </label>
                 <select
@@ -833,7 +833,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
               {/* 選擇操作 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
                   操作 *
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -876,7 +876,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
               {/* 輸入數值 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
                   {selectedCategory?.type === 'amount' ? '金額 (元)' : '時數 (分鐘)'} *
                 </label>
                 <input
@@ -895,7 +895,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
               {/* 交易日期 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
                   交易日期 *
                 </label>
                 <div style={{ display: 'flex' }}>
@@ -919,7 +919,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
               {/* 說明（必填） */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
                   說明 *
                 </label>
                 <input
@@ -934,7 +934,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
               {/* 備註（選填） */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
                   備註
                 </label>
                 <textarea
@@ -1084,7 +1084,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           }}>
             {/* 月份選擇和匯出按鈕 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
                 選擇月份
               </label>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1141,7 +1141,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
             {/* 類別篩選按鈕 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
                 篩選類別
               </label>
               {/* 第一行：全部 + 金額類 */}
