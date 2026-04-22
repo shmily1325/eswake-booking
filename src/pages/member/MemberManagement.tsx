@@ -77,6 +77,7 @@ export function MemberManagement() {
   const [showExpiringDetails, setShowExpiringDetails] = useState(false) // 收合/展開到期詳情
   const [sortBy, setSortBy] = useState<string>('nickname') // 'nickname', 'balance', 'membership_end_date'
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc') // 升冪/降冪
+  const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false)
 
   useEffect(() => {
     if (!user || !userIsAdmin) return
@@ -831,10 +832,30 @@ export function MemberManagement() {
 
         {/* 篩選列 - 手機版用下拉選單，桌面版用按鈕 */}
         {isMobile ? (
-          /* 手機版：下拉選單 */
+          /* 手機版：可收合的篩選區 */
           <>
-            <div style={{ 
-              display: 'flex', 
+            <button
+              type="button"
+              onClick={() => setMobileFiltersExpanded((v) => !v)}
+              style={{
+                width: '100%',
+                marginBottom: '10px',
+                padding: '10px 12px',
+                border: '1px solid #dee2e6',
+                borderRadius: '8px',
+                fontSize: '14px',
+                background: mobileFiltersExpanded ? '#e3f2fd' : 'white',
+                color: '#333',
+                cursor: 'pointer',
+                textAlign: 'left',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              }}
+            >
+              {mobileFiltersExpanded ? '▲ 收合篩選與排序' : '▼ 篩選與排序（類型、LINE、排序）'}
+            </button>
+            {mobileFiltersExpanded && (
+            <div style={{
+              display: 'flex',
               gap: '10px',
               alignItems: 'center',
               flexWrap: 'wrap'
@@ -985,6 +1006,7 @@ export function MemberManagement() {
                 包含已隱藏
               </label>
             </div>
+            )}
 
             {/* 手機版結果數量 */}
             {(searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') && (

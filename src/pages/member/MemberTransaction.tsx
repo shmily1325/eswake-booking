@@ -545,6 +545,72 @@ export function MemberTransaction() {
               : undefined
           }
         />
+        {/* 搜尋欄（手機：sticky 固定在頂部；桌面：隨 header 一起 sticky） */}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          marginBottom: '12px',
+          alignItems: 'center',
+          ...(isMobile ? {
+            position: 'sticky',
+            top: 'env(safe-area-inset-top, 0px)',
+            zIndex: 90,
+            paddingTop: '6px',
+            paddingBottom: '10px',
+            background: '#f5f5f5',
+            boxShadow: '0 6px 14px rgba(0,0,0,0.06)',
+          } : {}),
+        }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="🔍 搜尋會員（姓名、暱稱）"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                if (e.target.value && membershipTypeFilter !== 'all') {
+                  setMembershipTypeFilter('all')
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: isMobile ? '12px 14px' : '12px 16px',
+                paddingRight: searchTerm ? '40px' : '16px',
+                border: '1px solid #dee2e6',
+                borderRadius: '8px',
+                fontSize: '15px',
+                outline: 'none',
+                background: 'white',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+              }}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: '#999',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '24px',
+                  height: '24px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
         {isMobile && (
           <button
             type="button"
@@ -717,73 +783,6 @@ export function MemberTransaction() {
         )}
         </>
         )}
-
-        {/* 搜尋欄（手機：黏在視窗頂端，捲動列表時仍可隨時搜尋） */}
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          marginBottom: '12px',
-          alignItems: 'center',
-          ...(isMobile ? {
-            position: 'sticky',
-            top: 'env(safe-area-inset-top, 0px)',
-            zIndex: 90,
-            paddingTop: '6px',
-            paddingBottom: '10px',
-            marginTop: '-2px',
-            background: '#f5f5f5',
-            boxShadow: '0 6px 14px rgba(0,0,0,0.06)',
-          } : {}),
-        }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <input
-              type="text"
-              placeholder="🔍 搜尋會員（姓名、暱稱）"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                if (e.target.value && membershipTypeFilter !== 'all') {
-                  setMembershipTypeFilter('all')
-                }
-              }}
-              style={{
-                width: '100%',
-                padding: isMobile ? '12px 14px' : '12px 16px',
-                paddingRight: searchTerm ? '40px' : '16px',
-                border: '1px solid #dee2e6',
-                borderRadius: '8px',
-                fontSize: '15px',
-                outline: 'none',
-                background: 'white',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-              }}
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: '#999',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '24px',
-                  height: '24px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
 
         {/* 篩選列 - 手機版用下拉選單，桌面版用按鈕 */}
         {isMobile ? (
