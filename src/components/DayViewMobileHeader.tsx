@@ -9,6 +9,8 @@ interface DayViewMobileHeaderProps {
     onPrevDate: () => void
     onNextDate: () => void
     onGoToToday: () => void
+    /** 小編才可排班；非小編不顯示第二列（列表／排班） */
+    showCoachAssignment: boolean
 }
 
 export function DayViewMobileHeader({
@@ -17,6 +19,7 @@ export function DayViewMobileHeader({
     onPrevDate,
     onNextDate,
     onGoToToday,
+    showCoachAssignment,
 }: DayViewMobileHeaderProps) {
     return (
         <div style={{ marginBottom: designSystem.spacing.lg }}>
@@ -132,61 +135,61 @@ export function DayViewMobileHeader({
                 </button>
             </div>
 
-            {/* 第二行：原「列表 | 時間軸」區塊改為僅列表（外觀與已選「列表」相同）+ 排班；版面與舊版一致 */}
-            <div style={{ display: 'flex', gap: designSystem.spacing.sm }}>
+            {showCoachAssignment && (
                 <div style={{
                     display: 'flex',
-                    backgroundColor: '#e0e0e0',
-                    borderRadius: designSystem.borderRadius.lg,
-                    padding: '4px',
-                    flex: 1,
-                    height: '48px',
-                    alignItems: 'center',
+                    gap: designSystem.spacing.sm,
                 }}>
                     <div
                         style={{
                             flex: 1,
-                            height: '40px',
-                            borderRadius: designSystem.borderRadius.md,
-                            background: 'white',
-                            color: designSystem.colors.primary[600],
-                            fontWeight: '600',
-                            fontSize: '14px',
-                            boxShadow: designSystem.shadows.sm,
+                            height: '48px',
+                            padding: '0 16px',
+                            backgroundColor: 'white',
+                            border: `1px solid ${designSystem.colors.border.main}`,
+                            borderRadius: designSystem.borderRadius.lg,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '4px',
+                            color: designSystem.colors.text.primary,
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            boxShadow: designSystem.shadows.sm,
+                            whiteSpace: 'nowrap',
+                            boxSizing: 'border-box',
                         }}
                         aria-current="page"
                     >
-                        <span>📋</span> 列表
+                        📋 列表
                     </div>
-                </div>
 
-                <Link
-                    data-track="day_to_assignment"
-                    to={`/coach-assignment?date=${date}`}
-                    style={{
-                        textDecoration: 'none',
-                        height: '48px',
-                        padding: '0 16px',
-                        backgroundColor: 'white',
-                        border: `1px solid ${designSystem.colors.border.main}`,
-                        borderRadius: designSystem.borderRadius.lg,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: designSystem.colors.text.primary,
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        boxShadow: designSystem.shadows.sm,
-                        whiteSpace: 'nowrap',
-                    }}
-                >
-                    排班
-                </Link>
-            </div>
+                    <Link
+                        data-track="day_to_assignment"
+                        to={`/coach-assignment?date=${date}`}
+                        style={{
+                            flex: 1,
+                            textDecoration: 'none',
+                            height: '48px',
+                            padding: '0 16px',
+                            backgroundColor: 'white',
+                            border: `1px solid ${designSystem.colors.border.main}`,
+                            borderRadius: designSystem.borderRadius.lg,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: designSystem.colors.text.primary,
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            boxShadow: designSystem.shadows.sm,
+                            whiteSpace: 'nowrap',
+                            boxSizing: 'border-box',
+                            minWidth: 0,
+                        }}
+                    >
+                        排班
+                    </Link>
+                </div>
+            )}
         </div>
     )
 }

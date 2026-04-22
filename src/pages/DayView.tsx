@@ -541,6 +541,7 @@ export function DayView() {
             onPrevDate={() => changeDate(-1)}
             onNextDate={() => changeDate(1)}
             onGoToToday={goToToday}
+            showCoachAssignment={isEditor}
           />
         ) : (
           /* 桌面版：單行佈局 */
