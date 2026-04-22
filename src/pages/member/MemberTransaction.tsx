@@ -788,6 +788,9 @@ export function MemberTransaction() {
         {isMobile ? (
           /* 手機版：篩選預設收合，展開後才顯示下拉選單 */
           <>
+            {(() => {
+              const filtersActive = membershipTypeFilter !== 'all' || lineBindingFilter !== 'all'
+              return (
             <button
               type="button"
               onClick={() => setMobileFiltersExpanded((v) => !v)}
@@ -795,18 +798,22 @@ export function MemberTransaction() {
                 width: '100%',
                 marginBottom: '10px',
                 padding: '10px 12px',
-                border: '1px solid #dee2e6',
+                border: `1px solid ${filtersActive && !mobileFiltersExpanded ? '#fb8c00' : '#dee2e6'}`,
                 borderRadius: '8px',
                 fontSize: '14px',
-                background: mobileFiltersExpanded ? '#e3f2fd' : 'white',
+                background: mobileFiltersExpanded ? '#e3f2fd' : (filtersActive ? '#fff8f0' : 'white'),
                 color: '#333',
                 cursor: 'pointer',
                 textAlign: 'left',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               }}
             >
-              {mobileFiltersExpanded ? '▲ 收合篩選與排序' : '▼ 篩選與排序（會員類型、LINE、排序）'}
+              {mobileFiltersExpanded
+                ? '▲ 收合篩選與排序'
+                : `▼ 篩選與排序（會員類型、LINE、排序）${filtersActive ? ' 🔸' : ''}`}
             </button>
+              )
+            })()}
             {mobileFiltersExpanded && (
             <div style={{ 
               display: 'flex', 
@@ -1160,6 +1167,18 @@ export function MemberTransaction() {
                   e.currentTarget.style.borderColor = 'transparent'
                   e.currentTarget.style.transform = 'translateY(0)'
                   e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.background = '#f5f5f5'
+                  e.currentTarget.style.transform = 'scale(0.99)'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.background = 'white'
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
+                onTouchCancel={(e) => {
+                  e.currentTarget.style.background = 'white'
+                  e.currentTarget.style.transform = 'scale(1)'
                 }}
               >
                 {/* 會員基本資訊 */}

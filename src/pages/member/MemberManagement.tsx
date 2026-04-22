@@ -677,47 +677,34 @@ export function MemberManagement() {
         </div>
 
         {/* 會員列表骨架屏 */}
-        <div style={{ 
-          background: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          overflow: 'hidden'
-        }}>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div 
-              key={i}
-              style={{
-                padding: '16px',
-                borderBottom: i < 7 ? '1px solid #f0f0f0' : 'none',
-                display: 'flex',
-                gap: '12px',
-                alignItems: 'center'
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ 
-                  width: '120px', 
-                  height: '18px', 
-                  background: '#e0e0e0', 
-                  borderRadius: '4px',
-                  marginBottom: '8px'
-                }} />
-                <div style={{ 
-                  width: '80px', 
-                  height: '14px', 
-                  background: '#f0f0f0', 
-                  borderRadius: '4px'
-                }} />
+        <div style={{ display: 'grid', gap: '15px', marginTop: '16px' }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: isMobile ? '14px' : '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}>
+              <div style={{
+                background: '#f0f0f0',
+                padding: isMobile ? '10px' : '14px 16px',
+                borderRadius: '8px',
+                marginBottom: '12px',
+              }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ width: '110px', height: '20px', background: '#e0e0e0', borderRadius: '4px' }} />
+                  <div style={{ width: '48px', height: '18px', background: '#e8e8e8', borderRadius: '10px' }} />
+                  <div style={{ width: '60px', height: '18px', background: '#e8e8e8', borderRadius: '10px' }} />
+                </div>
               </div>
-              <div style={{ 
-                width: '60px', 
-                height: '32px', 
-                background: '#e0e0e0', 
-                borderRadius: '6px'
-              }} />
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ width: '80px', height: '14px', background: '#f0f0f0', borderRadius: '4px' }} />
+                <div style={{ width: '100px', height: '14px', background: '#f0f0f0', borderRadius: '4px' }} />
+                <div style={{ width: '70px', height: '14px', background: '#f0f0f0', borderRadius: '4px' }} />
+              </div>
             </div>
-            ))}
-          </div>
+          ))}
+        </div>
 
           <Footer />
         </div>
@@ -834,6 +821,9 @@ export function MemberManagement() {
         {isMobile ? (
           /* 手機版：可收合的篩選區 */
           <>
+            {(() => {
+              const filtersActive = membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all'
+              return (
             <button
               type="button"
               onClick={() => setMobileFiltersExpanded((v) => !v)}
@@ -841,18 +831,22 @@ export function MemberManagement() {
                 width: '100%',
                 marginBottom: '10px',
                 padding: '10px 12px',
-                border: '1px solid #dee2e6',
+                border: `1px solid ${filtersActive && !mobileFiltersExpanded ? '#fb8c00' : '#dee2e6'}`,
                 borderRadius: '8px',
                 fontSize: '14px',
-                background: mobileFiltersExpanded ? '#e3f2fd' : 'white',
+                background: mobileFiltersExpanded ? '#e3f2fd' : (filtersActive ? '#fff8f0' : 'white'),
                 color: '#333',
                 cursor: 'pointer',
                 textAlign: 'left',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               }}
             >
-              {mobileFiltersExpanded ? '▲ 收合篩選與排序' : '▼ 篩選與排序（類型、LINE、排序）'}
+              {mobileFiltersExpanded
+                ? '▲ 收合篩選與排序'
+                : `▼ 篩選與排序（類型、LINE、排序）${filtersActive ? ' 🔸' : ''}`}
             </button>
+              )
+            })()}
             {mobileFiltersExpanded && (
             <div style={{
               display: 'flex',
@@ -1334,6 +1328,18 @@ export function MemberManagement() {
                 e.currentTarget.style.borderColor = 'transparent'
                 e.currentTarget.style.transform = 'translateY(0)'
                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+              }}
+              onTouchStart={(e) => {
+                e.currentTarget.style.background = '#f0f0f0'
+                e.currentTarget.style.transform = 'scale(0.99)'
+              }}
+              onTouchEnd={(e) => {
+                e.currentTarget.style.background = member.status === 'inactive' ? '#f5f5f5' : 'white'
+                e.currentTarget.style.transform = 'scale(1)'
+              }}
+              onTouchCancel={(e) => {
+                e.currentTarget.style.background = member.status === 'inactive' ? '#f5f5f5' : 'white'
+                e.currentTarget.style.transform = 'scale(1)'
               }}
             >
               {/* 上下分層式佈局 */}
