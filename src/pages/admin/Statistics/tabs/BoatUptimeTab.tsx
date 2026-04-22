@@ -269,7 +269,7 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
             </ResponsiveContainer>
           </div>
           <div style={{ marginTop: '10px', fontSize: '12px', color: '#888', lineHeight: 1.5 }}>
-            綠：妥善率 100%｜藍：未滿 100%（虛線格線與歷史趨勢相同）
+            綠：妥善率 100%｜藍：未滿 100%
           </div>
         </div>
       )}
@@ -301,7 +301,6 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
             }}
           />
           月統計明細
-          <span style={{ fontSize: '12px', color: '#999', fontWeight: '400' }}>（曆法小時）</span>
         </h3>
         <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#666', lineHeight: 1.6 }}>
           分母為當月天數 × 24 小時；分子為扣除合併後的維修／停用時段。維修天數 = 維修小時 ÷ 24。
@@ -317,7 +316,7 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
             <thead>
               <tr style={{ background: '#f8f9fa' }}>
                 <th style={thStyle}>船隻</th>
-                <th style={{ ...thStyle, textAlign: 'right' }}>曆法總小時</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>當月總小時</th>
                 <th style={{ ...thStyle, textAlign: 'right' }}>維修小時</th>
                 <th style={{ ...thStyle, textAlign: 'right' }}>維修天數</th>
                 <th style={{ ...thStyle, textAlign: 'right' }}>妥善率</th>
@@ -329,7 +328,7 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
                   <td style={tdStyle}>
                     <strong>{r.boatName}</strong>
                   </td>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>{r.calendarHours}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right' }}>{r.monthTotalHours}</td>
                   <td style={{ ...tdStyle, textAlign: 'right' }}>{r.downtimeHours}</td>
                   <td style={{ ...tdStyle, textAlign: 'right' }}>{r.downtimeDaysDecimal}</td>
                   <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600 }}>{r.uptimePct}%</td>

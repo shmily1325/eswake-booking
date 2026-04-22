@@ -14,13 +14,13 @@ export type BoatUnavailableHoursInput = {
 export type BoatUptimeMonthRow = {
   boatId: number
   boatName: string
-  /** 該月曆法總小時 = 當月天數 × 24 */
-  calendarHours: number
+  /** 該月總小時 = 當月天數 × 24 */
+  monthTotalHours: number
   /** 合併重疊後的維修／停用小時 */
   downtimeHours: number
   /** 維修小時 ÷ 24 */
   downtimeDaysDecimal: number
-  /** (曆法總小時 − 維修小時) / 曆法總小時 × 100 */
+  /** (總小時 − 維修小時) / 總小時 × 100 */
   uptimePct: number
 }
 
@@ -57,7 +57,7 @@ function dayIndexInMonth(dayYmd: string, monthFirst: string): number {
 }
 
 /**
- * 單一曆法日與一筆維修列的交集（分鐘，[startMin, endMin)）
+ * 單一日期與一筆維修列的交集（分鐘，[startMin, endMin)）
  */
 export function downtimeBlockMinutesOnDay(
   dayYmd: string,
@@ -110,7 +110,7 @@ function overlapRangeMonth(
 }
 
 /**
- * 曆法 B：每船當月天數×24 為分母；維修以小時加總（同日多筆重疊會合併）。
+ * 每船當月天數×24 為分母；維修以小時加總（同日多筆重疊會合併）。
  * 不含設施（彈簧床、陸上課程）。
  */
 export function computeBoatsMonthlyUptime(
@@ -121,7 +121,7 @@ export function computeBoatsMonthlyUptime(
   const monthFirst = monthFirstDay(ym)
   const monthLast = monthLastDay(ym)
   const monthDays = enumerateInclusive(monthFirst, monthLast)
-  const calendarHours = monthDays.length * 24
+  const monthTotalHours = monthDays.length * 24
 
   const activeRecords = records.filter((r) => r.is_active !== false)
   const boatsFiltered = boats.filter((b) => !isFacility(b.name))
@@ -145,12 +145,12 @@ export function computeBoatsMonthlyUptime(
     const merged = mergeIntervals(intervals)
     const downtimeMinutes = merged.reduce((sum, [s, e]) => sum + (e - s), 0)
     const downtimeHours = downtimeMinutes / 60
-    const uptimeHours = Math.max(0, calendarHours - downtimeHours)
-    const uptimePct = calendarHours > 0 ? (uptimeHours / calendarHours) * 100 : 100
+    const uptimeHours = Math.max(0, monthTotalHours - downtimeHours)
+    const uptimePct = monthTotalHours > 0 ? (uptimeHours / monthTotalHours) * 100 : 100
     return {
       boatId: boat.id,
       boatName: boat.name,
-      calendarHours,
+      monthTotalHours,
       downtimeHours: Math.round(downtimeHours * 100) / 100,
       downtimeDaysDecimal: Math.round((downtimeHours / 24) * 1000) / 1000,
       uptimePct: Math.round(uptimePct * 10) / 10,
