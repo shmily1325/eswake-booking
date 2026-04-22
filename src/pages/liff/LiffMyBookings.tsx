@@ -240,15 +240,21 @@ export function LiffMyBookings() {
 
       if (binding && binding.members) {
         const memberData = binding.members as Record<string, unknown>
-        setMember(await enrichMemberForLiff(memberData))
+        const memberId = memberData.id as string
+        // 並行：enrichMember (board_storage) + loadBookings (bookings 單一查詢) — 原先 4 RTT，現 1 RTT
+        const [enrichedMember] = await Promise.all([
+          enrichMemberForLiff(memberData),
+          loadBookings(memberId, true)
+        ])
+        setMember(enrichedMember)
         // 開啟頁面事件（已綁定）
         liffTrack({
           icon_id: 'liff_open',
           line_user_id: userId,
-          member_id: (memberData.id as string) ?? null,
+          member_id: memberId,
           extras: { display_name: lineDisplayName ?? undefined, member_name: (memberData.name as string) ?? undefined }
         })
-        await loadBookings(memberData.id as string)
+        setLoading(false)
       } else {
         setShowBindingForm(true)
         setLoading(false)
@@ -266,25 +272,11 @@ export function LiffMyBookings() {
     }
   }
 
-  const loadBookings = async (memberId: string) => {
+  const loadBookings = async (memberId: string, silent = false) => {
     try {
       const today = getLocalDateString()
 
-      // 查詢該會員的預約（透過 booking_members）
-      const { data: bookingMembers } = await supabase
-        .from('booking_members')
-        .select('booking_id')
-        .eq('member_id', memberId)
-
-      if (!bookingMembers || bookingMembers.length === 0) {
-        setBookings([])
-        setLoading(false)
-        return
-      }
-
-      const bookingIds = bookingMembers.map(bm => bm.booking_id)
-
-      // 查詢預約詳情
+      // 單一查詢取得預約 + 教練 + 駕駛（原先 3 RTT，現合併為 1 RTT）
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
@@ -293,37 +285,36 @@ export function LiffMyBookings() {
           duration_min,
           activity_types,
           notes,
-          boats:boat_id(name, color)
+          boats:boat_id(name, color),
+          booking_members!inner(member_id),
+          booking_coaches(coaches:coach_id(name)),
+          booking_drivers(coaches:coach_id(name))
         `)
-        .in('id', bookingIds)
+        .eq('booking_members.member_id', memberId)
         .gte('start_at', `${today}T00:00:00`)
         .order('start_at', { ascending: true })
 
       if (bookingsData && bookingsData.length > 0) {
-        // 並行查詢教練和駕駛資訊（優化：原本是順序執行，現在同時執行節省網路延遲）
-        const [{ data: coachData }, { data: driverData }] = await Promise.all([
-          supabase
-            .from('booking_coaches')
-            .select('booking_id, coaches:coach_id(name)')
-            .in('booking_id', bookingsData.map(b => b.id)),
-          supabase
-            .from('booking_drivers')
-            .select('booking_id, coaches:coach_id(name)')
-            .in('booking_id', bookingsData.map(b => b.id))
-        ])
+        type RawBooking = {
+          id: number
+          start_at: string
+          duration_min: number
+          activity_types: string[] | null
+          notes: string | null
+          boats: { name: string; color: string } | null
+          booking_coaches: { coaches: { name: string } | null }[]
+          booking_drivers: { coaches: { name: string } | null }[]
+        }
 
-        type StaffJoin = { booking_id: number; coaches: { name: string } | null }
-        const coachRows = (coachData ?? []) as unknown as StaffJoin[]
-        const driverRows = (driverData ?? []) as unknown as StaffJoin[]
-
-        const formattedBookings: Booking[] = bookingsData.map(booking => ({
-          ...booking,
-          coaches: coachRows.filter(c => c.booking_id === booking.id).map(c => c.coaches).filter(Boolean) as {
-            name: string
-          }[],
-          drivers: driverRows.filter(d => d.booking_id === booking.id).map(d => d.coaches).filter(Boolean) as {
-            name: string
-          }[]
+        const formattedBookings: Booking[] = (bookingsData as unknown as RawBooking[]).map(b => ({
+          id: b.id,
+          start_at: b.start_at,
+          duration_min: b.duration_min,
+          activity_types: b.activity_types,
+          notes: b.notes,
+          boats: b.boats,
+          coaches: b.booking_coaches.map(c => c.coaches).filter(Boolean) as { name: string }[],
+          drivers: b.booking_drivers.map(d => d.coaches).filter(Boolean) as { name: string }[]
         }))
 
         setBookings(formattedBookings)
@@ -331,11 +322,13 @@ export function LiffMyBookings() {
         setBookings([])
       }
 
-      setLoading(false)
+      if (!silent) setLoading(false)
     } catch (err: unknown) {
       console.error('載入預約失敗:', err)
-      setError('載入預約失敗')
-      setLoading(false)
+      if (!silent) {
+        setError('載入預約失敗')
+        setLoading(false)
+      }
     }
   }
 
@@ -361,8 +354,12 @@ export function LiffMyBookings() {
 
       if (binding && binding.members) {
         const memberData = binding.members as Record<string, unknown>
-        setMember(await enrichMemberForLiff(memberData))
-        await loadBookings(memberData.id as string)
+        const memberId = memberData.id as string
+        const [enrichedMember] = await Promise.all([
+          enrichMemberForLiff(memberData),
+          loadBookings(memberId, true)
+        ])
+        setMember(enrichedMember)
         toast.success('資料已更新')
       }
     } catch (err: unknown) {
