@@ -9,8 +9,6 @@ interface DayViewMobileHeaderProps {
     onPrevDate: () => void
     onNextDate: () => void
     onGoToToday: () => void
-    viewMode: 'list' | 'timeline'
-    onViewModeChange: (mode: 'list' | 'timeline') => void
 }
 
 export function DayViewMobileHeader({
@@ -19,8 +17,6 @@ export function DayViewMobileHeader({
     onPrevDate,
     onNextDate,
     onGoToToday,
-    viewMode,
-    onViewModeChange,
 }: DayViewMobileHeaderProps) {
     return (
         <div style={{ marginBottom: designSystem.spacing.lg }}>
@@ -36,6 +32,8 @@ export function DayViewMobileHeader({
                 boxShadow: designSystem.shadows.sm,
             }}>
                 <button
+                    type="button"
+                    data-track="day_prev"
                     onClick={onPrevDate}
                     style={{
                         background: 'transparent',
@@ -93,6 +91,8 @@ export function DayViewMobileHeader({
                 </div>
 
                 <button
+                    type="button"
+                    data-track="day_next"
                     onClick={onNextDate}
                     style={{
                         background: 'transparent',
@@ -113,6 +113,8 @@ export function DayViewMobileHeader({
                 </button>
 
                 <button
+                    type="button"
+                    data-track="day_today"
                     onClick={onGoToToday}
                     style={{
                         background: designSystem.colors.secondary[100],
@@ -131,66 +133,10 @@ export function DayViewMobileHeader({
                 </button>
             </div>
 
-            {/* 第二行：視圖切換與操作 */}
-            <div style={{ display: 'flex', gap: designSystem.spacing.sm }}>
-                {/* 視圖切換 Segmented Control */}
-                <div style={{
-                    display: 'flex',
-                    backgroundColor: '#e0e0e0',
-                    borderRadius: designSystem.borderRadius.lg,
-                    padding: '4px',
-                    flex: 1,
-                    height: '48px', // 增加高度以容納 44px 按鈕
-                    alignItems: 'center',
-                }}>
-                    <button
-                        onClick={() => onViewModeChange('list')}
-                        style={{
-                            flex: 1,
-                            height: '40px',
-                            border: 'none',
-                            borderRadius: designSystem.borderRadius.md,
-                            background: viewMode === 'list' ? 'white' : 'transparent',
-                            color: viewMode === 'list' ? designSystem.colors.primary[600] : designSystem.colors.text.secondary,
-                            fontWeight: viewMode === 'list' ? '600' : '500',
-                            fontSize: '14px',
-                            boxShadow: viewMode === 'list' ? designSystem.shadows.sm : 'none',
-                            transition: 'all 0.2s',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                        }}
-                    >
-                        <span>📋</span> 列表
-                    </button>
-                    <button
-                        onClick={() => onViewModeChange('timeline')}
-                        style={{
-                            flex: 1,
-                            height: '40px',
-                            border: 'none',
-                            borderRadius: designSystem.borderRadius.md,
-                            background: viewMode === 'timeline' ? 'white' : 'transparent',
-                            color: viewMode === 'timeline' ? designSystem.colors.primary[600] : designSystem.colors.text.secondary,
-                            fontWeight: viewMode === 'timeline' ? '600' : '500',
-                            fontSize: '14px',
-                            boxShadow: viewMode === 'timeline' ? designSystem.shadows.sm : 'none',
-                            transition: 'all 0.2s',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                        }}
-                    >
-                        <span>📅</span> 時間軸
-                    </button>
-                </div>
-
-                {/* 排班按鈕 */}
+            {/* 第二行：排班捷徑 */}
+            <div style={{ display: 'flex', gap: designSystem.spacing.sm, justifyContent: 'flex-end' }}>
                 <Link
+                    data-track="day_to_assignment"
                     to={`/coach-assignment?date=${date}`}
                     style={{
                         textDecoration: 'none',

@@ -24,3 +24,25 @@ export function trackClick(iconId: string, userEmail: string | undefined) {
     })()
   }, 0)
 }
+
+let lastDedupeKey = ''
+let lastDedupeAt = 0
+
+/**
+ * 同一 user、同一 icon_id 在 windowMs 內只寫入一次（仍呼叫 trackClick）。
+ * 用於 useEffect 進頁等，減輕 React 18 Strict Mode（dev）連續掛載造成的雙筆；
+ * 亦可用於短時間內可能重複觸發的同一事件（例如日期 onChange）。
+ */
+export function trackClickDedupedWithin(
+  iconId: string,
+  userEmail: string | undefined,
+  windowMs = 200
+) {
+  if (!userEmail || TRACK_EXCLUDE_EMAILS.includes(userEmail)) return
+  const key = `${userEmail}\0${iconId}`
+  const now = Date.now()
+  if (key === lastDedupeKey && now - lastDedupeAt < windowMs) return
+  lastDedupeKey = key
+  lastDedupeAt = now
+  trackClick(iconId, userEmail)
+}

@@ -10,21 +10,17 @@ import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getWeekdayText } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { getButtonStyle } from '../styles/designSystem'
-import { getDisplayContactName } from '../utils/bookingFormat'
-import { useToast, ToastContainer, BookingListSkeleton, TimelineSkeleton } from '../components/ui'
+import { useToast, ToastContainer, BookingListSkeleton } from '../components/ui'
 import { TodayOverview } from '../components/TodayOverview'
 import { DailyStaffDisplay } from '../components/DailyStaffDisplay'
 import { DayViewMobileHeader } from '../components/DayViewMobileHeader'
 import { VirtualizedBookingList } from '../components/VirtualizedBookingList'
 import { ErrorBoundary } from '../components/ErrorBoundary'
-import { inspectData, safeMapArray, tryCatch } from '../utils/debugHelpers'
 import { injectAnimationStyles } from '../utils/animations'
 import { isEditorAsync, hasViewAccess } from '../utils/auth'
 import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
-import { isFacility } from '../utils/facility'
 import {
   mapBoatUnavailableRowsToBlocks,
-  findUnavailableBlockForSlot,
   type BoatUnavailableBlock,
   type BoatUnavailableRow,
 } from '../utils/boatUnavailableDay'
@@ -34,6 +30,7 @@ import {
   type RestrictionViewRow,
 } from '../utils/restrictionDayBlocks'
 import { BoatUnavailableDaySummary } from '../components/BoatUnavailableDaySummary'
+import { trackClickDedupedWithin } from '../utils/trackClick'
 // import { checkGlobalRestriction } from '../utils/restriction'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
@@ -49,25 +46,6 @@ interface DayViewBooking extends BaseBooking {
 
 // Alias for internal use to match component state
 type Booking = DayViewBooking
-
-const generateTimeSlots = () => {
-  const slots: string[] = []
-
-  // 從 00:00 開始，每 15 分鐘一個時間槽，直到 23:45
-  for (let hour = 0; hour < 24; hour++) {
-    for (let minute = 0; minute < 60; minute += 15) {
-      const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-      slots.push(timeSlot)
-    }
-  }
-
-  return slots
-}
-
-const TIME_SLOTS = generateTimeSlots()
-
-const UNAVAILABLE_SLOT_BG =
-  'repeating-linear-gradient(-45deg, #ede7f6, #ede7f6 5px, #e1d5f7 5px, #e1d5f7 10px)'
 
 export function DayView() {
   const user = useAuthUser()
@@ -96,6 +74,12 @@ export function DayView() {
     injectAnimationStyles()
   }, [])
 
+  // 進入今日預約頁（單一 icon_id；短時間去重緩解 Strict Mode dev 雙次 effect）
+  useEffect(() => {
+    if (!user?.email) return
+    trackClickDedupedWithin('day_view_open', user.email)
+  }, [user?.email])
+
   const [boats, setBoats] = useState<Boat[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
@@ -111,8 +95,7 @@ export function DayView() {
 
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
-  const [viewMode, setViewMode] = useState<'timeline' | 'list'>('list')
-  
+
   // 小編權限（只有小編可以使用重複預約）
   const [isEditor, setIsEditor] = useState(false)
   
@@ -140,7 +123,12 @@ export function DayView() {
   }
 
   const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchParams({ date: e.target.value })
+    const next = e.target.value
+    if (next === dateParam) return
+    setSearchParams({ date: next })
+    if (user?.email) {
+      trackClickDedupedWithin(`day_date_pick:${next}`, user.email)
+    }
   }
 
   const fetchData = async () => {
@@ -459,12 +447,6 @@ export function DayView() {
     }
   }
 
-
-  const timeToMinutes = (timeStr: string): number => {
-    const [hour, minute] = timeStr.split(':').map(Number)
-    return hour * 60 + minute
-  }
-
   // 計算未排班數量（與排班頁面邏輯一致）
   const unassignedCount = useMemo(() => {
     return bookings.filter(booking => {
@@ -485,48 +467,6 @@ export function DayView() {
     }).length
   }, [bookings])
 
-  // 優化：預先計算預約和清理時間的 Map，實現 O(1) 查找
-  const { bookingMap, cleanupMap } = useMemo(() => {
-    const bMap = new Map<string, Booking>()
-    const cMap = new Map<string, boolean>()
-
-    bookings.forEach(booking => {
-      const bookingDatetime = booking.start_at.substring(0, 16)
-      const [bookingDate, bookingTime] = bookingDatetime.split('T')
-
-      if (bookingDate !== dateParam) return
-
-      const startMinutes = timeToMinutes(bookingTime)
-      const endMinutes = startMinutes + booking.duration_min
-
-      // 填入預約時段
-      for (let m = startMinutes; m < endMinutes; m += 15) {
-        const hour = Math.floor(m / 60)
-        const minute = m % 60
-        const timeSlot = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-        const key = `${booking.boat_id}-${timeSlot}`
-        // 如果同一個時段有多個預約（衝突），後面的會覆蓋前面的
-        // 但 UI 上只能顯示一個，這通常是可以接受的，或者應該顯示衝突警告
-        bMap.set(key, booking)
-      }
-
-      // 填入清理時段（設施不需清理時間）
-      const boat = boats.find(b => b.id === booking.boat_id)
-      if (boat && boat.name && !isFacility(boat.name)) {
-        const cleanupEndMinutes = endMinutes + 15
-        for (let m = endMinutes; m < cleanupEndMinutes; m += 15) {
-          const hour = Math.floor(m / 60)
-          const minute = m % 60
-          const timeSlot = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-          const key = `${booking.boat_id}-${timeSlot}`
-          cMap.set(key, true)
-        }
-      }
-    })
-
-    return { bookingMap: bMap, cleanupMap: cMap }
-  }, [bookings, dateParam, boats])
-
   const handleCellClick = (_boatId: number, _timeSlot: string, booking?: Booking) => {
     if (booking) {
       setSelectedBooking(booking)
@@ -542,75 +482,6 @@ export function DayView() {
       setDialogOpen(true)
     }
   }
-
-  const getBookingForCell = (boatId: number, timeSlot: string): Booking | null => {
-    return bookingMap.get(`${boatId}-${timeSlot}`) || null
-  }
-
-  const isBookingStart = (boatId: number, timeSlot: string): boolean => {
-    const booking = bookingMap.get(`${boatId}-${timeSlot}`)
-    if (!booking) return false
-
-    const bookingTime = booking.start_at.substring(11, 16)
-    return bookingTime === timeSlot
-  }
-
-  /**
-   * 檢查是否為清理時間（接船時間）
-   * 
-   * 特殊規則：
-   * - 彈簧床：場地可接續使用，不需清理時間
-   * - 陸上課程：可重疊預約，不需清理時間
-   * - 船隻：需要 15 分鐘接船時間
-   * 
-   * @param boatId 船隻ID
-   * @param timeSlot 時間槽 "HH:MM"
-   * @returns 是否為清理時間
-   */
-  const isCleanupTime = (boatId: number, timeSlot: string): boolean => {
-    return cleanupMap.get(`${boatId}-${timeSlot}`) || false
-  }
-
-  const filteredTimeSlots = useMemo(() => {
-    // 預設時間範圍：5:00 - 19:00
-    let minHour = 5
-    let maxHour = 19
-
-    // 檢查預約時間，動態調整範圍
-    if (bookings && bookings.length > 0) {
-      bookings.forEach(booking => {
-        const bookingDatetime = booking.start_at.substring(0, 16)
-        const [bookingDate, bookingTime] = bookingDatetime.split('T')
-
-        // 只檢查當天的預約
-        if (bookingDate === dateParam) {
-          const [startHour] = bookingTime.split(':').map(Number)
-
-          // 計算結束時間（包含清理時間）
-          const boat = boats.find(b => b.id === booking.boat_id)
-          const cleanupTime = (boat && isFacility(boat.name)) ? 0 : 15
-          const startMinutes = timeToMinutes(bookingTime)
-          const endMinutes = startMinutes + booking.duration_min + cleanupTime
-          const endHour = Math.ceil(endMinutes / 60)
-
-          // 更新範圍
-          if (startHour < minHour) minHour = startHour
-          if (endHour > maxHour) maxHour = endHour
-        }
-      })
-    }
-
-    return TIME_SLOTS.filter(slot => {
-      const [hour] = slot.split(':').map(Number)
-      return hour >= minHour && hour < maxHour + 1
-    })
-  }, [bookings, dateParam, boats])
-
-  const displayBoats = useMemo(() => {
-    // 過濾掉可能的 null/undefined，確保渲染安全
-    return boats.filter(boat => boat && boat.id && boat.name)
-  }, [boats])
-
 
   if (loading) {
     return (
@@ -636,11 +507,7 @@ export function DayView() {
 
         {/* 內容區骨架屏 */}
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: isMobile ? '16px' : '20px' }}>
-          {viewMode === 'timeline' ? (
-            <TimelineSkeleton isMobile={isMobile} />
-          ) : (
-            <BookingListSkeleton count={8} isMobile={isMobile} />
-          )}
+          <BookingListSkeleton count={8} isMobile={isMobile} />
         </div>
       </div>
     )
@@ -651,17 +518,17 @@ export function DayView() {
       <div 
         style={{
           padding: isMobile ? '12px' : '20px',
-          height: isMobile ? 'auto' : (viewMode === 'timeline' ? '100vh' : 'auto'),
+          height: 'auto',
           minHeight: isMobile ? '100vh' : 'auto',
           backgroundColor: '#f8f9fa',
           position: 'relative',
-          overflow: viewMode === 'timeline' ? 'hidden' : 'visible',
+          overflow: 'visible',
           display: isMobile ? 'block' : 'flex',
           flexDirection: isMobile ? undefined : 'column',
         }}
       >
         <PageHeader 
-          title={viewMode === 'list' ? '📅 預約列表' : '📅 預約時間軸'} 
+          title="📅 預約列表" 
           user={user} 
         />
 
@@ -674,8 +541,6 @@ export function DayView() {
             onPrevDate={() => changeDate(-1)}
             onNextDate={() => changeDate(1)}
             onGoToToday={goToToday}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
           />
         ) : (
           /* 桌面版：單行佈局 */
@@ -759,52 +624,6 @@ export function DayView() {
                 排班
               </Link>
             )}
-
-            <div style={{
-              marginLeft: 'auto',
-              display: 'flex',
-              background: '#f0f0f0',
-              borderRadius: '8px',
-              padding: '4px',
-              flex: '0 0 auto'
-            }}>
-              <button
-                data-track="day_view_list"
-                onClick={() => setViewMode('list')}
-                style={{
-                  padding: '8px 16px',
-                  background: viewMode === 'list' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: viewMode === 'list' ? '600' : '400',
-                  fontSize: '14px',
-                  color: viewMode === 'list' ? '#5a5a5a' : '#666',
-                  transition: 'all 0.2s',
-                  boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                📋 列表
-              </button>
-              <button
-                data-track="day_view_timeline"
-                onClick={() => setViewMode('timeline')}
-                style={{
-                  padding: '8px 16px',
-                  background: viewMode === 'timeline' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: viewMode === 'timeline' ? '600' : '400',
-                  fontSize: '14px',
-                  color: viewMode === 'timeline' ? '#5a5a5a' : '#666',
-                  transition: 'all 0.2s',
-                  boxShadow: viewMode === 'timeline' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                📅 時間軸
-              </button>
-            </div>
           </div>
         )}
 
@@ -817,7 +636,7 @@ export function DayView() {
         {!isMobile && !loading && (
           <DailyStaffDisplay date={dateParam} isMobile={isMobile} unassignedCount={unassignedCount} />
         )}
-        {!isMobile && !loading && viewMode === 'list' && (
+        {!isMobile && !loading && (
           <BoatUnavailableDaySummary
             blocks={boatUnavailableBlocks}
             boats={boats}
@@ -826,8 +645,7 @@ export function DayView() {
           />
         )}
 
-        {viewMode === 'list' && (
-          <>
+        <>
             {isMobile && !loading && (
               <>
                 <DailyStaffDisplay date={dateParam} isMobile={isMobile} unassignedCount={unassignedCount} />
@@ -927,6 +745,8 @@ export function DayView() {
               onBookingClick={handleCellClick}
               conflictedBookingIds={conflictedIds}
 							conflictReasons={conflictReasons}
+              boatUnavailableBlocks={boatUnavailableBlocks}
+              restrictionDayBlocks={restrictionDayBlocks}
             />
 
             {/* 預約規則說明 */}
@@ -959,499 +779,10 @@ export function DayView() {
                 <div>• 需先指定教練才能勾選需要駕駛，彈簧床、陸上課程不需要駕駛</div>
               </div>
             </div>
-          </>
-        )}
-
-        {/* 時間軸視圖 */}
-        {
-          viewMode === 'timeline' && (
-            <div style={{
-              overflowX: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              margin: isMobile ? '0 -10px' : '0',
-              padding: isMobile ? '0 10px' : '0',
-            }}>
-              <BoatUnavailableDaySummary
-                blocks={boatUnavailableBlocks}
-                boats={boats}
-                isMobile={isMobile}
-                restrictionBlocks={restrictionDayBlocks}
-              />
-              <div style={{
-                overflow: 'auto',
-                maxHeight: 'calc(100vh - 250px)',
-                borderRadius: '8px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              }}>
-                <table style={{
-                  width: isMobile ? 'auto' : '100%',
-                  borderCollapse: 'separate',
-                  borderSpacing: 0,
-                  backgroundColor: 'white',
-                }}>
-                  <thead>
-                    <tr>
-                      <th style={{
-                        position: 'sticky',
-                        left: 0,
-                        top: 0,
-                        zIndex: 13,
-                        backgroundColor: '#5a5a5a',
-                        color: 'white',
-                        padding: isMobile ? '8px 4px' : '12px',
-                        textAlign: 'center',
-                        borderBottom: '2px solid #dee2e6',
-                        fontSize: isMobile ? '11px' : '14px',
-                        fontWeight: '600',
-                        width: isMobile ? '50px' : '80px',
-                      }}>
-                        時間
-                      </th>
-                      {displayBoats.map(boat => {
-                        if (!boat || !boat.id) {
-                          console.error('[DayView Timeline] Null boat in displayBoats:', boat)
-                          return null
-                        }
-                        return (
-                          <th
-                            key={boat.id}
-                            style={{
-                              position: 'sticky',
-                              top: 0,
-                              zIndex: 11,
-                              padding: isMobile ? '8px 4px' : '12px',
-                              textAlign: 'center',
-                              borderBottom: '2px solid #dee2e6',
-                              backgroundColor: '#5a5a5a',
-                              color: 'white',
-                              fontSize: isMobile ? '11px' : '14px',
-                              fontWeight: '600',
-                              width: isMobile ? '80px' : '120px',
-                            }}
-                          >
-                            <div style={{ fontSize: isMobile ? '11px' : '13px' }}>
-                              {boat.name}
-                            </div>
-                            <div style={{
-                              fontSize: isMobile ? '9px' : '11px',
-                              fontWeight: '400',
-                              marginTop: '2px',
-                              opacity: 0.8,
-                            }}>
-                              {bookings.filter(b => b.boat_id === boat.id).length}筆
-                            </div>
-                          </th>
-                        )
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* 08:00 分隔線 */}
-                    {filteredTimeSlots.map((timeSlot) => {
-                      const showPracticeLine = timeSlot === '08:00'
-                      const [hour] = timeSlot.split(':').map(Number)
-                      const isBefore8AM = hour < 8
-
-                      return (
-                        <tr key={timeSlot}>
-                          <td style={{
-                            position: 'sticky',
-                            left: 0,
-                            zIndex: 10,
-                            backgroundColor: 'white',
-                            padding: isMobile ? '4px 2px' : '6px 8px',
-                            borderTop: showPracticeLine ? '3px solid #ffc107' : 'none',
-                            borderBottom: '1px solid #e9ecef',
-                            fontSize: isMobile ? '10px' : '13px',
-                            fontWeight: '500',
-                            textAlign: 'center',
-                            color: showPracticeLine ? '#856404' : (isBefore8AM ? '#856404' : '#666'),
-                            lineHeight: isMobile ? '1.2' : '1.5',
-                          }}>
-                            {isBefore8AM && '⚠️'}{timeSlot}
-                            {showPracticeLine && (
-                              <div style={{
-                                fontSize: isMobile ? '8px' : '10px',
-                                color: '#856404',
-                                marginTop: '2px',
-                                fontWeight: '600',
-                              }}>
-                                需指定
-                              </div>
-                            )}
-                          </td>
-                          {displayBoats.map(boat => {
-                            if (!boat || !boat.id) {
-                              console.error('[DayView Timeline Cell] Null boat:', boat)
-                              return <td key={`null-${timeSlot}`}>Error</td>
-                            }
-
-                            const booking = getBookingForCell(boat.id, timeSlot)
-                            const isStart = isBookingStart(boat.id, timeSlot)
-                            const isCleanup = isCleanupTime(boat.id, timeSlot)
-                            const slotMin = timeToMinutes(timeSlot)
-                            const unavailBlock = findUnavailableBlockForSlot(
-                              boatUnavailableBlocks,
-                              boat.id,
-                              slotMin,
-                              slotMin + 15
-                            )
-                            const unavailTitle = unavailBlock
-                              ? `船隻維修／停用${unavailBlock.reason ? `：${unavailBlock.reason}` : ''}`
-                              : undefined
-
-                            if (booking && isStart) {
-                              const isConflict = conflictedIds.has(booking.id)
-                              const reason = conflictReasons.get(booking.id)
-                              const slots = Math.ceil(booking.duration_min / 15)
-
-                              return (
-                                <td
-                                  key={boat.id}
-                                  rowSpan={slots}
-                                  onClick={() => handleCellClick(boat.id, timeSlot, booking)}
-                                  style={{
-                                    padding: isMobile ? '10px 8px' : '14px 12px',
-                                    borderBottom: '1px solid #e9ecef',
-                                    borderRight: '1px solid #e9ecef',
-                                    background: `linear-gradient(135deg, ${boat.color}08 0%, ${boat.color}15 100%)`,
-                                    border: isConflict ? '2px solid #e53935' : `2px solid ${boat.color || '#ccc'}`,
-                                    cursor: 'pointer',
-                                    verticalAlign: 'top',
-                                    position: 'relative',
-                                    borderRadius: isMobile ? '8px' : '10px',
-                                    boxShadow: isConflict ? '0 0 0 1px rgba(229,57,53,0.15) inset, 0 3px 10px rgba(0,0,0,0.1)' : '0 3px 10px rgba(0,0,0,0.1)',
-                                    transition: 'all 0.2s',
-                                  }}
-                                  title={!isMobile && isConflict ? reason : undefined}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-3px)'
-                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.15)'
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)'
-                                    e.currentTarget.style.boxShadow = '0 3px 10px rgba(0,0,0,0.1)'
-                                  }}
-                                >
-                                  {/* 第一行：時間範圍 */}
-                                  <div style={{
-                                    fontSize: isMobile ? '12px' : '14px',
-                                    fontWeight: '600',
-                                    color: isConflict ? '#e53935' : '#2c3e50',
-                                    marginBottom: '4px',
-                                    textAlign: 'center',
-                                    lineHeight: '1.3',
-                                  }}>
-                                    {(() => {
-                                      const start = new Date(booking.start_at)
-                                      const actualEndTime = new Date(start.getTime() + booking.duration_min * 60000)
-                                      const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
-                                      const endTime = `${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
-
-                                      return `${startTime} - ${endTime}`
-                                    })()}
-                                  </div>
-
-                                  {/* 衝突原因（行內顯示） */}
-                                  {isConflict && reason && (
-                                    <div style={{
-                                      fontSize: '12px',
-                                      color: '#e53935',
-                                      fontWeight: 600,
-                                      lineHeight: 1.3,
-                                      marginBottom: '6px',
-                                      textAlign: 'center',
-                                    }}>
-                                      {reason}
-                                    </div>
-                                  )}
-
-                                  {/* 第二行：時長說明 */}
-                                  <div style={{
-                                    fontSize: isMobile ? '11px' : '12px',
-                                    color: '#666',
-                                    marginBottom: '8px',
-                                    textAlign: 'center',
-                                  }}>
-                                    {(() => {
-                                      const isFacilityBooking = isFacility(booking.boats?.name)
-                                      if (isFacilityBooking) {
-                                        return `(${booking.duration_min}分)`
-                                      } else {
-                                        const start = new Date(booking.start_at)
-                                        const pickupTime = new Date(start.getTime() + (booking.duration_min + 15) * 60000)
-                                        const pickupTimeStr = `${String(pickupTime.getHours()).padStart(2, '0')}:${String(pickupTime.getMinutes()).padStart(2, '0')}`
-                                        return `(${booking.duration_min}分，接船至 ${pickupTimeStr})`
-                                      }
-                                    })()}
-                                  </div>
-
-                                  {/* 教練練習標識 */}
-                                  {booking.is_coach_practice && (
-                                    <div style={{
-                                      fontSize: isMobile ? '11px' : '12px',
-                                      fontWeight: '600',
-                                      padding: '4px 8px',
-                                      background: '#fff3e0',
-                                      border: '1px solid #ff9800',
-                                      borderRadius: '4px',
-                                      color: '#e65100',
-                                      marginBottom: '6px',
-                                      textAlign: 'center',
-                                    }}>
-                                      🏄 教練練習
-                                    </div>
-                                  )}
-
-                                  {/* 第三行：預約人 */}
-                                  <div style={{
-                                    fontSize: isMobile ? '14px' : '16px',
-                                    fontWeight: '700',
-                                    marginBottom: '6px',
-                                    textAlign: 'center',
-                                    color: '#1a1a1a',
-                                  }}>
-                                    <span style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '6px',
-                                      maxWidth: '100%',
-                                    }}>
-                                      {isConflict && <span aria-hidden="true" style={{ lineHeight: 1 }}>💣</span>}
-                                      <span style={{
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                        maxWidth: '100%',
-                                        display: 'inline-block',
-                                        verticalAlign: 'bottom'
-                                      }}>{getDisplayContactName(booking)}</span>
-                                    </span>
-                                  </div>
-
-                                  {/* 第四行：備註 */}
-                                  {booking.notes && (
-                                    <div style={{
-                                      fontSize: isMobile ? '11px' : '12px',
-                                      color: '#666',
-                                      marginBottom: '6px',
-                                      textAlign: 'center',
-                                      fontStyle: 'italic',
-                                    }}>
-                                      {booking.notes}
-                                    </div>
-                                  )}
-
-                                  {/* 第五行：排班備註 */}
-                                  {booking.schedule_notes && (
-                                    <div style={{
-                                      fontSize: isMobile ? '11px' : '12px',
-                                      color: '#e65100',
-                                      marginBottom: '6px',
-                                      textAlign: 'center',
-                                      fontWeight: '500',
-                                    }}>
-                                      📝 {booking.schedule_notes}
-                                    </div>
-                                  )}
-
-                                  {/* 第六行：教練 */}
-                                  {booking.coaches && booking.coaches.length > 0 && (
-                                    <div style={{
-                                      fontSize: isMobile ? '12px' : '13px',
-                                      color: '#555',
-                                      marginBottom: '2px',
-                                      textAlign: 'center',
-                                      fontWeight: '500',
-                                    }}>
-                                      🎓 {tryCatch(
-                                        () => {
-                                          inspectData(booking.coaches, `Booking ${booking.id} coaches`)
-                                          return safeMapArray(
-                                            booking.coaches,
-                                            (c, idx) => {
-                                              if (!c) {
-                                                console.warn(`Coach at index ${idx} is null for booking ${booking.id}`)
-                                                return ''
-                                              }
-                                              if (!c.name) {
-                                                console.warn(`Coach at index ${idx} has no name for booking ${booking.id}:`, c)
-                                                return ''
-                                              }
-                                              return c.name
-                                            },
-                                            `Booking ${booking.id} coaches map`
-                                          ).filter(Boolean).join('/')
-                                        },
-                                        `Coaches render for booking ${booking.id}`,
-                                        '教練資料異常'
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* 第七行：駕駛資訊 */}
-                                  {booking.drivers && booking.drivers.length > 0 && (
-                                    <div style={{
-                                      fontSize: isMobile ? '12px' : '13px',
-                                      color: '#555',
-                                      textAlign: 'center',
-                                      fontWeight: '500',
-                                    }}>
-                                      🚤 {tryCatch(
-                                        () => {
-                                          inspectData(booking.drivers, `Booking ${booking.id} drivers`)
-                                          return safeMapArray(
-                                            booking.drivers,
-                                            (d, idx) => {
-                                              if (!d) {
-                                                console.warn(`Driver at index ${idx} is null for booking ${booking.id}`)
-                                                return ''
-                                              }
-                                              if (!d.name) {
-                                                console.warn(`Driver at index ${idx} has no name for booking ${booking.id}:`, d)
-                                                return ''
-                                              }
-                                              return d.name
-                                            },
-                                            `Booking ${booking.id} drivers map`
-                                          ).filter(Boolean).join('/')
-                                        },
-                                        `Drivers render for booking ${booking.id}`,
-                                        '駕駛資料異常'
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* 需要駕駛但未指定 */}
-                                  {booking.requires_driver && (!booking.drivers || booking.drivers.length === 0) && (
-                                    <div style={{
-                                      fontSize: isMobile ? '12px' : '13px',
-                                      color: '#f59e0b',
-                                      textAlign: 'center',
-                                      fontWeight: '500',
-                                    }}>
-                                      🚤 需要駕駛
-                                    </div>
-                                  )}
-                                </td>
-                              )
-                            } else if (booking) {
-                              return null
-                            } else if (isCleanup) {
-                              return (
-                                <td
-                                  key={boat.id}
-                                  title={unavailTitle}
-                                  style={{
-                                    padding: isMobile ? '4px 4px' : '6px 8px',
-                                    borderTop: showPracticeLine ? '3px solid #ffc107' : 'none',
-                                    borderBottom: '1px solid #e9ecef',
-                                    borderRight: '1px solid #e9ecef',
-                                    background: unavailBlock ? UNAVAILABLE_SLOT_BG : 'transparent',
-                                    textAlign: 'center',
-                                    fontSize: isMobile ? '16px' : '18px',
-                                    cursor: 'not-allowed',
-                                  }}
-                                >
-                                  🚤
-                                </td>
-                              )
-                            } else {
-                              return (
-                                <td
-                                  key={boat.id}
-                                  onClick={() => {
-                                    if (unavailBlock) return
-                                    handleCellClick(boat.id, timeSlot)
-                                  }}
-                                  title={unavailTitle}
-                                  style={{
-                                    padding: isMobile ? '4px 4px' : '6px 8px',
-                                    borderTop: showPracticeLine ? '3px solid #ffc107' : 'none',
-                                    borderBottom: '1px solid #e9ecef',
-                                    borderRight: '1px solid #e9ecef',
-                                    cursor: unavailBlock ? 'not-allowed' : 'pointer',
-                                    textAlign: 'center',
-                                    transition: 'background 0.2s',
-                                    minHeight: isMobile ? '30px' : '35px',
-                                    background: unavailBlock ? UNAVAILABLE_SLOT_BG : 'white',
-                                  }}
-                                  onMouseEnter={
-                                    unavailBlock
-                                      ? undefined
-                                      : (e) => {
-                                          e.currentTarget.style.backgroundColor = '#f8f9fa'
-                                        }
-                                  }
-                                  onMouseLeave={
-                                    unavailBlock
-                                      ? undefined
-                                      : (e) => {
-                                          e.currentTarget.style.backgroundColor = 'white'
-                                        }
-                                  }
-                                >
-                                  {!isMobile && unavailBlock && (
-                                    <span
-                                      style={{
-                                        fontSize: '10px',
-                                        fontWeight: 600,
-                                        color: '#5e35b1',
-                                        display: 'block',
-                                        lineHeight: 1.2,
-                                      }}
-                                    >
-                                      維修
-                                    </span>
-                                  )}
-                                </td>
-                              )
-                            }
-                          })}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-
-                {/* 預約規則說明 */}
-                <div style={{
-                  padding: isMobile ? '16px' : '20px',
-                  backgroundColor: '#f8f9fa',
-                  borderTop: '1px solid #e9ecef',
-                  textAlign: 'center',
-                }}>
-                  <div style={{
-                    fontWeight: '600',
-                    marginBottom: '12px',
-                    color: '#495057',
-                    fontSize: isMobile ? '13px' : '14px'
-                  }}>
-                    📋 預約規則
-                  </div>
-                  <div style={{
-                    display: 'inline-block',
-                    textAlign: 'left',
-                    fontSize: isMobile ? '12px' : '13px',
-                    color: '#6c757d',
-                    lineHeight: '1.8',
-                  }}>
-                    <div>• 船跟船間隔至少 15 分鐘；彈簧床場地可接續使用；陸上課程可重疊預約（同一時段可多筆）</div>
-                    <div>• 教練一律在課程結束後預留 15 分鐘緩衝</div>
-                    <div>• 彈簧床、陸上課程一律必須指定教練；其他船隻 08:00 前必須指定</div>
-                    <div>• 需先指定教練才能勾選需要駕駛，彈簧床、陸上課程不需要駕駛</div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          )
-        }
+        </>
 
         {/* FAB 浮動新增按鈕 */}
-        {
-          viewMode === 'list' && (
-            <button
+        <button
               data-track="day_new_booking_fab"
               onClick={() => {
                 setSelectedBoatId(0)
@@ -1497,8 +828,6 @@ export function DayView() {
             >
               +
             </button>
-          )
-        }
 
         <NewBookingDialog
           isOpen={dialogOpen}

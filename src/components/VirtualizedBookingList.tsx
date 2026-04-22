@@ -2,6 +2,9 @@ import React, { useState, useCallback } from 'react'
 import type { Booking, Boat } from '../types/booking'
 import { getDisplayContactName, formatBookingForCopy } from '../utils/bookingFormat'
 import { validateBoats, validateBookings } from '../utils/safetyHelpers'
+import type { BoatUnavailableBlock } from '../utils/boatUnavailableDay'
+import type { RestrictionDayBlock } from '../utils/restrictionDayBlocks'
+import { getBoatSidebarDayAlert } from '../utils/dayViewBoatSidebarAlert'
 
 interface VirtualizedBookingListProps {
     boats: Boat[]
@@ -10,9 +13,20 @@ interface VirtualizedBookingListProps {
     onBookingClick: (boatId: number, timeSlot: string, booking: Booking) => void
     conflictedBookingIds?: Set<number>
 	conflictReasons?: Map<number, string>
+    boatUnavailableBlocks?: BoatUnavailableBlock[]
+    restrictionDayBlocks?: RestrictionDayBlock[]
 }
 
-export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingClick, conflictedBookingIds, conflictReasons }: VirtualizedBookingListProps) {
+export function VirtualizedBookingList({
+    boats,
+    bookings,
+    isMobile,
+    onBookingClick,
+    conflictedBookingIds,
+    conflictReasons,
+    boatUnavailableBlocks = [],
+    restrictionDayBlocks = [],
+}: VirtualizedBookingListProps) {
     // 複製成功的預約 ID
     const [copiedBookingId, setCopiedBookingId] = useState<number | null>(null)
 
@@ -79,6 +93,11 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
         }}>
             {validBoats.map((boat) => {
                 const boatBookings = boatBookingsMap.get(boat.id) || []
+                const sidebarAlert = getBoatSidebarDayAlert(
+                    boat.id,
+                    boatUnavailableBlocks,
+                    restrictionDayBlocks
+                )
 
                 return (
                     <div
@@ -104,15 +123,39 @@ export function VirtualizedBookingList({ boats, bookings, isMobile, onBookingCli
                             position: 'sticky',
                             left: 0,
                             zIndex: 2,
-                        }}>
+                        }}
+                            title={sidebarAlert.show ? sidebarAlert.title : undefined}
+                        >
                             <div style={{
                                 fontSize: isMobile ? '14px' : '16px',
                                 fontWeight: '700',
                                 marginBottom: '4px',
                                 textAlign: 'center',
                                 wordBreak: 'keep-all',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: isMobile ? '3px' : '5px',
+                                maxWidth: '100%',
                             }}>
-                                {boat.name}
+                                <span
+                                    style={{
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        minWidth: 0,
+                                    }}
+                                >
+                                    {boat.name}
+                                </span>
+                                {sidebarAlert.show && (
+                                    <span
+                                        aria-hidden
+                                        style={{ flexShrink: 0, lineHeight: 1, fontSize: isMobile ? '13px' : '15px' }}
+                                    >
+                                        💣
+                                    </span>
+                                )}
                             </div>
                             <div style={{
                                 fontSize: isMobile ? '11px' : '12px',

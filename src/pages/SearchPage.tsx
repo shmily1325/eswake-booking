@@ -4,7 +4,7 @@ import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
 import { SearchBookings } from './SearchBookings'
 import { hasViewAccess } from '../utils/auth'
-import { trackClick } from '../utils/trackClick'
+import { trackClickDedupedWithin } from '../utils/trackClick'
 
 export function SearchPage() {
   const user = useAuthUser()
@@ -25,7 +25,7 @@ export function SearchPage() {
 
   useEffect(() => {
     if (!user?.email) return
-    trackClick('search_page_open', user.email)
+    trackClickDedupedWithin('search_page_open', user.email)
   }, [user?.email])
   
   return (
