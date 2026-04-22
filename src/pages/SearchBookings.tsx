@@ -838,6 +838,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                    onTouchStart={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                    onTouchEnd={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                    onTouchCancel={(e) => e.currentTarget.style.backgroundColor = 'white'}
                   >
                     <div style={{ fontWeight: '500', color: '#333' }}>
                       {member.nickname || member.name}
@@ -2005,6 +2008,20 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         e.currentTarget.style.transform = 'translateY(0)'
                         e.currentTarget.style.boxShadow = isSelected ? '0 2px 8px rgba(90,90,90,0.25)' : '0 2px 4px rgba(0,0,0,0.1)'
                       }
+                    }}
+                    onTouchStart={(e) => {
+                      if (!isLoadingThis && !selectionMode) {
+                        e.currentTarget.style.transform = 'scale(0.99)'
+                        e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.1)'
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = isSelected ? '0 2px 8px rgba(90,90,90,0.25)' : '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                    onTouchCancel={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = isSelected ? '0 2px 8px rgba(90,90,90,0.25)' : '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                   >
                     <div style={{

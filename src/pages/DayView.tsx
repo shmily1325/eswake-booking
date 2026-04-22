@@ -690,6 +690,9 @@ export function DayView() {
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  onTouchStart={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                  onTouchEnd={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  onTouchCancel={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   + 新增預約
                 </button>
@@ -723,6 +726,9 @@ export function DayView() {
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fff3cd'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    onTouchStart={(e) => e.currentTarget.style.backgroundColor = '#ffe082'}
+                    onTouchEnd={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    onTouchCancel={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     🔁 重複預約
                   </button>

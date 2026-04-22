@@ -325,6 +325,18 @@ export function HomePage() {
                     e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
                     e.currentTarget.style.borderColor = '#e0e0e0'
                   }}
+                  onTouchStart={(e) => {
+                    e.currentTarget.style.transform = 'scale(0.97)'
+                    e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.1)'
+                  }}
+                  onTouchEnd={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
+                  }}
+                  onTouchCancel={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
+                  }}
                 >
                   <div style={{
                     fontSize: '42px',
@@ -488,6 +500,18 @@ export function HomePage() {
                           e.currentTarget.style.transform = 'translateY(0)'
                           e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
                           e.currentTarget.style.borderColor = '#e0e0e0'
+                        }}
+                        onTouchStart={(e) => {
+                          e.currentTarget.style.transform = 'scale(0.97)'
+                          e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.1)'
+                        }}
+                        onTouchEnd={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)'
+                          e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
+                        }}
+                        onTouchCancel={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)'
+                          e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
                         }}
                       >
                         {inner}
