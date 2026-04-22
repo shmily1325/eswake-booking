@@ -6,7 +6,6 @@ import { Footer } from '../../components/Footer'
 import { TransactionDialog } from '../../components/TransactionDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import type { Member } from '../../types/booking'
-import { handleError } from '../../utils/errorHandler'
 import { useToast } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
 
@@ -27,10 +26,12 @@ export function MemberTransaction() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [showTransactionDialog, setShowTransactionDialog] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  /* 匯出（金流 CSV／總帳）暫停未使用，若要恢復請連同下方 handlers／按鈕／對話框一併取消註解，並補回：import { handleError } from '../../utils/errorHandler'
   const [showExportDialog, setShowExportDialog] = useState(false)
   const [exportStartDate, setExportStartDate] = useState('')
   const [exportEndDate, setExportEndDate] = useState('')
   const [exporting, setExporting] = useState(false)
+  */
   const [showFinanceImport, setShowFinanceImport] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
@@ -39,6 +40,10 @@ export function MemberTransaction() {
   
   // 新增的 state
   const [showHelp, setShowHelp] = useState(false) // 使用說明預設收合
+  /** 手機：篩選下拉預設收合，避免佔滿螢幕又與 sticky 疊加難以瀏覽列表 */
+  const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false)
+  /** 手機：總覽數字與說明預設收合 */
+  const [mobileOverviewExpanded, setMobileOverviewExpanded] = useState(false)
   const [sortBy, setSortBy] = useState<'nickname' | 'balance' | 'vip' | 'g23' | 'g21' | 'lastTransaction' | 'updatedAt'>('updatedAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
@@ -228,7 +233,7 @@ export function MemberTransaction() {
     loadMembers()
   }
 
-  // 匯出會員財務信息
+  /* 匯出會員財務信息（與匯出 state 一併暫停）
   const handleExportFinance = async () => {
     try {
       const { data: allMembers, error } = await supabase
@@ -290,6 +295,7 @@ export function MemberTransaction() {
       toast.error('導出失敗: ' + err.message)
     }
   }
+  */
 
   // 匯入會員財務信息
   const handleImportFinance = async () => {
@@ -405,7 +411,7 @@ export function MemberTransaction() {
     }
   }
 
-  // 匯出總帳
+  /* 匯出總帳（與匯出 state 一併暫停）
   const handleExportAll = async () => {
     if (!exportStartDate || !exportEndDate) {
       toast.warning('請選擇開始和結束日期')
@@ -506,6 +512,7 @@ export function MemberTransaction() {
       setExporting(false)
     }
   }
+  */
 
   return (
     <div style={{
@@ -514,11 +521,11 @@ export function MemberTransaction() {
       background: '#f5f5f5',
       paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
     }}>
-      {/* PageHeader + 控制區一起 sticky */}
+      {/* 桌面：整段 sticky；手機：整段隨捲動，僅搜尋列單獨 sticky（見下方搜尋欄） */}
       <div style={{
-        position: 'sticky',
+        position: isMobile ? 'static' : 'sticky',
         top: 0,
-        zIndex: 100,
+        zIndex: isMobile ? undefined : 100,
         background: '#f5f5f5',
         marginLeft: isMobile ? '-12px' : '-20px',
         marginRight: isMobile ? '-12px' : '-20px',
@@ -538,6 +545,32 @@ export function MemberTransaction() {
               : undefined
           }
         />
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setMobileOverviewExpanded((v) => !v)}
+            style={{
+              width: '100%',
+              marginBottom: '10px',
+              padding: '10px 12px',
+              border: '1px solid #dee2e6',
+              borderRadius: '8px',
+              fontSize: '14px',
+              background: mobileOverviewExpanded ? '#e8f5e9' : 'white',
+              color: '#333',
+              cursor: 'pointer',
+              textAlign: 'left',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}
+          >
+            {mobileOverviewExpanded
+              ? '▲ 收合總覽與操作'
+              : '▼ 總覽與操作（數字、說明）'}
+          </button>
+        )}
+
+        {(!isMobile || mobileOverviewExpanded) && (
+        <>
         {/* 數據總覽 */}
         <div style={{
           background: 'white',
@@ -549,30 +582,30 @@ export function MemberTransaction() {
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-            gap: isMobile ? '12px' : '16px',
-            textAlign: 'center'
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
+            gap: isMobile ? '14px' : '16px',
+            textAlign: isMobile ? 'left' : 'center'
           }}>
-            <div>
-              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💰 總儲值</div>
+            <div style={isMobile ? { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid #eee' } : undefined}>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>💰 總儲值</div>
               <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
                 ${stats.totalBalance.toLocaleString()}
               </div>
             </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>💎 總VIP票券</div>
+            <div style={isMobile ? { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid #eee' } : undefined}>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>💎 總VIP票券</div>
               <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
                 ${stats.totalVipVoucher.toLocaleString()}
               </div>
             </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>🚤 總G23船券</div>
+            <div style={isMobile ? { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid #eee' } : undefined}>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>🚤 總G23船券</div>
               <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
                 {stats.totalG23.toLocaleString()}分
               </div>
             </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>⛵ 總G21/黑豹</div>
+            <div style={isMobile ? { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' } : undefined}>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>⛵ 總G21/黑豹</div>
               <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: '#333' }}>
                 {stats.totalG21.toLocaleString()}分
               </div>
@@ -582,8 +615,9 @@ export function MemberTransaction() {
 
         {/* 操作按鈕區（簡化版） */}
         <div style={{
-          display: 'flex',
-          gap: '12px',
+          display: isMobile ? 'grid' : 'flex',
+          gridTemplateColumns: isMobile ? '1fr 1fr' : undefined,
+          gap: isMobile ? '8px' : '12px',
           marginBottom: '16px',
           alignItems: 'center',
           position: 'relative',
@@ -603,12 +637,14 @@ export function MemberTransaction() {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              justifyContent: 'center',
+              width: isMobile ? '100%' : undefined,
             }}
           >
             💡 說明 {showHelp ? '▲' : '▼'}
           </button>
 
-          {/* 匯出按鈕 */}
+          {/* 匯出按鈕（暫停，與上方 export state／handlers 一併還原）
           <button
             data-track="transaction_export_finance"
             onClick={handleExportFinance}
@@ -623,6 +659,8 @@ export function MemberTransaction() {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              justifyContent: 'center',
+              width: isMobile ? '100%' : undefined,
             }}
           >
             📤 匯出金流
@@ -641,10 +679,14 @@ export function MemberTransaction() {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              justifyContent: 'center',
+              width: isMobile ? '100%' : undefined,
+              gridColumn: isMobile ? '1 / -1' : undefined,
             }}
           >
             📋 匯出總帳
           </button>
+          */}
         </div>
 
         {/* 使用說明（可收合） */}
@@ -673,13 +715,25 @@ export function MemberTransaction() {
             </div>
           </div>
         )}
+        </>
+        )}
 
-        {/* 搜尋欄 */}
+        {/* 搜尋欄（手機：黏在視窗頂端，捲動列表時仍可隨時搜尋） */}
         <div style={{
           display: 'flex',
           gap: '12px',
           marginBottom: '12px',
-          alignItems: 'center'
+          alignItems: 'center',
+          ...(isMobile ? {
+            position: 'sticky',
+            top: 'env(safe-area-inset-top, 0px)',
+            zIndex: 90,
+            paddingTop: '6px',
+            paddingBottom: '10px',
+            marginTop: '-2px',
+            background: '#f5f5f5',
+            boxShadow: '0 6px 14px rgba(0,0,0,0.06)',
+          } : {}),
         }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <input
@@ -733,16 +787,36 @@ export function MemberTransaction() {
 
         {/* 篩選列 - 手機版用下拉選單，桌面版用按鈕 */}
         {isMobile ? (
-          /* 手機版：下拉選單 */
+          /* 手機版：篩選預設收合，展開後才顯示下拉選單 */
           <>
+            <button
+              type="button"
+              onClick={() => setMobileFiltersExpanded((v) => !v)}
+              style={{
+                width: '100%',
+                marginBottom: '10px',
+                padding: '10px 12px',
+                border: '1px solid #dee2e6',
+                borderRadius: '8px',
+                fontSize: '14px',
+                background: mobileFiltersExpanded ? '#e3f2fd' : 'white',
+                color: '#333',
+                cursor: 'pointer',
+                textAlign: 'left',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              }}
+            >
+              {mobileFiltersExpanded ? '▲ 收合篩選與排序' : '▼ 篩選與排序（會員類型、LINE、排序）'}
+            </button>
+            {mobileFiltersExpanded && (
             <div style={{ 
               display: 'flex', 
+              flexDirection: 'column',
               gap: '10px',
-              alignItems: 'center',
-              flexWrap: 'wrap',
+              alignItems: 'stretch',
             }}>
               {/* 會員類型下拉選單 */}
-              <div style={{ flex: 1 }}>
+              <div style={{ width: '100%' }}>
                 <select
                   value={membershipTypeFilter}
                   onChange={(e) => setMembershipTypeFilter(e.target.value)}
@@ -774,7 +848,7 @@ export function MemberTransaction() {
               </div>
 
               {/* LINE 綁定狀態 */}
-              <div style={{ flex: '1 1 100%' }}>
+              <div style={{ width: '100%' }}>
                 <select
                   value={lineBindingFilter}
                   onChange={(e) => setLineBindingFilter(e.target.value as 'all' | 'bound' | 'unbound')}
@@ -803,12 +877,13 @@ export function MemberTransaction() {
               </div>
 
               {/* 排序下拉選單 + 方向按鈕 */}
-              <div style={{ flex: 1, display: 'flex', gap: '6px' }}>
+              <div style={{ width: '100%', display: 'flex', gap: '6px' }}>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                   style={{
                     flex: 1,
+                    minWidth: 0,
                     padding: '10px 12px',
                     paddingRight: '32px',
                     border: '1px solid #dee2e6',
@@ -854,6 +929,7 @@ export function MemberTransaction() {
                 </button>
               </div>
             </div>
+            )}
 
             {/* 手機版結果數量 */}
             {(searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
@@ -988,7 +1064,7 @@ export function MemberTransaction() {
         )}
       </div>
 
-      {/* 篩選／搜尋結果提示（僅桌面：手機已在 sticky 區顯示筆數，避免重複） */}
+      {/* 篩選／搜尋結果提示（僅桌面：手機於篩選區塊內顯示筆數，避免重複） */}
       {!isMobile && (searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
         <div style={{
           fontSize: '13px',
@@ -1035,7 +1111,7 @@ export function MemberTransaction() {
                 </div>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
                   gap: '10px',
                 }}>
                   {Array.from({ length: 6 }).map((_, j) => (
@@ -1070,7 +1146,7 @@ export function MemberTransaction() {
                   background: 'white',
                   borderRadius: '12px',
                   marginBottom: '15px',
-                  padding: '20px',
+                  padding: isMobile ? '14px' : '20px',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
@@ -1256,50 +1332,91 @@ export function MemberTransaction() {
                   borderRadius: '6px',
                   border: '1px solid #e0e0e0'
                 }}>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-                    gap: isMobile ? '8px' : '10px',
-                    textAlign: 'center'
-                  }}>
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💰 儲值餘額</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+                  gap: isMobile ? '0' : '10px',
+                  textAlign: isMobile ? 'left' : 'center'
+                }}>
+                    <div style={isMobile ? {
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 2px',
+                      borderBottom: '1px solid #eee',
+                    } : undefined}>
+                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>💰 儲值餘額</div>
+                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
                         ${(member.balance || 0).toLocaleString()}
                       </div>
                     </div>
 
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>💎 VIP票券</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={isMobile ? {
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 2px',
+                      borderBottom: '1px solid #eee',
+                    } : undefined}>
+                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>💎 VIP票券</div>
+                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
                         ${(member.vip_voucher_amount || 0).toLocaleString()}
                       </div>
                     </div>
 
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>📚 指定課</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={isMobile ? {
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 2px',
+                      borderBottom: '1px solid #eee',
+                    } : undefined}>
+                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>📚 指定課</div>
+                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
                         {(member.designated_lesson_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🚤 G23船券</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={isMobile ? {
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 2px',
+                      borderBottom: '1px solid #eee',
+                    } : undefined}>
+                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>🚤 G23船券</div>
+                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
                         {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>⛵ 黑豹/G21</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={isMobile ? {
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 2px',
+                      borderBottom: '1px solid #eee',
+                    } : undefined}>
+                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>⛵ 黑豹/G21</div>
+                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
                         {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                    <div style={isMobile ? {
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 2px',
+                    } : undefined}>
+                      <div style={{ fontSize: isMobile ? '13px' : '11px', color: '#999', marginBottom: isMobile ? 0 : '4px' }}>🎁 贈送大船</div>
+                      <div style={{ fontSize: isMobile ? '17px' : '16px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
                         {(member.gift_boat_hours || 0).toLocaleString()}分
                       </div>
                     </div>
@@ -1325,7 +1442,7 @@ export function MemberTransaction() {
         />
       )}
 
-      {/* 匯出總帳對話框 */}
+      {/* 匯出總帳對話框（暫停，與 export state／handlers 一併還原）
       {showExportDialog && (
         <div style={{
           position: 'fixed',
@@ -1464,6 +1581,7 @@ export function MemberTransaction() {
           </div>
         </div>
       )}
+      */}
 
       {/* 財務導入對話框 */}
       {showFinanceImport && (
