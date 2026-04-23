@@ -286,42 +286,39 @@ export function RepeatBookingDialog({
           continue
         }
 
-        // 插入教練關聯
+        // 並行：coaches 寫入、members 寫入、時間表查詢三者互相獨立
+        const insertPromises: PromiseLike<unknown>[] = []
+
         if (selectedCoaches.length > 0) {
           const bookingCoachesToInsert = selectedCoaches.map(coachId => ({
             booking_id: newBooking.id,
             coach_id: coachId,
           }))
-
-          await supabase
-            .from('booking_coaches')
-            .insert(bookingCoachesToInsert)
+          insertPromises.push(supabase.from('booking_coaches').insert(bookingCoachesToInsert))
+          insertPromises.push(
+            fetchCoachNamesOnTimeOffForDate(selectedCoaches, dateStr).then(offNames => {
+              if (offNames.length > 0) {
+                timeOffWarningLines.push(formatCoachTimeOffReminderMessage(offNames, dateStr))
+              }
+            })
+          )
         }
 
-        // 插入多會員關聯
         if (selectedMemberIds.length > 0) {
           const bookingMembersToInsert = selectedMemberIds.map(memberId => ({
             booking_id: newBooking.id,
             member_id: memberId,
           }))
-
-          await supabase
-            .from('booking_members')
-            .insert(bookingMembersToInsert)
+          insertPromises.push(supabase.from('booking_members').insert(bookingMembersToInsert))
         }
+
+        await Promise.all(insertPromises)
 
         // 記錄成功的時間（用於審計日誌）
         const shortDate = `${month}/${day}`
         successTimes.push(`${shortDate} ${timeStr}`)
 
         results.success.push(displayDate)
-
-        if (selectedCoaches.length > 0) {
-          const offNames = await fetchCoachNamesOnTimeOffForDate(selectedCoaches, dateStr)
-          if (offNames.length > 0) {
-            timeOffWarningLines.push(formatCoachTimeOffReminderMessage(offNames, dateStr))
-          }
-        }
       }
 
       // 記錄審計日誌（批次記錄）
