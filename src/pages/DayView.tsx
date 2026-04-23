@@ -83,6 +83,7 @@ export function DayView() {
   const [boats, setBoats] = useState<Boat[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  const [dateChanging, setDateChanging] = useState(false)
   const [conflictedIds, setConflictedIds] = useState<Set<number>>(new Set())
 	const [conflictReasons, setConflictReasons] = useState<Map<number, string>>(new Map())
   const [boatUnavailableBlocks, setBoatUnavailableBlocks] = useState<BoatUnavailableBlock[]>([])
@@ -133,7 +134,14 @@ export function DayView() {
 
   const fetchData = async () => {
     const isInitialLoad = boats.length === 0
-    setLoading(true)
+    if (isInitialLoad) {
+      setLoading(true)
+    } else {
+      // 換日期時保留 grid 結構，只清空預約列
+      setBookings([])
+      setConflictedIds(new Set())
+      setDateChanging(true)
+    }
 
     try {
       // 並行查詢船隻與預約，兩者互相獨立
@@ -184,6 +192,7 @@ export function DayView() {
       toast.error('載入資料時發生錯誤：' + (error as Error).message)
     } finally {
       setLoading(false)
+      setDateChanging(false)
     }
   }
 
@@ -355,14 +364,25 @@ export function DayView() {
         }
       }
 
-      // 2) 全域限制（公告） - 單次抓取當日限制後本地比對
+      // 2+3) 全域限制 + 船隻維修 — 兩者互相獨立，並行查詢
       const targetDate = dateParam
-      const { data: restrictionData, error: restrictionError } = await (supabase as any)
-        .from('reservation_restrictions_with_announcement_view')
-        .select('*')
-        .eq('is_active', true)
-        .lte('start_date', targetDate)
-        .gte('end_date', targetDate)
+      const [restrictionResult, boatUnavailableResult] = await Promise.all([
+        (supabase as any)
+          .from('reservation_restrictions_with_announcement_view')
+          .select('*')
+          .eq('is_active', true)
+          .lte('start_date', targetDate)
+          .gte('end_date', targetDate),
+        supabase
+          .from('boat_unavailable_dates')
+          .select('boat_id, start_date, start_time, end_date, end_time, reason, is_active')
+          .eq('is_active', true)
+          .lte('start_date', targetDate)
+          .gte('end_date', targetDate)
+      ])
+
+      const { data: restrictionData, error: restrictionError } = restrictionResult
+      const { data: boatUnavailableData, error: boatUnavailableError } = boatUnavailableResult
 
       if (!restrictionError && restrictionData && restrictionData.length > 0) {
         const resBlocks = mapRestrictionViewRowsToBlocks(
@@ -389,14 +409,6 @@ export function DayView() {
       } else {
         setRestrictionDayBlocks([])
       }
-
-      // 3) 船隻維修/停用 - 依當日單次抓取，依船別本地比對
-      const { data: boatUnavailableData, error: boatUnavailableError } = await supabase
-        .from('boat_unavailable_dates')
-        .select('boat_id, start_date, start_time, end_date, end_time, reason, is_active')
-        .eq('is_active', true)
-        .lte('start_date', targetDate)
-        .gte('end_date', targetDate)
 
       if (!boatUnavailableError && boatUnavailableData && boatUnavailableData.length > 0) {
         const blocks = mapBoatUnavailableRowsToBlocks(
@@ -732,16 +744,22 @@ export function DayView() {
               </div>
             </div>
 
-            <VirtualizedBookingList
-              boats={boats}
-              bookings={bookings}
-              isMobile={isMobile}
-              onBookingClick={handleCellClick}
-              conflictedBookingIds={conflictedIds}
-							conflictReasons={conflictReasons}
-              boatUnavailableBlocks={boatUnavailableBlocks}
-              restrictionDayBlocks={restrictionDayBlocks}
-            />
+            <div style={{
+              opacity: dateChanging ? 0.45 : 1,
+              transition: 'opacity 0.15s ease',
+              pointerEvents: dateChanging ? 'none' : 'auto'
+            }}>
+              <VirtualizedBookingList
+                boats={boats}
+                bookings={bookings}
+                isMobile={isMobile}
+                onBookingClick={handleCellClick}
+                conflictedBookingIds={conflictedIds}
+                conflictReasons={conflictReasons}
+                boatUnavailableBlocks={boatUnavailableBlocks}
+                restrictionDayBlocks={restrictionDayBlocks}
+              />
+            </div>
 
             {/* 預約規則說明 */}
             <div style={{
