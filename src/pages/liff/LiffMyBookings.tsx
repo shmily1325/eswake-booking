@@ -289,7 +289,6 @@ export function LiffMyBookings() {
 
       const bookingIds = bookingMembers.map(bm => bm.booking_id)
 
-      // coaches + drivers 嵌入同一查詢，省去原本的兩次額外 RTT
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
@@ -298,35 +297,32 @@ export function LiffMyBookings() {
           duration_min,
           activity_types,
           notes,
-          boats:boat_id(name, color),
-          booking_coaches(coaches:coach_id(name)),
-          booking_drivers(coaches:coach_id(name))
+          boats:boat_id(name, color)
         `)
         .in('id', bookingIds)
         .gte('start_at', `${today}T00:00:00`)
         .order('start_at', { ascending: true })
 
       if (bookingsData && bookingsData.length > 0) {
-        type RawBooking = {
-          id: number
-          start_at: string
-          duration_min: number
-          activity_types: string[] | null
-          notes: string | null
-          boats: { name: string; color: string } | null
-          booking_coaches: { coaches: { name: string } | null }[]
-          booking_drivers: { coaches: { name: string } | null }[]
-        }
+        const [{ data: coachData }, { data: driverData }] = await Promise.all([
+          supabase
+            .from('booking_coaches')
+            .select('booking_id, coaches:coach_id(name)')
+            .in('booking_id', bookingsData.map(b => b.id)),
+          supabase
+            .from('booking_drivers')
+            .select('booking_id, coaches:coach_id(name)')
+            .in('booking_id', bookingsData.map(b => b.id))
+        ])
 
-        const formattedBookings: Booking[] = (bookingsData as unknown as RawBooking[]).map(b => ({
-          id: b.id,
-          start_at: b.start_at,
-          duration_min: b.duration_min,
-          activity_types: b.activity_types,
-          notes: b.notes,
-          boats: b.boats,
-          coaches: b.booking_coaches.map(c => c.coaches).filter(Boolean) as { name: string }[],
-          drivers: b.booking_drivers.map(d => d.coaches).filter(Boolean) as { name: string }[]
+        type StaffJoin = { booking_id: number; coaches: { name: string } | null }
+        const coachRows = (coachData ?? []) as unknown as StaffJoin[]
+        const driverRows = (driverData ?? []) as unknown as StaffJoin[]
+
+        const formattedBookings: Booking[] = bookingsData.map(booking => ({
+          ...booking,
+          coaches: coachRows.filter(c => c.booking_id === booking.id).map(c => c.coaches).filter(Boolean) as { name: string }[],
+          drivers: driverRows.filter(d => d.booking_id === booking.id).map(d => d.coaches).filter(Boolean) as { name: string }[]
         }))
 
         setBookings(formattedBookings)
