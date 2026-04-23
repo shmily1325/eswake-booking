@@ -24,6 +24,9 @@ import {
 } from '../../utils/restrictionDayBlocks'
 import { BoatUnavailableDaySummary } from '../../components/BoatUnavailableDaySummary'
 
+/** 手機 + 篩選教練：每 15 分鐘一列的列高 (px)，與 rowSpan、空格 td 一致 */
+const MOBILE_COACH_SLOT_ROW_PX = 32
+
 interface Boat {
   id: number
   name: string
@@ -999,6 +1002,7 @@ export function CoachDailyView() {
         }}>
           <table style={{
             width: (isMobile && selectedCoachId) ? '100%' : (isMobile ? 'auto' : '100%'),
+            tableLayout: (isMobile && selectedCoachId) ? 'fixed' as const : undefined,
             borderCollapse: 'separate',
             borderSpacing: 0
           }}>
@@ -1147,6 +1151,13 @@ export function CoachDailyView() {
                       textAlign: 'center',
                       color: '#666',
                       lineHeight: isMobile ? '1.2' : '1.5',
+                      ...(isMobile && selectedCoachId
+                        ? {
+                            minHeight: MOBILE_COACH_SLOT_ROW_PX,
+                            height: MOBILE_COACH_SLOT_ROW_PX,
+                            boxSizing: 'border-box' as const,
+                          }
+                        : {}),
                     }}>
                       {timeSlot}
                     </td>
@@ -1165,10 +1176,13 @@ export function CoachDailyView() {
                             <td
                               key="single-column"
                               style={{
-                                padding: '6px 8px',
+                                padding: 0,
                                 borderBottom: '1px solid #e9ecef',
                                 backgroundColor: 'white',
-                                height: '32px',
+                                minHeight: MOBILE_COACH_SLOT_ROW_PX,
+                                height: MOBILE_COACH_SLOT_ROW_PX,
+                                boxSizing: 'border-box' as const,
+                                verticalAlign: 'middle' as const,
                               }}
                             />
                           )
@@ -1185,6 +1199,8 @@ export function CoachDailyView() {
                               borderBottom: '1px solid #e9ecef',
                               backgroundColor: 'white',
                               verticalAlign: 'top',
+                              boxSizing: 'border-box' as const,
+                              minHeight: maxSlots * MOBILE_COACH_SLOT_ROW_PX,
                             }}
                           >
                             {timeSlotBookings.map((booking, index) => 
