@@ -88,6 +88,7 @@ export function CoachDailyView() {
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [dateChanging, setDateChanging] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
   const [currentTime, setCurrentTime] = useState(new Date())
   const [conflictedIds, setConflictedIds] = useState<Set<number>>(new Set())
@@ -155,7 +156,12 @@ export function CoachDailyView() {
   }
 
   const loadBookings = async () => {
-    setLoading(true)
+    const isInitialLoad = boats.length === 0
+    if (isInitialLoad) {
+      setLoading(true)
+    } else {
+      setDateChanging(true)
+    }
     try {
       const startOfDay = `${dateParam}T00:00:00`
       const endOfDay = `${dateParam}T23:59:59`
@@ -180,31 +186,19 @@ export function CoachDailyView() {
 
       if (error) throw error
 
-      // 手动获取关联数据
       const bookingIds = (data || []).map(b => b.id)
-      
-      // 获取 boats
-      const { data: boatsData } = await supabase
-        .from('boats')
-        .select('id, name, color')
-      
-      // 获取 coaches
-      const { data: coachesData } = await supabase
-        .from('booking_coaches')
-        .select('booking_id, coach_id, coaches:coach_id(id, name)')
-        .in('booking_id', bookingIds)
-      
-      // 获取 drivers
-      const { data: driversData } = await supabase
-        .from('booking_drivers')
-        .select('booking_id, driver_id, coaches:driver_id(id, name)')
-        .in('booking_id', bookingIds)
-      
-      // 获取 members
-      const { data: membersData } = await supabase
-        .from('booking_members')
-        .select('booking_id, member_id, members:member_id(id, name, nickname)')
-        .in('booking_id', bookingIds)
+
+      const [boatsResult, coachesResult, driversResult, membersResult] = await Promise.all([
+        supabase.from('boats').select('id, name, color'),
+        supabase.from('booking_coaches').select('booking_id, coach_id, coaches:coach_id(id, name)').in('booking_id', bookingIds),
+        supabase.from('booking_drivers').select('booking_id, driver_id, coaches:driver_id(id, name)').in('booking_id', bookingIds),
+        supabase.from('booking_members').select('booking_id, member_id, members:member_id(id, name, nickname)').in('booking_id', bookingIds),
+      ])
+
+      const boatsData = boatsResult.data
+      const coachesData = coachesResult.data
+      const driversData = driversResult.data
+      const membersData = membersResult.data
       
       // 构建 maps
       const boatsMap = new Map((boatsData || []).map(b => [b.id, b]))
@@ -245,6 +239,7 @@ export function CoachDailyView() {
       console.error('載入預約失敗:', error)
     } finally {
       setLoading(false)
+      setDateChanging(false)
     }
   }
 
@@ -475,6 +470,23 @@ export function CoachDailyView() {
       return slotMinutes >= earliestMinutes && slotMinutes <= latestMinutes
     })
   }, [filteredBookings])
+
+  const mobileCoachCoveredSlots = useMemo(() => {
+    if (!isMobile || !selectedCoachId) return new Set<string>()
+    const covered = new Set<string>()
+    filteredBookings.forEach(b => {
+      const start = new Date(b.start_at)
+      const startMin = start.getHours() * 60 + start.getMinutes()
+      const slots = Math.ceil(b.duration_min / 15)
+      for (let i = 1; i < slots; i++) {
+        const min = startMin + i * 15
+        const h = Math.floor(min / 60)
+        const m = min % 60
+        covered.add(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+      }
+    })
+    return covered
+  }, [filteredBookings, isMobile, selectedCoachId])
 
   // 渲染單個預約卡片（手機模式 + 選擇教練時使用）
   const renderMobileCoachBookingCard = (booking: Booking, index: number, total: number) => {
@@ -973,7 +985,12 @@ export function CoachDailyView() {
         />
 
         {/* 時間軸表格 */}
-        <div style={{ 
+        <div style={{
+          opacity: dateChanging ? 0.45 : 1,
+          transition: 'opacity 0.15s ease',
+          pointerEvents: dateChanging ? 'none' : 'auto',
+        }}>
+        <div style={{
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
           background: 'white',
@@ -1143,6 +1160,7 @@ export function CoachDailyView() {
                         })
 
                         if (timeSlotBookings.length === 0) {
+                          if (mobileCoachCoveredSlots.has(timeSlot)) return null
                           return (
                             <td
                               key="single-column"
@@ -1232,6 +1250,7 @@ export function CoachDailyView() {
               })}
             </tbody>
           </table>
+        </div>
         </div>
       </div>
 
