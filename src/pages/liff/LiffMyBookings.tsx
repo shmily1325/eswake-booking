@@ -276,7 +276,20 @@ export function LiffMyBookings() {
     try {
       const today = getLocalDateString()
 
-      // 單一查詢取得預約 + 教練 + 駕駛（原先 3 RTT，現合併為 1 RTT）
+      const { data: bookingMembers } = await supabase
+        .from('booking_members')
+        .select('booking_id')
+        .eq('member_id', memberId)
+
+      if (!bookingMembers || bookingMembers.length === 0) {
+        setBookings([])
+        if (!silent) setLoading(false)
+        return
+      }
+
+      const bookingIds = bookingMembers.map(bm => bm.booking_id)
+
+      // coaches + drivers 嵌入同一查詢，省去原本的兩次額外 RTT
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
@@ -286,11 +299,10 @@ export function LiffMyBookings() {
           activity_types,
           notes,
           boats:boat_id(name, color),
-          booking_members!inner(member_id),
           booking_coaches(coaches:coach_id(name)),
           booking_drivers(coaches:coach_id(name))
         `)
-        .eq('booking_members.member_id', memberId)
+        .in('id', bookingIds)
         .gte('start_at', `${today}T00:00:00`)
         .order('start_at', { ascending: true })
 
