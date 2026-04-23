@@ -241,7 +241,7 @@ export function LiffMyBookings() {
       if (binding && binding.members) {
         const memberData = binding.members as Record<string, unknown>
         const memberId = memberData.id as string
-        // 並行：enrichMember (board_storage) + loadBookings (bookings 單一查詢) — 原先 4 RTT，現 1 RTT
+        // 並行：enrichMember (board_storage) + loadBookings — 原先 4 RTT，現 2 RTT
         const [enrichedMember] = await Promise.all([
           enrichMemberForLiff(memberData),
           loadBookings(memberId, true)
@@ -502,23 +502,23 @@ export function LiffMyBookings() {
 
       // 綁定成功 - 重新載入完整的會員資料（包含儲值欄位）
       triggerHaptic('success')
-      
+
       const { data: fullMemberData } = await supabase
         .from('members')
         .select(LIFF_MEMBER_SELECT)
         .eq('id', memberData.id)
         .single()
-      
-      if (fullMemberData) {
-        setMember(await enrichMemberForLiff(fullMemberData as Record<string, unknown>))
-      } else {
-        setMember(await enrichMemberForLiff(memberData as unknown as Record<string, unknown>))
-      }
+
+      const dataForEnrich = (fullMemberData ?? memberData) as Record<string, unknown>
+      const [enrichedMember] = await Promise.all([
+        enrichMemberForLiff(dataForEnrich),
+        loadBookings(memberData.id, true)
+      ])
+      setMember(enrichedMember)
       // 綁定成功事件
       liffTrack({ icon_id: 'liff_bind_success', line_user_id: lineUserId, member_id: memberData.id })
-      
+
       setShowBindingForm(false)
-      await loadBookings(memberData.id)
     } catch (err: unknown) {
       console.error('綁定失敗:', err)
       toast.error('綁定失敗')
