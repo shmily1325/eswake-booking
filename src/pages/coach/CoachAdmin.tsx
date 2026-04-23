@@ -396,43 +396,44 @@ export function CoachAdmin() {
         endOfDay = `${selectedDate}T23:59:59`
       }
 
-      // 1. 載入教學記錄 (只載入已結案的 processed)
-      // 不過濾 is_teaching，讓駕駛回報的「不指定」參與者也能顯示
-      const { data: participantsData, error: participantsError } = await supabase
-        .from('booking_participants')
-        .select(`
-          *,
-          bookings!inner(
-            id, start_at, duration_min, contact_name, boat_id,
-            boats(name, color),
-            booking_coaches(coach_id)
-          ),
-          coaches:coach_id(id, name),
-          members:member_id(id, name, nickname)
-        `)
-        .eq('status', 'processed')
-        .eq('is_deleted', false)
-        .gte('bookings.start_at', startOfDay)
-        .lte('bookings.start_at', endOfDay)
-        .order('bookings(start_at)')
+      // 1+2 並行：教學記錄與駕駛記錄互相獨立
+      const [participantsResult, driverResult] = await Promise.all([
+        supabase
+          .from('booking_participants')
+          .select(`
+            *,
+            bookings!inner(
+              id, start_at, duration_min, contact_name, boat_id,
+              boats(name, color),
+              booking_coaches(coach_id)
+            ),
+            coaches:coach_id(id, name),
+            members:member_id(id, name, nickname)
+          `)
+          .eq('status', 'processed')
+          .eq('is_deleted', false)
+          .gte('bookings.start_at', startOfDay)
+          .lte('bookings.start_at', endOfDay)
+          .order('bookings(start_at)'),
+        supabase
+          .from('coach_reports')
+          .select(`
+            *,
+            bookings!inner(
+              id, start_at, duration_min, contact_name, boat_id,
+              boats(name, color)
+            ),
+            coaches:coach_id(id, name)
+          `)
+          .gte('bookings.start_at', startOfDay)
+          .lte('bookings.start_at', endOfDay)
+          .order('bookings(start_at)')
+      ])
+
+      const { data: participantsData, error: participantsError } = participantsResult
+      const { data: driverData, error: driverError } = driverResult
 
       if (participantsError) throw participantsError
-
-      // 2. 載入駕駛記錄
-      const { data: driverData, error: driverError } = await supabase
-        .from('coach_reports')
-        .select(`
-          *,
-          bookings!inner(
-            id, start_at, duration_min, contact_name, boat_id,
-            boats(name, color)
-          ),
-          coaches:coach_id(id, name)
-        `)
-        .gte('bookings.start_at', startOfDay)
-        .lte('bookings.start_at', endOfDay)
-        .order('bookings(start_at)')
-
       if (driverError) throw driverError
 
       // 3. 載入交易記錄（用於顯示扣款詳情）

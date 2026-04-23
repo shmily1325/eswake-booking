@@ -136,11 +136,19 @@ export function DayView() {
     setLoading(true)
 
     try {
-      // Fetch boats (包含停用的船隻，以便顯示歷史預約)
-      const { data: boatsData, error: boatsError } = await supabase
-        .from('boats')
-        .select('*')
-        .order('id')
+      // 並行查詢船隻與預約，兩者互相獨立
+      const [boatsResult, bookingsResult] = await Promise.all([
+        supabase.from('boats').select('*').order('id'),
+        supabase
+          .from('bookings')
+          .select(`*, boats(*), booking_members(member_id, members(id, name, nickname))`)
+          .gte('start_at', `${dateParam}T00:00:00`)
+          .lt('start_at', `${dateParam}T23:59:59`)
+          .order('start_at')
+      ])
+
+      const { data: boatsData, error: boatsError } = boatsResult
+      const { data: bookingsData, error: bookingsError } = bookingsResult
 
       if (boatsError) {
         console.error('Error fetching boats:', boatsError)
@@ -152,18 +160,6 @@ export function DayView() {
         const sortedBoats = sortBoatsByDisplayOrder(boatsData || [])
         setBoats(sortedBoats)
       }
-
-      // Fetch bookings for the selected date
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          boats(*),
-          booking_members(member_id, members(id, name, nickname))
-        `)
-        .gte('start_at', `${dateParam}T00:00:00`)
-        .lt('start_at', `${dateParam}T23:59:59`)
-        .order('start_at')
 
       if (bookingsError) {
         console.error('Error fetching bookings:', bookingsError)
