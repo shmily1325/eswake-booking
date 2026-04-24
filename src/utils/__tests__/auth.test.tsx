@@ -88,6 +88,7 @@ describe('auth.ts - 權限驗證', () => {
   describe('SUPER_ADMINS', () => {
     it('應該包含超級管理員的電子郵件', () => {
       expect(SUPER_ADMINS).toContain('callumbao1122@gmail.com')
+      expect(SUPER_ADMINS).toContain('pjpan0511@gmail.com')
       expect(SUPER_ADMINS).toContain('minlin1325@gmail.com')
     })
   })
@@ -96,6 +97,10 @@ describe('auth.ts - 權限驗證', () => {
     it('超級管理員應該是管理員', () => {
       const user = createMockUser('callumbao1122@gmail.com')
       expect(isAdmin(user)).toBe(true)
+    })
+
+    it('pjpan 超級管理員應該是管理員', () => {
+      expect(isAdmin(createMockUser('pjpan0511@gmail.com'))).toBe(true)
     })
 
     it('非超級管理員應該不是管理員', () => {
@@ -118,6 +123,11 @@ describe('auth.ts - 權限驗證', () => {
       const user = createMockUser('callumbao1122@gmail.com')
       const result = await isAllowedUser(user)
       expect(result).toBe(true)
+    })
+
+    it('pjpan 超級管理員應該被允許（不依賴資料庫白名單）', async () => {
+      mockSupabaseResponse([])
+      expect(await isAllowedUser(createMockUser('pjpan0511@gmail.com'))).toBe(true)
     })
 
     it('null 用戶應該不被允許', async () => {

