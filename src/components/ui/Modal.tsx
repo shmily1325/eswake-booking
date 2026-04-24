@@ -278,7 +278,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         </>
       }
     >
-      <p style={{ margin: 0, lineHeight: '1.6' }}>{message}</p>
+      <p style={{ margin: 0, lineHeight: '1.6', whiteSpace: 'pre-line' }}>{message}</p>
     </Modal>
   )
 }

@@ -6,7 +6,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
-import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
+import { Button, Badge, useToast, ToastContainer, ConfirmModal } from '../../components/ui'
 import { clearPermissionCache, isAdmin, SUPER_ADMINS, EDITOR_FEATURE_KEYS, EDITOR_FEATURE_LABELS, type EditorFeatureKey } from '../../utils/auth'
 
 /** 人員權限表上顯示的「小編」欄位：重複預約＋批次合併為一格（寫庫仍為兩欄同值） */
@@ -75,6 +75,41 @@ interface PermissionMatrixRow {
   editor: EditorUser | null
 }
 
+/** 權限表內「取消登入／取消一般／刪除整列」共用同一套 ConfirmModal */
+type PermissionMatrixConfirmAction =
+  | { kind: 'removeLogin'; allowedUserId: string; email: string }
+  | { kind: 'removeView'; viewId: string; email: string; displayName: string | null }
+  | { kind: 'deleteRow'; row: PermissionMatrixRow }
+
+function getPermissionMatrixConfirmEmail(a: PermissionMatrixConfirmAction): string {
+  return a.kind === 'deleteRow' ? a.row.email : a.email
+}
+
+function getPermissionMatrixConfirmCopy(a: PermissionMatrixConfirmAction): { title: string; message: string; confirmText: string } {
+  switch (a.kind) {
+    case 'removeLogin':
+      return {
+        title: '取消登入權限',
+        message: `確定要將「${a.email}」從登入名單移除？\n\n一併刪除該帳的「一般」與「小編（功能）」設定。移除後此帳號無法再登入本系統。`,
+        confirmText: '從名單移除',
+      }
+    case 'removeView': {
+      const who = (a.displayName && a.displayName.trim()) || a.email
+      return {
+        title: '取消一般權限',
+        message: `確定要取消「${who}」的一般權限？（帳號：${a.email}）\n\n取消後無法使用預約表、查詢、提醒等。若之後同帳已無小編權限，系統會一併從登入名單移除此帳。`,
+        confirmText: '取消一般',
+      }
+    }
+    case 'deleteRow':
+      return {
+        title: '刪除權限',
+        message: `確定要刪除「${a.row.email}」在本表顯示的全部權限？\n\n將一併移除登入、一般、小編（功能）等設定。`,
+        confirmText: '刪除',
+      }
+  }
+}
+
 export function StaffManagement() {
   const user = useAuthUser()
   const navigate = useNavigate()
@@ -140,8 +175,10 @@ export function StaffManagement() {
   const [selectedPricingCoach, setSelectedPricingCoach] = useState<Coach | null>(null)
   const [lessonPrice, setLessonPrice] = useState<string>('')
   const [pricingLoading, setPricingLoading] = useState(false)
-  
-  
+  const [accountClearConfirmOpen, setAccountClearConfirmOpen] = useState(false)
+  const [priceClearConfirmOpen, setPriceClearConfirmOpen] = useState(false)
+  const [permissionMatrixConfirm, setPermissionMatrixConfirm] = useState<PermissionMatrixConfirmAction | null>(null)
+
   // 說明展開狀態
   const [showHelp, setShowHelp] = useState(true)
 
@@ -537,11 +574,10 @@ export function StaffManagement() {
     setPricingDialogOpen(true)
   }
 
-  const handleSetPrice = async () => {
+  /** 把「字串欄的價格」寫入 DB；清除時傳入空字串，勿先 setState 再存（state 不會立刻更新） */
+  const saveDesignatedLessonPrice = async (priceText: string) => {
     if (!selectedPricingCoach) return
-    
-    // 驗證價格格式（必須是正整數或空值）
-    const priceValue = lessonPrice.trim()
+    const priceValue = priceText.trim()
     if (priceValue && (isNaN(Number(priceValue)) || Number(priceValue) < 0 || !Number.isInteger(Number(priceValue)))) {
       toast.error('請輸入有效的價格（正整數）')
       return
@@ -571,6 +607,10 @@ export function StaffManagement() {
     }
   }
 
+  const handleSetPrice = () => {
+    void saveDesignatedLessonPrice(lessonPrice)
+  }
+
   // ========== 系統登入名單（allowed_users，最上層）==========
 
   const handleAddAllowedUser = async () => {
@@ -586,17 +626,25 @@ export function StaffManagement() {
     try {
       const email = newAllowedEmail.trim().toLowerCase()
       const notes = newAllowedNotes.trim() || null
-      const { error } = await supabase
+      const { data: exist, error: selErr } = await supabase
         .from('allowed_users')
-        .upsert(
-          {
-            email,
-            notes
-          },
-          { onConflict: 'email' }
-        )
-      if (error) throw error
-      toast.success(`已加入登入名單：${email}`)
+        .select('id, notes')
+        .eq('email', email)
+        .maybeSingle()
+      if (selErr) throw selErr
+      if (exist) {
+        if (notes) {
+          const { error } = await supabase.from('allowed_users').update({ notes }).eq('id', exist.id)
+          if (error) throw error
+          toast.success(`已更新名稱／備註：${email}`)
+        } else {
+          toast.info(`帳號 ${email} 已在登入名單內，未變更備註（要改顯示名稱可於下表帳號旁按 ✎ 編輯，或補寫名稱後再按加入）`)
+        }
+      } else {
+        const { error } = await supabase.from('allowed_users').insert({ email, notes })
+        if (error) throw error
+        toast.success(`已加入登入名單：${email}`)
+      }
       setNewAllowedEmail('')
       setNewAllowedNotes('')
       clearPermissionCache()
@@ -608,28 +656,24 @@ export function StaffManagement() {
     }
   }
 
-  /** 從登入名單移除時，一併移除同 Email 之一般權限與功能權限列，避免資料不一致 */
-  const handleRemoveAllowedUser = async (id: string, email: string) => {
-    if (
-      !confirm(
-        `確定要從「登入名單」移除 ${email} 嗎？\n將一併移除其一般權限與小編（若有），且對方登入後將無法使用本系統。`
-      )
-    ) {
-      return
-    }
+  /** 從登入名單移除：一併刪除同 email 之一般＋小編列（由確認框觸發） */
+  const runRemoveFromLoginList = async (allowedUserId: string, email: string) => {
+    const e = email.toLowerCase()
+    setSavingMatrixEmail(e)
     try {
-      const e = email.toLowerCase()
       const { error: e1 } = await (supabase as any).from('editor_users').delete().eq('email', e)
       if (e1) throw e1
       const { error: e2 } = await (supabase as any).from('view_users').delete().eq('email', e)
       if (e2) throw e2
-      const { error: e3 } = await supabase.from('allowed_users').delete().eq('id', id)
+      const { error: e3 } = await supabase.from('allowed_users').delete().eq('id', allowedUserId)
       if (e3) throw e3
-      toast.success(`已從登入名單與下層權限移除 ${email}`)
+      toast.success(`已從登入名單移除 ${email}，並一併刪除其一般與小編權限（若有）`)
       clearPermissionCache()
       loadData()
     } catch (error) {
       toast.error('移除失敗: ' + (error as Error).message)
+    } finally {
+      setSavingMatrixEmail(null)
     }
   }
 
@@ -640,6 +684,16 @@ export function StaffManagement() {
     const ed = row.editor?.display_name?.trim()
     if (ed) return ed
     return row.allowed?.notes?.trim() || ''
+  }
+
+  /** 僅在沒有列時 insert，不覆寫既有名稱／備註（與權限勾選無關） */
+  const ensureAllowedUserRowExists = async (email: string) => {
+    const e = email.toLowerCase()
+    const { data, error: selErr } = await supabase.from('allowed_users').select('id').eq('email', e).maybeSingle()
+    if (selErr) throw selErr
+    if (data) return
+    const { error } = await supabase.from('allowed_users').insert({ email: e })
+    if (error && (error as any).code !== '23505') throw error
   }
 
   /**
@@ -664,10 +718,25 @@ export function StaffManagement() {
           .eq('id', row.allowed.id)
         if (error) throw error
       } else {
-        const { error: vErr } = await (supabase as any)
+        const { data: vRow, error: vSel } = await (supabase as any)
           .from('view_users')
-          .upsert({ email: e, display_name: name }, { onConflict: 'email' })
-        if (vErr) throw vErr
+          .select('id')
+          .eq('email', e)
+          .maybeSingle()
+        if (vSel) throw vSel
+        if (vRow) {
+          const { error: vUp } = await (supabase as any)
+            .from('view_users')
+            .update({ display_name: name })
+            .eq('id', vRow.id)
+          if (vUp) throw vUp
+        } else {
+          const { error: vIns } = await (supabase as any)
+            .from('view_users')
+            .insert({ email: e, display_name: name })
+          if (vIns) throw vIns
+        }
+        await ensureAllowedUserRowExists(e)
       }
       toast.success('已更新名稱')
       setEditingMatrixNameForEmail(null)
@@ -681,38 +750,14 @@ export function StaffManagement() {
     }
   }
 
-  /** 補上 allowed_users，使「有一般/小編卻未登入」的列恢復一致 */
-  const handleBackfillMatrixLogin = async (row: PermissionMatrixRow) => {
-    if (row.allowed) return
-    const e = row.email.toLowerCase()
-    setSavingMatrixEmail(e)
-    try {
-      await ensureAllowedUserRowExists(e)
-      toast.success('已補上登入名單（與一般／小編對齊）')
-      clearPermissionCache()
-      loadData()
-    } catch (err) {
-      toast.error('失敗: ' + (err as Error).message)
-    } finally {
-      setSavingMatrixEmail(null)
-    }
-  }
-
   // ========== 一般權限（仍由矩陣勾選驅動）==========
   
-  // 移除一般權限用戶
-  const handleRemoveViewUser = async (id: string, email: string, displayName: string | null) => {
-    if (!confirm(`確定要移除 ${displayName || email} 的一般權限嗎？`)) {
-      return
-    }
-    
+  /** 刪除 view_users 一列；若同帳已無小編則一併刪除 allowed_users（由確認框觸發） */
+  const runRemoveViewUserRow = async (viewId: string, email: string, displayName: string | null) => {
+    const e = email.toLowerCase()
+    setSavingMatrixEmail(e)
     try {
-      const e = email.toLowerCase()
-      const { error } = await (supabase as any)
-        .from('view_users')
-        .delete()
-        .eq('id', id)
-      
+      const { error } = await (supabase as any).from('view_users').delete().eq('id', viewId)
       if (error) throw error
 
       const { data: stillEditor } = await (supabase as any)
@@ -724,12 +769,14 @@ export function StaffManagement() {
         const { error: delAllow } = await supabase.from('allowed_users').delete().eq('email', e)
         if (delAllow) throw delAllow
       }
-      
-      toast.success(`已移除 ${displayName || email} 的一般權限`)
+
+      toast.success(`已取消 ${displayName?.trim() || email} 的一般權限`)
       clearPermissionCache()
       loadData()
     } catch (error) {
       toast.error('移除失敗: ' + (error as Error).message)
+    } finally {
+      setSavingMatrixEmail(null)
     }
   }
   
@@ -757,15 +804,8 @@ export function StaffManagement() {
     }
   }
 
-  /** 僅在沒有列時 insert，不覆寫既有名稱／備註（與權限勾選無關） */
-  const ensureAllowedUserRowExists = async (email: string) => {
-    const e = email.toLowerCase()
-    const { data, error: selErr } = await supabase.from('allowed_users').select('id').eq('email', e).maybeSingle()
-    if (selErr) throw selErr
-    if (data) return
-    const { error } = await supabase.from('allowed_users').insert({ email: e })
-    if (error && (error as any).code !== '23505') throw error
-  }
+  const hasAnyEditorFeature = (f: Record<EditorFeatureKey, boolean>) =>
+    EDITOR_FEATURE_KEYS.some((k) => f[k])
 
   const ensureViewUserRowExists = async (email: string) => {
     const e = email.toLowerCase()
@@ -872,7 +912,14 @@ export function StaffManagement() {
       }
       return
     }
-    if (row.allowed) await handleRemoveAllowedUser(row.allowed.id, row.email)
+    if (row.allowed) {
+      const f = getMatrixEditorFlags(row.editor)
+      if (row.view || hasAnyEditorFeature(f)) {
+        toast.warning('請先關閉一般與功能權限，再取消登入')
+        return
+      }
+      setPermissionMatrixConfirm({ kind: 'removeLogin', allowedUserId: row.allowed.id, email: row.email })
+    }
   }
 
   const toggleMatrixView = async (row: PermissionMatrixRow, next: boolean) => {
@@ -893,11 +940,21 @@ export function StaffManagement() {
       }
       return
     }
-    if (row.view) await handleRemoveViewUser(row.view.id, row.email, row.view.display_name)
+    if (hasAnyEditorFeature(getMatrixEditorFlags(row.editor))) {
+      toast.warning('請先關閉所有功能權限，再取消一般')
+      return
+    }
+    if (row.view) {
+      setPermissionMatrixConfirm({
+        kind: 'removeView',
+        viewId: row.view.id,
+        email: row.email,
+        displayName: row.view.display_name
+      })
+    }
   }
 
-  const handleDeleteMatrixRow = async (row: PermissionMatrixRow) => {
-    if (!confirm(`確定刪除 ${row.email} 的登入、一般與功能權限？`)) return
+  const runDeleteMatrixRow = async (row: PermissionMatrixRow) => {
     const e = row.email.toLowerCase()
     setSavingMatrixEmail(e)
     try {
@@ -905,7 +962,7 @@ export function StaffManagement() {
       await (supabase as any).from('view_users').delete().eq('email', e)
       const { error } = await supabase.from('allowed_users').delete().eq('email', e)
       if (error) throw error
-      toast.success('已刪除')
+      toast.success(`已刪除 ${row.email} 的登入、一般與小編權限`)
       clearPermissionCache()
       loadData()
     } catch (err) {
@@ -945,6 +1002,31 @@ export function StaffManagement() {
     () => permissionMatrixRows.filter((r) => matrixRowMissingLogin(r)).length,
     [permissionMatrixRows]
   )
+
+  /** 有下層但缺 allowed 列時自動補上，否則登入格會鎖定卻無法寫入 */
+  useEffect(() => {
+    if (activeTab !== 'permissions' || loading) return
+    const toFix = permissionMatrixRows.filter((r) => matrixRowMissingLogin(r))
+    if (toFix.length === 0) return
+    let cancelled = false
+    void (async () => {
+      try {
+        for (const row of toFix) {
+          if (cancelled) return
+          await ensureAllowedUserRowExists(row.email.toLowerCase())
+        }
+        if (cancelled) return
+        clearPermissionCache()
+        await loadData()
+        toast.success(`已同步 ${toFix.length} 筆登入名單（與下層權限一致）`)
+      } catch (e) {
+        if (!cancelled) toast.error('同步登入名單失敗: ' + (e as Error).message)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, loading, permissionMatrixRows])
 
   if (loading) {
     return (
@@ -1785,55 +1867,40 @@ export function StaffManagement() {
         {activeTab === 'permissions' && (
           <>
             <div style={{
-              background: '#f0f7ff',
-              padding: isMobile ? '12px 14px' : '14px 18px',
+              background: '#e3f2fd',
+              padding: isMobile ? '12px 16px' : '14px 20px',
               borderRadius: '8px',
-              marginBottom: '16px',
+              marginBottom: '20px',
               fontSize: '14px',
               color: '#1565c0',
-              border: '1px solid #bbdefb',
+              border: '1px solid #90caf9',
               lineHeight: 1.75
             }}>
               <div style={{ fontWeight: 600, marginBottom: '6px' }}>以一張表管理：</div>
-              <div>登入 - <code style={{ fontSize: '12px' }}>allowed_users</code>，能使用本系統，僅能看到今日預約</div>
-              <div>一般 - <code style={{ fontSize: '12px' }}>view_users</code>，預約表／查詢／提醒等，以及各項功能</div>
-              <div>勾選功能模組時會一併確保已加入登入與一般權限</div>
+              <div>登入 - <span style={{ fontSize: '12px', fontFamily: 'ui-monospace, monospace' }}>allowed_users</span>，能使用本系統，僅能看到今日預約</div>
+              <div>一般 - <span style={{ fontSize: '12px', fontFamily: 'ui-monospace, monospace' }}>view_users</span>，預約表／查詢／提醒等，以及各項功能</div>
+              <div>勾選下層時，上層會自動帶出打勾、反灰不可改；勾選任一小編功能前須有登入＋一般（由系統一併寫入）</div>
               <div>取消「登入」或「刪除整列」時，會一併清除下層權限，避免衝突</div>
             </div>
             <div style={{
-              background: '#f5f9ff',
-              padding: '12px 16px',
-              borderRadius: '8px 8px 0 0',
-              fontSize: '15px',
-              fontWeight: 'bold',
-              color: '#1565c0',
-              border: '1px solid #90caf9',
-              borderBottom: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              flexWrap: 'wrap'
-            }}>
-              <span>🗂</span>
-              人員權限
-              <Badge variant="info" size="small">{permissionMatrixRows.length} 帳號</Badge>
-              {matrixMissingLoginCount > 0 && (
-                <span title="有列缺登入名單，已以底色與補登入呈現">
-                  <Badge variant="warning" size="small" style={{ fontWeight: 600 }}>
-                    {matrixMissingLoginCount} 筆
-                  </Badge>
-                </span>
-              )}
-            </div>
-            <div style={{
               background: 'white',
-              borderRadius: '0 0 12px 12px',
-              padding: isMobile ? '12px' : '20px',
+              borderRadius: '12px',
+              padding: isMobile ? '16px' : '20px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              border: '1px solid #90caf9',
-              borderTop: 'none',
+              border: '1px solid #e0e0e0',
               marginBottom: '8px'
             }}>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0, fontSize: isMobile ? '17px' : '18px', fontWeight: 700, color: '#333' }}>人員權限</h3>
+                <Badge variant="info" size="small">{permissionMatrixRows.length} 帳號</Badge>
+                {matrixMissingLoginCount > 0 && (
+                  <span title="有列有下層權限但尚未有登入名單，開啟此分頁會自動同步，同步前以底色與圖示標示">
+                    <Badge variant="warning" size="small" style={{ fontWeight: 600 }}>
+                      {matrixMissingLoginCount} 筆
+                    </Badge>
+                  </span>
+                )}
+              </div>
               <div style={{
                 display: 'flex',
                 gap: '10px',
@@ -1888,29 +1955,82 @@ export function StaffManagement() {
                 </Button>
               </div>
 
-              <div style={{ width: '100%', overflowX: 'auto' }}>
-                <table style={{
+              <div
+                style={{
                   width: '100%',
-                  borderCollapse: 'collapse',
-                  fontSize: isMobile ? '12px' : '13px',
-                  minWidth: isMobile ? '640px' : '720px'
-                }}>
+                  overflowX: 'auto',
+                  border: '1px solid #e8e8e8',
+                  borderRadius: '10px',
+                  background: '#fff'
+                }}
+              >
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'separate',
+                    borderSpacing: 0,
+                    fontSize: isMobile ? '12px' : '13px',
+                    minWidth: isMobile ? '560px' : '620px'
+                  }}
+                >
                   <thead>
-                    <tr style={{ background: '#e3f2fd', borderBottom: '2px solid #90caf9' }}>
-                      <th style={{ textAlign: 'left', padding: '10px 8px', color: '#1565c0', minWidth: '160px' }}>Email</th>
-                      <th style={{ textAlign: 'center', padding: '10px 6px', color: '#f57f17', whiteSpace: 'nowrap' }} title="allowed_users，可登入">登入</th>
-                      <th style={{ textAlign: 'center', padding: '10px 6px', color: '#2e7d32', whiteSpace: 'nowrap' }} title="view_users">一般</th>
+                    <tr style={{ background: '#f5f7fa' }}>
+                      <th
+                        style={{
+                          textAlign: 'left',
+                          padding: '11px 12px',
+                          color: '#333',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          borderBottom: '1px solid #e8e8e8',
+                          minWidth: '200px'
+                        }}
+                      >
+                        帳號＋顯示名稱
+                      </th>
+                      <th
+                        style={{
+                          textAlign: 'center',
+                          padding: '11px 8px',
+                          color: '#b45309',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          borderBottom: '1px solid #e8e8e8',
+                          whiteSpace: 'nowrap',
+                          width: 52
+                        }}
+                        title="allowed_users，可登入"
+                      >
+                        登入
+                      </th>
+                      <th
+                        style={{
+                          textAlign: 'center',
+                          padding: '11px 8px',
+                          color: '#1d6f42',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          borderBottom: '1px solid #e8e8e8',
+                          whiteSpace: 'nowrap',
+                          width: 52
+                        }}
+                        title="view_users"
+                      >
+                        一般
+                      </th>
                       {MATRIX_SINGLE_FEATURE_KEYS.map((key, i) => (
                         <th
                           key={key}
                           style={{
                             textAlign: 'center',
-                            padding: '10px 6px',
+                            padding: '11px 6px',
                             color: '#1565c0',
-                            maxWidth: '100px',
-                            lineHeight: 1.3,
+                            maxWidth: '96px',
+                            lineHeight: 1.25,
                             fontWeight: 600,
-                            borderLeft: i === 0 ? '1px solid #b3d4fc' : undefined
+                            fontSize: '11px',
+                            borderBottom: '1px solid #e8e8e8',
+                            borderLeft: i === 0 ? '1px solid #e8e8e8' : undefined
                           }}
                           title={EDITOR_FEATURE_LABELS[key]}
                         >
@@ -1920,24 +2040,41 @@ export function StaffManagement() {
                       <th
                         style={{
                           textAlign: 'center',
-                          padding: '10px 6px',
+                          padding: '11px 6px',
                           color: '#1565c0',
-                          maxWidth: '100px',
-                          lineHeight: 1.3,
-                          fontWeight: 600
+                          maxWidth: '90px',
+                          lineHeight: 1.25,
+                          fontWeight: 600,
+                          fontSize: '11px',
+                          borderBottom: '1px solid #e8e8e8'
                         }}
                         title="重複預約"
                       >
-                        重複預約
+                        重複
                       </th>
-                      <th style={{ textAlign: 'left', padding: '10px 8px', color: '#5d4037', minWidth: '120px' }}>名稱</th>
-                      <th style={{ textAlign: 'right', padding: '10px 8px', color: '#5d4037', whiteSpace: 'nowrap' }}>操作</th>
+                      <th
+                        style={{
+                          textAlign: 'right',
+                          padding: '11px 12px',
+                          color: '#666',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          borderBottom: '1px solid #e8e8e8',
+                          width: 88,
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        操作
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {permissionMatrixRows.length === 0 ? (
                       <tr>
-                        <td colSpan={3 + matrixFeatureColumnCount + 2} style={{ padding: '32px 12px', textAlign: 'center', color: '#999' }}>
+                        <td
+                          colSpan={3 + matrixFeatureColumnCount + 1}
+                          style={{ padding: '32px 12px', textAlign: 'center', color: '#999', borderBottom: 'none' }}
+                        >
                           尚無可列帳號。請在上方新增 Email，或於資料庫有 view／editor 列者會自動出現。
                         </td>
                       </tr>
@@ -1945,58 +2082,203 @@ export function StaffManagement() {
                       permissionMatrixRows.map((row) => {
                         const busy = savingMatrixEmail === row.email
                         const f = getMatrixEditorFlags(row.editor)
+                        const hasEd = hasAnyEditorFeature(f)
                         const needsLogin = matrixRowMissingLogin(row)
+                        const loginImplied = !!row.view || hasEd
+                        const loginChecked = !!row.allowed || loginImplied
+                        const loginDisabled = busy || loginImplied
+                        const viewChecked = !!row.view || hasEd
+                        const viewDisabled = busy || hasEd
+                        const displayName = getMatrixDisplayName(row)
                         return (
                           <tr
                             key={row.email}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = needsLogin ? '#fff4e0' : '#f8fafc'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = needsLogin ? '#fffbf0' : '#fff'
+                            }}
                             style={{
-                              borderBottom: '1px solid #e8eaf0',
-                              background: needsLogin ? '#fff8e1' : undefined,
+                              background: needsLogin ? '#fffbf0' : '#fff',
                               boxShadow: needsLogin ? 'inset 3px 0 0 #ff9800' : undefined
                             }}
                           >
-                            <td style={{ padding: '10px 8px', wordBreak: 'break-all', verticalAlign: 'middle' }}>
-                              {needsLogin && (
+                            <td
+                              style={{
+                                padding: '12px',
+                                wordBreak: 'break-word',
+                                verticalAlign: 'top',
+                                borderBottom: '1px solid #f0f0f0',
+                                minWidth: 0
+                              }}
+                            >
+                              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 8px' }}>
+                                {needsLogin && (
+                                  <span
+                                    style={{ color: '#e65100', fontSize: '15px', lineHeight: 1, flexShrink: 0 }}
+                                    title="有一般或小編，但此帳未在登入名單"
+                                    aria-hidden
+                                  >
+                                    ⚠
+                                  </span>
+                                )}
                                 <span
-                                  style={{ display: 'inline-block', marginRight: '4px', color: '#e65100', fontSize: '14px', lineHeight: 1, verticalAlign: 'text-top' }}
-                                  title="有一般或小編，但此帳未在登入名單"
-                                  aria-hidden
+                                  style={{
+                                    fontWeight: 600,
+                                    color: '#222',
+                                    fontSize: isMobile ? '12px' : '13px',
+                                    lineHeight: 1.4
+                                  }}
                                 >
-                                  ⚠
+                                  {row.email}
                                 </span>
+                              </div>
+                              {editingMatrixNameForEmail === row.email ? (
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: '8px',
+                                    alignItems: 'center',
+                                    marginTop: '8px'
+                                  }}
+                                >
+                                  <input
+                                    type="text"
+                                    value={editMatrixName}
+                                    onChange={(e) => setEditMatrixName(e.target.value)}
+                                    placeholder="顯示名稱"
+                                    style={{
+                                      flex: 1,
+                                      minWidth: '120px',
+                                      padding: '7px 10px',
+                                      border: '1px solid #b3d4fc',
+                                      borderRadius: '6px',
+                                      fontSize: '12px',
+                                      boxSizing: 'border-box'
+                                    }}
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) { void handleSaveMatrixName(row) }
+                                      if (e.key === 'Escape') { setEditingMatrixNameForEmail(null); setEditMatrixName('') }
+                                    }}
+                                  />
+                                  <Button variant="primary" size="small" onClick={() => { void handleSaveMatrixName(row) }}>
+                                    儲存
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="small"
+                                    onClick={() => { setEditingMatrixNameForEmail(null); setEditMatrixName('') }}
+                                  >
+                                    取消
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    marginTop: '6px'
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      color: displayName ? '#5c5c5c' : '#bbb',
+                                      fontSize: '12px',
+                                      lineHeight: 1.4,
+                                      flex: 1,
+                                      minWidth: 0
+                                    }}
+                                  >
+                                    {displayName || '未設定顯示名稱'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    title="編輯顯示名稱"
+                                    aria-label="編輯顯示名稱"
+                                    onClick={() => {
+                                      setEditingMatrixNameForEmail(row.email)
+                                      setEditMatrixName(getMatrixDisplayName(row))
+                                    }}
+                                    disabled={busy}
+                                    style={{
+                                      width: 30,
+                                      height: 30,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: '1px solid #e0e0e0',
+                                      borderRadius: 8,
+                                      background: '#fff',
+                                      cursor: busy ? 'not-allowed' : 'pointer',
+                                      fontSize: 14,
+                                      lineHeight: 1,
+                                      color: busy ? '#bbb' : '#1976d2',
+                                      padding: 0,
+                                      flexShrink: 0,
+                                      opacity: busy ? 0.5 : 1
+                                    }}
+                                  >
+                                    ✎
+                                  </button>
+                                </div>
                               )}
-                              {row.email}
                             </td>
                             <td
                               style={{
                                 padding: '8px 6px',
                                 textAlign: 'center',
                                 verticalAlign: 'middle',
-                                borderRadius: needsLogin ? '6px' : undefined,
-                                background: needsLogin ? 'rgba(255, 152, 0, 0.12)' : undefined
+                                borderBottom: '1px solid #f0f0f0',
+                                borderRadius: needsLogin ? '4px' : undefined,
+                                background: needsLogin ? 'rgba(255, 193, 7, 0.1)' : undefined,
+                                opacity: loginImplied && !needsLogin ? 0.6 : 1
                               }}
                             >
                               <input
                                 type="checkbox"
-                                checked={!!row.allowed}
-                                disabled={busy}
+                                checked={loginChecked}
+                                disabled={loginDisabled}
                                 onChange={(e) => { void toggleMatrixLogin(row, e.target.checked) }}
-                                title="在登入名單內可登入"
+                                title={
+                                  loginImplied
+                                    ? '有「一般」或功能權限時必須具備登入（可從下層取消以解鎖）'
+                                    : '在登入名單內可登入'
+                                }
                                 aria-label="登入"
                               />
                             </td>
-                            <td style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <td
+                              style={{
+                                padding: '10px 6px',
+                                textAlign: 'center',
+                                verticalAlign: 'middle',
+                                borderBottom: '1px solid #f0f0f0',
+                                opacity: hasEd ? 0.6 : 1
+                              }}
+                            >
                               <input
                                 type="checkbox"
-                                checked={!!row.view}
-                                disabled={busy}
+                                checked={viewChecked}
+                                disabled={viewDisabled}
                                 onChange={(e) => { void toggleMatrixView(row, e.target.checked) }}
-                                title="一般權限（view_users）"
+                                title={
+                                  hasEd
+                                    ? '有功能權限時必須具備一般權限（請先關閉所有功能權限）'
+                                    : '一般權限（view_users）'
+                                }
                                 aria-label="一般"
                               />
                             </td>
                             {MATRIX_SINGLE_FEATURE_KEYS.map((key) => (
-                              <td key={key} style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                              <td
+                                key={key}
+                                style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle', borderBottom: '1px solid #f0f0f0' }}
+                              >
                                 <input
                                   type="checkbox"
                                   checked={f[key]}
@@ -2007,75 +2289,30 @@ export function StaffManagement() {
                                 />
                               </td>
                             ))}
-                            <td style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <td
+                              style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle', borderBottom: '1px solid #f0f0f0' }}
+                            >
                               <input
                                 type="checkbox"
                                 checked={f.can_repeat_booking && f.can_search_batch}
                                 disabled={busy}
                                 onChange={(e) => { void setMatrixRepeatAndSearchBatch(row, e.target.checked) }}
-                                title="重複預約"
+                                title="重複預約＋預約查詢·批次"
                                 aria-label="重複預約"
                               />
                             </td>
-                            <td style={{ padding: '10px 8px', verticalAlign: 'middle' }}>
-                              {editingMatrixNameForEmail === row.email ? (
-                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                  <input
-                                    type="text"
-                                    value={editMatrixName}
-                                    onChange={(e) => setEditMatrixName(e.target.value)}
-                                    style={{ flex: 1, minWidth: '100px', padding: '6px 8px', border: '1px solid #90caf9', borderRadius: '6px', fontSize: '12px' }}
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) { void handleSaveMatrixName(row) }
-                                      if (e.key === 'Escape') { setEditingMatrixNameForEmail(null); setEditMatrixName('') }
-                                    }}
-                                  />
-                                  <Button variant="primary" size="small" onClick={() => { void handleSaveMatrixName(row) }}>儲存</Button>
-                                  <Button
-                                    variant="outline"
-                                    size="small"
-                                    onClick={() => { setEditingMatrixNameForEmail(null); setEditMatrixName('') }}
-                                  >
-                                    取消
-                                  </Button>
-                                </div>
-                              ) : (
-                                <span style={{ color: getMatrixDisplayName(row) ? '#333' : '#aaa', fontSize: '12px' }}>
-                                  {getMatrixDisplayName(row) || '—'}
-                                </span>
-                              )}
-                            </td>
-                            <td style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'normal', verticalAlign: 'middle', maxWidth: isMobile ? '200px' : '280px' }}>
+                            <td
+                              style={{ padding: '8px 12px', textAlign: 'right', verticalAlign: 'middle', borderBottom: '1px solid #f0f0f0' }}
+                            >
                               {editingMatrixNameForEmail !== row.email && (
-                                <>
-                                  {needsLogin && (
-                                    <span title="寫入登入名單，與已勾權限對齊" style={{ display: 'inline-block', marginRight: '6px', marginBottom: isMobile ? '4px' : 0 }}>
-                                      <Button
-                                        variant="primary"
-                                        size="small"
-                                        onClick={() => { void handleBackfillMatrixLogin(row) }}
-                                        disabled={busy}
-                                        style={{ background: '#ff8f00', color: '#fff', fontWeight: 600 }}
-                                      >
-                                        補登入
-                                      </Button>
-                                    </span>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditingMatrixNameForEmail(row.email)
-                                      setEditMatrixName(getMatrixDisplayName(row))
-                                    }}
-                                    style={{ marginRight: '6px', background: 'none', border: 'none', color: '#1976d2', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline' }}
-                                  >
-                                    編輯名稱
-                                  </button>
-                                  <Button variant="danger" size="small" onClick={() => { void handleDeleteMatrixRow(row) }} disabled={busy}>
-                                    刪除整列
-                                  </Button>
-                                </>
+                                <Button
+                                  variant="danger"
+                                  size="small"
+                                  onClick={() => { setPermissionMatrixConfirm({ kind: 'deleteRow', row }) }}
+                                  disabled={busy}
+                                >
+                                  刪除
+                                </Button>
                               )}
                             </td>
                           </tr>
@@ -2419,11 +2656,7 @@ export function StaffManagement() {
             {selectedAccountCoach.user_email && (
               <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
                 <button
-                  onClick={() => {
-                    if (confirm(`確定要清除 ${selectedAccountCoach.name} 的帳號配對嗎？`)) {
-                      handleSetAccount('')  // 直接傳入空字串
-                    }
-                  }}
+                  onClick={() => { setAccountClearConfirmOpen(true) }}
                   disabled={accountLoading}
                   style={{
                     width: '100%',
@@ -2552,12 +2785,7 @@ export function StaffManagement() {
             {selectedPricingCoach.designated_lesson_price_30min && (
               <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
                 <button
-                  onClick={() => {
-                    if (confirm(`確定要清除 ${selectedPricingCoach.name} 的指定課價格嗎？`)) {
-                      setLessonPrice('')
-                      handleSetPrice()
-                    }
-                  }}
+                  onClick={() => { setPriceClearConfirmOpen(true) }}
                   disabled={pricingLoading}
                   style={{
                     width: '100%',
@@ -2578,6 +2806,64 @@ export function StaffManagement() {
             )}
           </div>
         </div>
+      )}
+
+      {selectedAccountCoach && (
+        <ConfirmModal
+          isOpen={accountClearConfirmOpen}
+          onClose={() => setAccountClearConfirmOpen(false)}
+          onConfirm={() => {
+            setAccountClearConfirmOpen(false)
+            void handleSetAccount('')
+          }}
+          title="清除帳號配對"
+          message={`確定要清除「${selectedAccountCoach.name}」的帳號配對？該教練將與此登入帳號解除連結。`}
+          confirmText="清除"
+          cancelText="取消"
+          variant="warning"
+          isLoading={accountLoading}
+        />
+      )}
+
+      {selectedPricingCoach && (
+        <ConfirmModal
+          isOpen={priceClearConfirmOpen}
+          onClose={() => setPriceClearConfirmOpen(false)}
+          onConfirm={() => {
+            setPriceClearConfirmOpen(false)
+            void saveDesignatedLessonPrice('')
+          }}
+          title="清除指定課價格"
+          message={`確定要清除「${selectedPricingCoach.name}」的指定課價格？若未再設定，扣款時將不再自動帶入專屬單價。`}
+          confirmText="清除"
+          cancelText="取消"
+          variant="warning"
+          isLoading={pricingLoading}
+        />
+      )}
+
+      {permissionMatrixConfirm && (
+        <ConfirmModal
+          isOpen
+          onClose={() => {
+            if (savingMatrixEmail) return
+            setPermissionMatrixConfirm(null)
+          }}
+          onConfirm={() => {
+            const a = permissionMatrixConfirm
+            setPermissionMatrixConfirm(null)
+            if (a.kind === 'removeLogin') void runRemoveFromLoginList(a.allowedUserId, a.email)
+            else if (a.kind === 'removeView') void runRemoveViewUserRow(a.viewId, a.email, a.displayName)
+            else void runDeleteMatrixRow(a.row)
+          }}
+          {...getPermissionMatrixConfirmCopy(permissionMatrixConfirm)}
+          cancelText="取消"
+          variant="danger"
+          isLoading={
+            !!permissionMatrixConfirm &&
+            savingMatrixEmail === getPermissionMatrixConfirmEmail(permissionMatrixConfirm)
+          }
+        />
       )}
 
       <Footer />
