@@ -34,11 +34,13 @@ interface ParsedDetails {
 }
 
 type PermissionRow = { email: string; display_name: string | null }
+type AllowedNameRow = { email: string; notes: string | null }
 
-/** 人員管理 → 權限管理：view_users（一般）＋ editor_users（小編，有 display_name 時覆蓋） */
+/** 與人員管理「權限管理」名稱欄同優先序：view_users → editor_users → allowed_users.notes */
 function buildPermissionDisplayMap(
   viewRows: PermissionRow[] | null | undefined,
-  editorRows: PermissionRow[] | null | undefined
+  editorRows: PermissionRow[] | null | undefined,
+  allowedRows: AllowedNameRow[] | null | undefined
 ): Record<string, string> {
   const map: Record<string, string> = {}
   for (const row of viewRows || []) {
@@ -50,7 +52,15 @@ function buildPermissionDisplayMap(
   for (const row of editorRows || []) {
     const key = row.email?.trim().toLowerCase()
     if (!key) continue
+    if (map[key]) continue
     const name = row.display_name?.trim()
+    if (name) map[key] = name
+  }
+  for (const row of allowedRows || []) {
+    const key = row.email?.trim().toLowerCase()
+    if (!key) continue
+    if (map[key]) continue
+    const name = row.notes?.trim()
     if (name) map[key] = name
   }
   return map
@@ -491,24 +501,27 @@ export function AuditLog() {
   // 是否有設定進階篩選
   const hasAdvancedFilters = filter !== 'all' || selectedFilledBy !== 'all'
 
-  /** 與人員管理「權限管理」分頁相同資料來源：view_users + editor_users */
+  /** 與人員管理「權限管理」名稱欄同資料來源：view + editor + allowed(notes) */
   const [permissionDisplayByEmail, setPermissionDisplayByEmail] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!user) return
     let cancelled = false
     void (async () => {
-      const [viewRes, editorRes] = await Promise.all([
+      const [viewRes, editorRes, allowedRes] = await Promise.all([
         supabase.from('view_users').select('email, display_name'),
         supabase.from('editor_users').select('email, display_name'),
+        supabase.from('allowed_users').select('email, notes'),
       ])
       if (cancelled) return
       if (viewRes.error) console.error('載入 view_users 失敗:', viewRes.error)
       if (editorRes.error) console.error('載入 editor_users 失敗:', editorRes.error)
+      if (allowedRes.error) console.error('載入 allowed_users 失敗:', allowedRes.error)
       setPermissionDisplayByEmail(
         buildPermissionDisplayMap(
           viewRes.data as PermissionRow[] | null,
-          editorRes.data as PermissionRow[] | null
+          editorRes.data as PermissionRow[] | null,
+          allowedRes.data as AllowedNameRow[] | null
         )
       )
     })()

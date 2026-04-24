@@ -88,7 +88,6 @@ describe('auth.ts - 權限驗證', () => {
   describe('SUPER_ADMINS', () => {
     it('應該包含超級管理員的電子郵件', () => {
       expect(SUPER_ADMINS).toContain('callumbao1122@gmail.com')
-      expect(SUPER_ADMINS).toContain('pjpan0511@gmail.com')
       expect(SUPER_ADMINS).toContain('minlin1325@gmail.com')
     })
   })
@@ -155,7 +154,7 @@ describe('auth.ts - 權限驗證', () => {
 
   describe('isAdminAsync', () => {
     it('超級管理員應該是管理員', async () => {
-      const user = createMockUser('pjpan0511@gmail.com')
+      const user = createMockUser('minlin1325@gmail.com')
       const result = await isAdminAsync(user)
       expect(result).toBe(true)
     })

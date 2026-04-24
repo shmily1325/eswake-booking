@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -7,7 +7,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
-import { clearPermissionCache, isAdmin, EDITOR_FEATURE_KEYS, EDITOR_FEATURE_LABELS, type EditorFeatureKey } from '../../utils/auth'
+import { clearPermissionCache, isAdmin, SUPER_ADMINS, EDITOR_FEATURE_KEYS, EDITOR_FEATURE_LABELS, type EditorFeatureKey } from '../../utils/auth'
 
 interface Coach {
   id: string
@@ -63,6 +63,14 @@ interface AllowedUser {
   notes: string | null
 }
 
+/** 人員權限表：合併三張表同一 email 的列 */
+interface PermissionMatrixRow {
+  email: string
+  allowed: AllowedUser | null
+  view: ViewUser | null
+  editor: EditorUser | null
+}
+
 export function StaffManagement() {
   const user = useAuthUser()
   const navigate = useNavigate()
@@ -89,16 +97,13 @@ export function StaffManagement() {
   const [newAllowedEmail, setNewAllowedEmail] = useState('')
   const [newAllowedNotes, setNewAllowedNotes] = useState('')
   const [addingAllowed, setAddingAllowed] = useState(false)
-  const [editingAllowedId, setEditingAllowedId] = useState<string | null>(null)
-  const [editAllowedNotes, setEditAllowedNotes] = useState('')
+  /** 權限表「名稱」欄位編輯中（列 email 小寫） */
+  const [editingMatrixNameForEmail, setEditingMatrixNameForEmail] = useState<string | null>(null)
+  const [editMatrixName, setEditMatrixName] = useState('')
 
-  // 一般權限管理
+  // 一般權限管理（併入單一權限表，仍從此 state 載入）
   const [viewUsers, setViewUsers] = useState<ViewUser[]>([])
-  const [newViewUserEmail, setNewViewUserEmail] = useState('')
-  const [newViewUserName, setNewViewUserName] = useState('')
-  const [addingViewUser, setAddingViewUser] = useState(false)
-  const [editingViewUserId, setEditingViewUserId] = useState<string | null>(null)
-  const [editViewUserName, setEditViewUserName] = useState('')
+  const [savingMatrixEmail, setSavingMatrixEmail] = useState<string | null>(null)
   
   // 月份篩選
   const today = new Date()
@@ -132,12 +137,6 @@ export function StaffManagement() {
   const [lessonPrice, setLessonPrice] = useState<string>('')
   const [pricingLoading, setPricingLoading] = useState(false)
   
-  // 功能權限
-  const [newEditorEmail, setNewEditorEmail] = useState('')
-  const [newEditorDisplayName, setNewEditorDisplayName] = useState('')
-  const [addingEditor, setAddingEditor] = useState(false)
-  const [editingEditorId, setEditingEditorId] = useState<string | null>(null)
-  const [editEditorName, setEditEditorName] = useState('')
   
   // 說明展開狀態
   const [showHelp, setShowHelp] = useState(true)
@@ -568,140 +567,6 @@ export function StaffManagement() {
     }
   }
 
-  // 新增功能權限帳號（表 editor_users；預設四項全開，可於下方勾選關閉）
-  const handleAddEditor = async () => {
-    if (!newEditorEmail.trim()) {
-      toast.warning('請輸入 Email')
-      return
-    }
-
-    if (!newEditorEmail.includes('@')) {
-      toast.warning('請輸入有效的 Email')
-      return
-    }
-
-    setAddingEditor(true)
-    try {
-      const email = newEditorEmail.trim().toLowerCase()
-      const displayName = newEditorDisplayName.trim() || null
-
-      const { error: editorError } = await (supabase as any)
-        .from('editor_users')
-        .insert([{
-          email: email,
-          display_name: displayName,
-          can_schedule: true,
-          can_boats: true,
-          can_repeat_booking: true,
-          can_search_batch: true
-        }])
-
-      if (editorError) {
-        if (editorError.code === '23505') {
-          throw new Error('此 Email 已在功能權限名單中')
-        }
-        throw editorError
-      }
-
-      await (supabase as any)
-        .from('view_users')
-        .upsert([{
-          email: email,
-          display_name: displayName,
-          notes: '功能權限'
-        }], {
-          onConflict: 'email',
-          ignoreDuplicates: true
-        })
-
-      await supabase
-        .from('allowed_users')
-        .upsert([{
-          email: email,
-          notes: '功能權限'
-        }], {
-          onConflict: 'email',
-          ignoreDuplicates: true
-        })
-
-      toast.success(`已將 ${displayName || email} 加入功能權限名單（四項模組預設全開）`)
-      setNewEditorEmail('')
-      setNewEditorDisplayName('')
-      clearPermissionCache() // 清除權限緩存
-      loadData()
-    } catch (error) {
-      toast.error('新增失敗: ' + (error as Error).message)
-    } finally {
-      setAddingEditor(false)
-    }
-  }
-
-  const handleToggleEditorModule = async (id: string, key: EditorFeatureKey, value: boolean) => {
-    try {
-      const { error } = await (supabase as any)
-        .from('editor_users')
-        .update({ [key]: value })
-        .eq('id', id)
-      if (error) throw error
-      clearPermissionCache()
-      loadData()
-    } catch (error) {
-      toast.error('更新權限失敗: ' + (error as Error).message)
-    }
-  }
-
-  // 從功能權限名單移除
-  const handleRemoveEditor = async (id: string, email: string, displayName: string | null) => {
-    if (!confirm(`確定要將 ${displayName || email} 從功能權限名單移除嗎？`)) {
-      return
-    }
-
-    try {
-      const e = email.toLowerCase()
-      const { error } = await (supabase as any)
-        .from('editor_users')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-
-      const { data: stillView } = await (supabase as any)
-        .from('view_users')
-        .select('id')
-        .eq('email', e)
-        .maybeSingle()
-      if (!stillView) {
-        const { error: delAllow } = await supabase.from('allowed_users').delete().eq('email', e)
-        if (delAllow) throw delAllow
-      }
-
-      toast.success(`已將 ${displayName || email} 從功能權限名單移除`)
-      clearPermissionCache() // 清除權限緩存
-      loadData()
-    } catch (error) {
-      toast.error('移除失敗: ' + (error as Error).message)
-    }
-  }
-  
-  // 更新顯示名稱
-  const handleUpdateEditorName = async (id: string) => {
-    try {
-      await (supabase as any)
-        .from('editor_users')
-        .update({
-          display_name: editEditorName.trim() || null
-        })
-        .eq('id', id)
-      
-      toast.success('已更新名稱')
-      setEditingEditorId(null)
-      setEditEditorName('')
-      loadData()
-    } catch (error) {
-      toast.error('更新失敗: ' + (error as Error).message)
-    }
-  }
-
   // ========== 系統登入名單（allowed_users，最上層）==========
 
   const handleAddAllowedUser = async () => {
@@ -716,7 +581,7 @@ export function StaffManagement() {
     setAddingAllowed(true)
     try {
       const email = newAllowedEmail.trim().toLowerCase()
-      const notes = newAllowedNotes.trim() || '登入名單'
+      const notes = newAllowedNotes.trim() || null
       const { error } = await supabase
         .from('allowed_users')
         .upsert(
@@ -764,74 +629,54 @@ export function StaffManagement() {
     }
   }
 
-  const handleUpdateAllowedNotes = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('allowed_users')
-        .update({ notes: editAllowedNotes.trim() || null })
-        .eq('id', id)
-      if (error) throw error
-      toast.success('已更新備註')
-      setEditingAllowedId(null)
-      setEditAllowedNotes('')
-      clearPermissionCache()
-      loadData()
-    } catch (error) {
-      toast.error('更新失敗: ' + (error as Error).message)
-    }
+  /** 權限表顯示用名稱：以 view 顯示名為主，其餘回退 editor、登入名單列 */
+  const getMatrixDisplayName = (row: PermissionMatrixRow): string => {
+    const v = row.view?.display_name?.trim()
+    if (v) return v
+    const ed = row.editor?.display_name?.trim()
+    if (ed) return ed
+    return row.allowed?.notes?.trim() || ''
   }
 
-  // ========== 一般權限管理 ==========
-  
-  // 新增一般權限用戶
-  const handleAddViewUser = async () => {
-    if (!newViewUserEmail.trim()) {
-      toast.warning('請輸入 Email')
-      return
-    }
-    
-    if (!newViewUserEmail.includes('@')) {
-      toast.warning('請輸入有效的 Email')
-      return
-    }
-    
-    setAddingViewUser(true)
+  const handleSaveMatrixName = async (row: PermissionMatrixRow) => {
+    const e = row.email.toLowerCase()
+    const name = editMatrixName.trim() || null
+    setSavingMatrixEmail(e)
     try {
-      const email = newViewUserEmail.trim().toLowerCase()
-      
-      const { error } = await (supabase as any)
-        .from('view_users')
-        .insert([{
-          email: email,
-          display_name: newViewUserName.trim() || null
-        }])
-      
-      if (error) {
-        if (error.code === '23505') {
-          throw new Error('此 Email 已有一般權限')
-        }
-        throw error
+      if (row.view) {
+        const { error } = await (supabase as any)
+          .from('view_users')
+          .update({ display_name: name })
+          .eq('id', row.view.id)
+        if (error) throw error
+      } else if (row.editor) {
+        const { error } = await (supabase as any)
+          .from('editor_users')
+          .update({ display_name: name })
+          .eq('id', row.editor.id)
+        if (error) throw error
+      } else if (row.allowed) {
+        const { error } = await supabase
+          .from('allowed_users')
+          .update({ notes: name })
+          .eq('id', row.allowed.id)
+        if (error) throw error
+      } else {
+        return
       }
-
-      await supabase.from('allowed_users').upsert(
-        {
-          email,
-          notes: '一般權限'
-        },
-        { onConflict: 'email' }
-      )
-      
-      toast.success(`已新增 ${newViewUserName || email} 的一般權限`)
-      setNewViewUserEmail('')
-      setNewViewUserName('')
+      toast.success('已更新名稱')
+      setEditingMatrixNameForEmail(null)
+      setEditMatrixName('')
       clearPermissionCache()
       loadData()
-    } catch (error) {
-      toast.error('新增失敗: ' + (error as Error).message)
+    } catch (err) {
+      toast.error('更新失敗: ' + (err as Error).message)
     } finally {
-      setAddingViewUser(false)
+      setSavingMatrixEmail(null)
     }
   }
+
+  // ========== 一般權限（仍由矩陣勾選驅動）==========
   
   // 移除一般權限用戶
   const handleRemoveViewUser = async (id: string, email: string, displayName: string | null) => {
@@ -866,25 +711,197 @@ export function StaffManagement() {
     }
   }
   
-  // 更新一般權限用戶的顯示名稱
-  const handleUpdateViewUserName = async (id: string) => {
-    try {
-      await (supabase as any)
-        .from('view_users')
-        .update({
-          display_name: editViewUserName.trim() || null
-        })
-        .eq('id', id)
-      
-      toast.success('已更新名稱')
-      setEditingViewUserId(null)
-      setEditViewUserName('')
-      loadData()
-    } catch (error) {
-      toast.error('更新失敗: ' + (error as Error).message)
+  const isSuperAdminEmail = (em: string) =>
+    SUPER_ADMINS.some((a) => a.toLowerCase() === em.trim().toLowerCase())
+
+  const getMatrixEditorFlags = (ed: EditorUser | null): Record<EditorFeatureKey, boolean> => {
+    if (!ed) {
+      return {
+        can_schedule: false,
+        can_boats: false,
+        can_repeat_booking: false,
+        can_search_batch: false
+      }
+    }
+    return {
+      can_schedule: ed.can_schedule !== false,
+      can_boats: ed.can_boats !== false,
+      can_repeat_booking: ed.can_repeat_booking !== false,
+      can_search_batch: ed.can_search_batch !== false
     }
   }
-  
+
+  const ensureAllowedAndViewForModule = async (email: string) => {
+    const e = email.toLowerCase()
+    const a = await supabase
+      .from('allowed_users')
+      .upsert({ email: e, notes: '功能權限' }, { onConflict: 'email' })
+    if (a.error) throw a.error
+    const v = await (supabase as any)
+      .from('view_users')
+      .upsert(
+        { email: e, display_name: null, notes: '功能權限' },
+        { onConflict: 'email' }
+      )
+    if (v.error) throw v.error
+  }
+
+  const setMatrixEditorFeature = async (row: PermissionMatrixRow, key: EditorFeatureKey, value: boolean) => {
+    const e = row.email.toLowerCase()
+    setSavingMatrixEmail(e)
+    try {
+      const prev = getMatrixEditorFlags(row.editor)
+      const flags: Record<EditorFeatureKey, boolean> = { ...prev, [key]: value }
+      const allOff = EDITOR_FEATURE_KEYS.every((k) => !flags[k])
+      if (allOff) {
+        if (row.editor) {
+          const { error } = await (supabase as any).from('editor_users').delete().eq('id', row.editor.id)
+          if (error) throw error
+        }
+      } else if (!row.editor) {
+        await ensureAllowedAndViewForModule(e)
+        const { error, data } = await (supabase as any)
+          .from('editor_users')
+          .insert({
+            email: e,
+            display_name: null,
+            can_schedule: flags.can_schedule,
+            can_boats: flags.can_boats,
+            can_repeat_booking: flags.can_repeat_booking,
+            can_search_batch: flags.can_search_batch
+          })
+          .select('id')
+          .single()
+        if (error) {
+          if (error.code === '23505') {
+            const { error: up } = await (supabase as any)
+              .from('editor_users')
+              .update({
+                can_schedule: flags.can_schedule,
+                can_boats: flags.can_boats,
+                can_repeat_booking: flags.can_repeat_booking,
+                can_search_batch: flags.can_search_batch
+              })
+              .eq('email', e)
+            if (up) throw up
+          } else {
+            throw error
+          }
+        } else {
+          void data
+        }
+      } else {
+        const { error } = await (supabase as any)
+          .from('editor_users')
+          .update({
+            can_schedule: flags.can_schedule,
+            can_boats: flags.can_boats,
+            can_repeat_booking: flags.can_repeat_booking,
+            can_search_batch: flags.can_search_batch
+          })
+          .eq('id', row.editor.id)
+        if (error) throw error
+      }
+      clearPermissionCache()
+      loadData()
+    } catch (err) {
+      toast.error('更新失敗: ' + (err as Error).message)
+    } finally {
+      setSavingMatrixEmail(null)
+    }
+  }
+
+  const toggleMatrixLogin = async (row: PermissionMatrixRow, next: boolean) => {
+    if (next) {
+      if (row.allowed) return
+      setSavingMatrixEmail(row.email)
+      try {
+        const e = row.email.toLowerCase()
+        const { error } = await supabase
+          .from('allowed_users')
+          .upsert({ email: e, notes: '登入名單' }, { onConflict: 'email' })
+        if (error) throw error
+        clearPermissionCache()
+        loadData()
+      } catch (err) {
+        toast.error('失敗: ' + (err as Error).message)
+      } finally {
+        setSavingMatrixEmail(null)
+      }
+      return
+    }
+    if (row.allowed) await handleRemoveAllowedUser(row.allowed.id, row.email)
+  }
+
+  const toggleMatrixView = async (row: PermissionMatrixRow, next: boolean) => {
+    if (next) {
+      if (row.view) return
+      setSavingMatrixEmail(row.email)
+      try {
+        const e = row.email.toLowerCase()
+        const { error: ve } = await (supabase as any)
+          .from('view_users')
+          .insert([{ email: e, display_name: null, notes: '一般權限' }])
+        if (ve && ve.code !== '23505') throw ve
+        await supabase
+          .from('allowed_users')
+          .upsert({ email: e, notes: '一般權限' }, { onConflict: 'email' })
+        clearPermissionCache()
+        loadData()
+      } catch (err) {
+        toast.error('失敗: ' + (err as Error).message)
+      } finally {
+        setSavingMatrixEmail(null)
+      }
+      return
+    }
+    if (row.view) await handleRemoveViewUser(row.view.id, row.email, row.view.display_name)
+  }
+
+  const handleDeleteMatrixRow = async (row: PermissionMatrixRow) => {
+    if (!confirm(`確定刪除 ${row.email} 的登入、一般與功能權限？`)) return
+    const e = row.email.toLowerCase()
+    setSavingMatrixEmail(e)
+    try {
+      await (supabase as any).from('editor_users').delete().eq('email', e)
+      await (supabase as any).from('view_users').delete().eq('email', e)
+      const { error } = await supabase.from('allowed_users').delete().eq('email', e)
+      if (error) throw error
+      toast.success('已刪除')
+      clearPermissionCache()
+      loadData()
+    } catch (err) {
+      toast.error('刪除失敗: ' + (err as Error).message)
+    } finally {
+      setSavingMatrixEmail(null)
+    }
+  }
+
+  /** 合併三張表一列一帳號 */
+  const permissionMatrixRows = useMemo((): PermissionMatrixRow[] => {
+    const m = new Map<string, PermissionMatrixRow>()
+    const put = (email: string) => {
+      const k = email.trim().toLowerCase()
+      if (isSuperAdminEmail(k)) return
+      if (!m.has(k)) m.set(k, { email: k, allowed: null, view: null, editor: null })
+    }
+    for (const a of allowedUsers) {
+      put(a.email)
+      const r = m.get(a.email.toLowerCase())
+      if (r) r.allowed = a
+    }
+    for (const v of viewUsers) {
+      put(v.email)
+      const r = m.get(v.email.toLowerCase())
+      if (r) r.view = v
+    }
+    for (const e of editorUsers) {
+      put(e.email)
+      const r = m.get(e.email.toLowerCase())
+      if (r) r.editor = e as EditorUser
+    }
+    return Array.from(m.values()).sort((a, b) => a.email.localeCompare(b.email))
+  }, [allowedUsers, viewUsers, editorUsers])
 
   if (loading) {
     return (
@@ -1739,53 +1756,40 @@ export function StaffManagement() {
                 📋 權限說明
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div>• <strong>系統登入名單</strong>（下表自行維護）：先在此加入 Email，對方才能登入使用本系統；僅在名單內、未加下層權限者，以首頁已開放功能為準（如「今日預約」）</div>
-                <div>• <strong>一般權限</strong>：可看到預約表、預約查詢、明日提醒、編輯記錄</div>
-                <div>• <strong>功能權限</strong>（下表）：在一般權限之上，可<strong>逐項勾選</strong>排班、船隻、重複預約、預約查詢批次等模組</div>
-              </div>
-              <div style={{ 
-                marginTop: '10px', 
-                padding: '8px 12px', 
-                background: 'rgba(255,255,255,0.7)', 
-                borderRadius: '6px',
-                fontSize: '13px'
-              }}>
-                💡 在「一般／小編」新增帳號時，會一併寫入下方登入名單。僅需「能登入、但只開今日預約等」者，可只在登入名單加 Email 並用備註註記。從登入名單移除時，可選擇一併清除下層權限（見按鈕說明）。
+                <div>以<strong>一張表</strong>管理：<strong>登入</strong>（allowed_users，能使用本系統）、<strong>一般</strong>（view_users，預約表／查詢／提醒等），以及<strong>各項功能</strong>（小編模組，對應 editor_users 欄位）。</div>
+                <div>勾選功能模組時會一併確保已加入登入與一般權限（同先前「新增小編」行為）。</div>
+                <div>取消「登入」或「刪除整列」時，會一併清除下層權限，避免帳號狀態不一致。僅在登入內、未勾一般者，以首頁已開放功能（如「今日預約」）為準。</div>
               </div>
             </div>
 
-            {/* ========== 系統登入名單（表格，最上層）========== */}
+            {/* 單一權限矩陣表 */}
             <div style={{
-              background: '#fff8e1',
+              background: '#f5f9ff',
               padding: '12px 16px',
               borderRadius: '8px 8px 0 0',
               fontSize: '15px',
               fontWeight: 'bold',
-              color: '#f57f17',
-              border: '1px solid #ffdcc0',
+              color: '#1565c0',
+              border: '1px solid #90caf9',
               borderBottom: 'none',
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
               flexWrap: 'wrap'
             }}>
-              <span>🗝️</span>
-              系統登入名單
-              <Badge variant="warning" size="small">{allowedUsers.length} 人</Badge>
-              <span style={{ fontWeight: '500', fontSize: '12px', color: '#8d6e63' }}>（allowed_users，可在此自訂新增／備註／移除）</span>
+              <span>🗂</span>
+              人員權限
+              <Badge variant="info" size="small">{permissionMatrixRows.length} 帳號</Badge>
             </div>
             <div style={{
               background: 'white',
               borderRadius: '0 0 12px 12px',
               padding: isMobile ? '12px' : '20px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              marginBottom: '24px',
-              border: '1px solid #ffdcc0',
-              borderTop: 'none'
+              border: '1px solid #90caf9',
+              borderTop: 'none',
+              marginBottom: '8px'
             }}>
-              <div style={{ fontSize: '13px', color: '#6d4c41', marginBottom: '16px', lineHeight: 1.6 }}>
-                僅下表內的 Google 帳號可通過登入；未在表內者會看到「無法使用此系統」與聯絡官方說明。超級管理員不在此表亦永遠可登入。
-              </div>
               <div style={{
                 display: 'flex',
                 gap: '10px',
@@ -1794,7 +1798,7 @@ export function StaffManagement() {
                 alignItems: isMobile ? 'stretch' : 'flex-end'
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Email</div>
+                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Email（小寫）</div>
                   <input
                     type="email"
                     value={newAllowedEmail}
@@ -1811,12 +1815,12 @@ export function StaffManagement() {
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>備註（選填）</div>
+                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>名稱（選填，可稍後在表內修改）</div>
                   <input
                     type="text"
                     value={newAllowedNotes}
                     onChange={(e) => setNewAllowedNotes(e.target.value)}
-                    placeholder="例：教練僅需今日預約"
+                    placeholder="例：櫃台、櫃檯小安"
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1835,9 +1839,8 @@ export function StaffManagement() {
                   size="medium"
                   onClick={handleAddAllowedUser}
                   disabled={addingAllowed}
-                  style={{ background: '#f9a825', color: '#333', fontWeight: 600 }}
                 >
-                  {addingAllowed ? '新增中...' : '➕ 加入名單'}
+                  {addingAllowed ? '新增中...' : '➕ 加入並顯示於下表'}
                 </Button>
               </div>
 
@@ -1845,537 +1848,131 @@ export function StaffManagement() {
                 <table style={{
                   width: '100%',
                   borderCollapse: 'collapse',
-                  fontSize: '14px',
-                  minWidth: isMobile ? '520px' : '100%'
+                  fontSize: isMobile ? '12px' : '13px',
+                  minWidth: isMobile ? '640px' : '720px'
                 }}>
                   <thead>
-                    <tr style={{ background: '#fffde7', borderBottom: '2px solid #ffe0b2' }}>
-                      <th style={{ textAlign: 'left', padding: '10px 12px', color: '#5d4037' }}>Email</th>
-                      <th style={{ textAlign: 'left', padding: '10px 12px', color: '#5d4037' }}>備註</th>
-                      <th style={{ textAlign: 'left', padding: '10px 12px', color: '#5d4037', whiteSpace: 'nowrap' }}>建立時間</th>
-                      <th style={{ textAlign: 'right', padding: '10px 12px', color: '#5d4037', width: '120px' }}>操作</th>
+                    <tr style={{ background: '#e3f2fd', borderBottom: '2px solid #90caf9' }}>
+                      <th style={{ textAlign: 'left', padding: '10px 8px', color: '#1565c0', minWidth: '160px' }}>Email</th>
+                      <th style={{ textAlign: 'center', padding: '10px 6px', color: '#f57f17', whiteSpace: 'nowrap' }} title="allowed_users，可登入">登入</th>
+                      <th style={{ textAlign: 'center', padding: '10px 6px', color: '#2e7d32', whiteSpace: 'nowrap' }} title="view_users">一般</th>
+                      {EDITOR_FEATURE_KEYS.map((key) => (
+                        <th
+                          key={key}
+                          style={{ textAlign: 'center', padding: '10px 6px', color: '#1565c0', maxWidth: '100px', lineHeight: 1.3, fontWeight: 600 }}
+                          title={EDITOR_FEATURE_LABELS[key]}
+                        >
+                          {EDITOR_FEATURE_LABELS[key]}
+                        </th>
+                      ))}
+                      <th style={{ textAlign: 'left', padding: '10px 8px', color: '#5d4037', minWidth: '120px' }}>名稱</th>
+                      <th style={{ textAlign: 'right', padding: '10px 8px', color: '#5d4037', whiteSpace: 'nowrap' }}>操作</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {allowedUsers.length === 0 ? (
+                    {permissionMatrixRows.length === 0 ? (
                       <tr>
-                        <td colSpan={4} style={{ padding: '32px 12px', textAlign: 'center', color: '#999' }}>
-                          尚無資料，請在上方新增，或從一般／小編權限新增（會連動寫入此表）
+                        <td colSpan={3 + EDITOR_FEATURE_KEYS.length + 2} style={{ padding: '32px 12px', textAlign: 'center', color: '#999' }}>
+                          尚無可列帳號。請在上方新增 Email，或於資料庫有 view／editor 列者會自動出現。
                         </td>
                       </tr>
                     ) : (
-                      allowedUsers.map((row) => (
-                        <tr key={row.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                          <td style={{ padding: '12px', wordBreak: 'break-all', verticalAlign: 'top' }}>{row.email}</td>
-                          <td style={{ padding: '12px', verticalAlign: 'top' }}>
-                            {editingAllowedId === row.id ? (
-                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      permissionMatrixRows.map((row) => {
+                        const busy = savingMatrixEmail === row.email
+                        const f = getMatrixEditorFlags(row.editor)
+                        return (
+                          <tr key={row.email} style={{ borderBottom: '1px solid #e8eaf0' }}>
+                            <td style={{ padding: '10px 8px', wordBreak: 'break-all', verticalAlign: 'middle' }}>{row.email}</td>
+                            <td style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!row.allowed}
+                                disabled={busy}
+                                onChange={(e) => { void toggleMatrixLogin(row, e.target.checked) }}
+                                title="在登入名單內可登入"
+                                aria-label="登入"
+                              />
+                            </td>
+                            <td style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!row.view}
+                                disabled={busy}
+                                onChange={(e) => { void toggleMatrixView(row, e.target.checked) }}
+                                title="一般權限（view_users）"
+                                aria-label="一般"
+                              />
+                            </td>
+                            {EDITOR_FEATURE_KEYS.map((key) => (
+                              <td key={key} style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
                                 <input
-                                  type="text"
-                                  value={editAllowedNotes}
-                                  onChange={(e) => setEditAllowedNotes(e.target.value)}
-                                  style={{ flex: 1, minWidth: '120px', padding: '6px 8px', border: '1px solid #ffb74d', borderRadius: '6px' }}
-                                  autoFocus
+                                  type="checkbox"
+                                  checked={f[key]}
+                                  disabled={busy}
+                                  onChange={(e) => { void setMatrixEditorFeature(row, key, e.target.checked) }}
+                                  title={EDITOR_FEATURE_LABELS[key]}
+                                  aria-label={EDITOR_FEATURE_LABELS[key]}
                                 />
-                                <Button variant="primary" size="small" onClick={() => handleUpdateAllowedNotes(row.id)} style={{ background: '#f9a825', color: '#333' }}>儲存</Button>
-                                <Button variant="outline" size="small" onClick={() => { setEditingAllowedId(null); setEditAllowedNotes('') }}>取消</Button>
-                              </div>
-                            ) : (
-                              <span style={{ color: row.notes ? '#333' : '#aaa' }}>{row.notes || '—'}</span>
-                            )}
-                          </td>
-                          <td style={{ padding: '12px', color: '#666', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                            {row.created_at ? new Date(row.created_at).toLocaleString('zh-TW') : '—'}
-                          </td>
-                          <td style={{ padding: '12px', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                            {editingAllowedId !== row.id && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => { setEditingAllowedId(row.id); setEditAllowedNotes(row.notes || '') }}
-                                  style={{ marginRight: '8px', background: 'none', border: 'none', color: '#1976d2', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}
-                                >
-                                  編輯備註
-                                </button>
-                                <Button variant="danger" size="small" onClick={() => handleRemoveAllowedUser(row.id, row.email)}>
-                                  移除
-                                </Button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      ))
+                              </td>
+                            ))}
+                            <td style={{ padding: '10px 8px', verticalAlign: 'middle' }}>
+                              {editingMatrixNameForEmail === row.email ? (
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                  <input
+                                    type="text"
+                                    value={editMatrixName}
+                                    onChange={(e) => setEditMatrixName(e.target.value)}
+                                    style={{ flex: 1, minWidth: '100px', padding: '6px 8px', border: '1px solid #90caf9', borderRadius: '6px', fontSize: '12px' }}
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) { void handleSaveMatrixName(row) }
+                                      if (e.key === 'Escape') { setEditingMatrixNameForEmail(null); setEditMatrixName('') }
+                                    }}
+                                  />
+                                  <Button variant="primary" size="small" onClick={() => { void handleSaveMatrixName(row) }}>儲存</Button>
+                                  <Button
+                                    variant="outline"
+                                    size="small"
+                                    onClick={() => { setEditingMatrixNameForEmail(null); setEditMatrixName('') }}
+                                  >
+                                    取消
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span style={{ color: getMatrixDisplayName(row) ? '#333' : '#aaa', fontSize: '12px' }} title="優先顯示一般權限名稱，其次小編、登入名單儲存之名稱">
+                                  {getMatrixDisplayName(row) || '—'}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                              {editingMatrixNameForEmail !== row.email && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingMatrixNameForEmail(row.email)
+                                      setEditMatrixName(getMatrixDisplayName(row))
+                                    }}
+                                    style={{ marginRight: '6px', background: 'none', border: 'none', color: '#1976d2', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline' }}
+                                  >
+                                    編輯名稱
+                                  </button>
+                                  <Button variant="danger" size="small" onClick={() => { void handleDeleteMatrixRow(row) }} disabled={busy}>
+                                    刪除整列
+                                  </Button>
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })
                     )}
                   </tbody>
                 </table>
               </div>
-            </div>
-
-            {/* ========== 一般權限區塊 ========== */}
-            <div style={{
-              background: '#e8f5e9',
-              padding: '12px 16px',
-              borderRadius: '8px 8px 0 0',
-              fontSize: '15px',
-              fontWeight: 'bold',
-              color: '#2e7d32',
-              border: '1px solid #a5d6a7',
-              borderBottom: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <span>👁️</span>
-              一般權限
-              <Badge variant="success" size="small">{viewUsers.length} 人</Badge>
-            </div>
-
-            {/* 一般權限 - 內容區塊 */}
-            <div style={{
-              background: 'white',
-              borderRadius: '0 0 12px 12px',
-              padding: isMobile ? '16px' : '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              marginBottom: '24px',
-              border: '1px solid #a5d6a7',
-              borderTop: 'none'
-            }}>
-              {/* 新增表單 */}
-              <div style={{ 
-                display: 'flex', 
-                gap: '12px',
-                flexDirection: isMobile ? 'column' : 'row',
-                marginBottom: '16px'
-              }}>
-                <input
-                  type="email"
-                  value={newViewUserEmail}
-                  onChange={(e) => setNewViewUserEmail(e.target.value)}
-                  placeholder="輸入 Email"
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <input
-                  type="text"
-                  value={newViewUserName}
-                  onChange={(e) => setNewViewUserName(e.target.value)}
-                  placeholder="名稱標記（選填）"
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <Button
-                  variant="primary"
-                  size="medium"
-                  onClick={handleAddViewUser}
-                  disabled={addingViewUser}
-                  style={{ background: '#4CAF50' }}
-                >
-                  {addingViewUser ? '新增中...' : '➕ 新增'}
-                </Button>
+              <div style={{ marginTop: '12px', fontSize: '12px', color: '#78909c', lineHeight: 1.6 }}>
+                從此表<strong>刪除整列</strong>會移除登入、一般與小編三處之該 Email（有確認提示）。
               </div>
-
-              {/* 帳號列表 */}
-              {viewUsers.length === 0 ? (
-                <div style={{
-                  padding: '40px 20px',
-                  textAlign: 'center',
-                  color: '#999',
-                  fontSize: '14px'
-                }}>
-                  尚無帳號，請在上方新增
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {viewUsers.map((viewUser) => (
-                    <div
-                      key={viewUser.id}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '14px 16px',
-                        background: '#f8f9fa',
-                        borderRadius: '10px',
-                        border: '1px solid #e9ecef',
-                        gap: '12px',
-                        flexWrap: 'wrap'
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        {editingViewUserId === viewUser.id ? (
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <input
-                              type="text"
-                              value={editViewUserName}
-                              onChange={(e) => setEditViewUserName(e.target.value)}
-                              placeholder="輸入名稱"
-                              style={{
-                                flex: 1,
-                                padding: '8px',
-                                border: '1px solid #4CAF50',
-                                borderRadius: '6px',
-                                fontSize: '14px'
-                              }}
-                              autoFocus
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                                  handleUpdateViewUserName(viewUser.id)
-                                }
-                              }}
-                            />
-                            <Button
-                              variant="primary"
-                              size="small"
-                              onClick={() => handleUpdateViewUserName(viewUser.id)}
-                              style={{ background: '#4CAF50' }}
-                            >
-                              確定
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="small"
-                              onClick={() => {
-                                setEditingViewUserId(null)
-                                setEditViewUserName('')
-                              }}
-                            >
-                              取消
-                            </Button>
-                          </div>
-                        ) : (
-                          <>
-                            <div style={{
-                              fontSize: '15px',
-                              fontWeight: '600',
-                              color: '#333',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px'
-                            }}>
-                              {viewUser.display_name && (
-                                <span style={{ color: '#4CAF50' }}>{viewUser.display_name}</span>
-                              )}
-                              <span style={{ 
-                                color: viewUser.display_name ? '#999' : '#333',
-                                fontSize: viewUser.display_name ? '13px' : '15px',
-                                wordBreak: 'break-all'
-                              }}>
-                                {viewUser.display_name ? `(${viewUser.email})` : viewUser.email}
-                              </span>
-                              <button
-                                onClick={() => {
-                                  setEditingViewUserId(viewUser.id)
-                                  setEditViewUserName(viewUser.display_name || '')
-                                }}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  fontSize: '14px',
-                                  padding: '2px 6px',
-                                  opacity: 0.6
-                                }}
-                                title="編輯名稱"
-                              >
-                                ✏️
-                              </button>
-                            </div>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#999',
-                              marginTop: '4px'
-                            }}>
-                              加入時間：{viewUser.created_at ? new Date(viewUser.created_at).toLocaleDateString('zh-TW') : '-'}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      {editingViewUserId !== viewUser.id && (
-                        <Button
-                          variant="danger"
-                          size="small"
-                          onClick={() => handleRemoveViewUser(viewUser.id, viewUser.email, viewUser.display_name)}
-                        >
-                          移除
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* ========== 功能權限（模組勾選）========== */}
-            <div style={{
-              background: '#e3f2fd',
-              padding: '12px 16px',
-              borderRadius: '8px 8px 0 0',
-              fontSize: '15px',
-              fontWeight: 'bold',
-              color: '#1565c0',
-              border: '1px solid #90caf9',
-              borderBottom: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <span>🧩</span>
-              功能權限
-              <Badge variant="info" size="small">{editorUsers.length} 人</Badge>
-            </div>
-            
-            <div style={{
-              background: '#e3f2fd',
-              padding: '10px 16px',
-              fontSize: '13px',
-              color: '#1565c0',
-              border: '1px solid #90caf9',
-              borderTop: 'none',
-              borderBottom: 'none',
-              lineHeight: '1.6'
-            }}>
-              <div style={{ marginBottom: '6px' }}>
-                此名單內帳號可再<strong>各自勾選</strong>模組；未勾的項目不會在畫面出現對應按鈕或無法進入該頁。新增帳號預設<strong>四項全開</strong>（之後可關閉）。超級管理員不受此表限制。
-              </div>
-              <div style={{ 
-                fontSize: '12px', 
-                opacity: 0.85,
-                padding: '6px 10px',
-                background: 'rgba(255,255,255,0.5)',
-                borderRadius: '4px',
-                display: 'inline-block'
-              }}>
-                ⚠️ 從此名單移除時，<strong>不會</strong>自動移除一般權限與登入名單（與各區塊說明一致）
-              </div>
-            </div>
-
-            {/* 功能權限 - 內容區塊 */}
-            <div style={{
-              background: 'white',
-              borderRadius: '0 0 12px 12px',
-              padding: isMobile ? '16px' : '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              border: '1px solid #90caf9',
-              borderTop: 'none'
-            }}>
-              {/* 新增表單 */}
-              <div style={{ 
-                display: 'flex', 
-                gap: '12px',
-                flexDirection: isMobile ? 'column' : 'row',
-                marginBottom: '16px'
-              }}>
-                <input
-                  type="email"
-                  value={newEditorEmail}
-                  onChange={(e) => setNewEditorEmail(e.target.value)}
-                  placeholder="輸入 Email"
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <input
-                  type="text"
-                  value={newEditorDisplayName}
-                  onChange={(e) => setNewEditorDisplayName(e.target.value)}
-                  placeholder="名稱標記（選填）"
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    boxSizing: 'border-box'
-                  }}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddEditor()
-                  }}
-                />
-                <Button
-                  variant="primary"
-                  size="medium"
-                  onClick={handleAddEditor}
-                  disabled={addingEditor}
-                >
-                  {addingEditor ? '新增中...' : '➕ 新增'}
-                </Button>
-              </div>
-
-              {/* 帳號列表 */}
-              {editorUsers.length === 0 ? (
-                <div style={{
-                  padding: '40px 20px',
-                  textAlign: 'center',
-                  color: '#999',
-                  fontSize: '14px'
-                }}>
-                  尚無帳號，請在上方新增
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {editorUsers.map((editor) => (
-                    <div
-                      key={editor.id}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '14px 16px',
-                        background: '#f8f9fa',
-                        borderRadius: '10px',
-                        border: '1px solid #e9ecef',
-                        gap: '12px',
-                        flexWrap: 'wrap'
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        {editingEditorId === editor.id ? (
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <input
-                              type="text"
-                              value={editEditorName}
-                              onChange={(e) => setEditEditorName(e.target.value)}
-                              placeholder="輸入名稱"
-                              style={{
-                                flex: 1,
-                                padding: '8px',
-                                border: '1px solid #2196F3',
-                                borderRadius: '6px',
-                                fontSize: '14px'
-                              }}
-                              autoFocus
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                                  handleUpdateEditorName(editor.id)
-                                }
-                              }}
-                            />
-                            <Button
-                              variant="primary"
-                              size="small"
-                              onClick={() => handleUpdateEditorName(editor.id)}
-                            >
-                              確定
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="small"
-                              onClick={() => {
-                                setEditingEditorId(null)
-                                setEditEditorName('')
-                              }}
-                            >
-                              取消
-                            </Button>
-                          </div>
-                        ) : (
-                          <>
-                            <div style={{
-                              fontSize: '15px',
-                              fontWeight: '600',
-                              color: '#333',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px'
-                            }}>
-                              {editor.display_name && (
-                                <span style={{ color: '#2196F3' }}>{editor.display_name}</span>
-                              )}
-                              <span style={{ 
-                                color: editor.display_name ? '#999' : '#333',
-                                fontSize: editor.display_name ? '13px' : '15px',
-                                wordBreak: 'break-all'
-                              }}>
-                                {editor.display_name ? `(${editor.email})` : editor.email}
-                              </span>
-                              <button
-                                onClick={() => {
-                                  setEditingEditorId(editor.id)
-                                  setEditEditorName(editor.display_name || '')
-                                }}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  fontSize: '14px',
-                                  padding: '2px 6px',
-                                  opacity: 0.6
-                                }}
-                                title="編輯名稱"
-                              >
-                                ✏️
-                              </button>
-                            </div>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#999',
-                              marginTop: '4px'
-                            }}>
-                              加入時間：{editor.created_at ? new Date(editor.created_at).toLocaleDateString('zh-TW') : '-'}
-                            </div>
-                            <div style={{
-                              marginTop: '12px',
-                              paddingTop: '10px',
-                              borderTop: '1px solid #e9ecef'
-                            }}>
-                              <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>模組</div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px' }}>
-                                {EDITOR_FEATURE_KEYS.map((key) => (
-                                  <label
-                                    key={key}
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '5px',
-                                      fontSize: '12px',
-                                      color: '#333',
-                                      cursor: 'pointer',
-                                      userSelect: 'none'
-                                    }}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={editor[key] !== false}
-                                      onChange={(e) => handleToggleEditorModule(editor.id, key, e.target.checked)}
-                                    />
-                                    {EDITOR_FEATURE_LABELS[key]}
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      {editingEditorId !== editor.id && (
-                        <Button
-                          variant="danger"
-                          size="small"
-                          onClick={() => handleRemoveEditor(editor.id, editor.email, editor.display_name)}
-                        >
-                          移除
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </>
         )}

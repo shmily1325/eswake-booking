@@ -122,6 +122,8 @@ export function HomePage() {
     disabled?: boolean
     /** 僅列在 MEMBER_PHONE_ONLY_EDITORS（或環境變數）的帳號可見 */
     phoneEditorOnly?: boolean
+    /** 超級管理員不顯示此格（從 BAO 進入即可，如排班、船隻管理） */
+    hideFromHomeForSuperAdmin?: boolean
   }
 
   const menuItemsMain: HomeMenuItem[] = [
@@ -165,13 +167,15 @@ export function HomePage() {
       title: '排班',
       icon: '📆',
       link: '/coach-assignment',
-      editorFeature: 'can_schedule'
+      editorFeature: 'can_schedule',
+      hideFromHomeForSuperAdmin: true
     },
     {
       title: '船隻管理',
       icon: '🚤',
       link: '/boats',
-      editorFeature: 'can_boats'
+      editorFeature: 'can_boats',
+      hideFromHomeForSuperAdmin: true
     },
     {
       title: '會員電話',
@@ -208,7 +212,10 @@ export function HomePage() {
       if (item.isAdmin && !userIsAdmin) return false
       if (item.isCoach && !isCoach) return false
       if (item.editorFeature) {
-        if (userIsAdmin) return true
+        if (userIsAdmin) {
+          if (item.hideFromHomeForSuperAdmin) return false
+          return true
+        }
         return Boolean(editorFeatureFlags && editorFeatureFlags[item.editorFeature])
       }
       if (item.requiresViewAccess) return hasViewPermission
