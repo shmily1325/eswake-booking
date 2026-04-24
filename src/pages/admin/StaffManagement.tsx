@@ -818,6 +818,19 @@ export function StaffManagement() {
   const hasAnyEditorFeature = (f: Record<EditorFeatureKey, boolean>) =>
     EDITOR_FEATURE_KEYS.some((k) => f[k])
 
+  /** 權限表排序分數：分數愈高代表權限愈多；列表改為分數遞增（權限少者在上） */
+  const getMatrixRowPermissionSortScore = (row: PermissionMatrixRow): number => {
+    const f = getMatrixEditorFlags(row.editor)
+    let score = 0
+    for (const k of EDITOR_FEATURE_KEYS) {
+      if (f[k]) score += 1
+    }
+    score *= 1_000_000
+    if (row.view) score += 10_000
+    if (row.allowed) score += 100
+    return score
+  }
+
   const ensureViewUserRowExists = async (email: string) => {
     const e = email.toLowerCase()
     const { data, error: selErr } = await (supabase as any).from('view_users').select('id').eq('email', e).maybeSingle()
@@ -1002,7 +1015,11 @@ export function StaffManagement() {
       const r = m.get(e.email.toLowerCase())
       if (r) r.editor = e as EditorUser
     }
-    return Array.from(m.values()).sort((a, b) => a.email.localeCompare(b.email))
+    return Array.from(m.values()).sort((a, b) => {
+      const d = getMatrixRowPermissionSortScore(a) - getMatrixRowPermissionSortScore(b)
+      if (d !== 0) return d
+      return a.email.localeCompare(b.email)
+    })
   }, [allowedUsers, viewUsers, editorUsers])
 
   const matrixMissingLoginCount = useMemo(
@@ -1897,7 +1914,7 @@ export function StaffManagement() {
               border: '1px solid #e0e0e0',
               marginBottom: '8px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '6px' }}>
                 <h3 style={{ margin: 0, fontSize: isMobile ? '17px' : '18px', fontWeight: 700, color: '#333' }}>人員權限</h3>
                 <Badge variant="info" size="small">{permissionMatrixRows.length} 帳號</Badge>
                 {matrixMissingLoginCount > 0 && (
@@ -1907,6 +1924,9 @@ export function StaffManagement() {
                     </Badge>
                   </span>
                 )}
+              </div>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '16px', lineHeight: 1.5 }}>
+                依權限由少到多排列：僅登入／一般優先，小編功能勾選愈多愈靠下；同分依帳號字序。
               </div>
               <div style={{
                 display: 'flex',
