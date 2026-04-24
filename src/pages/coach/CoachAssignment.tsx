@@ -8,7 +8,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useDailyStaff } from '../../hooks/useDailyStaff'
 import { designSystem, getButtonStyle } from '../../styles/designSystem'
-import { isAdmin, isEditorAsync } from '../../utils/auth'
+import { isAdmin, hasEditorFeatureAsync } from '../../utils/auth'
 import { isFacility } from '../../utils/facility'
 import { logCoachAssignment } from '../../utils/auditLog'
 import { getDisplayContactName } from '../../utils/bookingFormat'
@@ -51,11 +51,11 @@ export function CoachAssignment() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   
-  // 權限檢查：管理員和小編可以進入排班管理
+  // 權限檢查：超級管理員 或 功能權限「排班」
   useEffect(() => {
     const checkPermission = async () => {
       if (!user) return
-      const hasPermission = await isEditorAsync(user)
+      const hasPermission = await hasEditorFeatureAsync(user, 'can_schedule')
       if (!hasPermission) {
         toast.error('您沒有權限訪問此頁面')
         navigate('/')

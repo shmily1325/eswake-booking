@@ -17,7 +17,7 @@ import { DayViewMobileHeader } from '../components/DayViewMobileHeader'
 import { VirtualizedBookingList } from '../components/VirtualizedBookingList'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { injectAnimationStyles } from '../utils/animations'
-import { isEditorAsync, hasViewAccess } from '../utils/auth'
+import { hasEditorFeatureAsync, hasViewAccess } from '../utils/auth'
 import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
 import {
   mapBoatUnavailableRowsToBlocks,
@@ -97,17 +97,20 @@ export function DayView() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
 
-  // 小編權限（只有小編可以使用重複預約）
-  const [isEditor, setIsEditor] = useState(false)
-  
+  const [canUseSchedule, setCanUseSchedule] = useState(false)
+  const [canUseRepeatBooking, setCanUseRepeatBooking] = useState(false)
+
   useEffect(() => {
-    const checkEditorPermission = async () => {
-      if (user) {
-        const hasPermission = await isEditorAsync(user)
-        setIsEditor(hasPermission)
-      }
+    const checkEditorFeature = async () => {
+      if (!user) return
+      const [schedule, repeat] = await Promise.all([
+        hasEditorFeatureAsync(user, 'can_schedule'),
+        hasEditorFeatureAsync(user, 'can_repeat_booking')
+      ])
+      setCanUseSchedule(schedule)
+      setCanUseRepeatBooking(repeat)
     }
-    checkEditorPermission()
+    checkEditorFeature()
   }, [user])
 
   const changeDate = (offset: number) => {
@@ -540,7 +543,7 @@ export function DayView() {
             onPrevDate={() => changeDate(-1)}
             onNextDate={() => changeDate(1)}
             onGoToToday={goToToday}
-            showCoachAssignment={isEditor}
+            showCoachAssignment={canUseSchedule}
           />
         ) : (
           /* 桌面版：單行佈局 */
@@ -609,8 +612,8 @@ export function DayView() {
               今天
             </button>
 
-            {/* 排班按鈕 - 只有小編可見 */}
-            {isEditor && (
+            {/* 排班按鈕 - 功能權限：排班 */}
+            {canUseSchedule && (
               <Link
                 data-track="day_to_assignment"
                 to={`/coach-assignment?date=${dateParam}`}
@@ -704,8 +707,8 @@ export function DayView() {
                 >
                   + 新增預約
                 </button>
-                {/* 重複預約按鈕 - 只有小編可見 */}
-                {isEditor && (
+                {/* 重複預約按鈕 - 功能權限：重複預約 */}
+                {canUseRepeatBooking && (
                   <button
                     data-track="day_repeat_booking"
                     onClick={() => {

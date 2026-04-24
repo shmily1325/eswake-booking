@@ -9,7 +9,7 @@ vi.mock('../../contexts/AuthContext', () => ({
 }))
 
 vi.mock('../../utils/auth', () => ({
-  isEditorAsync: vi.fn(() => Promise.resolve(false)),
+  hasEditorFeatureAsync: vi.fn(() => Promise.resolve(false)),
 }))
 
 vi.mock('../../hooks/useResponsive', () => ({

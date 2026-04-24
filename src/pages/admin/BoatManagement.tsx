@@ -8,7 +8,7 @@ import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import type { Boat, BoatUnavailableDate } from '../../types/booking'
 import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
 import { designSystem } from '../../styles/designSystem'
-import { isEditorAsync } from '../../utils/auth'
+import { hasEditorFeatureAsync } from '../../utils/auth'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import { isFacility } from '../../utils/facility'
 import { computeBoatsMonthlyUptime } from '../../utils/boatMonthlyUptime'
@@ -54,7 +54,7 @@ export function BoatManagement() {
         const checkAccess = async () => {
             if (!user) return
             
-            const canAccess = await isEditorAsync(user)
+            const canAccess = await hasEditorFeatureAsync(user, 'can_boats')
             if (!canAccess) {
                 toast.error('您沒有權限訪問此頁面')
                 navigate('/')

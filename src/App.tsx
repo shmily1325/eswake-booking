@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -73,12 +74,46 @@ import { BoatUsageHoursPage } from './pages/admin/BoatUsageHoursPage'
 import { CoachDailyView } from './pages/coach/CoachDailyView'
 // import { PermissionManagement } from './pages/admin/PermissionManagement' // 暫時停用
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
+import { LoginAccessDeniedPage } from './pages/LoginAccessDeniedPage'
 import { LiffMyBookings } from './pages/LiffMyBookings'
 import { ClickTrackProvider } from './components/ClickTrackProvider'
+import { isAllowedUser } from './utils/auth'
 
 function AppContent() {
   const { user, loading } = useAuth()
   const isOnline = useOnlineStatus()
+  const [loginAllowanceResolved, setLoginAllowanceResolved] = useState(false)
+  const [loginAllowanceOk, setLoginAllowanceOk] = useState(false)
+
+  // 登入名單（allowed_users ＋超級管理員）— 在登入與權限快取層就擋
+  useEffect(() => {
+    if (loading) {
+      return
+    }
+    if (!user) {
+      setLoginAllowanceResolved(true)
+      setLoginAllowanceOk(true)
+      return
+    }
+    let cancelled = false
+    setLoginAllowanceResolved(false)
+    isAllowedUser(user)
+      .then((ok) => {
+        if (!cancelled) {
+          setLoginAllowanceOk(ok)
+          setLoginAllowanceResolved(true)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoginAllowanceOk(false)
+          setLoginAllowanceResolved(true)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user, loading])
 
   // 每日自動重新整理邏輯已在模組頂層的 checkDailyRefresh() 執行
 
@@ -92,6 +127,18 @@ function AppContent() {
 
   if (!user) {
     return <LoginPage />
+  }
+
+  if (!loginAllowanceResolved) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-lg text-gray-600">
+        載入中...
+      </div>
+    )
+  }
+
+  if (!loginAllowanceOk) {
+    return <LoginAccessDeniedPage />
   }
 
   return (

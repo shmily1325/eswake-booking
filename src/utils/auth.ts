@@ -11,7 +11,7 @@ import { useToast } from '../components/ui'
 // 超級管理員（硬編碼，始終有權限）
 export const SUPER_ADMINS = [
   'callumbao1122@gmail.com',
-  'pjpan0511@gmail.com',
+  // 'pjpan0511@gmail.com',
   'minlin1325@gmail.com',
 ]
 
@@ -58,12 +58,56 @@ export function isMemberPhoneOnlyEditor(user: User | null): boolean {
   return all.has(email)
 }
 
+/** 可勾選的進階功能（對應 editor_users 欄位；之後新功能可再加欄＋一併在後台顯示勾選） */
+export const EDITOR_FEATURE_KEYS = [
+  'can_schedule',
+  'can_boats',
+  'can_repeat_booking',
+  'can_search_batch',
+] as const
+export type EditorFeatureKey = (typeof EDITOR_FEATURE_KEYS)[number]
+
+export const EDITOR_FEATURE_LABELS: Record<EditorFeatureKey, string> = {
+  can_schedule: '排班',
+  can_boats: '船隻管理',
+  can_repeat_booking: '重複預約（預約表）',
+  can_search_batch: '預約查詢·批次',
+}
+
+type EditorUserRow = {
+  email: string
+  can_schedule: boolean
+  can_boats: boolean
+  can_repeat_booking: boolean
+  can_search_batch: boolean
+}
+
 // 權限緩存
 let allowedEmailsCache: string[] | null = null
 let editorEmailsCache: string[] | null = null
+/** 功能權限列（表 editor_users；產品面稱功能權限，不再使用「小編」語意） */
+let editorRowsCache: EditorUserRow[] | null = null
 let viewUsersCache: string[] | null = null
 let cacheTimestamp: number = 0
 const CACHE_DURATION = 60000 // 1分鐘
+
+const DEFAULT_FEATURE_FLAGS: Record<EditorFeatureKey, boolean> = {
+  can_schedule: true,
+  can_boats: true,
+  can_repeat_booking: true,
+  can_search_batch: true,
+}
+
+function editorRowFromDb(r: { email: string; can_schedule?: boolean; can_boats?: boolean; can_repeat_booking?: boolean; can_search_batch?: boolean }): EditorUserRow {
+  // 欄位尚未遷移或為 null 時，預設 true（與 migration 104 DEFAULT 及舊行為一致，降低上線風險）
+  return {
+    email: r.email,
+    can_schedule: r.can_schedule !== false,
+    can_boats: r.can_boats !== false,
+    can_repeat_booking: r.can_repeat_booking !== false,
+    can_search_batch: r.can_search_batch !== false,
+  }
+}
 
 /**
  * 從資料庫載入白名單
@@ -97,34 +141,36 @@ async function loadAllowedEmails(): Promise<string[]> {
 }
 
 /**
- * 從資料庫載入小編列表
+ * 從資料庫載入功能權限列（editor_users 全欄，含各功能布林）
  */
-async function loadEditorEmails(): Promise<string[]> {
+async function loadEditorRows(): Promise<EditorUserRow[]> {
   const now = Date.now()
-  
-  // 使用緩存
-  if (editorEmailsCache && (now - cacheTimestamp < CACHE_DURATION)) {
-    return editorEmailsCache
+  if (editorRowsCache && now - cacheTimestamp < CACHE_DURATION) {
+    return editorRowsCache
   }
-  
   try {
-    const { data, error } = await (supabase as any)
-      .from('editor_users')
-      .select('email')
-    
+    const { data, error } = await (supabase as any).from('editor_users').select('*')
     if (error) {
-      logger.error('Failed to load editor emails:', error)
+      logger.error('Failed to load editor_users:', error)
+      editorRowsCache = []
+      editorEmailsCache = []
+      cacheTimestamp = Date.now()
       return []
     }
-    
-    const emails: string[] = data?.map((row: any) => row.email) || []
-    editorEmailsCache = emails
+    const rows: EditorUserRow[] = (data || []).map((row: any) => editorRowFromDb(row))
+    editorRowsCache = rows
+    editorEmailsCache = rows.map((r) => r.email)
     cacheTimestamp = Date.now()
-    return emails
+    return rows
   } catch (err) {
-    logger.error('Failed to load editor emails:', err)
+    logger.error('Failed to load editor_users', err)
     return []
   }
+}
+
+async function loadEditorEmails(): Promise<string[]> {
+  const rows = await loadEditorRows()
+  return rows.map((r) => r.email)
 }
 
 /**
@@ -164,6 +210,7 @@ async function loadViewUsers(): Promise<string[]> {
 export function clearPermissionCache() {
   allowedEmailsCache = null
   editorEmailsCache = null
+  editorRowsCache = null
   viewUsersCache = null
   cacheTimestamp = 0
 }
@@ -171,11 +218,16 @@ export function clearPermissionCache() {
 /**
  * 檢查用戶是否為管理員（僅檢查硬編碼列表，不查詢資料庫）
  */
+function isSuperAdminEmail(email: string): boolean {
+  const n = email.toLowerCase()
+  return SUPER_ADMINS.some((a) => a.toLowerCase() === n)
+}
+
 export function isAdmin(user: User | null): boolean {
   if (!user || !user.email) return false
-  
+
   // 只檢查硬編碼的管理員列表，不查詢資料庫
-  return SUPER_ADMINS.includes(user.email)
+  return isSuperAdminEmail(user.email)
 }
 
 /**
@@ -183,12 +235,13 @@ export function isAdmin(user: User | null): boolean {
  */
 export async function isAllowedUser(user: User | null): Promise<boolean> {
   if (!user || !user.email) return false
-  
+
   // 超級管理員始終允許
-  if (SUPER_ADMINS.includes(user.email)) return true
-  
+  if (isSuperAdminEmail(user.email)) return true
+
   const allowedEmails = await loadAllowedEmails()
-  return allowedEmails.includes(user.email)
+  const n = user.email.toLowerCase()
+  return allowedEmails.some((e) => e.toLowerCase() === n)
 }
 
 /**
@@ -199,14 +252,13 @@ export async function isAdminAsync(user: User | null): Promise<boolean> {
   if (!user || !user.email) return false
   
   // 管理員 = 超級管理員（硬編碼列表）
-  return SUPER_ADMINS.includes(user.email)
+  return isSuperAdminEmail(user.email)
 }
 
 /**
- * Hook: 檢查用戶是否在白名單中（已廢棄，始終返回 true）
+ * Hook: 舊版佔位用；登入名單實際由 App 內的 isAllowedUser 檢查
  */
 export function useCheckAllowedUser(_user: User | null) {
-  // 白名單檢查已關閉，所有登入用戶都允許訪問
   return { isAllowed: true, checking: false }
 }
 
@@ -249,33 +301,58 @@ export function hasPermission(user: User | null, permission: 'admin' | 'coach' |
 }
 
 /**
- * 檢查用戶是否為小編（異步版本）
- * 小編可以看到更多功能，如船隻管理等
+ * 是否在功能權限名單（editor_users 列）內。超級管理員：true（等同擁有全部模組；僅用於顯示／相容）
  */
 export async function isEditorAsync(user: User | null): Promise<boolean> {
   if (!user || !user.email) return false
-  
-  // 超級管理員也有小編權限
-  if (SUPER_ADMINS.includes(user.email)) return true
-  
-  // 檢查是否在小編列表中
-  const editorEmails = await loadEditorEmails()
-  return editorEmails.includes(user.email)
+  if (isSuperAdminEmail(user.email)) return true
+  const n = user.email.toLowerCase()
+  const rows = await loadEditorRows()
+  return rows.some((e) => e.email.toLowerCase() === n)
 }
 
 /**
- * 檢查用戶是否為小編（同步版本，使用緩存）
- * 注意：第一次呼叫可能返回 false，因為緩存可能尚未載入
+ * 單一進階功能（超級管理員永遠為 true）
+ */
+export async function hasEditorFeatureAsync(user: User | null, feature: EditorFeatureKey): Promise<boolean> {
+  if (!user || !user.email) return false
+  if (isSuperAdminEmail(user.email)) return true
+  const n = user.email.toLowerCase()
+  const rows = await loadEditorRows()
+  const row = rows.find((e) => e.email.toLowerCase() === n)
+  if (!row) return false
+  return row[feature] === true
+}
+
+/**
+ * 讀取目前帳號四項功能開關（用於首頁等；超級管理員全 true；非名單內為 null）
+ */
+export async function getEditorFeatureFlags(user: User | null): Promise<Record<EditorFeatureKey, boolean> | null> {
+  if (!user?.email) return null
+  if (isSuperAdminEmail(user.email)) {
+    return { ...DEFAULT_FEATURE_FLAGS }
+  }
+  const n = user.email.toLowerCase()
+  const rows = await loadEditorRows()
+  const row = rows.find((e) => e.email.toLowerCase() === n)
+  if (!row) return null
+  return {
+    can_schedule: row.can_schedule,
+    can_boats: row.can_boats,
+    can_repeat_booking: row.can_repeat_booking,
+    can_search_batch: row.can_search_batch,
+  }
+}
+
+/**
+ * 功能權限名單成員（同步、依緩存；首次載入前可能為 false）
  */
 export function isEditor(user: User | null): boolean {
   if (!user || !user.email) return false
-  
-  // 超級管理員也有小編權限
-  if (SUPER_ADMINS.includes(user.email)) return true
-  
-  // 檢查緩存中的小編
-  if (editorEmailsCache && editorEmailsCache.includes(user.email)) return true
-  
+  if (isSuperAdminEmail(user.email)) return true
+  const n = user.email.toLowerCase()
+  if (editorRowsCache && editorRowsCache.some((e) => e.email.toLowerCase() === n)) return true
+  if (editorEmailsCache && editorEmailsCache.some((e) => e.toLowerCase() === n)) return true
   return false
 }
 
@@ -287,16 +364,17 @@ export function isEditor(user: User | null): boolean {
  */
 export async function hasViewAccess(user: User | null): Promise<boolean> {
   if (!user || !user.email) return false
-  
+
   // 超級管理員有所有權限
-  if (SUPER_ADMINS.includes(user.email)) return true
-  
-  // 小編有所有權限
+  if (isSuperAdminEmail(user.email)) return true
+
+  const n = user.email.toLowerCase()
+  // 在功能權限名單內則具備與一般權限相當的瀏覽權限（實作沿用既有邏輯）
   const editorEmails = await loadEditorEmails()
-  if (editorEmails.includes(user.email)) return true
-  
+  if (editorEmails.some((e) => e.toLowerCase() === n)) return true
+
   // 檢查是否在一般權限用戶列表中
   const viewUsers = await loadViewUsers()
-  return viewUsers.includes(user.email)
+  return viewUsers.some((e) => e.toLowerCase() === n)
 }
 

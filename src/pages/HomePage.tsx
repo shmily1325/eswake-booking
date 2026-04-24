@@ -4,7 +4,13 @@ import { UserMenu } from '../components/UserMenu'
 import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
-import { isAdmin, isEditorAsync, hasViewAccess, isMemberPhoneOnlyEditor } from '../utils/auth'
+import {
+  isAdmin,
+  getEditorFeatureFlags,
+  hasViewAccess,
+  isMemberPhoneOnlyEditor,
+  type EditorFeatureKey
+} from '../utils/auth'
 import { supabase } from '../lib/supabase'
 import { useState, useEffect, type CSSProperties } from 'react'
 
@@ -53,7 +59,7 @@ export function HomePage() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
   const [isCoach, setIsCoach] = useState(false)
-  const [isEditorUser, setIsEditorUser] = useState(false)
+  const [editorFeatureFlags, setEditorFeatureFlags] = useState<Record<EditorFeatureKey, boolean> | null>(null)
   const [hasViewPermission, setHasViewPermission] = useState(false)
   const [permissionsLoading, setPermissionsLoading] = useState(true)
   
@@ -67,7 +73,7 @@ export function HomePage() {
     const loadAllPermissions = async () => {
       if (!user) {
         setIsCoach(false)
-        setIsEditorUser(false)
+        setEditorFeatureFlags(null)
         setHasViewPermission(false)
         setPermissionsLoading(false)
         return
@@ -77,29 +83,21 @@ export function HomePage() {
 
       try {
         // 並行執行所有權限檢查
-        const [coachResult, editorResult, viewAccessResult] = await Promise.all([
-          // 1. 檢查是否為教練
-          user.email 
+        const [coachResult, featureFlags, viewAccessResult] = await Promise.all([
+          user.email
             ? supabase.from('coaches').select('id').eq('user_email', user.email).maybeSingle()
             : Promise.resolve({ data: null, error: null }),
-          // 2. 檢查是否為小編
-          !userIsAdmin ? isEditorAsync(user) : Promise.resolve(false),
-          // 3. 檢查一般權限
+          getEditorFeatureFlags(user),
           hasViewAccess(user)
         ])
 
-        // 設置教練狀態
         setIsCoach(!coachResult.error && !!coachResult.data)
-        
-        // 設置小編狀態（只有小編且不是管理員才顯示小編入口）
-        setIsEditorUser(editorResult === true && !userIsAdmin)
-        
-        // 設置一般權限
+        setEditorFeatureFlags(featureFlags)
         setHasViewPermission(viewAccessResult)
       } catch (error) {
         console.error('載入權限失敗:', error)
         setIsCoach(false)
-        setIsEditorUser(false)
+        setEditorFeatureFlags(null)
         setHasViewPermission(false)
       } finally {
         setPermissionsLoading(false)
@@ -116,7 +114,8 @@ export function HomePage() {
     subtitle?: string
     isAdmin?: boolean
     isCoach?: boolean
-    isEditor?: boolean
+    /** 功能權限模組（editor_users 欄位） */
+    editorFeature?: EditorFeatureKey
     requiresViewAccess?: boolean
     alwaysShow?: boolean
     /** 顯示為停用卡片，不可點擊 */
@@ -166,13 +165,13 @@ export function HomePage() {
       title: '排班',
       icon: '📆',
       link: '/coach-assignment',
-      isEditor: true
+      editorFeature: 'can_schedule'
     },
     {
       title: '船隻管理',
       icon: '🚤',
       link: '/boats',
-      isEditor: true
+      editorFeature: 'can_boats'
     },
     {
       title: '會員電話',
@@ -208,7 +207,10 @@ export function HomePage() {
       }
       if (item.isAdmin && !userIsAdmin) return false
       if (item.isCoach && !isCoach) return false
-      if (item.isEditor && !isEditorUser) return false
+      if (item.editorFeature) {
+        if (userIsAdmin) return true
+        return Boolean(editorFeatureFlags && editorFeatureFlags[item.editorFeature])
+      }
       if (item.requiresViewAccess) return hasViewPermission
       return true
     })

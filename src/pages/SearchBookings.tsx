@@ -9,7 +9,7 @@ import { useToast, ToastContainer } from '../components/ui'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { BatchEditBookingDialog } from '../components/BatchEditBookingDialog'
 import { BatchDeleteConfirmDialog } from '../components/BatchDeleteConfirmDialog'
-import { isEditorAsync } from '../utils/auth'
+import { hasEditorFeatureAsync } from '../utils/auth'
 import type { Booking as FullBooking } from '../types/booking'
 import { isFacility } from '../utils/facility'
 import {
@@ -143,17 +143,14 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const [batchEditDialogOpen, setBatchEditDialogOpen] = useState(false)
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false)
   
-  // 小編權限（只有小編可以編輯和批次修改）
-  const [isEditor, setIsEditor] = useState(false)
-  
+  const [canSearchBatch, setCanSearchBatch] = useState(false)
+
   useEffect(() => {
-    const checkEditorPermission = async () => {
-      if (user) {
-        const hasPermission = await isEditorAsync(user)
-        setIsEditor(hasPermission)
-      }
+    const check = async () => {
+      if (!user) return
+      setCanSearchBatch(await hasEditorFeatureAsync(user, 'can_search_batch'))
     }
-    checkEditorPermission()
+    check()
   }, [user])
 
   useEffect(() => {
@@ -1830,7 +1827,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       </label>
 
                       {/* 批次選擇 - 只有小編可見 */}
-                      {isEditor && (
+                      {canSearchBatch && (
                         <button
                           data-track="search_batch_toggle"
                           onClick={toggleSelectionMode}
@@ -1979,7 +1976,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   <div
                     key={booking.id}
                     onClick={(e) => {
-                      if (selectionMode && isEditor) {
+                      if (selectionMode && canSearchBatch) {
                         toggleBookingSelection(booking.id, e)
                       } else if (!isLoadingThis && !selectionMode) {
                         // 所有人都可以編輯預約

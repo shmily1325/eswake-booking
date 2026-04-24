@@ -7,7 +7,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
-import { clearPermissionCache, isAdmin } from '../../utils/auth'
+import { clearPermissionCache, isAdmin, EDITOR_FEATURE_KEYS, EDITOR_FEATURE_LABELS, type EditorFeatureKey } from '../../utils/auth'
 
 interface Coach {
   id: string
@@ -31,6 +31,7 @@ interface TimeOff {
 /** 合併連續休假後的顯示列（刪除時會一併刪除合併範圍內的所有資料列） */
 type TimeOffDisplayRow = TimeOff & { displayText: string; mergedRecordIds: number[] }
 
+/** 功能權限名單（表 editor_users）＋ 各模組布林 */
 interface EditorUser {
   id: string
   email: string
@@ -38,6 +39,10 @@ interface EditorUser {
   created_at: string | null
   created_by: string | null
   notes: string | null
+  can_schedule?: boolean
+  can_boats?: boolean
+  can_repeat_booking?: boolean
+  can_search_batch?: boolean
 }
 
 // 一般權限用戶
@@ -46,6 +51,15 @@ interface ViewUser {
   email: string
   display_name: string | null
   created_at: string | null
+  notes: string | null
+}
+
+/** 系統登入名單（allowed_users）— 最上層，通過才能使用應用（含「今日預約」） */
+interface AllowedUser {
+  id: string
+  email: string
+  created_at: string | null
+  created_by: string | null
   notes: string | null
 }
 
@@ -70,6 +84,14 @@ export function StaffManagement() {
   const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing' | 'permissions'>('coaches') // Tab 切換
   const [expandedCoachIds, setExpandedCoachIds] = useState<Set<string>>(new Set())
   
+  // 系統登入名單（最上層）
+  const [allowedUsers, setAllowedUsers] = useState<AllowedUser[]>([])
+  const [newAllowedEmail, setNewAllowedEmail] = useState('')
+  const [newAllowedNotes, setNewAllowedNotes] = useState('')
+  const [addingAllowed, setAddingAllowed] = useState(false)
+  const [editingAllowedId, setEditingAllowedId] = useState<string | null>(null)
+  const [editAllowedNotes, setEditAllowedNotes] = useState('')
+
   // 一般權限管理
   const [viewUsers, setViewUsers] = useState<ViewUser[]>([])
   const [newViewUserEmail, setNewViewUserEmail] = useState('')
@@ -110,7 +132,7 @@ export function StaffManagement() {
   const [lessonPrice, setLessonPrice] = useState<string>('')
   const [pricingLoading, setPricingLoading] = useState(false)
   
-  // 功能權限（小編）
+  // 功能權限
   const [newEditorEmail, setNewEditorEmail] = useState('')
   const [newEditorDisplayName, setNewEditorDisplayName] = useState('')
   const [addingEditor, setAddingEditor] = useState(false)
@@ -202,7 +224,8 @@ export function StaffManagement() {
         coachesResult, 
         timeOffsResult, 
         editorsResult,
-        viewUsersResult
+        viewUsersResult,
+        allowedUsersResult
       ] = await Promise.all([
         supabase
           .from('coaches')
@@ -220,6 +243,10 @@ export function StaffManagement() {
         (supabase as any)
           .from('view_users')
           .select('*')
+          .order('email'),
+        supabase
+          .from('allowed_users')
+          .select('*')
           .order('email')
       ])
 
@@ -231,6 +258,11 @@ export function StaffManagement() {
       setTimeOffs(timeOffsResult.data || [])
       setEditorUsers(editorsResult.data as any || [])
       setViewUsers(viewUsersResult.data || [])
+      if (allowedUsersResult.error) {
+        console.error('載入登入名單失敗:', allowedUsersResult.error)
+      } else {
+        setAllowedUsers((allowedUsersResult.data as AllowedUser[]) || [])
+      }
     } catch (error) {
       console.error('載入資料失敗:', error)
       toast.error('載入資料失敗')
@@ -536,7 +568,7 @@ export function StaffManagement() {
     }
   }
 
-  // 新增小編帳號
+  // 新增功能權限帳號（表 editor_users；預設四項全開，可於下方勾選關閉）
   const handleAddEditor = async () => {
     if (!newEditorEmail.trim()) {
       toast.warning('請輸入 Email')
@@ -552,46 +584,47 @@ export function StaffManagement() {
     try {
       const email = newEditorEmail.trim().toLowerCase()
       const displayName = newEditorDisplayName.trim() || null
-      
-      // 加入 editor_users 表
+
       const { error: editorError } = await (supabase as any)
         .from('editor_users')
         .insert([{
           email: email,
-          display_name: displayName
+          display_name: displayName,
+          can_schedule: true,
+          can_boats: true,
+          can_repeat_booking: true,
+          can_search_batch: true
         }])
 
       if (editorError) {
         if (editorError.code === '23505') {
-          throw new Error('此 Email 已有小編權限')
+          throw new Error('此 Email 已在功能權限名單中')
         }
         throw editorError
       }
 
-      // 同時加入 view_users（小編也有一般權限）
       await (supabase as any)
         .from('view_users')
         .upsert([{
           email: email,
           display_name: displayName,
-          notes: '小編權限'
+          notes: '功能權限'
         }], {
           onConflict: 'email',
           ignoreDuplicates: true
         })
 
-      // 同時加入白名單（使用 upsert）
       await supabase
         .from('allowed_users')
         .upsert([{
           email: email,
-          notes: '小編權限'
+          notes: '功能權限'
         }], {
           onConflict: 'email',
           ignoreDuplicates: true
         })
 
-      toast.success(`已將 ${displayName || email} 加入小編權限`)
+      toast.success(`已將 ${displayName || email} 加入功能權限名單（四項模組預設全開）`)
       setNewEditorEmail('')
       setNewEditorDisplayName('')
       clearPermissionCache() // 清除權限緩存
@@ -603,13 +636,28 @@ export function StaffManagement() {
     }
   }
 
-  // 移除小編帳號
+  const handleToggleEditorModule = async (id: string, key: EditorFeatureKey, value: boolean) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('editor_users')
+        .update({ [key]: value })
+        .eq('id', id)
+      if (error) throw error
+      clearPermissionCache()
+      loadData()
+    } catch (error) {
+      toast.error('更新權限失敗: ' + (error as Error).message)
+    }
+  }
+
+  // 從功能權限名單移除
   const handleRemoveEditor = async (id: string, email: string, displayName: string | null) => {
-    if (!confirm(`確定要將 ${displayName || email} 從小編權限移除嗎？`)) {
+    if (!confirm(`確定要將 ${displayName || email} 從功能權限名單移除嗎？`)) {
       return
     }
 
     try {
+      const e = email.toLowerCase()
       const { error } = await (supabase as any)
         .from('editor_users')
         .delete()
@@ -617,7 +665,17 @@ export function StaffManagement() {
 
       if (error) throw error
 
-      toast.success(`已將 ${displayName || email} 從小編權限移除`)
+      const { data: stillView } = await (supabase as any)
+        .from('view_users')
+        .select('id')
+        .eq('email', e)
+        .maybeSingle()
+      if (!stillView) {
+        const { error: delAllow } = await supabase.from('allowed_users').delete().eq('email', e)
+        if (delAllow) throw delAllow
+      }
+
+      toast.success(`已將 ${displayName || email} 從功能權限名單移除`)
       clearPermissionCache() // 清除權限緩存
       loadData()
     } catch (error) {
@@ -625,7 +683,7 @@ export function StaffManagement() {
     }
   }
   
-  // 更新小編名稱
+  // 更新顯示名稱
   const handleUpdateEditorName = async (id: string) => {
     try {
       await (supabase as any)
@@ -638,6 +696,85 @@ export function StaffManagement() {
       toast.success('已更新名稱')
       setEditingEditorId(null)
       setEditEditorName('')
+      loadData()
+    } catch (error) {
+      toast.error('更新失敗: ' + (error as Error).message)
+    }
+  }
+
+  // ========== 系統登入名單（allowed_users，最上層）==========
+
+  const handleAddAllowedUser = async () => {
+    if (!newAllowedEmail.trim()) {
+      toast.warning('請輸入 Email')
+      return
+    }
+    if (!newAllowedEmail.includes('@')) {
+      toast.warning('請輸入有效的 Email')
+      return
+    }
+    setAddingAllowed(true)
+    try {
+      const email = newAllowedEmail.trim().toLowerCase()
+      const notes = newAllowedNotes.trim() || '登入名單'
+      const { error } = await supabase
+        .from('allowed_users')
+        .upsert(
+          {
+            email,
+            notes
+          },
+          { onConflict: 'email' }
+        )
+      if (error) throw error
+      toast.success(`已加入登入名單：${email}`)
+      setNewAllowedEmail('')
+      setNewAllowedNotes('')
+      clearPermissionCache()
+      loadData()
+    } catch (error) {
+      toast.error('新增失敗: ' + (error as Error).message)
+    } finally {
+      setAddingAllowed(false)
+    }
+  }
+
+  /** 從登入名單移除時，一併移除同 Email 之一般權限與功能權限列，避免資料不一致 */
+  const handleRemoveAllowedUser = async (id: string, email: string) => {
+    if (
+      !confirm(
+        `確定要從「登入名單」移除 ${email} 嗎？\n將一併移除其一般權限與小編（若有），且對方登入後將無法使用本系統。`
+      )
+    ) {
+      return
+    }
+    try {
+      const e = email.toLowerCase()
+      const { error: e1 } = await (supabase as any).from('editor_users').delete().eq('email', e)
+      if (e1) throw e1
+      const { error: e2 } = await (supabase as any).from('view_users').delete().eq('email', e)
+      if (e2) throw e2
+      const { error: e3 } = await supabase.from('allowed_users').delete().eq('id', id)
+      if (e3) throw e3
+      toast.success(`已從登入名單與下層權限移除 ${email}`)
+      clearPermissionCache()
+      loadData()
+    } catch (error) {
+      toast.error('移除失敗: ' + (error as Error).message)
+    }
+  }
+
+  const handleUpdateAllowedNotes = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('allowed_users')
+        .update({ notes: editAllowedNotes.trim() || null })
+        .eq('id', id)
+      if (error) throw error
+      toast.success('已更新備註')
+      setEditingAllowedId(null)
+      setEditAllowedNotes('')
+      clearPermissionCache()
       loadData()
     } catch (error) {
       toast.error('更新失敗: ' + (error as Error).message)
@@ -675,6 +812,14 @@ export function StaffManagement() {
         }
         throw error
       }
+
+      await supabase.from('allowed_users').upsert(
+        {
+          email,
+          notes: '一般權限'
+        },
+        { onConflict: 'email' }
+      )
       
       toast.success(`已新增 ${newViewUserName || email} 的一般權限`)
       setNewViewUserEmail('')
@@ -695,12 +840,23 @@ export function StaffManagement() {
     }
     
     try {
+      const e = email.toLowerCase()
       const { error } = await (supabase as any)
         .from('view_users')
         .delete()
         .eq('id', id)
       
       if (error) throw error
+
+      const { data: stillEditor } = await (supabase as any)
+        .from('editor_users')
+        .select('id')
+        .eq('email', e)
+        .maybeSingle()
+      if (!stillEditor) {
+        const { error: delAllow } = await supabase.from('allowed_users').delete().eq('email', e)
+        if (delAllow) throw delAllow
+      }
       
       toast.success(`已移除 ${displayName || email} 的一般權限`)
       clearPermissionCache()
@@ -1583,9 +1739,9 @@ export function StaffManagement() {
                 📋 權限說明
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div>• <strong>未加入任何權限</strong>：只能看到「今日預約」</div>
+                <div>• <strong>系統登入名單</strong>（下表自行維護）：先在此加入 Email，對方才能登入使用本系統；僅在名單內、未加下層權限者，以首頁已開放功能為準（如「今日預約」）</div>
                 <div>• <strong>一般權限</strong>：可看到預約表、預約查詢、明日提醒、編輯記錄</div>
-                <div>• <strong>小編權限</strong>：一般權限 ＋ 排班、船隻管理等進階功能</div>
+                <div>• <strong>功能權限</strong>（下表）：在一般權限之上，可<strong>逐項勾選</strong>排班、船隻、重複預約、預約查詢批次等模組</div>
               </div>
               <div style={{ 
                 marginTop: '10px', 
@@ -1594,7 +1750,164 @@ export function StaffManagement() {
                 borderRadius: '6px',
                 fontSize: '13px'
               }}>
-                💡 <strong>小編自動擁有一般權限</strong>，不需要重複加入一般權限清單
+                💡 在「一般／小編」新增帳號時，會一併寫入下方登入名單。僅需「能登入、但只開今日預約等」者，可只在登入名單加 Email 並用備註註記。從登入名單移除時，可選擇一併清除下層權限（見按鈕說明）。
+              </div>
+            </div>
+
+            {/* ========== 系統登入名單（表格，最上層）========== */}
+            <div style={{
+              background: '#fff8e1',
+              padding: '12px 16px',
+              borderRadius: '8px 8px 0 0',
+              fontSize: '15px',
+              fontWeight: 'bold',
+              color: '#f57f17',
+              border: '1px solid #ffdcc0',
+              borderBottom: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap'
+            }}>
+              <span>🗝️</span>
+              系統登入名單
+              <Badge variant="warning" size="small">{allowedUsers.length} 人</Badge>
+              <span style={{ fontWeight: '500', fontSize: '12px', color: '#8d6e63' }}>（allowed_users，可在此自訂新增／備註／移除）</span>
+            </div>
+            <div style={{
+              background: 'white',
+              borderRadius: '0 0 12px 12px',
+              padding: isMobile ? '12px' : '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              marginBottom: '24px',
+              border: '1px solid #ffdcc0',
+              borderTop: 'none'
+            }}>
+              <div style={{ fontSize: '13px', color: '#6d4c41', marginBottom: '16px', lineHeight: 1.6 }}>
+                僅下表內的 Google 帳號可通過登入；未在表內者會看到「無法使用此系統」與聯絡官方說明。超級管理員不在此表亦永遠可登入。
+              </div>
+              <div style={{
+                display: 'flex',
+                gap: '10px',
+                flexDirection: isMobile ? 'column' : 'row',
+                marginBottom: '16px',
+                alignItems: isMobile ? 'stretch' : 'flex-end'
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Email</div>
+                  <input
+                    type="email"
+                    value={newAllowedEmail}
+                    onChange={(e) => setNewAllowedEmail(e.target.value)}
+                    placeholder="例：name@gmail.com"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: '15px',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>備註（選填）</div>
+                  <input
+                    type="text"
+                    value={newAllowedNotes}
+                    onChange={(e) => setNewAllowedNotes(e.target.value)}
+                    placeholder="例：教練僅需今日預約"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: '15px',
+                      boxSizing: 'border-box'
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddAllowedUser()
+                    }}
+                  />
+                </div>
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleAddAllowedUser}
+                  disabled={addingAllowed}
+                  style={{ background: '#f9a825', color: '#333', fontWeight: 600 }}
+                >
+                  {addingAllowed ? '新增中...' : '➕ 加入名單'}
+                </Button>
+              </div>
+
+              <div style={{ width: '100%', overflowX: 'auto' }}>
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: '14px',
+                  minWidth: isMobile ? '520px' : '100%'
+                }}>
+                  <thead>
+                    <tr style={{ background: '#fffde7', borderBottom: '2px solid #ffe0b2' }}>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', color: '#5d4037' }}>Email</th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', color: '#5d4037' }}>備註</th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', color: '#5d4037', whiteSpace: 'nowrap' }}>建立時間</th>
+                      <th style={{ textAlign: 'right', padding: '10px 12px', color: '#5d4037', width: '120px' }}>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allowedUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} style={{ padding: '32px 12px', textAlign: 'center', color: '#999' }}>
+                          尚無資料，請在上方新增，或從一般／小編權限新增（會連動寫入此表）
+                        </td>
+                      </tr>
+                    ) : (
+                      allowedUsers.map((row) => (
+                        <tr key={row.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <td style={{ padding: '12px', wordBreak: 'break-all', verticalAlign: 'top' }}>{row.email}</td>
+                          <td style={{ padding: '12px', verticalAlign: 'top' }}>
+                            {editingAllowedId === row.id ? (
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <input
+                                  type="text"
+                                  value={editAllowedNotes}
+                                  onChange={(e) => setEditAllowedNotes(e.target.value)}
+                                  style={{ flex: 1, minWidth: '120px', padding: '6px 8px', border: '1px solid #ffb74d', borderRadius: '6px' }}
+                                  autoFocus
+                                />
+                                <Button variant="primary" size="small" onClick={() => handleUpdateAllowedNotes(row.id)} style={{ background: '#f9a825', color: '#333' }}>儲存</Button>
+                                <Button variant="outline" size="small" onClick={() => { setEditingAllowedId(null); setEditAllowedNotes('') }}>取消</Button>
+                              </div>
+                            ) : (
+                              <span style={{ color: row.notes ? '#333' : '#aaa' }}>{row.notes || '—'}</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px', color: '#666', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                            {row.created_at ? new Date(row.created_at).toLocaleString('zh-TW') : '—'}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                            {editingAllowedId !== row.id && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => { setEditingAllowedId(row.id); setEditAllowedNotes(row.notes || '') }}
+                                  style={{ marginRight: '8px', background: 'none', border: 'none', color: '#1976d2', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}
+                                >
+                                  編輯備註
+                                </button>
+                                <Button variant="danger" size="small" onClick={() => handleRemoveAllowedUser(row.id, row.email)}>
+                                  移除
+                                </Button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -1804,7 +2117,7 @@ export function StaffManagement() {
               )}
             </div>
 
-            {/* ========== 小編權限區塊 ========== */}
+            {/* ========== 功能權限（模組勾選）========== */}
             <div style={{
               background: '#e3f2fd',
               padding: '12px 16px',
@@ -1818,8 +2131,8 @@ export function StaffManagement() {
               alignItems: 'center',
               gap: '8px'
             }}>
-              <span>🚤</span>
-              小編權限
+              <span>🧩</span>
+              功能權限
               <Badge variant="info" size="small">{editorUsers.length} 人</Badge>
             </div>
             
@@ -1834,7 +2147,7 @@ export function StaffManagement() {
               lineHeight: '1.6'
             }}>
               <div style={{ marginBottom: '6px' }}>
-                小編可使用：<strong>排班</strong>、<strong>船隻管理</strong>、<strong>批次修改</strong>、<strong>重複預約</strong>
+                此名單內帳號可再<strong>各自勾選</strong>模組；未勾的項目不會在畫面出現對應按鈕或無法進入該頁。新增帳號預設<strong>四項全開</strong>（之後可關閉）。超級管理員不受此表限制。
               </div>
               <div style={{ 
                 fontSize: '12px', 
@@ -1844,11 +2157,11 @@ export function StaffManagement() {
                 borderRadius: '4px',
                 display: 'inline-block'
               }}>
-                ⚠️ 移除小編權限時，<strong>不會</strong>自動移除一般權限（需另外移除）
+                ⚠️ 從此名單移除時，<strong>不會</strong>自動移除一般權限與登入名單（與各區塊說明一致）
               </div>
             </div>
 
-            {/* 小編權限 - 內容區塊 */}
+            {/* 功能權限 - 內容區塊 */}
             <div style={{
               background: 'white',
               borderRadius: '0 0 12px 12px',
@@ -2016,6 +2329,36 @@ export function StaffManagement() {
                               marginTop: '4px'
                             }}>
                               加入時間：{editor.created_at ? new Date(editor.created_at).toLocaleDateString('zh-TW') : '-'}
+                            </div>
+                            <div style={{
+                              marginTop: '12px',
+                              paddingTop: '10px',
+                              borderTop: '1px solid #e9ecef'
+                            }}>
+                              <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>模組</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px' }}>
+                                {EDITOR_FEATURE_KEYS.map((key) => (
+                                  <label
+                                    key={key}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '5px',
+                                      fontSize: '12px',
+                                      color: '#333',
+                                      cursor: 'pointer',
+                                      userSelect: 'none'
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={editor[key] !== false}
+                                      onChange={(e) => handleToggleEditorModule(editor.id, key, e.target.checked)}
+                                    />
+                                    {EDITOR_FEATURE_LABELS[key]}
+                                  </label>
+                                ))}
+                              </div>
                             </div>
                           </>
                         )}

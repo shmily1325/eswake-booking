@@ -823,6 +823,10 @@ export type Database = {
       }
       editor_users: {
         Row: {
+          can_boats: boolean
+          can_repeat_booking: boolean
+          can_schedule: boolean
+          can_search_batch: boolean
           created_at: string | null
           created_by: string | null
           display_name: string | null
@@ -831,6 +835,10 @@ export type Database = {
           notes: string | null
         }
         Insert: {
+          can_boats?: boolean
+          can_repeat_booking?: boolean
+          can_schedule?: boolean
+          can_search_batch?: boolean
           created_at?: string | null
           created_by?: string | null
           display_name?: string | null
@@ -839,6 +847,10 @@ export type Database = {
           notes?: string | null
         }
         Update: {
+          can_boats?: boolean
+          can_repeat_booking?: boolean
+          can_schedule?: boolean
+          can_search_batch?: boolean
           created_at?: string | null
           created_by?: string | null
           display_name?: string | null

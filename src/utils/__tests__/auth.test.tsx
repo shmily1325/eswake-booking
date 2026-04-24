@@ -14,7 +14,9 @@ import {
   useCheckAllowedUser,
   isEditorAsync,
   isEditor,
-  hasViewAccess
+  hasViewAccess,
+  hasEditorFeatureAsync,
+  getEditorFeatureFlags
 } from '../auth'
 import { supabase } from '../../lib/supabase'
 
@@ -324,6 +326,45 @@ describe('auth.ts - 權限驗證', () => {
       const secondCallCount = vi.mocked(supabase.from).mock.calls.length
 
       expect(secondCallCount).toBe(firstCallCount) // 沒有額外的查詢
+    })
+  })
+
+  describe('hasEditorFeatureAsync', () => {
+    it('超級管理員對各模組均為 true', async () => {
+      const user = createMockUser('minlin1325@gmail.com')
+      expect(await hasEditorFeatureAsync(user, 'can_schedule')).toBe(true)
+      expect(await hasEditorFeatureAsync(user, 'can_boats')).toBe(true)
+    })
+
+    it('名單內關閉的模組應為 false', async () => {
+      clearPermissionCache()
+      vi.mocked(supabase.from).mockImplementation(() => ({
+        select: vi.fn(() => Promise.resolve({
+          data: [{
+            email: 'u@ex.com',
+            can_schedule: false,
+            can_boats: true,
+            can_repeat_booking: true,
+            can_search_batch: true
+          }],
+          error: null
+        }))
+      }) as any)
+
+      const u = createMockUser('u@ex.com')
+      expect(await hasEditorFeatureAsync(u, 'can_schedule')).toBe(false)
+      expect(await hasEditorFeatureAsync(u, 'can_boats')).toBe(true)
+    })
+  })
+
+  describe('getEditorFeatureFlags', () => {
+    it('非名單內為 null', async () => {
+      clearPermissionCache()
+      vi.mocked(supabase.from).mockImplementation(() => ({
+        select: vi.fn(() => Promise.resolve({ data: [], error: null }))
+      }) as any)
+      const u = createMockUser('na@ex.com')
+      expect(await getEditorFeatureFlags(u)).toBeNull()
     })
   })
 
