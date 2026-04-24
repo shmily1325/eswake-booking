@@ -1628,6 +1628,9 @@ function DeductionItemRow({
   const isDirectSettlement = item.category === 'direct_settlement'
   // 判斷是否為指定課扣款（從儲值扣）：category 是 balance 且 description 包含【指定課】
   const isDesignatedLessonFromBalance = isBalance && (item.description?.includes('【指定課】') || false)
+  // memberData 由父層傳入，已為「實際扣款帳戶」（含代扣會員）
+  const showGuestMemberBoatBalanceReminder =
+    memberData?.membership_type === 'guest' && isBalance && !isDesignatedLessonFromBalance
   const currentCategory = categories.find(c => c.value === item.category)
   
 
@@ -1903,6 +1906,22 @@ function DeductionItemRow({
             }}>
               扣款金額：
             </div>
+            {showGuestMemberBoatBalanceReminder ? (
+              <div
+                style={{
+                  marginBottom: '10px',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #f0c36d',
+                  background: 'linear-gradient(135deg, #fffbeb 0%, #fff4d6 100%)',
+                  fontSize: '13px',
+                  lineHeight: 1.55,
+                  color: '#7c5d10'
+                }}
+              >
+                此扣款帳戶為「非會員」；目前金額依船隻「會員價格」計算。若應使用非會員價，請自行改金額並確認。
+              </div>
+            ) : null}
             {/* 統一設計：直接顯示金額輸入框 + 計算說明 */}
             <div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
