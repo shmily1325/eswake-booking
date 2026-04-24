@@ -9,6 +9,10 @@ import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
 import { clearPermissionCache, isAdmin, SUPER_ADMINS, EDITOR_FEATURE_KEYS, EDITOR_FEATURE_LABELS, type EditorFeatureKey } from '../../utils/auth'
 
+/** 人員權限表上顯示的「小編」欄位：重複預約＋批次合併為一格（寫庫仍為兩欄同值） */
+const MATRIX_SINGLE_FEATURE_KEYS = ['can_schedule', 'can_boats'] as const
+const matrixFeatureColumnCount = MATRIX_SINGLE_FEATURE_KEYS.length + 1
+
 interface Coach {
   id: string
   name: string
@@ -638,6 +642,10 @@ export function StaffManagement() {
     return row.allowed?.notes?.trim() || ''
   }
 
+  /**
+   * 人員「名稱」只寫在 view_users（有一般）或僅登入時的 allowed_users.notes；
+   * 不寫入 editor_users（小編表僅管功能權限，與人名分開）
+   */
   const handleSaveMatrixName = async (row: PermissionMatrixRow) => {
     const e = row.email.toLowerCase()
     const name = editMatrixName.trim() || null
@@ -649,12 +657,6 @@ export function StaffManagement() {
           .update({ display_name: name })
           .eq('id', row.view.id)
         if (error) throw error
-      } else if (row.editor) {
-        const { error } = await (supabase as any)
-          .from('editor_users')
-          .update({ display_name: name })
-          .eq('id', row.editor.id)
-        if (error) throw error
       } else if (row.allowed) {
         const { error } = await supabase
           .from('allowed_users')
@@ -662,7 +664,10 @@ export function StaffManagement() {
           .eq('id', row.allowed.id)
         if (error) throw error
       } else {
-        return
+        const { error: vErr } = await (supabase as any)
+          .from('view_users')
+          .upsert({ email: e, display_name: name }, { onConflict: 'email' })
+        if (vErr) throw vErr
       }
       toast.success('已更新名稱')
       setEditingMatrixNameForEmail(null)
@@ -671,6 +676,23 @@ export function StaffManagement() {
       loadData()
     } catch (err) {
       toast.error('更新失敗: ' + (err as Error).message)
+    } finally {
+      setSavingMatrixEmail(null)
+    }
+  }
+
+  /** 補上 allowed_users，使「有一般/小編卻未登入」的列恢復一致 */
+  const handleBackfillMatrixLogin = async (row: PermissionMatrixRow) => {
+    if (row.allowed) return
+    const e = row.email.toLowerCase()
+    setSavingMatrixEmail(e)
+    try {
+      await ensureAllowedUserRowExists(e)
+      toast.success('已補上登入名單（與一般／小編對齊）')
+      clearPermissionCache()
+      loadData()
+    } catch (err) {
+      toast.error('失敗: ' + (err as Error).message)
     } finally {
       setSavingMatrixEmail(null)
     }
@@ -714,6 +736,10 @@ export function StaffManagement() {
   const isSuperAdminEmail = (em: string) =>
     SUPER_ADMINS.some((a) => a.toLowerCase() === em.trim().toLowerCase())
 
+  /** 有一般或小編，但沒有登入名單列（歷史／手改庫導致，正常流程不會產生） */
+  const matrixRowMissingLogin = (row: PermissionMatrixRow) =>
+    !row.allowed && (!!row.view || !!row.editor)
+
   const getMatrixEditorFlags = (ed: EditorUser | null): Record<EditorFeatureKey, boolean> => {
     if (!ed) {
       return {
@@ -731,27 +757,40 @@ export function StaffManagement() {
     }
   }
 
-  const ensureAllowedAndViewForModule = async (email: string) => {
+  /** 僅在沒有列時 insert，不覆寫既有名稱／備註（與權限勾選無關） */
+  const ensureAllowedUserRowExists = async (email: string) => {
     const e = email.toLowerCase()
-    const a = await supabase
-      .from('allowed_users')
-      .upsert({ email: e, notes: '功能權限' }, { onConflict: 'email' })
-    if (a.error) throw a.error
-    const v = await (supabase as any)
-      .from('view_users')
-      .upsert(
-        { email: e, display_name: null, notes: '功能權限' },
-        { onConflict: 'email' }
-      )
-    if (v.error) throw v.error
+    const { data, error: selErr } = await supabase.from('allowed_users').select('id').eq('email', e).maybeSingle()
+    if (selErr) throw selErr
+    if (data) return
+    const { error } = await supabase.from('allowed_users').insert({ email: e })
+    if (error && (error as any).code !== '23505') throw error
   }
 
-  const setMatrixEditorFeature = async (row: PermissionMatrixRow, key: EditorFeatureKey, value: boolean) => {
+  const ensureViewUserRowExists = async (email: string) => {
+    const e = email.toLowerCase()
+    const { data, error: selErr } = await (supabase as any).from('view_users').select('id').eq('email', e).maybeSingle()
+    if (selErr) throw selErr
+    if (data) return
+    const { error } = await (supabase as any).from('view_users').insert({ email: e })
+    if (error && error.code !== '23505') throw error
+  }
+
+  const ensureAllowedAndViewForModule = async (email: string) => {
+    const e = email.toLowerCase()
+    await ensureAllowedUserRowExists(e)
+    await ensureViewUserRowExists(e)
+  }
+
+  const setMatrixEditorFeatureFields = async (
+    row: PermissionMatrixRow,
+    updates: Partial<Record<EditorFeatureKey, boolean>>
+  ) => {
     const e = row.email.toLowerCase()
     setSavingMatrixEmail(e)
     try {
       const prev = getMatrixEditorFlags(row.editor)
-      const flags: Record<EditorFeatureKey, boolean> = { ...prev, [key]: value }
+      const flags: Record<EditorFeatureKey, boolean> = { ...prev, ...updates }
       const allOff = EDITOR_FEATURE_KEYS.every((k) => !flags[k])
       if (allOff) {
         if (row.editor) {
@@ -764,7 +803,6 @@ export function StaffManagement() {
           .from('editor_users')
           .insert({
             email: e,
-            display_name: null,
             can_schedule: flags.can_schedule,
             can_boats: flags.can_boats,
             can_repeat_booking: flags.can_repeat_booking,
@@ -811,16 +849,20 @@ export function StaffManagement() {
     }
   }
 
+  const setMatrixEditorFeature = (row: PermissionMatrixRow, key: EditorFeatureKey, value: boolean) =>
+    setMatrixEditorFeatureFields(row, { [key]: value })
+
+  /** 重複預約（預約表）＋預約查詢·批次 同勾同退 */
+  const setMatrixRepeatAndSearchBatch = (row: PermissionMatrixRow, value: boolean) =>
+    setMatrixEditorFeatureFields(row, { can_repeat_booking: value, can_search_batch: value })
+
   const toggleMatrixLogin = async (row: PermissionMatrixRow, next: boolean) => {
     if (next) {
       if (row.allowed) return
       setSavingMatrixEmail(row.email)
       try {
         const e = row.email.toLowerCase()
-        const { error } = await supabase
-          .from('allowed_users')
-          .upsert({ email: e, notes: '登入名單' }, { onConflict: 'email' })
-        if (error) throw error
+        await ensureAllowedUserRowExists(e)
         clearPermissionCache()
         loadData()
       } catch (err) {
@@ -839,13 +881,9 @@ export function StaffManagement() {
       setSavingMatrixEmail(row.email)
       try {
         const e = row.email.toLowerCase()
-        const { error: ve } = await (supabase as any)
-          .from('view_users')
-          .insert([{ email: e, display_name: null, notes: '一般權限' }])
+        const { error: ve } = await (supabase as any).from('view_users').insert([{ email: e }])
         if (ve && ve.code !== '23505') throw ve
-        await supabase
-          .from('allowed_users')
-          .upsert({ email: e, notes: '一般權限' }, { onConflict: 'email' })
+        await ensureAllowedUserRowExists(e)
         clearPermissionCache()
         loadData()
       } catch (err) {
@@ -902,6 +940,11 @@ export function StaffManagement() {
     }
     return Array.from(m.values()).sort((a, b) => a.email.localeCompare(b.email))
   }, [allowedUsers, viewUsers, editorUsers])
+
+  const matrixMissingLoginCount = useMemo(
+    () => permissionMatrixRows.filter((r) => matrixRowMissingLogin(r)).length,
+    [permissionMatrixRows]
+  )
 
   if (loading) {
     return (
@@ -1741,28 +1784,22 @@ export function StaffManagement() {
         {/* 權限管理 Tab */}
         {activeTab === 'permissions' && (
           <>
-            {/* 總體說明 */}
             <div style={{
-              background: '#fff3e0',
-              padding: isMobile ? '12px 16px' : '14px 20px',
+              background: '#f0f7ff',
+              padding: isMobile ? '12px 14px' : '14px 18px',
               borderRadius: '8px',
-              marginBottom: '20px',
+              marginBottom: '16px',
               fontSize: '14px',
-              color: '#e65100',
-              border: '1px solid #ffcc80',
-              lineHeight: '1.8'
+              color: '#1565c0',
+              border: '1px solid #bbdefb',
+              lineHeight: 1.75
             }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '15px' }}>
-                📋 權限說明
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div>以<strong>一張表</strong>管理：<strong>登入</strong>（allowed_users，能使用本系統）、<strong>一般</strong>（view_users，預約表／查詢／提醒等），以及<strong>各項功能</strong>（小編模組，對應 editor_users 欄位）。</div>
-                <div>勾選功能模組時會一併確保已加入登入與一般權限（同先前「新增小編」行為）。</div>
-                <div>取消「登入」或「刪除整列」時，會一併清除下層權限，避免帳號狀態不一致。僅在登入內、未勾一般者，以首頁已開放功能（如「今日預約」）為準。</div>
-              </div>
+              <div style={{ fontWeight: 600, marginBottom: '6px' }}>以一張表管理：</div>
+              <div>登入 - <code style={{ fontSize: '12px' }}>allowed_users</code>，能使用本系統，僅能看到今日預約</div>
+              <div>一般 - <code style={{ fontSize: '12px' }}>view_users</code>，預約表／查詢／提醒等，以及各項功能</div>
+              <div>勾選功能模組時會一併確保已加入登入與一般權限</div>
+              <div>取消「登入」或「刪除整列」時，會一併清除下層權限，避免衝突</div>
             </div>
-
-            {/* 單一權限矩陣表 */}
             <div style={{
               background: '#f5f9ff',
               padding: '12px 16px',
@@ -1780,6 +1817,13 @@ export function StaffManagement() {
               <span>🗂</span>
               人員權限
               <Badge variant="info" size="small">{permissionMatrixRows.length} 帳號</Badge>
+              {matrixMissingLoginCount > 0 && (
+                <span title="有列缺登入名單，已以底色與補登入呈現">
+                  <Badge variant="warning" size="small" style={{ fontWeight: 600 }}>
+                    {matrixMissingLoginCount} 筆
+                  </Badge>
+                </span>
+              )}
             </div>
             <div style={{
               background: 'white',
@@ -1815,12 +1859,12 @@ export function StaffManagement() {
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>名稱（選填，可稍後在表內修改）</div>
+                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>名稱（選填）</div>
                   <input
                     type="text"
                     value={newAllowedNotes}
                     onChange={(e) => setNewAllowedNotes(e.target.value)}
-                    placeholder="例：櫃台、櫃檯小安"
+                    placeholder=""
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1856,15 +1900,36 @@ export function StaffManagement() {
                       <th style={{ textAlign: 'left', padding: '10px 8px', color: '#1565c0', minWidth: '160px' }}>Email</th>
                       <th style={{ textAlign: 'center', padding: '10px 6px', color: '#f57f17', whiteSpace: 'nowrap' }} title="allowed_users，可登入">登入</th>
                       <th style={{ textAlign: 'center', padding: '10px 6px', color: '#2e7d32', whiteSpace: 'nowrap' }} title="view_users">一般</th>
-                      {EDITOR_FEATURE_KEYS.map((key) => (
+                      {MATRIX_SINGLE_FEATURE_KEYS.map((key, i) => (
                         <th
                           key={key}
-                          style={{ textAlign: 'center', padding: '10px 6px', color: '#1565c0', maxWidth: '100px', lineHeight: 1.3, fontWeight: 600 }}
+                          style={{
+                            textAlign: 'center',
+                            padding: '10px 6px',
+                            color: '#1565c0',
+                            maxWidth: '100px',
+                            lineHeight: 1.3,
+                            fontWeight: 600,
+                            borderLeft: i === 0 ? '1px solid #b3d4fc' : undefined
+                          }}
                           title={EDITOR_FEATURE_LABELS[key]}
                         >
                           {EDITOR_FEATURE_LABELS[key]}
                         </th>
                       ))}
+                      <th
+                        style={{
+                          textAlign: 'center',
+                          padding: '10px 6px',
+                          color: '#1565c0',
+                          maxWidth: '100px',
+                          lineHeight: 1.3,
+                          fontWeight: 600
+                        }}
+                        title="重複預約"
+                      >
+                        重複預約
+                      </th>
                       <th style={{ textAlign: 'left', padding: '10px 8px', color: '#5d4037', minWidth: '120px' }}>名稱</th>
                       <th style={{ textAlign: 'right', padding: '10px 8px', color: '#5d4037', whiteSpace: 'nowrap' }}>操作</th>
                     </tr>
@@ -1872,7 +1937,7 @@ export function StaffManagement() {
                   <tbody>
                     {permissionMatrixRows.length === 0 ? (
                       <tr>
-                        <td colSpan={3 + EDITOR_FEATURE_KEYS.length + 2} style={{ padding: '32px 12px', textAlign: 'center', color: '#999' }}>
+                        <td colSpan={3 + matrixFeatureColumnCount + 2} style={{ padding: '32px 12px', textAlign: 'center', color: '#999' }}>
                           尚無可列帳號。請在上方新增 Email，或於資料庫有 view／editor 列者會自動出現。
                         </td>
                       </tr>
@@ -1880,10 +1945,37 @@ export function StaffManagement() {
                       permissionMatrixRows.map((row) => {
                         const busy = savingMatrixEmail === row.email
                         const f = getMatrixEditorFlags(row.editor)
+                        const needsLogin = matrixRowMissingLogin(row)
                         return (
-                          <tr key={row.email} style={{ borderBottom: '1px solid #e8eaf0' }}>
-                            <td style={{ padding: '10px 8px', wordBreak: 'break-all', verticalAlign: 'middle' }}>{row.email}</td>
-                            <td style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                          <tr
+                            key={row.email}
+                            style={{
+                              borderBottom: '1px solid #e8eaf0',
+                              background: needsLogin ? '#fff8e1' : undefined,
+                              boxShadow: needsLogin ? 'inset 3px 0 0 #ff9800' : undefined
+                            }}
+                          >
+                            <td style={{ padding: '10px 8px', wordBreak: 'break-all', verticalAlign: 'middle' }}>
+                              {needsLogin && (
+                                <span
+                                  style={{ display: 'inline-block', marginRight: '4px', color: '#e65100', fontSize: '14px', lineHeight: 1, verticalAlign: 'text-top' }}
+                                  title="有一般或小編，但此帳未在登入名單"
+                                  aria-hidden
+                                >
+                                  ⚠
+                                </span>
+                              )}
+                              {row.email}
+                            </td>
+                            <td
+                              style={{
+                                padding: '8px 6px',
+                                textAlign: 'center',
+                                verticalAlign: 'middle',
+                                borderRadius: needsLogin ? '6px' : undefined,
+                                background: needsLogin ? 'rgba(255, 152, 0, 0.12)' : undefined
+                              }}
+                            >
                               <input
                                 type="checkbox"
                                 checked={!!row.allowed}
@@ -1903,7 +1995,7 @@ export function StaffManagement() {
                                 aria-label="一般"
                               />
                             </td>
-                            {EDITOR_FEATURE_KEYS.map((key) => (
+                            {MATRIX_SINGLE_FEATURE_KEYS.map((key) => (
                               <td key={key} style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
                                 <input
                                   type="checkbox"
@@ -1915,6 +2007,16 @@ export function StaffManagement() {
                                 />
                               </td>
                             ))}
+                            <td style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                              <input
+                                type="checkbox"
+                                checked={f.can_repeat_booking && f.can_search_batch}
+                                disabled={busy}
+                                onChange={(e) => { void setMatrixRepeatAndSearchBatch(row, e.target.checked) }}
+                                title="重複預約"
+                                aria-label="重複預約"
+                              />
+                            </td>
                             <td style={{ padding: '10px 8px', verticalAlign: 'middle' }}>
                               {editingMatrixNameForEmail === row.email ? (
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1939,14 +2041,27 @@ export function StaffManagement() {
                                   </Button>
                                 </div>
                               ) : (
-                                <span style={{ color: getMatrixDisplayName(row) ? '#333' : '#aaa', fontSize: '12px' }} title="優先顯示一般權限名稱，其次小編、登入名單儲存之名稱">
+                                <span style={{ color: getMatrixDisplayName(row) ? '#333' : '#aaa', fontSize: '12px' }}>
                                   {getMatrixDisplayName(row) || '—'}
                                 </span>
                               )}
                             </td>
-                            <td style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                            <td style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'normal', verticalAlign: 'middle', maxWidth: isMobile ? '200px' : '280px' }}>
                               {editingMatrixNameForEmail !== row.email && (
                                 <>
+                                  {needsLogin && (
+                                    <span title="寫入登入名單，與已勾權限對齊" style={{ display: 'inline-block', marginRight: '6px', marginBottom: isMobile ? '4px' : 0 }}>
+                                      <Button
+                                        variant="primary"
+                                        size="small"
+                                        onClick={() => { void handleBackfillMatrixLogin(row) }}
+                                        disabled={busy}
+                                        style={{ background: '#ff8f00', color: '#fff', fontWeight: 600 }}
+                                      >
+                                        補登入
+                                      </Button>
+                                    </span>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1969,9 +2084,6 @@ export function StaffManagement() {
                     )}
                   </tbody>
                 </table>
-              </div>
-              <div style={{ marginTop: '12px', fontSize: '12px', color: '#78909c', lineHeight: 1.6 }}>
-                從此表<strong>刪除整列</strong>會移除登入、一般與小編三處之該 Email（有確認提示）。
               </div>
             </div>
           </>
