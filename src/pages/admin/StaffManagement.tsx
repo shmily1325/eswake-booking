@@ -97,7 +97,7 @@ function getPermissionMatrixConfirmCopy(a: PermissionMatrixConfirmAction): { tit
       const who = (a.displayName && a.displayName.trim()) || a.email
       return {
         title: '取消一般權限',
-        message: `確定要取消「${who}」的一般權限？（帳號：${a.email}）\n\n取消後無法使用預約表、查詢、提醒等。若之後同帳已無小編權限，系統會一併從登入名單移除此帳。`,
+        message: `確定要取消「${who}」的一般權限？（帳號：${a.email}）\n\n取消後無法使用預約表、查詢、提醒等。登入名單（allowed_users）仍保留，對方仍可登入並查看「今日預約」。`,
         confirmText: '取消一般',
       }
     }
@@ -752,7 +752,7 @@ export function StaffManagement() {
 
   // ========== 一般權限（仍由矩陣勾選驅動）==========
   
-  /** 刪除 view_users 一列；若同帳已無小編則一併刪除 allowed_users（由確認框觸發） */
+  /** 刪除 view_users 一列；保留 allowed_users，以便僅登入者仍可看「今日預約」 */
   const runRemoveViewUserRow = async (viewId: string, email: string, displayName: string | null) => {
     const e = email.toLowerCase()
     setSavingMatrixEmail(e)
@@ -760,17 +760,9 @@ export function StaffManagement() {
       const { error } = await (supabase as any).from('view_users').delete().eq('id', viewId)
       if (error) throw error
 
-      const { data: stillEditor } = await (supabase as any)
-        .from('editor_users')
-        .select('id')
-        .eq('email', e)
-        .maybeSingle()
-      if (!stillEditor) {
-        const { error: delAllow } = await supabase.from('allowed_users').delete().eq('email', e)
-        if (delAllow) throw delAllow
-      }
-
-      toast.success(`已取消 ${displayName?.trim() || email} 的一般權限`)
+      toast.success(
+        `已取消 ${displayName?.trim() || email} 的一般權限；若仍在登入名單內，仍可登入並查看今日預約`
+      )
       clearPermissionCache()
       loadData()
     } catch (error) {
@@ -2050,7 +2042,7 @@ export function StaffManagement() {
                         }}
                         title="重複預約"
                       >
-                        重複
+                        重複預約
                       </th>
                       <th
                         style={{
