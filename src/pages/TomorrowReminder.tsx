@@ -246,7 +246,16 @@ export function TomorrowReminder() {
     const arrivalMinute = totalMinutes % 60
     return `${arrivalHour.toString().padStart(2, '0')}${arrivalMinute.toString().padStart(2, '0')}`
   }
+
+  /** 與 getArrivalTimeNoColon 同邏輯，顯示為 HH:MM */
+  const getArrivalTimeWithColon = (dateString: string): string => {
+    const raw = getArrivalTimeNoColon(dateString)
+    return `${raw.slice(0, 2)}:${raw.slice(2, 4)}`
+  }
   
+  /** 不產生「預約人提醒訊息」條目（當日預約明細仍會顯示） */
+  const EXCLUDED_FROM_TOMORROW_STUDENT_REMINDERS = new Set(['Ming'])
+
   // ✅ 改為以單一會員為主軸
   const getStudentList = (): string[] => {
     const students = new Set<string>()
@@ -255,11 +264,16 @@ export function TomorrowReminder() {
       const names = booking.contact_name.split(',').map(n => n.trim())
       names.forEach(name => students.add(name))
     })
-    return Array.from(students).sort()
+    return Array.from(students)
+      .filter((name) => !EXCLUDED_FROM_TOMORROW_STUDENT_REMINDERS.has(name))
+      .sort()
   }
   
   // ✅ 特殊會員：需要額外顯示船和開船教練資訊
   const SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小', '火隆', '火龍']
+
+  /** 明日提醒極簡版：名單為 Safin 時稱呼李伯，僅顯示抵達時間 */
+  const SAFIN_TOMORROW_STUDENT_NAMES = new Set(['Safin'])
   
   const generateMessageForStudent = (studentName: string): string => {
     // ✅ 找出所有包含此會員的預約
@@ -269,6 +283,17 @@ export function TomorrowReminder() {
         return names.includes(studentName)
       })
       .sort((a, b) => a.start_at.localeCompare(b.start_at)) // 按時間排序
+
+    if (SAFIN_TOMORROW_STUDENT_NAMES.has(studentName) && studentBookings.length > 0) {
+      return studentBookings
+        .map((booking, i) => {
+          const t = getArrivalTimeWithColon(booking.start_at)
+          return i === 0
+            ? `Hi 李伯, 明日請 ${t} 抵達`
+            : `明日請 ${t} 抵達`
+        })
+        .join('\n')
+    }
     
     // ✅ 檢查是否有 PAPA 教練的預約
     const hasPapaCoach = studentBookings.some(booking => 

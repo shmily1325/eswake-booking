@@ -2929,14 +2929,30 @@
             var m = totalMinutes % 60;
             return String(h).padStart(2, '0') + String(m).padStart(2, '0');
         }
+
+        function getArrivalTimeWithColon(dateString) {
+            var raw = getArrivalTimeNoColon(dateString);
+            if (raw.length !== 4) return raw;
+            return raw.slice(0, 2) + ':' + raw.slice(2, 4);
+        }
         
         var SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小'];
+        var SAFIN_TOMORROW_STUDENT_NAMES = { 'Safin': 1 };
         
         function generateTomorrowMessageForStudent(studentName, bookings, includeWeatherWarning, weatherWarning, footerText) {
             var studentBookings = bookings.filter(function(b) {
                 var names = (b.contact_name || '').split(',').map(function(n) { return n.trim(); });
                 return names.indexOf(studentName) !== -1;
             }).sort(function(a, b) { return a.start_at.localeCompare(b.start_at); });
+            
+            if (SAFIN_TOMORROW_STUDENT_NAMES[studentName] && studentBookings.length > 0) {
+                return studentBookings.map(function(booking, i) {
+                    var t = getArrivalTimeWithColon(booking.start_at);
+                    return i === 0
+                        ? ('Hi 李伯, 明日請 ' + t + ' 抵達')
+                        : ('明日請 ' + t + ' 抵達');
+                }).join('\n');
+            }
             
             var hasPapaCoach = studentBookings.some(function(b) {
                 return (b.coaches || []).some(function(c) { return (c.name || '').toUpperCase() === 'PAPA'; });
@@ -2993,6 +3009,7 @@
             return message;
         }
         
+        var EXCLUDED_FROM_TOMORROW_STUDENT_REMINDERS = { 'Ming': 1 };
         function getTomorrowStudentList(bookings) {
             var students = {};
             bookings.forEach(function(b) {
@@ -3000,7 +3017,7 @@
                     if (name) students[name] = true;
                 });
             });
-            return Object.keys(students).sort();
+            return Object.keys(students).filter(function(n) { return !EXCLUDED_FROM_TOMORROW_STUDENT_REMINDERS[n]; }).sort();
         }
         
         var tomorrowReminderSelectedStudent = null;
