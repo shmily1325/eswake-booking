@@ -273,7 +273,7 @@ export function TomorrowReminder() {
   // ✅ 特殊會員：需要額外顯示船和開船教練資訊
   const SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小', '火隆', '火龍']
 
-  /** 明日提醒極簡版：名單為 Safin 時稱呼李伯，僅顯示抵達時間 */
+  /** 明日提醒極簡版：名單為 Safin 時稱呼李伯 */
   const SAFIN_TOMORROW_STUDENT_NAMES = new Set(['Safin'])
   
   const generateMessageForStudent = (studentName: string): string => {
@@ -286,14 +286,12 @@ export function TomorrowReminder() {
       .sort((a, b) => a.start_at.localeCompare(b.start_at)) // 按時間排序
 
     if (SAFIN_TOMORROW_STUDENT_NAMES.has(studentName) && studentBookings.length > 0) {
-      return studentBookings
-        .map((booking, i) => {
-          const t = getArrivalTimeWithColon(booking.start_at)
-          return i === 0
-            ? `Hi 李伯, 明日請 ${t} 抵達`
-            : `明日請 ${t} 抵達`
-        })
-        .join('\n')
+      return [
+        '你好李伯',
+        ...studentBookings.map(
+          (booking) => `明天有預約，請 ${getArrivalTimeWithColon(booking.start_at)} 抵達`
+        ),
+      ].join('\n')
     }
     
     // ✅ 檢查是否有 PAPA 教練的預約

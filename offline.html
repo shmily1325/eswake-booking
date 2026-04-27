@@ -2955,12 +2955,11 @@
             }).sort(function(a, b) { return a.start_at.localeCompare(b.start_at); });
             
             if (SAFIN_TOMORROW_STUDENT_NAMES[studentName] && studentBookings.length > 0) {
-                return studentBookings.map(function(booking, i) {
-                    var t = getArrivalTimeWithColon(booking.start_at);
-                    return i === 0
-                        ? ('Hi 李伯, 明日請 ' + t + ' 抵達')
-                        : ('明日請 ' + t + ' 抵達');
-                }).join('\n');
+                var safinLines = ['你好李伯'];
+                studentBookings.forEach(function(booking) {
+                    safinLines.push('明天有預約，請 ' + getArrivalTimeWithColon(booking.start_at) + ' 抵達');
+                });
+                return safinLines.join('\n');
             }
             
             var hasPapaCoach = studentBookings.some(function(b) {
