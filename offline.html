@@ -2938,6 +2938,15 @@
         
         var SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小'];
         var SAFIN_TOMORROW_STUDENT_NAMES = { 'Safin': 1 };
+
+        var QIQI_TOMORROW_STUDENT_NAME = 'SH綺綺';
+        /** 僅名單為 SH綺綺 時；其餘學員不替換教練名 */
+        function displayCoachNameForTomorrowReminder(studentName, coachName) {
+            if (studentName !== QIQI_TOMORROW_STUDENT_NAME || (coachName || '').trim().toUpperCase() !== 'ED') {
+                return coachName;
+            }
+            return 'Eb';
+        }
         
         function generateTomorrowMessageForStudent(studentName, bookings, includeWeatherWarning, weatherWarning, footerText) {
             var studentBookings = bookings.filter(function(b) {
@@ -2978,7 +2987,9 @@
             var boatCount = 0;
             studentBookings.forEach(function(booking, index) {
                 var hasCoach = booking.coaches && booking.coaches.length > 0;
-                var coachNames = hasCoach ? booking.coaches.map(function(c) { return c.name; }).join('/') : '';
+                var coachNames = hasCoach
+                    ? booking.coaches.map(function(c) { return displayCoachNameForTomorrowReminder(studentName, c.name); }).join('/')
+                    : '';
                 var startTime = formatTimeNoColon(booking.start_at);
                 var boatName = (booking.boats && booking.boats.name) || '';
                 var isFacility = boatName.indexOf('彈簧床') !== -1;

@@ -10,6 +10,7 @@ import { useToast, ToastContainer } from '../../components/ui'
 import { designSystem, getCardStyle } from '../../styles/designSystem'
 import { isAdmin } from '../../utils/auth'
 import { getFacilityMessageLabel } from '../../utils/facility'
+import { displayCoachNameForTomorrowReminder } from '../../utils/tomorrowReminderDisplay'
 
 interface Booking {
   id: number
@@ -337,7 +338,7 @@ export function LineSettings() {
     
     studentBookings.forEach((booking, index) => {
       const coachNames = booking.coaches && booking.coaches.length > 0
-        ? booking.coaches.map(c => c.name).join('/')
+        ? booking.coaches.map(c => displayCoachNameForTomorrowReminder(studentName, c.name)).join('/')
         : '未指定'
       const startTime = formatTimeNoColon(booking.start_at)
       const boatName = booking.boats?.name || ''
