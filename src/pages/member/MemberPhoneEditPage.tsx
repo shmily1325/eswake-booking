@@ -18,6 +18,8 @@ interface MemberRow {
   membership_type: string
   membership_partner_id: string | null
   partner?: { name: string; nickname: string | null } | null
+  /** 來自 line_bindings（status=active） */
+  is_line_bound: boolean
 }
 
 function membershipLabel(type: string): string {
@@ -69,6 +71,7 @@ export function MemberPhoneEditPage() {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
   /** 正在編輯手機的會員 id（須先按「編輯」才會解鎖輸入，避免誤觸） */
   const [editingMemberIds, setEditingMemberIds] = useState<Set<string>>(() => new Set())
 
@@ -82,21 +85,31 @@ export function MemberPhoneEditPage() {
   const loadMembers = async () => {
     setLoading(true)
     try {
-      const { data: membersData, error } = await supabase
-        .from('members')
-        .select(
-          `
+      const [membersRes, lineRes] = await Promise.all([
+        supabase
+          .from('members')
+          .select(
+            `
             id, name, nickname, phone, birthday,
             membership_type, membership_partner_id,
             status
           `
-        )
-        .eq('status', 'active')
-        .order('nickname', { ascending: true, nullsFirst: false })
+          )
+          .eq('status', 'active')
+          .order('nickname', { ascending: true, nullsFirst: false }),
+        supabase.from('line_bindings').select('member_id, line_user_id').eq('status', 'active'),
+      ])
 
-      if (error) throw error
+      if (membersRes.error) throw membersRes.error
+      if (lineRes.error) throw lineRes.error
 
-      const rows = (membersData || []) as MemberRow[]
+      const lineBindingsData = (lineRes.data || []) as { member_id: string; line_user_id: string }[]
+      const memberIdToLine: Record<string, string> = {}
+      lineBindingsData.forEach((b) => {
+        if (b.member_id) memberIdToLine[b.member_id] = b.line_user_id
+      })
+
+      const rows = (membersRes.data || []) as Omit<MemberRow, 'is_line_bound' | 'partner'>[]
       const partnerIds = [...new Set(rows.map((m) => m.membership_partner_id).filter(Boolean))] as string[]
 
       let partnersMap: Record<string, { name: string; nickname: string | null }> = {}
@@ -108,9 +121,10 @@ export function MemberPhoneEditPage() {
         partnersMap = Object.fromEntries((partners || []).map((p: any) => [p.id, p]))
       }
 
-      const withPartners = rows.map((m) => ({
+      const withPartners: MemberRow[] = rows.map((m) => ({
         ...m,
         partner: m.membership_partner_id ? partnersMap[m.membership_partner_id] || null : null,
+        is_line_bound: Boolean(memberIdToLine[m.id]),
       }))
 
       setMembers(withPartners)
@@ -135,7 +149,7 @@ export function MemberPhoneEditPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const filtered = useMemo(() => {
+  const searchFiltered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase()
     if (!q) return members
     const qDigits = q.replace(/\D/g, '')
@@ -156,6 +170,14 @@ export function MemberPhoneEditPage() {
       )
     })
   }, [members, searchTerm, phoneDrafts])
+
+  const filtered = useMemo(() => {
+    if (lineBindingFilter === 'all') return searchFiltered
+    if (lineBindingFilter === 'bound') {
+      return searchFiltered.filter((m) => m.is_line_bound)
+    }
+    return searchFiltered.filter((m) => !m.is_line_bound)
+  }, [searchFiltered, lineBindingFilter])
 
   const savePhone = async (memberId: string) => {
     const normalized = toStoredTaiwanMobile(phoneDrafts[memberId] ?? '')
@@ -214,13 +236,23 @@ export function MemberPhoneEditPage() {
         先按「編輯」再改手機；可貼含空格或 +886，儲存會整理成 09 開頭。編輯中按 Enter 可儲存。
       </p>
 
-      <div style={{ marginBottom: '12px' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: '10px',
+          marginBottom: '12px',
+          alignItems: isMobile ? 'stretch' : 'center',
+        }}
+      >
         <input
           type="text"
           placeholder="🔍 搜尋（姓名、暱稱、手機）"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
+            flex: 1,
+            minWidth: 0,
             width: '100%',
             padding: isMobile ? '12px 14px' : '12px 16px',
             border: '1px solid #dee2e6',
@@ -232,6 +264,34 @@ export function MemberPhoneEditPage() {
             boxSizing: 'border-box',
           }}
         />
+        <select
+          value={lineBindingFilter}
+          onChange={(e) => setLineBindingFilter(e.target.value as 'all' | 'bound' | 'unbound')}
+          style={{
+            width: isMobile ? '100%' : 'auto',
+            minWidth: isMobile ? undefined : '200px',
+            flexShrink: 0,
+            padding: isMobile ? '12px 14px' : '12px 14px',
+            paddingRight: isMobile ? '36px' : '36px',
+            border: '1px solid #dee2e6',
+            borderRadius: '8px',
+            fontSize: '15px',
+            backgroundColor: 'white',
+            cursor: 'pointer',
+            appearance: 'none',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 12px center',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+            color: '#333',
+            fontWeight: lineBindingFilter !== 'all' ? 500 : 'normal',
+            boxSizing: 'border-box',
+          }}
+        >
+          <option value="all">LINE 全部 ({members.length})</option>
+          <option value="bound">LINE 已綁定 ({members.filter((m) => m.is_line_bound).length})</option>
+          <option value="unbound">LINE 未綁定 ({members.filter((m) => !m.is_line_bound).length})</option>
+        </select>
       </div>
 
       {loading ? (
@@ -299,16 +359,41 @@ export function MemberPhoneEditPage() {
                     paddingTop: '12px',
                   }}
                 >
-                  <span
+                  <div
                     style={{
-                      color: '#666',
-                      fontSize: isMobile ? '15px' : '14px',
-                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
                       flexShrink: 0,
                     }}
                   >
-                    手機
-                  </span>
+                    <span
+                      style={{
+                        color: '#666',
+                        fontSize: isMobile ? '15px' : '14px',
+                        fontWeight: 600,
+                      }}
+                    >
+                      手機
+                    </span>
+                    <span
+                      title={m.is_line_bound ? '已綁定 LINE' : '未綁定 LINE'}
+                      style={{
+                        display: 'inline-block',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        lineHeight: 1.2,
+                        padding: '3px 8px',
+                        borderRadius: '999px',
+                        background: m.is_line_bound ? '#e8f5e9' : '#f5f5f5',
+                        color: m.is_line_bound ? '#2e7d32' : '#9e9e9e',
+                        border: `1px solid ${m.is_line_bound ? '#a5d6a7' : '#e0e0e0'}`,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {m.is_line_bound ? '✅ LINE 已綁定' : '❌ LINE 未綁定'}
+                    </span>
+                  </div>
                   {isEditing ? (
                     <input
                       type="tel"
