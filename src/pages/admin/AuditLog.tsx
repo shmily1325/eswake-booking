@@ -690,7 +690,7 @@ export function AuditLog() {
         .gte('created_at', startDateStr)
         .lte('created_at', endDateStr)
         .order('created_at', { ascending: false })
-        .limit(500)
+        .limit(3000)
 
       if (filter !== 'all') {
         if (filter === 'schedule') {
