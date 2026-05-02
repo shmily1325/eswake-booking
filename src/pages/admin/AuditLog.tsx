@@ -16,6 +16,10 @@ interface AuditLogEntry {
   created_at: string | null
 }
 
+/** Supabase Data API 單次約 1000 筆上限；用 range 分頁才拿得到更多 */
+const AUDIT_LOG_PAGE_SIZE = 1000
+const AUDIT_LOG_MAX_ROWS = 3000
+
 interface ParsedDetails {
   member?: string
   boat?: string
@@ -682,36 +686,55 @@ export function AuditLog() {
     try {
       const startDateStr = `${startDate}T00:00:00`
       const endDateStr = `${endDate}T23:59:59`
-      
-      let query = supabase
-        .from('audit_log')
-        .select('id, user_email, action, table_name, details, created_at')
-        .in('table_name', ['bookings', 'coach_assignment'])
-        .gte('created_at', startDateStr)
-        .lte('created_at', endDateStr)
-        .order('created_at', { ascending: false })
-        .limit(3000)
 
-      if (filter !== 'all') {
-        if (filter === 'schedule') {
-          // 篩選排班記錄
-          query = query.eq('table_name', 'coach_assignment')
-        } else {
-          // 篩選預約操作類型，排除排班
-          const actionMap = { 'add': 'create', 'edit': 'update', 'delete': 'delete' } as const
-          query = query
-            .eq('action', actionMap[filter])
-            .eq('table_name', 'bookings')
+      const buildQuery = () => {
+        let q = supabase
+          .from('audit_log')
+          .select('id, user_email, action, table_name, details, created_at')
+          .in('table_name', ['bookings', 'coach_assignment'])
+          .gte('created_at', startDateStr)
+          .lte('created_at', endDateStr)
+          .order('created_at', { ascending: false })
+
+        if (filter !== 'all') {
+          if (filter === 'schedule') {
+            q = q.eq('table_name', 'coach_assignment')
+          } else {
+            const actionMap = { 'add': 'create', 'edit': 'update', 'delete': 'delete' } as const
+            q = q.eq('action', actionMap[filter]).eq('table_name', 'bookings')
+          }
         }
+        return q
       }
 
-      const { data, error } = await query
+      const merged: AuditLogEntry[] = []
+      let offset = 0
 
-      if (error) {
-        console.error('Error fetching audit logs:', error)
-      } else {
-        setLogs(data || [])
+      while (merged.length < AUDIT_LOG_MAX_ROWS) {
+        const { data, error } = await buildQuery().range(
+          offset,
+          offset + AUDIT_LOG_PAGE_SIZE - 1
+        )
+
+        if (error) {
+          console.error('Error fetching audit logs:', error)
+          setLogs([])
+          return
+        }
+
+        const batch = (data || []) as AuditLogEntry[]
+        if (batch.length === 0) break
+
+        const room = AUDIT_LOG_MAX_ROWS - merged.length
+        merged.push(...batch.slice(0, room))
+
+        if (batch.length < AUDIT_LOG_PAGE_SIZE || merged.length >= AUDIT_LOG_MAX_ROWS) {
+          break
+        }
+        offset += AUDIT_LOG_PAGE_SIZE
       }
+
+      setLogs(merged)
     } catch (err) {
       console.error('Fetch error:', err)
     } finally {
