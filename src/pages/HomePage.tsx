@@ -120,8 +120,6 @@ export function HomePage() {
     alwaysShow?: boolean
     /** 顯示為停用卡片，不可點擊 */
     disabled?: boolean
-    /** 橫線下方區塊：顯示在 icon 上方的小字 */
-    captionAboveIcon?: string
     /** 僅列在 MEMBER_PHONE_ONLY_EDITORS（或環境變數）的帳號可見 */
     phoneEditorOnly?: boolean
     /** 超級管理員不顯示此格（從 BAO 進入即可，如排班、船隻管理） */
@@ -193,12 +191,12 @@ export function HomePage() {
     }
   ]
 
-  /** 橫線下方：區間時數合計（與 21 連動式營業） */
+  /** 橫線下方：區間時數合計（小標與先前「已燒毀」同樣用 subtitle） */
   const menuItemsBelowDivider: HomeMenuItem[] = [
     {
       title: '區間時數合計',
       icon: '⏱️',
-      captionAboveIcon: '跟 21 連動式營業',
+      subtitle: '跟 21 連動式營業',
       link: '/boat-usage-hours',
       alwaysShow: true
     }
@@ -442,21 +440,6 @@ export function HomePage() {
 
                     const inner = (
                       <>
-                        {item.captionAboveIcon && (
-                          <p
-                            style={{
-                              margin: 0,
-                              marginBottom: '4px',
-                              fontSize: isMobile ? '11px' : '12px',
-                              color: item.disabled ? '#6a4c93' : 'rgba(0, 0, 0, 0.5)',
-                              fontWeight: 600,
-                              letterSpacing: '0.06em',
-                              lineHeight: 1.3
-                            }}
-                          >
-                            {item.captionAboveIcon}
-                          </p>
-                        )}
                         <div
                           style={{
                             fontSize: '42px',
