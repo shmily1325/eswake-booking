@@ -18,6 +18,8 @@ const liffContentPanel: CSSProperties = {
 
 interface BookingsListProps {
   bookings: Booking[]
+  /** 與明日提醒相同：僅 SH綺綺 + 教練 ED 時顯示為 Eb */
+  viewerMemberName: string
   formatDate: (dateString: string) => string
   getArrivalTime: (startAt: string) => string
   getStartTime: (startAt: string) => string
@@ -26,6 +28,7 @@ interface BookingsListProps {
 
 export function BookingsList({
   bookings,
+  viewerMemberName,
   formatDate,
   getArrivalTime,
   getStartTime,
@@ -74,6 +77,7 @@ export function BookingsList({
             <BookingCard
               key={booking.id}
               booking={booking}
+              viewerMemberName={viewerMemberName}
               isFirstOfDay={isFirstOfDay}
               formatDate={formatDate}
               getArrivalTime={getArrivalTime}

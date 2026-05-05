@@ -1,10 +1,13 @@
 // 預約卡片組件
 
 import { isFacility } from '../../../utils/facility'
+import { displayCoachNameForTomorrowReminder } from '../../../utils/tomorrowReminderDisplay'
 import type { Booking } from '../types'
 
 interface BookingCardProps {
   booking: Booking
+  /** 目前 LIFF 綁定會員姓名；供「SH綺綺／ED→Eb」與明日提醒相同規則 */
+  viewerMemberName: string
   isFirstOfDay: boolean
   formatDate: (dateString: string) => string
   getArrivalTime: (startAt: string) => string
@@ -14,13 +17,16 @@ interface BookingCardProps {
 
 export function BookingCard({
   booking,
+  viewerMemberName,
   isFirstOfDay,
   formatDate,
   getArrivalTime,
   getStartTime,
   getEndTime
 }: BookingCardProps) {
-  const coachNames = booking.coaches.map(c => c.name).join('、')
+  const coachNames = booking.coaches
+    .map((c) => displayCoachNameForTomorrowReminder(viewerMemberName, c.name))
+    .join('、')
   const isFacilityBooking = isFacility(booking.boats?.name)
 
   return (

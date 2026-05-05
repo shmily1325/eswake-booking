@@ -627,6 +627,7 @@ export function LiffMyBookings() {
         {activeTab === 'bookings' && (
           <BookingsList
             bookings={bookings}
+            viewerMemberName={member?.name ?? ''}
             formatDate={formatDate}
             getArrivalTime={getArrivalTime}
             getStartTime={getStartTime}
