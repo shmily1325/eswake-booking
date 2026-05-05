@@ -1,5 +1,6 @@
 // LIFF 頁首：固定大標「會員中心」；分頁名稱僅在 LiffTabs，內容區不重複標題
 
+import { displayNameForLiff } from '../../../utils/liffMemberDisplay'
 import type { Member } from '../types'
 
 interface LiffHeaderProps {
@@ -9,6 +10,7 @@ interface LiffHeaderProps {
 }
 
 export function LiffHeader({ member, refreshing, onRefresh }: LiffHeaderProps) {
+  const hiName = member ? displayNameForLiff(member) : ''
   return (
     <div style={{
       background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
@@ -70,7 +72,7 @@ export function LiffHeader({ member, refreshing, onRefresh }: LiffHeaderProps) {
         fontSize: '14px',
         opacity: 0.9
       }}>
-        {(member?.nickname || member?.name) ? `${member.nickname || member.name} 您好！` : '您好！'}
+        {hiName ? `${hiName} 您好！` : '您好！'}
       </div>
     </div>
   )
