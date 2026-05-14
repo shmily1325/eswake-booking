@@ -3,7 +3,9 @@ import { useResponsive } from '../../../../hooks/useResponsive'
 import { designSystem } from '../../../../styles/designSystem'
 import { RankingCard, WeekdayRatioBar } from '../components'
 import type { CoachStats, MemberStats, WeekdayStats } from '../types'
+import type { CoachPracticeSessionRow } from '../../../../utils/boatUsageRangeStats'
 import { formatDuration } from '../utils'
+import { CoachPracticeSessionsTable } from '../../../../components/CoachPracticeSessionsTable'
 
 interface MonthlyTabProps {
   selectedPeriod: string
@@ -11,6 +13,8 @@ interface MonthlyTabProps {
   coachStats: CoachStats[]
   memberStats: MemberStats[]
   weekdayStats: WeekdayStats
+  coachPracticeSessions: CoachPracticeSessionRow[]
+  coachPracticeNote: string
 }
 
 export function MonthlyTab({
@@ -18,7 +22,9 @@ export function MonthlyTab({
   setSelectedPeriod,
   coachStats,
   memberStats,
-  weekdayStats
+  weekdayStats,
+  coachPracticeSessions,
+  coachPracticeNote
 }: MonthlyTabProps) {
   const { isMobile } = useResponsive()
   const [subTab, setSubTab] = useState<'coach' | 'member'>('coach')
@@ -355,6 +361,47 @@ export function MonthlyTab({
           }}
         />
       )}
+      <div
+        style={{
+          marginTop: designSystem.spacing.md,
+          backgroundColor: 'white',
+          padding: designSystem.spacing.md,
+          borderRadius: designSystem.borderRadius.lg,
+          boxShadow: designSystem.shadows.sm
+        }}
+      >
+        <h3
+          style={{
+            margin: '0 0 8px 0',
+            fontSize: '17px',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: '#333'
+          }}
+        >
+          <span
+            style={{
+              width: '4px',
+              height: '18px',
+              background: '#7b1fa2',
+              borderRadius: '2px',
+              display: 'inline-block'
+            }}
+          />
+          教練練習列表
+        </h3>
+        <p style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#666', lineHeight: 1.55 }}>
+          {coachPracticeNote}
+        </p>
+        <CoachPracticeSessionsTable
+          sessions={coachPracticeSessions}
+          showContactPerson
+          emptyText="此區間無教練練習紀錄。"
+          isMobile={isMobile}
+        />
+      </div>
     </>
   )
 }

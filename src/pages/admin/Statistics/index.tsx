@@ -9,6 +9,10 @@ import { getLocalDateString } from '../../../utils/date'
 import { sortBoatsByDisplayOrder } from '../../../utils/boatUtils'
 import { isAdmin } from '../../../utils/auth'
 import { loadPaidOperationalParticipantsForRange } from '../../../utils/settledNonPracticeBookings'
+import {
+  loadCoachPracticeSessionsForRange,
+  type CoachPracticeSessionRow
+} from '../../../utils/boatUsageRangeStats'
 import { splitMinutesEqually } from '../../../utils/teachingMinutesAllocation'
 
 import { LoadingSkeleton, LastUpdated } from './components'
@@ -69,6 +73,9 @@ export function Statistics() {
   const [weekdayStats, setWeekdayStats] = useState<WeekdayStats>({
     weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0
   })
+  const [monthlyCoachPracticeSessions, setMonthlyCoachPracticeSessions] = useState<
+    CoachPracticeSessionRow[]
+  >([])
 
   // Tab 配置（重新命名）
   const tabs: { key: TabType; label: string; icon: string }[] = [
@@ -442,6 +449,25 @@ export function Statistics() {
     return { startDate, endDateStr: `${selectedPeriod}-${String(endDate).padStart(2, '0')}` }
   }
 
+  const loadMonthlyCoachPractice = async () => {
+    const range = getMonthlyDateRange()
+    if (!range) {
+      setMonthlyCoachPracticeSessions([])
+      return
+    }
+    try {
+      const sessions = await loadCoachPracticeSessionsForRange(
+        supabase,
+        range.startDate,
+        range.endDateStr
+      )
+      setMonthlyCoachPracticeSessions(sessions)
+    } catch (error) {
+      console.error('載入教練練習列表失敗:', error)
+      setMonthlyCoachPracticeSessions([])
+    }
+  }
+
   // 載入平日/假日統計（月度）
   const loadWeekdayStats = async () => {
     const range = getMonthlyDateRange()
@@ -748,7 +774,8 @@ export function Statistics() {
         await Promise.all([
           loadCoachStats(),
           loadMemberStats(),
-          loadWeekdayStats()
+          loadWeekdayStats(),
+          loadMonthlyCoachPractice()
         ])
       } catch (error) {
         console.error('載入月度統計失敗:', error)
@@ -767,7 +794,8 @@ export function Statistics() {
         loadFinanceStats(),
         loadCoachStats(),
         loadMemberStats(),
-        loadWeekdayStats()
+        loadWeekdayStats(),
+        loadMonthlyCoachPractice()
       ])
       setLastUpdated(new Date())
     } catch (error) {
@@ -854,6 +882,14 @@ export function Statistics() {
                 coachStats={coachStats}
                 memberStats={memberStats}
                 weekdayStats={weekdayStats}
+                coachPracticeSessions={monthlyCoachPracticeSessions}
+                coachPracticeNote={(() => {
+                  const range = getMonthlyDateRange()
+                  if (!range) {
+                    return '此月份尚無可統計之區間（例如本月第一天）。'
+                  }
+                  return `${range.startDate} ~ ${range.endDateStr}；僅實際船隻。與本月其他月報相同：當月僅統計至昨日。`
+                })()}
               />
             )}
 

@@ -22,6 +22,8 @@ export type CoachPracticeSessionRow = {
   bookingId: number
   startAt: string
   boatName: string
+  /** 預約表聯絡／預約人（contact_name） */
+  contactName: string
   durationMin: number
 }
 
@@ -30,7 +32,7 @@ export type BoatUsageRangeResult = {
   practiceSessions: CoachPracticeSessionRow[]
 }
 
-const practiceBookingSelect = 'id, start_at, duration_min, boat_id, boats(id, name)'
+const practiceBookingSelect = 'id, start_at, duration_min, boat_id, contact_name, boats(id, name)'
 
 function normalizeBoats(v: unknown): { id: number; name: string } | null {
   if (!v) return null
@@ -53,17 +55,14 @@ function addByBoat(
   else map.set(boatId, { boatName, minutes: delta })
 }
 
-/**
- * 各船區間時數（實際船隻，不含彈簧床／陸上課程）：
- * - generalMinutes：已結帳／已扣款之一般預約時數（見型別註解）。
- * - practiceMinutes：教練練習預約表時數。
- * - totalMinutes：兩者相加。
- */
-export async function loadBoatUsageRangeStats(
+async function loadPracticeSessionsAndByBoat(
   supabase: SupabaseClient,
   startDate: string,
   endDate: string
-): Promise<BoatUsageRangeResult> {
+): Promise<{
+  practiceSessions: CoachPracticeSessionRow[]
+  practiceByBoat: Map<number, { boatName: string; minutes: number }>
+}> {
   const startIso = `${startDate}T00:00:00`
   const endIso = `${endDate}T23:59:59`
 
@@ -78,13 +77,6 @@ export async function loadBoatUsageRangeStats(
 
   if (practiceErr) throw practiceErr
 
-  const settledParts = await loadPaidOperationalParticipantsForRange(supabase, startDate, endDate)
-  const settledByBoat = new Map<number, { boatName: string; minutes: number }>()
-  for (const row of settledParts) {
-    if (isFacility(row.boatName)) continue
-    addByBoat(settledByBoat, row.boatId, row.boatName, row.participantMinutes)
-  }
-
   const practiceByBoat = new Map<number, { boatName: string; minutes: number }>()
   const practiceSessions: CoachPracticeSessionRow[] = []
 
@@ -97,12 +89,54 @@ export async function loadBoatUsageRangeStats(
     const m = Math.max(0, Math.floor((raw.duration_min as number | null) || 0))
     addByBoat(practiceByBoat, boatId, boatName, m)
 
+    const contactRaw = raw.contact_name
+    const contactName =
+      typeof contactRaw === 'string' && contactRaw.trim() ? contactRaw.trim() : '—'
+
     practiceSessions.push({
       bookingId: (raw.id as number) ?? 0,
       startAt: String(raw.start_at ?? ''),
       boatName,
+      contactName,
       durationMin: m
     })
+  }
+
+  return { practiceSessions, practiceByBoat }
+}
+
+/** 僅教練練習逐筆列表（不查結帳／各船營運），供 Dashboard 月報等使用。 */
+export async function loadCoachPracticeSessionsForRange(
+  supabase: SupabaseClient,
+  startDate: string,
+  endDate: string
+): Promise<CoachPracticeSessionRow[]> {
+  const { practiceSessions } = await loadPracticeSessionsAndByBoat(supabase, startDate, endDate)
+  return practiceSessions
+}
+
+/**
+ * 各船區間時數（實際船隻，不含彈簧床／陸上課程）：
+ * - generalMinutes：已結帳／已扣款之一般預約時數（見型別註解）。
+ * - practiceMinutes：教練練習預約表時數。
+ * - totalMinutes：兩者相加。
+ */
+export async function loadBoatUsageRangeStats(
+  supabase: SupabaseClient,
+  startDate: string,
+  endDate: string
+): Promise<BoatUsageRangeResult> {
+  const { practiceSessions, practiceByBoat } = await loadPracticeSessionsAndByBoat(
+    supabase,
+    startDate,
+    endDate
+  )
+
+  const settledParts = await loadPaidOperationalParticipantsForRange(supabase, startDate, endDate)
+  const settledByBoat = new Map<number, { boatName: string; minutes: number }>()
+  for (const row of settledParts) {
+    if (isFacility(row.boatName)) continue
+    addByBoat(settledByBoat, row.boatId, row.boatName, row.participantMinutes)
   }
 
   const { data: allBoats, error: boatsErr } = await supabase.from('boats').select('id, name')
