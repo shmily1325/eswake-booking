@@ -17,6 +17,21 @@ function formatHoursOneDecimal(minutes: number): string {
   return String(Math.round((minutes / 60) * 10) / 10)
 }
 
+function formatPracticeStartAt(iso: string): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+}
+
 export function BoatUsageHoursPage() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
@@ -217,6 +232,90 @@ export function BoatUsageHoursPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {result && !error && (
+          <div style={{ ...getCardStyle(isMobile), marginTop: '20px' }}>
+            <h3
+              style={{
+                margin: '0 0 6px 0',
+                fontSize: '17px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span
+                style={{
+                  width: '4px',
+                  height: '20px',
+                  background: '#7b1fa2',
+                  borderRadius: '2px',
+                  display: 'inline-block'
+                }}
+              />
+              教練練習列表
+            </h3>
+            <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#666', lineHeight: 1.55 }}>
+              {startDate} ~ {endDate}；僅實際船隻。每筆為預約表排定之分鐘數。
+            </p>
+            {result.practiceSessions.length === 0 ? (
+              <p style={{ margin: 0, fontSize: '14px', color: '#999' }}>此區間無教練練習紀錄。</p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ background: '#f3e5f5' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>
+                        開始時間
+                      </th>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>
+                        船隻
+                      </th>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>
+                        教練
+                      </th>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>
+                        聯絡名稱
+                      </th>
+                      <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
+                        時數
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.practiceSessions.map((row, idx) => (
+                      <tr key={row.bookingId} style={{ background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #eee', whiteSpace: 'nowrap' }}>
+                          {formatPracticeStartAt(row.startAt)}
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{row.boatName}</td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{row.coachesDisplay}</td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #eee', color: '#555' }}>
+                          {row.contactName}
+                        </td>
+                        <td
+                          style={{
+                            padding: '12px',
+                            textAlign: 'right',
+                            borderBottom: '1px solid #eee',
+                            fontWeight: 600,
+                            color: '#7b1fa2'
+                          }}
+                        >
+                          {formatDuration(row.durationMin)}
+                          <span style={{ fontWeight: 400, color: '#888', marginLeft: '6px' }}>
+                            （{formatHoursOneDecimal(row.durationMin)} 小時）
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

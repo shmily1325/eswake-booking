@@ -17,11 +17,24 @@ export type BoatUsageRangeRow = {
   totalMinutes: number
 }
 
-export type BoatUsageRangeResult = {
-  boats: BoatUsageRangeRow[]
+/** 區間內單筆教練練習預約（不含彈簧床／陸上課程） */
+export type CoachPracticeSessionRow = {
+  bookingId: number
+  startAt: string
+  boatName: string
+  durationMin: number
+  contactName: string
+  /** 顯示用；無 booking_coaches 時為「未指派」 */
+  coachesDisplay: string
 }
 
-const bookingSelect = 'id, duration_min, boat_id, boats(id, name)'
+export type BoatUsageRangeResult = {
+  boats: BoatUsageRangeRow[]
+  practiceSessions: CoachPracticeSessionRow[]
+}
+
+const practiceBookingSelect =
+  'id, start_at, duration_min, boat_id, contact_name, boats(id, name), booking_coaches(coach_id, coaches:coach_id(name))'
 
 function normalizeBoats(v: unknown): { id: number; name: string } | null {
   if (!v) return null
@@ -44,6 +57,25 @@ function addByBoat(
   else map.set(boatId, { boatName, minutes: delta })
 }
 
+function parseBookingCoachRows(raw: unknown): Array<{ coachId: string; coachName: string }> {
+  if (!Array.isArray(raw)) return []
+  const out: Array<{ coachId: string; coachName: string }> = []
+  for (const bc of raw) {
+    const row = bc as { coach_id?: string; coaches?: unknown }
+    const coachId = row.coach_id
+    if (!coachId) continue
+    let coachName = '未知'
+    const c = row.coaches
+    if (c && !Array.isArray(c) && typeof c === 'object' && 'name' in c) {
+      coachName = String((c as { name?: string }).name || '未知')
+    } else if (Array.isArray(c) && c[0] && typeof c[0] === 'object') {
+      coachName = String((c[0] as { name?: string }).name || '未知')
+    }
+    out.push({ coachId, coachName })
+  }
+  return out
+}
+
 /**
  * 各船區間時數（實際船隻，不含彈簧床／陸上課程）：
  * - generalMinutes：已結帳／已扣款之一般預約時數（見型別註解）。
@@ -60,11 +92,12 @@ export async function loadBoatUsageRangeStats(
 
   const { data: practiceBookings, error: practiceErr } = await supabase
     .from('bookings')
-    .select(bookingSelect)
+    .select(practiceBookingSelect)
     .gte('start_at', startIso)
     .lte('start_at', endIso)
     .neq('status', 'cancelled')
     .eq('is_coach_practice', true)
+    .order('start_at', { ascending: true })
 
   if (practiceErr) throw practiceErr
 
@@ -76,14 +109,31 @@ export async function loadBoatUsageRangeStats(
   }
 
   const practiceByBoat = new Map<number, { boatName: string; minutes: number }>()
+  const practiceSessions: CoachPracticeSessionRow[] = []
+
   for (const row of practiceBookings || []) {
     const raw = row as Record<string, unknown>
     const boats = normalizeBoats(raw.boats)
     const boatId = (raw.boat_id as number) ?? boats?.id ?? 0
     const boatName = boats?.name || '未知'
     if (isFacility(boatName)) continue
-    const m = (raw.duration_min as number | null) || 0
+    const m = Math.max(0, Math.floor((raw.duration_min as number | null) || 0))
     addByBoat(practiceByBoat, boatId, boatName, m)
+
+    const coaches = parseBookingCoachRows(raw.booking_coaches)
+    const coachesDisplay = coaches.length > 0 ? coaches.map((c) => c.coachName).join('、') : '未指派'
+    const contactRaw = raw.contact_name
+    const contactName =
+      typeof contactRaw === 'string' && contactRaw.trim() ? contactRaw.trim() : '—'
+
+    practiceSessions.push({
+      bookingId: (raw.id as number) ?? 0,
+      startAt: String(raw.start_at ?? ''),
+      boatName,
+      durationMin: m,
+      contactName,
+      coachesDisplay
+    })
   }
 
   const { data: allBoats, error: boatsErr } = await supabase.from('boats').select('id, name')
@@ -102,5 +152,5 @@ export async function loadBoatUsageRangeStats(
     }
   })
 
-  return { boats }
+  return { boats, practiceSessions }
 }
