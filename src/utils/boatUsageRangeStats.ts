@@ -23,9 +23,6 @@ export type CoachPracticeSessionRow = {
   startAt: string
   boatName: string
   durationMin: number
-  contactName: string
-  /** 顯示用；無 booking_coaches 時為「未指派」 */
-  coachesDisplay: string
 }
 
 export type BoatUsageRangeResult = {
@@ -33,8 +30,7 @@ export type BoatUsageRangeResult = {
   practiceSessions: CoachPracticeSessionRow[]
 }
 
-const practiceBookingSelect =
-  'id, start_at, duration_min, boat_id, contact_name, boats(id, name), booking_coaches(coach_id, coaches:coach_id(name))'
+const practiceBookingSelect = 'id, start_at, duration_min, boat_id, boats(id, name)'
 
 function normalizeBoats(v: unknown): { id: number; name: string } | null {
   if (!v) return null
@@ -55,25 +51,6 @@ function addByBoat(
   const cur = map.get(boatId)
   if (cur) cur.minutes += delta
   else map.set(boatId, { boatName, minutes: delta })
-}
-
-function parseBookingCoachRows(raw: unknown): Array<{ coachId: string; coachName: string }> {
-  if (!Array.isArray(raw)) return []
-  const out: Array<{ coachId: string; coachName: string }> = []
-  for (const bc of raw) {
-    const row = bc as { coach_id?: string; coaches?: unknown }
-    const coachId = row.coach_id
-    if (!coachId) continue
-    let coachName = '未知'
-    const c = row.coaches
-    if (c && !Array.isArray(c) && typeof c === 'object' && 'name' in c) {
-      coachName = String((c as { name?: string }).name || '未知')
-    } else if (Array.isArray(c) && c[0] && typeof c[0] === 'object') {
-      coachName = String((c[0] as { name?: string }).name || '未知')
-    }
-    out.push({ coachId, coachName })
-  }
-  return out
 }
 
 /**
@@ -120,19 +97,11 @@ export async function loadBoatUsageRangeStats(
     const m = Math.max(0, Math.floor((raw.duration_min as number | null) || 0))
     addByBoat(practiceByBoat, boatId, boatName, m)
 
-    const coaches = parseBookingCoachRows(raw.booking_coaches)
-    const coachesDisplay = coaches.length > 0 ? coaches.map((c) => c.coachName).join('、') : '未指派'
-    const contactRaw = raw.contact_name
-    const contactName =
-      typeof contactRaw === 'string' && contactRaw.trim() ? contactRaw.trim() : '—'
-
     practiceSessions.push({
       bookingId: (raw.id as number) ?? 0,
       startAt: String(raw.start_at ?? ''),
       boatName,
-      durationMin: m,
-      contactName,
-      coachesDisplay
+      durationMin: m
     })
   }
 

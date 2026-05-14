@@ -274,12 +274,6 @@ export function BoatUsageHoursPage() {
                       <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>
                         船隻
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>
-                        教練
-                      </th>
-                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>
-                        聯絡名稱
-                      </th>
                       <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>
                         時數
                       </th>
@@ -292,10 +286,6 @@ export function BoatUsageHoursPage() {
                           {formatPracticeStartAt(row.startAt)}
                         </td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{row.boatName}</td>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{row.coachesDisplay}</td>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #eee', color: '#555' }}>
-                          {row.contactName}
-                        </td>
                         <td
                           style={{
                             padding: '12px',
