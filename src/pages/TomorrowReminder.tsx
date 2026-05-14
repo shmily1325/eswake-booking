@@ -64,6 +64,7 @@ export function TomorrowReminder() {
   const [copiedStudent, setCopiedStudent] = useState<string | null>(null)
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
   const [copiedCoachReminder, setCopiedCoachReminder] = useState<string | null>(null)
+  const [selectedCoachReminder, setSelectedCoachReminder] = useState<string | null>(null)
   
   const [includeWeatherWarning, setIncludeWeatherWarning] = useState(() => {
     const saved = localStorage.getItem('includeWeatherWarning')
@@ -97,6 +98,8 @@ export function TomorrowReminder() {
   }, [footerText])
   
   useEffect(() => {
+    setSelectedStudent(null)
+    setSelectedCoachReminder(null)
     fetchData()
   }, [selectedDate])
   
@@ -405,7 +408,22 @@ export function TomorrowReminder() {
       setTimeout(() => setCopiedStudent(null), 2000)
     })
   }
-  
+
+  const coachReminderBlocks =
+    !loading && bookings.length > 0
+      ? TOMORROW_COACH_REMINDER_TARGET_COACHES.map((coach) => ({
+          coach,
+          lines: getCoachTomorrowReminderLines(coach, bookings)
+        })).filter((b) => b.lines.length > 0)
+      : []
+
+  const handleCopyCoachReminder = (coach: string, text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedCoachReminder(coach)
+      setTimeout(() => setCopiedCoachReminder(null), 2000)
+    })
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -631,105 +649,6 @@ export function TomorrowReminder() {
           </div>
         </div>
 
-        {/* 火隆、侑曄：教練視角一行式提醒（學員 + 時段 + 船／陸上） */}
-        {!loading && bookings.length > 0 && (() => {
-          const coachBlocks = TOMORROW_COACH_REMINDER_TARGET_COACHES.map((coach) => ({
-            coach,
-            lines: getCoachTomorrowReminderLines(coach, bookings)
-          })).filter((b) => b.lines.length > 0)
-          if (coachBlocks.length === 0) return null
-          return (
-            <div
-              style={{
-                background: 'white',
-                borderRadius: '8px',
-                padding: isMobile ? '15px' : '20px',
-                marginBottom: isMobile ? '10px' : '15px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: isMobile ? '15px' : '16px',
-                  fontWeight: '600',
-                  color: '#34495e',
-                  marginBottom: isMobile ? '12px' : '15px'
-                }}
-              >
-                教練提醒訊息
-              </h2>
-              <div style={{ display: 'grid', gap: isMobile ? '14px' : '16px' }}>
-                {coachBlocks.map(({ coach, lines }) => {
-                  const text = lines.join('\n')
-                  const isCopied = copiedCoachReminder === coach
-                  return (
-                    <div
-                      key={coach}
-                      style={{
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '8px',
-                        overflow: 'hidden'
-                      }}
-                    >
-                      <div
-                        style={{
-                          padding: isMobile ? '10px 12px' : '10px 14px',
-                          background: '#fff8e1',
-                          fontWeight: 600,
-                          fontSize: isMobile ? '14px' : '15px',
-                          color: '#5d4037',
-                          borderBottom: '1px solid #ffe082'
-                        }}
-                      >
-                        {coach}
-                      </div>
-                      <div
-                        style={{
-                          padding: isMobile ? '12px' : '14px',
-                          background: '#fafafa',
-                          whiteSpace: 'pre-wrap',
-                          fontSize: isMobile ? '13px' : '14px',
-                          lineHeight: 1.65,
-                          color: '#333',
-                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
-                        }}
-                      >
-                        {text}
-                      </div>
-                      <div style={{ padding: isMobile ? '10px 12px' : '10px 14px', background: 'white' }}>
-                        <button
-                          type="button"
-                          data-track="tomorrow_coach_reminder_copy"
-                          onClick={() => {
-                            navigator.clipboard.writeText(text).then(() => {
-                              setCopiedCoachReminder(coach)
-                              setTimeout(() => setCopiedCoachReminder(null), 2000)
-                            })
-                          }}
-                          style={{
-                            width: '100%',
-                            padding: isMobile ? '10px' : '9px',
-                            background: isCopied ? '#28a745' : '#ff8f00',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: isMobile ? '14px' : '14px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            touchAction: 'manipulation'
-                          }}
-                        >
-                          {isCopied ? '✓ 已複製' : `📋 複製 ${coach} 提醒`}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })()}
-
         {/* Student Messages List */}
         {bookings.length === 0 && !loading ? (
           <div style={{
@@ -751,6 +670,7 @@ export function TomorrowReminder() {
             </div>
           </div>
         ) : (
+          <>
           <div style={{
             background: 'white',
             borderRadius: '8px',
@@ -896,6 +816,140 @@ export function TomorrowReminder() {
               })}
             </div>
           </div>
+
+          {coachReminderBlocks.length > 0 && (
+            <div style={{
+              background: 'white',
+              borderRadius: '8px',
+              padding: isMobile ? '15px' : '20px',
+              marginBottom: isMobile ? '10px' : '15px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <h2 style={{
+                fontSize: isMobile ? '15px' : '16px',
+                fontWeight: '600',
+                color: '#34495e',
+                marginBottom: isMobile ? '12px' : '15px'
+              }}>
+                教練提醒訊息 ({coachReminderBlocks.length} 位)
+              </h2>
+              <div style={{
+                display: 'grid',
+                gap: isMobile ? '10px' : '12px'
+              }}>
+                {coachReminderBlocks.map(({ coach, lines }) => {
+                  const text = lines.join('\n')
+                  const isExpanded = selectedCoachReminder === coach
+                  const isCopied = copiedCoachReminder === coach
+                  return (
+                    <div
+                      key={coach}
+                      style={{
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <div
+                        data-track="tomorrow_coach_expand"
+                        onClick={() => setSelectedCoachReminder(isExpanded ? null : coach)}
+                        style={{
+                          padding: isMobile ? '14px' : '16px',
+                          background: isExpanded ? '#f8f9fa' : 'white',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: '12px',
+                          touchAction: 'manipulation'
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{
+                            fontSize: isMobile ? '15px' : '16px',
+                            fontWeight: '600',
+                            color: '#333',
+                            marginBottom: '4px'
+                          }}>
+                            {coach}
+                          </div>
+                          <div style={{
+                            fontSize: isMobile ? '12px' : '13px',
+                            color: '#666'
+                          }}>
+                            {lines.length} 筆預約
+                          </div>
+                        </div>
+                        <div style={{
+                          fontSize: isMobile ? '20px' : '18px',
+                          color: '#999',
+                          transition: 'transform 0.2s',
+                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                        }}>
+                          ▼
+                        </div>
+                      </div>
+                      {isExpanded && (
+                        <div style={{
+                          padding: isMobile ? '14px' : '16px',
+                          borderTop: '1px solid #e0e0e0',
+                          background: 'white'
+                        }}>
+                          <div style={{
+                            background: '#f8f9fa',
+                            padding: isMobile ? '12px' : '14px',
+                            borderRadius: '6px',
+                            border: '1px solid #dee2e6',
+                            whiteSpace: 'pre-wrap',
+                            fontSize: isMobile ? '13px' : '14px',
+                            lineHeight: '1.6',
+                            color: '#333',
+                            fontFamily: 'inherit',
+                            marginBottom: isMobile ? '12px' : '14px',
+                            maxHeight: isMobile ? '300px' : '400px',
+                            overflowY: 'auto',
+                            WebkitOverflowScrolling: 'touch'
+                          }}>
+                            {text}
+                          </div>
+                          <button
+                            type="button"
+                            data-track="tomorrow_coach_reminder_copy"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCopyCoachReminder(coach, text)
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: isMobile ? '12px' : '10px',
+                              background: isCopied ? '#28a745' : '#007bff',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: isMobile ? '15px' : '14px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              touchAction: 'manipulation',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px'
+                            }}
+                          >
+                            <span>{isCopied ? '✓' : '📋'}</span>
+                            <span>{isCopied ? '已複製' : '複製訊息'}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          </>
         )}
 
         {/* Booking List */}
