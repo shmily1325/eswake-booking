@@ -782,6 +782,8 @@ export function Statistics() {
       }
     }
     loadMonthlyData()
+    // 僅依月份重載；load* 函式每次 render 重建且透過 getMonthlyDateRange() 讀取 selectedPeriod
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPeriod])
 
   // 重新整理
