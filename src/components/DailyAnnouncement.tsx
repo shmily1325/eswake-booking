@@ -294,6 +294,34 @@ export function DailyAnnouncement() {
               marginBottom: '4px'
             }
 
+            /** 前有「 - 」時用 float 包住符號，換行（含 \n）後與第一行正文對齊 */
+            const renderBulletAnnouncement = (a: Announcement) => {
+              const r = restrictionsByAnnouncementId[a.id]
+              return (
+                <div
+                  key={a.id}
+                  style={{
+                    color: '#667eea',
+                    fontWeight: '500',
+                    wordBreak: 'break-word',
+                    paddingLeft: '1.5em',
+                    marginBottom: '4px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <span style={{ float: 'left' }}>{' - '}</span>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>
+                    {a.content}
+                    {r ? (
+                      <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
+                        {formatRestrictionNote(today, r)}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              )
+            }
+
             const todayShort = formatDateShort(today)
             const tomorrowShort = formatDateShort(addDaysToDate(today, 1))
 
@@ -311,19 +339,7 @@ export function DailyAnnouncement() {
               })
               return sorted.flatMap(([label, items]) => {
                 if (label === null || label === '__single') {
-                  return items.map(a => {
-                    const r = restrictionsByAnnouncementId[a.id]
-                    return (
-                      <div key={a.id} style={itemStyle}>
-                        {' - '}{a.content}
-                        {r ? (
-                          <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
-                            {formatRestrictionNote(today, r)}
-                          </span>
-                        ) : null}
-                      </div>
-                    )
-                  })
+                  return items.map(a => renderBulletAnnouncement(a))
                 }
                 const isMultiDay = label.includes(' - ')
                 if (isMultiDay) {
@@ -342,35 +358,11 @@ export function DailyAnnouncement() {
                   })
                 }
                 if (omitSingleDateLabel && label === omitSingleDateLabel) {
-                  return items.map(a => {
-                    const r = restrictionsByAnnouncementId[a.id]
-                    return (
-                      <div key={a.id} style={itemStyle}>
-                        {' - '}{a.content}
-                        {r ? (
-                          <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
-                            {formatRestrictionNote(today, r)}
-                          </span>
-                        ) : null}
-                      </div>
-                    )
-                  })
+                  return items.map(a => renderBulletAnnouncement(a))
                 }
                 return [
                   <div key={`${label}-h`} style={itemStyle}>[{label}]</div>,
-                  ...items.map(a => {
-                    const r = restrictionsByAnnouncementId[a.id]
-                    return (
-                      <div key={a.id} style={itemStyle}>
-                        {' - '}{a.content}
-                        {r ? (
-                          <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
-                            {formatRestrictionNote(today, r)}
-                          </span>
-                        ) : null}
-                      </div>
-                    )
-                  })
+                  ...items.map(a => renderBulletAnnouncement(a))
                 ]
               })
             }
