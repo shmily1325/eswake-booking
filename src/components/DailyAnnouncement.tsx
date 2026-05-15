@@ -294,24 +294,37 @@ export function DailyAnnouncement() {
               marginBottom: '4px'
             }
 
-            /** 前有「 - 」時用 float 包住符號，換行（含 \n）後與第一行正文對齊 */
+            /** 前有「 - 」：一筆公告一條；換行／空行皆為同條接續，與正文左緣對齊 */
             const renderBulletAnnouncement = (a: Announcement) => {
               const r = restrictionsByAnnouncementId[a.id]
+              const content = a.content
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n')
+                .replace(/\n+$/, '')
               return (
                 <div
                   key={a.id}
                   style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    gap: 0,
                     color: '#667eea',
                     fontWeight: '500',
                     wordBreak: 'break-word',
                     paddingLeft: '1.5em',
-                    marginBottom: '4px',
-                    overflow: 'hidden'
+                    marginBottom: 0
                   }}
                 >
-                  <span style={{ float: 'left' }}>{' - '}</span>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>
-                    {a.content}
+                  <span style={{ flexShrink: 0, whiteSpace: 'pre' }}>{' - '}</span>
+                  <div
+                    style={{
+                      flex: '1 1 0%',
+                      minWidth: 0,
+                      whiteSpace: 'pre-wrap'
+                    }}
+                  >
+                    {content}
                     {r ? (
                       <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
                         {formatRestrictionNote(today, r)}
