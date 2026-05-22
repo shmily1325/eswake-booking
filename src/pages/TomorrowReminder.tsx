@@ -8,7 +8,7 @@ import { getLocalDateString, getWeekdayText } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { hasViewAccess } from '../utils/auth'
 import { getFacilityMessageLabel, isFacility } from '../utils/facility'
-import { displayCoachNameForTomorrowReminder } from '../utils/tomorrowReminderDisplay'
+import { displayCoachNameForTomorrowMessage } from '../utils/tomorrowReminderDisplay'
 import {
   getCoachTomorrowReminderLines,
   TOMORROW_COACH_REMINDER_TARGET_COACHES
@@ -346,7 +346,7 @@ export function TomorrowReminder() {
     studentBookings.forEach((booking, index) => {
       const hasCoach = booking.coaches && booking.coaches.length > 0
       const coachNames = hasCoach
-        ? booking.coaches!.map(c => displayCoachNameForTomorrowReminder(studentName, c.name)).join('/')
+        ? booking.coaches!.map(c => displayCoachNameForTomorrowMessage(studentName, c.name)).join('/')
         : ''
       const startTime = formatTimeNoColon(booking.start_at)
       const boatName = booking.boats?.name || ''

@@ -1,13 +1,39 @@
 /**
- * 僅學員名單上為「SH綺綺」時，明日提醒／LIFF 預約卡「指定教練」將教練 ED 顯示為 Ebdoooopq
- * 其他任何學員（含同船、同時段、同為 ED 教練）皆回傳真實教練名，不替換。
- * （offline.html 為離線頁無 bundler，內嵌同規則，改此檔時請一併對齊。）
+ * 僅學員名單上為「SH綺綺」時，將教練 ED 顯示為梗用樣式；其他任何學員皆回傳真實教練名。
+ *
+ * 兩個 export 用途不同，請依場景挑選：
+ *   1) displayCoachNameForTomorrowReminder    → UI 用（LIFF 預約卡），回單行 'Ebdoooopq'。
+ *   2) displayCoachNameForTomorrowMessage     → 純文字 LINE 訊息用，回多行 ASCII 排版，
+ *      尾端帶 '\n'，配合既有模板 `${coachNames}教練\n` 可讓「教練」獨立成行。
+ *
+ * （offline.html 為離線頁無 bundler，內嵌同規則，改此檔時請一併對齊 offline.html 中的同名函式。）
  */
 const QIQI_TOMORROW_STUDENT_NAME = 'SH綺綺' as const
 
+function isQiqiEdCase(studentName: string, coachName: string): boolean {
+  return studentName === QIQI_TOMORROW_STUDENT_NAME && coachName.trim().toUpperCase() === 'ED'
+}
+
+/** UI 用：LIFF 預約卡等 HTML 場景，回單行字串避免破版。 */
 export function displayCoachNameForTomorrowReminder(studentName: string, coachName: string): string {
-  if (studentName !== QIQI_TOMORROW_STUDENT_NAME || coachName.trim().toUpperCase() !== 'ED') {
+  if (!isQiqiEdCase(studentName, coachName)) {
     return coachName
   }
   return 'Ebdoooopq'
+}
+
+/**
+ * 純文字 LINE 訊息用：回多行 ASCII 排版，並在尾端加上 '\n'，
+ * 配合 `${coachNames}教練\n` 模板可讓「教練」自成一行：
+ *    E
+ *   b d
+ *   ooo
+ *   p q
+ *   教練
+ */
+export function displayCoachNameForTomorrowMessage(studentName: string, coachName: string): string {
+  if (!isQiqiEdCase(studentName, coachName)) {
+    return coachName
+  }
+  return ' E\nb d\nooo\np q\n'
 }

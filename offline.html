@@ -2940,12 +2940,20 @@
         var SAFIN_TOMORROW_STUDENT_NAMES = { 'Safin': 1 };
 
         var QIQI_TOMORROW_STUDENT_NAME = 'SH綺綺';
-        /** 僅名單為 SH綺綺 時；其餘學員不替換教練名 */
+        /** 僅名單為 SH綺綺 + 教練 ED 時替換；其餘原樣回傳 */
+        function _isQiqiEd(studentName, coachName) {
+            return studentName === QIQI_TOMORROW_STUDENT_NAME
+                && (coachName || '').trim().toUpperCase() === 'ED';
+        }
+        /** UI 用（單行） */
         function displayCoachNameForTomorrowReminder(studentName, coachName) {
-            if (studentName !== QIQI_TOMORROW_STUDENT_NAME || (coachName || '').trim().toUpperCase() !== 'ED') {
-                return coachName;
-            }
+            if (!_isQiqiEd(studentName, coachName)) return coachName;
             return 'Ebdoooopq';
+        }
+        /** 純文字 LINE 訊息用（多行 ASCII，結尾 \n 讓「教練」獨立一行） */
+        function displayCoachNameForTomorrowMessage(studentName, coachName) {
+            if (!_isQiqiEd(studentName, coachName)) return coachName;
+            return ' E\nb d\nooo\np q\n';
         }
         
         function generateTomorrowMessageForStudent(studentName, bookings, includeWeatherWarning, weatherWarning, footerText) {
@@ -2987,7 +2995,7 @@
             studentBookings.forEach(function(booking, index) {
                 var hasCoach = booking.coaches && booking.coaches.length > 0;
                 var coachNames = hasCoach
-                    ? booking.coaches.map(function(c) { return displayCoachNameForTomorrowReminder(studentName, c.name); }).join('/')
+                    ? booking.coaches.map(function(c) { return displayCoachNameForTomorrowMessage(studentName, c.name); }).join('/')
                     : '';
                 var startTime = formatTimeNoColon(booking.start_at);
                 var boatName = (booking.boats && booking.boats.name) || '';
