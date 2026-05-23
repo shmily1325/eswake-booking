@@ -82,14 +82,8 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
         options: ['M', 'F'],
         required: false,
       },
-      // 厚度只放數字部分；全身/半身分到 coverage 獨立欄位
-      {
-        key: 'thickness',
-        label: '厚度',
-        type: 'select',
-        options: ['1MM', '2MM', '2/2MM', '3MM', '3/2MM', '4/3MM', '5/4MM'],
-        required: false,
-      },
+      // 厚度用 text 自由填，未來進新厚度（4/3MM、2MM…）不用改 schema
+      { key: 'thickness', label: '厚度', type: 'text', required: false },
       {
         key: 'coverage',
         label: '全/半身',

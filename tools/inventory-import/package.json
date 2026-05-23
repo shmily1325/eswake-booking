@@ -6,7 +6,9 @@
   "description": "Excel 商品圖批次抽出 + 上傳 Supabase Storage",
   "scripts": {
     "extract": "node extract-images.mjs",
-    "upload": "node upload-images.mjs"
+    "upload": "node upload-images.mjs",
+    "cleanup-orphans": "node cleanup-orphan-images.mjs",
+    "cleanup-orphans:apply": "node cleanup-orphan-images.mjs --apply"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
