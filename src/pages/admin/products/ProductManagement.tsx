@@ -30,34 +30,27 @@ export function ProductManagement() {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>({ kind: 'list' })
 
-  // 篩選狀態
+  // 篩選狀態：缺價 / 沒圖（從頂部儀表板點擊切換）
   const [onlyMissingPrice, setOnlyMissingPrice] = useState(false)
   const [onlyMissingImage, setOnlyMissingImage] = useState(false)
-  const [selectedSizes, setSelectedSizes] = useState<Set<string>>(new Set())
 
-  /** 切 tab 時把 size 選擇清掉（避免某 size 不存在新 tab 結果為 0 的困惑） */
-  const switchTab = (next: string) => {
-    setActiveTab(next)
-    setSelectedSizes(new Set())
-  }
-
-  const toggleSize = (size: string) => {
-    setSelectedSizes((prev) => {
-      const next = new Set(prev)
-      if (next.has(size)) next.delete(size)
-      else next.add(size)
-      return next
-    })
+  // 排序模式（記憶於 localStorage）
+  const [sortBy, setSortBy] = useState<SortMode>(() => {
+    if (typeof window === 'undefined') return 'stock-asc'
+    const saved = window.localStorage.getItem('products_sort')
+    return SORT_MODES.some((m) => m.id === saved) ? (saved as SortMode) : 'stock-asc'
+  })
+  const setSortByPersist = (next: SortMode) => {
+    setSortBy(next)
+    if (typeof window !== 'undefined') window.localStorage.setItem('products_sort', next)
   }
 
   const clearAllFilters = () => {
     setOnlyMissingPrice(false)
     setOnlyMissingImage(false)
-    setSelectedSizes(new Set())
     setSearch('')
   }
-  const hasAnyFilter =
-    onlyMissingPrice || onlyMissingImage || selectedSizes.size > 0 || search.trim() !== ''
+  const hasAnyFilter = onlyMissingPrice || onlyMissingImage || search.trim() !== ''
 
   // 列表顯示模式：'gallery' = 圖大張只看縮圖；'table' = 詳細表格
   // 預設 gallery，使用者切換後記憶在 localStorage
@@ -109,26 +102,16 @@ export function ProductManagement() {
 
   const allItems: VariantListItem[] = useMemo(() => flattenToVariantItems(products), [products])
 
-  /** 屬於目前 tab 的 items（在套 filter 之前），用來算 size chip 選項跟 tab 計數 */
+  /** 屬於目前 tab 的 items（在套 filter 之前），給儀表板算「全庫總數」用 */
   const tabItems: VariantListItem[] = useMemo(() => {
     if (activeTab === 'all') return allItems
     return allItems.filter((it) => it.product.category === activeTab)
   }, [allItems, activeTab])
 
-  /** 目前 tab 出現過的 size 值（distinct + 排序），給尺寸 chip 用 */
-  const availableSizes: string[] = useMemo(() => {
-    const set = new Set<string>()
-    for (const it of tabItems) {
-      const v = it.variant.attributes?.size
-      if (v != null && String(v).trim() !== '') set.add(String(v).trim())
-    }
-    return Array.from(set).sort(compareSize)
-  }, [tabItems])
-
   const filteredItems: VariantListItem[] = useMemo(() => {
     let items = tabItems
 
-    // 狀態 chips：缺價、沒圖
+    // 狀態篩選（從頂部儀表板點擊）
     if (onlyMissingPrice) {
       items = items.filter((it) => it.variant.price == null)
     }
@@ -136,15 +119,30 @@ export function ProductManagement() {
       items = items.filter((it) => !it.variant.image_url)
     }
 
-    // 尺寸 chips：同欄位多選 = OR
-    if (selectedSizes.size > 0) {
+    // 搜尋：多關鍵字（空白分隔）AND
+    const q = search.trim().toLowerCase()
+    if (q) {
+      const tokens = q.split(/\s+/).filter(Boolean)
       items = items.filter((it) => {
-        const s = it.variant.attributes?.size
-        return s != null && selectedSizes.has(String(s).trim())
+        const haystack = [
+          it.product.brand,
+          it.product.model,
+          it.variant.vendor_code ?? '',
+          ...Object.values(it.variant.attributes ?? {}).map((v) => String(v ?? '')),
+        ]
+          .join(' ')
+          .toLowerCase()
+        return tokens.every((t) => haystack.includes(t))
       })
     }
 
-    // 搜尋：多關鍵字（空白分隔）AND，每個 token 都要 match
+    // 排序
+    return sortItems(items, sortBy)
+  }, [tabItems, search, onlyMissingPrice, onlyMissingImage, sortBy])
+
+  /** 在「目前 tab + 搜尋」前提下，未進一步狀態篩選的清單，用來算缺價/沒圖數量 */
+  const baseForCounts: VariantListItem[] = useMemo(() => {
+    let items = tabItems
     const q = search.trim().toLowerCase()
     if (q) {
       const tokens = q.split(/\s+/).filter(Boolean)
@@ -161,7 +159,7 @@ export function ProductManagement() {
       })
     }
     return items
-  }, [tabItems, search, onlyMissingPrice, onlyMissingImage, selectedSizes])
+  }, [tabItems, search])
 
   const categories = useMemo(() => getAllCategories(), [])
 
@@ -199,6 +197,20 @@ export function ProductManagement() {
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <PageHeader user={user} title="📦 商品管理" showBaoLink={true} />
 
+        {/* 儀表板：種數 / 件數 / 缺價 / 沒圖（隨搜尋變動，缺價/沒圖點擊即篩） */}
+        <InventoryDashboard
+          base={baseForCounts}
+          filtered={filteredItems}
+          tabName={activeTab === 'all' ? '全部' : getCategory(activeTab)?.name ?? activeTab}
+          isFiltered={hasAnyFilter}
+          onlyMissingPrice={onlyMissingPrice}
+          onlyMissingImage={onlyMissingImage}
+          onToggleMissingPrice={() => setOnlyMissingPrice((v) => !v)}
+          onToggleMissingImage={() => setOnlyMissingImage((v) => !v)}
+          onClearAll={clearAllFilters}
+          isMobile={isMobile}
+        />
+
         {/* 工具列：搜尋 + 新增 */}
         <div
           style={{
@@ -214,7 +226,7 @@ export function ProductManagement() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜尋品牌、型號、貨號、顏色…（多關鍵字以空白分隔）"
+              placeholder="搜尋品牌、型號、貨號、規格"
               style={{
                 width: '100%',
                 padding: '10px 14px 10px 36px',
@@ -226,6 +238,28 @@ export function ProductManagement() {
               }}
             />
             <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#999' }}>🔍</span>
+            {search && (
+              <button
+                type="button"
+                aria-label="清除搜尋"
+                onClick={() => setSearch('')}
+                style={{
+                  position: 'absolute',
+                  right: 8,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#999',
+                  fontSize: 16,
+                  cursor: 'pointer',
+                  padding: 4,
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+            )}
           </div>
           <Button
             variant="primary"
@@ -260,44 +294,22 @@ export function ProductManagement() {
           >
             <CategoryTab
               label="全部"
-              skuCount={allItems.length}
-              stockTotal={allItems.reduce((sum, it) => sum + (it.variant.stock || 0), 0)}
               active={activeTab === 'all'}
-              onClick={() => switchTab('all')}
+              onClick={() => setActiveTab('all')}
             />
-            {categories.map((cat) => {
-              const subset = allItems.filter((it) => it.product.category === cat.id)
-              const stockTotal = subset.reduce((sum, it) => sum + (it.variant.stock || 0), 0)
-              return (
-                <CategoryTab
-                  key={cat.id}
-                  label={`${cat.icon} ${cat.name}`}
-                  skuCount={subset.length}
-                  stockTotal={stockTotal}
-                  active={activeTab === cat.id}
-                  onClick={() => switchTab(cat.id)}
-                />
-              )
-            })}
+            {categories.map((cat) => (
+              <CategoryTab
+                key={cat.id}
+                label={`${cat.icon} ${cat.name}`}
+                active={activeTab === cat.id}
+                onClick={() => setActiveTab(cat.id)}
+              />
+            ))}
           </div>
-          {/* 畫廊 / 表格切換（手機桌機都可，default 畫廊） */}
+          {/* 排序 + 畫廊/表格切換 */}
+          <SortMenu value={sortBy} onChange={setSortByPersist} isMobile={isMobile} />
           <LayoutToggle layout={layout} onChange={setLayoutPersist} />
         </div>
-
-        {/* 篩選 chip 區：狀態 + 尺寸 */}
-        <FilterChipBar
-          onlyMissingPrice={onlyMissingPrice}
-          onlyMissingImage={onlyMissingImage}
-          onToggleMissingPrice={() => setOnlyMissingPrice((v) => !v)}
-          onToggleMissingImage={() => setOnlyMissingImage((v) => !v)}
-          availableSizes={availableSizes}
-          selectedSizes={selectedSizes}
-          onToggleSize={toggleSize}
-          hasAnyFilter={hasAnyFilter}
-          onClearAll={clearAllFilters}
-          totalCount={tabItems.length}
-          filteredCount={filteredItems.length}
-        />
 
         {/* 列表 */}
         {loading ? (
@@ -336,33 +348,17 @@ export function ProductManagement() {
 
 interface CategoryTabProps {
   label: string
-  /** SKU 種類數（不同規格組合的數量） */
-  skuCount: number
-  /** 總庫存件數（所有 SKU 的 stock 加總） */
-  stockTotal: number
   active: boolean
   onClick: () => void
 }
-function CategoryTab({ label, skuCount, stockTotal, active, onClick }: CategoryTabProps) {
-  const badgeStyle: React.CSSProperties = {
-    fontSize: 11,
-    background: active ? 'rgba(255,255,255,0.2)' : '#f0f0f0',
-    color: active ? '#fff' : '#666',
-    padding: '1px 7px',
-    borderRadius: 999,
-    fontWeight: 600,
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 2,
-  }
+function CategoryTab({ label, active, onClick }: CategoryTabProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      title={`${skuCount} 種規格・共 ${stockTotal} 件庫存`}
       style={{
         flexShrink: 0,
-        padding: '8px 12px',
+        padding: '8px 14px',
         fontSize: 13,
         fontWeight: active ? 700 : 500,
         background: active ? '#222' : '#fff',
@@ -371,195 +367,243 @@ function CategoryTab({ label, skuCount, stockTotal, active, onClick }: CategoryT
         borderRadius: 999,
         cursor: 'pointer',
         whiteSpace: 'nowrap',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 5,
       }}
     >
       {label}
-      <span style={badgeStyle}>{skuCount}種</span>
-      <span style={badgeStyle}>{stockTotal}件</span>
     </button>
   )
 }
 
-/** 尺寸排序：先按常見順序，未列入的用字母 */
-const SIZE_ORDER = [
-  'XXS',
-  'XS',
-  'S',
-  'M',
-  'L',
-  'XL',
-  'XXL',
-  '2XL',
-  '3XL',
-  '4XL',
-  '5XL',
-  // 救生衣青少／童版（尺寸後帶數字）
-  'XS6',
-  'S8',
-  'M10',
-  'L12',
+// ============================================================
+//  排序
+// ============================================================
+type SortMode = 'stock-asc' | 'stock-desc' | 'price-asc' | 'price-desc' | 'updated-desc'
+const SORT_MODES: { id: SortMode; label: string }[] = [
+  { id: 'stock-asc', label: '庫存少 → 多' },
+  { id: 'stock-desc', label: '庫存多 → 少' },
+  { id: 'price-asc', label: '價格低 → 高' },
+  { id: 'price-desc', label: '價格高 → 低' },
+  { id: 'updated-desc', label: '最近更新' },
 ]
-function compareSize(a: string, b: string): number {
-  const ia = SIZE_ORDER.indexOf(a)
-  const ib = SIZE_ORDER.indexOf(b)
-  if (ia !== -1 && ib !== -1) return ia - ib
-  if (ia !== -1) return -1
-  if (ib !== -1) return 1
-  return a.localeCompare(b)
+function sortItems(items: VariantListItem[], mode: SortMode): VariantListItem[] {
+  const arr = [...items]
+  switch (mode) {
+    case 'stock-asc':
+      return arr.sort((a, b) => (a.variant.stock || 0) - (b.variant.stock || 0))
+    case 'stock-desc':
+      return arr.sort((a, b) => (b.variant.stock || 0) - (a.variant.stock || 0))
+    case 'price-asc':
+      return arr.sort((a, b) => priceForSort(a.variant.price, true) - priceForSort(b.variant.price, true))
+    case 'price-desc':
+      return arr.sort((a, b) => priceForSort(b.variant.price, false) - priceForSort(a.variant.price, false))
+    case 'updated-desc':
+      return arr.sort((a, b) => {
+        const ta = new Date(a.variant.updated_at ?? a.product.updated_at ?? 0).getTime()
+        const tb = new Date(b.variant.updated_at ?? b.product.updated_at ?? 0).getTime()
+        return tb - ta
+      })
+  }
+}
+/** 排序時 null 價格的處理：升冪排最後、降冪排最前（缺價 = "未知" 不要混入正常數字中段） */
+function priceForSort(p: number | null, asc: boolean): number {
+  if (p == null) return asc ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY
+  return p
 }
 
-interface FilterChipBarProps {
+interface SortMenuProps {
+  value: SortMode
+  onChange: (next: SortMode) => void
+  isMobile: boolean
+}
+function SortMenu({ value, onChange, isMobile }: SortMenuProps) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as SortMode)}
+      title="排序方式"
+      style={{
+        height: 34,
+        border: '1px solid #ddd',
+        borderRadius: 8,
+        padding: isMobile ? '0 8px' : '0 10px',
+        fontSize: 12,
+        background: '#fff',
+        color: '#444',
+        cursor: 'pointer',
+        flexShrink: 0,
+      }}
+    >
+      {SORT_MODES.map((m) => (
+        <option key={m.id} value={m.id}>
+          ↕ {m.label}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+// ============================================================
+//  庫存儀表板（取代狀態 chip）：種數／件數／缺價／沒圖
+//  - 沒篩選：顯示 tab 全庫總數
+//  - 有篩選：顯示「目前 X 種 / 全 Y 種」
+//  - 缺價／沒圖：點擊 toggle 篩選
+// ============================================================
+interface InventoryDashboardProps {
+  base: VariantListItem[] // 套搜尋（不含狀態篩選）的清單，用來算缺價/沒圖數
+  filtered: VariantListItem[]
+  tabName: string
+  isFiltered: boolean
   onlyMissingPrice: boolean
   onlyMissingImage: boolean
   onToggleMissingPrice: () => void
   onToggleMissingImage: () => void
-  availableSizes: string[]
-  selectedSizes: Set<string>
-  onToggleSize: (size: string) => void
-  hasAnyFilter: boolean
   onClearAll: () => void
-  totalCount: number
-  filteredCount: number
+  isMobile: boolean
 }
-function FilterChipBar({
+function InventoryDashboard({
+  base,
+  filtered,
+  tabName,
+  isFiltered,
   onlyMissingPrice,
   onlyMissingImage,
   onToggleMissingPrice,
   onToggleMissingImage,
-  availableSizes,
-  selectedSizes,
-  onToggleSize,
-  hasAnyFilter,
   onClearAll,
-  totalCount,
-  filteredCount,
-}: FilterChipBarProps) {
-  const showSizeRow = availableSizes.length > 0
+  isMobile,
+}: InventoryDashboardProps) {
+  const baseSkuCount = base.length
+  const baseStockTotal = base.reduce((s, it) => s + (it.variant.stock || 0), 0)
+  const missingPriceCount = base.filter((it) => it.variant.price == null).length
+  const missingImageCount = base.filter((it) => !it.variant.image_url).length
+
+  const filteredSkuCount = filtered.length
+  const filteredStockTotal = filtered.reduce((s, it) => s + (it.variant.stock || 0), 0)
+
+  // 主要顯示數字：有篩選就顯示已篩，沒篩就顯示總計
+  const mainSku = isFiltered ? filteredSkuCount : baseSkuCount
+  const mainStock = isFiltered ? filteredStockTotal : baseStockTotal
+
   return (
-    <div style={{ marginBottom: 12 }}>
-      {/* 第 1 列：狀態 chips（永遠顯示） */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          marginBottom: showSizeRow ? 8 : 0,
-          flexWrap: 'wrap',
-        }}
-      >
-        <FilterChip
-          label="缺價"
-          icon="💰"
-          active={onlyMissingPrice}
-          onClick={onToggleMissingPrice}
-          activeBg="#fff4e0"
-          activeColor="#ef6c00"
-          activeBorder="#ef6c00"
-        />
-        <FilterChip
-          label="沒圖"
-          icon="🖼"
-          active={onlyMissingImage}
-          onClick={onToggleMissingImage}
-          activeBg="#e3f2fd"
-          activeColor="#1565c0"
-          activeBorder="#1565c0"
-        />
-        <div style={{ flex: 1 }} />
-        {hasAnyFilter && (
-          <button
-            type="button"
-            onClick={onClearAll}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#666',
-              fontSize: 12,
-              cursor: 'pointer',
-              padding: '4px 8px',
-              textDecoration: 'underline',
-            }}
-          >
-            清除篩選
-          </button>
+    <div
+      style={{
+        background: '#fff',
+        borderRadius: 12,
+        padding: isMobile ? '10px 12px' : '12px 16px',
+        marginBottom: 12,
+        border: '1px solid #ececec',
+        display: 'flex',
+        alignItems: 'center',
+        gap: isMobile ? 10 : 16,
+        flexWrap: 'wrap',
+      }}
+    >
+      {/* 主數字：種 + 件 */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+          <span style={{ fontSize: 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>{mainSku}</span>
+          <span style={{ fontSize: 12, color: '#888' }}>種</span>
+        </div>
+        <span style={{ color: '#ddd' }}>·</span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+          <span style={{ fontSize: 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>{mainStock}</span>
+          <span style={{ fontSize: 12, color: '#888' }}>件</span>
+        </div>
+        {isFiltered && (
+          <span style={{ fontSize: 11, color: '#aaa', marginLeft: 4 }}>
+            / {tabName} {baseSkuCount}種
+          </span>
         )}
-        <span style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>
-          {hasAnyFilter ? `${filteredCount} / ${totalCount}` : `${totalCount} 種`}
-        </span>
       </div>
 
-      {/* 第 2 列：尺寸 chips（依目前 tab 動態），有資料才顯示 */}
-      {showSizeRow && (
-        <div
+      <div
+        style={{
+          width: 1,
+          height: 22,
+          background: '#eee',
+          flexShrink: 0,
+          display: isMobile ? 'none' : 'block',
+        }}
+      />
+
+      {/* 待補：缺價 / 沒圖（可點擊 toggle） */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <DashboardStatChip
+          label="缺價"
+          count={missingPriceCount}
+          active={onlyMissingPrice}
+          onClick={onToggleMissingPrice}
+          color="#ef6c00"
+          bgActive="#fff4e0"
+        />
+        <DashboardStatChip
+          label="沒圖"
+          count={missingImageCount}
+          active={onlyMissingImage}
+          onClick={onToggleMissingImage}
+          color="#1565c0"
+          bgActive="#e3f2fd"
+        />
+      </div>
+
+      <div style={{ flex: 1 }} />
+
+      {isFiltered && (
+        <button
+          type="button"
+          onClick={onClearAll}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            paddingBottom: 4,
+            background: 'transparent',
+            border: 'none',
+            color: '#888',
+            fontSize: 12,
+            cursor: 'pointer',
+            padding: 4,
+            textDecoration: 'underline',
+            flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: 12, color: '#888', flexShrink: 0, marginRight: 2 }}>尺寸</span>
-          {availableSizes.map((s) => (
-            <FilterChip
-              key={s}
-              label={s}
-              active={selectedSizes.has(s)}
-              onClick={() => onToggleSize(s)}
-            />
-          ))}
-        </div>
+          清除篩選
+        </button>
       )}
     </div>
   )
 }
 
-interface FilterChipProps {
+interface DashboardStatChipProps {
   label: string
-  icon?: string
+  count: number
   active: boolean
   onClick: () => void
-  /** 啟用時的視覺色，預設黑色 */
-  activeBg?: string
-  activeColor?: string
-  activeBorder?: string
+  color: string
+  bgActive: string
 }
-function FilterChip({
-  label,
-  icon,
-  active,
-  onClick,
-  activeBg = '#222',
-  activeColor = '#fff',
-  activeBorder = '#222',
-}: FilterChipProps) {
+function DashboardStatChip({ label, count, active, onClick, color, bgActive }: DashboardStatChipProps) {
+  const isZero = count === 0
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={isZero && !active}
+      title={isZero ? `沒有${label}的項目` : `點擊只顯示${label}`}
       style={{
-        flexShrink: 0,
-        padding: '5px 12px',
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        gap: 4,
+        padding: '4px 10px',
         fontSize: 12,
         fontWeight: active ? 700 : 500,
-        background: active ? activeBg : '#fff',
-        color: active ? activeColor : '#555',
-        border: '1px solid ' + (active ? activeBorder : '#ddd'),
+        background: active ? bgActive : 'transparent',
+        color: isZero && !active ? '#bbb' : active ? color : '#555',
+        border: '1px solid ' + (active ? color : '#e6e6e6'),
         borderRadius: 999,
-        cursor: 'pointer',
-        whiteSpace: 'nowrap',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
+        cursor: isZero && !active ? 'default' : 'pointer',
+        flexShrink: 0,
         transition: 'all 0.1s',
       }}
     >
-      {icon && <span>{icon}</span>}
-      {label}
+      <span style={{ fontSize: 14, fontWeight: 700 }}>{count}</span>
+      <span>{label}</span>
     </button>
   )
 }
@@ -687,6 +731,8 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
   const cat = getCategory(product.category)
   const stock = stockBadgeColor(variant.stock)
   const attrText = formatAttributes(product.category, variant.attributes)
+  const lowStock = variant.stock > 0 && variant.stock <= 2
+  const outOfStock = variant.stock <= 0
 
   return (
     <button
@@ -696,35 +742,35 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
         display: 'flex',
         flexDirection: 'column',
         background: '#fff',
-        border: '1px solid #ececec',
-        borderRadius: 12,
-        padding: 0,
+        border: '1px solid ' + (outOfStock ? '#f4cdcd' : lowStock ? '#f5dbb6' : '#ececec'),
+        borderRadius: 14,
+        padding: 8,
         textAlign: 'left',
         cursor: 'pointer',
         width: '100%',
         boxSizing: 'border-box',
-        overflow: 'hidden',
-        transition: 'box-shadow 0.12s',
+        transition: 'box-shadow 0.15s, transform 0.15s, border-color 0.15s',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.08)'
+        e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.07)'
+        e.currentTarget.style.transform = 'translateY(-2px)'
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.boxShadow = 'none'
+        e.currentTarget.style.transform = 'translateY(0)'
       }}
     >
-      {/* 圖大張 9:16 portrait */}
+      {/* 圖（9:16 portrait），inset 在卡片內，跟邊緣有空隙 */}
       <div
         style={{
           width: '100%',
           aspectRatio: '9 / 16',
-          background: '#f5f5f5',
+          background: '#f6f6f7',
+          borderRadius: 10,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
-          fontSize: 56,
-          color: '#cfcfcf',
           position: 'relative',
         }}
       >
@@ -736,7 +782,7 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
             loading="lazy"
           />
         ) : (
-          <span>{cat?.icon ?? '📦'}</span>
+          <ImagePlaceholder icon={cat?.icon ?? '📦'} />
         )}
         {/* 庫存標籤浮在右上 */}
         <span
@@ -750,24 +796,38 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
             borderRadius: 999,
             background: stock.bg,
             color: stock.color,
-            border: '1px solid rgba(255,255,255,0.6)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
           }}
         >
           {stock.label}
         </span>
       </div>
 
-      {/* 文字區：只放最關鍵的 brand / model / price */}
+      {/* 文字區：跟圖之間用 padding 自然分隔 */}
       <div
         style={{
-          padding: 8,
+          paddingTop: 8,
+          paddingInline: 2,
           display: 'flex',
           flexDirection: 'column',
           gap: 2,
           minWidth: 0,
         }}
       >
-        <div style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>{product.brand}</div>
+        <div
+          style={{
+            fontSize: 10,
+            color: '#999',
+            fontWeight: 500,
+            textTransform: 'uppercase',
+            letterSpacing: 0.3,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {product.brand}
+        </div>
         <div
           style={{
             fontSize: 13,
@@ -776,6 +836,7 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
+            lineHeight: 1.3,
           }}
           title={product.model}
         >
@@ -785,7 +846,7 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
           <div
             style={{
               fontSize: 11,
-              color: '#777',
+              color: '#888',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -795,11 +856,30 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
             {attrText}
           </div>
         )}
-        <div style={{ marginTop: 2, fontSize: 13 }}>
+        <div style={{ marginTop: 4, fontSize: 13 }}>
           <PriceDisplay price={variant.price} />
         </div>
       </div>
     </button>
+  )
+}
+
+/** 缺圖時的 placeholder：淺色背景 + 大 icon，比之前單一 emoji 收斂一點 */
+function ImagePlaceholder({ icon }: { icon: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        color: '#bbb',
+      }}
+    >
+      <span style={{ fontSize: 40, opacity: 0.55 }}>{icon}</span>
+      <span style={{ fontSize: 10, color: '#bbb', letterSpacing: 1 }}>NO IMAGE</span>
+    </div>
   )
 }
 

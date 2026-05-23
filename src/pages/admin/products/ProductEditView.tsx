@@ -555,7 +555,7 @@ function VariantBlock({
               style={inputStyle}
               value={draft.vendor_code}
               onChange={(e) => onChange({ vendor_code: e.target.value })}
-              placeholder="例如：F12303-CE(女)"
+              placeholder="例如：F12303-CE"
               disabled={disabled || draft.pendingDelete}
             />
           </div>
