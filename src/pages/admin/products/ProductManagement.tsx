@@ -30,6 +30,19 @@ export function ProductManagement() {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>({ kind: 'list' })
 
+  // 列表顯示模式：'gallery' = 圖大張只看縮圖；'table' = 詳細表格（只桌機可選）
+  // 手機強制 gallery；桌機把選擇記在 localStorage
+  const [layout, setLayout] = useState<'gallery' | 'table'>(() => {
+    if (typeof window === 'undefined') return 'gallery'
+    const saved = window.localStorage.getItem('products_layout')
+    return saved === 'table' ? 'table' : 'gallery'
+  })
+  const effectiveLayout: 'gallery' | 'table' = isMobile ? 'gallery' : layout
+  const setLayoutPersist = (next: 'gallery' | 'table') => {
+    setLayout(next)
+    if (typeof window !== 'undefined') window.localStorage.setItem('products_layout', next)
+  }
+
   // 權限檢查（沿用 BoatManagement 的模式）
   useEffect(() => {
     let cancelled = false
@@ -166,35 +179,48 @@ export function ProductManagement() {
           </Button>
         </div>
 
-        {/* 類別 Tab（橫向可滑動） */}
+        {/* 類別 Tab + 顯示模式切換 */}
         <div
           style={{
             display: 'flex',
-            gap: 6,
-            overflowX: 'auto',
-            paddingBottom: 4,
+            gap: 8,
+            alignItems: 'center',
             marginBottom: 14,
-            WebkitOverflowScrolling: 'touch',
           }}
         >
-          <CategoryTab
-            label="全部"
-            count={allItems.length}
-            active={activeTab === 'all'}
-            onClick={() => setActiveTab('all')}
-          />
-          {categories.map((cat) => {
-            const count = allItems.filter((it) => it.product.category === cat.id).length
-            return (
-              <CategoryTab
-                key={cat.id}
-                label={`${cat.icon} ${cat.name}`}
-                count={count}
-                active={activeTab === cat.id}
-                onClick={() => setActiveTab(cat.id)}
-              />
-            )
-          })}
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              overflowX: 'auto',
+              paddingBottom: 4,
+              flex: 1,
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            <CategoryTab
+              label="全部"
+              count={allItems.length}
+              active={activeTab === 'all'}
+              onClick={() => setActiveTab('all')}
+            />
+            {categories.map((cat) => {
+              const count = allItems.filter((it) => it.product.category === cat.id).length
+              return (
+                <CategoryTab
+                  key={cat.id}
+                  label={`${cat.icon} ${cat.name}`}
+                  count={count}
+                  active={activeTab === cat.id}
+                  onClick={() => setActiveTab(cat.id)}
+                />
+              )
+            })}
+          </div>
+          {/* 桌機才顯示「畫廊 / 表格」切換，手機強制畫廊 */}
+          {!isMobile && (
+            <LayoutToggle layout={layout} onChange={setLayoutPersist} />
+          )}
         </div>
 
         {/* 列表 */}
@@ -211,16 +237,12 @@ export function ProductManagement() {
               setView({ kind: 'create', defaultCategory: defaultCat })
             }}
           />
-        ) : isMobile ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {filteredItems.map((it) => (
-              <ProductCard
-                key={it.variant.id}
-                item={it}
-                onClick={() => setView({ kind: 'edit', productId: it.product.id })}
-              />
-            ))}
-          </div>
+        ) : effectiveLayout === 'gallery' ? (
+          <ProductGalleryGrid
+            items={filteredItems}
+            isMobile={isMobile}
+            onCardClick={(productId) => setView({ kind: 'edit', productId })}
+          />
         ) : (
           <DesktopTable
             items={filteredItems}
@@ -315,14 +337,92 @@ function PriceDisplay({ price, align = 'left' }: { price: number | null; align?:
   )
 }
 
-interface ProductCardProps {
+/** 畫廊／表格切換按鈕（兩個 icon） */
+interface LayoutToggleProps {
+  layout: 'gallery' | 'table'
+  onChange: (next: 'gallery' | 'table') => void
+}
+function LayoutToggle({ layout, onChange }: LayoutToggleProps) {
+  const cellStyle = (active: boolean): React.CSSProperties => ({
+    width: 34,
+    height: 34,
+    border: 'none',
+    background: active ? '#222' : '#fff',
+    color: active ? '#fff' : '#666',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 16,
+  })
+  return (
+    <div
+      style={{
+        display: 'flex',
+        border: '1px solid #ddd',
+        borderRadius: 8,
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+    >
+      <button
+        type="button"
+        title="畫廊：只看縮圖跟價格"
+        aria-label="畫廊模式"
+        style={cellStyle(layout === 'gallery')}
+        onClick={() => onChange('gallery')}
+      >
+        ▦
+      </button>
+      <button
+        type="button"
+        title="表格：含完整規格資訊"
+        aria-label="表格模式"
+        style={{ ...cellStyle(layout === 'table'), borderLeft: '1px solid #ddd' }}
+        onClick={() => onChange('table')}
+      >
+        ≡
+      </button>
+    </div>
+  )
+}
+
+/** 畫廊：只顯示圖縮圖 + 品牌型號 + 價格 */
+interface ProductGalleryGridProps {
+  items: VariantListItem[]
+  isMobile: boolean
+  onCardClick: (productId: string) => void
+}
+function ProductGalleryGrid({ items, isMobile, onCardClick }: ProductGalleryGridProps) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gap: isMobile ? 10 : 14,
+        // 手機 2 欄、桌機自動排（每張至少 180px 寬）
+        gridTemplateColumns: isMobile
+          ? 'repeat(2, minmax(0, 1fr))'
+          : 'repeat(auto-fill, minmax(180px, 1fr))',
+      }}
+    >
+      {items.map((it) => (
+        <GalleryCard
+          key={it.variant.id}
+          item={it}
+          onClick={() => onCardClick(it.product.id)}
+        />
+      ))}
+    </div>
+  )
+}
+
+interface GalleryCardProps {
   item: VariantListItem
   onClick: () => void
 }
-function ProductCard({ item, onClick }: ProductCardProps) {
+function GalleryCard({ item, onClick }: GalleryCardProps) {
   const { variant, product } = item
   const cat = getCategory(product.category)
-  const attrText = formatAttributes(product.category, variant.attributes)
   const stock = stockBadgeColor(variant.stock)
 
   return (
@@ -331,70 +431,95 @@ function ProductCard({ item, onClick }: ProductCardProps) {
       onClick={onClick}
       style={{
         display: 'flex',
-        gap: 12,
+        flexDirection: 'column',
         background: '#fff',
         border: '1px solid #ececec',
-        borderRadius: 14,
-        padding: 12,
+        borderRadius: 12,
+        padding: 0,
         textAlign: 'left',
         cursor: 'pointer',
         width: '100%',
         boxSizing: 'border-box',
+        overflow: 'hidden',
+        transition: 'box-shadow 0.12s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.08)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = 'none'
       }}
     >
-      {/* 圖片區：portrait 直式（9:16），對齊手機直拍比例 */}
+      {/* 圖大張 9:16 portrait */}
       <div
         style={{
-          width: 60,
-          height: 107,
-          borderRadius: 10,
+          width: '100%',
+          aspectRatio: '9 / 16',
           background: '#f5f5f5',
-          flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
-          fontSize: 32,
-          color: '#bbb',
+          fontSize: 56,
+          color: '#cfcfcf',
+          position: 'relative',
         }}
       >
         {variant.image_url ? (
           <img
             src={variant.image_url}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            loading="lazy"
           />
         ) : (
           <span>{cat?.icon ?? '📦'}</span>
         )}
+        {/* 庫存標籤浮在右上 */}
+        <span
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            fontSize: 10,
+            fontWeight: 600,
+            padding: '2px 7px',
+            borderRadius: 999,
+            background: stock.bg,
+            color: stock.color,
+            border: '1px solid rgba(255,255,255,0.6)',
+          }}
+        >
+          {stock.label}
+        </span>
       </div>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ fontSize: 12, color: '#888', fontWeight: 500 }}>{product.brand}</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+
+      {/* 文字區：只放最關鍵的 brand / model / price */}
+      <div
+        style={{
+          padding: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          minWidth: 0,
+        }}
+      >
+        <div style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>{product.brand}</div>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: '#222',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+          title={product.model}
+        >
           {product.model}
         </div>
-        {attrText && (
-          <div style={{ fontSize: 13, color: '#555' }}>{attrText}</div>
-        )}
-        {variant.vendor_code && (
-          <div style={{ fontSize: 11, color: '#999' }}>貨號 {variant.vendor_code}</div>
-        )}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-          <span style={{ fontSize: 15 }}>
-            <PriceDisplay price={variant.price} />
-          </span>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              padding: '3px 10px',
-              borderRadius: 999,
-              background: stock.bg,
-              color: stock.color,
-            }}
-          >
-            {stock.label}
-          </span>
+        <div style={{ marginTop: 2, fontSize: 13 }}>
+          <PriceDisplay price={variant.price} />
         </div>
       </div>
     </button>
