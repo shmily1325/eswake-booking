@@ -143,11 +143,19 @@ export interface CreateVariantInput {
   product_id: string
   vendor_code?: string | null
   attributes: Record<string, AttributeValue>
-  price: number
+  /** null = 售價待補（前端顯示「缺」）；0 = 真的免費贈品 */
+  price: number | null
   cost?: number | null
   stock?: number
   image_url?: string | null
   image_path?: string | null
+}
+
+/** 把使用者輸入的售價正規化為 NULL 或非負整數 */
+function normalizePrice(v: number | null | undefined): number | null {
+  if (v === null || v === undefined) return null
+  if (!Number.isFinite(v)) return null
+  return Math.max(0, Math.round(v))
 }
 
 export async function createVariant(input: CreateVariantInput): Promise<ProductVariantRow> {
@@ -155,7 +163,7 @@ export async function createVariant(input: CreateVariantInput): Promise<ProductV
     product_id: input.product_id,
     vendor_code: input.vendor_code?.trim() || null,
     attributes: input.attributes,
-    price: Math.max(0, Math.round(input.price)),
+    price: normalizePrice(input.price),
     cost: input.cost ?? null,
     stock: Math.max(0, Math.round(input.stock ?? 0)),
     image_url: input.image_url ?? null,
@@ -169,7 +177,7 @@ export async function createVariant(input: CreateVariantInput): Promise<ProductV
 export interface UpdateVariantInput {
   vendor_code?: string | null
   attributes?: Record<string, AttributeValue>
-  price?: number
+  price?: number | null
   cost?: number | null
   stock?: number
   image_url?: string | null
@@ -180,7 +188,7 @@ export async function updateVariant(variantId: string, input: UpdateVariantInput
   const patch: VariantUpdate = {}
   if (input.vendor_code !== undefined) patch.vendor_code = input.vendor_code?.trim() || null
   if (input.attributes !== undefined) patch.attributes = input.attributes
-  if (input.price !== undefined) patch.price = Math.max(0, Math.round(input.price))
+  if (input.price !== undefined) patch.price = normalizePrice(input.price)
   if (input.cost !== undefined) patch.cost = input.cost
   if (input.stock !== undefined) patch.stock = Math.max(0, Math.round(input.stock))
   if (input.image_url !== undefined) patch.image_url = input.image_url

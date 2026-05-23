@@ -46,7 +46,8 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     id: v.id,
     vendor_code: v.vendor_code ?? '',
     attributes: attrs,
-    price: String(v.price ?? 0),
+    // price 為 null 時保留空字串（UI 顯示「待補」），不要強制變成 "0"
+    price: v.price == null ? '' : String(v.price),
     stock: String(v.stock ?? 0),
     image_url: v.image_url,
     image_path: v.image_path,
@@ -157,8 +158,11 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
     for (const [i, d] of active.entries()) {
       const errs = validateAttributes(category, d.attributes)
       if (errs.length > 0) return `規格 #${i + 1}：${errs.join('、')}`
-      const priceNum = Number(d.price)
-      if (!Number.isFinite(priceNum) || priceNum < 0) return `規格 #${i + 1}：售價需為非負整數`
+      // 售價可留空（= NULL，待補）；有填的話必須是非負整數
+      if (d.price.trim() !== '') {
+        const priceNum = Number(d.price)
+        if (!Number.isFinite(priceNum) || priceNum < 0) return `規格 #${i + 1}：售價需為非負整數，或留空表待補`
+      }
       const stockNum = Number(d.stock)
       if (!Number.isFinite(stockNum) || stockNum < 0) return `規格 #${i + 1}：庫存需為非負整數`
     }
@@ -205,7 +209,8 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
         const payload = {
           vendor_code: d.vendor_code,
           attributes: d.attributes,
-          price: Number(d.price),
+          // 空字串 = NULL（售價待補）；其他則轉成數字
+          price: d.price.trim() === '' ? null : Number(d.price),
           stock: Number(d.stock),
           image_url: d.image_url,
           image_path: d.image_path,
@@ -586,13 +591,16 @@ function VariantBlock({
             </div>
           ))}
           <div>
-            <label style={labelStyle}>售價 *</label>
+            <label style={labelStyle}>
+              售價
+              <span style={{ color: '#999', fontWeight: 400, marginLeft: 4 }}>(留空＝待補)</span>
+            </label>
             <input
               style={inputStyle}
               inputMode="numeric"
               value={draft.price}
               onChange={(e) => onChange({ price: e.target.value.replace(/\D/g, '') })}
-              placeholder="0"
+              placeholder="待補"
               disabled={disabled || draft.pendingDelete}
             />
           </div>

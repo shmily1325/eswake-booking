@@ -286,6 +286,35 @@ function stockBadgeColor(stock: number): { bg: string; color: string; label: str
   return { bg: '#e8f5e9', color: '#2e7d32', label: `庫存 ${stock}` }
 }
 
+/** 售價顯示：null = 「缺」（橘標籤），其他 = "$1,234" */
+function PriceDisplay({ price, align = 'left' }: { price: number | null; align?: 'left' | 'right' }) {
+  if (price == null) {
+    return (
+      <span
+        style={{
+          display: 'inline-block',
+          fontSize: 12,
+          fontWeight: 600,
+          padding: '2px 8px',
+          borderRadius: 6,
+          background: '#fff4e0',
+          color: '#ef6c00',
+          letterSpacing: 0.5,
+          verticalAlign: 'middle',
+        }}
+        title="售價待補"
+      >
+        缺
+      </span>
+    )
+  }
+  return (
+    <span style={{ fontWeight: 600, color: '#222', textAlign: align }}>
+      ${price.toLocaleString()}
+    </span>
+  )
+}
+
 interface ProductCardProps {
   item: VariantListItem
   onClick: () => void
@@ -350,7 +379,9 @@ function ProductCard({ item, onClick }: ProductCardProps) {
           <div style={{ fontSize: 11, color: '#999' }}>貨號 {variant.vendor_code}</div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>${variant.price.toLocaleString()}</span>
+          <span style={{ fontSize: 15 }}>
+            <PriceDisplay price={variant.price} />
+          </span>
           <span
             style={{
               fontSize: 12,
@@ -434,7 +465,9 @@ function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTablePro
                   <td style={{ ...tdStyle(), fontWeight: 600 }}>{it.product.model}</td>
                   <td style={tdStyle()}>{formatAttributes(it.product.category, it.variant.attributes) || '—'}</td>
                   <td style={{ ...tdStyle(), color: '#888', fontSize: 12 }}>{it.variant.vendor_code || '—'}</td>
-                  <td style={{ ...tdStyle('right'), fontWeight: 600 }}>${it.variant.price.toLocaleString()}</td>
+                  <td style={tdStyle('right')}>
+                    <PriceDisplay price={it.variant.price} align="right" />
+                  </td>
                   <td style={tdStyle('center')}>
                     <span
                       style={{

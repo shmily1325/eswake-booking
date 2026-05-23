@@ -45,8 +45,27 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     sortOrder: 10,
     icon: '🦺',
     fields: [
-      { key: 'size', label: '尺寸', type: 'text', required: true },
-      { key: 'color', label: '顏色', type: 'text' },
+      // 全部允許留空（required: false），匯入舊資料時很多欄位是缺漏的
+      {
+        key: 'gender',
+        label: 'M/F',
+        type: 'select',
+        options: ['M', 'F'],
+        required: false,
+      },
+      {
+        key: 'age_group',
+        label: '年齡層',
+        type: 'select',
+        options: ['Adult', 'Teen', 'Child', 'Infant'],
+        required: false,
+      },
+      // 字母尺碼（M / S / L / XS6 / M10 / 3XL / 4XL...），用 text 接受廠商各種編碼
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+      // C/W 用 text 是為了支援童裝的區間值，例如 "71-81"
+      { key: 'chest', label: 'C', type: 'text', required: false },
+      { key: 'waist', label: 'W', type: 'text', required: false },
+      { key: 'color', label: '顏色', type: 'text', required: false },
     ],
   },
   wetsuit: {

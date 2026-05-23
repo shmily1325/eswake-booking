@@ -1103,7 +1103,7 @@ export type Database = {
           product_id: string
           vendor_code: string | null
           attributes: Json
-          price: number
+          price: number | null
           cost: number | null
           stock: number
           image_url: string | null
@@ -1117,7 +1117,7 @@ export type Database = {
           product_id: string
           vendor_code?: string | null
           attributes?: Json
-          price?: number
+          price?: number | null
           cost?: number | null
           stock?: number
           image_url?: string | null
@@ -1131,7 +1131,7 @@ export type Database = {
           product_id?: string
           vendor_code?: string | null
           attributes?: Json
-          price?: number
+          price?: number | null
           cost?: number | null
           stock?: number
           image_url?: string | null
