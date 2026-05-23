@@ -300,7 +300,7 @@ export function ProductManagement() {
             {categories.map((cat) => (
               <CategoryTab
                 key={cat.id}
-                label={`${cat.icon} ${cat.name}`}
+                label={isMobile ? cat.name : `${cat.icon} ${cat.name}`}
                 active={activeTab === cat.id}
                 onClick={() => setActiveTab(cat.id)}
               />
@@ -895,7 +895,7 @@ function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTablePro
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <thead>
             <tr style={{ background: '#f8f8f8', color: '#555', fontWeight: 600 }}>
-              <th style={thStyle('60px')}>圖</th>
+              <th style={thStyle('60px')}>照片</th>
               {showCategoryColumn && <th style={thStyle('80px')}>類別</th>}
               <th style={thStyle('100px')}>品牌</th>
               <th style={thStyle('auto')}>型號</th>

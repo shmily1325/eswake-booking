@@ -74,15 +74,32 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     sortOrder: 20,
     icon: '🧥',
     fields: [
+      // 跟救生衣相同的 gender 設計，全部允許留空
+      {
+        key: 'gender',
+        label: 'M/F',
+        type: 'select',
+        options: ['M', 'F'],
+        required: false,
+      },
+      // 厚度只放數字部分；全身/半身分到 coverage 獨立欄位
       {
         key: 'thickness',
         label: '厚度',
         type: 'select',
-        options: ['1MM(半)', '2/2MM(半)', '3MM(全)', '3/2MM(全)', '5/4MM(全)'],
-        required: true,
+        options: ['1MM', '2MM', '2/2MM', '3MM', '3/2MM', '4/3MM', '5/4MM'],
+        required: false,
       },
-      { key: 'size', label: '尺寸', type: 'text', required: true },
-      { key: 'color', label: '顏色', type: 'text' },
+      {
+        key: 'coverage',
+        label: '全/半身',
+        type: 'select',
+        options: ['全身', '半身'],
+        required: false,
+      },
+      // 尺碼系統混雜（XS/S/M/L/LG/數字…），用 text 自由填
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+      { key: 'color', label: '顏色', type: 'text', required: false },
     ],
   },
 }
