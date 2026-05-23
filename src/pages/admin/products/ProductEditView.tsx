@@ -314,12 +314,18 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
         if (!finalPaths.has(p)) toRemove.add(p)
       }
       await Promise.all(Array.from(toRemove).map((p) => removeProductImage(p)))
+      // 清掉 session 紀錄，避免後續若重新儲存又被算進 toRemove
+      sessionUploadsRef.current.clear()
 
       toast.success(isNew ? '商品已新增' : '已儲存變更')
       onClose(true)
     } catch (e) {
       console.error('[ProductEditView] save failed', e)
       toast.error(e instanceof Error ? e.message : '儲存失敗')
+      // 寫 DB 過程中失敗，可能已有部分 SKU 已寫入新 image_path。
+      // 為了避免後續取消時誤刪已被 DB 引用的圖（造成 broken reference），
+      // 直接清掉 session 追蹤；殘留的孤兒檔由清理腳本處理即可（孤兒可接受、破洞不可）。
+      sessionUploadsRef.current.clear()
     } finally {
       setSaving(false)
     }
@@ -620,6 +626,8 @@ function VariantBlock({
 }: VariantBlockProps) {
   // 折疊：預設新建（id=null）或標記刪除的展開、已有 SKU 在手機上預設折疊
   const [collapsed, setCollapsed] = useState<boolean>(isMobile && draft.id != null && !draft.pendingDelete)
+  // 桌機強制展開（避免從手機切到桌機時內容被卡住看不到；桌機本來也沒折疊互動）
+  const effectiveCollapsed = collapsed && isMobile
 
   /** 規格摘要（給折疊狀態下的 header 顯示） */
   const summary = schemaFields
@@ -666,7 +674,7 @@ function VariantBlock({
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          marginBottom: collapsed ? 0 : 10,
+          marginBottom: effectiveCollapsed ? 0 : 10,
           cursor: headerClickable ? 'pointer' : 'default',
           userSelect: 'none',
         }}
@@ -675,7 +683,7 @@ function VariantBlock({
           SKU #{index + 1}
         </span>
         {/* 折疊狀態下顯示摘要：規格 + 庫存 / 貨號 */}
-        {collapsed && (
+        {effectiveCollapsed && (
           <span
             style={{
               flex: 1,
@@ -691,7 +699,7 @@ function VariantBlock({
             <span style={{ marginLeft: 8, color: '#999' }}>·庫存 {draft.stock || 0}</span>
           </span>
         )}
-        {!collapsed && <span style={{ flex: 1 }} />}
+        {!effectiveCollapsed && <span style={{ flex: 1 }} />}
         {draft.pendingDelete ? (
           <span style={{ color: '#c62828', fontSize: 12 }}>（將刪除）</span>
         ) : null}
@@ -702,7 +710,7 @@ function VariantBlock({
               fontSize: 11,
               color: '#aaa',
               transition: 'transform 0.15s',
-              transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+              transform: effectiveCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
             }}
           >
             ▾
@@ -739,7 +747,7 @@ function VariantBlock({
         )}
       </div>
 
-      {collapsed ? null : (
+      {effectiveCollapsed ? null : (
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <ImageUploader
           value={draft.image_url}
