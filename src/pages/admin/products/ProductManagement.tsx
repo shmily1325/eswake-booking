@@ -30,14 +30,13 @@ export function ProductManagement() {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>({ kind: 'list' })
 
-  // 列表顯示模式：'gallery' = 圖大張只看縮圖；'table' = 詳細表格（只桌機可選）
-  // 手機強制 gallery；桌機把選擇記在 localStorage
+  // 列表顯示模式：'gallery' = 圖大張只看縮圖；'table' = 詳細表格
+  // 預設 gallery，使用者切換後記憶在 localStorage
   const [layout, setLayout] = useState<'gallery' | 'table'>(() => {
     if (typeof window === 'undefined') return 'gallery'
     const saved = window.localStorage.getItem('products_layout')
     return saved === 'table' ? 'table' : 'gallery'
   })
-  const effectiveLayout: 'gallery' | 'table' = isMobile ? 'gallery' : layout
   const setLayoutPersist = (next: 'gallery' | 'table') => {
     setLayout(next)
     if (typeof window !== 'undefined') window.localStorage.setItem('products_layout', next)
@@ -217,10 +216,8 @@ export function ProductManagement() {
               )
             })}
           </div>
-          {/* 桌機才顯示「畫廊 / 表格」切換，手機強制畫廊 */}
-          {!isMobile && (
-            <LayoutToggle layout={layout} onChange={setLayoutPersist} />
-          )}
+          {/* 畫廊 / 表格切換（手機桌機都可，default 畫廊） */}
+          <LayoutToggle layout={layout} onChange={setLayoutPersist} />
         </div>
 
         {/* 列表 */}
@@ -237,7 +234,7 @@ export function ProductManagement() {
               setView({ kind: 'create', defaultCategory: defaultCat })
             }}
           />
-        ) : effectiveLayout === 'gallery' ? (
+        ) : layout === 'gallery' ? (
           <ProductGalleryGrid
             items={filteredItems}
             isMobile={isMobile}
