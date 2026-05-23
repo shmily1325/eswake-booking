@@ -33,3 +33,11 @@ dist-ssr
 
 # Test coverage
 coverage
+
+# Inventory import 工具的本地素材（不入 repo）
+tools/inventory-import/*.xlsx
+tools/inventory-import/_inspect/
+tools/inventory-import/extracted/
+tools/inventory-import/.venv/
+tools/inventory-import/__pycache__/
+tools/inventory-import/.env
