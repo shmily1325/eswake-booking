@@ -16,15 +16,15 @@ BEGIN
 
   -- ===== Barrel =====
 
-  -- Barrel / Brlsu0492（1 SKU）
-  INSERT INTO products (category, brand, model) VALUES ('wetsuit', 'Barrel', 'Brlsu0492') RETURNING id INTO pid;
+  -- Barrel / BI2MWNP01（1 SKU）
+  INSERT INTO products (category, brand, model) VALUES ('wetsuit', 'Barrel', 'BI2MWNP01') RETURNING id INTO pid;
   INSERT INTO product_variants (product_id, vendor_code, attributes, price, stock) VALUES
-    (pid, 'BI2MWNP01', '{"thickness":"3/2","coverage":"全身","size":"LG","color":"黑"}'::jsonb, 10500, 1);
+    (pid, 'Brlsu0492', '{"thickness":"3/2","coverage":"全身","size":"LG","color":"黑"}'::jsonb, 10500, 1);
 
-  -- Barrel / Brlsu0479（1 SKU）
-  INSERT INTO products (category, brand, model) VALUES ('wetsuit', 'Barrel', 'Brlsu0479') RETURNING id INTO pid;
+  -- Barrel / XXs19_wfs_03（1 SKU）
+  INSERT INTO products (category, brand, model) VALUES ('wetsuit', 'Barrel', 'XXs19_wfs_03') RETURNING id INTO pid;
   INSERT INTO product_variants (product_id, vendor_code, attributes, price, stock) VALUES
-    (pid, 'XXs19_wfs_03', '{"thickness":"5/4","coverage":"全身","size":"XS","color":"黑水藍"}'::jsonb, 7650, 1);
+    (pid, 'Brlsu0479', '{"thickness":"5/4","coverage":"全身","size":"XS","color":"黑水藍"}'::jsonb, 7650, 1);
 
   -- ===== Roxy =====
 
