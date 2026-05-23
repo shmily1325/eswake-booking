@@ -421,6 +421,7 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
   const { variant, product } = item
   const cat = getCategory(product.category)
   const stock = stockBadgeColor(variant.stock)
+  const attrText = formatAttributes(product.category, variant.attributes)
 
   return (
     <button
@@ -515,6 +516,20 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
         >
           {product.model}
         </div>
+        {attrText && (
+          <div
+            style={{
+              fontSize: 11,
+              color: '#777',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            title={attrText}
+          >
+            {attrText}
+          </div>
+        )}
         <div style={{ marginTop: 2, fontSize: 13 }}>
           <PriceDisplay price={variant.price} />
         </div>
