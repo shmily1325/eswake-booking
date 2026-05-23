@@ -65,9 +65,10 @@ export function ImageUploader({
     onChange({ url: null, path: null })
   }
 
+  // portrait 直式：寬度 = size、高度 = size * 16/9（手機直拍比例）
   const containerStyle: React.CSSProperties = {
     width: size,
-    height: size,
+    height: Math.round((size * 16) / 9),
     borderRadius: 12,
     border: value ? '1px solid #e0e0e0' : '2px dashed #c8c8c8',
     background: value ? '#fff' : '#fafafa',

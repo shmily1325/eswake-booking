@@ -342,10 +342,11 @@ function ProductCard({ item, onClick }: ProductCardProps) {
         boxSizing: 'border-box',
       }}
     >
+      {/* 圖片區：portrait 直式（9:16），對齊手機直拍比例 */}
       <div
         style={{
-          width: 80,
-          height: 80,
+          width: 60,
+          height: 107,
           borderRadius: 10,
           background: '#f5f5f5',
           flexShrink: 0,
@@ -435,17 +436,18 @@ function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTablePro
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <td style={tdStyle()}>
+                    {/* portrait 直式縮圖（9:16） */}
                     <div
                       style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 8,
+                        width: 32,
+                        height: 57,
+                        borderRadius: 6,
                         background: '#f5f5f5',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         overflow: 'hidden',
-                        fontSize: 22,
+                        fontSize: 18,
                         color: '#bbb',
                       }}
                     >
