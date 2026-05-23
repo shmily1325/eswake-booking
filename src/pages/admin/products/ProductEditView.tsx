@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Badge, useToast, ConfirmModal } from '../../../components/ui'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { ImageUploader } from './ImageUploader'
@@ -20,6 +20,8 @@ interface ProductEditViewProps {
   productId: string | null
   /** 預設類別（新增時用，從目前 Tab 帶入） */
   defaultCategory?: string
+  /** 已存在的商品（給品牌 / 型號 autocomplete 用） */
+  existingProducts?: ReadonlyArray<{ category: string; brand: string; model: string }>
   onClose: (changed: boolean) => void
   currentUserEmail?: string | null
 }
@@ -33,6 +35,12 @@ interface DraftVariant {
   stock: string
   image_url: string | null
   image_path: string | null
+  /**
+   * 編輯前 DB 的原始 image_path。
+   * 儲存成功後若跟最新 image_path 不一樣，要把這張原始檔從 storage 刪掉。
+   * 取消編輯時，這張原始檔保留（DB 還引用它）。
+   */
+  originalImagePath: string | null
   /** 已存在但需刪除的 SKU 在儲存時批次處理 */
   pendingDelete?: boolean
 }
@@ -51,6 +59,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     stock: String(v.stock ?? 0),
     image_url: v.image_url,
     image_path: v.image_path,
+    originalImagePath: v.image_path,
   }
 }
 
@@ -63,10 +72,11 @@ function emptyDraft(): DraftVariant {
     stock: '0',
     image_url: null,
     image_path: null,
+    originalImagePath: null,
   }
 }
 
-export function ProductEditView({ productId, defaultCategory, onClose, currentUserEmail }: ProductEditViewProps) {
+export function ProductEditView({ productId, defaultCategory, existingProducts = [], onClose, currentUserEmail }: ProductEditViewProps) {
   const toast = useToast()
   const { isMobile } = useResponsive()
   const isNew = productId == null
@@ -82,7 +92,39 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
   const [drafts, setDrafts] = useState<DraftVariant[]>(() => (isNew ? [emptyDraft()] : []))
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  /**
+   * 這個編輯 session 內所有「上傳到 storage 的新檔路徑」。
+   * 用來在 save / cancel 時判斷哪些是孤兒、要不要刪。
+   * - save 成功後：只保留每個 variant 最終的 image_path，其餘的全刪
+   * - cancel 時：DB 沒寫入，所有 session uploads 都是孤兒，全刪
+   */
+  const sessionUploadsRef = useRef<Set<string>>(new Set())
+  const trackUpload = (path: string) => {
+    sessionUploadsRef.current.add(path)
+  }
+
   const cat = useMemo(() => getCategory(category), [category])
+
+  /** 同類別下已出現過的品牌（autocomplete 用） */
+  const brandSuggestions = useMemo(() => {
+    const set = new Set<string>()
+    for (const p of existingProducts) {
+      if (p.category === category && p.brand.trim()) set.add(p.brand.trim())
+    }
+    return Array.from(set).sort()
+  }, [existingProducts, category])
+
+  /** 同品牌下已出現過的型號（依目前選擇的 brand 動態提示） */
+  const modelSuggestions = useMemo(() => {
+    const trimmedBrand = brand.trim().toLowerCase()
+    const set = new Set<string>()
+    for (const p of existingProducts) {
+      if (p.category !== category) continue
+      if (trimmedBrand && p.brand.trim().toLowerCase() !== trimmedBrand) continue
+      if (p.model.trim()) set.add(p.model.trim())
+    }
+    return Array.from(set).sort()
+  }, [existingProducts, category, brand])
 
   useEffect(() => {
     if (isNew) return
@@ -131,6 +173,31 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
     setDrafts((prev) => [...prev, emptyDraft()])
   }
 
+  /**
+   * 複製最後一筆有效（非 pendingDelete）SKU 當新規格的範本，
+   * 圖片不複製（避免兩個 variant 引用同一張，造成刪檔複雜化）。
+   */
+  const handleDuplicateLast = () => {
+    const lastActive = [...drafts].reverse().find((d) => !d.pendingDelete)
+    if (!lastActive) {
+      handleAddVariant()
+      return
+    }
+    setDrafts((prev) => [
+      ...prev,
+      {
+        id: null,
+        vendor_code: lastActive.vendor_code,
+        attributes: { ...lastActive.attributes },
+        price: lastActive.price,
+        stock: '0',
+        image_url: null,
+        image_path: null,
+        originalImagePath: null,
+      },
+    ])
+  }
+
   const handleRemoveVariant = (idx: number) => {
     const target = drafts[idx]
     if (!target) return
@@ -138,8 +205,8 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
       // 已存在於 DB 的 SKU：標記 pendingDelete，儲存時刪除
       setDrafts((prev) => prev.map((d, i) => (i === idx ? { ...d, pendingDelete: true } : d)))
     } else {
-      // 新增中尚未存檔：直接從 UI 拿掉，並順手把已上傳的圖片清掉
-      if (target.image_path) void removeProductImage(target.image_path)
+      // 新增中尚未存檔：直接從 UI 拿掉
+      // image_path 若是 session 上傳，會在 save / cancel 時統一清理，這裡不立刻刪
       setDrafts((prev) => prev.filter((_, i) => i !== idx))
     }
   }
@@ -222,6 +289,32 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
         }
       }
 
+      // ===== Storage 清理：刪掉這個 session 內不再被引用的舊圖 =====
+      // 1) 收集所有「最終會被 DB 引用」的 path
+      const finalPaths = new Set<string>()
+      for (const d of drafts) {
+        if (d.pendingDelete) {
+          // 軟刪不清圖：原始 image_path 保留，以防誤刪復原
+          if (d.originalImagePath) finalPaths.add(d.originalImagePath)
+        } else if (d.image_path) {
+          finalPaths.add(d.image_path)
+        }
+      }
+      // 2) 蒐集「應該被刪掉」的 path：
+      //    - 每個 variant 的 originalImagePath（若跟新 image_path 不同且不再被引用）
+      //    - 這個 session 上傳但最終沒被任何 variant 採用的（中途又換掉的中間檔）
+      const toRemove = new Set<string>()
+      for (const d of drafts) {
+        if (d.pendingDelete) continue
+        if (d.originalImagePath && d.originalImagePath !== d.image_path) {
+          if (!finalPaths.has(d.originalImagePath)) toRemove.add(d.originalImagePath)
+        }
+      }
+      for (const p of sessionUploadsRef.current) {
+        if (!finalPaths.has(p)) toRemove.add(p)
+      }
+      await Promise.all(Array.from(toRemove).map((p) => removeProductImage(p)))
+
       toast.success(isNew ? '商品已新增' : '已儲存變更')
       onClose(true)
     } catch (e) {
@@ -232,11 +325,27 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
     }
   }
 
+  /** 取消編輯：把這個 session 上傳但沒寫入 DB 的圖全清掉，避免孤兒檔 */
+  const handleCancel = () => {
+    if (sessionUploadsRef.current.size > 0) {
+      const paths = Array.from(sessionUploadsRef.current)
+      sessionUploadsRef.current.clear()
+      void Promise.all(paths.map((p) => removeProductImage(p)))
+    }
+    onClose(false)
+  }
+
   const handleDeleteProduct = async () => {
     if (!productId) return
     setSaving(true)
     try {
       await deleteProduct(productId)
+      // 刪商品時也順手清掉這個 session 上傳但還沒被 DB 引用的孤兒
+      if (sessionUploadsRef.current.size > 0) {
+        const paths = Array.from(sessionUploadsRef.current)
+        sessionUploadsRef.current.clear()
+        void Promise.all(paths.map((p) => removeProductImage(p)))
+      }
       toast.success('商品已刪除')
       onClose(true)
     } catch (e) {
@@ -283,7 +392,7 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
           flexWrap: 'wrap',
         }}
       >
-        <Button variant="outline" size="small" onClick={() => onClose(false)} disabled={saving}>
+        <Button variant="outline" size="small" onClick={handleCancel} disabled={saving}>
           ← 返回
         </Button>
         <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, flex: 1 }}>
@@ -336,7 +445,14 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
               onChange={(e) => setBrand(e.target.value)}
               placeholder="例如：Follow"
               disabled={saving}
+              list="product-brand-suggestions"
+              autoComplete="off"
             />
+            <datalist id="product-brand-suggestions">
+              {brandSuggestions.map((b) => (
+                <option key={b} value={b} />
+              ))}
+            </datalist>
           </div>
           <div>
             <label style={labelStyle}>型號 *</label>
@@ -346,7 +462,14 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
               onChange={(e) => setModel(e.target.value)}
               placeholder="例如：Signal Ladies"
               disabled={saving}
+              list="product-model-suggestions"
+              autoComplete="off"
             />
+            <datalist id="product-model-suggestions">
+              {modelSuggestions.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
           </div>
           <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
             <label style={labelStyle}>備註</label>
@@ -389,12 +512,22 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
             onAttributeChange={(key, val) => updateDraftAttribute(idx, key, val)}
             onRemove={() => handleRemoveVariant(idx)}
             onRestore={() => handleRestoreVariant(idx)}
+            onImageUpload={trackUpload}
           />
         ))}
 
-        <Button variant="outline" size="small" onClick={handleAddVariant} disabled={saving}>
-          + 新增規格 (SKU)
-        </Button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button variant="outline" size="small" onClick={handleAddVariant} disabled={saving}>
+            + 新增規格 (SKU)
+          </Button>
+          {drafts.some((d) => !d.pendingDelete) && (
+            <span title="以最後一筆有效規格為範本（不複製圖、庫存歸 0）">
+              <Button variant="outline" size="small" onClick={handleDuplicateLast} disabled={saving}>
+                ⎘ 複製上一筆
+              </Button>
+            </span>
+          )}
+        </div>
       </section>
 
       {/* 危險區（編輯模式才有） */}
@@ -434,7 +567,7 @@ export function ProductEditView({ productId, defaultCategory, onClose, currentUs
             gap: 10,
           }}
         >
-          <Button variant="outline" onClick={() => onClose(false)} disabled={saving} style={{ flex: 1 }}>
+          <Button variant="outline" onClick={handleCancel} disabled={saving} style={{ flex: 1 }}>
             取消
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={saving} style={{ flex: 2 }}>
@@ -470,6 +603,7 @@ interface VariantBlockProps {
   onAttributeChange: (key: string, value: string) => void
   onRemove: () => void
   onRestore: () => void
+  onImageUpload: (path: string) => void
 }
 
 function VariantBlock({
@@ -482,7 +616,21 @@ function VariantBlock({
   onAttributeChange,
   onRemove,
   onRestore,
+  onImageUpload,
 }: VariantBlockProps) {
+  // 折疊：預設新建（id=null）或標記刪除的展開、已有 SKU 在手機上預設折疊
+  const [collapsed, setCollapsed] = useState<boolean>(isMobile && draft.id != null && !draft.pendingDelete)
+
+  /** 規格摘要（給折疊狀態下的 header 顯示） */
+  const summary = schemaFields
+    .map((f) => {
+      const v = draft.attributes[f.key]
+      if (v == null || String(v).trim() === '') return null
+      return f.displaySuffix ? `${v}${f.displaySuffix}` : String(v)
+    })
+    .filter((x): x is string => x !== null)
+    .join(' / ')
+
   const blockStyle: React.CSSProperties = {
     border: '1px solid #ececec',
     borderRadius: 12,
@@ -503,23 +651,76 @@ function VariantBlock({
   }
   const labelStyle: React.CSSProperties = { fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }
 
+  /** 手機才允許 collapse；點 header 切換 */
+  const headerClickable = isMobile && !draft.pendingDelete
+  const onHeaderClick = () => {
+    if (headerClickable) setCollapsed((c) => !c)
+  }
+  const stop = (e: React.MouseEvent) => e.stopPropagation()
+
   return (
     <div style={blockStyle}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-        <span style={{ fontWeight: 600, fontSize: 13, color: '#555', flex: 1 }}>
+      <div
+        onClick={onHeaderClick}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: collapsed ? 0 : 10,
+          cursor: headerClickable ? 'pointer' : 'default',
+          userSelect: 'none',
+        }}
+      >
+        <span style={{ fontWeight: 600, fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>
           SKU #{index + 1}
-          {draft.pendingDelete && (
-            <span style={{ marginLeft: 8, color: '#c62828', fontSize: 12 }}>（將刪除）</span>
-          )}
         </span>
+        {/* 折疊狀態下顯示摘要：規格 + 庫存 / 貨號 */}
+        {collapsed && (
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 12,
+              color: '#777',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {summary || draft.vendor_code || '（空白）'}
+            <span style={{ marginLeft: 8, color: '#999' }}>·庫存 {draft.stock || 0}</span>
+          </span>
+        )}
+        {!collapsed && <span style={{ flex: 1 }} />}
         {draft.pendingDelete ? (
-          <Button variant="outline" size="small" onClick={onRestore} disabled={disabled}>
-            復原
-          </Button>
+          <span style={{ color: '#c62828', fontSize: 12 }}>（將刪除）</span>
+        ) : null}
+        {headerClickable && (
+          <span
+            aria-hidden
+            style={{
+              fontSize: 11,
+              color: '#aaa',
+              transition: 'transform 0.15s',
+              transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+            }}
+          >
+            ▾
+          </span>
+        )}
+        {draft.pendingDelete ? (
+          <span onClick={stop}>
+            <Button variant="outline" size="small" onClick={onRestore} disabled={disabled}>
+              復原
+            </Button>
+          </span>
         ) : (
           <button
             type="button"
-            onClick={onRemove}
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove()
+            }}
             disabled={disabled}
             aria-label="移除此規格"
             title="移除此規格"
@@ -538,6 +739,7 @@ function VariantBlock({
         )}
       </div>
 
+      {collapsed ? null : (
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <ImageUploader
           value={draft.image_url}
@@ -545,6 +747,7 @@ function VariantBlock({
           variantId={draft.id}
           disabled={disabled || draft.pendingDelete}
           onChange={(next) => onChange({ image_url: next.url, image_path: next.path })}
+          onUpload={onImageUpload}
           size={isMobile ? 80 : 96}
         />
 
@@ -618,6 +821,7 @@ function VariantBlock({
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

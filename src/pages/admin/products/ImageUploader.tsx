@@ -1,16 +1,22 @@
 import { useRef, useState } from 'react'
-import { uploadProductImage, removeProductImage } from '../../../utils/imageUpload'
+import { uploadProductImage } from '../../../utils/imageUpload'
 import { useToast } from '../../../components/ui'
 
 interface ImageUploaderProps {
   /** 目前圖片 URL（沒有則顯示空白上傳區） */
   value: string | null | undefined
-  /** 對應的 storage path，用來換圖時刪舊檔 */
+  /** 對應的 storage path（資訊用，不會在這裡刪檔） */
   path?: string | null
   /** 用於組路徑（傳 SKU id）；新建尚無 id 時可留空 */
   variantId?: string | null
   /** 上傳完成或刪除時的回呼，回傳新的 url + path（刪除時兩者都是 null） */
   onChange: (next: { url: string | null; path: string | null }) => void
+  /**
+   * 上傳成功後通知（給 ProductEditView 紀錄成 "session upload"）。
+   * 真正的 storage 刪檔交給 ProductEditView 在 save / cancel 時統一處理，
+   * 避免「上傳完換圖、最後又取消編輯」造成 DB 引用到已刪檔的 broken reference。
+   */
+  onUpload?: (newPath: string) => void
   /** 顯示尺寸（px），預設 96 */
   size?: number
   /** 唯讀（不可上傳/刪除） */
@@ -19,9 +25,9 @@ interface ImageUploaderProps {
 
 export function ImageUploader({
   value,
-  path,
   variantId,
   onChange,
+  onUpload,
   size = 96,
   disabled,
 }: ImageUploaderProps) {
@@ -45,10 +51,7 @@ export function ImageUploader({
     setUploading(true)
     try {
       const result = await uploadProductImage(file, { variantId })
-      // 換圖：刪掉舊檔
-      if (path) {
-        void removeProductImage(path)
-      }
+      onUpload?.(result.path)
       onChange({ url: result.publicUrl, path: result.path })
     } catch (err) {
       console.error('[ImageUploader] upload failed', err)
@@ -61,7 +64,7 @@ export function ImageUploader({
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (disabled || uploading) return
-    if (path) void removeProductImage(path)
+    // 只在 UI 端標記為「已移除」；實際 storage 檔由 ProductEditView 在 save 時統一刪
     onChange({ url: null, path: null })
   }
 

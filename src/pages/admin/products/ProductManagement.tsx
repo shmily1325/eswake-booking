@@ -7,7 +7,7 @@ import { useResponsive } from '../../../hooks/useResponsive'
 import { Button, Badge, useToast, ToastContainer } from '../../../components/ui'
 import { hasEditorFeatureAsync } from '../../../utils/auth'
 import { CATEGORY_SCHEMAS, formatAttributes, getAllCategories, getCategory } from './schema'
-import { fetchAllProductsWithVariants, flattenToVariantItems } from './api'
+import { adjustStock, fetchAllProductsWithVariants, flattenToVariantItems } from './api'
 import type { ProductWithVariants, VariantListItem } from './types'
 import { ProductEditView } from './ProductEditView'
 
@@ -100,6 +100,40 @@ export function ProductManagement() {
     }
   }
 
+  /**
+   * 卡片快捷調整庫存（±1）：先樂觀更新 UI，DB 失敗時回滾並 toast。
+   * 不開編輯頁，避免使用者頻繁切換。
+   */
+  const handleAdjustStock = async (variantId: string, delta: number) => {
+    let prevStock = -1
+    let nextStock = -1
+    setProducts((prev) =>
+      prev.map((p) => ({
+        ...p,
+        variants: p.variants.map((v) => {
+          if (v.id !== variantId) return v
+          prevStock = v.stock
+          nextStock = Math.max(0, v.stock + delta)
+          return { ...v, stock: nextStock }
+        }),
+      })),
+    )
+    if (prevStock === nextStock) return // 已經 0 還按 −
+    try {
+      await adjustStock(variantId, nextStock)
+    } catch (e) {
+      console.error('[ProductManagement] adjustStock failed', e)
+      toast.error('庫存更新失敗')
+      // rollback
+      setProducts((prev) =>
+        prev.map((p) => ({
+          ...p,
+          variants: p.variants.map((v) => (v.id === variantId ? { ...v, stock: prevStock } : v)),
+        })),
+      )
+    }
+  }
+
   const allItems: VariantListItem[] = useMemo(() => flattenToVariantItems(products), [products])
 
   /** 屬於目前 tab 的 items（在套 filter 之前），給儀表板算「全庫總數」用 */
@@ -180,6 +214,7 @@ export function ProductManagement() {
           <ProductEditView
             productId={view.kind === 'edit' ? view.productId : null}
             defaultCategory={view.kind === 'create' ? view.defaultCategory : undefined}
+            existingProducts={products.map((p) => ({ category: p.category, brand: p.brand, model: p.model }))}
             currentUserEmail={user?.email ?? null}
             onClose={(changed) => {
               setView({ kind: 'list' })
@@ -332,6 +367,13 @@ export function ProductManagement() {
             items={filteredItems}
             isMobile={isMobile}
             onCardClick={(productId) => setView({ kind: 'edit', productId })}
+            onAdjustStock={handleAdjustStock}
+          />
+        ) : isMobile ? (
+          <MobileListView
+            items={filteredItems}
+            onRowClick={(productId) => setView({ kind: 'edit', productId })}
+            onAdjustStock={handleAdjustStock}
           />
         ) : (
           <DesktopTable
@@ -693,8 +735,9 @@ interface ProductGalleryGridProps {
   items: VariantListItem[]
   isMobile: boolean
   onCardClick: (productId: string) => void
+  onAdjustStock: (variantId: string, delta: number) => void
 }
-function ProductGalleryGrid({ items, isMobile, onCardClick }: ProductGalleryGridProps) {
+function ProductGalleryGrid({ items, isMobile, onCardClick, onAdjustStock }: ProductGalleryGridProps) {
   return (
     <div
       style={{
@@ -711,6 +754,7 @@ function ProductGalleryGrid({ items, isMobile, onCardClick }: ProductGalleryGrid
           key={it.variant.id}
           item={it}
           onClick={() => onCardClick(it.product.id)}
+          onAdjust={(delta) => onAdjustStock(it.variant.id, delta)}
         />
       ))}
     </div>
@@ -720,8 +764,9 @@ function ProductGalleryGrid({ items, isMobile, onCardClick }: ProductGalleryGrid
 interface GalleryCardProps {
   item: VariantListItem
   onClick: () => void
+  onAdjust: (delta: number) => void
 }
-function GalleryCard({ item, onClick }: GalleryCardProps) {
+function GalleryCard({ item, onClick, onAdjust }: GalleryCardProps) {
   const { variant, product } = item
   const cat = getCategory(product.category)
   const stock = stockBadgeColor(variant.stock)
@@ -779,23 +824,35 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
         ) : (
           <ImagePlaceholder icon={cat?.icon ?? '📦'} />
         )}
-        {/* 庫存標籤浮在右上 */}
-        <span
-          style={{
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            fontSize: 10,
-            fontWeight: 600,
-            padding: '2px 7px',
-            borderRadius: 999,
-            background: stock.bg,
-            color: stock.color,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-          }}
-        >
-          {stock.label}
-        </span>
+        {/* 庫存：浮在右上的「− N +」三聯按鈕（點不冒泡到卡片） */}
+        <StockStepper
+          variantStock={variant.stock}
+          stockColor={stock}
+          onAdjust={onAdjust}
+          style={{ position: 'absolute', top: 6, right: 6 }}
+        />
+        {/* 有備註：左上小 icon */}
+        {product.description && (
+          <span
+            title={product.description}
+            style={{
+              position: 'absolute',
+              top: 6,
+              left: 6,
+              width: 22,
+              height: 22,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.85)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 11,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            }}
+          >
+            📝
+          </span>
+        )}
       </div>
 
       {/* 文字區：跟圖之間用 padding 自然分隔 */}
@@ -878,6 +935,277 @@ function ImagePlaceholder({ icon }: { icon: string }) {
   )
 }
 
+// ============================================================
+//  手機列表（取代 table）：每筆 SKU 一張橫式卡片，圖在左、資訊在右
+// ============================================================
+interface MobileListViewProps {
+  items: VariantListItem[]
+  onRowClick: (productId: string) => void
+  onAdjustStock: (variantId: string, delta: number) => void
+}
+function MobileListView({ items, onRowClick, onAdjustStock }: MobileListViewProps) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {items.map((it) => (
+        <MobileListRow
+          key={it.variant.id}
+          item={it}
+          onClick={() => onRowClick(it.product.id)}
+          onAdjust={(delta) => onAdjustStock(it.variant.id, delta)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function MobileListRow({
+  item,
+  onClick,
+  onAdjust,
+}: {
+  item: VariantListItem
+  onClick: () => void
+  onAdjust: (delta: number) => void
+}) {
+  const { variant, product } = item
+  const cat = getCategory(product.category)
+  const stock = stockBadgeColor(variant.stock)
+  const attrText = formatAttributes(product.category, variant.attributes)
+  const lowStock = variant.stock > 0 && variant.stock <= 2
+  const outOfStock = variant.stock <= 0
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        gap: 12,
+        background: '#fff',
+        border: '1px solid ' + (outOfStock ? '#f4cdcd' : lowStock ? '#f5dbb6' : '#ececec'),
+        borderRadius: 12,
+        padding: 10,
+        textAlign: 'left',
+        cursor: 'pointer',
+        width: '100%',
+        boxSizing: 'border-box',
+        alignItems: 'stretch',
+      }}
+    >
+      {/* 縮圖（9:16，55x98） */}
+      <div
+        style={{
+          width: 55,
+          height: 98,
+          flexShrink: 0,
+          background: '#f6f6f7',
+          borderRadius: 8,
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {variant.image_url ? (
+          <img
+            src={variant.image_url}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            loading="lazy"
+          />
+        ) : (
+          <span style={{ fontSize: 24, color: '#cfcfcf' }}>{cat?.icon ?? '📦'}</span>
+        )}
+      </div>
+
+      {/* 內容區 */}
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 10,
+              color: '#999',
+              fontWeight: 500,
+              textTransform: 'uppercase',
+              letterSpacing: 0.3,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {product.brand}
+          </div>
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: '#222',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              lineHeight: 1.3,
+            }}
+            title={product.model}
+          >
+            {product.model}
+          </div>
+          {attrText && (
+            <div
+              style={{
+                fontSize: 11,
+                color: '#777',
+                marginTop: 2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+              title={attrText}
+            >
+              {attrText}
+            </div>
+          )}
+          {variant.vendor_code && (
+            <div
+              style={{
+                fontSize: 10,
+                color: '#aaa',
+                marginTop: 2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              #{variant.vendor_code}
+            </div>
+          )}
+          {product.description && (
+            <div
+              title={product.description}
+              style={{
+                fontSize: 11,
+                color: '#1565c0',
+                marginTop: 2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              📝 {product.description}
+            </div>
+          )}
+        </div>
+
+        {/* 底部：價格 + 庫存 */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: 6,
+          }}
+        >
+          <PriceDisplay price={variant.price} />
+          <StockStepper variantStock={variant.stock} stockColor={stock} onAdjust={onAdjust} />
+        </div>
+      </div>
+    </button>
+  )
+}
+
+/**
+ * 庫存快速調整（− N +）— 點擊不冒泡到外層 card / row。
+ * 庫存 0 時 − 按鈕會被禁用。
+ */
+function StockStepper({
+  variantStock,
+  stockColor,
+  onAdjust,
+  style,
+}: {
+  variantStock: number
+  stockColor: { bg: string; color: string; label: string }
+  onAdjust: (delta: number) => void
+  style?: React.CSSProperties
+}) {
+  const cantDecrement = variantStock <= 0
+  const stop = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+  }
+  const btnStyle: React.CSSProperties = {
+    border: 'none',
+    background: 'transparent',
+    color: stockColor.color,
+    fontSize: 14,
+    lineHeight: 1,
+    padding: '0 8px',
+    cursor: 'pointer',
+    fontWeight: 700,
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+  }
+  return (
+    <div
+      onClick={stop}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        background: stockColor.bg,
+        color: stockColor.color,
+        borderRadius: 999,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+        height: 22,
+        ...style,
+      }}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          stop(e)
+          if (!cantDecrement) onAdjust(-1)
+        }}
+        disabled={cantDecrement}
+        aria-label="減少庫存 1"
+        style={{ ...btnStyle, opacity: cantDecrement ? 0.35 : 1, cursor: cantDecrement ? 'not-allowed' : 'pointer' }}
+      >
+        −
+      </button>
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          minWidth: 18,
+          textAlign: 'center',
+          padding: '0 2px',
+          letterSpacing: 0.2,
+        }}
+      >
+        {variantStock}
+      </span>
+      <button
+        type="button"
+        onClick={(e) => {
+          stop(e)
+          onAdjust(1)
+        }}
+        aria-label="增加庫存 1"
+        style={btnStyle}
+      >
+        +
+      </button>
+    </div>
+  )
+}
+
 interface DesktopTableProps {
   items: VariantListItem[]
   showCategoryColumn: boolean
@@ -908,6 +1236,7 @@ function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTablePro
                 <tr
                   key={it.variant.id}
                   onClick={() => onRowClick(it.product.id)}
+                  title={it.product.description ?? undefined}
                   style={{ cursor: 'pointer', borderTop: '1px solid #f0f0f0' }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = '#fafbfc')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
