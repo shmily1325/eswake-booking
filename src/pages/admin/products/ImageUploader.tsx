@@ -150,11 +150,14 @@ export function ImageUploader({
           上傳中…
         </div>
       )}
+      {/*
+        accept="image/*"：限定圖片檔
+        不設 capture：手機會跳出原生選單（相簿 / 拍照 / 檔案），不會直接強制開相機
+      */}
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         onChange={handleChange}
         style={{ display: 'none' }}
       />
