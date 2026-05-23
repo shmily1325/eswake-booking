@@ -30,6 +30,35 @@ export function ProductManagement() {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>({ kind: 'list' })
 
+  // 篩選狀態
+  const [onlyMissingPrice, setOnlyMissingPrice] = useState(false)
+  const [onlyMissingImage, setOnlyMissingImage] = useState(false)
+  const [selectedSizes, setSelectedSizes] = useState<Set<string>>(new Set())
+
+  /** 切 tab 時把 size 選擇清掉（避免某 size 不存在新 tab 結果為 0 的困惑） */
+  const switchTab = (next: string) => {
+    setActiveTab(next)
+    setSelectedSizes(new Set())
+  }
+
+  const toggleSize = (size: string) => {
+    setSelectedSizes((prev) => {
+      const next = new Set(prev)
+      if (next.has(size)) next.delete(size)
+      else next.add(size)
+      return next
+    })
+  }
+
+  const clearAllFilters = () => {
+    setOnlyMissingPrice(false)
+    setOnlyMissingImage(false)
+    setSelectedSizes(new Set())
+    setSearch('')
+  }
+  const hasAnyFilter =
+    onlyMissingPrice || onlyMissingImage || selectedSizes.size > 0 || search.trim() !== ''
+
   // 列表顯示模式：'gallery' = 圖大張只看縮圖；'table' = 詳細表格
   // 預設 gallery，使用者切換後記憶在 localStorage
   const [layout, setLayout] = useState<'gallery' | 'table'>(() => {
@@ -80,13 +109,45 @@ export function ProductManagement() {
 
   const allItems: VariantListItem[] = useMemo(() => flattenToVariantItems(products), [products])
 
-  const filteredItems: VariantListItem[] = useMemo(() => {
-    let items = allItems
-    if (activeTab !== 'all') {
-      items = items.filter((it) => it.product.category === activeTab)
+  /** 屬於目前 tab 的 items（在套 filter 之前），用來算 size chip 選項跟 tab 計數 */
+  const tabItems: VariantListItem[] = useMemo(() => {
+    if (activeTab === 'all') return allItems
+    return allItems.filter((it) => it.product.category === activeTab)
+  }, [allItems, activeTab])
+
+  /** 目前 tab 出現過的 size 值（distinct + 排序），給尺寸 chip 用 */
+  const availableSizes: string[] = useMemo(() => {
+    const set = new Set<string>()
+    for (const it of tabItems) {
+      const v = it.variant.attributes?.size
+      if (v != null && String(v).trim() !== '') set.add(String(v).trim())
     }
+    return Array.from(set).sort(compareSize)
+  }, [tabItems])
+
+  const filteredItems: VariantListItem[] = useMemo(() => {
+    let items = tabItems
+
+    // 狀態 chips：缺價、沒圖
+    if (onlyMissingPrice) {
+      items = items.filter((it) => it.variant.price == null)
+    }
+    if (onlyMissingImage) {
+      items = items.filter((it) => !it.variant.image_url)
+    }
+
+    // 尺寸 chips：同欄位多選 = OR
+    if (selectedSizes.size > 0) {
+      items = items.filter((it) => {
+        const s = it.variant.attributes?.size
+        return s != null && selectedSizes.has(String(s).trim())
+      })
+    }
+
+    // 搜尋：多關鍵字（空白分隔）AND，每個 token 都要 match
     const q = search.trim().toLowerCase()
     if (q) {
+      const tokens = q.split(/\s+/).filter(Boolean)
       items = items.filter((it) => {
         const haystack = [
           it.product.brand,
@@ -96,11 +157,11 @@ export function ProductManagement() {
         ]
           .join(' ')
           .toLowerCase()
-        return haystack.includes(q)
+        return tokens.every((t) => haystack.includes(t))
       })
     }
     return items
-  }, [allItems, activeTab, search])
+  }, [tabItems, search, onlyMissingPrice, onlyMissingImage, selectedSizes])
 
   const categories = useMemo(() => getAllCategories(), [])
 
@@ -153,7 +214,7 @@ export function ProductManagement() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜尋品牌、型號、貨號、規格…"
+              placeholder="搜尋品牌、型號、貨號、顏色…（多關鍵字以空白分隔）"
               style={{
                 width: '100%',
                 padding: '10px 14px 10px 36px',
@@ -199,19 +260,22 @@ export function ProductManagement() {
           >
             <CategoryTab
               label="全部"
-              count={allItems.length}
+              skuCount={allItems.length}
+              stockTotal={allItems.reduce((sum, it) => sum + (it.variant.stock || 0), 0)}
               active={activeTab === 'all'}
-              onClick={() => setActiveTab('all')}
+              onClick={() => switchTab('all')}
             />
             {categories.map((cat) => {
-              const count = allItems.filter((it) => it.product.category === cat.id).length
+              const subset = allItems.filter((it) => it.product.category === cat.id)
+              const stockTotal = subset.reduce((sum, it) => sum + (it.variant.stock || 0), 0)
               return (
                 <CategoryTab
                   key={cat.id}
                   label={`${cat.icon} ${cat.name}`}
-                  count={count}
+                  skuCount={subset.length}
+                  stockTotal={stockTotal}
                   active={activeTab === cat.id}
-                  onClick={() => setActiveTab(cat.id)}
+                  onClick={() => switchTab(cat.id)}
                 />
               )
             })}
@@ -219,6 +283,21 @@ export function ProductManagement() {
           {/* 畫廊 / 表格切換（手機桌機都可，default 畫廊） */}
           <LayoutToggle layout={layout} onChange={setLayoutPersist} />
         </div>
+
+        {/* 篩選 chip 區：狀態 + 尺寸 */}
+        <FilterChipBar
+          onlyMissingPrice={onlyMissingPrice}
+          onlyMissingImage={onlyMissingImage}
+          onToggleMissingPrice={() => setOnlyMissingPrice((v) => !v)}
+          onToggleMissingImage={() => setOnlyMissingImage((v) => !v)}
+          availableSizes={availableSizes}
+          selectedSizes={selectedSizes}
+          onToggleSize={toggleSize}
+          hasAnyFilter={hasAnyFilter}
+          onClearAll={clearAllFilters}
+          totalCount={tabItems.length}
+          filteredCount={filteredItems.length}
+        />
 
         {/* 列表 */}
         {loading ? (
@@ -257,18 +336,33 @@ export function ProductManagement() {
 
 interface CategoryTabProps {
   label: string
-  count: number
+  /** SKU 種類數（不同規格組合的數量） */
+  skuCount: number
+  /** 總庫存件數（所有 SKU 的 stock 加總） */
+  stockTotal: number
   active: boolean
   onClick: () => void
 }
-function CategoryTab({ label, count, active, onClick }: CategoryTabProps) {
+function CategoryTab({ label, skuCount, stockTotal, active, onClick }: CategoryTabProps) {
+  const badgeStyle: React.CSSProperties = {
+    fontSize: 11,
+    background: active ? 'rgba(255,255,255,0.2)' : '#f0f0f0',
+    color: active ? '#fff' : '#666',
+    padding: '1px 7px',
+    borderRadius: 999,
+    fontWeight: 600,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 2,
+  }
   return (
     <button
       type="button"
       onClick={onClick}
+      title={`${skuCount} 種規格・共 ${stockTotal} 件庫存`}
       style={{
         flexShrink: 0,
-        padding: '8px 14px',
+        padding: '8px 12px',
         fontSize: 13,
         fontWeight: active ? 700 : 500,
         background: active ? '#222' : '#fff',
@@ -279,22 +373,193 @@ function CategoryTab({ label, count, active, onClick }: CategoryTabProps) {
         whiteSpace: 'nowrap',
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 6,
+        gap: 5,
       }}
     >
       {label}
-      <span
+      <span style={badgeStyle}>{skuCount}種</span>
+      <span style={badgeStyle}>{stockTotal}件</span>
+    </button>
+  )
+}
+
+/** 尺寸排序：先按常見順序，未列入的用字母 */
+const SIZE_ORDER = [
+  'XXS',
+  'XS',
+  'S',
+  'M',
+  'L',
+  'XL',
+  'XXL',
+  '2XL',
+  '3XL',
+  '4XL',
+  '5XL',
+  // 救生衣青少／童版（尺寸後帶數字）
+  'XS6',
+  'S8',
+  'M10',
+  'L12',
+]
+function compareSize(a: string, b: string): number {
+  const ia = SIZE_ORDER.indexOf(a)
+  const ib = SIZE_ORDER.indexOf(b)
+  if (ia !== -1 && ib !== -1) return ia - ib
+  if (ia !== -1) return -1
+  if (ib !== -1) return 1
+  return a.localeCompare(b)
+}
+
+interface FilterChipBarProps {
+  onlyMissingPrice: boolean
+  onlyMissingImage: boolean
+  onToggleMissingPrice: () => void
+  onToggleMissingImage: () => void
+  availableSizes: string[]
+  selectedSizes: Set<string>
+  onToggleSize: (size: string) => void
+  hasAnyFilter: boolean
+  onClearAll: () => void
+  totalCount: number
+  filteredCount: number
+}
+function FilterChipBar({
+  onlyMissingPrice,
+  onlyMissingImage,
+  onToggleMissingPrice,
+  onToggleMissingImage,
+  availableSizes,
+  selectedSizes,
+  onToggleSize,
+  hasAnyFilter,
+  onClearAll,
+  totalCount,
+  filteredCount,
+}: FilterChipBarProps) {
+  const showSizeRow = availableSizes.length > 0
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {/* 第 1 列：狀態 chips（永遠顯示） */}
+      <div
         style={{
-          fontSize: 11,
-          background: active ? 'rgba(255,255,255,0.2)' : '#f0f0f0',
-          color: active ? '#fff' : '#666',
-          padding: '1px 7px',
-          borderRadius: 999,
-          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          marginBottom: showSizeRow ? 8 : 0,
+          flexWrap: 'wrap',
         }}
       >
-        {count}
-      </span>
+        <FilterChip
+          label="缺價"
+          icon="💰"
+          active={onlyMissingPrice}
+          onClick={onToggleMissingPrice}
+          activeBg="#fff4e0"
+          activeColor="#ef6c00"
+          activeBorder="#ef6c00"
+        />
+        <FilterChip
+          label="沒圖"
+          icon="🖼"
+          active={onlyMissingImage}
+          onClick={onToggleMissingImage}
+          activeBg="#e3f2fd"
+          activeColor="#1565c0"
+          activeBorder="#1565c0"
+        />
+        <div style={{ flex: 1 }} />
+        {hasAnyFilter && (
+          <button
+            type="button"
+            onClick={onClearAll}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#666',
+              fontSize: 12,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              textDecoration: 'underline',
+            }}
+          >
+            清除篩選
+          </button>
+        )}
+        <span style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>
+          {hasAnyFilter ? `${filteredCount} / ${totalCount}` : `${totalCount} 種`}
+        </span>
+      </div>
+
+      {/* 第 2 列：尺寸 chips（依目前 tab 動態），有資料才顯示 */}
+      {showSizeRow && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: 4,
+          }}
+        >
+          <span style={{ fontSize: 12, color: '#888', flexShrink: 0, marginRight: 2 }}>尺寸</span>
+          {availableSizes.map((s) => (
+            <FilterChip
+              key={s}
+              label={s}
+              active={selectedSizes.has(s)}
+              onClick={() => onToggleSize(s)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface FilterChipProps {
+  label: string
+  icon?: string
+  active: boolean
+  onClick: () => void
+  /** 啟用時的視覺色，預設黑色 */
+  activeBg?: string
+  activeColor?: string
+  activeBorder?: string
+}
+function FilterChip({
+  label,
+  icon,
+  active,
+  onClick,
+  activeBg = '#222',
+  activeColor = '#fff',
+  activeBorder = '#222',
+}: FilterChipProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        flexShrink: 0,
+        padding: '5px 12px',
+        fontSize: 12,
+        fontWeight: active ? 700 : 500,
+        background: active ? activeBg : '#fff',
+        color: active ? activeColor : '#555',
+        border: '1px solid ' + (active ? activeBorder : '#ddd'),
+        borderRadius: 999,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        transition: 'all 0.1s',
+      }}
+    >
+      {icon && <span>{icon}</span>}
+      {label}
     </button>
   )
 }
@@ -669,7 +934,7 @@ function EmptyState({ hasAnyProduct, onCreate }: EmptyStateProps) {
         {hasAnyProduct ? '沒有符合的商品' : '還沒有任何商品'}
       </div>
       <div style={{ fontSize: 13, marginBottom: 18 }}>
-        {hasAnyProduct ? '試著改變類別 Tab 或調整搜尋關鍵字。' : '先建立第一個商品開始管理庫存。'}
+        {hasAnyProduct ? '試著清除篩選或調整關鍵字。' : '先建立第一個商品開始管理庫存。'}
       </div>
       <Button variant="primary" onClick={onCreate}>
         + 新增商品
