@@ -585,6 +585,7 @@ function VariantBlock({
                   inputMode={f.type === 'number' ? 'numeric' : 'text'}
                   value={draft.attributes[f.key] ?? ''}
                   onChange={(e) => onAttributeChange(f.key, e.target.value)}
+                  placeholder={f.placeholder}
                   disabled={disabled || draft.pendingDelete}
                 />
               )}

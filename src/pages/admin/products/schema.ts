@@ -23,6 +23,13 @@ export interface FieldDef {
   required?: boolean
   /** 在列表頁顯示時的順序權重，數字小者先顯示；省略 = 跟著陣列順序 */
   displayOrder?: number
+  /** 編輯欄位時的 placeholder 提示，例如「3、3/2」 */
+  placeholder?: string
+  /**
+   * 顯示時自動附加在值後面的單位後綴（DB 不存）
+   * 例如 thickness = "3" + displaySuffix "mm" → 顯示 "3mm"
+   */
+  displaySuffix?: string
 }
 
 export interface CategoryDef {
@@ -82,8 +89,16 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
         options: ['M', 'F'],
         required: false,
       },
-      // 厚度用 text 自由填，未來進新厚度（4/3MM、2MM…）不用改 schema
-      { key: 'thickness', label: '厚度', type: 'text', required: false },
+      // 厚度只存純數字（3 / 3/2 / 5/4），顯示時自動附加 "mm"
+      // 好處：使用者不會打錯單位、搜尋時打數字就能找到
+      {
+        key: 'thickness',
+        label: '厚度 (mm)',
+        type: 'text',
+        required: false,
+        placeholder: '3 或 3/2',
+        displaySuffix: 'mm',
+      },
       {
         key: 'coverage',
         label: '全/半身',
@@ -111,7 +126,9 @@ export function getCategory(id: string | null | undefined): CategoryDef | undefi
 
 /**
  * 把 attributes 物件依分類 schema 串成可讀字串
- * 例：{ thickness: '1MM(半)', size: 'M', color: '黑' } → "1MM(半) / M / 黑"
+ * 例：{ thickness: '3/2', coverage: '全身', size: 'M', color: '黑' } → "3/2mm / 全身 / M / 黑"
+ *
+ * 會把 schema 上 field 設定的 displaySuffix 附加到值後面。
  */
 export function formatAttributes(
   categoryId: string | null | undefined,
@@ -127,9 +144,13 @@ export function formatAttributes(
       .join(' / ')
   }
   return cat.fields
-    .map((f) => attributes[f.key])
-    .filter((v) => v !== null && v !== undefined && v !== '')
-    .map((v) => String(v))
+    .map((f) => {
+      const v = attributes[f.key]
+      if (v === null || v === undefined || v === '') return null
+      const text = String(v)
+      return f.displaySuffix ? text + f.displaySuffix : text
+    })
+    .filter((v): v is string => v !== null)
     .join(' / ')
 }
 
