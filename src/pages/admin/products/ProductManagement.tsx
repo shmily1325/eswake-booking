@@ -306,8 +306,10 @@ export function ProductManagement() {
               />
             ))}
           </div>
-          {/* 排序 + 畫廊/表格切換 */}
-          <SortMenu value={sortBy} onChange={setSortByPersist} isMobile={isMobile} />
+          {/* 排序：只在桌機顯示，手機固定預設「庫存少→多」 */}
+          {!isMobile && (
+            <SortMenu value={sortBy} onChange={setSortByPersist} isMobile={isMobile} />
+          )}
           <LayoutToggle layout={layout} onChange={setLayoutPersist} />
         </div>
 
@@ -377,12 +379,10 @@ function CategoryTab({ label, active, onClick }: CategoryTabProps) {
 // ============================================================
 //  排序
 // ============================================================
-type SortMode = 'stock-asc' | 'stock-desc' | 'price-asc' | 'price-desc' | 'updated-desc'
+type SortMode = 'stock-asc' | 'price-asc' | 'updated-desc'
 const SORT_MODES: { id: SortMode; label: string }[] = [
   { id: 'stock-asc', label: '庫存少 → 多' },
-  { id: 'stock-desc', label: '庫存多 → 少' },
   { id: 'price-asc', label: '價格低 → 高' },
-  { id: 'price-desc', label: '價格高 → 低' },
   { id: 'updated-desc', label: '最近更新' },
 ]
 function sortItems(items: VariantListItem[], mode: SortMode): VariantListItem[] {
@@ -390,12 +390,8 @@ function sortItems(items: VariantListItem[], mode: SortMode): VariantListItem[] 
   switch (mode) {
     case 'stock-asc':
       return arr.sort((a, b) => (a.variant.stock || 0) - (b.variant.stock || 0))
-    case 'stock-desc':
-      return arr.sort((a, b) => (b.variant.stock || 0) - (a.variant.stock || 0))
     case 'price-asc':
-      return arr.sort((a, b) => priceForSort(a.variant.price, true) - priceForSort(b.variant.price, true))
-    case 'price-desc':
-      return arr.sort((a, b) => priceForSort(b.variant.price, false) - priceForSort(a.variant.price, false))
+      return arr.sort((a, b) => priceForSort(a.variant.price) - priceForSort(b.variant.price))
     case 'updated-desc':
       return arr.sort((a, b) => {
         const ta = new Date(a.variant.updated_at ?? a.product.updated_at ?? 0).getTime()
@@ -404,10 +400,9 @@ function sortItems(items: VariantListItem[], mode: SortMode): VariantListItem[] 
       })
   }
 }
-/** 排序時 null 價格的處理：升冪排最後、降冪排最前（缺價 = "未知" 不要混入正常數字中段） */
-function priceForSort(p: number | null, asc: boolean): number {
-  if (p == null) return asc ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY
-  return p
+/** 排序時 null 價格放最後（缺價的不要混入正常數字中段） */
+function priceForSort(p: number | null): number {
+  return p == null ? Number.POSITIVE_INFINITY : p
 }
 
 interface SortMenuProps {
