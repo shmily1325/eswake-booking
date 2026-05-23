@@ -1058,6 +1058,98 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          id: string
+          category: string
+          brand: string
+          model: string
+          description: string | null
+          is_active: boolean
+          created_at: string | null
+          updated_at: string | null
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          category: string
+          brand: string
+          model: string
+          description?: string | null
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          category?: string
+          brand?: string
+          model?: string
+          description?: string | null
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      product_variants: {
+        Row: {
+          id: string
+          product_id: string
+          vendor_code: string | null
+          attributes: Json
+          price: number
+          cost: number | null
+          stock: number
+          image_url: string | null
+          image_path: string | null
+          is_active: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          vendor_code?: string | null
+          attributes?: Json
+          price?: number
+          cost?: number | null
+          stock?: number
+          image_url?: string | null
+          image_path?: string | null
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          vendor_code?: string | null
+          attributes?: Json
+          price?: number
+          cost?: number | null
+          stock?: number
+          image_url?: string | null
+          image_path?: string | null
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_settings: {
         Row: {
           description: string | null

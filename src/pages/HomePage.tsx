@@ -178,6 +178,13 @@ export function HomePage() {
       hideFromHomeForSuperAdmin: true
     },
     {
+      title: '商品管理',
+      icon: '📦',
+      link: '/products',
+      editorFeature: 'can_products',
+      hideFromHomeForSuperAdmin: true
+    },
+    {
       title: '會員電話',
       icon: '📱',
       link: '/member-phone-edit',

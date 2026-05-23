@@ -80,6 +80,7 @@ export function isMemberPhoneOnlyEditor(user: User | null): boolean {
 export const EDITOR_FEATURE_KEYS = [
   'can_schedule',
   'can_boats',
+  'can_products',
   'can_repeat_booking',
   'can_search_batch',
 ] as const
@@ -88,6 +89,7 @@ export type EditorFeatureKey = (typeof EDITOR_FEATURE_KEYS)[number]
 export const EDITOR_FEATURE_LABELS: Record<EditorFeatureKey, string> = {
   can_schedule: '排班',
   can_boats: '船隻管理',
+  can_products: '商品管理',
   can_repeat_booking: '重複預約（預約表）',
   can_search_batch: '預約查詢·批次',
 }
@@ -96,6 +98,7 @@ type EditorUserRow = {
   email: string
   can_schedule: boolean
   can_boats: boolean
+  can_products: boolean
   can_repeat_booking: boolean
   can_search_batch: boolean
 }
@@ -109,19 +112,27 @@ let viewUsersCache: string[] | null = null
 let cacheTimestamp: number = 0
 const CACHE_DURATION = 60000 // 1分鐘
 
+/**
+ * 預設旗標：用於超級管理員（全 true）。
+ * 注意：editor_users 一般用戶的預設值由 DB DEFAULT 決定，新功能 can_products 在 migration 105 設為 DEFAULT false，
+ * 並透過 editorRowFromDb 的 `=== true` 嚴格判斷，確保未明確勾選不會誤開。
+ */
 const DEFAULT_FEATURE_FLAGS: Record<EditorFeatureKey, boolean> = {
   can_schedule: true,
   can_boats: true,
+  can_products: true,
   can_repeat_booking: true,
   can_search_batch: true,
 }
 
-function editorRowFromDb(r: { email: string; can_schedule?: boolean; can_boats?: boolean; can_repeat_booking?: boolean; can_search_batch?: boolean }): EditorUserRow {
+function editorRowFromDb(r: { email: string; can_schedule?: boolean; can_boats?: boolean; can_products?: boolean; can_repeat_booking?: boolean; can_search_batch?: boolean }): EditorUserRow {
   // 欄位尚未遷移或為 null 時，預設 true（與 migration 104 DEFAULT 及舊行為一致，降低上線風險）
+  // 例外：can_products 為新功能，欄位預設 false，需明確勾選才開啟
   return {
     email: r.email,
     can_schedule: r.can_schedule !== false,
     can_boats: r.can_boats !== false,
+    can_products: r.can_products === true,
     can_repeat_booking: r.can_repeat_booking !== false,
     can_search_batch: r.can_search_batch !== false,
   }
@@ -357,6 +368,7 @@ export async function getEditorFeatureFlags(user: User | null): Promise<Record<E
   return {
     can_schedule: row.can_schedule,
     can_boats: row.can_boats,
+    can_products: row.can_products,
     can_repeat_booking: row.can_repeat_booking,
     can_search_batch: row.can_search_batch,
   }

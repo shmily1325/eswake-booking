@@ -18,7 +18,7 @@ import {
 } from '../../utils/auth'
 
 /** 人員權限表上顯示的「小編」欄位：重複預約＋批次合併為一格（寫庫仍為兩欄同值） */
-const MATRIX_SINGLE_FEATURE_KEYS = ['can_schedule', 'can_boats'] as const
+const MATRIX_SINGLE_FEATURE_KEYS = ['can_schedule', 'can_boats', 'can_products'] as const
 const matrixFeatureColumnCount = MATRIX_SINGLE_FEATURE_KEYS.length + 1
 
 interface Coach {
@@ -53,6 +53,7 @@ interface EditorUser {
   notes: string | null
   can_schedule?: boolean
   can_boats?: boolean
+  can_products?: boolean
   can_repeat_booking?: boolean
   can_search_batch?: boolean
 }
@@ -803,6 +804,7 @@ export function StaffManagement() {
       return {
         can_schedule: false,
         can_boats: false,
+        can_products: false,
         can_repeat_booking: false,
         can_search_batch: false
       }
@@ -810,6 +812,8 @@ export function StaffManagement() {
     return {
       can_schedule: ed.can_schedule !== false,
       can_boats: ed.can_boats !== false,
+      // can_products 為新功能，需明確勾選才開啟（不採用「未設定 = true」的舊欄位行為）
+      can_products: ed.can_products === true,
       can_repeat_booking: ed.can_repeat_booking !== false,
       can_search_batch: ed.can_search_batch !== false
     }
@@ -869,6 +873,7 @@ export function StaffManagement() {
             email: e,
             can_schedule: flags.can_schedule,
             can_boats: flags.can_boats,
+            can_products: flags.can_products,
             can_repeat_booking: flags.can_repeat_booking,
             can_search_batch: flags.can_search_batch
           })
@@ -881,6 +886,7 @@ export function StaffManagement() {
               .update({
                 can_schedule: flags.can_schedule,
                 can_boats: flags.can_boats,
+                can_products: flags.can_products,
                 can_repeat_booking: flags.can_repeat_booking,
                 can_search_batch: flags.can_search_batch
               })
@@ -898,6 +904,7 @@ export function StaffManagement() {
           .update({
             can_schedule: flags.can_schedule,
             can_boats: flags.can_boats,
+            can_products: flags.can_products,
             can_repeat_booking: flags.can_repeat_booking,
             can_search_batch: flags.can_search_batch
           })

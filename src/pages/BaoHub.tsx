@@ -92,6 +92,11 @@ export function BaoHub() {
             title: '船隻管理',
             icon: '🚤',
             link: '/boats'
+          },
+          {
+            title: '商品管理',
+            icon: '📦',
+            link: '/products'
           }
         ]
       },
