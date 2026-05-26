@@ -361,6 +361,9 @@ export function CoachAssignment() {
     }
     savingRef.current = true
 
+    // 立即把按鈕鎖起來（避免使用者在衝突檢查那 1-2 秒內又按一次造成重複儲存）
+    setSaving(true)
+
     try {
       // 0. 先檢查是否所有預約都有指定教練或駕駛
       const missingPersonnel: string[] = []
@@ -857,53 +860,73 @@ export function CoachAssignment() {
 
       }
 
-      // 用戶確認後才開始 saving 狀態
-      setSaving(true)
-
       // 如果有需要清除的回報記錄，先清除
       if (bookingsWithReports.size > 0) {
         // 清除回報記錄（全部硬刪除）
-        await Promise.all([
-          // 刪除所有參與者記錄
+        const [partDel, repDel] = await Promise.all([
           supabase
             .from('booking_participants')
             .delete()
             .in('booking_id', Array.from(bookingsWithReports.keys()))
             .eq('is_deleted', false),
-          // 刪除駕駛回報
           supabase
             .from('coach_reports')
             .delete()
             .in('booking_id', Array.from(bookingsWithReports.keys()))
         ])
+        if (partDel.error) throw new Error(`刪除參與者失敗: ${partDel.error.message}`)
+        if (repDel.error) throw new Error(`刪除回報失敗: ${repDel.error.message}`)
       }
 
-      // 批量刪除有變動預約的舊分配
-      await Promise.all([
+      // 批量刪除有變動預約的舊分配（檢查每個 delete 的錯誤）
+      const [coachDelRes, driverDelRes] = await Promise.all([
         supabase.from('booking_coaches').delete().in('booking_id', changedBookingIds),
         supabase.from('booking_drivers').delete().in('booking_id', changedBookingIds)
       ])
+      if (coachDelRes.error) throw new Error(`刪除舊教練分配失敗: ${coachDelRes.error.message}`)
+      if (driverDelRes.error) throw new Error(`刪除舊駕駛分配失敗: ${driverDelRes.error.message}`)
 
       // 批量插入新的分配
+      // 用 .select() 讓 insert 回傳實際寫入的 rows，順便當作 verification（不用多一次 round-trip）
       if (allCoachesToInsert.length > 0) {
-        const { error: coachInsertError } = await supabase
+        const { data: insertedCoaches, error: coachInsertError } = await supabase
           .from('booking_coaches')
           .insert(allCoachesToInsert)
+          .select('booking_id, coach_id')
         
         if (coachInsertError) {
           console.error('批量插入教練失敗:', coachInsertError)
           throw new Error(`插入教練分配失敗: ${coachInsertError.message}`)
         }
+        if (!insertedCoaches || insertedCoaches.length !== allCoachesToInsert.length) {
+          console.error('教練插入筆數對不上', {
+            expected: allCoachesToInsert.length,
+            actual: insertedCoaches?.length ?? 0,
+          })
+          throw new Error(
+            `教練分配儲存驗證失敗：預期 ${allCoachesToInsert.length} 筆、實際 ${insertedCoaches?.length ?? 0} 筆，請重試`
+          )
+        }
       }
       
       if (allDriversToInsert.length > 0) {
-        const { error: driverInsertError } = await supabase
+        const { data: insertedDrivers, error: driverInsertError } = await supabase
           .from('booking_drivers')
           .insert(allDriversToInsert)
+          .select('booking_id, driver_id')
         
         if (driverInsertError) {
           console.error('批量插入駕駛失敗:', driverInsertError)
           throw new Error(`插入駕駛分配失敗: ${driverInsertError.message}`)
+        }
+        if (!insertedDrivers || insertedDrivers.length !== allDriversToInsert.length) {
+          console.error('駕駛插入筆數對不上', {
+            expected: allDriversToInsert.length,
+            actual: insertedDrivers?.length ?? 0,
+          })
+          throw new Error(
+            `駕駛分配儲存驗證失敗：預期 ${allDriversToInsert.length} 筆、實際 ${insertedDrivers?.length ?? 0} 筆，請重試`
+          )
         }
       }
 
@@ -923,13 +946,32 @@ export function CoachAssignment() {
         }
       }
 
+      // 同步更新本地 bookings 與 assignments，讓 currentCoaches/currentDrivers 反映剛存好的值
+      // 避免使用者在 navigate 之前又按一次 💾，造成同樣 diff 重複寫一筆 audit log
+      const changedIdSet = new Set(changedBookingIds)
+      setBookings(prev => prev.map(b => {
+        if (!changedIdSet.has(b.id)) return b
+        const a = assignments[b.id]
+        if (!a) return b
+        return {
+          ...b,
+          currentCoaches: [...a.coachIds],
+          currentDrivers: [...a.driverIds],
+          schedule_notes: a.notes || null,
+          requires_driver: a.requiresDriver,
+        }
+      }))
+
       setSuccess('✅ 所有排班已儲存！')
+      toast.success(`已儲存 ${changedBookingIds.length} 筆排班變更`)
       setTimeout(() => {
         navigate(`/day?date=${selectedDate}`)
       }, 500)
     } catch (err: any) {
       console.error('儲存失敗:', err)
-      setError('❌ 儲存失敗: ' + (err.message || '未知錯誤'))
+      const msg = '❌ 儲存失敗: ' + (err.message || '未知錯誤')
+      setError(msg)
+      toast.error(msg)
     } finally {
       setSaving(false)
       ;(window as any).__coachAssignSavingRef.current = false
