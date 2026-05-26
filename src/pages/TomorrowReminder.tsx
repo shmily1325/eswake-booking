@@ -100,6 +100,8 @@ export function TomorrowReminder() {
   useEffect(() => {
     setSelectedStudent(null)
     setSelectedCoachReminder(null)
+    // 換日時先清空，避免新資料載入前畫面殘留前一天的學員/教練清單
+    setBookings([])
     fetchData()
   }, [selectedDate])
   
@@ -119,13 +121,27 @@ export function TomorrowReminder() {
       
       if (bookingsData && bookingsData.length > 0) {
         const bookingIds = bookingsData.map((b: any) => b.id)
-        
-        // 查詢教練資料
-        const { data: bookingCoachesData } = await supabase
-          .from('booking_coaches')
-          .select('booking_id, coaches:coach_id(id, name)')
-          .in('booking_id', bookingIds)
-        
+
+        // 三個關聯查詢都只依賴 bookingIds，並行送出可節省兩輪 RTT
+        const [coachesResult, driversResult, membersResult] = await Promise.all([
+          supabase
+            .from('booking_coaches')
+            .select('booking_id, coaches:coach_id(id, name)')
+            .in('booking_id', bookingIds),
+          supabase
+            .from('booking_drivers')
+            .select('booking_id, coaches:driver_id(id, name)')
+            .in('booking_id', bookingIds),
+          supabase
+            .from('booking_members')
+            .select('booking_id, members:member_id(id, name, nickname)')
+            .in('booking_id', bookingIds)
+        ])
+
+        const { data: bookingCoachesData } = coachesResult
+        const { data: bookingDriversData } = driversResult
+        const { data: bookingMembersData } = membersResult
+
         const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
         for (const item of bookingCoachesData || []) {
           const bookingId = item.booking_id
@@ -137,13 +153,7 @@ export function TomorrowReminder() {
             coachesByBooking[bookingId].push(coach)
           }
         }
-        
-        // ✅ 查詢駕駛資料
-        const { data: bookingDriversData } = await supabase
-          .from('booking_drivers')
-          .select('booking_id, coaches:driver_id(id, name)')
-          .in('booking_id', bookingIds)
-        
+
         const driversByBooking: { [key: number]: { id: string; name: string }[] } = {}
         for (const item of bookingDriversData || []) {
           const bookingId = item.booking_id
@@ -155,12 +165,6 @@ export function TomorrowReminder() {
             driversByBooking[bookingId].push(driver)
           }
         }
-        
-        // ✅ 新增：查詢會員資料以獲取最新的暱稱
-        const { data: bookingMembersData } = await supabase
-          .from('booking_members')
-          .select('booking_id, members:member_id(id, name, nickname)')
-          .in('booking_id', bookingIds)
         
         const membersByBooking: { [key: number]: any[] } = {}
         for (const item of bookingMembersData || []) {

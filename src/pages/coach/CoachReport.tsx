@@ -125,6 +125,11 @@ export function CoachReport({
     if (autoFilterByUser && !userCoachId) {
       return
     }
+    // 換條件時先清空舊清單，避免新資料載入前畫面殘留前條件的列表
+    // 注意：靜默刷新（auto-refresh）的 useEffect 不會走到這裡，所以不會閃
+    setBookings([])
+    setAllBookings([])
+    setAvailableCoaches([])
     loadBookings()
   }, [selectedDate, selectedCoachId, viewMode, autoFilterByUser, userCoachId])
 
@@ -385,17 +390,22 @@ export function CoachReport({
         } | null
       }
 
-      const { data: bookingMembersData } = await supabase
-        .from('booking_members')
-        .select('member_id, members:member_id(id, name, nickname)')
-        .eq('booking_id', bookingId)
+      // 兩個查詢都只依賴 bookingId，並行送出可節省一輪 RTT
+      const [bookingMembersResult, reportedParticipantsResult] = await Promise.all([
+        supabase
+          .from('booking_members')
+          .select('member_id, members:member_id(id, name, nickname)')
+          .eq('booking_id', bookingId),
+        supabase
+          .from('booking_participants')
+          .select('member_id, participant_name, coach_id')
+          .eq('booking_id', bookingId)
+          .eq('is_deleted', false)
+          .not('coach_id', 'is', null)
+      ])
 
-      const { data: reportedParticipants } = await supabase
-        .from('booking_participants')
-        .select('member_id, participant_name, coach_id')
-        .eq('booking_id', bookingId)
-        .eq('is_deleted', false)
-        .not('coach_id', 'is', null)
+      const { data: bookingMembersData } = bookingMembersResult
+      const { data: reportedParticipants } = reportedParticipantsResult
 
       const reportedMemberIds = new Set<string>()
       const reportedNames = new Set<string>()

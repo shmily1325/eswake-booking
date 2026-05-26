@@ -426,40 +426,47 @@ export function MemberImport() {
       // 檢查這些會員是否有任何相關記錄（預約、參與者、財務交易等）
       const memberIds = allMembers.map(m => m.id)
       
-      // 1. 查詢 bookings 表中的 member_id（向下相容）
-      const { data: membersWithBookingsDirect, error: bookingsError } = await supabase
-        .from('bookings')
-        .select('member_id')
-        .in('member_id', memberIds)
-        .not('member_id', 'is', null)
+      // 四個查詢都只依賴 memberIds，並行送出可節省三輪 RTT
+      const [
+        bookingsDirectResult,
+        bookingMembersResult,
+        participantsResult,
+        transactionsResult
+      ] = await Promise.all([
+        // 1. 查詢 bookings 表中的 member_id（向下相容）
+        supabase
+          .from('bookings')
+          .select('member_id')
+          .in('member_id', memberIds)
+          .not('member_id', 'is', null),
+        // 2. 查詢 booking_members 表中的 member_id（V5 多會員預約）
+        supabase
+          .from('booking_members')
+          .select('member_id')
+          .in('member_id', memberIds),
+        // 3. 查詢 booking_participants 表中的 member_id（參與者記錄）
+        supabase
+          .from('booking_participants')
+          .select('member_id')
+          .in('member_id', memberIds)
+          .not('member_id', 'is', null),
+        // 4. 查詢 transactions 表中的 member_id（財務交易記錄）
+        supabase
+          .from('transactions')
+          .select('member_id')
+          .in('member_id', memberIds)
+          .not('member_id', 'is', null)
+      ])
 
-      if (bookingsError) throw bookingsError
+      if (bookingsDirectResult.error) throw bookingsDirectResult.error
+      if (bookingMembersResult.error) throw bookingMembersResult.error
+      if (participantsResult.error) throw participantsResult.error
+      if (transactionsResult.error) throw transactionsResult.error
 
-      // 2. 查詢 booking_members 表中的 member_id（V5 多會員預約）
-      const { data: membersWithBookingsViaTable, error: bookingMembersError } = await supabase
-        .from('booking_members')
-        .select('member_id')
-        .in('member_id', memberIds)
-
-      if (bookingMembersError) throw bookingMembersError
-
-      // 3. 查詢 booking_participants 表中的 member_id（參與者記錄）
-      const { data: membersWithParticipants, error: participantsError } = await supabase
-        .from('booking_participants')
-        .select('member_id')
-        .in('member_id', memberIds)
-        .not('member_id', 'is', null)
-
-      if (participantsError) throw participantsError
-
-      // 4. 查詢 transactions 表中的 member_id（財務交易記錄）
-      const { data: membersWithTransactions, error: transactionsError } = await supabase
-        .from('transactions')
-        .select('member_id')
-        .in('member_id', memberIds)
-        .not('member_id', 'is', null)
-
-      if (transactionsError) throw transactionsError
+      const membersWithBookingsDirect = bookingsDirectResult.data
+      const membersWithBookingsViaTable = bookingMembersResult.data
+      const membersWithParticipants = participantsResult.data
+      const membersWithTransactions = transactionsResult.data
 
       // 合併所有查詢結果（只要有任何一種記錄就保留該會員）
       const memberIdsWithRecords = new Set([
@@ -502,35 +509,32 @@ export function MemberImport() {
     setSuccess('')
 
     try {
-      // 計算統計數據
-      const { data: allMembers } = await supabase
-        .from('members')
-        .select('id')
-        .eq('status', 'active')
-      
-      const { data: allBookings } = await supabase
-        .from('bookings')
-        .select('id')
-      
-      const { data: allBoards } = await supabase
-        .from('board_storage')
-        .select('id')
-      
-      const { data: allTimeOff } = await supabase
-        .from('coach_time_off')
-        .select('id')
-      
-      const { data: allAnnouncements } = await supabase
-        .from('daily_announcements')
-        .select('id')
-      
-      const { data: allParticipants } = await supabase
-        .from('booking_participants')
-        .select('id')
-      
-      const { data: allTransactions } = await supabase
-        .from('transactions')
-        .select('id')
+      // 計算統計數據 — 七個查詢互相獨立，並行送出可節省約 6 輪 RTT
+      const [
+        membersResult,
+        bookingsResult,
+        boardsResult,
+        timeOffResult,
+        announcementsResult,
+        participantsResult,
+        transactionsResult
+      ] = await Promise.all([
+        supabase.from('members').select('id').eq('status', 'active'),
+        supabase.from('bookings').select('id'),
+        supabase.from('board_storage').select('id'),
+        supabase.from('coach_time_off').select('id'),
+        supabase.from('daily_announcements').select('id'),
+        supabase.from('booking_participants').select('id'),
+        supabase.from('transactions').select('id')
+      ])
+
+      const allMembers = membersResult.data
+      const allBookings = bookingsResult.data
+      const allBoards = boardsResult.data
+      const allTimeOff = timeOffResult.data
+      const allAnnouncements = announcementsResult.data
+      const allParticipants = participantsResult.data
+      const allTransactions = transactionsResult.data
 
       // 1. 刪除每日公告（沒有外鍵依賴）
       const { error: announcementError } = await supabase

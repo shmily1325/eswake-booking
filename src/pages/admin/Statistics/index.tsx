@@ -100,8 +100,17 @@ export function Statistics() {
 
   // 載入過去6個月的預約趨勢（歷史資料，不含未來）
   const loadMonthlyTrend = async () => {
-    const months: MonthlyStats[] = []
     const now = new Date()
+
+    // 先計算每個月的查詢區間（保留原本 continue 略過當月的邏輯），
+    // 再以 Promise.all 並行送出 6 次查詢，最後依原本順序聚合。
+    type RangeMeta = {
+      monthStr: string
+      month: number
+      startDate: string
+      endDateStr: string
+    }
+    const ranges: RangeMeta[] = []
 
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -109,11 +118,11 @@ export function Statistics() {
       const month = date.getMonth() + 1
       const monthStr = `${year}-${String(month).padStart(2, '0')}`
       const startDate = `${monthStr}-01`
-      
+
       // 計算結束日期：當月只到昨天，過去月份到月底
       const lastDayOfMonth = new Date(year, month, 0).getDate()
       let endDateStr: string
-      
+
       if (i === 0) {
         // 當月：只統計到昨天（不含今天及未來）
         const yesterday = new Date(now)
@@ -129,7 +138,17 @@ export function Statistics() {
         endDateStr = `${monthStr}-${String(lastDayOfMonth).padStart(2, '0')}`
       }
 
-      const participants = await loadPaidOperationalParticipantsForRange(supabase, startDate, endDateStr)
+      ranges.push({ monthStr, month, startDate, endDateStr })
+    }
+
+    // 並行查詢所有月份的參與者資料
+    const participantsByMonth = await Promise.all(
+      ranges.map((r) => loadPaidOperationalParticipantsForRange(supabase, r.startDate, r.endDateStr))
+    )
+
+    // 維持原本「依時間順序」放入 months
+    const months: MonthlyStats[] = ranges.map((r, idx) => {
+      const participants = participantsByMonth[idx]
       const bookingCount = new Set(participants.map((p) => p.bookingId)).size
 
       const totalMinutes = participants.reduce((sum, p) => sum + p.participantMinutes, 0)
@@ -165,9 +184,9 @@ export function Statistics() {
         .map(([boatId, d]) => ({ boatId, boatName: d.boatName, minutes: d.minutes }))
         .sort((a, b) => a.boatId - b.boatId)
 
-      months.push({
-        month: monthStr,
-        label: `${month}月`,
+      return {
+        month: r.monthStr,
+        label: `${r.month}月`,
         bookingCount,
         totalMinutes,
         totalHours: Math.round(totalMinutes / 60 * 10) / 10,
@@ -176,16 +195,19 @@ export function Statistics() {
         weekdayMinutes,
         weekendCount,
         weekendMinutes
-      })
-    }
+      }
+    })
 
     setMonthlyStats(months)
   }
 
   // 載入財務統計
   const loadFinanceStats = async () => {
-    const stats: FinanceStats[] = []
     const now = new Date()
+
+    // 與 loadMonthlyTrend 相同模式：先算範圍 → 並行查 → 依序聚合
+    type RangeMeta = { monthStr: string; startDate: string; endDateStr: string }
+    const ranges: RangeMeta[] = []
 
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -193,11 +215,11 @@ export function Statistics() {
       const month = date.getMonth() + 1
       const monthStr = `${year}-${String(month).padStart(2, '0')}`
       const startDate = `${monthStr}-01`
-      
+
       // 計算結束日期：當月只到昨天，過去月份到月底
       const lastDayOfMonth = new Date(year, month, 0).getDate()
       let endDateStr: string
-      
+
       if (i === 0) {
         // 當月：只統計到昨天
         const yesterday = new Date(now)
@@ -213,14 +235,24 @@ export function Statistics() {
         endDateStr = `${monthStr}-${String(lastDayOfMonth).padStart(2, '0')}`
       }
 
-      const { data: consumeData } = await supabase
-        .from('transactions')
-        .select('category, amount, minutes')
-        .eq('transaction_type', 'consume')
-        .not('booking_participant_id', 'is', null)
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDateStr)
+      ranges.push({ monthStr, startDate, endDateStr })
+    }
 
+    // 並行查詢所有月份的 consume 交易
+    const consumeResults = await Promise.all(
+      ranges.map((r) =>
+        supabase
+          .from('transactions')
+          .select('category, amount, minutes')
+          .eq('transaction_type', 'consume')
+          .not('booking_participant_id', 'is', null)
+          .gte('transaction_date', r.startDate)
+          .lte('transaction_date', r.endDateStr)
+      )
+    )
+
+    const stats: FinanceStats[] = ranges.map((r, idx) => {
+      const consumeData = consumeResults[idx].data
       let balanceUsed = 0, vipUsed = 0, g23Used = 0, g21Used = 0
       consumeData?.forEach((tx: any) => {
         if (tx.category === 'balance' && tx.amount) {
@@ -233,9 +265,8 @@ export function Statistics() {
           g21Used += Math.abs(tx.minutes)
         }
       })
-
-      stats.push({ month: monthStr, balanceUsed, vipUsed, g23Used, g21Used })
-    }
+      return { month: r.monthStr, balanceUsed, vipUsed, g23Used, g21Used }
+    })
 
     setFinanceStats(stats)
   }
@@ -254,25 +285,30 @@ export function Statistics() {
     const endDate = new Date(now.getFullYear(), now.getMonth() + 3, 0)
     const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
 
-    const { data: bookingsData } = await supabase
-      .from('bookings')
-      .select(`
-        id, start_at, duration_min, contact_name,
-        booking_coaches(coach_id, coaches(id, name)),
-        booking_members(member_id, members(id, name, nickname))
-      `)
-      .gte('start_at', `${today}T00:00:00`)
-      .lte('start_at', `${endDateStr}T23:59:59`)
-      .neq('status', 'cancelled')
-      .or('is_coach_practice.is.null,is_coach_practice.eq.false')  // 排除教練練習
-      .order('start_at', { ascending: true })
+    // 兩個查詢都只依賴 [today, endDateStr]，並行送出可節省一輪 RTT
+    const [bookingsResult, reportedBookingsResult] = await Promise.all([
+      supabase
+        .from('bookings')
+        .select(`
+          id, start_at, duration_min, contact_name,
+          booking_coaches(coach_id, coaches(id, name)),
+          booking_members(member_id, members(id, name, nickname))
+        `)
+        .gte('start_at', `${today}T00:00:00`)
+        .lte('start_at', `${endDateStr}T23:59:59`)
+        .neq('status', 'cancelled')
+        .or('is_coach_practice.is.null,is_coach_practice.eq.false')  // 排除教練練習
+        .order('start_at', { ascending: true }),
+      // 已回報的預約 ID（排除這些）
+      supabase
+        .from('coach_reports')
+        .select('booking_id')
+        .gte('bookings!inner.start_at', `${today}T00:00:00`)
+        .lte('bookings!inner.start_at', `${endDateStr}T23:59:59`)
+    ])
 
-    // 載入已回報的預約 ID（排除這些）
-    const { data: reportedBookings } = await supabase
-      .from('coach_reports')
-      .select('booking_id')
-      .gte('bookings!inner.start_at', `${today}T00:00:00`)
-      .lte('bookings!inner.start_at', `${endDateStr}T23:59:59`)
+    const { data: bookingsData } = bookingsResult
+    const { data: reportedBookings } = reportedBookingsResult
 
     const reportedBookingIds = new Set(reportedBookings?.map(r => r.booking_id) || [])
 
@@ -514,32 +550,37 @@ export function Statistics() {
     const { startDate, endDateStr } = range
 
     // 月報教練統計：與回報一致——已處理之教學／駕駛紀錄（非「已扣款預約清單」口徑）
-    const { data: teachingData } = await supabase
-      .from('booking_participants')
-      .select(`
-        coach_id, duration_min, lesson_type, member_id, participant_name,
-        coaches:coach_id(id, name),
-        members:member_id(id, name, nickname),
-        bookings!inner(start_at, boats(id, name))
-      `)
-      .eq('status', 'processed')
-      .eq('is_teaching', true)
-      .eq('is_deleted', false)
-      .gte('bookings.start_at', `${startDate}T00:00:00`)
-      .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+    // 兩個查詢條件互相獨立，並行送出可節省一輪 RTT
+    const [teachingResult, drivingResult] = await Promise.all([
+      supabase
+        .from('booking_participants')
+        .select(`
+          coach_id, duration_min, lesson_type, member_id, participant_name,
+          coaches:coach_id(id, name),
+          members:member_id(id, name, nickname),
+          bookings!inner(start_at, boats(id, name))
+        `)
+        .eq('status', 'processed')
+        .eq('is_teaching', true)
+        .eq('is_deleted', false)
+        .gte('bookings.start_at', `${startDate}T00:00:00`)
+        .lte('bookings.start_at', `${endDateStr}T23:59:59`),
+      // 載入駕駛記錄
+      supabase
+        .from('coach_reports')
+        .select(`
+          coach_id, driver_duration_min,
+          coaches:coach_id(id, name),
+          bookings!inner(start_at)
+        `)
+        .not('driver_duration_min', 'is', null)
+        .gt('driver_duration_min', 0)
+        .gte('bookings.start_at', `${startDate}T00:00:00`)
+        .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+    ])
 
-    // 載入駕駛記錄
-    const { data: drivingData } = await supabase
-      .from('coach_reports')
-      .select(`
-        coach_id, driver_duration_min,
-        coaches:coach_id(id, name),
-        bookings!inner(start_at)
-      `)
-      .not('driver_duration_min', 'is', null)
-      .gt('driver_duration_min', 0)
-      .gte('bookings.start_at', `${startDate}T00:00:00`)
-      .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+    const { data: teachingData } = teachingResult
+    const { data: drivingData } = drivingResult
 
     const statsMap = new Map<string, {
       coachId: string
@@ -769,6 +810,12 @@ export function Statistics() {
 
   // 月份變化時載入月度數據
   useEffect(() => {
+    // 換月時先清空月度 state，避免新資料載入前畫面殘留上月數字
+    setCoachStats([])
+    setMemberStats([])
+    setWeekdayStats({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
+    setMonthlyCoachPracticeSessions([])
+
     const loadMonthlyData = async () => {
       try {
         await Promise.all([

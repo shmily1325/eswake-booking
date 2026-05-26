@@ -527,6 +527,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
   useEffect(() => {
     if (open && activeTab === 'history') {
+      // 換月時先清空，避免新資料載入前畫面殘留上月的交易紀錄
+      setTransactions([])
       loadTransactions()
     }
   }, [open, activeTab, selectedMonth])

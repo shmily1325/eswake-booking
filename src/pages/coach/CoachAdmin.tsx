@@ -591,6 +591,9 @@ export function CoachAdmin() {
         setLastRefreshTime(new Date())
       })
     } else if (activeTab === 'completed' && selectedDate) {
+      // 換日/切到已結案 tab 時先清空，避免新資料載入前殘留前條件的清單
+      setCompletedReports([])
+      setCompletedDriverReports([])
       loadCompletedReports().then(() => {
         setLastRefreshTime(new Date())
       })

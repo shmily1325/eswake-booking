@@ -70,16 +70,18 @@ export function HomePage() {
   
   // 合併所有權限檢查，一次性載入
   useEffect(() => {
+    // user 變更時立刻清空權限 state + 啟用 loading skeleton，
+    // 避免使用者切換時殘留前一使用者的菜單一幀（菜單會在 loading 期間顯示 skeleton 取代）
+    setIsCoach(false)
+    setEditorFeatureFlags(null)
+    setHasViewPermission(false)
+    setPermissionsLoading(true)
+
     const loadAllPermissions = async () => {
       if (!user) {
-        setIsCoach(false)
-        setEditorFeatureFlags(null)
-        setHasViewPermission(false)
         setPermissionsLoading(false)
         return
       }
-
-      setPermissionsLoading(true)
 
       try {
         // 並行執行所有權限檢查

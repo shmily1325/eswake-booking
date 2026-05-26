@@ -85,6 +85,8 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
   useEffect(() => {
     const load = async () => {
       if (!coachId) return
+      // 換 coachId 時先清空舊資料，避免新資料載入前殘留上一位教練的預約
+      setBookings([])
       setLoading(true)
       try {
         const window = getFutureThreeMonthWindow()

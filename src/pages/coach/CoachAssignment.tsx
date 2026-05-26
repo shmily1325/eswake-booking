@@ -207,6 +207,10 @@ export function CoachAssignment() {
   }
 
   useEffect(() => {
+    // 換日時先清空，避免新資料載入前畫面殘留前一天的預約列表與排班配置，
+    // 並讓 DailyStaffDisplay 的「尚有 X 筆未排班」不會顯示錯誤筆數
+    setBookings([])
+    setAssignments({})
     // coaches 由 useDailyStaff hook 自動載入（當 selectedDate 變化時）
     loadBookings()
     // eslint-disable-next-line react-hooks/exhaustive-deps

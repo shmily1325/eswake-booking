@@ -140,9 +140,13 @@ export function DayView() {
     if (isInitialLoad) {
       setLoading(true)
     } else {
-      // 換日期時保留 grid 結構，只清空預約列
+      // 換日期時保留 grid 結構，只清空與「日期」綁定的資料，
+      // 避免上方未排班警告／公告維修區塊顯示上一天的舊內容
       setBookings([])
       setConflictedIds(new Set())
+      setConflictReasons(new Map())
+      setBoatUnavailableBlocks([])
+      setRestrictionDayBlocks([])
       setDateChanging(true)
     }
 
@@ -863,6 +867,9 @@ export function DayView() {
         />
 
         <EditBookingDialog
+          // 用 booking.id 當 key，dialog 開著時切換到另一筆預約會強制 remount，
+          // 避免 useBookingForm 內表單 state 殘留上一筆預約的教練/會員/時間
+          key={selectedBooking?.id ?? 'none'}
           isOpen={editDialogOpen}
           onClose={() => {
             setEditDialogOpen(false)

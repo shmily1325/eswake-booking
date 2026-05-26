@@ -100,6 +100,14 @@ export function CoachDailyView() {
   const [restrictionDayBlocks, setRestrictionDayBlocks] = useState<RestrictionDayBlock[]>([])
 
   useEffect(() => {
+    // 換日期時，先清掉與日期綁定的舊資料，避免新資料載入前殘留前一天的內容
+    // 注意：清空動作只放在 date useEffect 開頭，realtime 訂閱觸發的 loadBookings 不會走到這裡
+    setBookings([])
+    setConflictedIds(new Set())
+    setConflictReasons(new Map())
+    setBoatUnavailableBlocks([])
+    setRestrictionDayBlocks([])
+
     // 並行載入所有資料以加快速度
     Promise.all([
       loadBoats(),
@@ -288,14 +296,25 @@ export function CoachDailyView() {
         }
       }
 
-		// 全域限制 - 單次抓取當日限制後本地比對
+		// 全域限制 + 船隻維修/停用 — 兩查詢互相獨立，並行送出可節省一輪 RTT
 		const targetDate = dateParam
-		const { data: restrictionData, error: restrictionError } = await (supabase as any)
-			.from('reservation_restrictions_with_announcement_view')
-			.select('*')
-			.eq('is_active', true)
-			.lte('start_date', targetDate)
-			.gte('end_date', targetDate)
+		const [restrictionResult, boatUnavailableResult] = await Promise.all([
+			(supabase as any)
+				.from('reservation_restrictions_with_announcement_view')
+				.select('*')
+				.eq('is_active', true)
+				.lte('start_date', targetDate)
+				.gte('end_date', targetDate),
+			supabase
+				.from('boat_unavailable_dates')
+				.select('boat_id, start_date, start_time, end_date, end_time, reason, is_active')
+				.eq('is_active', true)
+				.lte('start_date', targetDate)
+				.gte('end_date', targetDate)
+		])
+
+		const { data: restrictionData, error: restrictionError } = restrictionResult
+		const { data: boatUnavailableData, error: boatUnavailableError } = boatUnavailableResult
 
 		if (!restrictionError && restrictionData && restrictionData.length > 0) {
 			const resBlocks = mapRestrictionViewRowsToBlocks(
@@ -322,14 +341,6 @@ export function CoachDailyView() {
 		} else {
 			setRestrictionDayBlocks([])
 		}
-
-		// 船隻維修/停用 - 單次抓取當日依船別比對
-		const { data: boatUnavailableData, error: boatUnavailableError } = await supabase
-			.from('boat_unavailable_dates')
-			.select('boat_id, start_date, start_time, end_date, end_time, reason, is_active')
-			.eq('is_active', true)
-			.lte('start_date', targetDate)
-			.gte('end_date', targetDate)
 
 		if (!boatUnavailableError && boatUnavailableData && boatUnavailableData.length > 0) {
 			const blocks = mapBoatUnavailableRowsToBlocks(

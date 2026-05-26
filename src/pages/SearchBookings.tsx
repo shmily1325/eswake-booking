@@ -2290,6 +2290,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       {/* 編輯預約對話框 */}
       {selectedBookingForEdit && user && (
         <EditBookingDialog
+          // 用 booking.id 當 key，dialog 開著時切換到另一筆預約會強制 remount，
+          // 避免 useBookingForm 內表單 state 殘留上一筆預約的教練/會員/時間
+          key={selectedBookingForEdit.id}
           isOpen={editDialogOpen}
           onClose={() => {
             setEditDialogOpen(false)

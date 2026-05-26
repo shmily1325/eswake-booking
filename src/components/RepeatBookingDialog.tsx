@@ -126,6 +126,9 @@ export function RepeatBookingDialog({
 
   useEffect(() => {
     if (isOpen) {
+      // 重開 dialog 時清掉上次的自選日期，避免殘留
+      // （表單其他欄位由 useBookingForm 的 fetchAllData / defaultBoatId 重置）
+      setCustomDates([])
       fetchAllData()
     }
   }, [isOpen, fetchAllData])

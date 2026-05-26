@@ -178,6 +178,9 @@ export function ProductManagement() {
       <div style={{ minHeight: '100vh', background: '#f5f6f8', padding: isMobile ? '12px' : '20px' }}>
         <div style={{ maxWidth: 920, margin: '0 auto' }}>
           <ProductEditView
+            // 以 productId 當 key，從一個商品切到另一個商品時強制 remount，
+            // 避免表單欄位（drafts/category/brand/model 等）殘留上一個商品的內容
+            key={view.kind === 'edit' ? `edit-${view.productId}` : 'create'}
             productId={view.kind === 'edit' ? view.productId : null}
             defaultCategory={view.kind === 'create' ? view.defaultCategory : undefined}
             existingProducts={products.map((p) => ({ category: p.category, brand: p.brand, model: p.model }))}

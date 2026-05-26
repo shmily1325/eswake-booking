@@ -112,6 +112,8 @@ export function LineSettings() {
   }, [footerText])
   
   useEffect(() => {
+    // 換日時立刻清空舊清單，避免使用者在新資料載入前對「舊日期的學員」按下發送 LINE
+    setBookings([])
     fetchData()
     loadLineBindings()
     loadSystemSettings()
@@ -142,12 +144,22 @@ export function LineSettings() {
 
   const loadLineBindings = async () => {
     try {
-      // 查詢所有 LINE 綁定
-      const { data: bindings } = await supabase
-        .from('line_bindings')
-        .select('member_id, line_user_id, phone, members:member_id(id, name, nickname, phone)')
-        .eq('status', 'active')
-      
+      // 前兩個查詢互相獨立，並行送出可節省一輪 RTT；
+      // unbound members 仍需 await 前兩者完成後（依賴 boundIds）才查
+      const [bindingsResult, allMembersResult] = await Promise.all([
+        supabase
+          .from('line_bindings')
+          .select('member_id, line_user_id, phone, members:member_id(id, name, nickname, phone)')
+          .eq('status', 'active'),
+        supabase
+          .from('members')
+          .select('id')
+          .eq('status', 'active')
+      ])
+
+      const { data: bindings } = bindingsResult
+      const { data: allMembers } = allMembersResult
+
       // 建立會員綁定列表（包含 line_user_id）
       const boundList: any[] = []
       bindings?.forEach(b => {
@@ -158,13 +170,7 @@ export function LineSettings() {
         }
       })
       setBoundMembersList(boundList)
-      
-      // 統計
-      const { data: allMembers } = await supabase
-        .from('members')
-        .select('id')
-        .eq('status', 'active')
-      
+
       const total = allMembers?.length || 0
       const bound = bindings?.length || 0
       setBindingStats({
@@ -205,13 +211,22 @@ export function LineSettings() {
       
       if (bookingsData && bookingsData.length > 0) {
         const bookingIds = bookingsData.map((b: any) => b.id)
-        
-        // 查詢教練資料
-        const { data: bookingCoachesData } = await supabase
-          .from('booking_coaches')
-          .select('booking_id, coaches:coach_id(id, name)')
-          .in('booking_id', bookingIds)
-        
+
+        // 兩個關聯查詢都只依賴 bookingIds，並行送出可節省一輪 RTT
+        const [coachesResult, membersResult] = await Promise.all([
+          supabase
+            .from('booking_coaches')
+            .select('booking_id, coaches:coach_id(id, name)')
+            .in('booking_id', bookingIds),
+          supabase
+            .from('booking_members')
+            .select('booking_id, members:member_id(id, name, nickname)')
+            .in('booking_id', bookingIds)
+        ])
+
+        const { data: bookingCoachesData } = coachesResult
+        const { data: bookingMembersData } = membersResult
+
         const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
         for (const item of bookingCoachesData || []) {
           const bookingId = item.booking_id
@@ -223,12 +238,6 @@ export function LineSettings() {
             coachesByBooking[bookingId].push(coach)
           }
         }
-        
-        // 查詢會員資料
-        const { data: bookingMembersData } = await supabase
-          .from('booking_members')
-          .select('booking_id, members:member_id(id, name, nickname)')
-          .in('booking_id', bookingIds)
         
         const membersByBooking: { [key: number]: any[] } = {}
         for (const item of bookingMembersData || []) {

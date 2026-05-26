@@ -159,8 +159,9 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
     
     setLoading(true)
     try {
-      // 載入會員、置板與 LINE 綁定
-      const [memberResult, boardResult, lineBindingResult] = await Promise.all([
+      // 載入會員、置板、LINE 綁定、備忘錄
+      // 四個查詢都只依賴 memberId，並行送出可節省一輪 RTT（備忘錄不再延後到 partner 之後）
+      const [memberResult, boardResult, lineBindingResult, notesResult] = await Promise.all([
         supabase
           .from('members')
           .select('*')
@@ -176,7 +177,14 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
           .from('line_bindings')
           .select('line_user_id')
           .eq('member_id', memberId)
-          .eq('status', 'active')
+          .eq('status', 'active'),
+        // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
+        supabase
+          .from('member_notes')
+          .select('*')
+          .eq('member_id', memberId)
+          .order('event_date', { ascending: true, nullsFirst: true })
+          .order('created_at', { ascending: false })
       ])
 
       if (memberResult.error) throw memberResult.error
@@ -208,9 +216,13 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
 
       if (boardResult.error) throw boardResult.error
       setBoardStorage(boardResult.data || [])
-      
-      // 載入備忘錄
-      loadMemberNotes()
+
+      // 處理備忘錄結果（已於上方 Promise.all 並行查詢）
+      if (notesResult.error) {
+        console.error('載入備忘錄失敗:', notesResult.error)
+      } else {
+        setMemberNotes(notesResult.data || [])
+      }
     } catch (error) {
       console.error('載入會員資料失敗:', error)
       toast.error('載入會員資料失敗')

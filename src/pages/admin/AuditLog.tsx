@@ -535,6 +535,8 @@ export function AuditLog() {
   }, [user])
 
   useEffect(() => {
+    // 換條件時先清空，避免新資料載入前畫面殘留前條件的 logs
+    setLogs([])
     fetchLogs()
   }, [filter, startDate, endDate])
 

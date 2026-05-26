@@ -91,6 +91,9 @@ export function AnnouncementManagement() {
   }>>({})
 
   useEffect(() => {
+    // 換月/換排序時先清空，避免新資料載入前畫面殘留前條件的清單
+    setAnnouncements([])
+    setRestrictionsMap({})
     loadAnnouncements()
   }, [selectedMonth, sortOrder])
 
@@ -103,33 +106,38 @@ export function AnnouncementManagement() {
       const lastDay = new Date(year, month, 0).getDate()
       const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
       
-      // 查詢 1：display_date 在選定月份內
-      const { data: data1 } = await supabase
-        .from('daily_announcements')
-        .select('*')
-        .gte('display_date', startDate)
-        .lte('display_date', endDate)
-        .order('display_date', { ascending: sortOrder === 'asc' })
-        .order('created_at', { ascending: sortOrder === 'asc' })
+      // 三個查詢條件互相獨立、合併後再去重排序，並行送出可節省兩輪 RTT
+      const [result1, result2, result3] = await Promise.all([
+        // 查詢 1：display_date 在選定月份內
+        supabase
+          .from('daily_announcements')
+          .select('*')
+          .gte('display_date', startDate)
+          .lte('display_date', endDate)
+          .order('display_date', { ascending: sortOrder === 'asc' })
+          .order('created_at', { ascending: sortOrder === 'asc' }),
+        // 查詢 2：display_date 在月初前，但 end_date 在選定月份內（提前顯示的公告）
+        supabase
+          .from('daily_announcements')
+          .select('*')
+          .lt('display_date', startDate)
+          .gte('end_date', startDate)
+          .lte('end_date', endDate)
+          .order('display_date', { ascending: sortOrder === 'asc' })
+          .order('created_at', { ascending: sortOrder === 'asc' }),
+        // 查詢 3：橫跨整個月（display_date 在月初前，end_date 在月底後）
+        supabase
+          .from('daily_announcements')
+          .select('*')
+          .lt('display_date', startDate)
+          .gt('end_date', endDate)
+          .order('display_date', { ascending: sortOrder === 'asc' })
+          .order('created_at', { ascending: sortOrder === 'asc' })
+      ])
 
-      // 查詢 2：display_date 在月初前，但 end_date 在選定月份內（提前顯示的公告）
-      const { data: data2 } = await supabase
-        .from('daily_announcements')
-        .select('*')
-        .lt('display_date', startDate)
-        .gte('end_date', startDate)
-        .lte('end_date', endDate)
-        .order('display_date', { ascending: sortOrder === 'asc' })
-        .order('created_at', { ascending: sortOrder === 'asc' })
-
-      // 查詢 3：橫跨整個月（display_date 在月初前，end_date 在月底後）
-      const { data: data3 } = await supabase
-        .from('daily_announcements')
-        .select('*')
-        .lt('display_date', startDate)
-        .gt('end_date', endDate)
-        .order('display_date', { ascending: sortOrder === 'asc' })
-        .order('created_at', { ascending: sortOrder === 'asc' })
+      const { data: data1 } = result1
+      const { data: data2 } = result2
+      const { data: data3 } = result3
 
       // 合併並去重（以 id 為準）
       const seen = new Set<number>()

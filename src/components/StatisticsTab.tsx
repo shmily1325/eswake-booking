@@ -62,6 +62,9 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   }, [autoFilterCoachId])
 
   useEffect(() => {
+    // 換條件時先清空，避免新資料載入前畫面殘留前條件的統計數字
+    setAllCoachStats([])
+    setCoachStats([])
     loadPastData()
   }, [selectedDate, selectedCoachId])
 
