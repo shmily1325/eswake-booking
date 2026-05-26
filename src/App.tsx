@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -85,6 +85,9 @@ function AppContent() {
   const isOnline = useOnlineStatus()
   const [loginAllowanceResolved, setLoginAllowanceResolved] = useState(false)
   const [loginAllowanceOk, setLoginAllowanceOk] = useState(false)
+  // 記錄上一次已驗證過的 user.id，避免 token refresh / 切換分頁回來時
+  // user 物件 reference 變了就重跑驗證、使整個 App 短暫 unmount（會把開啟中的對話框 / 表單吃掉）
+  const lastCheckedUserIdRef = useRef<string | null>(null)
 
   // 登入名單（allowed_users ＋超級管理員）— 在登入與權限快取層就擋
   useEffect(() => {
@@ -92,23 +95,30 @@ function AppContent() {
       return
     }
     if (!user) {
+      lastCheckedUserIdRef.current = null
       setLoginAllowanceResolved(true)
       setLoginAllowanceOk(true)
       return
     }
+    // 同一個使用者（token refresh 時 reference 會變但 id 不變）就跳過，
+    // 避免把 loginAllowanceResolved 打回 false，導致整棵路由 unmount
+    if (lastCheckedUserIdRef.current === user.id) {
+      return
+    }
     let cancelled = false
-    setLoginAllowanceResolved(false)
     isAllowedUser(user)
       .then((ok) => {
         if (!cancelled) {
           setLoginAllowanceOk(ok)
           setLoginAllowanceResolved(true)
+          lastCheckedUserIdRef.current = user.id
         }
       })
       .catch(() => {
         if (!cancelled) {
           setLoginAllowanceOk(false)
           setLoginAllowanceResolved(true)
+          lastCheckedUserIdRef.current = user.id
         }
       })
     return () => {
