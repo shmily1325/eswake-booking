@@ -254,16 +254,24 @@ export function NewBookingDialog({
             coach_id: coachId,
           }))
 
-          const { error: coachInsertError } = await supabase
+          // 用 .select() 驗證寫入筆數，少一筆就 rollback
+          const { data: insertedCoaches, error: coachInsertError } = await supabase
             .from('booking_coaches')
             .insert(bookingCoachesToInsert)
+            .select('booking_id, coach_id')
 
           if (coachInsertError) {
             // 如果插入教練關聯失敗，刪除剛剛創建的預約
             await supabase.from('bookings').delete().eq('id', insertedBooking.id)
-          throw new Error('插入教練關聯失敗')
+            throw new Error(`插入教練關聯失敗: ${coachInsertError.message}`)
+          }
+          if (!insertedCoaches || insertedCoaches.length !== bookingCoachesToInsert.length) {
+            await supabase.from('bookings').delete().eq('id', insertedBooking.id)
+            throw new Error(
+              `教練關聯儲存驗證失敗：預期 ${bookingCoachesToInsert.length} 筆、實際 ${insertedCoaches?.length ?? 0} 筆，請重試`
+            )
+          }
         }
-      }
 
       // 插入會員關聯
         if (selectedMemberIds.length > 0 && insertedBooking) {
@@ -284,12 +292,24 @@ export function NewBookingDialog({
             }
           })
 
-          const { error: memberInsertError } = await supabase
+          // 用 .select() 驗證寫入筆數；失敗就 rollback（booking + booking_coaches 一起清掉）
+          const { data: insertedMembers, error: memberInsertError } = await supabase
             .from('booking_members')
             .insert(bookingMembersToInsert)
+            .select('booking_id, member_id')
 
           if (memberInsertError) {
             console.error('插入會員關聯失敗:', memberInsertError)
+            await supabase.from('booking_coaches').delete().eq('booking_id', insertedBooking.id)
+            await supabase.from('bookings').delete().eq('id', insertedBooking.id)
+            throw new Error(`插入會員關聯失敗: ${memberInsertError.message}`)
+          }
+          if (!insertedMembers || insertedMembers.length !== bookingMembersToInsert.length) {
+            await supabase.from('booking_coaches').delete().eq('booking_id', insertedBooking.id)
+            await supabase.from('bookings').delete().eq('id', insertedBooking.id)
+            throw new Error(
+              `會員關聯儲存驗證失敗：預期 ${bookingMembersToInsert.length} 筆、實際 ${insertedMembers?.length ?? 0} 筆，請重試`
+            )
           }
         }
 

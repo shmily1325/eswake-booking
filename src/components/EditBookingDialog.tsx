@@ -488,17 +488,22 @@ export function EditBookingDialog({
           return
         }
 
-        // 統一刪除（在任何寫入前）
-        await Promise.all([
+        // 統一刪除（在任何寫入前）— 檢查每個錯誤，避免靜默失敗
+        const [coachDelRes, driverDelRes, reportDelRes, partDelRes] = await Promise.all([
           supabase.from('booking_coaches').delete().eq('booking_id', booking.id),
           supabase.from('booking_drivers').delete().eq('booking_id', booking.id),
           supabase.from('coach_reports').delete().eq('booking_id', booking.id),
           supabase.from('booking_participants').delete().eq('booking_id', booking.id).eq('is_deleted', false)
         ])
+        if (coachDelRes.error) throw new Error(`清除教練分配失敗: ${coachDelRes.error.message}`)
+        if (driverDelRes.error) throw new Error(`清除駕駛分配失敗: ${driverDelRes.error.message}`)
+        if (reportDelRes.error) throw new Error(`清除回報記錄失敗: ${reportDelRes.error.message}`)
+        if (partDelRes.error) throw new Error(`清除參與者失敗: ${partDelRes.error.message}`)
       } else {
         // 不需要彈窗仍保險性確保：若最終不需要駕駛，清空駕駛排班
         if (!finalRequiresDriver) {
-          await supabase.from('booking_drivers').delete().eq('booking_id', booking.id)
+          const { error: silentDelError } = await supabase.from('booking_drivers').delete().eq('booking_id', booking.id)
+          if (silentDelError) throw new Error(`清除駕駛分配失敗: ${silentDelError.message}`)
         }
       }
 
@@ -528,11 +533,12 @@ export function EditBookingDialog({
         return
       }
 
-      // 重寫教練關聯（先刪再插）
-      await supabase
+      // 重寫教練關聯（先刪再插）— 全部檢查錯誤
+      const { error: coachDelError2 } = await supabase
         .from('booking_coaches')
         .delete()
         .eq('booking_id', booking.id)
+      if (coachDelError2) throw new Error(`清除教練關聯失敗: ${coachDelError2.message}`)
 
       if (selectedCoaches.length > 0) {
         const bookingCoachesToInsert = selectedCoaches.map(coachId => ({
@@ -540,21 +546,29 @@ export function EditBookingDialog({
           coach_id: coachId,
         }))
 
-        const { error: coachInsertError } = await supabase
+        // 用 .select() 取回實際寫入的 rows 做驗證，少一筆就 throw
+        const { data: insertedCoaches, error: coachInsertError } = await supabase
           .from('booking_coaches')
           .insert(bookingCoachesToInsert)
+          .select('booking_id, coach_id')
 
         if (coachInsertError) {
           console.error('插入教練關聯失敗:', coachInsertError)
-          // 不阻止更新，只記錄錯誤
+          throw new Error(`插入教練關聯失敗: ${coachInsertError.message}`)
+        }
+        if (!insertedCoaches || insertedCoaches.length !== bookingCoachesToInsert.length) {
+          throw new Error(
+            `教練關聯儲存驗證失敗：預期 ${bookingCoachesToInsert.length} 筆、實際 ${insertedCoaches?.length ?? 0} 筆，請重試`
+          )
         }
       }
 
       // 更新 booking_members（多會員支援）：先刪後插
-      await supabase
+      const { error: memberDelError } = await supabase
         .from('booking_members')
         .delete()
         .eq('booking_id', booking.id)
+      if (memberDelError) throw new Error(`清除會員關聯失敗: ${memberDelError.message}`)
 
       if (selectedMemberIds.length > 0) {
         const bookingMembersToInsert = selectedMemberIds.map(memberId => ({
@@ -562,12 +576,19 @@ export function EditBookingDialog({
           member_id: memberId
         }))
 
-        const { error: membersInsertError } = await supabase
+        const { data: insertedMembers, error: membersInsertError } = await supabase
           .from('booking_members')
           .insert(bookingMembersToInsert)
+          .select('booking_id, member_id')
 
         if (membersInsertError) {
           console.error('插入會員關聯失敗:', membersInsertError)
+          throw new Error(`插入會員關聯失敗: ${membersInsertError.message}`)
+        }
+        if (!insertedMembers || insertedMembers.length !== bookingMembersToInsert.length) {
+          throw new Error(
+            `會員關聯儲存驗證失敗：預期 ${bookingMembersToInsert.length} 筆、實際 ${insertedMembers?.length ?? 0} 筆，請重試`
+          )
         }
       }
 

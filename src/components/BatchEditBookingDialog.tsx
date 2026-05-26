@@ -487,29 +487,42 @@ export function BatchEditBookingDialog({
             if (error) throw error
           }
           
-          // 更新教練
+          // 更新教練 — 檢查 delete/insert 錯誤，並用 .select() 驗證寫入筆數
           if (fieldsToEdit.has('coaches')) {
-            await supabase
+            const { error: coachDelErr } = await supabase
               .from('booking_coaches')
               .delete()
               .eq('booking_id', id)
+            if (coachDelErr) throw new Error(`清除教練分配失敗: ${coachDelErr.message}`)
             
             if (selectedCoaches.length > 0) {
               const coachInserts = selectedCoaches.map(coachId => ({
                 booking_id: id,
                 coach_id: coachId,
               }))
-              await supabase.from('booking_coaches').insert(coachInserts)
+              const { data: insertedCoaches, error: coachInsErr } = await supabase
+                .from('booking_coaches')
+                .insert(coachInserts)
+                .select('booking_id, coach_id')
+              if (coachInsErr) throw new Error(`插入教練分配失敗: ${coachInsErr.message}`)
+              if (!insertedCoaches || insertedCoaches.length !== coachInserts.length) {
+                throw new Error(
+                  `教練分配儲存驗證失敗：預期 ${coachInserts.length} 筆、實際 ${insertedCoaches?.length ?? 0} 筆`
+                )
+              }
             }
           }
           
-          // 🔴 修改關鍵欄位後清除排班和回報記錄（與單一編輯一致）
+          // 🔴 修改關鍵欄位後清除排班和回報記錄（與單一編輯一致）— 檢查每個錯誤
           if (keyFieldsChanged) {
-            await Promise.all([
+            const [drvDel, repDel, partDel] = await Promise.all([
               supabase.from('booking_drivers').delete().eq('booking_id', id),
               supabase.from('coach_reports').delete().eq('booking_id', id),
               supabase.from('booking_participants').delete().eq('booking_id', id).eq('is_deleted', false)
             ])
+            if (drvDel.error) throw new Error(`清除駕駛分配失敗: ${drvDel.error.message}`)
+            if (repDel.error) throw new Error(`清除回報記錄失敗: ${repDel.error.message}`)
+            if (partDel.error) throw new Error(`清除參與者失敗: ${partDel.error.message}`)
           }
           
           // 記錄已更新的預約，用於檢查批次內部衝突
