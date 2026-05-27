@@ -770,7 +770,7 @@ export function BackupPage() {
       padding: '15px'
     }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <PageHeader title="💾 匯出" user={user} showBaoLink={true} />
+        <PageHeader title="💾 匯出" user={user} showBaoLink={isAdmin(user)} />
 
         {/* 備份健康狀態區塊 */}
         <div style={{

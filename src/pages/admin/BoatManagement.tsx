@@ -8,7 +8,7 @@ import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import type { Boat, BoatUnavailableDate } from '../../types/booking'
 import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
 import { designSystem } from '../../styles/designSystem'
-import { hasEditorFeatureAsync } from '../../utils/auth'
+import { hasEditorFeatureAsync, isAdmin } from '../../utils/auth'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import { isFacility } from '../../utils/facility'
 import { computeBoatsMonthlyUptime } from '../../utils/boatMonthlyUptime'
@@ -380,7 +380,7 @@ export function BoatManagement() {
                 margin: '0 auto',
                 padding: isMobile ? '20px 16px' : '40px 20px'
             }}>
-                <PageHeader user={user!} title="🚤 船隻管理" showBaoLink={true} />
+                <PageHeader user={user!} title="🚤 船隻管理" showBaoLink={isAdmin(user)} />
                 
                 {/* 操作按鈕 */}
                 {activeTab === 'boats' && (

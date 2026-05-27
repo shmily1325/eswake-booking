@@ -7,6 +7,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { designSystem, getButtonStyle, getCardStyle, getTextStyle } from '../../styles/designSystem'
 import { getLocalTimestamp } from '../../utils/date'
+import { isAdmin } from '../../utils/auth'
 
 interface ParsedMember {
   name: string
@@ -613,7 +614,7 @@ export function MemberImport() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
       <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl, maxWidth: '900px', margin: '0 auto', width: '100%' }}>
-        <PageHeader user={user} title="📥 會員批量導入" showBaoLink={true} />
+        <PageHeader user={user} title="📥 會員批量導入" showBaoLink={isAdmin(user)} />
 
         {/* 電腦使用提示 */}
         <div style={{ 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
+import { isAdmin } from '../../utils/auth'
 import { Footer } from '../../components/Footer'
 import { StatisticsTab } from '../../components/StatisticsTab'
 import { PendingDeductionItem } from '../../components/PendingDeductionItem'
@@ -706,7 +707,7 @@ export function CoachAdmin() {
         <PageHeader 
           user={user!} 
           title="💼 回報管理"
-          showBaoLink={true}
+          showBaoLink={isAdmin(user)}
           extraLinks={[
             { label: '← 預約回報', link: '/coach-report' }
           ]}

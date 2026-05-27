@@ -6,7 +6,7 @@ import { PageHeader } from '../../../components/PageHeader'
 import { Footer } from '../../../components/Footer'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { Button, Badge, useToast, ToastContainer } from '../../../components/ui'
-import { hasEditorFeatureAsync, hasProductsAccessAsync } from '../../../utils/auth'
+import { hasEditorFeatureAsync, hasProductsAccessAsync, isAdmin } from '../../../utils/auth'
 import { trackClick, trackClickDedupedWithin } from '../../../utils/trackClick'
 import { CATEGORY_SCHEMAS, formatAttributes, getAllCategories, getCategory } from './schema'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from './api'
@@ -216,7 +216,8 @@ export function ProductManagement() {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f6f8', padding: isMobile ? '12px' : '20px' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <PageHeader user={user} title="📦 商品管理" showBaoLink={true} />
+        {/* BAO 連結僅顯示給超級管理員；只勾 can_products / can_products_view 的編輯/瀏覽者不顯示 */}
+        <PageHeader user={user} title="📦 商品管理" showBaoLink={isAdmin(user)} />
 
         {/* 儀表板：種數 / 件數 / 缺價 / 沒圖（隨搜尋變動，缺價/沒圖點擊即篩） */}
         <InventoryDashboard

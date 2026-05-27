@@ -538,7 +538,7 @@ export function MemberTransaction() {
         <PageHeader 
           title="💰 會員儲值" 
           user={user} 
-          showBaoLink={true}
+          showBaoLink={isAdmin(user)}
           extraLinks={
             isAdmin(user)
               ? [{ label: isMobile ? '👥' : '👥 會員管理', link: '/members' }]

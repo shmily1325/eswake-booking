@@ -2,6 +2,7 @@ import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
+import { isAdmin } from '../utils/auth'
 
 export function QuickTransaction() {
   const user = useAuthUser()
@@ -14,7 +15,7 @@ export function QuickTransaction() {
       background: '#f5f5f5'
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <PageHeader title="💳 會員儲值" user={user} showBaoLink={true} />
+        <PageHeader title="💳 會員儲值" user={user} showBaoLink={isAdmin(user)} />
 
         {/* 即將推出提示 */}
       <div style={{

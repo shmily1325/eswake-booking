@@ -175,7 +175,7 @@ export function LineBindingStatus() {
       padding: isMobile ? '12px' : '20px'
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <PageHeader title="📱 LINE 綁定狀態" user={user} showBaoLink={true} />
+        <PageHeader title="📱 LINE 綁定狀態" user={user} showBaoLink={isAdmin(user)} />
         
         {/* 綁定統計 */}
         <div style={getCardStyle(isMobile)}>

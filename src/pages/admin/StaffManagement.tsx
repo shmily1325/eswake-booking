@@ -1080,7 +1080,7 @@ export function StaffManagement() {
         margin: '0 auto',
         padding: isMobile ? '20px 16px' : '40px 20px'
       }}>
-        <PageHeader user={user} title="🎓 人員管理" showBaoLink={true} />
+        <PageHeader user={user} title="🎓 人員管理" showBaoLink={isAdmin(user)} />
 
         {/* Tab 切換 */}
         <div style={{

@@ -790,7 +790,7 @@ export function BoardManagement() {
       background: '#f5f5f5'
     }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        <PageHeader title="🏄 置板區管理" user={user} showBaoLink={true} />
+        <PageHeader title="🏄 置板區管理" user={user} showBaoLink={isAdmin(user)} />
 
         {/* 操作按鈕區 */}
       <div style={{

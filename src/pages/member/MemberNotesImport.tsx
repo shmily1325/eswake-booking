@@ -7,6 +7,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getButtonStyle, getCardStyle } from '../../styles/designSystem'
 import { normalizeDate } from '../../utils/date'
+import { isAdmin } from '../../utils/auth'
 
 interface ParsedNote {
   member_name: string
@@ -190,7 +191,7 @@ export function MemberNotesImport() {
       background: '#f5f5f5'
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <PageHeader title="📝 備忘錄匯入" user={user} showBaoLink={true} />
+        <PageHeader title="📝 備忘錄匯入" user={user} showBaoLink={isAdmin(user)} />
 
         <div style={{
         ...getCardStyle(),

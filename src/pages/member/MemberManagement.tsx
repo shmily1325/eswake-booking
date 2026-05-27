@@ -650,7 +650,7 @@ export function MemberManagement() {
           <PageHeader 
             title="👥 會員管理" 
             user={user} 
-            showBaoLink={true} 
+            showBaoLink={isAdmin(user)} 
             extraLinks={[{ label: '💰', link: '/member-transaction' }]}
           />
 
@@ -738,7 +738,7 @@ export function MemberManagement() {
         <PageHeader 
           title="👥 會員管理" 
           user={user} 
-          showBaoLink={true} 
+          showBaoLink={isAdmin(user)} 
           extraLinks={[{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }]}
         />
         {/* 搜尋欄 + 新增會員按鈕 */}

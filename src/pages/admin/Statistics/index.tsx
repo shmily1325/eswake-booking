@@ -877,7 +877,7 @@ export function Statistics() {
         <PageHeader
           title="📊 Dashboard"
           user={user}
-          showBaoLink={true}
+          showBaoLink={isAdmin(user)}
         />
 
         {/* Tab 切換 + 更新時間 */}

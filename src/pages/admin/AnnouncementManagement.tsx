@@ -420,7 +420,7 @@ export function AnnouncementManagement() {
       padding: isMobile ? '16px' : '20px'
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <PageHeader title="📢 公告" user={user} showBaoLink={true} />
+        <PageHeader title="📢 公告" user={user} showBaoLink={isAdmin(user)} />
 
         {/* 新增表單 */}
         <div style={{
