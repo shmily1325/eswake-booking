@@ -11,6 +11,7 @@ import {
   getCategoryIcon,
   getCategoryName,
 } from './lib/shopFormat'
+import { buildSingleInquiryUrl, isInquiryTooLong } from './lib/lineDeepLink'
 
 /**
  * 商品詳情頁（/shop/:productId）。
@@ -89,13 +90,20 @@ export function ShopDetail() {
 
   const handleDirectInquiry = () => {
     if (!product || !selectedVariant) return
-    // M5 會接上 LINE deep link
-    console.log('[shop] direct LINE inquiry (stub)', {
-      productId: product.id,
-      variantId: selectedVariant.id,
+    const productName = [product.brand, product.model].filter(Boolean).join(' ').trim()
+    const url = buildSingleInquiryUrl({
+      productName: productName || '(未命名商品)',
+      categoryId: product.category,
+      attributes: selectedVariant.attributes,
       quantity,
+      unitPrice: selectedVariant.price,
     })
-    alert('（M5 待實作）將跳轉到 LINE 預填詢問訊息')
+    if (isInquiryTooLong(url)) {
+      // 單一商品理論上不會超長，但留個保險
+      alert('詢問內容過長，建議減少數量或備註資訊')
+      return
+    }
+    window.location.href = url
   }
 
   return (
