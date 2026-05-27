@@ -1989,7 +1989,7 @@ export function CoachAssignment() {
                                 borderRadius: '4px',
                                 letterSpacing: '0.5px'
                               }}>
-                                ✋ Skip
+                                ✋ 偷懶中
                               </span>
                             )}
                           </div>
@@ -2096,16 +2096,16 @@ export function CoachAssignment() {
                                     style={{
                                       padding: '6px 12px',
                                       borderRadius: '6px',
-                                      border: currentAssignment.skipped ? 'none' : '1px solid #ddd',
+                                      border: currentAssignment.skipped ? 'none' : '1px dashed #bbb',
                                       background: currentAssignment.skipped ? '#ff9800' : 'white',
-                                      color: currentAssignment.skipped ? 'white' : '#666',
+                                      color: currentAssignment.skipped ? 'white' : '#888',
                                       fontSize: '12px',
                                       cursor: 'pointer',
-                                      letterSpacing: '1px'
+                                      whiteSpace: 'nowrap'
                                     }}
-                                    title={currentAssignment.skipped ? '取消略過' : '略過此筆排班（不指派駕駛也能儲存其他預約）'}
+                                    title={currentAssignment.skipped ? '點一下取消偷懶 (改回正常排班)' : '今天就先不排這筆，按儲存時不會被擋'}
                                   >
-                                    😏
+                                    {currentAssignment.skipped ? '偷懶中 ✋' : '偷懶不排 😏'}
                                   </button>
                               </div>
                               </div>
