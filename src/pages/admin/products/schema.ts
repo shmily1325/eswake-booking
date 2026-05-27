@@ -111,6 +111,26 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
       { key: 'color', label: '顏色', type: 'text', required: false },
     ],
   },
+  wakesurf: {
+    id: 'wakesurf',
+    name: 'WS板',
+    sortOrder: 30,
+    icon: '🏄',
+    fields: [
+      // 尺寸用 text 接受廠商各種寫法（例：4'10"、134cm、134）
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+  wakeboard: {
+    id: 'wakeboard',
+    name: 'WB板',
+    sortOrder: 40,
+    icon: '🛹',
+    fields: [
+      // 尺寸用 text 接受廠商各種寫法（例：134、137、142cm）
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
 }
 
 /** 取得所有類別，依 sortOrder 排序 */
