@@ -40,6 +40,11 @@ export interface CategoryDef {
   /** 該類別預設的 emoji 圖示，無圖時 fallback 用 */
   icon: string
   fields: FieldDef[]
+  /**
+   * 顯示分組標籤。桌機 tab 列會依此分到不同行；undefined = 一般行（最上方）。
+   * 例：'WB' | 'WS'
+   */
+  group?: string
 }
 
 /** 列表頁通用欄位（所有類別都有） */
@@ -111,6 +116,24 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
       { key: 'color', label: '顏色', type: 'text', required: false },
     ],
   },
+  // ===== 服飾類（一般行）=====
+  apparel: {
+    id: 'apparel',
+    name: '服飾類',
+    sortOrder: 25,
+    icon: '👕',
+    fields: [
+      {
+        key: 'gender',
+        label: 'M/F',
+        type: 'select',
+        options: ['M', 'F'],
+        required: false,
+      },
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+
   // ===== WB 系列 =====
   // 註：id 'wakeboard' 暫不 rename 成 'wb_board'，避免動到老大正在輸入的資料；
   // 之後做兩層 UI 時一起 rename + 寫 SQL 遷移。
@@ -119,6 +142,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     name: 'WB 板',
     sortOrder: 30,
     icon: '🛹',
+    group: 'WB',
     fields: [
       // 尺寸用 text 接受廠商各種寫法（例：134、137、142cm）
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -129,6 +153,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     name: 'WB 鞋',
     sortOrder: 31,
     icon: '👢',
+    group: 'WB',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -138,6 +163,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     name: 'WB fin',
     sortOrder: 32,
     icon: '🪶',
+    group: 'WB',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -147,6 +173,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     name: 'WB handle',
     sortOrder: 33,
     icon: '🪢',
+    group: 'WB',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -156,6 +183,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     name: 'WB 安全帽',
     sortOrder: 34,
     icon: '⛑️',
+    group: 'WB',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -168,6 +196,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     name: 'WS 板',
     sortOrder: 40,
     icon: '🏄',
+    group: 'WS',
     fields: [
       // 尺寸用 text 接受廠商各種寫法（例：4'10"、134cm、134）
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -178,6 +207,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     name: 'WS fin',
     sortOrder: 41,
     icon: '🪶',
+    group: 'WS',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -187,6 +217,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     name: 'WS 墊子',
     sortOrder: 42,
     icon: '🟫',
+    group: 'WS',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -196,6 +227,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     name: 'WS handle',
     sortOrder: 43,
     icon: '🪢',
+    group: 'WS',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -205,25 +237,8 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     name: 'WS 蠟塊',
     sortOrder: 44,
     icon: '🧱',
+    group: 'WS',
     fields: [
-      { key: 'size', label: '尺寸', type: 'text', required: false },
-    ],
-  },
-
-  // ===== 服飾類 =====
-  apparel: {
-    id: 'apparel',
-    name: '服飾類',
-    sortOrder: 50,
-    icon: '👕',
-    fields: [
-      {
-        key: 'gender',
-        label: 'M/F',
-        type: 'select',
-        options: ['M', 'F'],
-        required: false,
-      },
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
   },

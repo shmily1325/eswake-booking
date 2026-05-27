@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
@@ -301,35 +302,70 @@ export function ProductManagement() {
           style={{
             display: 'flex',
             gap: 8,
-            alignItems: 'center',
+            alignItems: 'flex-start',
             marginBottom: 14,
           }}
         >
+          {/* 三行：一般 / WB / WS。每行可水平捲動避免擠到。 */}
           <div
             style={{
               display: 'flex',
+              flexDirection: 'column',
               gap: 6,
-              overflowX: 'auto',
-              paddingBottom: 4,
               flex: 1,
-              WebkitOverflowScrolling: 'touch',
+              minWidth: 0,
             }}
           >
-            <CategoryTab
-              label="全部"
-              active={activeTab === 'all'}
-              onClick={() => setActiveTab('all')}
-              trackId="product_tab_all"
-            />
-            {categories.map((cat) => (
+            {/* Row 1：全部 + 一般分類（無 group） */}
+            <CategoryRow>
               <CategoryTab
-                key={cat.id}
-                label={isMobile ? cat.name : `${cat.icon} ${cat.name}`}
-                active={activeTab === cat.id}
-                onClick={() => setActiveTab(cat.id)}
-                trackId={`product_tab_${cat.id}`}
+                label="全部"
+                active={activeTab === 'all'}
+                onClick={() => setActiveTab('all')}
+                trackId="product_tab_all"
               />
-            ))}
+              {categories
+                .filter((cat) => !cat.group)
+                .map((cat) => (
+                  <CategoryTab
+                    key={cat.id}
+                    label={cat.name}
+                    active={activeTab === cat.id}
+                    onClick={() => setActiveTab(cat.id)}
+                    trackId={`product_tab_${cat.id}`}
+                  />
+                ))}
+            </CategoryRow>
+
+            {/* Row 2：WB */}
+            <CategoryRow prefix="WB">
+              {categories
+                .filter((cat) => cat.group === 'WB')
+                .map((cat) => (
+                  <CategoryTab
+                    key={cat.id}
+                    label={cat.name.replace(/^WB\s*/, '')}
+                    active={activeTab === cat.id}
+                    onClick={() => setActiveTab(cat.id)}
+                    trackId={`product_tab_${cat.id}`}
+                  />
+                ))}
+            </CategoryRow>
+
+            {/* Row 3：WS */}
+            <CategoryRow prefix="WS">
+              {categories
+                .filter((cat) => cat.group === 'WS')
+                .map((cat) => (
+                  <CategoryTab
+                    key={cat.id}
+                    label={cat.name.replace(/^WS\s*/, '')}
+                    active={activeTab === cat.id}
+                    onClick={() => setActiveTab(cat.id)}
+                    trackId={`product_tab_${cat.id}`}
+                  />
+                ))}
+            </CategoryRow>
           </div>
           {/* 排序：只在桌機顯示，手機固定預設「庫存少→多」 */}
           {!isMobile && (
@@ -423,6 +459,42 @@ function CategoryTab({ label, active, onClick, trackId }: CategoryTabProps) {
     >
       {label}
     </button>
+  )
+}
+
+/**
+ * 類別 Tab 的一行容器。
+ * - 內部可水平捲動（在 tab 太多塞不下時）
+ * - prefix：行首的群組標籤（例：'WB'、'WS'），不傳就沒有
+ */
+function CategoryRow({ prefix, children }: { prefix?: string; children: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 6,
+        alignItems: 'center',
+        overflowX: 'auto',
+        paddingBottom: 2,
+        WebkitOverflowScrolling: 'touch',
+      }}
+    >
+      {prefix && (
+        <span
+          style={{
+            flexShrink: 0,
+            fontSize: 12,
+            fontWeight: 700,
+            color: '#888',
+            paddingRight: 4,
+            letterSpacing: 0.5,
+          }}
+        >
+          {prefix}:
+        </span>
+      )}
+      {children}
+    </div>
   )
 }
 
