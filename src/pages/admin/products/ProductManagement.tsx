@@ -368,8 +368,8 @@ export function ProductManagement() {
                 ))}
             </CategoryRow>
 
-            {/* Row 3：WS */}
-            <CategoryRow prefix="WS">
+            {/* Row 3：WS / Skim */}
+            <CategoryRow prefix="WS/Skim">
               {categories
                 .filter((cat) => cat.group === 'WS')
                 .map((cat) => (
