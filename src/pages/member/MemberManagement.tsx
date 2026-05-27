@@ -307,16 +307,17 @@ export function MemberManagement() {
       if (hasPartner && member.membership_partner_id) {
         const partnerId = member.membership_partner_id
 
-        // 配對會員改為一般會員
-        await supabase
+        // 配對會員改為一般會員 — 若失敗 throw，避免留下孤兒的 dual 配對
+        const { error: partnerErr } = await supabase
           .from('members')
           .update({ 
             membership_type: 'general',
             membership_partner_id: null 
           })
           .eq('id', partnerId)
+        if (partnerErr) throw new Error(`解除配對會員失敗: ${partnerErr.message}`)
 
-        // 幫配對會員加備忘錄
+        // 幫配對會員加備忘錄（活動紀錄，失敗不阻斷主流程）
         // @ts-ignore
         await supabase.from('member_notes').insert([{
           member_id: partnerId,
@@ -337,12 +338,13 @@ export function MemberManagement() {
       
       if (error) throw error
 
-      // 2.5 同步移除該會員的 LINE 綁定
-      await supabase
+      // 2.5 同步移除該會員的 LINE 綁定 — 若失敗 throw，避免「已隱藏但 LINE 還能登入」
+      const { error: lineErr } = await supabase
         .from('line_bindings')
         .update({ status: 'revoked' })
         .eq('member_id', memberId)
         .eq('status', 'active')
+      if (lineErr) throw new Error(`撤銷 LINE 綁定失敗: ${lineErr.message}`)
 
       // 3. 新增備忘錄
       // @ts-ignore
