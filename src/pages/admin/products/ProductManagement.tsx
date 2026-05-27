@@ -295,9 +295,25 @@ export function ProductManagement() {
               + 新增{isMobile ? '' : '商品'}
             </Button>
           )}
+          {/* 手機版：列表/鎖定切換放在搜尋列右邊，避免擠到 tab 區 */}
+          {isMobile && (
+            <>
+              <LayoutToggle layout={layout} onChange={setLayoutPersist} />
+              {canEdit && (
+                <LockToggle
+                  locked={userLocked}
+                  onToggle={() => {
+                    const next = !userLocked
+                    setUserLocked(next)
+                    trackClick(next ? 'product_lock_on' : 'product_lock_off', user?.email ?? undefined)
+                  }}
+                />
+              )}
+            </>
+          )}
         </div>
 
-        {/* 類別 Tab + 顯示模式切換 */}
+        {/* 類別 Tab + （桌機）排序/顯示模式切換 */}
         <div
           style={{
             display: 'flex',
@@ -367,27 +383,29 @@ export function ProductManagement() {
                 ))}
             </CategoryRow>
           </div>
-          {/* 排序：只在桌機顯示，手機固定預設「庫存少→多」 */}
+          {/* 桌機版才在 tab 右側放排序 / 顯示模式 / 鎖定切換 */}
           {!isMobile && (
-            <SortMenu
-              value={sortBy}
-              onChange={(next) => {
-                setSortByPersist(next)
-                trackClick(`product_sort_${next}`, user?.email ?? undefined)
-              }}
-              isMobile={isMobile}
-            />
-          )}
-          <LayoutToggle layout={layout} onChange={setLayoutPersist} />
-          {canEdit && (
-            <LockToggle
-              locked={userLocked}
-              onToggle={() => {
-                const next = !userLocked
-                setUserLocked(next)
-                trackClick(next ? 'product_lock_on' : 'product_lock_off', user?.email ?? undefined)
-              }}
-            />
+            <>
+              <SortMenu
+                value={sortBy}
+                onChange={(next) => {
+                  setSortByPersist(next)
+                  trackClick(`product_sort_${next}`, user?.email ?? undefined)
+                }}
+                isMobile={isMobile}
+              />
+              <LayoutToggle layout={layout} onChange={setLayoutPersist} />
+              {canEdit && (
+                <LockToggle
+                  locked={userLocked}
+                  onToggle={() => {
+                    const next = !userLocked
+                    setUserLocked(next)
+                    trackClick(next ? 'product_lock_on' : 'product_lock_off', user?.email ?? undefined)
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
 
