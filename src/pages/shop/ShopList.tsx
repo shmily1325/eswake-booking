@@ -68,7 +68,7 @@ export function ShopList() {
 
   return (
     <div className="min-h-screen bg-white">
-      <ShopHeader cartCount={0} />
+      <ShopHeader />
 
       {/* Hero / 標題區 */}
       <section className="bg-white border-b border-gray-100">

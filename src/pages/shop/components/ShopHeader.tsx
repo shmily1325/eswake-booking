@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom'
+import { useShopCart } from '../hooks/useShopCart'
 
 interface ShopHeaderProps {
-  /** 購物車內品項數（會顯示在 cart icon 右上 badge）。0 不顯示 badge。 */
-  cartCount?: number
   /** 顯示「返回商品列表」連結（詳情頁 / 購物車頁用） */
   showBack?: boolean
 }
@@ -18,7 +17,9 @@ interface ShopHeaderProps {
  * - 中：（v1 暫不放，避免太擁擠）
  * - 右：購物車 icon，含數量 badge
  */
-export function ShopHeader({ cartCount = 0, showBack = false }: ShopHeaderProps) {
+export function ShopHeader({ showBack = false }: ShopHeaderProps) {
+  const { totalCount: cartCount } = useShopCart()
+
   return (
     <header className="sticky top-0 z-30 bg-zinc-900 text-white shadow-md">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">

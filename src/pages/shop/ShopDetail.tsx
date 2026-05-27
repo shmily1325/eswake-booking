@@ -5,6 +5,7 @@ import type { ProductWithVariants, ProductVariantRow } from '../admin/products/t
 import { ShopHeader } from './components/ShopHeader'
 import { VariantPicker } from './components/VariantPicker'
 import { QuantityStepper } from './components/QuantityStepper'
+import { useShopCart } from './hooks/useShopCart'
 import {
   formatPrice,
   getCategoryIcon,
@@ -24,6 +25,7 @@ import {
  */
 export function ShopDetail() {
   const { productId } = useParams<{ productId: string }>()
+  const { addItem } = useShopCart()
 
   const [product, setProduct] = useState<ProductWithVariants | null>(null)
   const [loading, setLoading] = useState(true)
@@ -71,13 +73,18 @@ export function ShopDetail() {
 
   const handleAddToCart = () => {
     if (!product || !selectedVariant) return
-    // M4 會接上實際的 cart context；M3 先用 alert 確認資料流
-    console.log('[shop] add to cart (stub)', {
-      productId: product.id,
+    const productName = [product.brand, product.model].filter(Boolean).join(' ').trim()
+    addItem({
       variantId: selectedVariant.id,
+      productId: product.id,
+      productName: productName || '(未命名商品)',
+      categoryId: product.category ?? '',
+      attributes: selectedVariant.attributes,
+      unitPrice: selectedVariant.price,
       quantity,
     })
-    alert(`（M4 待實作）加入購物車：${product.brand} ${product.model} × ${quantity}`)
+    // 加完還原 quantity 到 1，方便繼續加同商品其他規格
+    setQuantity(1)
   }
 
   const handleDirectInquiry = () => {
@@ -93,7 +100,7 @@ export function ShopDetail() {
 
   return (
     <div className="min-h-screen bg-white">
-      <ShopHeader cartCount={0} showBack />
+      <ShopHeader showBack />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         {loading ? (
