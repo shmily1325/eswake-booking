@@ -2314,21 +2314,46 @@ export function StaffManagement() {
                                 aria-label="一般"
                               />
                             </td>
-                            {MATRIX_SINGLE_FEATURE_KEYS.map((key) => (
-                              <td
-                                key={key}
-                                style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle', borderBottom: '1px solid #f0f0f0' }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={f[key]}
-                                  disabled={busy}
-                                  onChange={(e) => { void setMatrixEditorFeature(row, key, e.target.checked) }}
-                                  title={EDITOR_FEATURE_LABELS[key]}
-                                  aria-label={EDITOR_FEATURE_LABELS[key]}
-                                />
-                              </td>
-                            ))}
+                            {MATRIX_SINGLE_FEATURE_KEYS.map((key) => {
+                              // 「商品瀏覽」被「商品管理」隱含：勾了「商品管理」時，
+                              // 「商品瀏覽」顯示為打勾且反灰（不可改）。
+                              const lockedByEdit = key === 'can_products_view' && f.can_products
+                              const cellChecked = lockedByEdit ? true : f[key]
+                              const cellDisabled = busy || lockedByEdit
+                              const cellTitle = lockedByEdit
+                                ? `${EDITOR_FEATURE_LABELS[key]}（已包含於商品管理權限）`
+                                : EDITOR_FEATURE_LABELS[key]
+                              const onCellChange = (next: boolean) => {
+                                // 勾「商品管理」時連同「商品瀏覽」一起寫入 DB，
+                                // 之後若取消勾「商品管理」，「商品瀏覽」仍會保留（一般 view 已記在 DB）。
+                                if (key === 'can_products' && next) {
+                                  void setMatrixEditorFeatureFields(row, { can_products: true, can_products_view: true })
+                                } else {
+                                  void setMatrixEditorFeature(row, key, next)
+                                }
+                              }
+                              return (
+                                <td
+                                  key={key}
+                                  style={{
+                                    padding: '10px 6px',
+                                    textAlign: 'center',
+                                    verticalAlign: 'middle',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    opacity: lockedByEdit ? 0.55 : 1,
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={cellChecked}
+                                    disabled={cellDisabled}
+                                    onChange={(e) => onCellChange(e.target.checked)}
+                                    title={cellTitle}
+                                    aria-label={EDITOR_FEATURE_LABELS[key]}
+                                  />
+                                </td>
+                              )
+                            })}
                             <td
                               style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle', borderBottom: '1px solid #f0f0f0' }}
                             >
