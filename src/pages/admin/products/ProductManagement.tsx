@@ -25,8 +25,15 @@ export function ProductManagement() {
 
   const [hasAccess, setHasAccess] = useState(false)
   const [accessChecked, setAccessChecked] = useState(false)
-  /** 是否能編輯：can_products = true；只勾 can_products_view 時為 false，全頁進入唯讀模式 */
+  /** DB 權限：can_products = true；只勾 can_products_view 時為 false，全頁進入唯讀模式 */
   const [canEdit, setCanEdit] = useState(false)
+  /**
+   * 使用者主動鎖定（避免誤改）。only canEdit=true 才看得到鎖按鈕。
+   * 不持久化：重新進頁預設解鎖，跟「我有編輯權」直覺一致；要鎖就當場按。
+   */
+  const [userLocked, setUserLocked] = useState(false)
+  /** 實際可編輯 = DB 權限 ∧ 沒被自己鎖。鎖了之後 UI 跟唯讀模式完全一樣。 */
+  const effectiveCanEdit = canEdit && !userLocked
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState<ProductWithVariants[]>([])
   const [activeTab, setActiveTab] = useState<string>('all') // 'all' | category id
@@ -193,7 +200,7 @@ export function ProductManagement() {
             defaultCategory={view.kind === 'create' ? view.defaultCategory : undefined}
             existingProducts={products.map((p) => ({ category: p.category, brand: p.brand, model: p.model }))}
             currentUserEmail={user?.email ?? null}
-            readOnly={!canEdit}
+            readOnly={!effectiveCanEdit}
             onClose={(changed) => {
               setView({ kind: 'list' })
               if (changed) void loadData()
@@ -274,7 +281,7 @@ export function ProductManagement() {
               </button>
             )}
           </div>
-          {canEdit && (
+          {effectiveCanEdit && (
             <Button
               variant="primary"
               data-track="product_add"
@@ -336,6 +343,16 @@ export function ProductManagement() {
             />
           )}
           <LayoutToggle layout={layout} onChange={setLayoutPersist} />
+          {canEdit && (
+            <LockToggle
+              locked={userLocked}
+              onToggle={() => {
+                const next = !userLocked
+                setUserLocked(next)
+                trackClick(next ? 'product_lock_on' : 'product_lock_off', user?.email ?? undefined)
+              }}
+            />
+          )}
         </div>
 
         {/* 列表 */}
@@ -346,7 +363,7 @@ export function ProductManagement() {
         ) : filteredItems.length === 0 ? (
           <EmptyState
             hasAnyProduct={products.length > 0}
-            canCreate={canEdit}
+            canCreate={effectiveCanEdit}
             onCreate={() => {
               const defaultCat =
                 activeTab !== 'all' ? activeTab : categories[0]?.id ?? Object.keys(CATEGORY_SCHEMAS)[0]
@@ -926,6 +943,43 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * 鎖定編輯按鈕：給有編輯權的人「自己進唯讀」的開關，防誤改。
+ * 鎖了之後跟 can_products_view 帳號看到的 UI 完全一樣。
+ */
+interface LockToggleProps {
+  locked: boolean
+  onToggle: () => void
+}
+function LockToggle({ locked, onToggle }: LockToggleProps) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={locked ? '目前已鎖定（唯讀）。點此解鎖編輯' : '目前可編輯。點此鎖定避免誤改'}
+      aria-label={locked ? '解鎖編輯' : '鎖定編輯'}
+      aria-pressed={locked}
+      style={{
+        width: 34,
+        height: 34,
+        border: '1px solid ' + (locked ? '#ef6c00' : '#ddd'),
+        borderRadius: 8,
+        background: locked ? '#fff4e0' : '#fff',
+        color: locked ? '#ef6c00' : '#666',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 16,
+        flexShrink: 0,
+        transition: 'all 0.15s',
+      }}
+    >
+      {locked ? '🔒' : '🔓'}
+    </button>
   )
 }
 

@@ -93,8 +93,8 @@ export function ImageUploader({
       onClick={handleSelect}
       style={containerStyle}
       role="button"
-      aria-label={value ? '更換圖片' : '上傳圖片'}
-      title={value ? '點選更換圖片' : '點選上傳圖片'}
+      aria-label={disabled ? (value ? '商品圖片' : '無圖片') : value ? '更換圖片' : '上傳圖片'}
+      title={disabled ? (value ? '商品圖片' : '尚未上傳圖片') : value ? '點選更換圖片' : '點選上傳圖片'}
     >
       {value ? (
         <>
@@ -135,7 +135,9 @@ export function ImageUploader({
       ) : (
         <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
           <div style={{ fontSize: size >= 80 ? 24 : 18 }}>📷</div>
-          <div style={{ marginTop: 4 }}>{uploading ? '上傳中…' : '上傳圖片'}</div>
+          <div style={{ marginTop: 4 }}>
+            {uploading ? '上傳中…' : disabled ? '無圖片' : '上傳圖片'}
+          </div>
         </div>
       )}
       {uploading && value && (

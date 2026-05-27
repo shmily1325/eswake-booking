@@ -18,7 +18,7 @@ import {
 } from '../../utils/auth'
 
 /** 人員權限表上顯示的「小編」欄位：重複預約＋批次合併為一格（寫庫仍為兩欄同值） */
-const MATRIX_SINGLE_FEATURE_KEYS = ['can_schedule', 'can_boats', 'can_products', 'can_products_view'] as const
+const MATRIX_SINGLE_FEATURE_KEYS = ['can_schedule', 'can_boats', 'can_products_view', 'can_products'] as const
 const matrixFeatureColumnCount = MATRIX_SINGLE_FEATURE_KEYS.length + 1
 
 interface Coach {

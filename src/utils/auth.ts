@@ -80,8 +80,8 @@ export function isMemberPhoneOnlyEditor(user: User | null): boolean {
 export const EDITOR_FEATURE_KEYS = [
   'can_schedule',
   'can_boats',
-  'can_products',
   'can_products_view',
+  'can_products',
   'can_repeat_booking',
   'can_search_batch',
 ] as const
@@ -90,8 +90,8 @@ export type EditorFeatureKey = (typeof EDITOR_FEATURE_KEYS)[number]
 export const EDITOR_FEATURE_LABELS: Record<EditorFeatureKey, string> = {
   can_schedule: '排班',
   can_boats: '船隻管理',
-  can_products: '商品（改）',
-  can_products_view: '商品（看）',
+  can_products_view: '商品瀏覽',
+  can_products: '商品管理',
   can_repeat_booking: '重複預約（預約表）',
   can_search_batch: '預約查詢·批次',
 }
