@@ -88,6 +88,7 @@ export function CoachAssignment() {
     notes: string
     conflicts: string[] // 即時衝突提示
     requiresDriver: boolean
+    skipped: boolean // 略過此筆排班（不需教練/駕駛即可儲存，DayView 仍視為未排班）
   }>>({})
 
   // 計算未排班數量（用於 DailyStaffDisplay 顯示警告）
@@ -186,14 +187,15 @@ export function CoachAssignment() {
       setBookings(bookingsWithCoaches)
       
       // 初始化 assignments 為當前的配置
-      const initialAssignments: Record<number, { coachIds: string[], driverIds: string[], notes: string, conflicts: string[], requiresDriver: boolean }> = {}
+      const initialAssignments: Record<number, { coachIds: string[], driverIds: string[], notes: string, conflicts: string[], requiresDriver: boolean, skipped: boolean }> = {}
       bookingsWithCoaches.forEach((booking: Booking) => {
         initialAssignments[booking.id] = {
           coachIds: [...booking.currentCoaches],
           driverIds: [...booking.currentDrivers],
           notes: booking.schedule_notes || '',
           conflicts: [],
-          requiresDriver: booking.requires_driver
+          requiresDriver: booking.requires_driver,
+          skipped: false // 略過狀態為頁面內暫時狀態，每次重新載入會清空
         }
       })
       setAssignments(initialAssignments)
@@ -223,7 +225,7 @@ export function CoachAssignment() {
     }
     
     setAssignments(prev => {
-      const currentAssignment = prev[bookingId] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
+      const currentAssignment = prev[bookingId] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false, skipped: false }
       const newCoachIds = field === 'coachIds' ? value : currentAssignment.coachIds
       const newDriverIds = field === 'driverIds' ? value : currentAssignment.driverIds
       
@@ -238,6 +240,28 @@ export function CoachAssignment() {
         [field]: value,
           conflicts: newConflicts
       }
+      }
+    })
+  }
+
+  // 切換「略過此筆排班」
+  // 語意：略過 = 「此筆當作沒排班」(driverIds 清空)，儲存時跳過「缺駕駛」驗證但仍寫入 DB。
+  // 指定教練 coachIds 永不清空（這是客人 / 櫃檯在預約建立時就指定的真實資料）。
+  // skipped flag 本身不存 DB（每次重新載入會清空，意即下次再來看仍會被提醒未排班）。
+  const toggleSkipped = (bookingId: number) => {
+    if (error) setError('')
+
+    setAssignments(prev => {
+      const current = prev[bookingId] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false, skipped: false }
+      const nextSkipped = !current.skipped
+      return {
+        ...prev,
+        [bookingId]: {
+          ...current,
+          skipped: nextSkipped,
+          driverIds: nextSkipped ? [] : current.driverIds,
+          conflicts: nextSkipped ? [] : current.conflicts,
+        }
       }
     })
   }
@@ -369,10 +393,12 @@ export function CoachAssignment() {
     setSaving(true)
 
     try {
-      // 0. 先檢查是否所有預約都有指定教練或駕駛
+      // 0. 先檢查是否所有預約都有指定教練或駕駛（已略過的預約不檢查）
       const missingPersonnel: string[] = []
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
+        // 已略過此筆排班，跳過所有驗證
+        if (assignment?.skipped) continue
         // 只要有教練或駕駛就可以，不一定兩個都要有
         if (!assignment || (assignment.coachIds.length === 0 && assignment.driverIds.length === 0)) {
           const timeStr = formatTimeRange(booking.start_at, booking.duration_min, booking.boats?.name)
@@ -385,11 +411,12 @@ export function CoachAssignment() {
         return
       }
 
-      // 0.1 檢查「需要駕駛」的預約是否符合人力需求
+      // 0.1 檢查「需要駕駛」的預約是否符合人力需求（已略過的預約不檢查）
       const driverIssues: string[] = []
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
         if (!assignment) continue
+        if (assignment.skipped) continue
         
         if (assignment.requiresDriver) {
           
@@ -1656,7 +1683,7 @@ export function CoachAssignment() {
           
           // 分類預約 - 使用編輯中的值（即時反應）
           bookings.forEach(booking => {
-            const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
+            const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false, skipped: false }
             
             // 如果有衝突，只顯示在「需要駕駛」區域
             if (assignment.conflicts.length > 0) {
@@ -1775,7 +1802,7 @@ export function CoachAssignment() {
                         </div>
                       ) : (
                         coachBookings.map(booking => {
-                        const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
+                        const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false, skipped: false }
                         const isCoach = assignment.coachIds.includes(coach.id)
                         const isDriver = assignment.driverIds.includes(coach.id)
                         const isCoachPractice = booking.is_coach_practice === true
@@ -1935,7 +1962,7 @@ export function CoachAssignment() {
                     padding: isMobile ? '0 16px 16px' : '0 20px 20px'
                   }}>
                     {needsDriverBookings.map(booking => {
-                      const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
+                      const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false, skipped: false }
                       const isEditing = editingBookingId === booking.id
                       
                       return (
@@ -1950,8 +1977,21 @@ export function CoachAssignment() {
                         }}
                         onClick={() => setEditingBookingId(isEditing ? null : booking.id)}
                         >
-                          <div style={{ fontWeight: '600', color: '#2c3e50' }}>
-                            {formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}
+                          <div style={{ fontWeight: '600', color: '#2c3e50', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span>{formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}</span>
+                            {assignment.skipped && (
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                padding: '2px 8px',
+                                background: '#ff9800',
+                                color: 'white',
+                                borderRadius: '4px',
+                                letterSpacing: '0.5px'
+                              }}>
+                                ✋ Skip
+                              </span>
+                            )}
                           </div>
                           <div style={{ color: '#666', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
                             {getDisplayContactName(booking)}
@@ -1986,7 +2026,7 @@ export function CoachAssignment() {
                           {/* 展開編輯：指定駕駛 */}
                           {isEditing && (() => {
                             // 動態獲取最新的 assignment，避免閉包問題
-                            const currentAssignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false }
+                            const currentAssignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false, skipped: false }
                             return (
                             <div style={{ 
                               marginTop: '12px',
@@ -2023,6 +2063,10 @@ export function CoachAssignment() {
                                           if (isUnavailable) {
                                             return
                                           }
+                                          // 若目前為 skipped，指派駕駛代表使用者要實際排班，自動取消略過
+                                          if (currentAssignment.skipped) {
+                                            toggleSkipped(booking.id)
+                                          }
                                           toggleDriver(booking.id, c.id)
                                         }}
                                         style={{
@@ -2041,6 +2085,28 @@ export function CoachAssignment() {
                                 </button>
                     )
                   })}
+
+                                  {/* 略過此筆排班按鈕（與駕駛按鈕互斥：點任一駕駛預約會跳到該教練分組，編輯區自動消失） */}
+                                  <button
+                                    key="__skip__"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      toggleSkipped(booking.id)
+                                    }}
+                                    style={{
+                                      padding: '6px 12px',
+                                      borderRadius: '6px',
+                                      border: currentAssignment.skipped ? 'none' : '1px solid #ddd',
+                                      background: currentAssignment.skipped ? '#ff9800' : 'white',
+                                      color: currentAssignment.skipped ? 'white' : '#666',
+                                      fontSize: '12px',
+                                      cursor: 'pointer',
+                                      letterSpacing: '1px'
+                                    }}
+                                    title={currentAssignment.skipped ? '取消略過' : '略過此筆排班（不指派駕駛也能儲存其他預約）'}
+                                  >
+                                    😏
+                                  </button>
                               </div>
                               </div>
                               
