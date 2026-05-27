@@ -951,28 +951,6 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
         >
           {stock.label}
         </span>
-        {/* 有備註：左上小 icon */}
-        {product.description && (
-          <span
-            title={product.description}
-            style={{
-              position: 'absolute',
-              top: 6,
-              left: 6,
-              width: 22,
-              height: 22,
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,0.85)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 11,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-            }}
-          >
-            📝
-          </span>
-        )}
       </div>
 
       {/* 文字區：跟圖之間用 padding 自然分隔 */}
@@ -1026,6 +1004,23 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
             title={attrText}
           >
             {attrText}
+          </div>
+        )}
+        {product.description && (
+          <div
+            title={product.description}
+            style={{
+              fontSize: 11,
+              color: '#666',
+              lineHeight: 1.35,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              wordBreak: 'break-word',
+            }}
+          >
+            {product.description}
           </div>
         )}
         <div style={{ marginTop: 4, fontSize: 13 }}>
