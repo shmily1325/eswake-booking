@@ -77,6 +77,7 @@ import { CoachDailyView } from './pages/coach/CoachDailyView'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { LoginAccessDeniedPage } from './pages/LoginAccessDeniedPage'
 import { LiffMyBookings } from './pages/LiffMyBookings'
+import { ShopList, ShopDetail, ShopCart } from './pages/shop'
 import { ClickTrackProvider } from './components/ClickTrackProvider'
 import { isAllowedUser } from './utils/auth'
 
@@ -213,6 +214,10 @@ function App() {
         <Routes>
           {/* LIFF 頁面不需要系統登入驗證 */}
           <Route path="/liff" element={<LiffMyBookings />} />
+          {/* 商城型錄頁完全公開，無需登入；/shop/cart 須排在 /shop/:productId 之前 */}
+          <Route path="/shop" element={<ShopList />} />
+          <Route path="/shop/cart" element={<ShopCart />} />
+          <Route path="/shop/:productId" element={<ShopDetail />} />
           {/* 其他頁面需要登入驗證 */}
           <Route path="*" element={
             <AuthProvider>
