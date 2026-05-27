@@ -35,8 +35,8 @@ export function ProductCard({ product, variants }: ProductCardProps) {
       to={`/shop/${product.id}`}
       className="group block bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all"
     >
-      {/* 圖片區（1:1 正方形） */}
-      <div className="relative aspect-square bg-gray-50 overflow-hidden">
+      {/* 圖片區（3:4 直式，比較像服飾/裝備電商的版型） */}
+      <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden">
         {imageUrl ? (
           <img
             src={imageUrl}
