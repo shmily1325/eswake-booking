@@ -23,6 +23,8 @@ interface ProductEditViewProps {
   defaultCategory?: string
   /** 已存在的商品（給品牌 / 型號 autocomplete 用） */
   existingProducts?: ReadonlyArray<{ category: string; brand: string; model: string }>
+  /** 唯讀模式（can_products_view 進來的人）：所有 input/按鈕 disabled、儲存/刪除/SKU 編輯入口隱藏 */
+  readOnly?: boolean
   onClose: (changed: boolean) => void
   currentUserEmail?: string | null
 }
@@ -77,7 +79,7 @@ function emptyDraft(): DraftVariant {
   }
 }
 
-export function ProductEditView({ productId, defaultCategory, existingProducts = [], onClose, currentUserEmail }: ProductEditViewProps) {
+export function ProductEditView({ productId, defaultCategory, existingProducts = [], readOnly = false, onClose, currentUserEmail }: ProductEditViewProps) {
   const toast = useToast()
   const { isMobile } = useResponsive()
   const isNew = productId == null
@@ -404,14 +406,14 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           ← 返回
         </Button>
         <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, flex: 1 }}>
-          {isNew ? '新增商品' : '編輯商品'}
+          {readOnly ? '查看商品' : isNew ? '新增商品' : '編輯商品'}
           {original && (
             <span style={{ fontSize: 13, color: '#888', marginLeft: 8, fontWeight: 400 }}>
               {original.brand} {original.model}
             </span>
           )}
         </h2>
-        {!isMobile && (
+        {!isMobile && !readOnly && (
           <Button variant="primary" data-track="product_edit_save" onClick={handleSave} disabled={saving}>
             {saving ? '儲存中…' : '儲存'}
           </Button>
@@ -436,7 +438,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               style={inputStyle}
-              disabled={saving}
+              disabled={saving || readOnly}
             >
               {Object.values(CATEGORY_SCHEMAS).map((c) => (
                 <option key={c.id} value={c.id}>
@@ -452,7 +454,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
               value={brand}
               onChange={(e) => setBrand(e.target.value)}
               placeholder="例如：Follow"
-              disabled={saving}
+              disabled={saving || readOnly}
               list="product-brand-suggestions"
               autoComplete="off"
             />
@@ -469,7 +471,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder="例如：Signal Ladies"
-              disabled={saving}
+              disabled={saving || readOnly}
               list="product-model-suggestions"
               autoComplete="off"
             />
@@ -486,7 +488,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="（可選）此商品的補充說明"
-              disabled={saving}
+              disabled={saving || readOnly}
             />
           </div>
         </div>
@@ -515,7 +517,8 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
             draft={d}
             schemaFields={cat?.fields ?? []}
             isMobile={isMobile}
-            disabled={saving}
+            disabled={saving || readOnly}
+            readOnly={readOnly}
             onChange={(patch) => updateDraft(idx, patch)}
             onAttributeChange={(key, val) => updateDraftAttribute(idx, key, val)}
             onRemove={() => handleRemoveVariant(idx)}
@@ -524,22 +527,24 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           />
         ))}
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button variant="outline" size="small" data-track="product_sku_add" onClick={handleAddVariant} disabled={saving}>
-            + 新增規格 (SKU)
-          </Button>
-          {drafts.some((d) => !d.pendingDelete) && (
-            <span title="以最後一筆有效規格為範本（不複製圖、庫存歸 0）">
-              <Button variant="outline" size="small" data-track="product_sku_duplicate" onClick={handleDuplicateLast} disabled={saving}>
-                ⎘ 複製上一筆
-              </Button>
-            </span>
-          )}
-        </div>
+        {!readOnly && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button variant="outline" size="small" data-track="product_sku_add" onClick={handleAddVariant} disabled={saving}>
+              + 新增規格 (SKU)
+            </Button>
+            {drafts.some((d) => !d.pendingDelete) && (
+              <span title="以最後一筆有效規格為範本（不複製圖、庫存歸 0）">
+                <Button variant="outline" size="small" data-track="product_sku_duplicate" onClick={handleDuplicateLast} disabled={saving}>
+                  ⎘ 複製上一筆
+                </Button>
+              </span>
+            )}
+          </div>
+        )}
       </section>
 
-      {/* 危險區（編輯模式才有） */}
-      {!isNew && (
+      {/* 危險區（編輯模式才有；唯讀模式隱藏） */}
+      {!isNew && !readOnly && (
         <section
           style={{
             background: '#fff',
@@ -559,8 +564,8 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
         </section>
       )}
 
-      {/* 手機版底部固定儲存按鈕 */}
-      {isMobile && (
+      {/* 手機版底部固定儲存按鈕（唯讀模式隱藏） */}
+      {isMobile && !readOnly && (
         <div
           style={{
             position: 'fixed',
@@ -607,6 +612,8 @@ interface VariantBlockProps {
   schemaFields: FieldDef[]
   isMobile: boolean
   disabled: boolean
+  /** 唯讀模式：隱藏「🗑 移除」「復原」按鈕，inputs 仍透過 disabled prop 鎖住 */
+  readOnly?: boolean
   onChange: (patch: Partial<DraftVariant>) => void
   onAttributeChange: (key: string, value: string) => void
   onRemove: () => void
@@ -620,6 +627,7 @@ function VariantBlock({
   schemaFields,
   isMobile,
   disabled,
+  readOnly = false,
   onChange,
   onAttributeChange,
   onRemove,
@@ -718,7 +726,7 @@ function VariantBlock({
             ▾
           </span>
         )}
-        {draft.pendingDelete ? (
+        {readOnly ? null : draft.pendingDelete ? (
           <span onClick={stop}>
             <Button variant="outline" size="small" data-track="product_sku_restore" onClick={onRestore} disabled={disabled}>
               復原

@@ -5,7 +5,7 @@ import { PageHeader } from '../../../components/PageHeader'
 import { Footer } from '../../../components/Footer'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { Button, Badge, useToast, ToastContainer } from '../../../components/ui'
-import { hasEditorFeatureAsync } from '../../../utils/auth'
+import { hasEditorFeatureAsync, hasProductsAccessAsync } from '../../../utils/auth'
 import { trackClick, trackClickDedupedWithin } from '../../../utils/trackClick'
 import { CATEGORY_SCHEMAS, formatAttributes, getAllCategories, getCategory } from './schema'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from './api'
@@ -25,6 +25,8 @@ export function ProductManagement() {
 
   const [hasAccess, setHasAccess] = useState(false)
   const [accessChecked, setAccessChecked] = useState(false)
+  /** 是否能編輯：can_products = true；只勾 can_products_view 時為 false，全頁進入唯讀模式 */
+  const [canEdit, setCanEdit] = useState(false)
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState<ProductWithVariants[]>([])
   const [activeTab, setActiveTab] = useState<string>('all') // 'all' | category id
@@ -70,16 +72,20 @@ export function ProductManagement() {
     let cancelled = false
     const check = async () => {
       if (!user) return
-      const ok = await hasEditorFeatureAsync(user, 'can_products')
+      // 進頁條件：can_products（可改）或 can_products_view（只看）任一即可
+      const allowed = await hasProductsAccessAsync(user)
       if (cancelled) return
-      if (!ok) {
+      if (!allowed) {
         toast.error('您沒有權限訪問此頁面')
         navigate('/')
         return
       }
+      const editable = await hasEditorFeatureAsync(user, 'can_products')
+      if (cancelled) return
+      setCanEdit(editable)
       setHasAccess(true)
       setAccessChecked(true)
-      trackClickDedupedWithin('product_view', user.email)
+      trackClickDedupedWithin(editable ? 'product_view' : 'product_view_readonly', user.email)
       void loadData()
     }
     void check()
@@ -187,6 +193,7 @@ export function ProductManagement() {
             defaultCategory={view.kind === 'create' ? view.defaultCategory : undefined}
             existingProducts={products.map((p) => ({ category: p.category, brand: p.brand, model: p.model }))}
             currentUserEmail={user?.email ?? null}
+            readOnly={!canEdit}
             onClose={(changed) => {
               setView({ kind: 'list' })
               if (changed) void loadData()
@@ -267,17 +274,19 @@ export function ProductManagement() {
               </button>
             )}
           </div>
-          <Button
-            variant="primary"
-            data-track="product_add"
-            onClick={() => {
-              const defaultCat =
-                activeTab !== 'all' ? activeTab : categories[0]?.id ?? Object.keys(CATEGORY_SCHEMAS)[0]
-              setView({ kind: 'create', defaultCategory: defaultCat })
-            }}
-          >
-            + 新增{isMobile ? '' : '商品'}
-          </Button>
+          {canEdit && (
+            <Button
+              variant="primary"
+              data-track="product_add"
+              onClick={() => {
+                const defaultCat =
+                  activeTab !== 'all' ? activeTab : categories[0]?.id ?? Object.keys(CATEGORY_SCHEMAS)[0]
+                setView({ kind: 'create', defaultCategory: defaultCat })
+              }}
+            >
+              + 新增{isMobile ? '' : '商品'}
+            </Button>
+          )}
         </div>
 
         {/* 類別 Tab + 顯示模式切換 */}
@@ -337,6 +346,7 @@ export function ProductManagement() {
         ) : filteredItems.length === 0 ? (
           <EmptyState
             hasAnyProduct={products.length > 0}
+            canCreate={canEdit}
             onCreate={() => {
               const defaultCat =
                 activeTab !== 'all' ? activeTab : categories[0]?.id ?? Object.keys(CATEGORY_SCHEMAS)[0]
@@ -1253,9 +1263,10 @@ function tdStyle(align: 'left' | 'center' | 'right' = 'left'): React.CSSProperti
 
 interface EmptyStateProps {
   hasAnyProduct: boolean
+  canCreate: boolean
   onCreate: () => void
 }
-function EmptyState({ hasAnyProduct, onCreate }: EmptyStateProps) {
+function EmptyState({ hasAnyProduct, canCreate, onCreate }: EmptyStateProps) {
   return (
     <div
       style={{
@@ -1272,11 +1283,17 @@ function EmptyState({ hasAnyProduct, onCreate }: EmptyStateProps) {
         {hasAnyProduct ? '沒有符合的商品' : '還沒有任何商品'}
       </div>
       <div style={{ fontSize: 13, marginBottom: 18 }}>
-        {hasAnyProduct ? '試著清除篩選或調整關鍵字。' : '先建立第一個商品開始管理庫存。'}
+        {hasAnyProduct
+          ? '試著清除篩選或調整關鍵字。'
+          : canCreate
+          ? '先建立第一個商品開始管理庫存。'
+          : '目前沒有商品資料。'}
       </div>
-      <Button variant="primary" data-track="product_add_empty" onClick={onCreate}>
-        + 新增商品
-      </Button>
+      {canCreate && (
+        <Button variant="primary" data-track="product_add_empty" onClick={onCreate}>
+          + 新增商品
+        </Button>
+      )}
       <div style={{ marginTop: 16 }}>
         <Badge variant="info" size="small">
           Phase 1 · 商品 + 規格 + 庫存

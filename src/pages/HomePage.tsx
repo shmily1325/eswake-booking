@@ -116,8 +116,11 @@ export function HomePage() {
     subtitle?: string
     isAdmin?: boolean
     isCoach?: boolean
-    /** 功能權限模組（editor_users 欄位） */
-    editorFeature?: EditorFeatureKey
+    /**
+     * 功能權限模組（editor_users 欄位）。
+     * 傳入陣列時為 OR 邏輯：任一勾選即顯示（用於同一入口、可看/可改兩個 flag 共存的情境，如商品管理）
+     */
+    editorFeature?: EditorFeatureKey | readonly EditorFeatureKey[]
     requiresViewAccess?: boolean
     alwaysShow?: boolean
     /** 顯示為停用卡片，不可點擊 */
@@ -183,7 +186,8 @@ export function HomePage() {
       title: '商品管理',
       icon: '📦',
       link: '/products',
-      editorFeature: 'can_products',
+      // 可改（can_products）或只看（can_products_view）任一即顯示入口；唯讀模式由商品頁自行渲染
+      editorFeature: ['can_products', 'can_products_view'],
       hideFromHomeForSuperAdmin: true
     },
     {
@@ -224,7 +228,10 @@ export function HomePage() {
           if (item.hideFromHomeForSuperAdmin) return false
           return true
         }
-        return Boolean(editorFeatureFlags && editorFeatureFlags[item.editorFeature])
+        if (!editorFeatureFlags) return false
+        const featureRef = item.editorFeature
+        const keys: readonly EditorFeatureKey[] = Array.isArray(featureRef) ? featureRef : [featureRef as EditorFeatureKey]
+        return keys.some((k) => editorFeatureFlags[k])
       }
       if (item.requiresViewAccess) return hasViewPermission
       return true
