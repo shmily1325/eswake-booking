@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShopHeader } from './components/ShopHeader'
 import { QuantityStepper } from './components/QuantityStepper'
+import { LineInquiryModal } from './components/LineInquiryModal'
 import { useShopCart } from './hooks/useShopCart'
 import type { CartItem } from './types'
 import {
@@ -8,7 +10,12 @@ import {
   formatVariantAttributes,
   getCategoryIcon,
 } from './lib/shopFormat'
-import { buildCartInquiryUrl, isInquiryTooLong } from './lib/lineDeepLink'
+import {
+  buildCartInquiryMessage,
+  buildCartInquiryUrl,
+  isInquiryTooLong,
+  launchInquiry,
+} from './lib/lineDeepLink'
 
 /**
  * 購物車頁（/shop/cart）。
@@ -31,6 +38,9 @@ export function ShopCart() {
     clear,
   } = useShopCart()
 
+  /** 桌機 fallback modal 的訊息；null = 不顯示 */
+  const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
+
   const handleInquiry = () => {
     if (items.length === 0) return
     const url = buildCartInquiryUrl(items)
@@ -40,7 +50,11 @@ export function ShopCart() {
       )
       if (!ok) return
     }
-    window.location.href = url
+    const message = buildCartInquiryMessage(items)
+    const result = launchInquiry(message)
+    if (result.mode === 'desktop-fallback') {
+      setFallbackMessage(result.message)
+    }
   }
 
   const handleClear = () => {
@@ -97,6 +111,11 @@ export function ShopCart() {
           </>
         )}
       </main>
+
+      <LineInquiryModal
+        message={fallbackMessage}
+        onClose={() => setFallbackMessage(null)}
+      />
     </div>
   )
 }

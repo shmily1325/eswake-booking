@@ -11,7 +11,13 @@ import {
   getCategoryIcon,
   getCategoryName,
 } from './lib/shopFormat'
-import { buildSingleInquiryUrl, isInquiryTooLong } from './lib/lineDeepLink'
+import {
+  buildSingleInquiryMessage,
+  buildSingleInquiryUrl,
+  isInquiryTooLong,
+  launchInquiry,
+} from './lib/lineDeepLink'
+import { LineInquiryModal } from './components/LineInquiryModal'
 
 /**
  * 商品詳情頁（/shop/:productId）。
@@ -34,6 +40,8 @@ export function ShopDetail() {
 
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
   const [quantity, setQuantity] = useState(1)
+  /** 桌機 fallback modal 要顯示的訊息；null = 不顯示 */
+  const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!productId) return
@@ -91,19 +99,23 @@ export function ShopDetail() {
   const handleDirectInquiry = () => {
     if (!product || !selectedVariant) return
     const productName = [product.brand, product.model].filter(Boolean).join(' ').trim()
-    const url = buildSingleInquiryUrl({
+    const params = {
       productName: productName || '(未命名商品)',
       categoryId: product.category,
       attributes: selectedVariant.attributes,
       quantity,
       unitPrice: selectedVariant.price,
-    })
+    }
+    const url = buildSingleInquiryUrl(params)
     if (isInquiryTooLong(url)) {
-      // 單一商品理論上不會超長，但留個保險
       alert('詢問內容過長，建議減少數量或備註資訊')
       return
     }
-    window.location.href = url
+    const message = buildSingleInquiryMessage(params)
+    const result = launchInquiry(message)
+    if (result.mode === 'desktop-fallback') {
+      setFallbackMessage(result.message)
+    }
   }
 
   return (
@@ -131,6 +143,11 @@ export function ShopDetail() {
           />
         )}
       </main>
+
+      <LineInquiryModal
+        message={fallbackMessage}
+        onClose={() => setFallbackMessage(null)}
+      />
     </div>
   )
 }

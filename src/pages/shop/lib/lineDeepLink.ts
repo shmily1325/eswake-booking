@@ -22,9 +22,26 @@ const DEFAULT_OA_ID = '@785eqymb'
 /** URL 大小上限保守值（含整段 URL 編碼後字元數，> 此值就警告） */
 export const URL_BUDGET = 1900
 
-function getOaId(): string {
+export function getOaId(): string {
   const fromEnv = import.meta.env.VITE_SHOP_LINE_OA_ID as string | undefined
   return (fromEnv && fromEnv.trim()) || DEFAULT_OA_ID
+}
+
+/**
+ * OA 主頁（加好友 / 開對話）。
+ * 桌機 fallback 用：oaMessage deep link 在桌機未裝 LINE 時會跳到 LINE 行銷首頁，
+ * 改跳這個至少能讓客人看到 OA 帳號並選擇加為好友或開啟對話。
+ */
+export function buildOaHomeUrl(): string {
+  const oaId = getOaId()
+  const encodedId = encodeURIComponent(oaId)
+  return `https://line.me/R/ti/p/${encodedId}`
+}
+
+/** 判斷裝置是否是手機（粗略 UA sniff，給「跳 LINE 行為」分流用） */
+export function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
 }
 
 /**
@@ -116,4 +133,24 @@ export function buildCartInquiryUrl(items: CartItem[]): string {
 /** 估算 URL 長度，回 true 代表「太長，建議客人分批詢問」 */
 export function isInquiryTooLong(url: string): boolean {
   return url.length > URL_BUDGET
+}
+
+/**
+ * 統一的「跳轉到 LINE」入口。
+ *
+ * - 手機：直接 `window.location.href = deepLink`，喚起 LINE app
+ * - 桌機：回傳 `{ mode: 'desktop-fallback', message }` 讓 UI 顯示 modal
+ *
+ * 這樣呼叫端只要判斷 mode 即可，平台分流邏輯集中在這。
+ */
+export type InquiryResult =
+  | { mode: 'mobile-deeplink' }
+  | { mode: 'desktop-fallback'; message: string }
+
+export function launchInquiry(message: string): InquiryResult {
+  if (isMobileDevice()) {
+    window.location.href = buildOaMessageUrl(message)
+    return { mode: 'mobile-deeplink' }
+  }
+  return { mode: 'desktop-fallback', message }
 }
