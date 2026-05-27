@@ -111,23 +111,119 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
       { key: 'color', label: '顏色', type: 'text', required: false },
     ],
   },
+  // ===== WB 系列 =====
+  // 註：id 'wakeboard' 暫不 rename 成 'wb_board'，避免動到老大正在輸入的資料；
+  // 之後做兩層 UI 時一起 rename + 寫 SQL 遷移。
+  wakeboard: {
+    id: 'wakeboard',
+    name: 'WB 板',
+    sortOrder: 30,
+    icon: '🛹',
+    fields: [
+      // 尺寸用 text 接受廠商各種寫法（例：134、137、142cm）
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+  wb_boots: {
+    id: 'wb_boots',
+    name: 'WB 鞋',
+    sortOrder: 31,
+    icon: '👢',
+    fields: [
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+  wb_fin: {
+    id: 'wb_fin',
+    name: 'WB fin',
+    sortOrder: 32,
+    icon: '🪶',
+    fields: [
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+  wb_handle: {
+    id: 'wb_handle',
+    name: 'WB handle',
+    sortOrder: 33,
+    icon: '🪢',
+    fields: [
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+  wb_helmet: {
+    id: 'wb_helmet',
+    name: 'WB 安全帽',
+    sortOrder: 34,
+    icon: '⛑️',
+    fields: [
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+
+  // ===== WS 系列 =====
+  // 註：id 'wakesurf' 暫不 rename 成 'ws_board'，理由同上。
   wakesurf: {
     id: 'wakesurf',
-    name: 'WS板',
-    sortOrder: 30,
+    name: 'WS 板',
+    sortOrder: 40,
     icon: '🏄',
     fields: [
       // 尺寸用 text 接受廠商各種寫法（例：4'10"、134cm、134）
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
   },
-  wakeboard: {
-    id: 'wakeboard',
-    name: 'WB板',
-    sortOrder: 40,
-    icon: '🛹',
+  ws_fin: {
+    id: 'ws_fin',
+    name: 'WS fin',
+    sortOrder: 41,
+    icon: '🪶',
     fields: [
-      // 尺寸用 text 接受廠商各種寫法（例：134、137、142cm）
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+  ws_pad: {
+    id: 'ws_pad',
+    name: 'WS 墊子',
+    sortOrder: 42,
+    icon: '🟫',
+    fields: [
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+  ws_handle: {
+    id: 'ws_handle',
+    name: 'WS handle',
+    sortOrder: 43,
+    icon: '🪢',
+    fields: [
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+  ws_wax: {
+    id: 'ws_wax',
+    name: 'WS 蠟塊',
+    sortOrder: 44,
+    icon: '🧱',
+    fields: [
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+
+  // ===== 服飾類 =====
+  apparel: {
+    id: 'apparel',
+    name: '服飾類',
+    sortOrder: 50,
+    icon: '👕',
+    fields: [
+      {
+        key: 'gender',
+        label: 'M/F',
+        type: 'select',
+        options: ['M', 'F'],
+        required: false,
+      },
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
   },
