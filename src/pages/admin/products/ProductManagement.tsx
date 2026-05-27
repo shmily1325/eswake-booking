@@ -6,6 +6,7 @@ import { Footer } from '../../../components/Footer'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { Button, Badge, useToast, ToastContainer } from '../../../components/ui'
 import { hasEditorFeatureAsync } from '../../../utils/auth'
+import { trackClick, trackClickDedupedWithin } from '../../../utils/trackClick'
 import { CATEGORY_SCHEMAS, formatAttributes, getAllCategories, getCategory } from './schema'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from './api'
 import type { ProductWithVariants, VariantListItem } from './types'
@@ -78,6 +79,7 @@ export function ProductManagement() {
       }
       setHasAccess(true)
       setAccessChecked(true)
+      trackClickDedupedWithin('product_view', user.email)
       void loadData()
     }
     void check()
@@ -267,6 +269,7 @@ export function ProductManagement() {
           </div>
           <Button
             variant="primary"
+            data-track="product_add"
             onClick={() => {
               const defaultCat =
                 activeTab !== 'all' ? activeTab : categories[0]?.id ?? Object.keys(CATEGORY_SCHEMAS)[0]
@@ -300,6 +303,7 @@ export function ProductManagement() {
               label="全部"
               active={activeTab === 'all'}
               onClick={() => setActiveTab('all')}
+              trackId="product_tab_all"
             />
             {categories.map((cat) => (
               <CategoryTab
@@ -307,12 +311,20 @@ export function ProductManagement() {
                 label={isMobile ? cat.name : `${cat.icon} ${cat.name}`}
                 active={activeTab === cat.id}
                 onClick={() => setActiveTab(cat.id)}
+                trackId={`product_tab_${cat.id}`}
               />
             ))}
           </div>
           {/* 排序：只在桌機顯示，手機固定預設「庫存少→多」 */}
           {!isMobile && (
-            <SortMenu value={sortBy} onChange={setSortByPersist} isMobile={isMobile} />
+            <SortMenu
+              value={sortBy}
+              onChange={(next) => {
+                setSortByPersist(next)
+                trackClick(`product_sort_${next}`, user?.email ?? undefined)
+              }}
+              isMobile={isMobile}
+            />
           )}
           <LayoutToggle layout={layout} onChange={setLayoutPersist} />
         </div>
@@ -361,12 +373,14 @@ interface CategoryTabProps {
   label: string
   active: boolean
   onClick: () => void
+  trackId?: string
 }
-function CategoryTab({ label, active, onClick }: CategoryTabProps) {
+function CategoryTab({ label, active, onClick, trackId }: CategoryTabProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-track={trackId}
       style={{
         flexShrink: 0,
         padding: '8px 14px',
@@ -539,6 +553,7 @@ function InventoryDashboard({
           onClick={onToggleMissingPrice}
           color="#ef6c00"
           bgActive="#fff4e0"
+          trackId="product_filter_missing_price"
         />
         <DashboardStatChip
           label="沒圖"
@@ -547,6 +562,7 @@ function InventoryDashboard({
           onClick={onToggleMissingImage}
           color="#1565c0"
           bgActive="#e3f2fd"
+          trackId="product_filter_missing_image"
         />
       </div>
 
@@ -555,6 +571,7 @@ function InventoryDashboard({
       {isFiltered && (
         <button
           type="button"
+          data-track="product_filter_clear"
           onClick={onClearAll}
           style={{
             background: 'transparent',
@@ -581,13 +598,15 @@ interface DashboardStatChipProps {
   onClick: () => void
   color: string
   bgActive: string
+  trackId?: string
 }
-function DashboardStatChip({ label, count, active, onClick, color, bgActive }: DashboardStatChipProps) {
+function DashboardStatChip({ label, count, active, onClick, color, bgActive, trackId }: DashboardStatChipProps) {
   const isZero = count === 0
   return (
     <button
       type="button"
       onClick={onClick}
+      data-track={trackId}
       disabled={isZero && !active}
       title={isZero ? `沒有${label}的項目` : `點擊只顯示${label}`}
       style={{
@@ -677,6 +696,7 @@ function LayoutToggle({ layout, onChange }: LayoutToggleProps) {
     >
       <button
         type="button"
+        data-track="product_layout_gallery"
         title="畫廊：只看縮圖跟價格"
         aria-label="畫廊模式"
         style={cellStyle(layout === 'gallery')}
@@ -686,6 +706,7 @@ function LayoutToggle({ layout, onChange }: LayoutToggleProps) {
       </button>
       <button
         type="button"
+        data-track="product_layout_table"
         title="表格：含完整規格資訊"
         aria-label="表格模式"
         style={{ ...cellStyle(layout === 'table'), borderLeft: '1px solid #ddd' }}
@@ -742,6 +763,7 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
     <div
       role="button"
       tabIndex={0}
+      data-track="product_edit_open"
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -955,6 +977,7 @@ function MobileListRow({
     <div
       role="button"
       tabIndex={0}
+      data-track="product_edit_open"
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -1145,6 +1168,7 @@ function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTablePro
               return (
                 <tr
                   key={it.variant.id}
+                  data-track="product_edit_open"
                   onClick={() => onRowClick(it.product.id)}
                   title={it.product.description ?? undefined}
                   style={{ cursor: 'pointer', borderTop: '1px solid #f0f0f0' }}
@@ -1250,7 +1274,7 @@ function EmptyState({ hasAnyProduct, onCreate }: EmptyStateProps) {
       <div style={{ fontSize: 13, marginBottom: 18 }}>
         {hasAnyProduct ? '試著清除篩選或調整關鍵字。' : '先建立第一個商品開始管理庫存。'}
       </div>
-      <Button variant="primary" onClick={onCreate}>
+      <Button variant="primary" data-track="product_add_empty" onClick={onCreate}>
         + 新增商品
       </Button>
       <div style={{ marginTop: 16 }}>

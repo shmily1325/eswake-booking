@@ -14,6 +14,7 @@ import {
 } from './api'
 import type { ProductVariantRow, ProductWithVariants } from './types'
 import { removeProductImage } from '../../../utils/imageUpload'
+import { trackClick } from '../../../utils/trackClick'
 
 interface ProductEditViewProps {
   /** 編輯模式：傳入 productId；新增模式：傳 null */
@@ -343,6 +344,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
 
   const handleDeleteProduct = async () => {
     if (!productId) return
+    trackClick('product_edit_delete_confirm', currentUserEmail ?? undefined)
     setSaving(true)
     try {
       await deleteProduct(productId)
@@ -398,7 +400,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           flexWrap: 'wrap',
         }}
       >
-        <Button variant="outline" size="small" onClick={handleCancel} disabled={saving}>
+        <Button variant="outline" size="small" data-track="product_edit_back" onClick={handleCancel} disabled={saving}>
           ← 返回
         </Button>
         <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, flex: 1 }}>
@@ -410,7 +412,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           )}
         </h2>
         {!isMobile && (
-          <Button variant="primary" onClick={handleSave} disabled={saving}>
+          <Button variant="primary" data-track="product_edit_save" onClick={handleSave} disabled={saving}>
             {saving ? '儲存中…' : '儲存'}
           </Button>
         )}
@@ -523,12 +525,12 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
         ))}
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button variant="outline" size="small" onClick={handleAddVariant} disabled={saving}>
+          <Button variant="outline" size="small" data-track="product_sku_add" onClick={handleAddVariant} disabled={saving}>
             + 新增規格 (SKU)
           </Button>
           {drafts.some((d) => !d.pendingDelete) && (
             <span title="以最後一筆有效規格為範本（不複製圖、庫存歸 0）">
-              <Button variant="outline" size="small" onClick={handleDuplicateLast} disabled={saving}>
+              <Button variant="outline" size="small" data-track="product_sku_duplicate" onClick={handleDuplicateLast} disabled={saving}>
                 ⎘ 複製上一筆
               </Button>
             </span>
@@ -551,7 +553,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           <p style={{ margin: '0 0 12px 0', fontSize: 13, color: '#666' }}>
             刪除商品會把它和所有規格從清單中隱藏（軟刪除，可由資料庫恢復）。
           </p>
-          <Button variant="danger" size="small" onClick={() => setConfirmDelete(true)} disabled={saving}>
+          <Button variant="danger" size="small" data-track="product_edit_delete_open" onClick={() => setConfirmDelete(true)} disabled={saving}>
             刪除整個商品
           </Button>
         </section>
@@ -573,10 +575,10 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
             gap: 10,
           }}
         >
-          <Button variant="outline" onClick={handleCancel} disabled={saving} style={{ flex: 1 }}>
+          <Button variant="outline" data-track="product_edit_cancel" onClick={handleCancel} disabled={saving} style={{ flex: 1 }}>
             取消
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={saving} style={{ flex: 2 }}>
+          <Button variant="primary" data-track="product_edit_save" onClick={handleSave} disabled={saving} style={{ flex: 2 }}>
             {saving ? '儲存中…' : '儲存'}
           </Button>
         </div>
@@ -718,13 +720,14 @@ function VariantBlock({
         )}
         {draft.pendingDelete ? (
           <span onClick={stop}>
-            <Button variant="outline" size="small" onClick={onRestore} disabled={disabled}>
+            <Button variant="outline" size="small" data-track="product_sku_restore" onClick={onRestore} disabled={disabled}>
               復原
             </Button>
           </span>
         ) : (
           <button
             type="button"
+            data-track="product_sku_remove"
             onClick={(e) => {
               e.stopPropagation()
               onRemove()
