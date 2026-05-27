@@ -407,7 +407,11 @@ export function CoachAssignment() {
       }
       
       if (missingPersonnel.length > 0) {
-        setError('⚠️ 以下預約尚未指定駕駛：\n\n' + missingPersonnel.map(m => `• ${m}`).join('\n'))
+        setError(
+          '⚠️ 以下預約尚未指定駕駛：\n\n' +
+          missingPersonnel.map(m => `• ${m}`).join('\n') +
+          '\n\n💡 今天先不想排這幾筆？點該預約 → 駕駛區下方有「偷懶 😏」按鈕'
+        )
         return
       }
 
@@ -449,7 +453,11 @@ export function CoachAssignment() {
       }
       
       if (driverIssues.length > 0) {
-        setError('⚠️ 以下預約的駕駛配置不符合要求：\n\n' + driverIssues.map(m => `• ${m}`).join('\n'))
+        setError(
+          '⚠️ 以下預約的駕駛配置不符合要求：\n\n' +
+          driverIssues.map(m => `• ${m}`).join('\n') +
+          '\n\n💡 今天先不想排這幾筆？點該預約 → 駕駛區下方有「偷懶 😏」按鈕'
+        )
         setSaving(false)
         return
       }
@@ -2105,7 +2113,7 @@ export function CoachAssignment() {
                                     }}
                                     title={currentAssignment.skipped ? '點一下取消偷懶 (改回正常排班)' : '今天就先不排這筆，按儲存時不會被擋'}
                                   >
-                                    {currentAssignment.skipped ? '偷懶中 ✋' : '偷懶不排 😏'}
+                                    {currentAssignment.skipped ? '偷懶中 ✋' : '偷懶 😏'}
                                   </button>
                               </div>
                               </div>
