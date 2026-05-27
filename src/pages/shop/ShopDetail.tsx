@@ -89,6 +89,7 @@ export function ShopDetail() {
       productName: productName || '(未命名商品)',
       categoryId: product.category ?? '',
       attributes: selectedVariant.attributes,
+      imageUrl: selectedVariant.image_url ?? imageUrl ?? null,
       unitPrice: selectedVariant.price,
       quantity,
     })

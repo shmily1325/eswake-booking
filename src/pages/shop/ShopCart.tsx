@@ -133,13 +133,27 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
 
   return (
     <li className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-white border border-gray-200 rounded-lg">
-      {/* 縮圖（emoji fallback；v1 不存圖片 URL 進 localStorage） */}
+      {/* 縮圖：優先用 snapshot 圖片，沒有就 emoji fallback */}
       <Link
         to={`/shop/${item.productId}`}
-        className="flex-shrink-0 w-16 h-20 sm:w-20 sm:h-24 bg-gray-50 rounded-md flex items-center justify-center text-3xl sm:text-4xl text-gray-300 hover:bg-gray-100 transition-colors"
+        className="flex-shrink-0 w-16 h-20 sm:w-20 sm:h-24 bg-gray-50 rounded-md overflow-hidden flex items-center justify-center hover:bg-gray-100 transition-colors"
         aria-label="返回商品頁"
       >
-        <span aria-hidden>{icon}</span>
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.productName}
+            loading="lazy"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="text-3xl sm:text-4xl text-gray-300"
+          >
+            {icon}
+          </span>
+        )}
       </Link>
 
       {/* 主資訊 */}

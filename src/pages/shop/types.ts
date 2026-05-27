@@ -27,6 +27,8 @@ export interface CartItem {
   categoryId: string
   /** 顯示用：規格 attributes（{ color: '黑', size: '140cm' }），不依賴 schema 也能顯示 */
   attributes: Record<string, string | number | null>
+  /** 顯示用：商品縮圖 URL（優先用該變體圖，沒有就退到商品代表圖）；null = 用 emoji fallback */
+  imageUrl: string | null
 
   /** 單價（NT$，整數）；null = 售價未定（仍可放進購物車，LINE 訊息會註明「價格洽詢」） */
   unitPrice: number | null

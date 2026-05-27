@@ -110,6 +110,7 @@ export function ShopCartProvider({ children }: { children: ReactNode }) {
         productName: input.productName,
         categoryId: input.categoryId,
         attributes: input.attributes,
+        imageUrl: input.imageUrl,
         unitPrice: input.unitPrice,
         quantity: qty,
         addedAt: Date.now(),
