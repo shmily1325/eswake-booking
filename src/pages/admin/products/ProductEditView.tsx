@@ -442,7 +442,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
             >
               {Object.values(CATEGORY_SCHEMAS).map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.icon} {c.name}
+                  {c.name}
                 </option>
               ))}
             </select>
