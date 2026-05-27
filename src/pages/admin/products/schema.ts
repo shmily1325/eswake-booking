@@ -155,7 +155,23 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     icon: '👢',
     group: 'WB',
     fields: [
-      { key: 'size', label: '尺寸', type: 'text', required: false },
+      // 鞋子尺寸只存純數字，廠商規格普遍以 cm 為主，顯示時自動附加 "cm"
+      {
+        key: 'size',
+        label: '尺寸 (cm)',
+        type: 'text',
+        required: false,
+        placeholder: '例：26',
+        displaySuffix: 'cm',
+      },
+      // Open Toe（其他俱樂部訂購用）vs Closed Toe，兩種款式都會進
+      {
+        key: 'toe_style',
+        label: 'Toe 款式',
+        type: 'select',
+        options: ['Open Toe', 'Closed Toe'],
+        required: false,
+      },
     ],
   },
   wb_fin: {
