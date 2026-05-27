@@ -67,16 +67,16 @@ export function ShopList() {
   }, [products, activeTab])
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <ShopHeader />
 
-      {/* Hero / 標題區 */}
-      <section className="bg-white border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 tracking-tight">
+      {/* Hero / 標題區（與頁面共用淺灰底，不再切成白色 panel） */}
+      <section>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 tracking-tight">
             商品<span className="text-orange-500">型錄</span>
           </h1>
-          <p className="mt-2 text-sm sm:text-base text-gray-600">
+          <p className="mt-2 text-sm text-gray-600">
             線上瀏覽 ES Wake 滑水裝備，喜歡的商品可加入購物車後透過 LINE 詢問購買
           </p>
         </div>
@@ -84,10 +84,10 @@ export function ShopList() {
 
       {/* 分類 Tab（手機橫滑） */}
       <nav
-        className="sticky top-14 z-20 bg-white border-b border-gray-200"
+        className="sticky top-14 z-20 bg-white/95 backdrop-blur border-y border-gray-200"
         aria-label="商品分類"
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div
             className="flex gap-1 overflow-x-auto -mx-2 px-2 [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: 'none' }}
@@ -115,7 +115,7 @@ export function ShopList() {
       </nav>
 
       {/* 商品 grid */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         {loading ? (
           <LoadingState />
         ) : error ? (
@@ -129,7 +129,7 @@ export function ShopList() {
             }
           />
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {filteredProducts.map((p) => (
               <ProductCard key={p.id} product={p} variants={p.variants} />
             ))}
@@ -138,7 +138,7 @@ export function ShopList() {
       </main>
 
       {/* Footer 提示 */}
-      <footer className="border-t border-gray-100 py-8 text-center text-xs text-gray-400">
+      <footer className="py-8 text-center text-xs text-gray-400">
         ES Wake School © {new Date().getFullYear()}
       </footer>
     </div>
@@ -170,11 +170,11 @@ function CategoryTab({ active, onClick, children }: CategoryTabProps) {
 
 function LoadingState() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className="bg-white border border-gray-200 rounded-lg overflow-hidden animate-pulse"
+          className="bg-white rounded-xl shadow-sm overflow-hidden animate-pulse"
         >
           <div className="aspect-square bg-gray-100" />
           <div className="p-3 sm:p-4 space-y-2">

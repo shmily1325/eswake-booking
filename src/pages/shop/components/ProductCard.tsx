@@ -33,10 +33,10 @@ export function ProductCard({ product, variants }: ProductCardProps) {
   return (
     <Link
       to={`/shop/${product.id}`}
-      className="group block bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all"
+      className="group block bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden transition-all"
     >
       {/* 圖片區（9:16 直式，貼合手機照片比例與直式商品照） */}
-      <div className="relative aspect-[9/16] bg-gray-50 overflow-hidden">
+      <div className="relative aspect-[9/16] bg-gray-100 overflow-hidden">
         {imageUrl ? (
           <img
             src={imageUrl}
