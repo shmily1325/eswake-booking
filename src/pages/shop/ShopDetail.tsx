@@ -190,21 +190,76 @@ function ProductDetailBody({
       ? formatPrice(selectedVariant.price)
       : '價格洽詢'
 
+  /**
+   * 變體縮圖列：去重不同 image_url，每個圖綁第一個對應的變體 ID。
+   * 同色不同尺寸通常共用一張圖 → 不需要重複塞 8 個一樣的縮圖。
+   * 只有 2 張以上才顯示，1 張時藏起來省版位。
+   */
+  const imageOptions = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const v of product.variants) {
+      if (v.image_url && !seen.has(v.image_url)) {
+        seen.set(v.image_url, v.id)
+      }
+    }
+    return Array.from(seen.entries()).map(([url, variantId]) => ({
+      url,
+      variantId,
+    }))
+  }, [product.variants])
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
-      {/* 圖片 */}
-      <div className="relative aspect-[9/16] bg-gray-100 rounded-lg overflow-hidden">
-        <ImageOrFallback
-          src={imageUrl}
-          alt={`${product.brand} ${product.model}`}
-          imgClassName="w-full h-full object-cover"
-          loading="eager"
-          fallback={
-            <div className="w-full h-full flex items-center justify-center text-8xl text-gray-300">
-              <span aria-hidden>{fallbackIcon}</span>
-            </div>
-          }
-        />
+      {/* 圖片 + 縮圖列 */}
+      <div>
+        <div className="relative aspect-[9/16] bg-gray-100 rounded-lg overflow-hidden">
+          <ImageOrFallback
+            src={imageUrl}
+            alt={`${product.brand} ${product.model}`}
+            imgClassName="w-full h-full object-cover"
+            loading="eager"
+            fallback={
+              <div className="w-full h-full flex items-center justify-center text-8xl text-gray-300">
+                <span aria-hidden>{fallbackIcon}</span>
+              </div>
+            }
+          />
+        </div>
+
+        {imageOptions.length > 1 && (
+          <div
+            className="mt-3 flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden"
+            style={{ scrollbarWidth: 'none' }}
+            role="tablist"
+            aria-label="變體縮圖"
+          >
+            {imageOptions.map((opt) => {
+              const active = imageUrl === opt.url
+              return (
+                <button
+                  key={opt.variantId}
+                  type="button"
+                  onClick={() => onSelectVariant(opt.variantId)}
+                  role="tab"
+                  aria-selected={active}
+                  className={
+                    'flex-shrink-0 w-14 h-18 sm:w-16 sm:h-20 rounded-md overflow-hidden border-2 transition-colors ' +
+                    (active
+                      ? 'border-orange-500'
+                      : 'border-transparent hover:border-gray-300')
+                  }
+                >
+                  <img
+                    src={opt.url}
+                    alt=""
+                    loading="lazy"
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* 資訊區 */}
