@@ -75,7 +75,12 @@ export function BindingForm({
               width: '80px', 
               height: '80px', 
               marginBottom: '16px',
-              objectFit: 'contain'
+              objectFit: 'contain',
+              // Tailwind v4 preflight 把 <img> 設為 display:block，
+              // 父層的 text-align:center 對 block 不生效，這裡用 margin auto 自己置中
+              display: 'block',
+              marginLeft: 'auto',
+              marginRight: 'auto'
             }} 
           />
           <h1 style={{

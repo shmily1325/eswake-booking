@@ -269,7 +269,12 @@ export function HomePage() {
               objectFit: 'contain',
               marginBottom: '20px',
               borderRadius: '50%',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              // Tailwind v4 preflight 把 <img> 設為 display:block，
+              // 父層的 text-align:center 對 block 不生效，所以這裡用 margin auto 自己置中
+              display: 'block',
+              marginLeft: 'auto',
+              marginRight: 'auto'
             }}
           />
           <h1 style={{ 
