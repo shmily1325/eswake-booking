@@ -221,7 +221,12 @@ function ProductDetailBody({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
       {/* 圖片 + 縮圖列 */}
       <div>
-        <div className="relative aspect-[9/16] bg-gray-100 rounded-lg overflow-hidden">
+        {/*
+          手機限制 max-h-[60vh] 避免 9:16 直式圖把整個首屏吃光，
+          配合 mx-auto + max-w 讓圖在 portrait viewport 不要橫向頂滿。
+          桌機（md+）回到自由 9:16 寬度，比較有商品展示感。
+        */}
+        <div className="relative aspect-[9/16] max-h-[60vh] md:max-h-none max-w-[280px] sm:max-w-xs md:max-w-none mx-auto bg-gray-100 rounded-lg overflow-hidden">
           <ImageOrFallback
             src={imageUrl}
             alt={`${product.brand} ${product.model}`}
@@ -280,21 +285,24 @@ function ProductDetailBody({
           {categoryName}
         </Link>
 
-        <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight">
+        <h1 className="mt-1 text-xl sm:text-3xl font-bold text-zinc-900 tracking-tight">
           {product.brand && (
-            <span className="block text-base font-medium text-gray-600">
+            <span className="block text-sm sm:text-base font-medium text-gray-600">
               {product.brand}
             </span>
           )}
           {product.model || '(未命名商品)'}
         </h1>
 
-        <div className="mt-4 flex items-baseline gap-3">
-          <div className="text-2xl sm:text-3xl font-bold text-zinc-900">
+        <div className="mt-3 sm:mt-4 flex items-baseline gap-3">
+          {/* 價格比標題小一級，避免兩個區塊互相打架 */}
+          <div className="text-lg sm:text-2xl font-bold text-orange-600">
             {priceText}
           </div>
           {isOutOfStock && (
-            <span className="text-sm text-red-600 font-medium">目前缺貨</span>
+            <span className="text-sm text-red-600 font-medium">
+              Out of Stock <span className="text-xs text-gray-400">缺貨</span>
+            </span>
           )}
         </div>
 
@@ -325,26 +333,27 @@ function ProductDetailBody({
             type="button"
             onClick={onAddToCart}
             disabled={!selectedVariant}
-            className="flex-1 h-12 rounded-md bg-orange-500 text-white font-semibold text-base hover:bg-orange-600 active:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2"
+            className="flex-1 h-12 rounded-md bg-orange-500 text-white font-semibold hover:bg-orange-600 active:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2"
           >
             <CartIcon className="w-5 h-5" />
-            <span>Add to Cart</span>
-            <span className="text-sm font-normal text-orange-100">加入購物車</span>
+            <span className="text-base">Add to Cart</span>
+            {/* 中文副標只在桌機顯示，手機留空間給主標 */}
+            <span className="hidden sm:inline text-sm font-normal text-orange-100">加入購物車</span>
           </button>
           <button
             type="button"
             onClick={onDirectInquiry}
             disabled={!selectedVariant}
-            className="flex-1 h-12 rounded-md bg-zinc-900 text-white font-semibold text-base hover:bg-zinc-800 active:bg-zinc-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2"
+            className="flex-1 h-12 rounded-md bg-zinc-900 text-white font-semibold hover:bg-zinc-800 active:bg-zinc-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2"
           >
             <LineIcon className="w-5 h-5" />
-            <span>Inquire via LINE</span>
-            <span className="text-sm font-normal text-zinc-300">LINE 詢問</span>
+            <span className="text-base">Inquire via LINE</span>
+            <span className="hidden sm:inline text-sm font-normal text-zinc-300">LINE 詢問</span>
           </button>
         </div>
 
         <p className="mt-4 text-xs text-gray-500 leading-relaxed">
-          * Browsing only — no online checkout. Tap “Inquire via LINE” to open our LINE OA and our team will confirm purchase details with you.
+          * 線上瀏覽不直接成立訂單；按下「LINE 詢問」會跳到我們的官方 LINE，店家收到訊息後與您確認購買細節。
         </p>
       </div>
     </div>

@@ -235,12 +235,14 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     ],
   },
 
-  // ===== WS 系列 =====
+  // ===== WS / Skim 系列 =====
   // 註：id 已經從 'wakesurf' rename 為 'ws_board'（migration 117）。
+  // 注意：Wakesurf 跟 Skim 是同一類「板」，不再分開分類。
+  //       因此這裡 name / shopName 都明確帶 Skim，讓老闆和顧客知道兩種都進這個分類。
   ws_board: {
     id: 'ws_board',
-    name: 'WS 板',
-    shopName: 'Surf Board',
+    name: 'WS/Skim 板',
+    shopName: 'Board',
     sortOrder: 40,
     icon: '🏄',
     group: 'WS',
@@ -295,21 +297,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     group: 'WS',
     shopGroup: 'Wakesurf/Skim',
     fields: [
-      { key: 'size', label: '尺寸', type: 'text', required: false },
-    ],
-  },
-
-  // ===== Skim（歸在 WS 群組）=====
-  ws_skim: {
-    id: 'ws_skim',
-    name: 'Skim 板',
-    shopName: 'Skim Board',
-    sortOrder: 45,
-    icon: '🏖️',
-    group: 'WS',
-    shopGroup: 'Wakesurf/Skim',
-    fields: [
-      // 跟 wakesurf 板共用「自由填」的 size，廠商規格寫法很雜（cm、英吋、自訂代號）
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
   },
