@@ -207,10 +207,7 @@ export function ShopList() {
       >
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           {/* Row 1：頂層分組 */}
-          <div
-            className="flex gap-1 overflow-x-auto -mx-2 px-2 [&::-webkit-scrollbar]:hidden"
-            style={{ scrollbarWidth: 'none' }}
-          >
+          <ScrollableTabRow>
             <CategoryTab
               active={topLevel === ALL_GROUPS}
               onClick={() => setTopLevel(ALL_GROUPS)}
@@ -236,7 +233,7 @@ export function ShopList() {
                 </CategoryTab>
               )
             })}
-          </div>
+          </ScrollableTabRow>
 
           {/*
             Row 2：子分類（底線文字 tab，跟 Row 1 同一個視覺系統）。
@@ -244,10 +241,7 @@ export function ShopList() {
             - active 用粗黑底線 + 加粗，inactive 灰字無底線
           */}
           {topLevel !== ALL_GROUPS && currentSubCategories.length > 0 && (
-            <div
-              className="flex gap-1 overflow-x-auto -mx-2 px-2 border-t border-gray-100 [&::-webkit-scrollbar]:hidden"
-              style={{ scrollbarWidth: 'none' }}
-            >
+            <ScrollableTabRow withTopBorder>
               <SubCategoryTab
                 active={subCat === ALL_SUBCATS}
                 onClick={() => setSubCat(ALL_SUBCATS)}
@@ -264,7 +258,7 @@ export function ShopList() {
                   {getCategoryShopName(cat)}
                 </SubCategoryTab>
               ))}
-            </div>
+            </ScrollableTabRow>
           )}
         </div>
       </nav>
@@ -330,6 +324,42 @@ function ToolbarSort({ sortBy, onSortChange }: ToolbarSortProps) {
       <option value="price-asc">Price: Low → High</option>
       <option value="price-desc">Price: High → Low</option>
     </select>
+  )
+}
+
+/**
+ * 橫向 scrollable 的 tab row 容器。
+ *
+ * 處理「右邊還有 tab 但被切掉」這個 affordance 問題：
+ * - 左右各放一條 8px 寬的 white→transparent 漸層遮罩
+ * - 當 tab 被切到時，邊緣 tab 文字會「淡進 fade」，使用者本能就知道可以右滑
+ * - mask 是 absolute + pointer-events-none，完全不影響點擊
+ * - 兩邊都做：右滑後左邊也會有 fade 提示能滑回去
+ *
+ * 為什麼不用 JS 偵測 scroll 位置動態切換 fade：
+ * - 多數情況「右邊永遠看起來有更多」這個訊號就夠了
+ * - 沒裝 scroll listener，省 re-render
+ */
+interface ScrollableTabRowProps {
+  children: React.ReactNode
+  /** 子分類列要在 Row 1 下方畫一條分隔線；Row 1 自己不用 */
+  withTopBorder?: boolean
+}
+
+function ScrollableTabRow({ children, withTopBorder = false }: ScrollableTabRowProps) {
+  return (
+    <div className={`relative ${withTopBorder ? 'border-t border-gray-100' : ''}`}>
+      <div
+        className="flex gap-1 overflow-x-auto -mx-2 px-2 [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: 'none' }}
+      >
+        {children}
+      </div>
+      {/* 左邊 fade：用戶右滑後才會明顯，提示能滑回去 */}
+      <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white/95 to-transparent" />
+      {/* 右邊 fade：暗示「右邊還有東西」 */}
+      <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/95 to-transparent" />
+    </div>
   )
 }
 
