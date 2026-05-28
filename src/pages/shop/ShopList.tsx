@@ -10,6 +10,7 @@ import {
 import type { ProductWithVariants } from '../admin/products/types'
 import { ShopHeader } from './components/ShopHeader'
 import { ProductCard } from './components/ProductCard'
+import { getCategoryIconComponent } from './components/CategoryIcons'
 import { getMinPrice, isProductOutOfStock } from './lib/shopFormat'
 
 /**
@@ -194,6 +195,17 @@ export function ShopList() {
     return 'Catalog'
   }, [topLevel, subCat])
 
+  /**
+   * Hero 右側的 signature icon：只在客人篩到具體 sub-cat 時出現。
+   * - ALL / 只選 group  → null（不秀，避免「板還是鞋」的歧義）
+   * - 選到 sub-cat      → 對應 icon（例：Boards → WakeboardIcon）
+   * 這個 icon 是 ES 的視覺 signature（Ronix 純文字 nav，這裡比他多一個元素）。
+   */
+  const HeroIcon = useMemo(() => {
+    if (subCat === ALL_SUBCATS) return null
+    return getCategoryIconComponent(subCat)
+  }, [subCat])
+
   return (
     <div className="min-h-screen bg-gray-50">
       <ShopHeader />
@@ -204,8 +216,8 @@ export function ShopList() {
         - 字用 Inter Black 900 italic，跟 ES Wake wordmark 的傾斜感呼應
         - 沒有 action photo 時，純黑底反而比塞照片簡潔
       */}
-      <section className="bg-black text-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+      <section className="bg-black text-white relative overflow-hidden">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14 relative">
           <h1 className="font-black italic uppercase tracking-tight text-5xl sm:text-7xl md:text-8xl leading-none">
             {heroTitle}
           </h1>
@@ -213,6 +225,16 @@ export function ShopList() {
           <p className="mt-5 text-xs sm:text-sm italic tracking-[0.35em] text-gray-400 uppercase">
             Eat · Sleep · Wake
           </p>
+
+          {/*
+            ES signature icon：絕對定位在 hero 右側（桌機），手機隱藏避免 hero 過高。
+            ─ 半透明白色（text-white/20）：低調得像浮水印，不搶 hero title 注意力
+            ─ 只在選到具體 sub-cat 時才出現（HeroIcon 邏輯處理）
+            ─ aria-hidden 不讀給螢幕閱讀器，純裝飾
+          */}
+          {HeroIcon && (
+            <HeroIcon className="hidden sm:block absolute right-6 md:right-10 top-1/2 -translate-y-1/2 w-24 md:w-32 lg:w-40 h-24 md:h-32 lg:h-40 text-white/20" />
+          )}
         </div>
       </section>
 
