@@ -8,7 +8,11 @@
  */
 
 import type { ProductVariantRow } from '../../admin/products/types'
-import { formatAttributes, getCategory } from '../../admin/products/schema'
+import {
+  formatAttributes,
+  getCategory,
+  getCategoryShopName as getCategoryShopNameFromSchema,
+} from '../../admin/products/schema'
 
 /** 把整數金額格式化成「NT$ 18,000」 */
 export function formatPrice(amount: number): string {
@@ -68,6 +72,17 @@ export function getProductImageUrl(
 export function getCategoryName(categoryId: string | null | undefined): string {
   if (!categoryId) return '其他'
   return getCategory(categoryId)?.name ?? categoryId
+}
+
+/**
+ * 分類的商城前台顯示名（英文 shopName 優先，fallback 中文 name）。
+ * 給 ShopDetail / ProductCard 等前台用，跟 admin 的中文分類名區隔。
+ */
+export function getCategoryShopName(categoryId: string | null | undefined): string {
+  if (!categoryId) return 'Other'
+  const cat = getCategory(categoryId)
+  if (!cat) return categoryId
+  return getCategoryShopNameFromSchema(cat)
 }
 
 /** 分類的 emoji 圖示（無圖時 fallback 用） */

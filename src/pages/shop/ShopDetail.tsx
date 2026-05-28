@@ -9,7 +9,7 @@ import { useShopCart } from './hooks/useShopCart'
 import {
   formatPrice,
   getCategoryIcon,
-  getCategoryName,
+  getCategoryShopName,
 } from './lib/shopFormat'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
@@ -192,12 +192,10 @@ function ProductDetailBody({
   onDirectInquiry,
 }: ProductDetailBodyProps) {
   const fallbackIcon = getCategoryIcon(product.category)
-  const categoryName = getCategoryName(product.category)
+  const categoryName = getCategoryShopName(product.category)
   const isOutOfStock = selectedVariant ? (selectedVariant.stock ?? 0) <= 0 : true
-  const priceText =
-    selectedVariant?.price != null
-      ? formatPrice(selectedVariant.price)
-      : '價格洽詢'
+  const hasPrice = selectedVariant?.price != null
+  const priceText = hasPrice ? formatPrice(selectedVariant!.price!) : '價格洽詢'
 
   /**
    * 變體縮圖列：去重不同 image_url，每個圖綁第一個對應的變體 ID。
@@ -218,15 +216,15 @@ function ProductDetailBody({
   }, [product.variants])
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
+    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
       {/* 圖片 + 縮圖列 */}
       <div>
         {/*
-          手機限制 max-h-[60vh] 避免 9:16 直式圖把整個首屏吃光，
-          配合 mx-auto + max-w 讓圖在 portrait viewport 不要橫向頂滿。
-          桌機（md+）回到自由 9:16 寬度，比較有商品展示感。
+          全平台都用 4:5 比例（跟 list 卡片同調），不再 9:16 那種戲劇直立。
+          手機 / 桌機都限制 max-h 跟 max-w，
+          避免桌機左欄拉超長、右欄底下留白；手機則避免吃整個首屏。
         */}
-        <div className="relative aspect-[9/16] max-h-[60vh] md:max-h-none max-w-[280px] sm:max-w-xs md:max-w-none mx-auto bg-gray-100 rounded-lg overflow-hidden">
+        <div className="relative aspect-[4/5] max-h-[60vh] md:max-h-[500px] max-w-[320px] sm:max-w-sm md:max-w-none mx-auto bg-gray-100 rounded-lg overflow-hidden">
           <ImageOrFallback
             src={imageUrl}
             alt={`${product.brand} ${product.model}`}
@@ -280,7 +278,7 @@ function ProductDetailBody({
       <div className="flex flex-col">
         <Link
           to={`/shop?category=${product.category ?? ''}`}
-          className="self-start text-xs text-gray-500 uppercase tracking-wide hover:text-orange-500"
+          className="self-start text-xs text-gray-400 uppercase tracking-widest hover:text-orange-500"
         >
           {categoryName}
         </Link>
@@ -294,11 +292,17 @@ function ProductDetailBody({
           {product.model || '(未命名商品)'}
         </h1>
 
-        <div className="mt-3 sm:mt-4 flex items-baseline gap-3">
-          {/* 價格比標題小一級，避免兩個區塊互相打架 */}
-          <div className="text-lg sm:text-2xl font-bold text-orange-600">
-            {priceText}
-          </div>
+        <div className="mt-3 sm:mt-4 flex items-baseline gap-3 flex-wrap">
+          {hasPrice ? (
+            <div className="text-2xl sm:text-3xl font-bold text-zinc-900">
+              {priceText}
+            </div>
+          ) : (
+            /* 沒有實價時降階成淺灰標籤，跟 list 卡片同一套視覺語言 */
+            <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">
+              {priceText}
+            </span>
+          )}
           {isOutOfStock && (
             <span className="text-sm text-red-600 font-medium">
               Out of Stock <span className="text-xs text-gray-400">缺貨</span>
@@ -328,27 +332,35 @@ function ProductDetailBody({
           <QuantityStepper value={quantity} onChange={onChangeQuantity} />
         </div>
 
+        {/*
+          按鈕：英文主標 + 中文副標雙行（垂直 stack），避免上一版「Add to Cart 加入購物車」
+          硬塞同一行被切成「加入購物 / 車」的爆版。
+          高度 h-14（行高更舒服），手機/桌機都用同樣 layout。
+        */}
         <div className="mt-8 flex flex-col sm:flex-row gap-3">
           <button
             type="button"
             onClick={onAddToCart}
             disabled={!selectedVariant}
-            className="flex-1 h-12 rounded-md bg-orange-500 text-white font-semibold hover:bg-orange-600 active:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2"
+            className="flex-1 h-14 px-4 rounded-md bg-orange-500 text-white font-semibold hover:bg-orange-600 active:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2.5"
           >
-            <CartIcon className="w-5 h-5" />
-            <span className="text-base">Add to Cart</span>
-            {/* 中文副標只在桌機顯示，手機留空間給主標 */}
-            <span className="hidden sm:inline text-sm font-normal text-orange-100">加入購物車</span>
+            <CartIcon className="w-5 h-5 shrink-0" />
+            <span className="flex flex-col items-start leading-tight">
+              <span className="text-base">Add to Cart</span>
+              <span className="text-xs font-normal text-orange-100">加入購物車</span>
+            </span>
           </button>
           <button
             type="button"
             onClick={onDirectInquiry}
             disabled={!selectedVariant}
-            className="flex-1 h-12 rounded-md bg-zinc-900 text-white font-semibold hover:bg-zinc-800 active:bg-zinc-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2"
+            className="flex-1 h-14 px-4 rounded-md bg-zinc-900 text-white font-semibold hover:bg-zinc-800 active:bg-zinc-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2.5"
           >
-            <LineIcon className="w-5 h-5" />
-            <span className="text-base">Inquire via LINE</span>
-            <span className="hidden sm:inline text-sm font-normal text-zinc-300">LINE 詢問</span>
+            <LineIcon className="w-5 h-5 shrink-0" />
+            <span className="flex flex-col items-start leading-tight">
+              <span className="text-base">Inquire via LINE</span>
+              <span className="text-xs font-normal text-zinc-300">LINE 詢問</span>
+            </span>
           </button>
         </div>
 
@@ -363,13 +375,13 @@ function ProductDetailBody({
 function LoadingState() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 animate-pulse">
-      <div className="aspect-[9/16] bg-gray-100 rounded-lg" />
+      <div className="aspect-[4/5] max-h-[500px] max-w-[320px] sm:max-w-sm md:max-w-none mx-auto w-full bg-gray-100 rounded-lg" />
       <div className="space-y-3">
         <div className="h-3 w-1/4 bg-gray-100 rounded" />
         <div className="h-7 w-2/3 bg-gray-100 rounded" />
         <div className="h-9 w-1/2 bg-gray-100 rounded" />
         <div className="h-20 w-full bg-gray-100 rounded mt-6" />
-        <div className="h-12 w-full bg-gray-100 rounded mt-8" />
+        <div className="h-14 w-full bg-gray-100 rounded mt-8" />
       </div>
     </div>
   )
