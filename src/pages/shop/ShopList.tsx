@@ -192,7 +192,9 @@ export function ShopList() {
               size="lg"
             >
               All Products
-              <span className="ml-1 text-xs text-gray-400">({products.length})</span>
+              <span className="ml-1.5 text-xs font-normal text-gray-400">
+                {products.length}
+              </span>
             </CategoryTab>
             {SHOP_GROUPS.map((g) => {
               const n = groupCounts.get(g) ?? 0
@@ -205,7 +207,7 @@ export function ShopList() {
                   size="lg"
                 >
                   {g}
-                  <span className="ml-1 text-xs text-gray-400">({n})</span>
+                  <span className="ml-1.5 text-xs font-normal text-gray-400">{n}</span>
                 </CategoryTab>
               )
             })}
@@ -214,7 +216,7 @@ export function ShopList() {
           {/* Row 2：子分類（選了 group 才出現；只列「該 group 內有商品」的子分類） */}
           {topLevel !== ALL_GROUPS && currentSubCategories.length > 0 && (
             <div
-              className="flex gap-1 overflow-x-auto -mx-2 px-2 pb-1 [&::-webkit-scrollbar]:hidden border-t border-gray-100"
+              className="flex gap-2 overflow-x-auto -mx-2 px-2 py-3 [&::-webkit-scrollbar]:hidden border-t border-gray-100"
               style={{ scrollbarWidth: 'none' }}
             >
               <SubCategoryTab
@@ -228,9 +230,9 @@ export function ShopList() {
                   key={cat.id}
                   active={subCat === cat.id}
                   onClick={() => setSubCat(cat.id)}
+                  count={cat.count}
                 >
                   {getCategoryShopName(cat)}
-                  <span className="ml-1 text-xs text-gray-400">({cat.count})</span>
                 </SubCategoryTab>
               ))}
             </div>
@@ -379,28 +381,40 @@ function CategoryTab({ active, onClick, children, size = 'sm' }: CategoryTabProp
 }
 
 /**
- * 下層子分類 pill 樣式（跟頂層 underline 風格分開，避免兩排都長一樣分不出層級）。
- * 用淺色 pill 表示「更次要」的選擇。
+ * 下層子分類 chip 樣式。
+ *
+ * 設計：
+ * - 跟頂層 underline 同色系（橘），讓兩排視覺上像同個系統
+ * - active 用淺橘底 + 橘字 + 橘邊，比全黑 pill 更輕、更精緻
+ * - 比之前大一號（py-2 px-4 text-sm），desktop 不會看起來像被擠壓
+ * - count 用視覺更弱的灰色小字，主訊息（分類名）出來才有層次
  */
 interface SubCategoryTabProps {
   active: boolean
   onClick: () => void
   children: React.ReactNode
+  /** 該分類的商品數；省略則不顯示 count */
+  count?: number
 }
 
-function SubCategoryTab({ active, onClick, children }: SubCategoryTabProps) {
+function SubCategoryTab({ active, onClick, children, count }: SubCategoryTabProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={
-        'whitespace-nowrap my-2 px-3 py-1.5 text-xs sm:text-sm rounded-full border transition-colors ' +
+        'whitespace-nowrap inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full border transition-colors ' +
         (active
-          ? 'bg-zinc-900 text-white border-zinc-900'
-          : 'bg-white text-gray-600 border-gray-200 hover:border-zinc-400 hover:text-zinc-900')
+          ? 'bg-orange-50 text-orange-600 border-orange-300'
+          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-zinc-900')
       }
     >
-      {children}
+      <span>{children}</span>
+      {typeof count === 'number' && (
+        <span className={active ? 'text-xs text-orange-400' : 'text-xs text-gray-400'}>
+          {count}
+        </span>
+      )}
     </button>
   )
 }
