@@ -41,7 +41,7 @@ export interface FieldDef {
  * 'Essentials' 代表通用品項（救生衣、防寒衣、服飾這類不分 WB/WS 的物件，
  * 不管玩什麼運動都用得到的「必備裝備」）。
  */
-export type ShopGroup = 'Essentials' | 'Wakeboarding' | 'Wakesurfing/Skim'
+export type ShopGroup = 'Essentials' | 'Wakeboarding' | 'Wakesurfing'
 
 export interface CategoryDef {
   id: string
@@ -251,10 +251,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     ],
   },
 
-  // ===== WS / Skim 系列 =====
+  // ===== Wakesurfing 系列 =====
   // 註：id 已經從 'wakesurf' rename 為 'ws_board'（migration 117）。
-  // 注意：Wakesurf 跟 Skim 是同一類「板」，不再分開分類。
-  //       因此這裡 name / shopName 都明確帶 Skim，讓老闆和顧客知道兩種都進這個分類。
+  // 命名策略對齊業界（Ronix / Hyperlite / Liquid Force）：
+  //   - top-level shopGroup 統一叫 'Wakesurfing'
+  //   - Skim 是 Wakesurf 板底下的一個 sub-style，不在 top-level 並列
+  //   - 後台中文 name 仍保留「WS/Skim 板」，讓老闆同時看到兩種風格都進這個分類
   ws_board: {
     id: 'ws_board',
     name: 'WS/Skim 板',
@@ -263,7 +265,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     sortOrder: 40,
     icon: '🏄',
     group: 'WS',
-    shopGroup: 'Wakesurfing/Skim',
+    shopGroup: 'Wakesurfing',
     fields: [
       // 尺寸用 text 接受廠商各種寫法（例：4'10"、134cm、134）
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -277,7 +279,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     sortOrder: 41,
     icon: '🪶',
     group: 'WS',
-    shopGroup: 'Wakesurfing/Skim',
+    shopGroup: 'Wakesurfing',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -290,7 +292,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     sortOrder: 42,
     icon: '🟫',
     group: 'WS',
-    shopGroup: 'Wakesurfing/Skim',
+    shopGroup: 'Wakesurfing',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -303,7 +305,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     sortOrder: 43,
     icon: '🪢',
     group: 'WS',
-    shopGroup: 'Wakesurfing/Skim',
+    shopGroup: 'Wakesurfing',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -316,7 +318,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     sortOrder: 44,
     icon: '🧱',
     group: 'WS',
-    shopGroup: 'Wakesurfing/Skim',
+    shopGroup: 'Wakesurfing',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -333,7 +335,7 @@ export function getAllCategories(): CategoryDef[] {
  * 運動類別擺前面（Wakeboarding / Wakesurfing），客人通常是衝著主項目來的；
  * 'Essentials'（救生衣、防寒衣等通用品項）擺最後當補貨用。
  */
-export const SHOP_GROUPS: ShopGroup[] = ['Wakeboarding', 'Wakesurfing/Skim', 'Essentials']
+export const SHOP_GROUPS: ShopGroup[] = ['Wakeboarding', 'Wakesurfing', 'Essentials']
 
 /** 取分類在商城前台要顯示的名稱（英文優先，fallback 用中文 name） */
 export function getCategoryShopName(cat: CategoryDef): string {
