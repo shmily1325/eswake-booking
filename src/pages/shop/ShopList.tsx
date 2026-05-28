@@ -229,9 +229,6 @@ export function ShopList() {
                   active={subCat === cat.id}
                   onClick={() => setSubCat(cat.id)}
                 >
-                  <span className="mr-1" aria-hidden>
-                    {cat.icon}
-                  </span>
                   {getCategoryShopName(cat)}
                   <span className="ml-1 text-xs text-gray-400">({cat.count})</span>
                 </SubCategoryTab>

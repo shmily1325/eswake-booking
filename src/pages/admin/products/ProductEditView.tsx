@@ -524,7 +524,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
-                  {isPublic ? '🛒 上架到商城' : '⏸ 不上架（後台可見、商城隱藏）'}
+                  {isPublic ? '上架到商城' : '不上架（後台可見、商城隱藏）'}
                 </div>
                 <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
                   {isPublic
