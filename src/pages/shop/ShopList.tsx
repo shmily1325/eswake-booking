@@ -13,15 +13,15 @@ import { ProductCard } from './components/ProductCard'
 import { getMinPrice } from './lib/shopFormat'
 
 /**
- * 上層分組 tab 用的 sentinel：'all-groups' = 不限分組（顯示全部 group + 全部子分類）。
- * 注意：跟 ShopGroup 內的 'All'（通用品項分組）不一樣，
- *   - 'all-groups' = 上層 = 不選任何 group（顯示所有商品）
- *   - 'All' (ShopGroup) = 上層的其中一個 group，代表通用品項（救生衣、防寒衣、服飾）
+ * 上層分組 tab 用的 sentinel：'all-groups' = 不限分組（= 「All Products」按鈕，顯示全部商品）。
+ * 跟 ShopGroup 內的 'Essentials' 不一樣：
+ *   - 'all-groups'  = 「All Products」= 不選任何 group，顯示所有商品
+ *   - 'Essentials'  = 通用品項 group（救生衣、防寒衣、服飾這類）
  */
 const ALL_GROUPS = 'all-groups' as const
 type TopLevel = typeof ALL_GROUPS | ShopGroup
 
-/** 下層子分類 tab：'all' = 不限子分類，其餘是 category id */
+/** 下層子分類 tab sentinel：'all' = 不限子分類，其餘是 category id */
 const ALL_SUBCATS = 'all' as const
 
 type SortBy = 'newest' | 'price-asc' | 'price-desc'

@@ -34,9 +34,10 @@ export interface FieldDef {
 
 /**
  * 商城頂層分組（兩層篩選的上排）。
- * 'All' 代表通用（救生衣、防寒衣、服飾這類不分 WB/WS 的品項）。
+ * 'Essentials' 代表通用品項（救生衣、防寒衣、服飾這類不分 WB/WS 的物件，
+ * 不管玩什麼運動都用得到的「必備裝備」）。
  */
-export type ShopGroup = 'All' | 'Wakeboard' | 'Wakesurf/Skim'
+export type ShopGroup = 'Essentials' | 'Wakeboard' | 'Wakesurf/Skim'
 
 export interface CategoryDef {
   id: string
@@ -71,7 +72,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Life Jacket',
     sortOrder: 10,
     icon: '🦺',
-    shopGroup: 'All',
+    shopGroup: 'Essentials',
     fields: [
       // 全部允許留空（required: false），匯入舊資料時很多欄位是缺漏的
       {
@@ -102,7 +103,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Wetsuit',
     sortOrder: 20,
     icon: '🧥',
-    shopGroup: 'All',
+    shopGroup: 'Essentials',
     fields: [
       // 跟救生衣相同的 gender 設計，全部允許留空
       {
@@ -141,7 +142,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Apparel',
     sortOrder: 25,
     icon: '👕',
-    shopGroup: 'All',
+    shopGroup: 'Essentials',
     fields: [
       {
         key: 'gender',
@@ -309,9 +310,9 @@ export function getAllCategories(): CategoryDef[] {
 
 /**
  * 商城兩層分類列要的上層分組（固定順序）。
- * 第一順位是 'All'（通用品項），其後是運動類別。
+ * 第一順位是 'Essentials'（通用品項），其後是運動類別。
  */
-export const SHOP_GROUPS: ShopGroup[] = ['All', 'Wakeboard', 'Wakesurf/Skim']
+export const SHOP_GROUPS: ShopGroup[] = ['Essentials', 'Wakeboard', 'Wakesurf/Skim']
 
 /** 取分類在商城前台要顯示的名稱（英文優先，fallback 用中文 name） */
 export function getCategoryShopName(cat: CategoryDef): string {
