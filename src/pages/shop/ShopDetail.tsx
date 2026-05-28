@@ -360,7 +360,7 @@ function ProductDetailBody({
             type="button"
             onClick={onDirectInquiry}
             disabled={!selectedVariant}
-            className="flex-1 h-14 px-4 rounded-md bg-white text-black font-semibold border-2 border-black hover:bg-gray-50 active:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2.5"
+            className="flex-1 h-14 px-4 rounded-md bg-gray-50 text-black font-semibold border-2 border-black hover:bg-gray-100 active:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2.5"
           >
             <LineIcon className="w-5 h-5 shrink-0" />
             <span className="flex flex-col items-start leading-tight">
