@@ -101,7 +101,7 @@ export function LineInquiryModal({ message, onClose }: LineInquiryModalProps) {
             value={message}
             readOnly
             rows={Math.min(10, message.split('\n').length + 1)}
-            className="w-full text-xs border border-gray-200 rounded-md p-2 bg-gray-50 font-mono resize-none focus:outline-none focus:border-orange-400"
+            className="w-full text-xs border border-gray-200 rounded-md p-2 bg-gray-50 font-mono resize-none focus:outline-none focus:border-black"
           />
 
           <button

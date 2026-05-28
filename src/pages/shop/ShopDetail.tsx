@@ -257,7 +257,7 @@ function ProductDetailBody({
                   className={
                     'flex-shrink-0 w-14 h-18 sm:w-16 sm:h-20 rounded-md overflow-hidden border-2 transition-colors ' +
                     (active
-                      ? 'border-orange-500'
+                      ? 'border-black'
                       : 'border-transparent hover:border-gray-300')
                   }
                 >
@@ -278,7 +278,7 @@ function ProductDetailBody({
       <div className="flex flex-col">
         <Link
           to={`/shop?category=${product.category ?? ''}`}
-          className="self-start text-xs text-gray-400 uppercase tracking-widest hover:text-orange-500"
+          className="self-start text-xs text-gray-400 uppercase tracking-widest hover:text-black"
         >
           {categoryName}
         </Link>
@@ -338,28 +338,33 @@ function ProductDetailBody({
           高度 h-14（行高更舒服），手機/桌機都用同樣 layout。
         */}
         <div className="mt-8 flex flex-col sm:flex-row gap-3">
+          {/*
+            兩顆按鈕：
+            - 主 CTA「Add to Cart」用黑底白字（全站主互動色）
+            - 次 CTA「Inquire via LINE」用白底黑邊（avoid 兩顆全黑撞在一起）
+          */}
           <button
             type="button"
             onClick={onAddToCart}
             disabled={!selectedVariant}
-            className="flex-1 h-14 px-4 rounded-md bg-orange-500 text-white font-semibold hover:bg-orange-600 active:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2.5"
+            className="flex-1 h-14 px-4 rounded-md bg-black text-white font-semibold hover:bg-zinc-800 active:bg-zinc-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2.5"
           >
             <CartIcon className="w-5 h-5 shrink-0" />
             <span className="flex flex-col items-start leading-tight">
               <span className="text-base">Add to Cart</span>
-              <span className="text-xs font-normal text-orange-100">加入購物車</span>
+              <span className="text-xs font-normal text-zinc-300">加入購物車</span>
             </span>
           </button>
           <button
             type="button"
             onClick={onDirectInquiry}
             disabled={!selectedVariant}
-            className="flex-1 h-14 px-4 rounded-md bg-zinc-900 text-white font-semibold hover:bg-zinc-800 active:bg-zinc-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2.5"
+            className="flex-1 h-14 px-4 rounded-md bg-white text-black font-semibold border-2 border-black hover:bg-gray-50 active:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2.5"
           >
             <LineIcon className="w-5 h-5 shrink-0" />
             <span className="flex flex-col items-start leading-tight">
               <span className="text-base">Inquire via LINE</span>
-              <span className="text-xs font-normal text-zinc-300">LINE 詢問</span>
+              <span className="text-xs font-normal text-gray-500">LINE 詢問</span>
             </span>
           </button>
         </div>

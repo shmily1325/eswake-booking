@@ -27,12 +27,12 @@ export function CartAddedToast() {
 
   return (
     <div
-      className="fixed top-16 right-4 z-50 max-w-xs animate-[slideInRight_0.25s_ease-out] bg-white border border-orange-200 shadow-xl rounded-lg overflow-hidden"
+      className="fixed top-16 right-4 z-50 max-w-xs animate-[slideInRight_0.25s_ease-out] bg-white border border-zinc-200 shadow-xl rounded-lg overflow-hidden"
       role="status"
       aria-live="polite"
     >
       <div className="flex items-start gap-3 p-3">
-        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-lg">
+        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-black text-white flex items-center justify-center text-lg">
           ✓
         </div>
         <div className="flex-1 min-w-0">
@@ -44,7 +44,7 @@ export function CartAddedToast() {
           </div>
           <Link
             to="/shop/cart"
-            className="mt-2 inline-block text-xs font-medium text-orange-600 hover:text-orange-700"
+            className="mt-2 inline-block text-xs font-medium text-black underline underline-offset-2 hover:text-zinc-700"
             onClick={dismissLastAdded}
           >
             查看購物車 →

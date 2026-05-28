@@ -47,7 +47,7 @@ export function VariantPicker({
               className={
                 'relative px-3 py-2 text-sm rounded-md border-2 transition-all min-w-[80px] text-left ' +
                 (isSelected
-                  ? 'border-orange-500 bg-orange-50 text-zinc-900'
+                  ? 'border-black bg-zinc-50 text-zinc-900'
                   : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400')
               }
               aria-pressed={isSelected}

@@ -161,22 +161,37 @@ export function ShopList() {
   const hasFilter =
     search.trim().length > 0 || topLevel !== ALL_GROUPS || subCat !== ALL_SUBCATS
 
+  /**
+   * Hero 大字標題：依當前篩選層級動態切換。
+   *   1. 選了子分類（例：Boards）→ 顯示「BOARDS」
+   *   2. 只選了 group（例：Wakeboarding）→ 顯示「WAKEBOARDING」
+   *   3. 都沒選 → 顯示「CATALOG」
+   * 這樣 hero 永遠反映客人「正在看什麼」，跟 Ronix 那種子頁切換就換大標的體感一致。
+   */
+  const heroTitle = useMemo(() => {
+    if (subCat !== ALL_SUBCATS) {
+      const cat = getAllCategories().find((c) => c.id === subCat)
+      if (cat) return getCategoryShopName(cat)
+    }
+    if (topLevel !== ALL_GROUPS) return topLevel
+    return 'Catalog'
+  }, [topLevel, subCat])
+
   return (
     <div className="min-h-screen bg-gray-50">
       <ShopHeader />
 
       {/*
-        Hero：壓縮為單行標題。
-        - 「Catalog」主標跟「商品型錄」副標放同一行，視覺重量大幅下降
-        - 拿掉長描述句（客人進來就是要看商品，使用說明放底部 footer 就好）
-        - 垂直 padding 砍半
+        Hero（Ronix 風格）：純黑帶 + 巨大 ALL-CAPS italic 標題。
+        - 標題隨篩選層級切換（CATALOG → WAKEBOARDING → BOARDS）
+        - 字用 Inter Black 900 italic，跟 ES Wake wordmark 的傾斜感呼應
+        - 沒有 action photo 時，純黑底反而比塞照片簡潔
       */}
-      <section>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-baseline gap-3">
-          <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight">
-            Catalog
+      <section className="bg-black text-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+          <h1 className="font-black italic uppercase tracking-tight text-4xl sm:text-6xl md:text-7xl leading-none">
+            {heroTitle}
           </h1>
-          <span className="text-sm text-gray-400">商品型錄</span>
         </div>
       </section>
 
@@ -224,12 +239,13 @@ export function ShopList() {
           </div>
 
           {/*
-            Row 2：子分類。
-            高度設計：container py-1.5 + chip h-8 = 約 44px，跟 Row 1 對齊。
+            Row 2：子分類（底線文字 tab，跟 Row 1 同一個視覺系統）。
+            - 比 Row 1 字小一級，避免兩排重量太接近
+            - active 用粗黑底線 + 加粗，inactive 灰字無底線
           */}
           {topLevel !== ALL_GROUPS && currentSubCategories.length > 0 && (
             <div
-              className="flex items-center gap-2 overflow-x-auto -mx-2 px-2 py-1.5 [&::-webkit-scrollbar]:hidden"
+              className="flex gap-1 overflow-x-auto -mx-2 px-2 border-t border-gray-100 [&::-webkit-scrollbar]:hidden"
               style={{ scrollbarWidth: 'none' }}
             >
               <SubCategoryTab
@@ -308,7 +324,7 @@ function ToolbarSort({ sortBy, onSortChange }: ToolbarSortProps) {
       value={sortBy}
       onChange={(e) => onSortChange(e.target.value as SortBy)}
       aria-label="Sort by"
-      className="h-9 px-3 pr-7 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-lg cursor-pointer focus:outline-none focus:bg-white focus:border-orange-400 focus:ring-1 focus:ring-orange-300 shrink-0"
+      className="h-9 px-3 pr-7 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-lg cursor-pointer focus:outline-none focus:bg-white focus:border-black focus:ring-1 focus:ring-black/20 shrink-0"
     >
       <option value="newest">Newest</option>
       <option value="price-asc">Price: Low → High</option>
@@ -326,9 +342,10 @@ interface CategoryTabProps {
 }
 
 function CategoryTab({ active, onClick, children, size = 'sm' }: CategoryTabProps) {
+  // Ronix 風：active 用粗黑底線 + 字加粗，inactive 細灰字
   const sizing =
     size === 'lg'
-      ? 'px-3 sm:px-4 py-3 text-sm font-semibold tracking-tight'
+      ? 'px-3 sm:px-4 py-3 text-sm sm:text-base font-bold tracking-tight uppercase'
       : 'px-3 sm:px-4 py-3 text-sm font-medium'
   return (
     <button
@@ -337,8 +354,8 @@ function CategoryTab({ active, onClick, children, size = 'sm' }: CategoryTabProp
       className={
         `whitespace-nowrap border-b-2 transition-colors ${sizing} ` +
         (active
-          ? 'border-orange-500 text-zinc-900'
-          : 'border-transparent text-gray-500 hover:text-zinc-900')
+          ? 'border-black text-black'
+          : 'border-transparent text-gray-500 hover:text-black')
       }
     >
       {children}
@@ -347,13 +364,12 @@ function CategoryTab({ active, onClick, children, size = 'sm' }: CategoryTabProp
 }
 
 /**
- * 下層子分類 chip 樣式。
+ * 下層子分類 tab 樣式（Ronix 風：底線文字 tab，跟 Row 1 同系統）。
  *
  * 設計：
- * - 跟頂層 underline 同色系（橘），讓兩排視覺上像同個系統
- * - active 用淺橘底 + 橘字 + 橘邊，比全黑 pill 更輕、更精緻
- * - 比之前大一號（py-2 px-4 text-sm），desktop 不會看起來像被擠壓
- * - count 用視覺更弱的灰色小字，主訊息（分類名）出來才有層次
+ * - 不再是膠囊 chip；改成底線文字 tab，跟 Row 1 視覺一致
+ * - 字級比 Row 1 小一階（text-xs sm:text-sm），避免兩排重量打架
+ * - active 用粗黑底線 + 黑字，count 維持灰字弱化
  */
 interface SubCategoryTabProps {
   active: boolean
@@ -369,16 +385,15 @@ function SubCategoryTab({ active, onClick, children, count }: SubCategoryTabProp
       type="button"
       onClick={onClick}
       className={
-        // h-8 = 32px chip 高度，配合 container py-1.5 (12px) 上下 = 44px 整列高度，跟 Row 1 對齊
-        'whitespace-nowrap inline-flex items-center gap-1.5 h-8 px-3.5 text-sm font-medium rounded-full border transition-colors ' +
+        'whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 text-xs sm:text-sm border-b-2 transition-colors ' +
         (active
-          ? 'bg-orange-50 text-orange-600 border-orange-300'
-          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-zinc-900')
+          ? 'border-black text-black font-semibold'
+          : 'border-transparent text-gray-500 font-medium hover:text-black')
       }
     >
       <span>{children}</span>
       {typeof count === 'number' && (
-        <span className={active ? 'text-xs text-orange-400' : 'text-xs text-gray-400'}>
+        <span className="text-[10px] sm:text-xs text-gray-400 font-normal">
           {count}
         </span>
       )}

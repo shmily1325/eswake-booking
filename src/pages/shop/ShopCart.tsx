@@ -157,7 +157,7 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
       <div className="flex-1 min-w-0 flex flex-col">
         <Link
           to={`/shop/${item.productId}`}
-          className="text-sm sm:text-base font-semibold text-zinc-900 hover:text-orange-600 line-clamp-2"
+          className="text-sm sm:text-base font-semibold text-zinc-900 hover:text-black underline-offset-2 hover:underline line-clamp-2"
         >
           {item.productName}
         </Link>
@@ -244,11 +244,11 @@ function CartSummary({
       <button
         type="button"
         onClick={onInquiry}
-        className="w-full h-12 rounded-md bg-orange-500 text-white font-semibold text-base hover:bg-orange-600 active:bg-orange-700 transition-colors shadow-sm inline-flex items-center justify-center gap-2"
+        className="w-full h-12 rounded-md bg-black text-white font-semibold text-base hover:bg-zinc-800 active:bg-zinc-700 transition-colors shadow-sm inline-flex items-center justify-center gap-2"
       >
         <LineIcon className="w-5 h-5" />
         <span>Inquire via LINE</span>
-        <span className="text-sm font-normal text-orange-100">LINE 詢問</span>
+        <span className="text-sm font-normal text-zinc-300">LINE 詢問</span>
       </button>
 
       <p className="mt-3 text-xs text-gray-500 text-center leading-relaxed">
@@ -258,7 +258,7 @@ function CartSummary({
       <div className="mt-3 text-center">
         <Link
           to="/shop"
-          className="text-sm text-gray-500 hover:text-orange-600"
+          className="text-sm text-gray-500 hover:text-black"
         >
           ← Continue shopping
         </Link>

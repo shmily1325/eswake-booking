@@ -57,7 +57,7 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-zinc-900 text-white shadow-md">
+    <header className="sticky top-0 z-30 bg-black text-white shadow-md">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
         {/* 左：返回（選用）+ logo */}
         <div className="flex items-center gap-3 shrink-0">
@@ -71,11 +71,24 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
               <span className="hidden sm:inline">返回</span>
             </Link>
           )}
+          {/*
+            品牌標：圓 logo（白底版）+ "SHOP" 字標。
+            italic + Inter Black 跟 wordmark 的傾斜感呼應，全 caps 走 Ronix 風。
+          */}
           <Link
             to="/shop"
-            className="font-bold tracking-wide text-lg sm:text-xl"
+            className="flex items-center gap-2 sm:gap-2.5"
+            aria-label="ES Wake Shop"
           >
-            ES <span className="text-orange-400">SHOP</span>
+            <img
+              src="/logo_circle (white).png"
+              alt=""
+              className="h-7 w-7 sm:h-8 sm:w-8 select-none"
+              draggable={false}
+            />
+            <span className="font-black italic tracking-wider text-base sm:text-lg uppercase">
+              Shop
+            </span>
           </Link>
         </div>
 
@@ -105,7 +118,8 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
           >
             <CartIcon />
             {cartCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 rounded-full bg-orange-500 text-white text-xs font-semibold flex items-center justify-center">
+              // 走 Ronix 全黑風：badge 用白底黑字（夠搶眼但不需要 accent 暖色）
+              <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 rounded-full bg-white text-black text-xs font-bold flex items-center justify-center">
                 {cartCount > 99 ? '99+' : cartCount}
               </span>
             )}
@@ -143,7 +157,7 @@ function HeaderSearchInput({ value, onChange, autoFocus = false }: HeaderSearchI
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search brand or model"
         autoFocus={autoFocus}
-        className="w-full h-9 pl-9 pr-3 text-sm bg-zinc-800 text-white placeholder-gray-500 border border-zinc-700 rounded-md focus:outline-none focus:border-orange-400 focus:bg-zinc-700"
+        className="w-full h-9 pl-9 pr-3 text-sm bg-zinc-800 text-white placeholder-gray-500 border border-zinc-700 rounded-md focus:outline-none focus:border-white focus:bg-zinc-700"
         aria-label="Search products"
       />
     </div>

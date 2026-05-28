@@ -47,7 +47,7 @@ export function QuantityStepper({
             onChange(clamped)
           }
         }}
-        className="w-14 h-10 text-center border-x border-gray-300 outline-none focus:bg-orange-50"
+        className="w-14 h-10 text-center border-x border-gray-300 outline-none focus:bg-zinc-50"
       />
       <button
         type="button"
