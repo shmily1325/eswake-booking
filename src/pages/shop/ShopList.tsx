@@ -172,6 +172,9 @@ export function ShopList() {
           <p className="mt-3 text-sm text-gray-600 max-w-xl">
             Browse our wake & surf gear. Add items to cart and inquire via LINE — quick reply during business hours.
           </p>
+          <p className="mt-1 text-xs text-gray-500 max-w-xl">
+            線上瀏覽 ES Wake 滑水裝備，喜歡的商品加入購物車後透過 LINE 詢問購買，營業時間內快速回覆。
+          </p>
         </div>
       </section>
 
