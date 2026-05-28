@@ -31,6 +31,10 @@ export function ShopList() {
   const [sortBy, setSortBy] = useState<SortBy>('default')
 
   useEffect(() => {
+    document.title = 'ES Wake 商城'
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
     void (async () => {
       try {

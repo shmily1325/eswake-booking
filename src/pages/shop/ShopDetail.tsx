@@ -44,6 +44,15 @@ export function ShopDetail() {
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!product) {
+      document.title = 'ES Wake 商城'
+      return
+    }
+    const name = [product.brand, product.model].filter(Boolean).join(' ').trim()
+    document.title = name ? `${name} | ES Wake 商城` : 'ES Wake 商城'
+  }, [product])
+
+  useEffect(() => {
     let cancelled = false
     // 沒帶 productId 或格式不像 UUID（例如 /shop/abc 亂打）：直接視為「找不到」，
     // 不要打 Supabase（會回 22P02 invalid input syntax for uuid，那是技術錯誤、不該秀給客人）

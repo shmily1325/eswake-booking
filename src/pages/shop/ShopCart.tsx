@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShopHeader } from './components/ShopHeader'
 import { QuantityStepper } from './components/QuantityStepper'
@@ -36,6 +36,10 @@ export function ShopCart() {
 
   /** 桌機 fallback modal 的訊息；null = 不顯示 */
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    document.title = '購物車 | ES Wake 商城'
+  }, [])
 
   const handleInquiry = () => {
     if (items.length === 0) return
