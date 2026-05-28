@@ -371,7 +371,7 @@ function ProductDetailBody({
         </div>
 
         <p className="mt-4 text-xs text-gray-500 leading-relaxed">
-          * 線上瀏覽不直接成立訂單；按下「LINE 詢問」會跳到我們的官方 LINE，店家收到訊息後與您確認購買細節。
+          * 線上瀏覽不直接成立訂單；按下「LINE 詢問」會跳到我們的官方 LINE，收到訊息後會盡快與您確認購買細節。
         </p>
       </div>
     </div>

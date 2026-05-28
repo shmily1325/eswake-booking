@@ -206,11 +206,11 @@ export function ShopList() {
       */}
       <section className="bg-black text-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-          <h1 className="font-black italic uppercase tracking-tight text-4xl sm:text-6xl md:text-7xl leading-none">
+          <h1 className="font-black italic uppercase tracking-tight text-5xl sm:text-7xl md:text-8xl leading-none">
             {heroTitle}
           </h1>
           {/* 品牌語：呼應 footer 的「Eat · Sleep · Wake」，在 hero 底下做小型 kicker */}
-          <p className="mt-4 text-[11px] sm:text-xs italic tracking-[0.35em] text-gray-400 uppercase">
+          <p className="mt-5 text-xs sm:text-sm italic tracking-[0.35em] text-gray-400 uppercase">
             Eat · Sleep · Wake
           </p>
         </div>

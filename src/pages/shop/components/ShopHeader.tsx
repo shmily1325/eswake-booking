@@ -111,18 +111,37 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
             <SearchIcon />
           </button>
 
+          {/*
+            手機版購物車：icon + badge（空間有限）
+          */}
           <Link
             to="/shop/cart"
-            className="relative inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-zinc-800 transition-colors"
+            className="sm:hidden relative inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-zinc-800 transition-colors"
             aria-label={`購物車${cartCount > 0 ? `（${cartCount} 件）` : ''}`}
           >
             <CartIcon />
             {cartCount > 0 && (
-              // 走 Ronix 全黑風：badge 用白底黑字（夠搶眼但不需要 accent 暖色）
               <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 rounded-full bg-white text-black text-xs font-bold flex items-center justify-center">
                 {cartCount > 99 ? '99+' : cartCount}
               </span>
             )}
+          </Link>
+
+          {/*
+            桌機版購物車：icon + CART 字標（內聯數量）
+            ─ 跟左邊 SHOP wordmark 對稱，把右邊 nav 的視覺重量補上來。
+            ─ 字級比 SHOP 小一級，避免搶 hierarchy；風格匹配（black italic uppercase）。
+            ─ 沒有商品時純文字「CART」，有商品時尾巴帶 (3) 取代手機版的 badge。
+          */}
+          <Link
+            to="/shop/cart"
+            className="hidden sm:inline-flex items-center gap-2 h-10 px-2 -mr-2 text-white hover:text-gray-300 transition-colors"
+            aria-label={`購物車${cartCount > 0 ? `（${cartCount} 件）` : ''}`}
+          >
+            <CartIcon />
+            <span className="font-black italic tracking-wider uppercase text-base">
+              Cart{cartCount > 0 ? ` (${cartCount > 99 ? '99+' : cartCount})` : ''}
+            </span>
           </Link>
         </div>
       </div>
