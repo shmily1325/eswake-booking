@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useShopCart } from '../hooks/useShopCart'
 
 interface ShopHeaderProps {
@@ -12,18 +13,54 @@ interface ShopHeaderProps {
  * 設計參考 eswakeschool.com 官網的深色 nav bar，
  * 讓商城連結進去時視覺一致，不會「斷層」。
  *
- * - 黑底白字，sticky 在頂部
- * - 左：ES SHOP logo + 連回 /shop
- * - 中：（v1 暫不放，避免太擁擠）
- * - 右：購物車 icon，含數量 badge
+ * Layout（左到右）：
+ *   返回鈕（選用） | ES SHOP logo | 全站搜尋框 | 購物車 icon
+ *
+ * 搜尋設計：
+ *   - 從 URL `?q=...` 驅動，可分享、瀏覽器上下頁也有效
+ *   - 在任何頁面打字都會 navigate 回 /shop?q=...（因為只有列表頁才有 grid 套搜尋）
+ *   - 手機收縮成 icon，點開展成 input（不然 ES SHOP / 購物車 icon 會被擠掉）
  */
 export function ShopHeader({ showBack = false }: ShopHeaderProps) {
   const { totalCount: cartCount } = useShopCart()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const urlQuery = searchParams.get('q') ?? ''
+
+  /** 本地 input 值跟 URL 同步：別人改 URL（按返回鍵）也要反映到 input */
+  const [query, setQuery] = useState(urlQuery)
+  useEffect(() => {
+    setQuery(urlQuery)
+  }, [urlQuery])
+
+  /** 手機端的 search 展開狀態（桌機永遠展開、不受此 state 影響） */
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+
+  const submitQuery = (q: string) => {
+    const trimmed = q
+    const onShopList = location.pathname === '/shop' || location.pathname === '/shop/'
+    if (trimmed) {
+      if (onShopList) {
+        navigate(`/shop?q=${encodeURIComponent(trimmed)}`, { replace: true })
+      } else {
+        navigate(`/shop?q=${encodeURIComponent(trimmed)}`)
+      }
+    } else if (onShopList) {
+      navigate('/shop', { replace: true })
+    }
+  }
+
+  const handleChange = (v: string) => {
+    setQuery(v)
+    submitQuery(v)
+  }
 
   return (
     <header className="sticky top-0 z-30 bg-zinc-900 text-white shadow-md">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
+        {/* 左：返回（選用）+ logo */}
+        <div className="flex items-center gap-3 shrink-0">
           {showBack && (
             <Link
               to="/shop"
@@ -42,20 +79,94 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
           </Link>
         </div>
 
-        <Link
-          to="/shop/cart"
-          className="relative inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-zinc-800 transition-colors"
-          aria-label={`購物車${cartCount > 0 ? `（${cartCount} 件）` : ''}`}
-        >
-          <CartIcon />
-          {cartCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 rounded-full bg-orange-500 text-white text-xs font-semibold flex items-center justify-center">
-              {cartCount > 99 ? '99+' : cartCount}
-            </span>
-          )}
-        </Link>
+        {/* 中：搜尋框（桌機永遠顯示，手機點 icon 展開） */}
+        <div className="flex-1 min-w-0 flex justify-center sm:justify-start">
+          <div className="hidden sm:block w-full max-w-md">
+            <HeaderSearchInput value={query} onChange={handleChange} />
+          </div>
+        </div>
+
+        {/* 右：搜尋 icon（手機）+ 購物車 */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen((v) => !v)}
+            className="sm:hidden inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-zinc-800 transition-colors"
+            aria-label="搜尋"
+            aria-expanded={mobileSearchOpen}
+          >
+            <SearchIcon />
+          </button>
+
+          <Link
+            to="/shop/cart"
+            className="relative inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-zinc-800 transition-colors"
+            aria-label={`購物車${cartCount > 0 ? `（${cartCount} 件）` : ''}`}
+          >
+            <CartIcon />
+            {cartCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 rounded-full bg-orange-500 text-white text-xs font-semibold flex items-center justify-center">
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            )}
+          </Link>
+        </div>
       </div>
+
+      {/* 手機展開時的 search row（在 header 下面浮出來） */}
+      {mobileSearchOpen && (
+        <div className="sm:hidden px-4 pb-3 -mt-1 border-b border-zinc-800">
+          <HeaderSearchInput value={query} onChange={handleChange} autoFocus />
+        </div>
+      )}
     </header>
+  )
+}
+
+interface HeaderSearchInputProps {
+  value: string
+  onChange: (v: string) => void
+  autoFocus?: boolean
+}
+
+/** Header 用的搜尋輸入框，跟 ShopList 的 nav-bar search 樣式不同（淺色 placeholder、暗背景） */
+function HeaderSearchInput({ value, onChange, autoFocus = false }: HeaderSearchInputProps) {
+  return (
+    <div className="relative">
+      <SearchIcon
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+        size={15}
+      />
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search brand or model"
+        autoFocus={autoFocus}
+        className="w-full h-9 pl-9 pr-3 text-sm bg-zinc-800 text-white placeholder-gray-500 border border-zinc-700 rounded-md focus:outline-none focus:border-orange-400 focus:bg-zinc-700"
+        aria-label="Search products"
+      />
+    </div>
+  )
+}
+
+function SearchIcon({ className, size = 22 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
   )
 }
 

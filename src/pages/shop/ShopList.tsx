@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { fetchAllProductsWithVariants } from '../admin/products/api'
 import {
   getAllCategories,
@@ -45,7 +46,9 @@ export function ShopList() {
   const [topLevel, setTopLevel] = useState<TopLevel>(ALL_GROUPS)
   /** 下層子分類 tab（'all' 或某個 category id） */
   const [subCat, setSubCat] = useState<string>(ALL_SUBCATS)
-  const [search, setSearch] = useState('')
+  /** 搜尋字串從 URL `?q=` 拿，由 ShopHeader 統一寫入（全站搜尋設計） */
+  const [searchParams] = useSearchParams()
+  const search = searchParams.get('q') ?? ''
   const [sortBy, setSortBy] = useState<SortBy>('newest')
 
   useEffect(() => {
@@ -178,61 +181,51 @@ export function ShopList() {
       </section>
 
       {/*
-        Sticky navigation cluster：分類 tab + 搜尋 + 排序整合在一起，
-        捲動商品時整塊跟著走，操作不用回頂部。
-
-        手機：tab 一排 + search/sort 一排，垂直堆疊
-        桌機（sm+）：tab 在左、search/sort 在右，同一條 row
+        Sticky navigation：純粹的分類導覽（tab + sub-tab），
+        不再混入 search / sort，視覺更乾淨。
+        - Search：搬到 ShopHeader 中間（全站可搜，URL ?q= 同步）
+        - Sort：搬到 main 區商品 grid 上方（跟著當前清單操作）
       */}
       <nav
         className="sticky top-14 z-20 bg-white/95 backdrop-blur border-y border-gray-200"
         aria-label="Product categories"
       >
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          {/* Row 1：頂層分組 + 桌機版的 search/sort */}
-          <div className="flex items-center gap-3">
-            <div
-              className="flex gap-1 overflow-x-auto -mx-2 px-2 flex-1 min-w-0 [&::-webkit-scrollbar]:hidden"
-              style={{ scrollbarWidth: 'none' }}
+          {/* Row 1：頂層分組 */}
+          <div
+            className="flex gap-1 overflow-x-auto -mx-2 px-2 [&::-webkit-scrollbar]:hidden"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            <CategoryTab
+              active={topLevel === ALL_GROUPS}
+              onClick={() => setTopLevel(ALL_GROUPS)}
+              size="lg"
             >
-              <CategoryTab
-                active={topLevel === ALL_GROUPS}
-                onClick={() => setTopLevel(ALL_GROUPS)}
-                size="lg"
-              >
-                All Products
-                <span className="ml-1.5 text-xs font-normal text-gray-400">
-                  {products.length}
-                </span>
-              </CategoryTab>
-              {SHOP_GROUPS.map((g) => {
-                const n = groupCounts.get(g) ?? 0
-                if (n === 0) return null // 該 group 完全沒商品就藏起來
-                return (
-                  <CategoryTab
-                    key={g}
-                    active={topLevel === g}
-                    onClick={() => setTopLevel(g)}
-                    size="lg"
-                  >
-                    {g}
-                    <span className="ml-1.5 text-xs font-normal text-gray-400">{n}</span>
-                  </CategoryTab>
-                )
-              })}
-            </div>
-            {/* 桌機（sm+）才出現的 toolbar；手機放下面那一排 */}
-            <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <ToolbarSearch search={search} onSearchChange={setSearch} compact />
-              <ToolbarSort sortBy={sortBy} onSortChange={setSortBy} />
-            </div>
+              All Products
+              <span className="ml-1.5 text-xs font-normal text-gray-400">
+                {products.length}
+              </span>
+            </CategoryTab>
+            {SHOP_GROUPS.map((g) => {
+              const n = groupCounts.get(g) ?? 0
+              if (n === 0) return null // 該 group 完全沒商品就藏起來
+              return (
+                <CategoryTab
+                  key={g}
+                  active={topLevel === g}
+                  onClick={() => setTopLevel(g)}
+                  size="lg"
+                >
+                  {g}
+                  <span className="ml-1.5 text-xs font-normal text-gray-400">{n}</span>
+                </CategoryTab>
+              )
+            })}
           </div>
 
           {/*
             Row 2：子分類。
-            高度設計：container py-1.5 + chip py-1.5 = 約 44px，
-            跟 Row 1 underline tab 的 44px 對齊，視覺不再大小不一。
-            拿掉 border-t，讓 Row 1 + Row 2 看起來像一個整體 nav block。
+            高度設計：container py-1.5 + chip h-8 = 約 44px，跟 Row 1 對齊。
           */}
           {topLevel !== ALL_GROUPS && currentSubCategories.length > 0 && (
             <div
@@ -257,23 +250,21 @@ export function ShopList() {
               ))}
             </div>
           )}
-
-          {/* Row 3（手機限定）：search + sort */}
-          <div className="flex sm:hidden items-center gap-2 py-2 border-t border-gray-100">
-            <ToolbarSearch search={search} onSearchChange={setSearch} />
-            <ToolbarSort sortBy={sortBy} onSortChange={setSortBy} />
-          </div>
         </div>
       </nav>
 
       {/* 商品 grid */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
-        {/* 套了篩選時顯示結果數量；不再用獨立 toolbar，count 移到這裡 */}
-        {hasFilter && !loading && (
-          <div className="mb-3 text-xs text-gray-500">
-            {filteredProducts.length} items
+        {/*
+          Grid 工具列：左 count / 右 sort。
+          只在「有篩選」時 count 才出現（避免全部清單時看到「57 items」雜訊）。
+        */}
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="text-xs text-gray-500 min-w-0">
+            {hasFilter && !loading && `${filteredProducts.length} items`}
           </div>
-        )}
+          <ToolbarSort sortBy={sortBy} onSortChange={setSortBy} />
+        </div>
 
         {loading ? (
           <LoadingState />
@@ -302,47 +293,6 @@ export function ShopList() {
       <footer className="py-8 text-center text-xs text-gray-400">
         ES Wake School © {new Date().getFullYear()}
       </footer>
-    </div>
-  )
-}
-
-/**
- * 搜尋框，跟 sort 同高（h-9）讓 sticky nav 那條看起來整齊。
- * compact 模式：桌機嵌在 nav row 右側，固定寬度避免擠到 tab 區。
- */
-interface ToolbarSearchProps {
-  search: string
-  onSearchChange: (v: string) => void
-  /** true 時固定寬度（給桌機 sticky nav 用）；false 時 flex-1 撐滿（給手機獨立 row 用） */
-  compact?: boolean
-}
-
-function ToolbarSearch({ search, onSearchChange, compact = false }: ToolbarSearchProps) {
-  return (
-    <div className={'relative ' + (compact ? 'w-48 md:w-56' : 'flex-1 min-w-0')}>
-      <svg
-        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-        width="15"
-        height="15"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <circle cx="11" cy="11" r="7" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Search brand or model"
-        className="w-full h-9 pl-8 pr-3 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:bg-white focus:border-orange-400 focus:ring-1 focus:ring-orange-300"
-        aria-label="Search products"
-      />
     </div>
   )
 }
