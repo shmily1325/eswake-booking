@@ -15,6 +15,10 @@ import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
 import { ImageOrFallback } from './components/ImageOrFallback'
 
+/** Supabase 的 `id` 是 uuid，亂打字串會炸出 22P02 錯誤，先在 client 擋掉 */
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /**
  * 商品詳情頁（/shop/:productId）。
  *
@@ -40,8 +44,15 @@ export function ShopDetail() {
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!productId) return
     let cancelled = false
+    // 沒帶 productId 或格式不像 UUID（例如 /shop/abc 亂打）：直接視為「找不到」，
+    // 不要打 Supabase（會回 22P02 invalid input syntax for uuid，那是技術錯誤、不該秀給客人）
+    if (!productId || !UUID_REGEX.test(productId)) {
+      setProduct(null)
+      setError(null)
+      setLoading(false)
+      return
+    }
     setLoading(true)
     void (async () => {
       try {
