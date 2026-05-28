@@ -10,12 +10,7 @@ import {
   formatVariantAttributes,
   getCategoryIcon,
 } from './lib/shopFormat'
-import {
-  buildCartInquiryMessageForUrl,
-  buildCartInquiryUrl,
-  isInquiryTooLong,
-  launchInquiry,
-} from './lib/lineDeepLink'
+import { buildCartInquiry, launchInquiry } from './lib/lineDeepLink'
 
 /**
  * 購物車頁（/shop/cart）。
@@ -43,15 +38,14 @@ export function ShopCart() {
 
   const handleInquiry = () => {
     if (items.length === 0) return
-    const url = buildCartInquiryUrl(items)
-    if (isInquiryTooLong(url)) {
+    const payload = buildCartInquiry(items)
+    if (payload.stillTooLong) {
       const ok = window.confirm(
         `購物車品項較多，預填訊息可能過長導致 LINE 無法完整顯示。\n建議分批詢問（先送一半，再回來把剩下的送出）。\n\n要繼續嗎？`
       )
       if (!ok) return
     }
-    const message = buildCartInquiryMessageForUrl(items)
-    const result = launchInquiry(message)
+    const result = launchInquiry(payload)
     if (result.mode === 'desktop-fallback') {
       setFallbackMessage(result.message)
     }

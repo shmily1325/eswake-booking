@@ -81,6 +81,24 @@ function buildOaMessageUrl(message: string): string {
   return `https://line.me/R/oaMessage/${encodedId}/?${encodedMsg}`
 }
 
+/**
+ * 一筆「LINE 詢問」要送出去的完整 payload：URL 與訊息一起算好，保證一致。
+ *
+ * 為什麼包成一個結構：
+ * - URL 跟訊息要嚴格同步（modal 顯示的訊息 = URL 編碼後的內容）
+ * - budget 超標時的 fallback（拿掉商品連結）邏輯集中在 build 端，呼叫端不用重做
+ */
+export interface InquiryPayload {
+  /** 完整 LINE deep link URL，給手機 `window.location.href` 用 */
+  url: string
+  /** 訊息純文字（與 URL 內 encode 的內容相同），給桌機 modal 顯示用 */
+  message: string
+  /** 為了塞進 LINE URL 上限，是否把每筆品項的「商品頁網址」拿掉了 */
+  urlsTrimmed: boolean
+  /** 即使拿掉商品連結後仍超過上限：LINE 端可能截斷訊息，UI 應警告使用者 */
+  stillTooLong: boolean
+}
+
 interface SingleInquiryInput {
   productId: string
   productName: string
@@ -90,15 +108,11 @@ interface SingleInquiryInput {
   unitPrice: number | null
 }
 
-/**
- * 從詳情頁的「直接 LINE 詢問」按鈕產生網址。
- * 包含單一品項的完整資訊。
- */
-export function buildSingleInquiryMessage(
+/** 內部：渲染單筆品項詢問的純文字訊息（不負責 URL） */
+function renderSingleMessage(
   input: SingleInquiryInput,
-  opts: { includeUrl?: boolean } = {}
+  includeUrl: boolean
 ): string {
-  const includeUrl = opts.includeUrl ?? true
   const attrsText = formatVariantAttributes(input.categoryId, input.attributes)
   const productUrl = includeUrl ? buildProductUrl(input.productId) : ''
   const lines: string[] = [
@@ -116,19 +130,9 @@ export function buildSingleInquiryMessage(
   return lines.join('\n')
 }
 
-/**
- * 從購物車「LINE 統一詢問購買」按鈕產生網址。
- * 列出多個品項與小計。
- *
- * `includeUrls`: 是否在每筆品項後面加商品頁網址。
- *   - 預設 true；budget 超標時 `buildCartInquiryUrl` 會 fallback 成 false 再產一次。
- */
-export function buildCartInquiryMessage(
-  items: CartItem[],
-  opts: { includeUrls?: boolean } = {}
-): string {
+/** 內部：渲染購物車詢問的純文字訊息（不負責 URL） */
+function renderCartMessage(items: CartItem[], includeUrls: boolean): string {
   if (items.length === 0) return ''
-  const includeUrls = opts.includeUrls ?? true
 
   const totalCount = items.reduce((s, it) => s + it.quantity, 0)
   const totalAmount = items.reduce(
@@ -141,7 +145,6 @@ export function buildCartInquiryMessage(
     `我想詢問以下商品（共 ${totalCount} 件）：`,
     '',
   ]
-
   items.forEach((it, idx) => {
     const attrsText = formatVariantAttributes(it.categoryId, it.attributes)
     const productUrl = includeUrls ? buildProductUrl(it.productId) : ''
@@ -154,7 +157,6 @@ export function buildCartInquiryMessage(
     if (productUrl) lines.push(`　商品頁：${productUrl}`)
     lines.push('')
   })
-
   lines.push(`預估金額：${formatPrice(totalAmount)}`)
   if (hasUnknownPrice) {
     lines.push('（部分品項為洽詢價，最終以店家報價為準）')
@@ -164,60 +166,54 @@ export function buildCartInquiryMessage(
 }
 
 /**
- * 完整 URL（含 base + encode），給 `window.location.href` 用。
+ * 把 render 出來的訊息包成 InquiryPayload，並做 budget-aware fallback。
  *
- * 策略：預設帶商品頁網址；如果整段 URL 超過 LINE 限制，自動退掉網址再產一次。
- * 仍超標的話呼叫端會看到 `isInquiryTooLong()` 為 true 並出警告。
+ * - 先試帶網址版；URL 沒超標就用它
+ * - 超標就退到不帶網址版，避免訊息被 LINE 截掉
+ * - 若不帶網址還超標，標記 `stillTooLong` 讓 UI 警告
  */
-export function buildSingleInquiryUrl(input: SingleInquiryInput): string {
-  const withUrl = buildOaMessageUrl(buildSingleInquiryMessage(input, { includeUrl: true }))
-  if (!isInquiryTooLong(withUrl)) return withUrl
-  return buildOaMessageUrl(buildSingleInquiryMessage(input, { includeUrl: false }))
+function buildPayload(
+  renderFn: (includeProductUrl: boolean) => string
+): InquiryPayload {
+  const fullMsg = renderFn(true)
+  const fullUrl = buildOaMessageUrl(fullMsg)
+  if (fullUrl.length <= URL_BUDGET) {
+    return { url: fullUrl, message: fullMsg, urlsTrimmed: false, stillTooLong: false }
+  }
+  const slimMsg = renderFn(false)
+  const slimUrl = buildOaMessageUrl(slimMsg)
+  return {
+    url: slimUrl,
+    message: slimMsg,
+    urlsTrimmed: true,
+    stillTooLong: slimUrl.length > URL_BUDGET,
+  }
 }
 
-export function buildCartInquiryUrl(items: CartItem[]): string {
-  const withUrls = buildOaMessageUrl(buildCartInquiryMessage(items, { includeUrls: true }))
-  if (!isInquiryTooLong(withUrls)) return withUrls
-  return buildOaMessageUrl(buildCartInquiryMessage(items, { includeUrls: false }))
+/** 詳情頁「直接 LINE 詢問」用 */
+export function buildSingleInquiry(input: SingleInquiryInput): InquiryPayload {
+  return buildPayload((includeUrl) => renderSingleMessage(input, includeUrl))
 }
 
-/**
- * 配合 `buildCartInquiryUrl` 的 fallback 行為，把實際送出的訊息（去掉 URL 與否）拿出來。
- * UI 上的 desktop fallback modal 需要顯示「跟 URL 帶的同一份」訊息才合理。
- */
-export function buildCartInquiryMessageForUrl(items: CartItem[]): string {
-  const withUrls = buildCartInquiryMessage(items, { includeUrls: true })
-  if (!isInquiryTooLong(buildOaMessageUrl(withUrls))) return withUrls
-  return buildCartInquiryMessage(items, { includeUrls: false })
-}
-
-export function buildSingleInquiryMessageForUrl(input: SingleInquiryInput): string {
-  const withUrl = buildSingleInquiryMessage(input, { includeUrl: true })
-  if (!isInquiryTooLong(buildOaMessageUrl(withUrl))) return withUrl
-  return buildSingleInquiryMessage(input, { includeUrl: false })
-}
-
-/** 估算 URL 長度，回 true 代表「太長，建議客人分批詢問」 */
-export function isInquiryTooLong(url: string): boolean {
-  return url.length > URL_BUDGET
+/** 購物車「LINE 統一詢問購買」用 */
+export function buildCartInquiry(items: CartItem[]): InquiryPayload {
+  return buildPayload((includeUrls) => renderCartMessage(items, includeUrls))
 }
 
 /**
  * 統一的「跳轉到 LINE」入口。
  *
- * - 手機：直接 `window.location.href = deepLink`，喚起 LINE app
+ * - 手機：直接 `window.location.href = payload.url`，喚起 LINE app
  * - 桌機：回傳 `{ mode: 'desktop-fallback', message }` 讓 UI 顯示 modal
- *
- * 這樣呼叫端只要判斷 mode 即可，平台分流邏輯集中在這。
  */
 export type InquiryResult =
   | { mode: 'mobile-deeplink' }
   | { mode: 'desktop-fallback'; message: string }
 
-export function launchInquiry(message: string): InquiryResult {
+export function launchInquiry(payload: InquiryPayload): InquiryResult {
   if (isMobileDevice()) {
-    window.location.href = buildOaMessageUrl(message)
+    window.location.href = payload.url
     return { mode: 'mobile-deeplink' }
   }
-  return { mode: 'desktop-fallback', message }
+  return { mode: 'desktop-fallback', message: payload.message }
 }

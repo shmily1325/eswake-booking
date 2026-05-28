@@ -11,12 +11,7 @@ import {
   getCategoryIcon,
   getCategoryName,
 } from './lib/shopFormat'
-import {
-  buildSingleInquiryMessageForUrl,
-  buildSingleInquiryUrl,
-  isInquiryTooLong,
-  launchInquiry,
-} from './lib/lineDeepLink'
+import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
 
 /**
@@ -100,21 +95,19 @@ export function ShopDetail() {
   const handleDirectInquiry = () => {
     if (!product || !selectedVariant) return
     const productName = [product.brand, product.model].filter(Boolean).join(' ').trim()
-    const params = {
+    const payload = buildSingleInquiry({
       productId: product.id,
       productName: productName || '(未命名商品)',
       categoryId: product.category,
       attributes: selectedVariant.attributes,
       quantity,
       unitPrice: selectedVariant.price,
-    }
-    const url = buildSingleInquiryUrl(params)
-    if (isInquiryTooLong(url)) {
+    })
+    if (payload.stillTooLong) {
       alert('詢問內容過長，建議減少數量或備註資訊')
       return
     }
-    const message = buildSingleInquiryMessageForUrl(params)
-    const result = launchInquiry(message)
+    const result = launchInquiry(payload)
     if (result.mode === 'desktop-fallback') {
       setFallbackMessage(result.message)
     }
