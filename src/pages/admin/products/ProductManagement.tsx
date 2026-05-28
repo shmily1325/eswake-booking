@@ -333,6 +333,14 @@ export function ProductManagement() {
               minWidth: 0,
             }}
           >
+            {/*
+              三行 tab 共用同一個資料來源：schema 的 cat.shortName ?? cat.name。
+              shortName 是「拿掉 group prefix 之後的純名詞」（例：'板' / 'fin' / '安全帽'），
+              讓 chip 不需要再用 regex 從 name 剝 prefix（之前 'WS/Skim 板' 會被砍成 '/Skim 板'）。
+
+              Row 1 是無 group 的通用分類，shortName 通常 undefined → fallback 用 name 直接顯示。
+            */}
+
             {/* Row 1：全部 + 一般分類（無 group） */}
             <CategoryRow>
               <CategoryTab
@@ -346,7 +354,7 @@ export function ProductManagement() {
                 .map((cat) => (
                   <CategoryTab
                     key={cat.id}
-                    label={cat.name}
+                    label={cat.shortName ?? cat.name}
                     active={activeTab === cat.id}
                     onClick={() => setActiveTab(cat.id)}
                     trackId={`product_tab_${cat.id}`}
@@ -361,7 +369,7 @@ export function ProductManagement() {
                 .map((cat) => (
                   <CategoryTab
                     key={cat.id}
-                    label={cat.name.replace(/^WB\s*/, '')}
+                    label={cat.shortName ?? cat.name}
                     active={activeTab === cat.id}
                     onClick={() => setActiveTab(cat.id)}
                     trackId={`product_tab_${cat.id}`}
@@ -376,7 +384,7 @@ export function ProductManagement() {
                 .map((cat) => (
                   <CategoryTab
                     key={cat.id}
-                    label={cat.name.replace(/^WS\s*/, '')}
+                    label={cat.shortName ?? cat.name}
                     active={activeTab === cat.id}
                     onClick={() => setActiveTab(cat.id)}
                     trackId={`product_tab_${cat.id}`}

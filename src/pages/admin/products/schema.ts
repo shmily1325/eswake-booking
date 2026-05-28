@@ -34,15 +34,25 @@ export interface FieldDef {
 
 /**
  * 商城頂層分組（兩層篩選的上排）。
+ *
+ * 命名沿用 Ronix 等品牌的「-ing 形」：表示「這項運動的整套裝備」，
+ * 而不是單指「板子」這個物件，因為這個 group 包含 board / boots / fin / handle 等多種品項。
+ *
  * 'Essentials' 代表通用品項（救生衣、防寒衣、服飾這類不分 WB/WS 的物件，
  * 不管玩什麼運動都用得到的「必備裝備」）。
  */
-export type ShopGroup = 'Essentials' | 'Wakeboard' | 'Wakesurf/Skim'
+export type ShopGroup = 'Essentials' | 'Wakeboarding' | 'Wakesurfing/Skim'
 
 export interface CategoryDef {
   id: string
   /** 後台顯示名稱（中文，給內部員工） */
   name: string
+  /**
+   * 後台 tab chip 的短標籤（例：'板' / 'fin'），用在分組（WB / WS）那兩排的小膠囊上。
+   * group prefix（'WB:' / 'WS/Skim:'）已經由 row 開頭標出，chip 只需要顯示後面的名詞。
+   * 省略時 fallback 用 name（適合「Essentials」那種無 group prefix 的分類）。
+   */
+  shortName?: string
   /** 商城前台顯示名稱（英文，給顧客）；省略時 fallback 用 name */
   shopName?: string
   /** 列表頁 Tab 顯示順序 */
@@ -161,11 +171,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   wb_board: {
     id: 'wb_board',
     name: 'WB 板',
+    shortName: '板',
     shopName: 'Board',
     sortOrder: 30,
     icon: '🛹',
     group: 'WB',
-    shopGroup: 'Wakeboard',
+    shopGroup: 'Wakeboarding',
     fields: [
       // 尺寸用 text 接受廠商各種寫法（例：134、137、142cm）
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -174,11 +185,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   wb_boots: {
     id: 'wb_boots',
     name: 'WB 鞋',
+    shortName: '鞋',
     shopName: 'Boots',
     sortOrder: 31,
     icon: '👢',
     group: 'WB',
-    shopGroup: 'Wakeboard',
+    shopGroup: 'Wakeboarding',
     fields: [
       // 鞋子尺寸只存純數字，廠商規格普遍以 cm 為主，顯示時自動附加 "cm"
       {
@@ -202,11 +214,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   wb_fin: {
     id: 'wb_fin',
     name: 'WB fin',
+    shortName: 'fin',
     shopName: 'Fin',
     sortOrder: 32,
     icon: '🪶',
     group: 'WB',
-    shopGroup: 'Wakeboard',
+    shopGroup: 'Wakeboarding',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -214,11 +227,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   wb_handle: {
     id: 'wb_handle',
     name: 'WB handle',
+    shortName: 'handle',
     shopName: 'Handle',
     sortOrder: 33,
     icon: '🪢',
     group: 'WB',
-    shopGroup: 'Wakeboard',
+    shopGroup: 'Wakeboarding',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -226,11 +240,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   wb_helmet: {
     id: 'wb_helmet',
     name: 'WB 安全帽',
+    shortName: '安全帽',
     shopName: 'Helmet',
     sortOrder: 34,
     icon: '⛑️',
     group: 'WB',
-    shopGroup: 'Wakeboard',
+    shopGroup: 'Wakeboarding',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -243,11 +258,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   ws_board: {
     id: 'ws_board',
     name: 'WS/Skim 板',
+    shortName: '板',
     shopName: 'Board',
     sortOrder: 40,
     icon: '🏄',
     group: 'WS',
-    shopGroup: 'Wakesurf/Skim',
+    shopGroup: 'Wakesurfing/Skim',
     fields: [
       // 尺寸用 text 接受廠商各種寫法（例：4'10"、134cm、134）
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -256,11 +272,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   ws_fin: {
     id: 'ws_fin',
     name: 'WS fin',
+    shortName: 'fin',
     shopName: 'Fin',
     sortOrder: 41,
     icon: '🪶',
     group: 'WS',
-    shopGroup: 'Wakesurf/Skim',
+    shopGroup: 'Wakesurfing/Skim',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -268,11 +285,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   ws_pad: {
     id: 'ws_pad',
     name: 'WS 墊子',
+    shortName: '墊子',
     shopName: 'Pad',
     sortOrder: 42,
     icon: '🟫',
     group: 'WS',
-    shopGroup: 'Wakesurf/Skim',
+    shopGroup: 'Wakesurfing/Skim',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -280,11 +298,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   ws_handle: {
     id: 'ws_handle',
     name: 'WS handle',
+    shortName: 'handle',
     shopName: 'Handle',
     sortOrder: 43,
     icon: '🪢',
     group: 'WS',
-    shopGroup: 'Wakesurf/Skim',
+    shopGroup: 'Wakesurfing/Skim',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -292,11 +311,12 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   ws_wax: {
     id: 'ws_wax',
     name: 'WS 蠟塊',
+    shortName: '蠟塊',
     shopName: 'Wax',
     sortOrder: 44,
     icon: '🧱',
     group: 'WS',
-    shopGroup: 'Wakesurf/Skim',
+    shopGroup: 'Wakesurfing/Skim',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -310,9 +330,10 @@ export function getAllCategories(): CategoryDef[] {
 
 /**
  * 商城兩層分類列要的上層分組（固定順序）。
- * 第一順位是 'Essentials'（通用品項），其後是運動類別。
+ * 運動類別擺前面（Wakeboarding / Wakesurfing），客人通常是衝著主項目來的；
+ * 'Essentials'（救生衣、防寒衣等通用品項）擺最後當補貨用。
  */
-export const SHOP_GROUPS: ShopGroup[] = ['Essentials', 'Wakeboard', 'Wakesurf/Skim']
+export const SHOP_GROUPS: ShopGroup[] = ['Wakeboarding', 'Wakesurfing/Skim', 'Essentials']
 
 /** 取分類在商城前台要顯示的名稱（英文優先，fallback 用中文 name） */
 export function getCategoryShopName(cat: CategoryDef): string {
