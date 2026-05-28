@@ -6,6 +6,7 @@ import {
   getProductImageUrl,
   isProductOutOfStock,
 } from '../lib/shopFormat'
+import { ImageOrFallback } from './ImageOrFallback'
 
 interface ProductCardProps {
   product: ProductRow
@@ -37,18 +38,16 @@ export function ProductCard({ product, variants }: ProductCardProps) {
     >
       {/* 圖片區（9:16 直式，貼合手機照片比例與直式商品照） */}
       <div className="relative aspect-[9/16] bg-gray-100 overflow-hidden">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={`${product.brand} ${product.model}`}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-6xl text-gray-300">
-            <span aria-hidden>{fallbackIcon}</span>
-          </div>
-        )}
+        <ImageOrFallback
+          src={imageUrl}
+          alt={`${product.brand} ${product.model}`}
+          imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          fallback={
+            <div className="w-full h-full flex items-center justify-center text-6xl text-gray-300">
+              <span aria-hidden>{fallbackIcon}</span>
+            </div>
+          }
+        />
 
         {outOfStock && (
           <div className="absolute top-2 left-2 bg-zinc-900/85 text-white text-xs font-medium px-2 py-1 rounded">

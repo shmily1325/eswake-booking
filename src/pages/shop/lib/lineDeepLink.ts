@@ -30,18 +30,16 @@ export function getOaId(): string {
 /**
  * 商城對外的 base URL（用來組商品頁連結放進 LINE 詢問訊息）。
  *
- * 解析順序：
- *   1. VITE_SHOP_BASE_URL（部署環境變數，正式應設成 https://shop.eswakeschool.com）
- *   2. window.location.origin（SSR/build 時拿不到，所以保留 env var）
- *   3. 兩者都沒 → 回空字串（訊息就不附連結）
+ * 只認 `VITE_SHOP_BASE_URL`，不 fallback 到 `window.location.origin`：
+ *   - 預期值是「正式網域」，例如 https://shop.eswakeschool.com
+ *   - 開發 / Preview 環境若沒設，寧可不附網址，也不要把 *.vercel.app 或 localhost
+ *     寫進 LINE 訊息給客人（看了很奇怪、且這些 URL 不會永遠有效）
+ *   - 上線前在 Vercel 把這個 env var 設好即可，程式不用改
  */
 export function getShopBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_SHOP_BASE_URL as string | undefined
   if (fromEnv && fromEnv.trim()) {
     return fromEnv.trim().replace(/\/$/, '')
-  }
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin
   }
   return ''
 }

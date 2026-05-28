@@ -182,17 +182,17 @@ function ProductDetailBody({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
       {/* 圖片 */}
       <div className="relative aspect-[9/16] bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={`${product.brand} ${product.model}`}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-8xl text-gray-300">
-            <span aria-hidden>{fallbackIcon}</span>
-          </div>
-        )}
+        <ImageOrFallback
+          src={imageUrl}
+          alt={`${product.brand} ${product.model}`}
+          imgClassName="w-full h-full object-cover"
+          loading="eager"
+          fallback={
+            <div className="w-full h-full flex items-center justify-center text-8xl text-gray-300">
+              <span aria-hidden>{fallbackIcon}</span>
+            </div>
+          }
+        />
       </div>
 
       {/* 資訊區 */}

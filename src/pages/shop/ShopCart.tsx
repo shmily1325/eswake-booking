@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ShopHeader } from './components/ShopHeader'
 import { QuantityStepper } from './components/QuantityStepper'
 import { LineInquiryModal } from './components/LineInquiryModal'
+import { ImageOrFallback } from './components/ImageOrFallback'
 import { useShopCart } from './hooks/useShopCart'
 import type { CartItem } from './types'
 import {
@@ -133,21 +134,19 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
         className="flex-shrink-0 w-16 h-20 sm:w-20 sm:h-24 bg-gray-50 rounded-md overflow-hidden flex items-center justify-center hover:bg-gray-100 transition-colors"
         aria-label="返回商品頁"
       >
-        {item.imageUrl ? (
-          <img
-            src={item.imageUrl}
-            alt={item.productName}
-            loading="lazy"
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <span
-            aria-hidden
-            className="text-3xl sm:text-4xl text-gray-300"
-          >
-            {icon}
-          </span>
-        )}
+        <ImageOrFallback
+          src={item.imageUrl}
+          alt={item.productName}
+          imgClassName="w-full h-full object-cover"
+          fallback={
+            <span
+              aria-hidden
+              className="text-3xl sm:text-4xl text-gray-300"
+            >
+              {icon}
+            </span>
+          }
+        />
       </Link>
 
       {/* 主資訊 */}
