@@ -291,3 +291,59 @@ https://line.me/R/oaMessage/{官方帳號ID}/?{URL encode 過的訊息}
 - 公開頁不用拿 `userId`
 - 型錄要讓「沒 LINE 帳號的人」也能看（Google 搜尋進來）
 - LIFF 開發成本（多一個 entry、SDK 載入、debug）對純展示頁不值得
+
+---
+
+## 11. 已完成里程碑（feat/shop 分支）
+
+> 📅 完工 2026-05-27 ~ 2026-05-28，已合回 main 待 demo
+
+- ✅ M1 路由與骨架
+- ✅ M2 列表頁（分類 Tab + 卡片）
+- ✅ M3 詳情頁（規格選擇、數量、加入購物車）
+- ✅ M4 購物車頁
+- ✅ M5 LINE deep link（單筆 + 統一詢問）
+- ✅ Polish：圖片 fallback、搜尋、排序、詳情頁變體縮圖列、404 友善頁、code-split、OG meta tags、列表/詳情/購物車視覺統一（灰底浮卡）、LINE 訊息帶商品連結（budget-aware）
+
+---
+
+## 12. 下一階段 TODO（合回 main 後做）
+
+### 必做（功能 / 上線前必補）
+
+- [ ] **`is_public` 欄位 migration**
+  - 新增 `products.is_public boolean default false`
+  - migration 檔名建議 `116_add_products_is_public.sql`（avoid clashing with 114/115 security migrations）
+  - 既有商品全部預設 `false`，避免上線當天一鍵全部對外
+- [ ] **後台 ProductManagement 加「顯示在商城」勾選**
+  - 編輯介面新增 `is_public` toggle
+  - 列表頁顯示「商城公開中」標籤，方便老闆一眼掃過
+- [ ] **商城 fetch 加 `is_public` 過濾**
+  - `src/pages/shop/ShopList.tsx` 與 `ShopDetail.tsx` 撈商品時 `.eq('is_public', true)`
+  - 詳情頁如果商品 `is_public=false`，導向 404 友善頁
+- [ ] **Vercel 環境變數**
+  - `VITE_SHOP_LINE_OA_ID` = 真實 OA ID（目前是 demo `@785eqymb`）
+  - `VITE_SHOP_BASE_URL` = `https://shop.eswakeschool.com`（網域接通後再設，否則先別設讓 LINE 訊息不附連結）
+- [ ] **`shop.eswakeschool.com` 子網域接通**
+  - GoDaddy 加 CNAME 記錄 → `cname.vercel-dns.com`
+  - Vercel Project Settings → Domains → 新增 `shop.eswakeschool.com`
+  - 等 Vercel 顯示「Valid Configuration」
+  - 接通後才設 `VITE_SHOP_BASE_URL`
+
+### 待釐清（先決定方向）
+
+- [ ] **「schema 兩層」** — 老闆提到要把 schema 改成兩層，待確認意思：
+  - A. 分類兩層（巢狀分類）
+  - B. Product → Color → Size 三層結構
+  - C. 後台 / 商城 TypeScript schema 拆兩層
+  - D. 權限兩層
+
+### 可選（demo 時不一定需要、看老闆要不要）
+
+- [ ] LINE 加好友邀請按鈕（放 ShopHeader 或 footer）
+- [ ] Footer 補聯絡資訊、店址、營業時間
+- [ ] Hero 區換真實照片背景（取代純文字標題）
+- [ ] VariantPicker 改成屬性分組（顏色一列、尺寸一列）
+- [ ] Footer 加使用條款 / 隱私政策連結
+- [ ] 完整手機 LINE 喚起測試（不同 OS / LINE 版本）
+- [ ] OG 升級為「每件商品獨立預覽」（C 方案：Vercel Edge Function 動態注入）
