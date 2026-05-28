@@ -228,10 +228,15 @@ export function ShopList() {
             </div>
           </div>
 
-          {/* Row 2：子分類（選了 group 才出現） */}
+          {/*
+            Row 2：子分類。
+            高度設計：container py-1.5 + chip py-1.5 = 約 44px，
+            跟 Row 1 underline tab 的 44px 對齊，視覺不再大小不一。
+            拿掉 border-t，讓 Row 1 + Row 2 看起來像一個整體 nav block。
+          */}
           {topLevel !== ALL_GROUPS && currentSubCategories.length > 0 && (
             <div
-              className="flex gap-2 overflow-x-auto -mx-2 px-2 py-3 [&::-webkit-scrollbar]:hidden border-t border-gray-100"
+              className="flex items-center gap-2 overflow-x-auto -mx-2 px-2 py-1.5 [&::-webkit-scrollbar]:hidden"
               style={{ scrollbarWidth: 'none' }}
             >
               <SubCategoryTab
@@ -414,7 +419,8 @@ function SubCategoryTab({ active, onClick, children, count }: SubCategoryTabProp
       type="button"
       onClick={onClick}
       className={
-        'whitespace-nowrap inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full border transition-colors ' +
+        // h-8 = 32px chip 高度，配合 container py-1.5 (12px) 上下 = 44px 整列高度，跟 Row 1 對齊
+        'whitespace-nowrap inline-flex items-center gap-1.5 h-8 px-3.5 text-sm font-medium rounded-full border transition-colors ' +
         (active
           ? 'bg-orange-50 text-orange-600 border-orange-300'
           : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-zinc-900')
