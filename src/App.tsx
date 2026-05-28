@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -77,7 +77,8 @@ import { CoachDailyView } from './pages/coach/CoachDailyView'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { LoginAccessDeniedPage } from './pages/LoginAccessDeniedPage'
 import { LiffMyBookings } from './pages/LiffMyBookings'
-import { ShopList, ShopDetail, ShopCart, ShopLayout } from './pages/shop'
+// 商城（公開、給匿名訪客）獨立成一個 chunk，避免後台 JS 拖累首次載入
+const ShopApp = lazy(() => import('./pages/shop/ShopApp'))
 import { ClickTrackProvider } from './components/ClickTrackProvider'
 import { isAllowedUser } from './utils/auth'
 
@@ -202,6 +203,15 @@ function AppContent() {
   )
 }
 
+/** Shop chunk 還在下載時顯示的極簡 loading（不要讓畫面整片空白） */
+function ShopChunkFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 text-sm text-gray-500">
+      載入中...
+    </div>
+  )
+}
+
 function App() {
   // 確保在客戶端環境中執行
   if (typeof window === 'undefined') {
@@ -214,10 +224,15 @@ function App() {
         <Routes>
           {/* LIFF 頁面不需要系統登入驗證 */}
           <Route path="/liff" element={<LiffMyBookings />} />
-          {/* 商城型錄頁完全公開，無需登入；/shop/cart 須排在 /shop/:productId 之前 */}
-          <Route path="/shop" element={<ShopLayout><ShopList /></ShopLayout>} />
-          <Route path="/shop/cart" element={<ShopLayout><ShopCart /></ShopLayout>} />
-          <Route path="/shop/:productId" element={<ShopLayout><ShopDetail /></ShopLayout>} />
+          {/* 商城完全公開、無需登入；整包 lazy load，匿名訪客不必下載後台 JS */}
+          <Route
+            path="/shop/*"
+            element={
+              <Suspense fallback={<ShopChunkFallback />}>
+                <ShopApp />
+              </Suspense>
+            }
+          />
           {/* 其他頁面需要登入驗證 */}
           <Route path="*" element={
             <AuthProvider>
