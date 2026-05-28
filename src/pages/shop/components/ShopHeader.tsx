@@ -87,7 +87,7 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
               draggable={false}
             />
             <span className="font-black italic tracking-wider text-base sm:text-lg uppercase">
-              Shop
+              ES Shop
             </span>
           </Link>
         </div>
