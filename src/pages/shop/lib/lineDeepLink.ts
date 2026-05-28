@@ -9,15 +9,19 @@
  * - 客人按送出後，店家在既有官方帳號收到訊息（跟現有客服流程一致）
  *
  * 環境變數：
- *   VITE_SHOP_LINE_OA_ID — 官方帳號 ID（含 @ 前綴，例如「@eswake」）
- *   未設定時 fallback 為下方 DEFAULT_OA_ID（測試帳號）
+ *   VITE_SHOP_LINE_OA_ID — 官方帳號 ID（含 @ 前綴，例如「@eswakeschool」）
+ *   未設定時 fallback 為下方 DEFAULT_OA_ID（ES Wake 正式 OA）
  */
 
 import type { CartItem } from '../types'
 import { formatPrice, formatVariantAttributes } from './shopFormat'
 
-/** demo / 測試用的官方帳號 ID。正式環境請用 env var 覆蓋。 */
-const DEFAULT_OA_ID = '@785eqymb'
+/**
+ * ES Wake 正式官方帳號 ID。
+ * 因為這個專案只有一個正式 OA，直接寫死當預設；
+ * 若之後要 staging 用測試 OA，再用 `VITE_SHOP_LINE_OA_ID` env var 覆蓋。
+ */
+const DEFAULT_OA_ID = '@eswakeschool'
 
 /** URL 大小上限保守值（含整段 URL 編碼後字元數，> 此值就警告） */
 export const URL_BUDGET = 1900
