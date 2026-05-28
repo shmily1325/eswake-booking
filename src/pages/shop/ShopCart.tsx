@@ -1,0 +1,286 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ShopHeader } from './components/ShopHeader'
+import { QuantityStepper } from './components/QuantityStepper'
+import { LineInquiryModal } from './components/LineInquiryModal'
+import { ImageOrFallback } from './components/ImageOrFallback'
+import { useShopCart } from './hooks/useShopCart'
+import type { CartItem } from './types'
+import {
+  formatPrice,
+  formatVariantAttributes,
+  getCategoryIcon,
+} from './lib/shopFormat'
+import { buildCartInquiry, launchInquiry } from './lib/lineDeepLink'
+
+/**
+ * 購物車頁（/shop/cart）。
+ *
+ * M4 內容：
+ * - 列出購物車內所有品項（多商品 / 多規格）
+ * - 每項可改數量、移除
+ * - 顯示「預估金額」+ 是否有「價格洽詢」品項提醒
+ * - 提供「清空購物車」、「繼續逛」連結
+ * - 「LINE 統一詢問購買」按鈕（M5 才接 deep link）
+ */
+export function ShopCart() {
+  const {
+    items,
+    totalCount,
+    totalAmount,
+    hasUnknownPrice,
+    updateQuantity,
+    removeItem,
+    clear,
+  } = useShopCart()
+
+  /** 桌機 fallback modal 的訊息；null = 不顯示 */
+  const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    document.title = '購物車 | ES Wake 商城'
+  }, [])
+
+  const handleInquiry = () => {
+    if (items.length === 0) return
+    const payload = buildCartInquiry(items)
+    if (payload.stillTooLong) {
+      const ok = window.confirm(
+        `購物車品項較多，預填訊息可能過長導致 LINE 無法完整顯示。\n建議分批詢問（先送一半，再回來把剩下的送出）。\n\n要繼續嗎？`
+      )
+      if (!ok) return
+    }
+    const result = launchInquiry(payload)
+    if (result.mode === 'desktop-fallback') {
+      setFallbackMessage(result.message)
+    }
+  }
+
+  const handleClear = () => {
+    if (items.length === 0) return
+    if (window.confirm('要清空整個購物車嗎？')) clear()
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <ShopHeader showBack />
+
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight">
+            購物車
+            {totalCount > 0 && (
+              <span className="ml-2 text-base font-medium text-gray-500">
+                （{totalCount} 件）
+              </span>
+            )}
+          </h1>
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="text-sm text-gray-500 hover:text-red-600 transition-colors"
+            >
+              清空
+            </button>
+          )}
+        </div>
+
+        {items.length === 0 ? (
+          <EmptyCart />
+        ) : (
+          <>
+            <ul className="space-y-3 mb-6">
+              {items.map((item) => (
+                <CartLine
+                  key={item.variantId}
+                  item={item}
+                  onChangeQuantity={(q) => updateQuantity(item.variantId, q)}
+                  onRemove={() => removeItem(item.variantId)}
+                />
+              ))}
+            </ul>
+
+            <CartSummary
+              totalCount={totalCount}
+              totalAmount={totalAmount}
+              hasUnknownPrice={hasUnknownPrice}
+              onInquiry={handleInquiry}
+            />
+          </>
+        )}
+      </main>
+
+      <LineInquiryModal
+        message={fallbackMessage}
+        onClose={() => setFallbackMessage(null)}
+      />
+    </div>
+  )
+}
+
+interface CartLineProps {
+  item: CartItem
+  onChangeQuantity: (n: number) => void
+  onRemove: () => void
+}
+
+function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
+  const icon = getCategoryIcon(item.categoryId)
+  const attrsText = formatVariantAttributes(item.categoryId, item.attributes)
+  const subtotal = item.unitPrice != null ? item.unitPrice * item.quantity : null
+
+  return (
+    <li className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-sm">
+      {/* 縮圖：優先用 snapshot 圖片，沒有就 emoji fallback */}
+      <Link
+        to={`/shop/${item.productId}`}
+        className="flex-shrink-0 w-16 h-20 sm:w-20 sm:h-24 bg-gray-50 rounded-md overflow-hidden flex items-center justify-center hover:bg-gray-100 transition-colors"
+        aria-label="返回商品頁"
+      >
+        <ImageOrFallback
+          src={item.imageUrl}
+          alt={item.productName}
+          imgClassName="w-full h-full object-cover"
+          fallback={
+            <span
+              aria-hidden
+              className="text-3xl sm:text-4xl text-gray-300"
+            >
+              {icon}
+            </span>
+          }
+        />
+      </Link>
+
+      {/* 主資訊 */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <Link
+          to={`/shop/${item.productId}`}
+          className="text-sm sm:text-base font-semibold text-zinc-900 hover:text-orange-600 line-clamp-2"
+        >
+          {item.productName}
+        </Link>
+        {attrsText && (
+          <div className="mt-0.5 text-xs sm:text-sm text-gray-500">
+            {attrsText}
+          </div>
+        )}
+
+        <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+          <QuantityStepper
+            value={item.quantity}
+            onChange={onChangeQuantity}
+          />
+          <div className="text-right">
+            <div className="text-sm sm:text-base font-semibold text-zinc-900">
+              {subtotal != null ? formatPrice(subtotal) : '價格洽詢'}
+            </div>
+            {item.unitPrice != null && item.quantity > 1 && (
+              <div className="text-xs text-gray-500">
+                單價 {formatPrice(item.unitPrice)}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onRemove}
+        className="flex-shrink-0 self-start text-gray-400 hover:text-red-600 p-1 -m-1 transition-colors"
+        aria-label="移除此商品"
+        title="移除"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </li>
+  )
+}
+
+interface CartSummaryProps {
+  totalCount: number
+  totalAmount: number
+  hasUnknownPrice: boolean
+  onInquiry: () => void
+}
+
+function CartSummary({
+  totalCount,
+  totalAmount,
+  hasUnknownPrice,
+  onInquiry,
+}: CartSummaryProps) {
+  return (
+    <div className="sticky bottom-0 bg-white border-t border-gray-200 -mx-4 px-4 py-4 sm:relative sm:bottom-auto sm:mx-0 sm:px-6 sm:py-5 sm:border-0 sm:rounded-xl sm:shadow-sm">
+      <div className="flex items-end justify-between mb-3">
+        <div className="text-sm text-gray-600">
+          預估金額（共 {totalCount} 件）
+        </div>
+        <div className="text-2xl font-bold text-zinc-900">
+          {formatPrice(totalAmount)}
+        </div>
+      </div>
+
+      {hasUnknownPrice && (
+        <p className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+          ⚠️ 部分商品為「價格洽詢」，最終金額以店家報價為準
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={onInquiry}
+        className="w-full h-12 rounded-md bg-orange-500 text-white font-semibold text-base hover:bg-orange-600 active:bg-orange-700 transition-colors shadow-sm"
+      >
+        📞 LINE 統一詢問購買
+      </button>
+
+      <p className="mt-3 text-xs text-gray-500 text-center leading-relaxed">
+        按下後會跳到我們的官方 LINE，訊息已預填完整品項清單，按送出即可
+      </p>
+
+      <div className="mt-3 text-center">
+        <Link
+          to="/shop"
+          className="text-sm text-gray-500 hover:text-orange-600"
+        >
+          ← 繼續逛商品
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function EmptyCart() {
+  return (
+    <div className="text-center py-16">
+      <div className="text-6xl mb-4" aria-hidden>
+        🛒
+      </div>
+      <h2 className="text-lg font-semibold text-zinc-900">購物車是空的</h2>
+      <p className="mt-1 text-sm text-gray-500">
+        快去挑幾樣感興趣的裝備吧
+      </p>
+      <Link
+        to="/shop"
+        className="mt-5 inline-flex items-center px-5 py-2.5 rounded-md bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800 transition-colors"
+      >
+        ← 返回商品列表
+      </Link>
+    </div>
+  )
+}
