@@ -58,7 +58,7 @@ export function ShopCart() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <ShopHeader showBack />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
@@ -127,7 +127,7 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
   const subtotal = item.unitPrice != null ? item.unitPrice * item.quantity : null
 
   return (
-    <li className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-white border border-gray-200 rounded-lg">
+    <li className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-sm">
       {/* 縮圖：優先用 snapshot 圖片，沒有就 emoji fallback */}
       <Link
         to={`/shop/${item.productId}`}
@@ -221,7 +221,7 @@ function CartSummary({
   onInquiry,
 }: CartSummaryProps) {
   return (
-    <div className="sticky bottom-0 bg-white border-t border-gray-200 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 sm:rounded-t-lg sm:border sm:relative sm:bottom-auto sm:mx-0 sm:bg-gray-50 sm:shadow-inner">
+    <div className="sticky bottom-0 bg-white border-t border-gray-200 -mx-4 px-4 py-4 sm:relative sm:bottom-auto sm:mx-0 sm:px-6 sm:py-5 sm:border-0 sm:rounded-xl sm:shadow-sm">
       <div className="flex items-end justify-between mb-3">
         <div className="text-sm text-gray-600">
           預估金額（共 {totalCount} 件）

@@ -114,7 +114,7 @@ export function ShopDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <ShopHeader showBack />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
@@ -179,9 +179,9 @@ function ProductDetailBody({
       : '價格洽詢'
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
       {/* 圖片 */}
-      <div className="relative aspect-[9/16] bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+      <div className="relative aspect-[9/16] bg-gray-100 rounded-lg overflow-hidden">
         <ImageOrFallback
           src={imageUrl}
           alt={`${product.brand} ${product.model}`}
