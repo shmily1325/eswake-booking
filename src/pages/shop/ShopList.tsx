@@ -424,9 +424,7 @@ function LoadingState() {
 function ErrorState({ message }: { message: string }) {
   return (
     <div className="text-center py-16">
-      <div className="text-5xl mb-3" aria-hidden>
-        ⚠️
-      </div>
+      <AlertIcon className="mx-auto mb-3 w-12 h-12 text-gray-300" />
       <h2 className="text-lg font-semibold text-zinc-900">Unable to load products</h2>
       <p className="mt-1 text-sm text-gray-500">{message}</p>
       <button
@@ -443,10 +441,48 @@ function ErrorState({ message }: { message: string }) {
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="text-center py-16 text-gray-500">
-      <div className="text-5xl mb-3" aria-hidden>
-        📭
-      </div>
+      <EmptyBoxIcon className="mx-auto mb-3 w-12 h-12 text-gray-300" />
       <p className="text-sm">{message}</p>
     </div>
+  )
+}
+
+/** 警示三角（state page 用，比 inline 字句的 alert 略大） */
+function AlertIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  )
+}
+
+/** 空盒子 icon（搜尋無結果 / 該分類無商品 都用這個） */
+function EmptyBoxIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m21 16-9 5-9-5V8l9-5 9 5z" />
+      <path d="M3.27 6.96 12 12.01l8.73-5.05" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
   )
 }

@@ -9,8 +9,8 @@ import type { CartItem } from './types'
 import {
   formatPrice,
   formatVariantAttributes,
-  getCategoryIcon,
 } from './lib/shopFormat'
+import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildCartInquiry, launchInquiry } from './lib/lineDeepLink'
 
 /**
@@ -126,30 +126,22 @@ interface CartLineProps {
 }
 
 function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
-  const icon = getCategoryIcon(item.categoryId)
   const attrsText = formatVariantAttributes(item.categoryId, item.attributes)
   const subtotal = item.unitPrice != null ? item.unitPrice * item.quantity : null
 
   return (
     <li className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-sm">
-      {/* 縮圖：優先用 snapshot 圖片，沒有就 emoji fallback */}
+      {/* 縮圖：優先用 snapshot 圖片，沒有就 ES Wake logo 水印佔位 */}
       <Link
         to={`/shop/${item.productId}`}
-        className="flex-shrink-0 w-16 h-20 sm:w-20 sm:h-24 bg-gray-50 rounded-md overflow-hidden flex items-center justify-center hover:bg-gray-100 transition-colors"
+        className="flex-shrink-0 w-16 h-20 sm:w-20 sm:h-24 rounded-md overflow-hidden hover:opacity-90 transition-opacity"
         aria-label="返回商品頁"
       >
         <ImageOrFallback
           src={item.imageUrl}
           alt={item.productName}
           imgClassName="w-full h-full object-cover"
-          fallback={
-            <span
-              aria-hidden
-              className="text-3xl sm:text-4xl text-gray-300"
-            >
-              {icon}
-            </span>
-          }
+          fallback={<NoImagePlaceholder />}
         />
       </Link>
 
@@ -236,8 +228,9 @@ function CartSummary({
       </div>
 
       {hasUnknownPrice && (
-        <p className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
-          ⚠️ 部分商品為「價格洽詢」，最終金額以店家報價為準
+        <p className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-start gap-1.5">
+          <AlertIcon className="w-3.5 h-3.5 shrink-0 mt-px" />
+          <span>部分商品為「價格洽詢」，最終金額以店家報價為準</span>
         </p>
       )}
 
@@ -270,9 +263,7 @@ function CartSummary({
 function EmptyCart() {
   return (
     <div className="text-center py-16">
-      <div className="text-6xl mb-4" aria-hidden>
-        🛒
-      </div>
+      <EmptyCartIllustration className="mx-auto mb-4 w-14 h-14 text-gray-300" />
       <h2 className="text-lg font-semibold text-zinc-900">Your cart is empty</h2>
       <p className="mt-1 text-sm text-gray-500">
         購物車是空的，先去挑幾件感興趣的裝備
@@ -284,6 +275,46 @@ function EmptyCart() {
         ← Browse products
       </Link>
     </div>
+  )
+}
+
+/** 小型警示三角（給 inline 警告字句用，size 比 state page 的 icon 小一階） */
+function AlertIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  )
+}
+
+/** 空購物車插畫：線稿購物車 icon，比 header 的 cart icon 略大略線粗 */
+function EmptyCartIllustration({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="9" cy="20" r="1.5" />
+      <circle cx="18" cy="20" r="1.5" />
+      <path d="M3 4h2l2.5 12.5a1.5 1.5 0 0 0 1.5 1.2h9.6a1.5 1.5 0 0 0 1.5-1.2L21 8H6" />
+    </svg>
   )
 }
 

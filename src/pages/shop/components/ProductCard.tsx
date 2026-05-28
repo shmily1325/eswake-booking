@@ -2,11 +2,11 @@ import { Link } from 'react-router-dom'
 import type { ProductVariantRow, ProductRow } from '../../admin/products/types'
 import {
   formatProductPriceRange,
-  getCategoryIcon,
   getProductImageUrl,
   isProductOutOfStock,
 } from '../lib/shopFormat'
 import { ImageOrFallback } from './ImageOrFallback'
+import { NoImagePlaceholder } from './NoImagePlaceholder'
 
 interface ProductCardProps {
   product: ProductRow
@@ -29,7 +29,6 @@ export function ProductCard({ product, variants }: ProductCardProps) {
   const imageUrl = getProductImageUrl(variants)
   const outOfStock = isProductOutOfStock(variants)
   const priceText = formatProductPriceRange(variants)
-  const fallbackIcon = getCategoryIcon(product.category)
 
   /**
    * 區分「真有價格」與「價格洽詢」：
@@ -49,11 +48,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
           src={imageUrl}
           alt={`${product.brand} ${product.model}`}
           imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          fallback={
-            <div className="w-full h-full flex items-center justify-center text-6xl text-gray-300">
-              <span aria-hidden>{fallbackIcon}</span>
-            </div>
-          }
+          fallback={<NoImagePlaceholder />}
         />
 
         {outOfStock && (

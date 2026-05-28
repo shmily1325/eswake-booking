@@ -8,9 +8,9 @@ import { QuantityStepper } from './components/QuantityStepper'
 import { useShopCart } from './hooks/useShopCart'
 import {
   formatPrice,
-  getCategoryIcon,
   getCategoryShopName,
 } from './lib/shopFormat'
+import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
 import { ImageOrFallback } from './components/ImageOrFallback'
@@ -191,7 +191,6 @@ function ProductDetailBody({
   onAddToCart,
   onDirectInquiry,
 }: ProductDetailBodyProps) {
-  const fallbackIcon = getCategoryIcon(product.category)
   const categoryName = getCategoryShopName(product.category)
   const isOutOfStock = selectedVariant ? (selectedVariant.stock ?? 0) <= 0 : true
   const hasPrice = selectedVariant?.price != null
@@ -230,11 +229,7 @@ function ProductDetailBody({
             alt={`${product.brand} ${product.model}`}
             imgClassName="w-full h-full object-cover"
             loading="eager"
-            fallback={
-              <div className="w-full h-full flex items-center justify-center text-8xl text-gray-300">
-                <span aria-hidden>{fallbackIcon}</span>
-              </div>
-            }
+            fallback={<NoImagePlaceholder />}
           />
         </div>
 
@@ -395,9 +390,7 @@ function LoadingState() {
 function ErrorState({ message }: { message: string }) {
   return (
     <div className="text-center py-16">
-      <div className="text-5xl mb-3" aria-hidden>
-        ⚠️
-      </div>
+      <AlertIcon className="mx-auto mb-3 w-12 h-12 text-gray-300" />
       <h2 className="text-lg font-semibold text-zinc-900">暫時無法載入商品</h2>
       <p className="mt-1 text-sm text-gray-500">{message}</p>
       <Link
@@ -413,9 +406,7 @@ function ErrorState({ message }: { message: string }) {
 function NotFoundState() {
   return (
     <div className="text-center py-16 text-gray-500">
-      <div className="text-5xl mb-3" aria-hidden>
-        🔍
-      </div>
+      <SearchIcon className="mx-auto mb-3 w-12 h-12 text-gray-300" />
       <h2 className="text-lg font-semibold text-zinc-900">找不到這個商品</h2>
       <p className="mt-1 text-sm">商品可能已下架或網址有誤。</p>
       <Link
@@ -460,6 +451,45 @@ function LineIcon({ className }: { className?: string }) {
       aria-hidden
     >
       <path d="M12 3C6.48 3 2 6.74 2 11.31c0 4.05 3.54 7.46 8.32 8.16.32.07.76.21.87.49.1.25.07.64.03.9l-.14.85c-.04.25-.2.99.86.54 1.06-.45 5.73-3.38 7.82-5.78C20.95 14.96 22 13.27 22 11.31 22 6.74 17.52 3 12 3zM8.34 13.74h-2c-.29 0-.52-.24-.52-.52V9.74c0-.29.23-.52.52-.52.29 0 .52.23.52.52v2.95h1.48c.29 0 .52.23.52.52 0 .29-.23.53-.52.53zm1.79-.52c0 .29-.23.52-.52.52-.29 0-.52-.23-.52-.52V9.74c0-.29.23-.52.52-.52.29 0 .52.23.52.52v3.48zm4.07 0c0 .22-.14.42-.36.49-.06.02-.11.03-.17.03-.16 0-.32-.07-.42-.21l-1.83-2.49v2.19c0 .29-.23.52-.52.52-.29 0-.52-.23-.52-.52V9.74c0-.22.14-.42.36-.49.06-.02.11-.03.17-.03.16 0 .32.08.41.21l1.84 2.49V9.74c0-.29.23-.52.52-.52.29 0 .52.23.52.52v3.48zm3.32-2.27c.29 0 .52.23.52.52 0 .29-.23.52-.52.52h-1.48v.71h1.48c.29 0 .52.23.52.52 0 .29-.23.53-.52.53h-2c-.29 0-.52-.24-.52-.52V9.74c0-.29.23-.52.52-.52h2c.29 0 .52.23.52.52 0 .29-.23.52-.52.52h-1.48v.71h1.48z" />
+    </svg>
+  )
+}
+
+/** 警示三角（給 ErrorState 用） */
+function AlertIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  )
+}
+
+/** 放大鏡（給 NotFoundState 用） */
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
   )
 }
