@@ -10,7 +10,7 @@ import {
 import type { ProductWithVariants } from '../admin/products/types'
 import { ShopHeader } from './components/ShopHeader'
 import { ProductCard } from './components/ProductCard'
-import { getMinPrice } from './lib/shopFormat'
+import { getMinPrice, isProductOutOfStock } from './lib/shopFormat'
 
 /**
  * 上層分組 tab 用的 sentinel：'all-groups' = 不限分組（= 「All Products」按鈕，顯示全部商品）。
@@ -50,6 +50,8 @@ export function ShopList() {
   const [searchParams] = useSearchParams()
   const search = searchParams.get('q') ?? ''
   const [sortBy, setSortBy] = useState<SortBy>('newest')
+  /** 隱藏所有變體都缺貨的商品。預設關閉（先讓客人看到全部，再決定要不要過濾） */
+  const [hideOutOfStock, setHideOutOfStock] = useState(false)
 
   useEffect(() => {
     document.title = 'ES Wake Shop'
@@ -138,8 +140,13 @@ export function ShopList() {
         )
       : byCategory
 
+    // 缺貨過濾：toggle 開時藏掉所有變體都 stock<=0 的商品
+    const byStock = hideOutOfStock
+      ? bySearch.filter((p) => !isProductOutOfStock(p.variants))
+      : bySearch
+
     if (sortBy === 'newest') {
-      return [...bySearch].sort((a, b) => {
+      return [...byStock].sort((a, b) => {
         const at = a.created_at ?? ''
         const bt = b.created_at ?? ''
         return bt.localeCompare(at)
@@ -147,7 +154,7 @@ export function ShopList() {
     }
 
     const dir = sortBy === 'price-asc' ? 1 : -1
-    return [...bySearch].sort((a, b) => {
+    return [...byStock].sort((a, b) => {
       const ap = getMinPrice(a.variants)
       const bp = getMinPrice(b.variants)
       if (ap == null && bp == null) return 0
@@ -155,7 +162,17 @@ export function ShopList() {
       if (bp == null) return -1
       return (ap - bp) * dir
     })
-  }, [products, topLevel, subCat, search, sortBy])
+  }, [products, topLevel, subCat, search, sortBy, hideOutOfStock])
+
+  /**
+   * 是否有缺貨商品可以隱藏。
+   * 算的是「目前篩選後（不含 hideOOS 自己）」的清單裡有沒有缺貨商品，
+   * 沒得藏就不顯示 toggle，避免畫面雜訊。
+   */
+  const hasOutOfStock = useMemo(() => {
+    return filteredProducts.some((p) => isProductOutOfStock(p.variants))
+      || (hideOutOfStock && products.some((p) => isProductOutOfStock(p.variants)))
+  }, [filteredProducts, products, hideOutOfStock])
 
   /** 目前是否套了任何篩選（用來決定要不要顯示「共 X 件」） */
   const hasFilter =
@@ -192,6 +209,10 @@ export function ShopList() {
           <h1 className="font-black italic uppercase tracking-tight text-4xl sm:text-6xl md:text-7xl leading-none">
             {heroTitle}
           </h1>
+          {/* 品牌語：呼應 footer 的「Eat · Sleep · Wake」，在 hero 底下做小型 kicker */}
+          <p className="mt-4 text-[11px] sm:text-xs italic tracking-[0.35em] text-gray-400 uppercase">
+            Eat · Sleep · Wake
+          </p>
         </div>
       </section>
 
@@ -269,11 +290,19 @@ export function ShopList() {
           Grid 工具列：左 count / 右 sort。
           只在「有篩選」時 count 才出現（避免全部清單時看到「57 items」雜訊）。
         */}
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="text-xs text-gray-500 min-w-0">
+        <div className="mb-3 flex items-center justify-between gap-2 sm:gap-3">
+          <div className="text-xs text-gray-500 min-w-0 shrink-0">
             {hasFilter && !loading && `${filteredProducts.length} items`}
           </div>
-          <ToolbarSort sortBy={sortBy} onSortChange={setSortBy} />
+          <div className="flex items-center gap-2">
+            {hasOutOfStock && !loading && (
+              <HideOutOfStockToggle
+                active={hideOutOfStock}
+                onToggle={() => setHideOutOfStock((v) => !v)}
+              />
+            )}
+            <ToolbarSort sortBy={sortBy} onSortChange={setSortBy} />
+          </div>
         </div>
 
         {loading ? (
@@ -348,6 +377,57 @@ function ToolbarSort({ sortBy, onSortChange }: ToolbarSortProps) {
       <option value="price-asc">Price: Low → High</option>
       <option value="price-desc">Price: High → Low</option>
     </select>
+  )
+}
+
+/**
+ * 「隱藏缺貨」開關。
+ * active 時用實心黑底白字（pill 切到 ON 的感覺），inactive 用白底灰邊。
+ * 只在「目前清單有缺貨商品可藏」時才在 toolbar 上顯示（見 ShopList.hasOutOfStock）。
+ */
+interface HideOutOfStockToggleProps {
+  active: boolean
+  onToggle: () => void
+}
+
+function HideOutOfStockToggle({ active, onToggle }: HideOutOfStockToggleProps) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={active}
+      className={
+        'shrink-0 inline-flex items-center gap-1.5 h-9 px-2.5 sm:px-3 text-xs sm:text-sm rounded-lg border transition-colors ' +
+        (active
+          ? 'bg-black text-white border-black'
+          : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300 hover:text-black')
+      }
+    >
+      <span
+        className={
+          'inline-flex w-3.5 h-3.5 items-center justify-center rounded-sm border ' +
+          (active ? 'bg-white border-white text-black' : 'border-gray-400')
+        }
+        aria-hidden
+      >
+        {active && (
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-2.5 h-2.5"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+      </span>
+      {/* 手機只秀短字，桌機完整 */}
+      <span className="hidden sm:inline">Hide out of stock</span>
+      <span className="sm:hidden">In stock</span>
+    </button>
   )
 }
 
