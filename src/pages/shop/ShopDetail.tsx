@@ -278,12 +278,18 @@ function ProductDetailBody({
           {categoryName}
         </Link>
 
-        <h1 className="mt-1 text-xl sm:text-3xl font-bold text-zinc-900 tracking-tight">
-          {product.brand && (
-            <span className="block text-sm sm:text-base font-medium text-gray-600">
-              {product.brand}
-            </span>
-          )}
+        {/*
+          標題層級（Ronix 風）：
+          - Brand：小字 + ALL-CAPS + uppercase tracking-widest 當 kicker（雜誌封面那種小品牌標）
+          - Model：大字 + Inter Black 900，跟 list hero 的字重呼應
+          - Model 不上 italic：模型名常有數字（"RXT 142"）、太多斜體不好讀
+        */}
+        {product.brand && (
+          <div className="text-xs sm:text-sm font-bold tracking-[0.18em] text-gray-500 uppercase">
+            {product.brand}
+          </div>
+        )}
+        <h1 className="mt-1 text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 tracking-tight leading-tight">
           {product.model || '(未命名商品)'}
         </h1>
 

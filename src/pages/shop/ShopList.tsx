@@ -299,9 +299,33 @@ export function ShopList() {
         )}
       </main>
 
-      {/* Footer 提示 */}
-      <footer className="py-8 text-center text-xs text-gray-400">
-        ES Wake School © {new Date().getFullYear()}
+      {/*
+        Footer：雜誌風 — 左 logo + wordmark + 一句 tagline，右 copyright。
+        用 border-t + 白底分隔商品 grid 跟頁尾，避免直接「灰底貼到底」感覺收不乾淨。
+      */}
+      <footer className="mt-8 border-t border-gray-200 bg-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo_circle (black).png"
+              alt=""
+              className="w-9 h-9 select-none"
+              draggable={false}
+              aria-hidden
+            />
+            <div>
+              <div className="font-black italic uppercase tracking-wider text-zinc-900 leading-none">
+                ES Wake
+              </div>
+              <div className="mt-1 text-[11px] text-gray-500 tracking-wide">
+                Eat · Sleep · Wake
+              </div>
+            </div>
+          </div>
+          <div className="text-[11px] text-gray-400 sm:text-right">
+            © {new Date().getFullYear()} ES Wake School
+          </div>
+        </div>
       </footer>
     </div>
   )
