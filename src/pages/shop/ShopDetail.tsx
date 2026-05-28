@@ -12,7 +12,7 @@ import {
   getCategoryName,
 } from './lib/shopFormat'
 import {
-  buildSingleInquiryMessage,
+  buildSingleInquiryMessageForUrl,
   buildSingleInquiryUrl,
   isInquiryTooLong,
   launchInquiry,
@@ -101,6 +101,7 @@ export function ShopDetail() {
     if (!product || !selectedVariant) return
     const productName = [product.brand, product.model].filter(Boolean).join(' ').trim()
     const params = {
+      productId: product.id,
       productName: productName || '(未命名商品)',
       categoryId: product.category,
       attributes: selectedVariant.attributes,
@@ -112,7 +113,7 @@ export function ShopDetail() {
       alert('詢問內容過長，建議減少數量或備註資訊')
       return
     }
-    const message = buildSingleInquiryMessage(params)
+    const message = buildSingleInquiryMessageForUrl(params)
     const result = launchInquiry(message)
     if (result.mode === 'desktop-fallback') {
       setFallbackMessage(result.message)

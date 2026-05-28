@@ -11,7 +11,7 @@ import {
   getCategoryIcon,
 } from './lib/shopFormat'
 import {
-  buildCartInquiryMessage,
+  buildCartInquiryMessageForUrl,
   buildCartInquiryUrl,
   isInquiryTooLong,
   launchInquiry,
@@ -50,7 +50,7 @@ export function ShopCart() {
       )
       if (!ok) return
     }
-    const message = buildCartInquiryMessage(items)
+    const message = buildCartInquiryMessageForUrl(items)
     const result = launchInquiry(message)
     if (result.mode === 'desktop-fallback') {
       setFallbackMessage(result.message)
