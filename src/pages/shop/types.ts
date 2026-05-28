@@ -23,7 +23,7 @@ export interface CartItem {
 
   /** 顯示用：品牌 + 型號（例：「Hyperlite State 2.0」） */
   productName: string
-  /** 顯示用：分類 id（例：'wakeboard'），方便回查 schema 做格式化 */
+  /** 顯示用：分類 id（例：'wb_board'），方便回查 schema 做格式化 */
   categoryId: string
   /** 顯示用：規格 attributes（{ color: '黑', size: '140cm' }），不依賴 schema 也能顯示 */
   attributes: Record<string, string | number | null>

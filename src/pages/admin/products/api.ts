@@ -12,15 +12,27 @@ import type { AttributeValue, ProductRow, ProductVariantRow, ProductWithVariants
 type VariantInsert = Database['public']['Tables']['product_variants']['Insert']
 type VariantUpdate = Database['public']['Tables']['product_variants']['Update']
 
+export interface FetchProductsOptions {
+  /**
+   * true 時只回 is_public=true 的商品（商城前台用）；
+   * 不設或 false 則回所有 is_active 商品（後台用）。
+   */
+  publicOnly?: boolean
+}
+
 /**
  * 載入所有有效商品 + 它們的 SKU。
  * 排序：依商品 brand/model；每個商品內依 SKU updated_at desc。
  */
-export async function fetchAllProductsWithVariants(): Promise<ProductWithVariants[]> {
-  const { data: products, error: pe } = await supabase
+export async function fetchAllProductsWithVariants(
+  options: FetchProductsOptions = {},
+): Promise<ProductWithVariants[]> {
+  let query = supabase
     .from('products')
     .select('*')
     .eq('is_active', true)
+  if (options.publicOnly) query = query.eq('is_public', true)
+  const { data: products, error: pe } = await query
     .order('brand', { ascending: true })
     .order('model', { ascending: true })
   if (pe) throw pe
@@ -90,6 +102,8 @@ export interface CreateProductInput {
   brand: string
   model: string
   description?: string | null
+  /** 是否對外公開（商城可見），預設 false（避免半成品被誤上架） */
+  is_public?: boolean
   created_by?: string | null
 }
 
@@ -101,6 +115,7 @@ export async function createProduct(input: CreateProductInput): Promise<ProductR
       brand: input.brand.trim(),
       model: input.model.trim(),
       description: input.description?.trim() || null,
+      is_public: input.is_public ?? false,
       created_by: input.created_by ?? null,
       updated_by: input.created_by ?? null,
     })
@@ -115,6 +130,7 @@ export interface UpdateProductInput {
   model?: string
   description?: string | null
   category?: string
+  is_public?: boolean
   updated_by?: string | null
 }
 
@@ -124,6 +140,7 @@ export async function updateProduct(productId: string, input: UpdateProductInput
   if (input.model !== undefined) patch.model = input.model.trim()
   if (input.description !== undefined) patch.description = input.description?.trim() || null
   if (input.category !== undefined) patch.category = input.category
+  if (input.is_public !== undefined) patch.is_public = input.is_public
   if (input.updated_by !== undefined) patch.updated_by = input.updated_by
   if (Object.keys(patch).length === 0) return
 

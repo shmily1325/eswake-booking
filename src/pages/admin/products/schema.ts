@@ -32,19 +32,33 @@ export interface FieldDef {
   displaySuffix?: string
 }
 
+/**
+ * 商城頂層分組（兩層篩選的上排）。
+ * 'All' 代表通用（救生衣、防寒衣、服飾這類不分 WB/WS 的品項）。
+ */
+export type ShopGroup = 'All' | 'Wakeboard' | 'Wakesurf/Skim'
+
 export interface CategoryDef {
   id: string
+  /** 後台顯示名稱（中文，給內部員工） */
   name: string
+  /** 商城前台顯示名稱（英文，給顧客）；省略時 fallback 用 name */
+  shopName?: string
   /** 列表頁 Tab 顯示順序 */
   sortOrder: number
   /** 該類別預設的 emoji 圖示，無圖時 fallback 用 */
   icon: string
   fields: FieldDef[]
   /**
-   * 顯示分組標籤。桌機 tab 列會依此分到不同行；undefined = 一般行（最上方）。
+   * 後台 tab 列分組標籤。桌機 tab 列會依此分到不同行；undefined = 一般行（最上方）。
    * 例：'WB' | 'WS'
    */
   group?: string
+  /**
+   * 商城前台兩層篩選的上層分組。
+   * 省略時不會出現在商城分類列；建議所有對外品項都標一個 shopGroup。
+   */
+  shopGroup?: ShopGroup
 }
 
 /** 列表頁通用欄位（所有類別都有） */
@@ -54,8 +68,10 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   lifejacket: {
     id: 'lifejacket',
     name: '救生衣',
+    shopName: 'Life Jacket',
     sortOrder: 10,
     icon: '🦺',
+    shopGroup: 'All',
     fields: [
       // 全部允許留空（required: false），匯入舊資料時很多欄位是缺漏的
       {
@@ -83,8 +99,10 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   wetsuit: {
     id: 'wetsuit',
     name: '防寒衣',
+    shopName: 'Wetsuit',
     sortOrder: 20,
     icon: '🧥',
+    shopGroup: 'All',
     fields: [
       // 跟救生衣相同的 gender 設計，全部允許留空
       {
@@ -120,8 +138,10 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   apparel: {
     id: 'apparel',
     name: '服飾類',
+    shopName: 'Apparel',
     sortOrder: 25,
     icon: '👕',
+    shopGroup: 'All',
     fields: [
       {
         key: 'gender',
@@ -135,14 +155,16 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   },
 
   // ===== WB 系列 =====
-  // 註：id 'wakeboard' 暫不 rename 成 'wb_board'，避免動到老大正在輸入的資料；
-  // 之後做兩層 UI 時一起 rename + 寫 SQL 遷移。
-  wakeboard: {
-    id: 'wakeboard',
+  // 註：id 已經從 'wakeboard' rename 為 'wb_board'（migration 117）。
+  //     舊資料的 category 同步在 DB 改完才推 code。
+  wb_board: {
+    id: 'wb_board',
     name: 'WB 板',
+    shopName: 'Board',
     sortOrder: 30,
     icon: '🛹',
     group: 'WB',
+    shopGroup: 'Wakeboard',
     fields: [
       // 尺寸用 text 接受廠商各種寫法（例：134、137、142cm）
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -151,9 +173,11 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   wb_boots: {
     id: 'wb_boots',
     name: 'WB 鞋',
+    shopName: 'Boots',
     sortOrder: 31,
     icon: '👢',
     group: 'WB',
+    shopGroup: 'Wakeboard',
     fields: [
       // 鞋子尺寸只存純數字，廠商規格普遍以 cm 為主，顯示時自動附加 "cm"
       {
@@ -177,9 +201,11 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   wb_fin: {
     id: 'wb_fin',
     name: 'WB fin',
+    shopName: 'Fin',
     sortOrder: 32,
     icon: '🪶',
     group: 'WB',
+    shopGroup: 'Wakeboard',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -187,9 +213,11 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   wb_handle: {
     id: 'wb_handle',
     name: 'WB handle',
+    shopName: 'Handle',
     sortOrder: 33,
     icon: '🪢',
     group: 'WB',
+    shopGroup: 'Wakeboard',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -197,22 +225,26 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   wb_helmet: {
     id: 'wb_helmet',
     name: 'WB 安全帽',
+    shopName: 'Helmet',
     sortOrder: 34,
     icon: '⛑️',
     group: 'WB',
+    shopGroup: 'Wakeboard',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
   },
 
   // ===== WS 系列 =====
-  // 註：id 'wakesurf' 暫不 rename 成 'ws_board'，理由同上。
-  wakesurf: {
-    id: 'wakesurf',
+  // 註：id 已經從 'wakesurf' rename 為 'ws_board'（migration 117）。
+  ws_board: {
+    id: 'ws_board',
     name: 'WS 板',
+    shopName: 'Surf Board',
     sortOrder: 40,
     icon: '🏄',
     group: 'WS',
+    shopGroup: 'Wakesurf/Skim',
     fields: [
       // 尺寸用 text 接受廠商各種寫法（例：4'10"、134cm、134）
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -221,9 +253,11 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   ws_fin: {
     id: 'ws_fin',
     name: 'WS fin',
+    shopName: 'Fin',
     sortOrder: 41,
     icon: '🪶',
     group: 'WS',
+    shopGroup: 'Wakesurf/Skim',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -231,9 +265,11 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   ws_pad: {
     id: 'ws_pad',
     name: 'WS 墊子',
+    shopName: 'Pad',
     sortOrder: 42,
     icon: '🟫',
     group: 'WS',
+    shopGroup: 'Wakesurf/Skim',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -241,9 +277,11 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   ws_handle: {
     id: 'ws_handle',
     name: 'WS handle',
+    shopName: 'Handle',
     sortOrder: 43,
     icon: '🪢',
     group: 'WS',
+    shopGroup: 'Wakesurf/Skim',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
@@ -251,10 +289,27 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   ws_wax: {
     id: 'ws_wax',
     name: 'WS 蠟塊',
+    shopName: 'Wax',
     sortOrder: 44,
     icon: '🧱',
     group: 'WS',
+    shopGroup: 'Wakesurf/Skim',
     fields: [
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+
+  // ===== Skim（歸在 WS 群組）=====
+  ws_skim: {
+    id: 'ws_skim',
+    name: 'Skim 板',
+    shopName: 'Skim Board',
+    sortOrder: 45,
+    icon: '🏖️',
+    group: 'WS',
+    shopGroup: 'Wakesurf/Skim',
+    fields: [
+      // 跟 wakesurf 板共用「自由填」的 size，廠商規格寫法很雜（cm、英吋、自訂代號）
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
   },
@@ -263,6 +318,17 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
 /** 取得所有類別，依 sortOrder 排序 */
 export function getAllCategories(): CategoryDef[] {
   return Object.values(CATEGORY_SCHEMAS).sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
+/**
+ * 商城兩層分類列要的上層分組（固定順序）。
+ * 第一順位是 'All'（通用品項），其後是運動類別。
+ */
+export const SHOP_GROUPS: ShopGroup[] = ['All', 'Wakeboard', 'Wakesurf/Skim']
+
+/** 取分類在商城前台要顯示的名稱（英文優先，fallback 用中文 name） */
+export function getCategoryShopName(cat: CategoryDef): string {
+  return cat.shopName ?? cat.name
 }
 
 /** 取得分類，找不到時 fallback 為 undefined */

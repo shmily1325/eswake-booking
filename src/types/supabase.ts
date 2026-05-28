@@ -1066,6 +1066,7 @@ export type Database = {
           model: string
           description: string | null
           is_active: boolean
+          is_public: boolean
           created_at: string | null
           updated_at: string | null
           created_by: string | null
@@ -1078,6 +1079,7 @@ export type Database = {
           model: string
           description?: string | null
           is_active?: boolean
+          is_public?: boolean
           created_at?: string | null
           updated_at?: string | null
           created_by?: string | null
@@ -1090,6 +1092,7 @@ export type Database = {
           model?: string
           description?: string | null
           is_active?: boolean
+          is_public?: boolean
           created_at?: string | null
           updated_at?: string | null
           created_by?: string | null

@@ -244,13 +244,15 @@ function CartSummary({
       <button
         type="button"
         onClick={onInquiry}
-        className="w-full h-12 rounded-md bg-orange-500 text-white font-semibold text-base hover:bg-orange-600 active:bg-orange-700 transition-colors shadow-sm"
+        className="w-full h-12 rounded-md bg-orange-500 text-white font-semibold text-base hover:bg-orange-600 active:bg-orange-700 transition-colors shadow-sm inline-flex items-center justify-center gap-2"
       >
-        📞 LINE 統一詢問購買
+        <LineIcon className="w-5 h-5" />
+        <span>Inquire via LINE</span>
+        <span className="text-sm font-normal text-orange-100">LINE 詢問</span>
       </button>
 
       <p className="mt-3 text-xs text-gray-500 text-center leading-relaxed">
-        按下後會跳到我們的官方 LINE，訊息已預填完整品項清單，按送出即可
+        Opens LINE with your full item list pre-filled — just hit send.
       </p>
 
       <div className="mt-3 text-center">
@@ -258,7 +260,7 @@ function CartSummary({
           to="/shop"
           className="text-sm text-gray-500 hover:text-orange-600"
         >
-          ← 繼續逛商品
+          ← Continue shopping
         </Link>
       </div>
     </div>
@@ -271,16 +273,25 @@ function EmptyCart() {
       <div className="text-6xl mb-4" aria-hidden>
         🛒
       </div>
-      <h2 className="text-lg font-semibold text-zinc-900">購物車是空的</h2>
+      <h2 className="text-lg font-semibold text-zinc-900">Your cart is empty</h2>
       <p className="mt-1 text-sm text-gray-500">
-        快去挑幾樣感興趣的裝備吧
+        購物車是空的，先去挑幾件感興趣的裝備
       </p>
       <Link
         to="/shop"
         className="mt-5 inline-flex items-center px-5 py-2.5 rounded-md bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800 transition-colors"
       >
-        ← 返回商品列表
+        ← Browse products
       </Link>
     </div>
+  )
+}
+
+// 跟 ShopDetail 用的 LINE icon 同樣的 SVG（手調，免引 icon library）
+function LineIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 3C6.48 3 2 6.74 2 11.31c0 4.05 3.54 7.46 8.32 8.16.32.07.76.21.87.49.1.25.07.64.03.9l-.14.85c-.04.25-.2.99.86.54 1.06-.45 5.73-3.38 7.82-5.78C20.95 14.96 22 13.27 22 11.31 22 6.74 17.52 3 12 3zM8.34 13.74h-2c-.29 0-.52-.24-.52-.52V9.74c0-.29.23-.52.52-.52.29 0 .52.23.52.52v2.95h1.48c.29 0 .52.23.52.52 0 .29-.23.53-.52.53zm1.79-.52c0 .29-.23.52-.52.52-.29 0-.52-.23-.52-.52V9.74c0-.29.23-.52.52-.52.29 0 .52.23.52.52v3.48zm4.07 0c0 .22-.14.42-.36.49-.06.02-.11.03-.17.03-.16 0-.32-.07-.42-.21l-1.83-2.49v2.19c0 .29-.23.52-.52.52-.29 0-.52-.23-.52-.52V9.74c0-.22.14-.42.36-.49.06-.02.11-.03.17-.03.16 0 .32.08.41.21l1.84 2.49V9.74c0-.29.23-.52.52-.52.29 0 .52.23.52.52v3.48zm3.32-2.27c.29 0 .52.23.52.52 0 .29-.23.52-.52.52h-1.48v.71h1.48c.29 0 .52.23.52.52 0 .29-.23.53-.52.53h-2c-.29 0-.52-.24-.52-.52V9.74c0-.29.23-.52.52-.52h2c.29 0 .52.23.52.52 0 .29-.23.52-.52.52h-1.48v.71h1.48z" />
+    </svg>
   )
 }

@@ -92,6 +92,12 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
   const [brand, setBrand] = useState('')
   const [model, setModel] = useState('')
   const [description, setDescription] = useState('')
+  /**
+   * 是否上架到商城（/shop 對外可見）。
+   * - 新商品預設 false，避免半成品被誤上架
+   * - 既有商品由 DB 載入（migration 116 把現有 active 商品全部設為 true）
+   */
+  const [isPublic, setIsPublic] = useState<boolean>(false)
   const [drafts, setDrafts] = useState<DraftVariant[]>(() => (isNew ? [emptyDraft()] : []))
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -146,6 +152,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
         setBrand(p.brand)
         setModel(p.model)
         setDescription(p.description ?? '')
+        setIsPublic(p.is_public)
         setDrafts(p.variants.length > 0 ? p.variants.map(variantRowToDraft) : [emptyDraft()])
       })
       .catch((err) => {
@@ -254,6 +261,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           brand,
           model,
           description: description.trim() || null,
+          is_public: isPublic,
           created_by: currentUserEmail ?? null,
         })
         pid = created.id
@@ -263,6 +271,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           brand,
           model,
           description: description.trim() || null,
+          is_public: isPublic,
           updated_by: currentUserEmail ?? null,
         })
       }
@@ -490,6 +499,40 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
               placeholder="（可選）此商品的補充說明"
               disabled={saving || readOnly}
             />
+          </div>
+          {/* 上架到商城 toggle（is_public） */}
+          <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '12px 14px',
+                background: isPublic ? '#fff7ed' : '#fafafa',
+                border: `1px solid ${isPublic ? '#fdba74' : '#e5e7eb'}`,
+                borderRadius: 8,
+                cursor: readOnly || saving ? 'not-allowed' : 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                disabled={saving || readOnly}
+                style={{ width: 18, height: 18, cursor: 'inherit', accentColor: '#f97316' }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
+                  {isPublic ? '🛒 上架到商城' : '⏸ 不上架（後台可見、商城隱藏）'}
+                </div>
+                <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                  {isPublic
+                    ? '客人可在 /shop 看到這個商品並透過 LINE 詢問'
+                    : '只有員工後台看得到，編輯中、停售但保留歷史的商品請維持關閉'}
+                </div>
+              </div>
+            </label>
           </div>
         </div>
       </section>

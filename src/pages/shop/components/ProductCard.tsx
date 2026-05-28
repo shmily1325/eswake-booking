@@ -51,7 +51,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
 
         {outOfStock && (
           <div className="absolute top-2 left-2 bg-zinc-900/85 text-white text-xs font-medium px-2 py-1 rounded">
-            缺貨
+            Out of Stock
           </div>
         )}
       </div>
