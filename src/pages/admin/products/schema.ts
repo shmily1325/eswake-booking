@@ -61,13 +61,9 @@ export interface CategoryDef {
   icon: string
   fields: FieldDef[]
   /**
-   * 後台 tab 列分組標籤。桌機 tab 列會依此分到不同行；undefined = 一般行（最上方）。
-   * 例：'WB' | 'WS'
-   */
-  group?: string
-  /**
-   * 商城前台兩層篩選的上層分組。
-   * 省略時不會出現在商城分類列；建議所有對外品項都標一個 shopGroup。
+   * 兩層分類的上層分組（後台 + 前台共用）。
+   * 後台商品管理的 tab 列、商城前台的兩層篩選都用這個欄位決定 group。
+   * 省略時不會出現在商城分類列（後台仍會被歸到 Essentials 預設行為，建議都標明）。
    */
   shopGroup?: ShopGroup
 }
@@ -178,7 +174,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Boards',
     sortOrder: 30,
     icon: '🛹',
-    group: 'WB',
     shopGroup: 'Wakeboarding',
     fields: [
       // 尺寸用 text 接受廠商各種寫法（例：134、137、142cm）
@@ -192,7 +187,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Boots',
     sortOrder: 31,
     icon: '👢',
-    group: 'WB',
     shopGroup: 'Wakeboarding',
     fields: [
       // 鞋子尺寸只存純數字，廠商規格普遍以 cm 為主，顯示時自動附加 "cm"
@@ -221,7 +215,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Fins',
     sortOrder: 32,
     icon: '🪶',
-    group: 'WB',
     shopGroup: 'Wakeboarding',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -234,7 +227,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Ropes & Handles',
     sortOrder: 33,
     icon: '🪢',
-    group: 'WB',
     shopGroup: 'Wakeboarding',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -247,7 +239,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Helmet',
     sortOrder: 34,
     icon: '⛑️',
-    group: 'WB',
     shopGroup: 'Wakeboarding',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -267,7 +258,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Boards',
     sortOrder: 40,
     icon: '🏄',
-    group: 'WS',
     shopGroup: 'Wakesurfing',
     fields: [
       // 尺寸用 text 接受廠商各種寫法（例：4'10"、134cm、134）
@@ -281,7 +271,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Fins',
     sortOrder: 41,
     icon: '🪶',
-    group: 'WS',
     shopGroup: 'Wakesurfing',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -294,7 +283,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Traction Pad',
     sortOrder: 42,
     icon: '🟫',
-    group: 'WS',
     shopGroup: 'Wakesurfing',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -307,7 +295,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Ropes & Handles',
     sortOrder: 43,
     icon: '🪢',
-    group: 'WS',
     shopGroup: 'Wakesurfing',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
@@ -320,7 +307,6 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopName: 'Wax',
     sortOrder: 44,
     icon: '🧱',
-    group: 'WS',
     shopGroup: 'Wakesurfing',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },

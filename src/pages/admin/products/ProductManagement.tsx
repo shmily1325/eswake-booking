@@ -8,7 +8,14 @@ import { useResponsive } from '../../../hooks/useResponsive'
 import { Button, Badge, useToast, ToastContainer } from '../../../components/ui'
 import { hasEditorFeatureAsync, hasProductsAccessAsync, isAdmin } from '../../../utils/auth'
 import { trackClick, trackClickDedupedWithin } from '../../../utils/trackClick'
-import { CATEGORY_SCHEMAS, formatAttributes, getAllCategories, getCategory } from './schema'
+import {
+  CATEGORY_SCHEMAS,
+  SHOP_GROUPS,
+  formatAttributes,
+  getAllCategories,
+  getCategory,
+  type ShopGroup,
+} from './schema'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from './api'
 import type { ProductWithVariants, VariantListItem } from './types'
 import { ProductEditView } from './ProductEditView'
@@ -37,7 +44,14 @@ export function ProductManagement() {
   const effectiveCanEdit = canEdit && !userLocked
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState<ProductWithVariants[]>([])
-  const [activeTab, setActiveTab] = useState<string>('all') // 'all' | category id
+  /**
+   * 兩層分類 filter（跟商城前台同步的 UX）：
+   *   - activeGroup：上層分組 'all' = 不限分組（看全部商品）
+   *   - activeSubCat：下層子分類 'all' = 不限子分類（看整個 group 的商品）
+   * 切換 group 時 sub-cat 會自動 reset 回 'all'（避免殘留舊 group 的選擇）。
+   */
+  const [activeGroup, setActiveGroup] = useState<'all' | ShopGroup>('all')
+  const [activeSubCat, setActiveSubCat] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>({ kind: 'list' })
 
@@ -118,11 +132,31 @@ export function ProductManagement() {
 
   const allItems: VariantListItem[] = useMemo(() => flattenToVariantItems(products), [products])
 
-  /** 屬於目前 tab 的 items（在套 filter 之前），給儀表板算「全庫總數」用 */
+  /**
+   * 屬於目前 tab 的 items（在套 filter 之前），給儀表板算「全庫總數」用。
+   *
+   * 兩層篩選：
+   *   - group='all'                       → 全部商品
+   *   - group=X, subCat='all'             → 該 group 底下所有 category 的商品
+   *   - group=X, subCat=catId             → 該 category 的商品（最具體）
+   */
   const tabItems: VariantListItem[] = useMemo(() => {
-    if (activeTab === 'all') return allItems
-    return allItems.filter((it) => it.product.category === activeTab)
-  }, [allItems, activeTab])
+    if (activeGroup === 'all') return allItems
+    if (activeSubCat === 'all') {
+      const idsInGroup = new Set(
+        getAllCategories()
+          .filter((c) => c.shopGroup === activeGroup)
+          .map((c) => c.id)
+      )
+      return allItems.filter((it) => idsInGroup.has(it.product.category ?? ''))
+    }
+    return allItems.filter((it) => it.product.category === activeSubCat)
+  }, [allItems, activeGroup, activeSubCat])
+
+  /** 切換 group 時把子分類重設回「全部」，避免殘留舊 group 的選擇 */
+  useEffect(() => {
+    setActiveSubCat('all')
+  }, [activeGroup])
 
   const filteredItems: VariantListItem[] = useMemo(() => {
     let items = tabItems
@@ -179,6 +213,39 @@ export function ProductManagement() {
 
   const categories = useMemo(() => getAllCategories(), [])
 
+  /**
+   * 給儀表板顯示的「目前在看哪一類」label。
+   *   - all              → 全部
+   *   - group, sub=all   → 該 group 名（例：Wakeboarding）
+   *   - group, sub=catId → 該 category 的中文 name（例：WB 板）
+   */
+  const currentTabLabel = useMemo(() => {
+    if (activeGroup === 'all') return '全部'
+    if (activeSubCat === 'all') return activeGroup
+    return getCategory(activeSubCat)?.name ?? activeSubCat
+  }, [activeGroup, activeSubCat])
+
+  /**
+   * 「新增商品」按鈕點下去時，新建商品要預填的 category：
+   *   - 已選具體 sub-cat → 直接用它
+   *   - 只選了 group     → 用該 group 第一個 category（按 sortOrder）
+   *   - 都沒選           → fallback 用整體第一個 category
+   */
+  const resolveDefaultCategoryForCreate = (): string => {
+    if (activeSubCat !== 'all') return activeSubCat
+    if (activeGroup !== 'all') {
+      const firstInGroup = categories.find((c) => c.shopGroup === activeGroup)
+      if (firstInGroup) return firstInGroup.id
+    }
+    return categories[0]?.id ?? Object.keys(CATEGORY_SCHEMAS)[0]
+  }
+
+  /**
+   * 桌機表格是否顯示「分類」欄。
+   * 只要當前清單跨越多個 category 就顯示（不然欄位每列都一樣，浪費空間）。
+   */
+  const showCategoryColumn = activeSubCat === 'all'
+
   // ====== 權限尚未確認/拒絕：先顯示 loading ======
   if (!accessChecked || !hasAccess) {
     return (
@@ -223,7 +290,7 @@ export function ProductManagement() {
         <InventoryDashboard
           base={baseForCounts}
           filtered={filteredItems}
-          tabName={activeTab === 'all' ? '全部' : getCategory(activeTab)?.name ?? activeTab}
+          tabName={currentTabLabel}
           isFiltered={hasAnyFilter}
           onlyMissingPrice={onlyMissingPrice}
           onlyMissingImage={onlyMissingImage}
@@ -288,9 +355,7 @@ export function ProductManagement() {
               variant="primary"
               data-track="product_add"
               onClick={() => {
-                const defaultCat =
-                  activeTab !== 'all' ? activeTab : categories[0]?.id ?? Object.keys(CATEGORY_SCHEMAS)[0]
-                setView({ kind: 'create', defaultCategory: defaultCat })
+                setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
               }}
             >
               + 新增{isMobile ? '' : '商品'}
@@ -323,7 +388,13 @@ export function ProductManagement() {
             marginBottom: 14,
           }}
         >
-          {/* 三行：一般 / WB / WS。每行可水平捲動避免擠到。 */}
+          {/*
+            兩層分類 tab（跟商城前台 ShopList 同步的 UX）：
+              Row 1：上層分組（全部 / Wakeboarding / Wakesurfing / Essentials）
+              Row 2：當前 group 底下的子分類（只在選中具體 group 時顯示）
+            label 統一用 cat.shortName ?? cat.name，避免之前 regex 從 name 剝 prefix
+            把 'WS/Skim 板' 砍成 '/Skim 板' 的 bug。
+          */}
           <div
             style={{
               display: 'flex',
@@ -333,64 +404,47 @@ export function ProductManagement() {
               minWidth: 0,
             }}
           >
-            {/*
-              三行 tab 共用同一個資料來源：schema 的 cat.shortName ?? cat.name。
-              shortName 是「拿掉 group prefix 之後的純名詞」（例：'板' / 'fin' / '安全帽'），
-              讓 chip 不需要再用 regex 從 name 剝 prefix（之前 'WS/Skim 板' 會被砍成 '/Skim 板'）。
-
-              Row 1 是無 group 的通用分類，shortName 通常 undefined → fallback 用 name 直接顯示。
-            */}
-
-            {/* Row 1：全部 + 一般分類（無 group） */}
+            {/* Row 1：上層分組 */}
             <CategoryRow>
               <CategoryTab
                 label="全部"
-                active={activeTab === 'all'}
-                onClick={() => setActiveTab('all')}
+                active={activeGroup === 'all'}
+                onClick={() => setActiveGroup('all')}
                 trackId="product_tab_all"
               />
-              {categories
-                .filter((cat) => !cat.group)
-                .map((cat) => (
-                  <CategoryTab
-                    key={cat.id}
-                    label={cat.shortName ?? cat.name}
-                    active={activeTab === cat.id}
-                    onClick={() => setActiveTab(cat.id)}
-                    trackId={`product_tab_${cat.id}`}
-                  />
-                ))}
+              {SHOP_GROUPS.map((g) => (
+                <CategoryTab
+                  key={g}
+                  label={g}
+                  active={activeGroup === g}
+                  onClick={() => setActiveGroup(g)}
+                  trackId={`product_group_${g}`}
+                />
+              ))}
             </CategoryRow>
 
-            {/* Row 2：WB */}
-            <CategoryRow prefix="WB">
-              {categories
-                .filter((cat) => cat.group === 'WB')
-                .map((cat) => (
-                  <CategoryTab
-                    key={cat.id}
-                    label={cat.shortName ?? cat.name}
-                    active={activeTab === cat.id}
-                    onClick={() => setActiveTab(cat.id)}
-                    trackId={`product_tab_${cat.id}`}
-                  />
-                ))}
-            </CategoryRow>
-
-            {/* Row 3：WS / Skim */}
-            <CategoryRow prefix="WS/Skim">
-              {categories
-                .filter((cat) => cat.group === 'WS')
-                .map((cat) => (
-                  <CategoryTab
-                    key={cat.id}
-                    label={cat.shortName ?? cat.name}
-                    active={activeTab === cat.id}
-                    onClick={() => setActiveTab(cat.id)}
-                    trackId={`product_tab_${cat.id}`}
-                  />
-                ))}
-            </CategoryRow>
+            {/* Row 2：子分類（依當前 group 動態切，'all' group 時不顯示） */}
+            {activeGroup !== 'all' && (
+              <CategoryRow>
+                <CategoryTab
+                  label="全部"
+                  active={activeSubCat === 'all'}
+                  onClick={() => setActiveSubCat('all')}
+                  trackId={`product_subcat_${activeGroup}_all`}
+                />
+                {categories
+                  .filter((cat) => cat.shopGroup === activeGroup)
+                  .map((cat) => (
+                    <CategoryTab
+                      key={cat.id}
+                      label={cat.shortName ?? cat.name}
+                      active={activeSubCat === cat.id}
+                      onClick={() => setActiveSubCat(cat.id)}
+                      trackId={`product_tab_${cat.id}`}
+                    />
+                  ))}
+              </CategoryRow>
+            )}
           </div>
           {/* 桌機版才在 tab 右側放排序 / 顯示模式 / 鎖定切換 */}
           {!isMobile && (
@@ -428,9 +482,7 @@ export function ProductManagement() {
             hasAnyProduct={products.length > 0}
             canCreate={effectiveCanEdit}
             onCreate={() => {
-              const defaultCat =
-                activeTab !== 'all' ? activeTab : categories[0]?.id ?? Object.keys(CATEGORY_SCHEMAS)[0]
-              setView({ kind: 'create', defaultCategory: defaultCat })
+              setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
             }}
           />
         ) : layout === 'gallery' ? (
@@ -447,7 +499,7 @@ export function ProductManagement() {
         ) : (
           <DesktopTable
             items={filteredItems}
-            showCategoryColumn={activeTab === 'all'}
+            showCategoryColumn={showCategoryColumn}
             onRowClick={(productId) => setView({ kind: 'edit', productId })}
           />
         )}
@@ -490,11 +542,9 @@ function CategoryTab({ label, active, onClick, trackId }: CategoryTabProps) {
 }
 
 /**
- * 類別 Tab 的一行容器。
- * - 內部可水平捲動（在 tab 太多塞不下時）
- * - prefix：行首的群組標籤（例：'WB'、'WS'），不傳就沒有
+ * 類別 Tab 的一行容器。內部可水平捲動（tab 太多塞不下時用）。
  */
-function CategoryRow({ prefix, children }: { prefix?: string; children: ReactNode }) {
+function CategoryRow({ children }: { children: ReactNode }) {
   return (
     <div
       style={{
@@ -506,20 +556,6 @@ function CategoryRow({ prefix, children }: { prefix?: string; children: ReactNod
         WebkitOverflowScrolling: 'touch',
       }}
     >
-      {prefix && (
-        <span
-          style={{
-            flexShrink: 0,
-            fontSize: 12,
-            fontWeight: 700,
-            color: '#888',
-            paddingRight: 4,
-            letterSpacing: 0.5,
-          }}
-        >
-          {prefix}:
-        </span>
-      )}
       {children}
     </div>
   )
