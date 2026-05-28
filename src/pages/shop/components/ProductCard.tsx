@@ -31,13 +31,20 @@ export function ProductCard({ product, variants }: ProductCardProps) {
   const priceText = formatProductPriceRange(variants)
   const fallbackIcon = getCategoryIcon(product.category)
 
+  /**
+   * 區分「真有價格」與「價格洽詢」：
+   * - 有價格：粗體主標
+   * - 價格洽詢：降階為淺灰小標籤，避免在 grid 裡每張卡都用粗體大字喊「洽詢」
+   */
+  const isInquiryOnly = priceText === '價格洽詢'
+
   return (
     <Link
       to={`/shop/${product.id}`}
       className="group block bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden transition-all"
     >
-      {/* 圖片區（9:16 直式，貼合手機照片比例與直式商品照） */}
-      <div className="relative aspect-[9/16] bg-gray-100 overflow-hidden">
+      {/* 圖片區（4:5 比例，比 9:16 矮一截，瀏覽時一屏能看到更多） */}
+      <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
         <ImageOrFallback
           src={imageUrl}
           alt={`${product.brand} ${product.model}`}
@@ -56,18 +63,26 @@ export function ProductCard({ product, variants }: ProductCardProps) {
         )}
       </div>
 
-      {/* 文字區 */}
-      <div className="p-3 sm:p-4">
+      {/* 文字區（padding 收緊；價格依「有/沒有數字」用不同樣式） */}
+      <div className="p-3">
         {product.brand && (
-          <div className="text-xs text-gray-500 uppercase tracking-wide">
+          <div className="text-[11px] text-gray-400 uppercase tracking-wide">
             {product.brand}
           </div>
         )}
-        <div className="mt-0.5 text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem]">
+        <div className="mt-0.5 text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.25rem] leading-snug">
           {product.model || '(未命名商品)'}
         </div>
-        <div className="mt-2 text-base sm:text-lg font-bold text-zinc-900">
-          {priceText}
+        <div className="mt-2">
+          {isInquiryOnly ? (
+            <span className="inline-block px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-500">
+              {priceText}
+            </span>
+          ) : (
+            <span className="text-base sm:text-lg font-bold text-zinc-900">
+              {priceText}
+            </span>
+          )}
         </div>
       </div>
     </Link>

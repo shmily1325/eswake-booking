@@ -162,61 +162,73 @@ export function ShopList() {
     <div className="min-h-screen bg-gray-50">
       <ShopHeader />
 
-      {/* Hero（英文化，質感優先；中文小字補一行給不熟的客人） */}
+      {/*
+        Hero：壓縮為單行標題。
+        - 「Catalog」主標跟「商品型錄」副標放同一行，視覺重量大幅下降
+        - 拿掉長描述句（客人進來就是要看商品，使用說明放底部 footer 就好）
+        - 垂直 padding 砍半
+      */}
       <section>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 tracking-tight">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-baseline gap-3">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 tracking-tight">
             Catalog
           </h1>
-          <p className="mt-1 text-sm text-gray-500">商品型錄</p>
-          <p className="mt-3 text-sm text-gray-600 max-w-xl">
-            Browse our wake & surf gear. Add items to cart and inquire via LINE — quick reply during business hours.
-          </p>
-          <p className="mt-1 text-xs text-gray-500 max-w-xl">
-            線上瀏覽 ES Wake 滑水裝備，喜歡的商品加入購物車後透過 LINE 詢問購買，營業時間內快速回覆。
-          </p>
+          <span className="text-sm text-gray-400">商品型錄</span>
         </div>
       </section>
 
-      {/* 兩層分類 Tab（top: ShopGroup / sub: category） */}
+      {/*
+        Sticky navigation cluster：分類 tab + 搜尋 + 排序整合在一起，
+        捲動商品時整塊跟著走，操作不用回頂部。
+
+        手機：tab 一排 + search/sort 一排，垂直堆疊
+        桌機（sm+）：tab 在左、search/sort 在右，同一條 row
+      */}
       <nav
         className="sticky top-14 z-20 bg-white/95 backdrop-blur border-y border-gray-200"
         aria-label="Product categories"
       >
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          {/* Row 1：頂層分組 */}
-          <div
-            className="flex gap-1 overflow-x-auto -mx-2 px-2 [&::-webkit-scrollbar]:hidden"
-            style={{ scrollbarWidth: 'none' }}
-          >
-            <CategoryTab
-              active={topLevel === ALL_GROUPS}
-              onClick={() => setTopLevel(ALL_GROUPS)}
-              size="lg"
+          {/* Row 1：頂層分組 + 桌機版的 search/sort */}
+          <div className="flex items-center gap-3">
+            <div
+              className="flex gap-1 overflow-x-auto -mx-2 px-2 flex-1 min-w-0 [&::-webkit-scrollbar]:hidden"
+              style={{ scrollbarWidth: 'none' }}
             >
-              All Products
-              <span className="ml-1.5 text-xs font-normal text-gray-400">
-                {products.length}
-              </span>
-            </CategoryTab>
-            {SHOP_GROUPS.map((g) => {
-              const n = groupCounts.get(g) ?? 0
-              if (n === 0) return null // 該 group 完全沒商品就藏起來，避免空 tab
-              return (
-                <CategoryTab
-                  key={g}
-                  active={topLevel === g}
-                  onClick={() => setTopLevel(g)}
-                  size="lg"
-                >
-                  {g}
-                  <span className="ml-1.5 text-xs font-normal text-gray-400">{n}</span>
-                </CategoryTab>
-              )
-            })}
+              <CategoryTab
+                active={topLevel === ALL_GROUPS}
+                onClick={() => setTopLevel(ALL_GROUPS)}
+                size="lg"
+              >
+                All Products
+                <span className="ml-1.5 text-xs font-normal text-gray-400">
+                  {products.length}
+                </span>
+              </CategoryTab>
+              {SHOP_GROUPS.map((g) => {
+                const n = groupCounts.get(g) ?? 0
+                if (n === 0) return null // 該 group 完全沒商品就藏起來
+                return (
+                  <CategoryTab
+                    key={g}
+                    active={topLevel === g}
+                    onClick={() => setTopLevel(g)}
+                    size="lg"
+                  >
+                    {g}
+                    <span className="ml-1.5 text-xs font-normal text-gray-400">{n}</span>
+                  </CategoryTab>
+                )
+              })}
+            </div>
+            {/* 桌機（sm+）才出現的 toolbar；手機放下面那一排 */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <ToolbarSearch search={search} onSearchChange={setSearch} compact />
+              <ToolbarSort sortBy={sortBy} onSortChange={setSortBy} />
+            </div>
           </div>
 
-          {/* Row 2：子分類（選了 group 才出現；只列「該 group 內有商品」的子分類） */}
+          {/* Row 2：子分類（選了 group 才出現） */}
           {topLevel !== ALL_GROUPS && currentSubCategories.length > 0 && (
             <div
               className="flex gap-2 overflow-x-auto -mx-2 px-2 py-3 [&::-webkit-scrollbar]:hidden border-t border-gray-100"
@@ -240,19 +252,23 @@ export function ShopList() {
               ))}
             </div>
           )}
+
+          {/* Row 3（手機限定）：search + sort */}
+          <div className="flex sm:hidden items-center gap-2 py-2 border-t border-gray-100">
+            <ToolbarSearch search={search} onSearchChange={setSearch} />
+            <ToolbarSort sortBy={sortBy} onSortChange={setSortBy} />
+          </div>
         </div>
       </nav>
 
       {/* 商品 grid */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        <Toolbar
-          search={search}
-          onSearchChange={setSearch}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          resultCount={filteredProducts.length}
-          showCount={hasFilter}
-        />
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
+        {/* 套了篩選時顯示結果數量；不再用獨立 toolbar，count 移到這裡 */}
+        {hasFilter && !loading && (
+          <div className="mb-3 text-xs text-gray-500">
+            {filteredProducts.length} items
+          </div>
+        )}
 
         {loading ? (
           <LoadingState />
@@ -269,7 +285,7 @@ export function ShopList() {
             }
           />
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
             {filteredProducts.map((p) => (
               <ProductCard key={p.id} product={p} variants={p.variants} />
             ))}
@@ -285,72 +301,64 @@ export function ShopList() {
   )
 }
 
-interface ToolbarProps {
+/**
+ * 搜尋框，跟 sort 同高（h-9）讓 sticky nav 那條看起來整齊。
+ * compact 模式：桌機嵌在 nav row 右側，固定寬度避免擠到 tab 區。
+ */
+interface ToolbarSearchProps {
   search: string
   onSearchChange: (v: string) => void
-  sortBy: SortBy
-  onSortChange: (v: SortBy) => void
-  /** 篩選後的商品數量；只有「有套搜尋或分類」時才顯示，全部時不顯示避免雜訊 */
-  resultCount: number
-  showCount: boolean
+  /** true 時固定寬度（給桌機 sticky nav 用）；false 時 flex-1 撐滿（給手機獨立 row 用） */
+  compact?: boolean
 }
 
-function Toolbar({
-  search,
-  onSearchChange,
-  sortBy,
-  onSortChange,
-  resultCount,
-  showCount,
-}: ToolbarProps) {
+function ToolbarSearch({ search, onSearchChange, compact = false }: ToolbarSearchProps) {
   return (
-    <div className="mb-5 flex flex-col sm:flex-row sm:items-center gap-3">
-      {/* 搜尋框 */}
-      <div className="relative flex-1">
-        <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <circle cx="11" cy="11" r="7" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search brand or model..."
-          className="w-full h-10 pl-9 pr-3 text-sm bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-300"
-          aria-label="Search products"
-        />
-      </div>
-
-      {/* 結果計數（只在有篩選時出現） */}
-      {showCount && (
-        <div className="text-xs text-gray-500 sm:order-3">
-          {resultCount} items
-        </div>
-      )}
-
-      {/* 排序 */}
-      <select
-        value={sortBy}
-        onChange={(e) => onSortChange(e.target.value as SortBy)}
-        aria-label="Sort by"
-        className="h-10 px-3 pr-8 text-sm bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-300"
+    <div className={'relative ' + (compact ? 'w-48 md:w-56' : 'flex-1 min-w-0')}>
+      <svg
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
       >
-        <option value="newest">Newest</option>
-        <option value="price-asc">Price: Low to High</option>
-        <option value="price-desc">Price: High to Low</option>
-      </select>
+        <circle cx="11" cy="11" r="7" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input
+        type="search"
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder="Search brand or model"
+        className="w-full h-9 pl-8 pr-3 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:bg-white focus:border-orange-400 focus:ring-1 focus:ring-orange-300"
+        aria-label="Search products"
+      />
     </div>
+  )
+}
+
+interface ToolbarSortProps {
+  sortBy: SortBy
+  onSortChange: (v: SortBy) => void
+}
+
+function ToolbarSort({ sortBy, onSortChange }: ToolbarSortProps) {
+  return (
+    <select
+      value={sortBy}
+      onChange={(e) => onSortChange(e.target.value as SortBy)}
+      aria-label="Sort by"
+      className="h-9 px-3 pr-7 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-lg cursor-pointer focus:outline-none focus:bg-white focus:border-orange-400 focus:ring-1 focus:ring-orange-300 shrink-0"
+    >
+      <option value="newest">Newest</option>
+      <option value="price-asc">Price: Low → High</option>
+      <option value="price-desc">Price: High → Low</option>
+    </select>
   )
 }
 
@@ -424,14 +432,14 @@ function SubCategoryTab({ active, onClick, children, count }: SubCategoryTabProp
 
 function LoadingState() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
           className="bg-white rounded-xl shadow-sm overflow-hidden animate-pulse"
         >
-          <div className="aspect-square bg-gray-100" />
-          <div className="p-3 sm:p-4 space-y-2">
+          <div className="aspect-[4/5] bg-gray-100" />
+          <div className="p-3 space-y-2">
             <div className="h-3 w-1/3 bg-gray-100 rounded" />
             <div className="h-4 w-3/4 bg-gray-100 rounded" />
             <div className="h-5 w-1/2 bg-gray-100 rounded" />
