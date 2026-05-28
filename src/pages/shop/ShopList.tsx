@@ -4,8 +4,11 @@ import { getAllCategories } from '../admin/products/schema'
 import type { ProductWithVariants } from '../admin/products/types'
 import { ShopHeader } from './components/ShopHeader'
 import { ProductCard } from './components/ProductCard'
+import { getMinPrice } from './lib/shopFormat'
 
 const ALL_TAB = 'all'
+
+type SortBy = 'default' | 'price-asc' | 'price-desc'
 
 /**
  * 商城列表頁（/shop）。
@@ -24,6 +27,8 @@ export function ShopList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>(ALL_TAB)
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<SortBy>('default')
 
   useEffect(() => {
     let cancelled = false
@@ -60,11 +65,44 @@ export function ShopList() {
       .map((c) => ({ ...c, count: counts.get(c.id) ?? 0 }))
   }, [products])
 
-  /** 依目前 tab 篩選商品 */
+  /**
+   * 依分類 tab → 搜尋字串 → 排序，三道濾鏡套出最終顯示清單。
+   *
+   * 排序語意：
+   * - default: 新到舊（created_at desc，沒值的擺後面）
+   * - price-asc / price-desc: 用變體最低價排；全 null 價（價格洽詢）的擺最後
+   */
   const filteredProducts = useMemo(() => {
-    if (activeTab === ALL_TAB) return products
-    return products.filter((p) => p.category === activeTab)
-  }, [products, activeTab])
+    const byCategory =
+      activeTab === ALL_TAB
+        ? products
+        : products.filter((p) => p.category === activeTab)
+
+    const q = search.trim().toLowerCase()
+    const bySearch = q
+      ? byCategory.filter((p) =>
+          `${p.brand ?? ''} ${p.model ?? ''}`.toLowerCase().includes(q)
+        )
+      : byCategory
+
+    if (sortBy === 'default') {
+      return [...bySearch].sort((a, b) => {
+        const at = a.created_at ?? ''
+        const bt = b.created_at ?? ''
+        return bt.localeCompare(at)
+      })
+    }
+
+    const dir = sortBy === 'price-asc' ? 1 : -1
+    return [...bySearch].sort((a, b) => {
+      const ap = getMinPrice(a.variants)
+      const bp = getMinPrice(b.variants)
+      if (ap == null && bp == null) return 0
+      if (ap == null) return 1
+      if (bp == null) return -1
+      return (ap - bp) * dir
+    })
+  }, [products, activeTab, search, sortBy])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -116,6 +154,15 @@ export function ShopList() {
 
       {/* 商品 grid */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <Toolbar
+          search={search}
+          onSearchChange={setSearch}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          resultCount={filteredProducts.length}
+          showCount={search.trim().length > 0 || activeTab !== ALL_TAB}
+        />
+
         {loading ? (
           <LoadingState />
         ) : error ? (
@@ -123,9 +170,11 @@ export function ShopList() {
         ) : filteredProducts.length === 0 ? (
           <EmptyState
             message={
-              activeTab === ALL_TAB
-                ? '目前還沒有可顯示的商品'
-                : '此分類目前沒有商品'
+              search.trim()
+                ? `找不到符合「${search.trim()}」的商品`
+                : activeTab === ALL_TAB
+                  ? '目前還沒有可顯示的商品'
+                  : '此分類目前沒有商品'
             }
           />
         ) : (
@@ -141,6 +190,75 @@ export function ShopList() {
       <footer className="py-8 text-center text-xs text-gray-400">
         ES Wake School © {new Date().getFullYear()}
       </footer>
+    </div>
+  )
+}
+
+interface ToolbarProps {
+  search: string
+  onSearchChange: (v: string) => void
+  sortBy: SortBy
+  onSortChange: (v: SortBy) => void
+  /** 篩選後的商品數量；只有「有套搜尋或分類」時才顯示，全部時不顯示避免雜訊 */
+  resultCount: number
+  showCount: boolean
+}
+
+function Toolbar({
+  search,
+  onSearchChange,
+  sortBy,
+  onSortChange,
+  resultCount,
+  showCount,
+}: ToolbarProps) {
+  return (
+    <div className="mb-5 flex flex-col sm:flex-row sm:items-center gap-3">
+      {/* 搜尋框 */}
+      <div className="relative flex-1">
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="11" cy="11" r="7" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="搜尋品牌或型號..."
+          className="w-full h-10 pl-9 pr-3 text-sm bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-300"
+          aria-label="搜尋商品"
+        />
+      </div>
+
+      {/* 結果計數（只在有篩選時出現） */}
+      {showCount && (
+        <div className="text-xs text-gray-500 sm:order-3">
+          共 {resultCount} 件
+        </div>
+      )}
+
+      {/* 排序 */}
+      <select
+        value={sortBy}
+        onChange={(e) => onSortChange(e.target.value as SortBy)}
+        aria-label="排序方式"
+        className="h-10 px-3 pr-8 text-sm bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-300"
+      >
+        <option value="default">最新上架</option>
+        <option value="price-asc">價格：低到高</option>
+        <option value="price-desc">價格：高到低</option>
+      </select>
     </div>
   )
 }

@@ -16,6 +16,18 @@ export function formatPrice(amount: number): string {
 }
 
 /**
+ * 取得商品的最低有效價（給排序用）。
+ * 全部變體都沒價格時回 null，呼叫端決定排序時放在最前或最後。
+ */
+export function getMinPrice(variants: ProductVariantRow[]): number | null {
+  const prices = variants
+    .map((v) => v.price)
+    .filter((p): p is number => typeof p === 'number')
+  if (prices.length === 0) return null
+  return Math.min(...prices)
+}
+
+/**
  * 從一組變體中算出商品價格顯示字串。
  * - 只有一個有效價：顯示「NT$ 5,000」
  * - 多個不同價：顯示「NT$ 5,000 起」

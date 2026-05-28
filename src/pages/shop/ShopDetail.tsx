@@ -13,6 +13,7 @@ import {
 } from './lib/shopFormat'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
+import { ImageOrFallback } from './components/ImageOrFallback'
 
 /**
  * 商品詳情頁（/shop/:productId）。
