@@ -1,10 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', 
-    'Segoe UI', 'Roboto', 'Noto Sans TC', 'Helvetica Neue', Arial, sans-serif;
+  /*
+    字體系統：
+    - 拉丁字優先用 Inter（從 Google Fonts variable font 載入，refined minimal vibe）
+    - 中文用 Noto Sans TC（跟 Inter 同設計家族風格，混排自然）
+    - 後面接系統 fallback，確保字還沒載完 / 載失敗時不會破版
+  */
+  font-family: 'Inter', 'Noto Sans TC', -apple-system, BlinkMacSystemFont,
+    'PingFang TC', 'Microsoft JhengHei', 'Segoe UI', 'Roboto',
+    'Helvetica Neue', Arial, sans-serif;
   line-height: 1.6;
   font-weight: 400;
+  /* Inter 在某些情境下會有不必要的合字（fi、fl…），中英混排會抖動，關掉比較穩 */
+  font-feature-settings: 'cv11', 'ss01';
+  font-optical-sizing: auto;
 
   color: #213547;
   background-color: #ffffff;

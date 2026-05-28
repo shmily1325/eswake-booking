@@ -173,7 +173,7 @@ export function ShopList() {
       */}
       <section>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-baseline gap-3">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight">
             Catalog
           </h1>
           <span className="text-sm text-gray-400">商品型錄</span>

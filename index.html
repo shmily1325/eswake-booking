@@ -28,6 +28,19 @@
     <meta name="twitter:title" content="ES Wake 商城" />
     <meta name="twitter:description" content="各式滑水裝備、救生衣、防寒衣" />
     <meta name="twitter:image" content="https://eswake-booking.vercel.app/logo.png" />
+
+    <!--
+      Web font：Inter（拉丁字）+ Noto Sans TC（中文）
+      - 用 variable font 一個檔案涵蓋 400~900 全 weight，網路傳輸更省
+      - display=swap：避免 FOIT，先顯示 fallback 字體、字載完再 swap
+      - preconnect 提前建立連線，第一次載入快幾百毫秒
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=Noto+Sans+TC:wght@400..900&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>
