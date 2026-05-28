@@ -333,7 +333,7 @@ export function ShopList() {
         用 border-t + 白底分隔商品 grid 跟頁尾，避免直接「灰底貼到底」感覺收不乾淨。
       */}
       <footer className="mt-8 border-t border-gray-200 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col items-center text-center gap-3">
           <div className="flex items-center gap-3">
             <img
               src="/logo_circle (black).png"
@@ -342,16 +342,11 @@ export function ShopList() {
               draggable={false}
               aria-hidden
             />
-            <div>
-              <div className="font-black italic uppercase tracking-wider text-zinc-900 leading-none">
-                ES Wake
-              </div>
-              <div className="mt-1 text-[11px] text-gray-500 tracking-wide">
-                Eat · Sleep · Wake
-              </div>
-            </div>
+            <span className="font-black italic uppercase tracking-wider text-zinc-900 leading-none">
+              ES Wake
+            </span>
           </div>
-          <div className="text-[11px] text-gray-400 sm:text-right">
+          <div className="text-[11px] text-gray-400">
             © {new Date().getFullYear()} ES Wake School
           </div>
         </div>
