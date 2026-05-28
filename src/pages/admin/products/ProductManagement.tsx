@@ -14,6 +14,7 @@ import {
   formatAttributes,
   getAllCategories,
   getCategory,
+  getCategoryShopName,
   type ShopGroup,
 } from './schema'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from './api'
@@ -217,12 +218,13 @@ export function ProductManagement() {
    * 給儀表板顯示的「目前在看哪一類」label。
    *   - all              → 全部
    *   - group, sub=all   → 該 group 名（例：Wakeboarding）
-   *   - group, sub=catId → 該 category 的中文 name（例：WB 板）
+   *   - group, sub=catId → 該 category 的商城名（例：Boards），跟前台一致
    */
   const currentTabLabel = useMemo(() => {
     if (activeGroup === 'all') return '全部'
     if (activeSubCat === 'all') return activeGroup
-    return getCategory(activeSubCat)?.name ?? activeSubCat
+    const cat = getCategory(activeSubCat)
+    return cat ? getCategoryShopName(cat) : activeSubCat
   }, [activeGroup, activeSubCat])
 
   /**
@@ -389,11 +391,11 @@ export function ProductManagement() {
           }}
         >
           {/*
-            兩層分類 tab（跟商城前台 ShopList 同步的 UX）：
+            兩層分類 tab（跟商城前台 ShopList 同步的 UX 與命名）：
               Row 1：上層分組（全部 / Wakeboarding / Wakesurfing / Essentials）
               Row 2：當前 group 底下的子分類（只在選中具體 group 時顯示）
-            label 統一用 cat.shortName ?? cat.name，避免之前 regex 從 name 剝 prefix
-            把 'WS/Skim 板' 砍成 '/Skim 板' 的 bug。
+            子分類 label 直接用 shopName（例：'Boards' / 'Boots' / 'Fins'），跟
+            商城前台 ShopList 看到的命名一致，減少切換時的認知負擔。
           */}
           <div
             style={{
@@ -437,7 +439,7 @@ export function ProductManagement() {
                   .map((cat) => (
                     <CategoryTab
                       key={cat.id}
-                      label={cat.shortName ?? cat.name}
+                      label={getCategoryShopName(cat)}
                       active={activeSubCat === cat.id}
                       onClick={() => setActiveSubCat(cat.id)}
                       trackId={`product_tab_${cat.id}`}
@@ -1394,7 +1396,7 @@ function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTablePro
                   </td>
                   {showCategoryColumn && (
                     <td style={tdStyle()}>
-                      <span style={{ fontSize: 12, color: '#666' }}>{cat?.name ?? it.product.category}</span>
+                      <span style={{ fontSize: 12, color: '#666' }}>{cat ? getCategoryShopName(cat) : it.product.category}</span>
                     </td>
                   )}
                   <td style={tdStyle()}>{it.product.brand}</td>
