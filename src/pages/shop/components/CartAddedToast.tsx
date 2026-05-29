@@ -37,7 +37,7 @@ export function CartAddedToast() {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-zinc-900">
-            已加入購物車
+            Added to cart
           </div>
           <div className="mt-0.5 text-xs text-gray-600 truncate">
             {lastAdded.name} × {lastAdded.quantity}
@@ -47,14 +47,14 @@ export function CartAddedToast() {
             className="mt-2 inline-block text-xs font-medium text-black underline underline-offset-2 hover:text-zinc-700"
             onClick={dismissLastAdded}
           >
-            查看購物車 →
+            View cart →
           </Link>
         </div>
         <button
           type="button"
           onClick={dismissLastAdded}
           className="flex-shrink-0 text-gray-400 hover:text-gray-600 p-1"
-          aria-label="關閉提示"
+          aria-label="Dismiss"
         >
           ×
         </button>

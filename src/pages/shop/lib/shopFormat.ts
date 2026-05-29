@@ -70,7 +70,7 @@ export function getProductImageUrl(
 
 /** 分類的中文名（從 schema），找不到就回原 id */
 export function getCategoryName(categoryId: string | null | undefined): string {
-  if (!categoryId) return '其他'
+  if (!categoryId) return 'Other'
   return getCategory(categoryId)?.name ?? categoryId
 }
 

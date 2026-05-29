@@ -31,13 +31,15 @@ export function VariantPicker({
 
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium text-gray-700">選擇規格</div>
+      <div className="text-sm font-medium text-gray-700">
+        選擇規格 <span className="text-gray-400 font-normal">Select variant</span>
+      </div>
       <div className="flex flex-wrap gap-2">
         {variants.map((v) => {
           const isSelected = v.id === selectedVariantId
           const isOutOfStock = (v.stock ?? 0) <= 0
           const attrsText = formatVariantAttributes(categoryId, v.attributes)
-          const label = attrsText || '（無規格資料）'
+          const label = attrsText || '(No spec data)'
 
           return (
             <button
@@ -54,7 +56,7 @@ export function VariantPicker({
             >
               <div className="font-medium">{label}</div>
               {isOutOfStock && (
-                <div className="text-xs text-red-600 mt-0.5">缺貨</div>
+                <div className="text-xs text-red-600 mt-0.5">Out of stock</div>
               )}
             </button>
           )

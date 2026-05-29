@@ -313,10 +313,10 @@ export function ShopList() {
           <EmptyState
             message={
               search.trim()
-                ? `No products match "${search.trim()}"`
+                ? `找不到符合「${search.trim()}」的商品`
                 : hasFilter
-                  ? 'No products in this category yet'
-                  : 'No products available'
+                  ? '這個分類目前還沒有商品'
+                  : '目前還沒有上架商品'
             }
           />
         ) : (
@@ -554,14 +554,14 @@ function ErrorState({ message }: { message: string }) {
   return (
     <div className="text-center py-16">
       <AlertIcon className="mx-auto mb-3 w-12 h-12 text-gray-300" />
-      <h2 className="text-lg font-semibold text-zinc-900">Unable to load products</h2>
+      <h2 className="text-lg font-semibold text-zinc-900">暫時無法載入商品</h2>
       <p className="mt-1 text-sm text-gray-500">{message}</p>
       <button
         type="button"
         onClick={() => window.location.reload()}
         className="mt-4 inline-flex items-center px-4 py-2 rounded-md bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800"
       >
-        Reload
+        重新載入
       </button>
     </div>
   )

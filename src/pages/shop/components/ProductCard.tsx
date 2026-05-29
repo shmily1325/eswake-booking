@@ -66,7 +66,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
           </div>
         )}
         <div className="mt-0.5 text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.25rem] leading-snug">
-          {product.model || '(未命名商品)'}
+          {product.model || '(Unnamed product)'}
         </div>
         <div className="mt-2">
           {isInquiryOnly ? (

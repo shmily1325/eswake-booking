@@ -65,10 +65,10 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
             <Link
               to="/shop"
               className="text-gray-300 hover:text-white text-sm flex items-center gap-1"
-              aria-label="返回商品列表"
+              aria-label="Back to products"
             >
               <span aria-hidden>←</span>
-              <span className="hidden sm:inline">返回</span>
+              <span className="hidden sm:inline">Back</span>
             </Link>
           )}
           {/*
@@ -105,7 +105,7 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
             type="button"
             onClick={() => setMobileSearchOpen((v) => !v)}
             className="sm:hidden inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-zinc-800 transition-colors"
-            aria-label="搜尋"
+            aria-label="Search"
             aria-expanded={mobileSearchOpen}
           >
             <SearchIcon />
@@ -117,7 +117,7 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
           <Link
             to="/shop/cart"
             className="sm:hidden relative inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-zinc-800 transition-colors"
-            aria-label={`購物車${cartCount > 0 ? `（${cartCount} 件）` : ''}`}
+            aria-label={`Cart${cartCount > 0 ? ` (${cartCount} ${cartCount === 1 ? 'item' : 'items'})` : ''}`}
           >
             <CartIcon />
             {cartCount > 0 && (
@@ -136,7 +136,7 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
           <Link
             to="/shop/cart"
             className="hidden sm:inline-flex items-center gap-2 h-10 px-2 -mr-2 text-white hover:text-gray-300 transition-colors"
-            aria-label={`購物車${cartCount > 0 ? `（${cartCount} 件）` : ''}`}
+            aria-label={`Cart${cartCount > 0 ? ` (${cartCount} ${cartCount === 1 ? 'item' : 'items'})` : ''}`}
           >
             <CartIcon />
             <span className="font-black italic tracking-wider uppercase text-base">

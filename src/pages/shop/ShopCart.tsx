@@ -38,7 +38,7 @@ export function ShopCart() {
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    document.title = '購物車 | ES Wake 商城'
+    document.title = 'Cart | ES Wake Shop'
   }, [])
 
   const handleInquiry = () => {
@@ -68,10 +68,10 @@ export function ShopCart() {
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight">
-            購物車
+            Cart
             {totalCount > 0 && (
               <span className="ml-2 text-base font-medium text-gray-500">
-                （{totalCount} 件）
+                ({totalCount} {totalCount === 1 ? 'item' : 'items'})
               </span>
             )}
           </h1>
@@ -81,7 +81,7 @@ export function ShopCart() {
               onClick={handleClear}
               className="text-sm text-gray-500 hover:text-red-600 transition-colors"
             >
-              清空
+              Clear
             </button>
           )}
         </div>
@@ -135,7 +135,7 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
       <Link
         to={`/shop/${item.productId}`}
         className="flex-shrink-0 w-16 h-20 sm:w-20 sm:h-24 rounded-md overflow-hidden hover:opacity-90 transition-opacity"
-        aria-label="返回商品頁"
+        aria-label="Back to product"
       >
         <ImageOrFallback
           src={item.imageUrl}
@@ -181,8 +181,8 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
         type="button"
         onClick={onRemove}
         className="flex-shrink-0 self-start text-gray-400 hover:text-red-600 p-1 -m-1 transition-colors"
-        aria-label="移除此商品"
-        title="移除"
+        aria-label="Remove item"
+        title="Remove"
       >
         <svg
           width="18"
@@ -230,7 +230,7 @@ function CartSummary({
       {hasUnknownPrice && (
         <p className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-start gap-1.5">
           <AlertIcon className="w-3.5 h-3.5 shrink-0 mt-px" />
-          <span>部分商品為「價格洽詢」，最終金額以店家報價為準</span>
+          <span>部分商品為洽詢價，最終金額以官方 LINE報價為準</span>
         </p>
       )}
 
@@ -240,8 +240,8 @@ function CartSummary({
         className="w-full h-12 rounded-md bg-black text-white font-semibold text-base hover:bg-zinc-800 active:bg-zinc-700 transition-colors shadow-sm inline-flex items-center justify-center gap-2"
       >
         <LineIcon className="w-5 h-5" />
-        <span>Inquire via LINE</span>
-        <span className="text-sm font-normal text-zinc-300">LINE 詢問</span>
+        <span>用 LINE 詢問</span>
+        <span className="text-sm font-normal text-zinc-300">Inquire via LINE</span>
       </button>
 
       <p className="mt-3 text-xs text-gray-500 text-center leading-relaxed">
@@ -264,9 +264,9 @@ function EmptyCart() {
   return (
     <div className="text-center py-16">
       <EmptyCartIllustration className="mx-auto mb-4 w-14 h-14 text-gray-300" />
-      <h2 className="text-lg font-semibold text-zinc-900">Your cart is empty</h2>
+      <h2 className="text-lg font-semibold text-zinc-900">購物車是空的</h2>
       <p className="mt-1 text-sm text-gray-500">
-        購物車是空的，先去挑幾件感興趣的裝備
+        先去挑幾件感興趣的裝備吧
       </p>
       <Link
         to="/shop"

@@ -88,7 +88,7 @@ export function LineInquiryModal({ message, onClose }: LineInquiryModalProps) {
             type="button"
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl leading-none p-1 -m-1"
-            aria-label="關閉"
+            aria-label="Close"
           >
             ×
           </button>
@@ -114,7 +114,7 @@ export function LineInquiryModal({ message, onClose }: LineInquiryModalProps) {
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
             }
           >
-            {copied ? '✓ 訊息已複製' : '📋 複製訊息'}
+            {copied ? '✓ 已複製' : '📋 複製訊息'}
           </button>
 
           <a

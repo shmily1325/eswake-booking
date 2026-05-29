@@ -45,11 +45,11 @@ export function ShopDetail() {
 
   useEffect(() => {
     if (!product) {
-      document.title = 'ES Wake 商城'
+      document.title = 'ES Wake Shop'
       return
     }
     const name = [product.brand, product.model].filter(Boolean).join(' ').trim()
-    document.title = name ? `${name} | ES Wake 商城` : 'ES Wake 商城'
+    document.title = name ? `${name} | ES Wake Shop` : 'ES Wake Shop'
   }, [product])
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export function ShopDetail() {
     addItem({
       variantId: selectedVariant.id,
       productId: product.id,
-      productName: productName || '(未命名商品)',
+      productName: productName || '(Unnamed product)',
       categoryId: product.category ?? '',
       attributes: selectedVariant.attributes,
       imageUrl: selectedVariant.image_url ?? imageUrl ?? null,
@@ -118,7 +118,7 @@ export function ShopDetail() {
     const productName = [product.brand, product.model].filter(Boolean).join(' ').trim()
     const payload = buildSingleInquiry({
       productId: product.id,
-      productName: productName || '(未命名商品)',
+      productName: productName || '(Unnamed product)',
       categoryId: product.category,
       attributes: selectedVariant.attributes,
       quantity,
@@ -238,7 +238,7 @@ function ProductDetailBody({
             className="mt-3 flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: 'none' }}
             role="tablist"
-            aria-label="變體縮圖"
+            aria-label="Variant thumbnails"
           >
             {imageOptions.map((opt) => {
               const active = imageUrl === opt.url
@@ -290,7 +290,7 @@ function ProductDetailBody({
           </div>
         )}
         <h1 className="mt-1 text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 tracking-tight leading-tight">
-          {product.model || '(未命名商品)'}
+          {product.model || '(Unnamed product)'}
         </h1>
 
         <div className="mt-3 sm:mt-4 flex items-baseline gap-3 flex-wrap">
@@ -364,14 +364,14 @@ function ProductDetailBody({
           >
             <LineIcon className="w-5 h-5 shrink-0" />
             <span className="flex flex-col items-start leading-tight">
-              <span className="text-base">Inquire via LINE</span>
-              <span className="text-xs font-normal text-gray-500">LINE 詢問</span>
+              <span className="text-base">用 LINE 詢問</span>
+              <span className="text-xs font-normal text-gray-500">Inquire via LINE</span>
             </span>
           </button>
         </div>
 
         <p className="mt-4 text-xs text-gray-500 leading-relaxed">
-          * 線上瀏覽不直接成立訂單；按下「LINE 詢問」會跳到我們的官方 LINE，收到訊息後會盡快與您確認購買細節。
+          * 線上瀏覽不直接成立訂單；按下「用 LINE 詢問」會跳到我們的官方 LINE，收到訊息後會盡快與您確認購買細節。
         </p>
       </div>
     </div>
@@ -403,7 +403,7 @@ function ErrorState({ message }: { message: string }) {
         to="/shop"
         className="mt-4 inline-flex items-center px-4 py-2 rounded-md bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800"
       >
-        ← 返回商品列表
+        ← Back to products
       </Link>
     </div>
   )
@@ -419,7 +419,7 @@ function NotFoundState() {
         to="/shop"
         className="mt-4 inline-flex items-center px-4 py-2 rounded-md bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800"
       >
-        ← 返回商品列表
+        ← Back to products
       </Link>
     </div>
   )

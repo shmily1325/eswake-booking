@@ -30,7 +30,7 @@ export function QuantityStepper({
         onClick={dec}
         disabled={value <= min}
         className="w-10 h-10 flex items-center justify-center text-xl text-gray-700 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
-        aria-label="減少數量"
+        aria-label="Decrease quantity"
       >
         −
       </button>
@@ -54,7 +54,7 @@ export function QuantityStepper({
         onClick={inc}
         disabled={typeof max === 'number' && value >= max}
         className="w-10 h-10 flex items-center justify-center text-xl text-gray-700 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
-        aria-label="增加數量"
+        aria-label="Increase quantity"
       >
         +
       </button>
