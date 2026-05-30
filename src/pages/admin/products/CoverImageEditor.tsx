@@ -15,7 +15,7 @@ interface CoverImageEditorProps {
   productId?: string | null
   brand: string
   model: string
-  /** 第一個 SKU 貨號，用來搜尋海芒果等經銷商 */
+  /** 第一個 SKU 貨號，用來搜尋經銷商商品圖 */
   vendorCode?: string | null
   disabled?: boolean
   onChange: (next: { url: string | null; path: string | null }) => void

@@ -234,7 +234,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
 
   const visibleDrafts = drafts // 顯示全部，含 pendingDelete（給 UI 顯示「已標記刪除」狀態）
 
-  /** 第一個有效 SKU 的貨號，給封面區搜尋海芒果等 */
+  /** 第一個有效 SKU 的貨號，給封面區搜尋用 */
   const primaryVendorCode = useMemo(() => {
     for (const d of drafts) {
       if (d.pendingDelete) continue

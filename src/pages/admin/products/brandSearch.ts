@@ -41,7 +41,7 @@ export function getProductImageSearchLinks(
 
   if (vc) {
     links.push({
-      label: `海芒果搜貨號「${vc}」`,
+      label: `Google 搜貨號「${vc}」`,
       url: `https://www.google.com/search?q=${encodeURIComponent(`site:shop.ocean-mango.com ${vc}`)}`,
     })
   }
