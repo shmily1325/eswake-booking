@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Badge, useToast, ConfirmModal } from '../../../components/ui'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { ImageUploader } from './ImageUploader'
+import { CoverImageEditor } from './CoverImageEditor'
 import { CATEGORY_SCHEMAS, getCategory, validateAttributes, type FieldDef } from './schema'
 import {
   createProduct,
@@ -94,10 +95,13 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
   const [description, setDescription] = useState('')
   /**
    * 是否上架到商城（/shop 對外可見）。
-   * - 新商品預設 false，避免半成品被誤上架
-   * - 既有商品由 DB 載入（migration 116 把現有 active 商品全部設為 true）
+   * - 新商品預設 true（上架到商城）
+   * - 既有商品由 DB 載入
    */
-  const [isPublic, setIsPublic] = useState<boolean>(false)
+  const [isPublic, setIsPublic] = useState<boolean>(isNew)
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null)
+  const [coverImagePath, setCoverImagePath] = useState<string | null>(null)
+  const [originalCoverImagePath, setOriginalCoverImagePath] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<DraftVariant[]>(() => (isNew ? [emptyDraft()] : []))
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -153,6 +157,9 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
         setModel(p.model)
         setDescription(p.description ?? '')
         setIsPublic(p.is_public)
+        setCoverImageUrl(p.cover_image_url ?? null)
+        setCoverImagePath(p.cover_image_path ?? null)
+        setOriginalCoverImagePath(p.cover_image_path ?? null)
         setDrafts(p.variants.length > 0 ? p.variants.map(variantRowToDraft) : [emptyDraft()])
       })
       .catch((err) => {
@@ -261,6 +268,8 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           brand,
           model,
           description: description.trim() || null,
+          cover_image_url: coverImageUrl,
+          cover_image_path: coverImagePath,
           is_public: isPublic,
           created_by: currentUserEmail ?? null,
         })
@@ -271,6 +280,8 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           brand,
           model,
           description: description.trim() || null,
+          cover_image_url: coverImageUrl,
+          cover_image_path: coverImagePath,
           is_public: isPublic,
           updated_by: currentUserEmail ?? null,
         })
@@ -304,6 +315,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
       // ===== Storage 清理：刪掉這個 session 內不再被引用的舊圖 =====
       // 1) 收集所有「最終會被 DB 引用」的 path
       const finalPaths = new Set<string>()
+      if (coverImagePath) finalPaths.add(coverImagePath)
       for (const d of drafts) {
         if (d.pendingDelete) {
           // 軟刪不清圖：原始 image_path 保留，以防誤刪復原
@@ -316,6 +328,9 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
       //    - 每個 variant 的 originalImagePath（若跟新 image_path 不同且不再被引用）
       //    - 這個 session 上傳但最終沒被任何 variant 採用的（中途又換掉的中間檔）
       const toRemove = new Set<string>()
+      if (originalCoverImagePath && originalCoverImagePath !== coverImagePath) {
+        if (!finalPaths.has(originalCoverImagePath)) toRemove.add(originalCoverImagePath)
+      }
       for (const d of drafts) {
         if (d.pendingDelete) continue
         if (d.originalImagePath && d.originalImagePath !== d.image_path) {
@@ -498,6 +513,22 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
               onChange={(e) => setDescription(e.target.value)}
               placeholder="（可選）此商品的補充說明"
               disabled={saving || readOnly}
+            />
+          </div>
+          {/* 商城封面（官圖） */}
+          <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+            <CoverImageEditor
+              value={coverImageUrl}
+              path={coverImagePath}
+              productId={productId}
+              brand={brand}
+              model={model}
+              disabled={saving || readOnly}
+              onChange={(next) => {
+                setCoverImageUrl(next.url)
+                setCoverImagePath(next.path)
+              }}
+              onUpload={trackUpload}
             />
           </div>
           {/* 上架到商城 toggle（is_public） */}
