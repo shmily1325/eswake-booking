@@ -8,6 +8,9 @@ import { createClient } from '@supabase/supabase-js'
 const BUCKET = 'product-images'
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 const MAX_DOWNLOAD_BYTES = 8 * 1024 * 1024
+/** 與前端 imageUpload.ts 一致 */
+const COMPRESS_MAX_PX = 1024
+const COMPRESS_JPEG_QUALITY = 82
 const MAX_CANDIDATES = 8
 const FETCH_UA =
   'Mozilla/5.0 (compatible; ESWake-ProductImageImport/1.0; +https://eswakeschool.com)'
@@ -364,6 +367,31 @@ function getSupabaseAdmin() {
   return createClient(supabaseUrl, serviceKey)
 }
 
+/** 只在 import 時 dynamic import sharp，避免 resolve 請求載入 native 模組失敗 */
+async function compressImageBytes(
+  input: Buffer,
+  contentType: string,
+): Promise<{ bytes: Buffer; contentType: string; ext: string }> {
+  const sharp = (await import('sharp')).default
+  const image = sharp(input, { failOn: 'none' })
+  const meta = await image.metadata()
+  const keepPng = contentType.includes('png') && meta.hasAlpha
+  const pipeline = image.resize(COMPRESS_MAX_PX, COMPRESS_MAX_PX, {
+    fit: 'inside',
+    withoutEnlargement: true,
+  })
+
+  if (keepPng) {
+    const bytes = await pipeline.png({ compressionLevel: 9 }).toBuffer()
+    return { bytes, contentType: 'image/png', ext: 'png' }
+  }
+
+  const bytes = await pipeline
+    .jpeg({ quality: COMPRESS_JPEG_QUALITY, mozjpeg: true })
+    .toBuffer()
+  return { bytes, contentType: 'image/jpeg', ext: 'jpg' }
+}
+
 function parseBody(req: VercelRequest): RequestBody | null {
   try {
     if (typeof req.body === 'string') return JSON.parse(req.body) as RequestBody
@@ -413,9 +441,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: '網址內容不是圖片' })
       }
 
-      const bytes = await readResponseBytes(imgRes, MAX_UPLOAD_BYTES)
-      const contentType = headerType.startsWith('image/') ? headerType.split(';')[0] : 'image/jpeg'
-      const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg'
+      const rawBytes = Buffer.from(await readResponseBytes(imgRes, MAX_DOWNLOAD_BYTES))
+      const headerContentType = headerType.startsWith('image/') ? headerType.split(';')[0] : 'image/jpeg'
+
+      let bytes: Buffer
+      let contentType: string
+      let ext: string
+      try {
+        ;({ bytes, contentType, ext } = await compressImageBytes(rawBytes, headerContentType))
+      } catch (e) {
+        console.error('[fetch-product-image] compress failed', e)
+        return res.status(400).json({ error: '圖片壓縮失敗，請改用手動上傳' })
+      }
+
+      if (bytes.length > MAX_UPLOAD_BYTES) {
+        return res.status(400).json({ error: '壓縮後仍超過 5MB，請改用手動上傳較小的圖' })
+      }
+
       const folder = (typeof body.productId === 'string' ? body.productId.trim() : '') || 'new'
       const path = `covers/${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
 
