@@ -172,6 +172,8 @@ export interface CreateVariantInput {
   price: number | null
   cost?: number | null
   stock?: number
+  cover_image_url?: string | null
+  cover_image_path?: string | null
   image_url?: string | null
   image_path?: string | null
 }
@@ -191,6 +193,8 @@ export async function createVariant(input: CreateVariantInput): Promise<ProductV
     price: normalizePrice(input.price),
     cost: input.cost ?? null,
     stock: Math.max(0, Math.round(input.stock ?? 0)),
+    cover_image_url: input.cover_image_url ?? null,
+    cover_image_path: input.cover_image_path ?? null,
     image_url: input.image_url ?? null,
     image_path: input.image_path ?? null,
   }
@@ -205,6 +209,8 @@ export interface UpdateVariantInput {
   price?: number | null
   cost?: number | null
   stock?: number
+  cover_image_url?: string | null
+  cover_image_path?: string | null
   image_url?: string | null
   image_path?: string | null
 }
@@ -216,6 +222,8 @@ export async function updateVariant(variantId: string, input: UpdateVariantInput
   if (input.price !== undefined) patch.price = normalizePrice(input.price)
   if (input.cost !== undefined) patch.cost = input.cost
   if (input.stock !== undefined) patch.stock = Math.max(0, Math.round(input.stock))
+  if (input.cover_image_url !== undefined) patch.cover_image_url = input.cover_image_url
+  if (input.cover_image_path !== undefined) patch.cover_image_path = input.cover_image_path
   if (input.image_url !== undefined) patch.image_url = input.image_url
   if (input.image_path !== undefined) patch.image_path = input.image_path
   if (Object.keys(patch).length === 0) return

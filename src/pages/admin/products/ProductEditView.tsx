@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Badge, useToast, ConfirmModal } from '../../../components/ui'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { CoverImageEditor } from './CoverImageEditor'
+import { ImageUploader } from './ImageUploader'
 import { CATEGORY_SCHEMAS, getCategory, validateAttributes, type FieldDef } from './schema'
 import {
   createProduct,
@@ -36,10 +37,13 @@ interface DraftVariant {
   attributes: Record<string, string>
   price: string
   stock: string
+  cover_image_url: string | null
+  cover_image_path: string | null
+  originalCoverImagePath: string | null
   image_url: string | null
   image_path: string | null
   /**
-   * 編輯前 DB 的原始 image_path。
+   * 編輯前 DB 的原始 image_path（實品照）。
    * 儲存成功後若跟最新 image_path 不一樣，要把這張原始檔從 storage 刪掉。
    * 取消編輯時，這張原始檔保留（DB 還引用它）。
    */
@@ -60,6 +64,9 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     // price 為 null 時保留空字串（UI 顯示「待補」），不要強制變成 "0"
     price: v.price == null ? '' : String(v.price),
     stock: String(v.stock ?? 0),
+    cover_image_url: v.cover_image_url ?? null,
+    cover_image_path: v.cover_image_path ?? null,
+    originalCoverImagePath: v.cover_image_path ?? null,
     image_url: v.image_url,
     image_path: v.image_path,
     originalImagePath: v.image_path,
@@ -73,6 +80,9 @@ function emptyDraft(): DraftVariant {
     attributes: {},
     price: '',
     stock: '0',
+    cover_image_url: null,
+    cover_image_path: null,
+    originalCoverImagePath: null,
     image_url: null,
     image_path: null,
     originalImagePath: null,
@@ -201,6 +211,9 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
         attributes: { ...lastActive.attributes },
         price: lastActive.price,
         stock: '0',
+        cover_image_url: null,
+        cover_image_path: null,
+        originalCoverImagePath: null,
         image_url: null,
         image_path: null,
         originalImagePath: null,
@@ -291,6 +304,8 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           // 空字串 = NULL（售價待補）；其他則轉成數字
           price: d.price.trim() === '' ? null : Number(d.price),
           stock: Number(d.stock),
+          cover_image_url: d.cover_image_url,
+          cover_image_path: d.cover_image_path,
           image_url: d.image_url,
           image_path: d.image_path,
         }
@@ -306,10 +321,12 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
       const finalPaths = new Set<string>()
       for (const d of drafts) {
         if (d.pendingDelete) {
-          // 軟刪不清圖：原始 image_path 保留，以防誤刪復原
+          // 軟刪不清圖：原始 path 保留，以防誤刪復原
+          if (d.originalCoverImagePath) finalPaths.add(d.originalCoverImagePath)
           if (d.originalImagePath) finalPaths.add(d.originalImagePath)
-        } else if (d.image_path) {
-          finalPaths.add(d.image_path)
+        } else {
+          if (d.cover_image_path) finalPaths.add(d.cover_image_path)
+          if (d.image_path) finalPaths.add(d.image_path)
         }
       }
       // 2) 蒐集「應該被刪掉」的 path：
@@ -318,6 +335,9 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
       const toRemove = new Set<string>()
       for (const d of drafts) {
         if (d.pendingDelete) continue
+        if (d.originalCoverImagePath && d.originalCoverImagePath !== d.cover_image_path) {
+          if (!finalPaths.has(d.originalCoverImagePath)) toRemove.add(d.originalCoverImagePath)
+        }
         if (d.originalImagePath && d.originalImagePath !== d.image_path) {
           if (!finalPaths.has(d.originalImagePath)) toRemove.add(d.originalImagePath)
         }
@@ -812,16 +832,34 @@ function VariantBlock({
       <>
         <CoverImageEditor
           compact
-          value={draft.image_url}
-          path={draft.image_path}
+          value={draft.cover_image_url}
+          path={draft.cover_image_path}
           entityId={draft.id}
+          storageFolder="covers"
           brand={brand}
           model={model}
           vendorCode={draft.vendor_code}
           disabled={disabled || draft.pendingDelete}
-          onChange={(next) => onChange({ image_url: next.url, image_path: next.path })}
+          onChange={(next) => onChange({ cover_image_url: next.url, cover_image_path: next.path })}
           onUpload={onImageUpload}
         />
+
+        <div style={{ marginTop: 12 }}>
+          <label style={{ ...labelStyle, marginBottom: 6 }}>實品照</label>
+          <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 8px 0' }}>
+            庫存核對用，不會取代商城封面。
+          </p>
+          <ImageUploader
+            value={draft.image_url}
+            path={draft.image_path}
+            entityId={draft.id}
+            storageFolder="variants"
+            disabled={disabled || draft.pendingDelete}
+            onChange={(next) => onChange({ image_url: next.url, image_path: next.path })}
+            onUpload={onImageUpload}
+            size={isMobile ? 80 : 96}
+          />
+        </div>
 
         <div style={{ display: 'grid', gap: 8, gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', marginTop: 12 }}>
           <div style={{ gridColumn: isMobile ? '1 / -1' : 'auto' }}>

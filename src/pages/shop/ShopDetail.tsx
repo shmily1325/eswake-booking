@@ -105,7 +105,7 @@ export function ShopDetail() {
       productName: productName || '(Unnamed product)',
       categoryId: product.category ?? '',
       attributes: selectedVariant.attributes,
-      imageUrl: selectedVariant.image_url ?? imageUrl ?? null,
+      imageUrl: selectedVariant.cover_image_url ?? selectedVariant.image_url ?? imageUrl ?? null,
       unitPrice: selectedVariant.price,
       quantity,
     })
@@ -197,20 +197,21 @@ function ProductDetailBody({
   const priceText = hasPrice ? formatPrice(selectedVariant!.price!) : '價格洽詢'
 
   /**
-   * 縮圖列：各 SKU 封面（去重）。點縮圖會切換規格與主圖。
+   * 縮圖列：目前 SKU 的封面 + 實品照（若不同）。
    */
   const imageOptions = useMemo(() => {
+    if (!selectedVariant) return []
     const seen = new Set<string>()
-    const options: { url: string; variantId: string; label: string }[] = []
-
-    for (const v of product.variants) {
-      if (v.image_url && !seen.has(v.image_url)) {
-        seen.add(v.image_url)
-        options.push({ url: v.image_url, variantId: v.id, label: '封面' })
-      }
+    const options: { url: string; label: string }[] = []
+    const add = (url: string | null | undefined, label: string) => {
+      if (!url || seen.has(url)) return
+      seen.add(url)
+      options.push({ url, label })
     }
+    add(selectedVariant.cover_image_url, '封面')
+    add(selectedVariant.image_url, '實品')
     return options
-  }, [product.variants])
+  }, [selectedVariant])
 
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const heroImageUrl = previewImageUrl ?? imageUrl
@@ -251,10 +252,7 @@ function ProductDetailBody({
                 <button
                   key={opt.url}
                   type="button"
-                  onClick={() => {
-                    setPreviewImageUrl(opt.url)
-                    onSelectVariant(opt.variantId)
-                  }}
+                  onClick={() => setPreviewImageUrl(opt.url)}
                   role="tab"
                   aria-selected={active}
                   title={opt.label}

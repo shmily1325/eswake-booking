@@ -1115,6 +1115,8 @@ export type Database = {
           price: number | null
           cost: number | null
           stock: number
+          cover_image_url: string | null
+          cover_image_path: string | null
           image_url: string | null
           image_path: string | null
           is_active: boolean
@@ -1129,6 +1131,8 @@ export type Database = {
           price?: number | null
           cost?: number | null
           stock?: number
+          cover_image_url?: string | null
+          cover_image_path?: string | null
           image_url?: string | null
           image_path?: string | null
           is_active?: boolean
@@ -1143,6 +1147,8 @@ export type Database = {
           price?: number | null
           cost?: number | null
           stock?: number
+          cover_image_url?: string | null
+          cover_image_path?: string | null
           image_url?: string | null
           image_path?: string | null
           is_active?: boolean
