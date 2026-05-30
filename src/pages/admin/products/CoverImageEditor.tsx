@@ -6,6 +6,7 @@ import {
   resolveProductImageCandidates,
   type ImageCandidate,
 } from '../../../utils/fetchProductCoverImage'
+import { uploadProductImage } from '../../../utils/imageUpload'
 import { useToast } from '../../../components/ui'
 
 interface CoverImageEditorProps {
@@ -45,12 +46,33 @@ export function CoverImageEditor({
 
   const busy = resolving || importing
 
-  const handleResolve = async () => {
-    const url = urlInput.trim()
+  const handleUploadFile = async (file: File) => {
+    setImporting(true)
+    try {
+      const result = await uploadProductImage(file, {
+        storageFolder: 'covers',
+        entityId: productId,
+      })
+      onUpload?.(result.path)
+      onChange({ url: result.publicUrl, path: result.path })
+      setUrlInput('')
+      setCandidates([])
+      toast.success('封面圖已上傳')
+    } catch (e) {
+      console.error('[CoverImageEditor] upload failed', e)
+      toast.error(e instanceof Error ? e.message : '圖片上傳失敗')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleResolve = async (urlOverride?: string) => {
+    const url = (urlOverride ?? urlInput).trim()
     if (!url) {
       toast.error('請貼上官網商品頁或圖片網址')
       return
     }
+    if (urlOverride) setUrlInput(url)
     setResolving(true)
     setCandidates([])
     try {
@@ -71,6 +93,74 @@ export function CoverImageEditor({
       toast.error(e instanceof Error ? e.message : '解析網址失敗')
     } finally {
       setResolving(false)
+    }
+  }
+
+  const clipboardImageToFile = (blob: Blob, mime: string): File => {
+    const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg'
+    return new File([blob], `paste.${ext}`, { type: mime })
+  }
+
+  const readClipboardImageFile = async (): Promise<File | null> => {
+    if (!navigator.clipboard?.read) return null
+    const items = await navigator.clipboard.read()
+    for (const item of items) {
+      const mime = item.types.find((t) => t.startsWith('image/'))
+      if (!mime) continue
+      const blob = await item.getType(mime)
+      return clipboardImageToFile(blob, mime)
+    }
+    return null
+  }
+
+  const pasteEventImageFile = (e: React.ClipboardEvent): File | null => {
+    const items = e.clipboardData?.items
+    if (!items) return null
+    for (const item of items) {
+      if (!item.type.startsWith('image/')) continue
+      const file = item.getAsFile()
+      if (file) return file
+    }
+    return null
+  }
+
+  const handlePasteFromClipboard = async () => {
+    if (disabled || busy) return
+    try {
+      const imageFile = await readClipboardImageFile()
+      if (imageFile) {
+        await handleUploadFile(imageFile)
+        return
+      }
+
+      const text = (await navigator.clipboard.readText()).trim()
+      if (!text) {
+        toast.error('剪貼簿是空的')
+        return
+      }
+
+      setUrlInput(text)
+      if (/^https?:\/\//i.test(text) || text.startsWith('//')) {
+        await handleResolve(text)
+      } else {
+        toast.success('已貼上文字，確認後按「從 URL 抓圖」')
+      }
+    } catch (e) {
+      console.error('[CoverImageEditor] clipboard read failed', e)
+      if (e instanceof DOMException && e.name === 'NotAllowedError') {
+        toast.error('無法讀取剪貼簿，請在輸入框用 Ctrl+V 貼上')
+      } else {
+        toast.error('讀取剪貼簿失敗')
+      }
+    }
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    if (disabled || busy) return
+    const imageFile = pasteEventImageFile(e)
+    if (imageFile) {
+      e.preventDefault()
+      void handleUploadFile(imageFile)
     }
   }
 
@@ -120,7 +210,7 @@ export function CoverImageEditor({
       <label style={labelStyle}>商城封面（官圖）</label>
       <p style={hintStyle}>
         給 /shop 列表與詳情主圖用。SKU 實拍照保留在下方規格區，不會被覆蓋。
-        貼上完整商品頁網址。
+        可貼商品頁網址，或從 Google 複製圖片後按「從剪貼簿貼上」／Ctrl+V。
       </p>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -148,7 +238,7 @@ export function CoverImageEditor({
             </a>
           ))}
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} onPaste={handlePaste}>
             <input
               style={inputStyle}
               value={urlInput}
@@ -162,6 +252,23 @@ export function CoverImageEditor({
                 }
               }}
             />
+            <button
+              type="button"
+              onClick={() => void handlePasteFromClipboard()}
+              disabled={disabled || busy}
+              style={{
+                padding: '8px 14px',
+                fontSize: 13,
+                fontWeight: 600,
+                borderRadius: 8,
+                border: '1px solid #d8d8d8',
+                background: disabled || busy ? '#f3f4f6' : '#fff',
+                cursor: disabled || busy ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              從剪貼簿貼上
+            </button>
             <button
               type="button"
               onClick={() => void handleResolve()}

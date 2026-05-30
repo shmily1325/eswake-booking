@@ -30,7 +30,7 @@ export function getProductImageSearchLinks(
   } else if (key === 'ronix') {
     links.push({
       label: `Ronix 官網搜「${m || b}」`,
-      url: `https://www.ronixtools.com/search?q=${encodeURIComponent(m || b)}`,
+      url: `https://www.ronixwake.com/search?q=${encodeURIComponent(m || b)}`,
     })
   } else if (key === 'hyperlite') {
     links.push({
