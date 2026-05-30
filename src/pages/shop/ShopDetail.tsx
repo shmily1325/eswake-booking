@@ -9,6 +9,7 @@ import { useShopCart } from './hooks/useShopCart'
 import {
   formatPrice,
   getCategoryShopName,
+  getProductDetailHeroImageUrl,
 } from './lib/shopFormat'
 import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
@@ -91,10 +92,9 @@ export function ShopDetail() {
     return product.variants.find((v) => v.id === selectedVariantId) ?? null
   }, [product, selectedVariantId])
 
-  const imageUrl =
-    selectedVariant?.image_url ??
-    product?.variants.find((v) => v.image_url)?.image_url ??
-    null
+  const imageUrl = product
+    ? getProductDetailHeroImageUrl(product, selectedVariant, product.variants)
+    : null
 
   const handleAddToCart = () => {
     if (!product || !selectedVariant) return
@@ -105,7 +105,7 @@ export function ShopDetail() {
       productName: productName || '(Unnamed product)',
       categoryId: product.category ?? '',
       attributes: selectedVariant.attributes,
-      imageUrl: selectedVariant.image_url ?? imageUrl ?? null,
+      imageUrl: product.cover_image_url ?? selectedVariant.image_url ?? imageUrl ?? null,
       unitPrice: selectedVariant.price,
       quantity,
     })
@@ -197,22 +197,32 @@ function ProductDetailBody({
   const priceText = hasPrice ? formatPrice(selectedVariant!.price!) : '價格洽詢'
 
   /**
-   * 變體縮圖列：去重不同 image_url，每個圖綁第一個對應的變體 ID。
-   * 同色不同尺寸通常共用一張圖 → 不需要重複塞 8 個一樣的縮圖。
-   * 只有 2 張以上才顯示，1 張時藏起來省版位。
+   * 縮圖列：封面 + 各 SKU 不同圖（去重）。
+   * 有封面時主圖固定顯示封面；縮圖可切換預覽實拍（若與封面不同）。
    */
   const imageOptions = useMemo(() => {
-    const seen = new Map<string, string>()
+    const seen = new Set<string>()
+    const options: { url: string; variantId: string | null; label: string }[] = []
+
+    if (product.cover_image_url) {
+      seen.add(product.cover_image_url)
+      options.push({ url: product.cover_image_url, variantId: null, label: '封面' })
+    }
     for (const v of product.variants) {
       if (v.image_url && !seen.has(v.image_url)) {
-        seen.set(v.image_url, v.id)
+        seen.add(v.image_url)
+        options.push({ url: v.image_url, variantId: v.id, label: '實拍' })
       }
     }
-    return Array.from(seen.entries()).map(([url, variantId]) => ({
-      url,
-      variantId,
-    }))
-  }, [product.variants])
+    return options
+  }, [product.cover_image_url, product.variants])
+
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
+  const heroImageUrl = previewImageUrl ?? imageUrl
+
+  useEffect(() => {
+    setPreviewImageUrl(null)
+  }, [product.id, imageUrl])
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
@@ -225,7 +235,7 @@ function ProductDetailBody({
         */}
         <div className="relative aspect-[4/5] max-h-[60vh] md:max-h-[500px] max-w-[320px] sm:max-w-sm md:max-w-none mx-auto bg-gray-100 rounded-lg overflow-hidden">
           <ImageOrFallback
-            src={imageUrl}
+            src={heroImageUrl}
             alt={`${product.brand} ${product.model}`}
             imgClassName="w-full h-full object-cover"
             loading="eager"
@@ -238,17 +248,21 @@ function ProductDetailBody({
             className="mt-3 flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: 'none' }}
             role="tablist"
-            aria-label="Variant thumbnails"
+            aria-label="Product images"
           >
             {imageOptions.map((opt) => {
-              const active = imageUrl === opt.url
+              const active = heroImageUrl === opt.url
               return (
                 <button
-                  key={opt.variantId}
+                  key={opt.url}
                   type="button"
-                  onClick={() => onSelectVariant(opt.variantId)}
+                  onClick={() => {
+                    setPreviewImageUrl(opt.url)
+                    if (opt.variantId) onSelectVariant(opt.variantId)
+                  }}
                   role="tab"
                   aria-selected={active}
+                  title={opt.label}
                   className={
                     'flex-shrink-0 w-14 h-18 sm:w-16 sm:h-20 rounded-md overflow-hidden border-2 transition-colors ' +
                     (active

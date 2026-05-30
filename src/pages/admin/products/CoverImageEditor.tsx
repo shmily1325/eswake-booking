@@ -1,0 +1,211 @@
+import { useMemo, useState } from 'react'
+import { ImageUploader } from './ImageUploader'
+import { getBrandOfficialSearchUrl } from './brandSearch'
+import {
+  importProductCoverFromUrl,
+  resolveProductImageCandidates,
+  type ImageCandidate,
+} from '../../../utils/fetchProductCoverImage'
+import { useToast } from '../../../components/ui'
+
+interface CoverImageEditorProps {
+  value: string | null
+  path?: string | null
+  productId?: string | null
+  brand: string
+  model: string
+  disabled?: boolean
+  onChange: (next: { url: string | null; path: string | null }) => void
+  onUpload?: (newPath: string) => void
+}
+
+export function CoverImageEditor({
+  value,
+  path,
+  productId,
+  brand,
+  model,
+  disabled,
+  onChange,
+  onUpload,
+}: CoverImageEditorProps) {
+  const toast = useToast()
+  const [urlInput, setUrlInput] = useState('')
+  const [resolving, setResolving] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [candidates, setCandidates] = useState<ImageCandidate[]>([])
+
+  const brandSearchUrl = useMemo(
+    () => getBrandOfficialSearchUrl(brand, model),
+    [brand, model],
+  )
+
+  const busy = resolving || importing
+
+  const handleResolve = async () => {
+    const url = urlInput.trim()
+    if (!url) {
+      toast.error('請貼上官網商品頁或圖片網址')
+      return
+    }
+    setResolving(true)
+    setCandidates([])
+    try {
+      const list = await resolveProductImageCandidates(url)
+      setCandidates(list)
+      if (list.length === 1) {
+        await handleImport(list[0].url)
+      }
+    } catch (e) {
+      console.error('[CoverImageEditor] resolve failed', e)
+      toast.error(e instanceof Error ? e.message : '解析網址失敗')
+    } finally {
+      setResolving(false)
+    }
+  }
+
+  const handleImport = async (imageUrl: string) => {
+    setImporting(true)
+    try {
+      const result = await importProductCoverFromUrl(imageUrl, productId)
+      onUpload?.(result.path)
+      onChange({ url: result.publicUrl, path: result.path })
+      setCandidates([])
+      setUrlInput('')
+      toast.success('封面圖已匯入')
+    } catch (e) {
+      console.error('[CoverImageEditor] import failed', e)
+      toast.error(e instanceof Error ? e.message : '匯入失敗')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: 13,
+    fontWeight: 600,
+    color: '#444',
+    marginBottom: 6,
+  }
+
+  const hintStyle: React.CSSProperties = {
+    fontSize: 12,
+    color: '#6b7280',
+    margin: '0 0 10px 0',
+    lineHeight: 1.5,
+  }
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    padding: '8px 10px',
+    fontSize: 14,
+    border: '1px solid #d8d8d8',
+    borderRadius: 8,
+    boxSizing: 'border-box',
+  }
+
+  return (
+    <div>
+      <label style={labelStyle}>商城封面（官圖）</label>
+      <p style={hintStyle}>
+        給 /shop 列表與詳情主圖用。SKU 實拍照保留在下方規格區，不會被覆蓋。
+      </p>
+
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <ImageUploader
+          value={value}
+          path={path}
+          entityId={productId}
+          storageFolder="covers"
+          disabled={disabled || busy}
+          onChange={onChange}
+          onUpload={onUpload}
+          size={112}
+        />
+
+        <div style={{ flex: 1, minWidth: 200, display: 'grid', gap: 8 }}>
+          {brandSearchUrl && (
+            <a
+              href={brandSearchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none' }}
+            >
+              🔍 去官網搜尋「{brand} {model}」
+            </a>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input
+              style={inputStyle}
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              placeholder="貼官網商品頁或圖片網址"
+              disabled={disabled || busy}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void handleResolve()
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => void handleResolve()}
+              disabled={disabled || busy || !urlInput.trim()}
+              style={{
+                padding: '8px 14px',
+                fontSize: 13,
+                fontWeight: 600,
+                borderRadius: 8,
+                border: '1px solid #d8d8d8',
+                background: disabled || busy ? '#f3f4f6' : '#fff',
+                cursor: disabled || busy ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {resolving ? '解析中…' : importing ? '匯入中…' : '從 URL 抓圖'}
+            </button>
+          </div>
+
+          {candidates.length > 1 && (
+            <div>
+              <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
+                找到 {candidates.length} 張候選，點選要用的封面：
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {candidates.map((c) => (
+                  <button
+                    key={c.url}
+                    type="button"
+                    onClick={() => void handleImport(c.url)}
+                    disabled={disabled || busy}
+                    title={c.source}
+                    style={{
+                      width: 72,
+                      height: 90,
+                      padding: 0,
+                      border: '2px solid #e5e7eb',
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                      cursor: disabled || busy ? 'not-allowed' : 'pointer',
+                      background: '#fafafa',
+                    }}
+                  >
+                    <img
+                      src={c.url}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -7,7 +7,7 @@
  * - 價格 / 庫存 / 圖片的 fallback 邏輯集中在這
  */
 
-import type { ProductVariantRow } from '../../admin/products/types'
+import type { ProductVariantRow, ProductRow } from '../../admin/products/types'
 import {
   formatAttributes,
   getCategory,
@@ -55,13 +55,30 @@ export function isProductOutOfStock(variants: ProductVariantRow[]): boolean {
 }
 
 /**
- * 取一張商品代表圖。
- * - 優先找第一個有 image_url 的變體
+ * 取一張商品代表圖（商城列表 / 卡片用）。
+ * - 優先 products.cover_image_url（官圖）
+ * - 其次第一個有 image_url 的變體
  * - 都沒有就回 null（呼叫端用 emoji fallback）
  */
 export function getProductImageUrl(
-  variants: ProductVariantRow[]
+  product: Pick<ProductRow, 'cover_image_url'>,
+  variants: ProductVariantRow[],
 ): string | null {
+  if (product.cover_image_url) return product.cover_image_url
+  for (const v of variants) {
+    if (v.image_url) return v.image_url
+  }
+  return null
+}
+
+/** 詳情主圖：有封面就固定用封面，否則跟選中規格 */
+export function getProductDetailHeroImageUrl(
+  product: Pick<ProductRow, 'cover_image_url'>,
+  selectedVariant: ProductVariantRow | null,
+  variants: ProductVariantRow[],
+): string | null {
+  if (product.cover_image_url) return product.cover_image_url
+  if (selectedVariant?.image_url) return selectedVariant.image_url
   for (const v of variants) {
     if (v.image_url) return v.image_url
   }

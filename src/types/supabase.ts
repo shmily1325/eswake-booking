@@ -1065,6 +1065,8 @@ export type Database = {
           brand: string
           model: string
           description: string | null
+          cover_image_url: string | null
+          cover_image_path: string | null
           is_active: boolean
           is_public: boolean
           created_at: string | null
@@ -1078,6 +1080,8 @@ export type Database = {
           brand: string
           model: string
           description?: string | null
+          cover_image_url?: string | null
+          cover_image_path?: string | null
           is_active?: boolean
           is_public?: boolean
           created_at?: string | null
@@ -1091,6 +1095,8 @@ export type Database = {
           brand?: string
           model?: string
           description?: string | null
+          cover_image_url?: string | null
+          cover_image_path?: string | null
           is_active?: boolean
           is_public?: boolean
           created_at?: string | null

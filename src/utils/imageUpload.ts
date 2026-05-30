@@ -91,13 +91,21 @@ export interface UploadProductImageResult {
  */
 export async function uploadProductImage(
   file: File,
-  opts: { variantId?: string | null; compress?: CompressOptions } = {},
+  opts: {
+    variantId?: string | null
+    /** Storage 子目錄：variants（SKU 圖）或 covers（商城封面） */
+    storageFolder?: 'variants' | 'covers'
+    /** 對應 variants/{id} 或 covers/{id} 的 id；新建時用 'new' */
+    entityId?: string | null
+    compress?: CompressOptions
+  } = {},
 ): Promise<UploadProductImageResult> {
   const compressed = await compressImage(file, opts.compress)
   const ext = extFromMime(compressed.type || file.type)
-  const folder = opts.variantId || 'new'
+  const folder = opts.storageFolder ?? 'variants'
+  const entity = opts.entityId ?? opts.variantId ?? 'new'
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-  const path = `variants/${folder}/${filename}`
+  const path = `${folder}/${entity}/${filename}`
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, compressed, {
     cacheControl: '3600',

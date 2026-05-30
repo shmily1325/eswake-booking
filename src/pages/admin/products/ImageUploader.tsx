@@ -7,8 +7,12 @@ interface ImageUploaderProps {
   value: string | null | undefined
   /** 對應的 storage path（資訊用，不會在這裡刪檔） */
   path?: string | null
-  /** 用於組路徑（傳 SKU id）；新建尚無 id 時可留空 */
+  /** @deprecated 請改用 entityId + storageFolder */
   variantId?: string | null
+  /** Storage 子目錄，預設 variants */
+  storageFolder?: 'variants' | 'covers'
+  /** 路徑中的 id 段；新建尚無 id 時可留空（會用 new） */
+  entityId?: string | null
   /** 上傳完成或刪除時的回呼，回傳新的 url + path（刪除時兩者都是 null） */
   onChange: (next: { url: string | null; path: string | null }) => void
   /**
@@ -26,6 +30,8 @@ interface ImageUploaderProps {
 export function ImageUploader({
   value,
   variantId,
+  storageFolder = 'variants',
+  entityId,
   onChange,
   onUpload,
   size = 96,
@@ -50,7 +56,10 @@ export function ImageUploader({
     }
     setUploading(true)
     try {
-      const result = await uploadProductImage(file, { variantId })
+      const result = await uploadProductImage(file, {
+        storageFolder,
+        entityId: entityId ?? variantId,
+      })
       onUpload?.(result.path)
       onChange({ url: result.publicUrl, path: result.path })
     } catch (err) {
