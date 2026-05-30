@@ -29,9 +29,18 @@ type ImageCandidate = {
 type AuthOk = { ok: true; email: string }
 type AuthFail = { ok: false; error: string; status: number }
 
+type StorageFolder = 'variants' | 'covers'
+
 type RequestBody =
   | { action: 'resolve'; url: string }
-  | { action: 'import'; imageUrl: string; productId?: string | null }
+  | {
+      action: 'import'
+      imageUrl: string
+      entityId?: string | null
+      storageFolder?: StorageFolder
+      /** @deprecated 請改用 entityId */
+      productId?: string | null
+    }
 
 function normalizeExternalUrl(href: string, base?: string): string | null {
   let raw = href.trim()
@@ -458,8 +467,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: '壓縮後仍超過 5MB，請改用手動上傳較小的圖' })
       }
 
-      const folder = (typeof body.productId === 'string' ? body.productId.trim() : '') || 'new'
-      const path = `covers/${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const storageFolder: StorageFolder =
+        body.storageFolder === 'covers' ? 'covers' : 'variants'
+      const entityRaw =
+        (typeof body.entityId === 'string' ? body.entityId.trim() : '') ||
+        (typeof body.productId === 'string' ? body.productId.trim() : '')
+      const entityId = entityRaw || 'new'
+      const path = `${storageFolder}/${entityId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
 
       const { error: upErr } = await getSupabaseAdmin().storage.from(BUCKET).upload(path, bytes, {
         contentType,

@@ -105,7 +105,7 @@ export function ShopDetail() {
       productName: productName || '(Unnamed product)',
       categoryId: product.category ?? '',
       attributes: selectedVariant.attributes,
-      imageUrl: product.cover_image_url ?? selectedVariant.image_url ?? imageUrl ?? null,
+      imageUrl: selectedVariant.image_url ?? imageUrl ?? null,
       unitPrice: selectedVariant.price,
       quantity,
     })
@@ -197,32 +197,27 @@ function ProductDetailBody({
   const priceText = hasPrice ? formatPrice(selectedVariant!.price!) : '價格洽詢'
 
   /**
-   * 縮圖列：封面 + 各 SKU 不同圖（去重）。
-   * 有封面時主圖固定顯示封面；縮圖可切換預覽實拍（若與封面不同）。
+   * 縮圖列：各 SKU 封面（去重）。點縮圖會切換規格與主圖。
    */
   const imageOptions = useMemo(() => {
     const seen = new Set<string>()
-    const options: { url: string; variantId: string | null; label: string }[] = []
+    const options: { url: string; variantId: string; label: string }[] = []
 
-    if (product.cover_image_url) {
-      seen.add(product.cover_image_url)
-      options.push({ url: product.cover_image_url, variantId: null, label: '封面' })
-    }
     for (const v of product.variants) {
       if (v.image_url && !seen.has(v.image_url)) {
         seen.add(v.image_url)
-        options.push({ url: v.image_url, variantId: v.id, label: '實拍' })
+        options.push({ url: v.image_url, variantId: v.id, label: '封面' })
       }
     }
     return options
-  }, [product.cover_image_url, product.variants])
+  }, [product.variants])
 
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const heroImageUrl = previewImageUrl ?? imageUrl
 
   useEffect(() => {
     setPreviewImageUrl(null)
-  }, [product.id, imageUrl])
+  }, [product.id, selectedVariantId, imageUrl])
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
@@ -258,7 +253,7 @@ function ProductDetailBody({
                   type="button"
                   onClick={() => {
                     setPreviewImageUrl(opt.url)
-                    if (opt.variantId) onSelectVariant(opt.variantId)
+                    onSelectVariant(opt.variantId)
                   }}
                   role="tab"
                   aria-selected={active}

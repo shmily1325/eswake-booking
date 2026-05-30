@@ -34,7 +34,7 @@ async function postProductImageApi<T>(body: Record<string, unknown>): Promise<T>
   return data
 }
 
-/** 從商品頁或直接圖片 URL 解析候選官圖 */
+/** 從商品頁或直接圖片 URL 解析候選圖 */
 export async function resolveProductImageCandidates(url: string): Promise<ImageCandidate[]> {
   const data = await postProductImageApi<{ candidates: ImageCandidate[] }>({
     action: 'resolve',
@@ -43,14 +43,29 @@ export async function resolveProductImageCandidates(url: string): Promise<ImageC
   return data.candidates ?? []
 }
 
-/** 下載候選圖並上傳到 Storage（covers/ 路徑） */
-export async function importProductCoverFromUrl(
+/** 下載候選圖並上傳到 Storage（variants/ 或 covers/） */
+export async function importProductImageFromUrl(
   imageUrl: string,
-  productId?: string | null,
+  opts?: {
+    entityId?: string | null
+    storageFolder?: 'variants' | 'covers'
+  },
 ): Promise<ImportedProductImage> {
   return postProductImageApi<ImportedProductImage>({
     action: 'import',
     imageUrl: imageUrl.trim(),
-    productId: productId ?? null,
+    entityId: opts?.entityId ?? null,
+    storageFolder: opts?.storageFolder ?? 'variants',
+  })
+}
+
+/** @deprecated 請改用 importProductImageFromUrl */
+export async function importProductCoverFromUrl(
+  imageUrl: string,
+  productId?: string | null,
+): Promise<ImportedProductImage> {
+  return importProductImageFromUrl(imageUrl, {
+    entityId: productId,
+    storageFolder: 'covers',
   })
 }

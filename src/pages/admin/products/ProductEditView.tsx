@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Badge, useToast, ConfirmModal } from '../../../components/ui'
 import { useResponsive } from '../../../hooks/useResponsive'
-import { ImageUploader } from './ImageUploader'
 import { CoverImageEditor } from './CoverImageEditor'
 import { CATEGORY_SCHEMAS, getCategory, validateAttributes, type FieldDef } from './schema'
 import {
@@ -99,9 +98,6 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
    * - 既有商品由 DB 載入
    */
   const [isPublic, setIsPublic] = useState<boolean>(isNew)
-  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null)
-  const [coverImagePath, setCoverImagePath] = useState<string | null>(null)
-  const [originalCoverImagePath, setOriginalCoverImagePath] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<DraftVariant[]>(() => (isNew ? [emptyDraft()] : []))
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -157,9 +153,6 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
         setModel(p.model)
         setDescription(p.description ?? '')
         setIsPublic(p.is_public)
-        setCoverImageUrl(p.cover_image_url ?? null)
-        setCoverImagePath(p.cover_image_path ?? null)
-        setOriginalCoverImagePath(p.cover_image_path ?? null)
         setDrafts(p.variants.length > 0 ? p.variants.map(variantRowToDraft) : [emptyDraft()])
       })
       .catch((err) => {
@@ -234,16 +227,6 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
 
   const visibleDrafts = drafts // 顯示全部，含 pendingDelete（給 UI 顯示「已標記刪除」狀態）
 
-  /** 第一個有效 SKU 的貨號，給封面區搜尋用 */
-  const primaryVendorCode = useMemo(() => {
-    for (const d of drafts) {
-      if (d.pendingDelete) continue
-      const vc = d.vendor_code.trim()
-      if (vc) return vc
-    }
-    return null
-  }, [drafts])
-
   const validate = (): string | null => {
     if (!brand.trim()) return '品牌為必填'
     if (!model.trim()) return '型號為必填'
@@ -278,8 +261,6 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           brand,
           model,
           description: description.trim() || null,
-          cover_image_url: coverImageUrl,
-          cover_image_path: coverImagePath,
           is_public: isPublic,
           created_by: currentUserEmail ?? null,
         })
@@ -290,8 +271,6 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           brand,
           model,
           description: description.trim() || null,
-          cover_image_url: coverImageUrl,
-          cover_image_path: coverImagePath,
           is_public: isPublic,
           updated_by: currentUserEmail ?? null,
         })
@@ -325,7 +304,6 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
       // ===== Storage 清理：刪掉這個 session 內不再被引用的舊圖 =====
       // 1) 收集所有「最終會被 DB 引用」的 path
       const finalPaths = new Set<string>()
-      if (coverImagePath) finalPaths.add(coverImagePath)
       for (const d of drafts) {
         if (d.pendingDelete) {
           // 軟刪不清圖：原始 image_path 保留，以防誤刪復原
@@ -338,9 +316,6 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
       //    - 每個 variant 的 originalImagePath（若跟新 image_path 不同且不再被引用）
       //    - 這個 session 上傳但最終沒被任何 variant 採用的（中途又換掉的中間檔）
       const toRemove = new Set<string>()
-      if (originalCoverImagePath && originalCoverImagePath !== coverImagePath) {
-        if (!finalPaths.has(originalCoverImagePath)) toRemove.add(originalCoverImagePath)
-      }
       for (const d of drafts) {
         if (d.pendingDelete) continue
         if (d.originalImagePath && d.originalImagePath !== d.image_path) {
@@ -525,23 +500,6 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
               disabled={saving || readOnly}
             />
           </div>
-          {/* 商城封面（官圖） */}
-          <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
-            <CoverImageEditor
-              value={coverImageUrl}
-              path={coverImagePath}
-              productId={productId}
-              brand={brand}
-              model={model}
-              vendorCode={primaryVendorCode}
-              disabled={saving || readOnly}
-              onChange={(next) => {
-                setCoverImageUrl(next.url)
-                setCoverImagePath(next.path)
-              }}
-              onUpload={trackUpload}
-            />
-          </div>
           {/* 上架到商城 toggle（is_public） */}
           <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
             <label
@@ -600,6 +558,8 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
             key={d.id ?? `new-${idx}`}
             index={idx}
             draft={d}
+            brand={brand}
+            model={model}
             schemaFields={cat?.fields ?? []}
             isMobile={isMobile}
             disabled={saving || readOnly}
@@ -695,6 +655,8 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
 interface VariantBlockProps {
   index: number
   draft: DraftVariant
+  brand: string
+  model: string
   schemaFields: FieldDef[]
   isMobile: boolean
   disabled: boolean
@@ -710,6 +672,8 @@ interface VariantBlockProps {
 function VariantBlock({
   index,
   draft,
+  brand,
+  model,
   schemaFields,
   isMobile,
   disabled,
@@ -845,18 +809,21 @@ function VariantBlock({
       </div>
 
       {effectiveCollapsed ? null : (
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <ImageUploader
+      <>
+        <CoverImageEditor
+          compact
           value={draft.image_url}
           path={draft.image_path}
-          variantId={draft.id}
+          entityId={draft.id}
+          brand={brand}
+          model={model}
+          vendorCode={draft.vendor_code}
           disabled={disabled || draft.pendingDelete}
           onChange={(next) => onChange({ image_url: next.url, image_path: next.path })}
           onUpload={onImageUpload}
-          size={isMobile ? 80 : 96}
         />
 
-        <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 8, gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)' }}>
+        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', marginTop: 12 }}>
           <div style={{ gridColumn: isMobile ? '1 / -1' : 'auto' }}>
             <label style={labelStyle}>貨號</label>
             <input
@@ -925,7 +892,7 @@ function VariantBlock({
             />
           </div>
         </div>
-      </div>
+      </>
       )}
     </div>
   )

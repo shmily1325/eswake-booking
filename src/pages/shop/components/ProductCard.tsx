@@ -20,7 +20,7 @@ interface ProductCardProps {
  * 點整張卡片進詳情頁。
  *
  * 顯示策略：
- * - 圖：商城封面（官圖）→ 第一個有 image_url 的變體；沒有就用分類 emoji
+ * - 圖：第一個有封面的 SKU；沒有就用分類 emoji
  * - 標題：brand + model
  * - 價格：最低價（多規格時加「起」），全 null 顯示「價格洽詢」
  * - 缺貨：所有變體 stock <= 0 時掛「缺貨」標籤

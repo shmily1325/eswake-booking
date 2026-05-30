@@ -56,28 +56,25 @@ export function isProductOutOfStock(variants: ProductVariantRow[]): boolean {
 
 /**
  * 取一張商品代表圖（商城列表 / 卡片用）。
- * - 優先 products.cover_image_url（官圖）
- * - 其次第一個有 image_url 的變體
+ * - 第一個有 image_url 的 SKU
  * - 都沒有就回 null（呼叫端用 emoji fallback）
  */
 export function getProductImageUrl(
-  product: Pick<ProductRow, 'cover_image_url'>,
+  _product: Pick<ProductRow, 'cover_image_url'>,
   variants: ProductVariantRow[],
 ): string | null {
-  if (product.cover_image_url) return product.cover_image_url
   for (const v of variants) {
     if (v.image_url) return v.image_url
   }
   return null
 }
 
-/** 詳情主圖：有封面就固定用封面，否則跟選中規格 */
+/** 詳情主圖：跟選中 SKU 的封面 */
 export function getProductDetailHeroImageUrl(
-  product: Pick<ProductRow, 'cover_image_url'>,
+  _product: Pick<ProductRow, 'cover_image_url'>,
   selectedVariant: ProductVariantRow | null,
   variants: ProductVariantRow[],
 ): string | null {
-  if (product.cover_image_url) return product.cover_image_url
   if (selectedVariant?.image_url) return selectedVariant.image_url
   for (const v of variants) {
     if (v.image_url) return v.image_url
