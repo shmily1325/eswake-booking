@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ImageUploader } from './ImageUploader'
-import { getBrandOfficialSearchUrl } from './brandSearch'
+import { getProductImageSearchLinks } from './brandSearch'
 import {
   importProductCoverFromUrl,
   resolveProductImageCandidates,
@@ -14,6 +14,8 @@ interface CoverImageEditorProps {
   productId?: string | null
   brand: string
   model: string
+  /** 第一個 SKU 貨號，用來搜尋海芒果等經銷商 */
+  vendorCode?: string | null
   disabled?: boolean
   onChange: (next: { url: string | null; path: string | null }) => void
   onUpload?: (newPath: string) => void
@@ -25,6 +27,7 @@ export function CoverImageEditor({
   productId,
   brand,
   model,
+  vendorCode,
   disabled,
   onChange,
   onUpload,
@@ -35,9 +38,9 @@ export function CoverImageEditor({
   const [importing, setImporting] = useState(false)
   const [candidates, setCandidates] = useState<ImageCandidate[]>([])
 
-  const brandSearchUrl = useMemo(
-    () => getBrandOfficialSearchUrl(brand, model),
-    [brand, model],
+  const searchLinks = useMemo(
+    () => getProductImageSearchLinks(brand, model, vendorCode),
+    [brand, model, vendorCode],
   )
 
   const busy = resolving || importing
@@ -111,6 +114,7 @@ export function CoverImageEditor({
       <label style={labelStyle}>商城封面（官圖）</label>
       <p style={hintStyle}>
         給 /shop 列表與詳情主圖用。SKU 實拍照保留在下方規格區，不會被覆蓋。
+        貼上完整商品頁網址。
       </p>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -126,16 +130,17 @@ export function CoverImageEditor({
         />
 
         <div style={{ flex: 1, minWidth: 200, display: 'grid', gap: 8 }}>
-          {brandSearchUrl && (
+          {searchLinks.map((link) => (
             <a
-              href={brandSearchUrl}
+              key={link.url}
+              href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none' }}
+              style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', display: 'block' }}
             >
-              🔍 去官網搜尋「{brand} {model}」
+              🔍 {link.label}
             </a>
-          )}
+          ))}
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input

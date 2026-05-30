@@ -7,6 +7,7 @@ import {
   readResponseWithLimit,
   resolveCandidatesFromPageUrl,
   fetchWithLimit,
+  normalizeImageDownloadUrl,
 } from './_lib/productImageFetch'
 
 const BUCKET = 'product-images'
@@ -36,11 +37,12 @@ function getSupabaseAdmin() {
 }
 
 async function downloadAndCompressImage(imageUrl: string): Promise<{ buffer: Buffer; contentType: string }> {
-  if (!isAllowedExternalUrl(imageUrl)) {
+  const normalized = normalizeImageDownloadUrl(imageUrl)
+  if (!isAllowedExternalUrl(normalized)) {
     throw new Error('圖片網址無效（僅支援 https）')
   }
 
-  const res = await fetchWithLimit(imageUrl, { accept: 'image/*' })
+  const res = await fetchWithLimit(normalized, { accept: 'image/*' })
   if (!res.ok) throw new Error(`下載圖片失敗（HTTP ${res.status}）`)
 
   const contentType = res.headers.get('content-type') ?? ''

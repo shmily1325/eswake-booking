@@ -1,10 +1,37 @@
 const FETCH_UA = 'ESWake-ProductImageImport/1.0'
 const MAX_DOWNLOAD_BYTES = 8 * 1024 * 1024
 
+export interface ImageCandidate {
+  url: string
+  source: 'direct' | 'og:image' | 'twitter:image' | 'json-ld' | 'shopify-json' | 'shopify-cdn' | 'embedded'
+}
+
+/** 解析並正規化外部 URL（http→https、//→https、去掉 :443） */
+export function normalizeExternalUrl(href: string, base?: string): string | null {
+  let raw = href.trim()
+  if (!raw) return null
+  if (raw.startsWith('//')) raw = `https:${raw}`
+
+  let abs: string
+  try {
+    abs = base ? new URL(raw, base).href : new URL(raw).href
+  } catch {
+    return null
+  }
+
+  const u = new URL(abs)
+  if (u.protocol === 'http:') u.protocol = 'https:'
+  if (u.port === '443') u.port = ''
+  return u.href
+}
+
 export function isAllowedExternalUrl(urlStr: string): boolean {
+  const normalized = normalizeExternalUrl(urlStr)
+  if (!normalized) return false
+
   let u: URL
   try {
-    u = new URL(urlStr)
+    u = new URL(normalized)
   } catch {
     return false
   }
@@ -12,7 +39,6 @@ export function isAllowedExternalUrl(urlStr: string): boolean {
   const host = u.hostname.toLowerCase()
   if (host === 'localhost' || host.endsWith('.local')) return false
   if (host === '0.0.0.0' || host === '::1') return false
-  // 擋常見私網 hostname（SSRF 基本防護）
   if (/^(127\.|10\.|192\.168\.|169\.254\.)/.test(host)) return false
   const m = host.match(/^172\.(\d+)\./)
   if (m) {
@@ -22,25 +48,41 @@ export function isAllowedExternalUrl(urlStr: string): boolean {
   return true
 }
 
-export function resolveUrl(base: string, href: string): string | null {
-  try {
-    return new URL(href, base).href
-  } catch {
-    return null
+function isPlaceholderImage(url: string): boolean {
+  const lower = url.toLowerCase()
+  return (
+    lower.includes('no-image') ||
+    lower.includes('placeholder') ||
+    lower.includes('boost-pfs-no-image')
+  )
+}
+
+/** Shopify 小圖 suffix 換成較大尺寸（若適用） */
+function upsizeShopifyImageUrl(url: string): string {
+  return url.replace(/_(?:pico|icon|thumb|small|compact|medium|large|grande|1024x1024|2048x2048|\d+x\d+)(\.[a-z]+(?:\?|$))/i, '$1')
+}
+
+function imageSizeScore(url: string): number {
+  const lower = url.toLowerCase()
+  if (lower.includes('_xs.')) return 1
+  if (lower.includes('_md.')) return 3
+  if (/_(\d+)x(\d+)\./.test(lower)) {
+    const m = lower.match(/_(\d+)x(\d+)\./)
+    if (m) return Number(m[1])
   }
+  if (lower.includes('cdn.shopify.com/s/files/') && !/_\d+x/.test(lower)) return 100
+  return 5
 }
 
 export function looksLikeDirectImageUrl(url: string): boolean {
-  const lower = url.toLowerCase()
+  const normalized = normalizeExternalUrl(url)
+  if (!normalized || !isAllowedExternalUrl(normalized)) return false
+  const lower = normalized.toLowerCase()
   if (/\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(lower)) return true
   if (lower.includes('cdn.shopify.com')) return true
+  if (lower.includes('/cdn/shop/files/')) return true
   if (lower.includes('/image/upload/')) return true
   return false
-}
-
-export interface ImageCandidate {
-  url: string
-  source: 'direct' | 'og:image' | 'twitter:image' | 'json-ld'
 }
 
 export function extractImageCandidates(html: string, pageUrl: string): ImageCandidate[] {
@@ -49,8 +91,12 @@ export function extractImageCandidates(html: string, pageUrl: string): ImageCand
 
   const push = (href: string | null | undefined, source: ImageCandidate['source']) => {
     if (!href) return
-    const abs = resolveUrl(pageUrl, href.trim())
+    let abs = normalizeExternalUrl(href, pageUrl)
     if (!abs || !isAllowedExternalUrl(abs)) return
+    if (isPlaceholderImage(abs)) return
+    if (source === 'shopify-cdn' || source === 'og:image') {
+      abs = upsizeShopifyImageUrl(abs)
+    }
     if (seen.has(abs)) return
     seen.add(abs)
     out.push({ url: abs, source })
@@ -78,6 +124,18 @@ export function extractImageCandidates(html: string, pageUrl: string): ImageCand
     }
   }
 
+  for (const m of html.matchAll(/(?:https?:)?\/\/cdn\.shopify\.com\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/gi)) {
+    push(m[0], 'shopify-cdn')
+  }
+  for (const m of html.matchAll(/\/cdn\/shop\/files\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/gi)) {
+    push(m[0], 'shopify-cdn')
+  }
+
+  for (const m of html.matchAll(/upload\/images\/ptsgoods\/[a-f0-9-]+(?:_[a-z]+)?\.jpg/gi)) {
+    push(m[0], 'embedded')
+  }
+
+  out.sort((a, b) => imageSizeScore(b.url) - imageSizeScore(a.url))
   return out
 }
 
@@ -108,20 +166,54 @@ function collectJsonLdImages(node: unknown, onImage: (url: string) => void): voi
   }
 }
 
+function getShopifyProductJsonUrl(pageUrl: string): string | null {
+  try {
+    const u = new URL(pageUrl)
+    const match = u.pathname.match(/^(.*\/products\/[^/]+)/i)
+    if (!match) return null
+    return `${u.origin}${match[1]}.json`
+  } catch {
+    return null
+  }
+}
+
+async function fetchShopifyProductImages(pageUrl: string): Promise<ImageCandidate[]> {
+  const jsonUrl = getShopifyProductJsonUrl(pageUrl)
+  if (!jsonUrl) return []
+
+  const res = await fetchWithLimit(jsonUrl, { accept: 'application/json' })
+  if (!res.ok) return []
+
+  const data = (await res.json()) as { product?: { images?: Array<{ src?: string }> } }
+  const images = data.product?.images ?? []
+  const out: ImageCandidate[] = []
+  const seen = new Set<string>()
+
+  for (const img of images) {
+    const abs = img.src ? normalizeExternalUrl(img.src) : null
+    if (!abs || !isAllowedExternalUrl(abs) || seen.has(abs)) continue
+    seen.add(abs)
+    out.push({ url: abs, source: 'shopify-json' })
+  }
+  return out
+}
+
 export async function fetchWithLimit(
   url: string,
-  opts: { timeoutMs?: number; accept?: string } = {},
+  opts: { timeoutMs?: number; accept?: string; referer?: string } = {},
 ): Promise<Response> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 12_000)
   try {
+    const headers: Record<string, string> = {
+      'User-Agent': FETCH_UA,
+      Accept: opts.accept ?? '*/*',
+    }
+    if (opts.referer) headers.Referer = opts.referer
     return await fetch(url, {
       signal: controller.signal,
       redirect: 'follow',
-      headers: {
-        'User-Agent': FETCH_UA,
-        Accept: opts.accept ?? '*/*',
-      },
+      headers,
     })
   } finally {
     clearTimeout(timeout)
@@ -141,20 +233,44 @@ export async function readResponseWithLimit(res: Response, maxBytes = MAX_DOWNLO
 }
 
 export async function resolveCandidatesFromPageUrl(pageUrl: string): Promise<ImageCandidate[]> {
-  if (!isAllowedExternalUrl(pageUrl)) {
+  const normalizedPage = normalizeExternalUrl(pageUrl)
+  if (!normalizedPage || !isAllowedExternalUrl(normalizedPage)) {
     throw new Error('僅支援 https 網址')
   }
-  if (looksLikeDirectImageUrl(pageUrl)) {
-    return [{ url: pageUrl, source: 'direct' }]
+  if (looksLikeDirectImageUrl(normalizedPage)) {
+    return [{ url: normalizedPage, source: 'direct' }]
   }
 
-  const res = await fetchWithLimit(pageUrl, { accept: 'text/html,application/xhtml+xml' })
-  if (!res.ok) throw new Error(`無法讀取網頁（HTTP ${res.status}）`)
+  const res = await fetchWithLimit(normalizedPage, { accept: 'text/html,application/xhtml+xml' })
+  if (!res.ok) {
+    throw new Error(`無法讀取網頁（HTTP ${res.status}）— 請確認網址完整且可公開瀏覽`)
+  }
 
+  const finalPageUrl = res.url || normalizedPage
   const html = (await readResponseWithLimit(res, 2 * 1024 * 1024)).toString('utf8')
-  const candidates = extractImageCandidates(html, res.url || pageUrl)
-  if (candidates.length === 0) {
+  const fromHtml = extractImageCandidates(html, finalPageUrl)
+
+  const shopifyImages = await fetchShopifyProductImages(finalPageUrl)
+
+  const merged: ImageCandidate[] = []
+  const seen = new Set<string>()
+  for (const list of [shopifyImages, fromHtml]) {
+    for (const c of list) {
+      if (seen.has(c.url)) continue
+      seen.add(c.url)
+      merged.push(c)
+    }
+  }
+
+  if (merged.length === 0) {
     throw new Error('找不到商品圖，請改貼圖片網址或手動上傳')
   }
-  return candidates
+  return merged
+}
+
+/** 下載用：正規化圖片 URL */
+export function normalizeImageDownloadUrl(imageUrl: string): string {
+  const normalized = normalizeExternalUrl(imageUrl)
+  if (!normalized) throw new Error('圖片網址無效')
+  return upsizeShopifyImageUrl(normalized)
 }

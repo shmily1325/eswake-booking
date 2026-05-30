@@ -234,6 +234,16 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
 
   const visibleDrafts = drafts // 顯示全部，含 pendingDelete（給 UI 顯示「已標記刪除」狀態）
 
+  /** 第一個有效 SKU 的貨號，給封面區搜尋海芒果等 */
+  const primaryVendorCode = useMemo(() => {
+    for (const d of drafts) {
+      if (d.pendingDelete) continue
+      const vc = d.vendor_code.trim()
+      if (vc) return vc
+    }
+    return null
+  }, [drafts])
+
   const validate = (): string | null => {
     if (!brand.trim()) return '品牌為必填'
     if (!model.trim()) return '型號為必填'
@@ -523,6 +533,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
               productId={productId}
               brand={brand}
               model={model}
+              vendorCode={primaryVendorCode}
               disabled={saving || readOnly}
               onChange={(next) => {
                 setCoverImageUrl(next.url)

@@ -1,26 +1,62 @@
 /**
- * 依品牌產生「去官網搜尋」的連結，方便上架人員找官圖。
+ * 依品牌／貨號產生「去官網搜尋」的連結，方便上架人員找官圖。
  */
-export function getBrandOfficialSearchUrl(brand: string, model: string): string | null {
+export interface ProductImageSearchLink {
+  label: string
+  url: string
+}
+
+export function getProductImageSearchLinks(
+  brand: string,
+  model: string,
+  vendorCode?: string | null,
+): ProductImageSearchLink[] {
   const b = brand.trim()
   const m = model.trim()
-  if (!b && !m) return null
-
-  const q = encodeURIComponent([b, m].filter(Boolean).join(' '))
+  const vc = vendorCode?.trim() ?? ''
   const key = b.toLowerCase()
+  const links: ProductImageSearchLink[] = []
 
   if (key === 'follow') {
-    return `https://www.followwake.com/search?q=${encodeURIComponent(m || b)}`
-  }
-  if (key === 'lf' || key === 'liquid force') {
-    return `https://www.liquidforce.com/search?q=${encodeURIComponent(m || b)}`
-  }
-  if (key === 'ronix') {
-    return `https://www.ronixtools.com/search?q=${encodeURIComponent(m || b)}`
-  }
-  if (key === 'hyperlite') {
-    return `https://www.hyperlite.com/search?q=${encodeURIComponent(m || b)}`
+    links.push({
+      label: `Follow 官網搜「${m || b}」`,
+      url: `https://www.followwake.com/search?q=${encodeURIComponent(m || b)}`,
+    })
+  } else if (key === 'lf' || key === 'liquid force') {
+    links.push({
+      label: `Liquid Force 官網搜「${m || b}」`,
+      url: `https://www.liquidforce.com/search?q=${encodeURIComponent(m || b)}`,
+    })
+  } else if (key === 'ronix') {
+    links.push({
+      label: `Ronix 官網搜「${m || b}」`,
+      url: `https://www.ronixtools.com/search?q=${encodeURIComponent(m || b)}`,
+    })
+  } else if (key === 'hyperlite') {
+    links.push({
+      label: `Hyperlite 官網搜「${m || b}」`,
+      url: `https://www.hyperlite.com/search?q=${encodeURIComponent(m || b)}`,
+    })
   }
 
-  return `https://www.google.com/search?q=${q}`
+  if (vc) {
+    links.push({
+      label: `海芒果搜貨號「${vc}」`,
+      url: `https://www.google.com/search?q=${encodeURIComponent(`site:shop.ocean-mango.com ${vc}`)}`,
+    })
+  }
+
+  if (links.length === 0 && (b || m)) {
+    links.push({
+      label: `Google 搜「${b} ${m}」`.trim(),
+      url: `https://www.google.com/search?q=${encodeURIComponent([b, m].filter(Boolean).join(' '))}`,
+    })
+  }
+
+  return links
+}
+
+/** @deprecated 請改用 getProductImageSearchLinks */
+export function getBrandOfficialSearchUrl(brand: string, model: string): string | null {
+  return getProductImageSearchLinks(brand, model)[0]?.url ?? null
 }
