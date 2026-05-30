@@ -1,5 +1,7 @@
-const FETCH_UA = 'ESWake-ProductImageImport/1.0'
+const FETCH_UA =
+  'Mozilla/5.0 (compatible; ESWake-ProductImageImport/1.0; +https://eswakeschool.com)'
 const MAX_DOWNLOAD_BYTES = 8 * 1024 * 1024
+const MAX_CANDIDATES = 8
 
 export interface ImageCandidate {
   url: string
@@ -53,8 +55,63 @@ function isPlaceholderImage(url: string): boolean {
   return (
     lower.includes('no-image') ||
     lower.includes('placeholder') ||
-    lower.includes('boost-pfs-no-image')
+    lower.includes('boost-pfs-no-image') ||
+    lower.includes('/icon-') ||
+    lower.includes('favicon') ||
+    lower.includes('social-') ||
+    lower.includes('footer-') ||
+    lower.includes('online-retailers-pdp') ||
+    lower.includes('mobile-menu') ||
+    lower.includes('logo')
   )
+}
+
+function getProductHandle(pageUrl: string): string | null {
+  try {
+    const match = new URL(pageUrl).pathname.match(/\/products\/([^/]+)/i)
+    return match?.[1]?.toLowerCase() ?? null
+  } catch {
+    return null
+  }
+}
+
+/** 去掉頁面雜圖，優先 Shopify JSON 商品圖 */
+function filterProductImageCandidates(candidates: ImageCandidate[], pageUrl: string): ImageCandidate[] {
+  const fromJson = candidates.filter((c) => c.source === 'shopify-json')
+  if (fromJson.length > 0) return fromJson.slice(0, MAX_CANDIDATES)
+
+  const handle = getProductHandle(pageUrl)
+  const handleTokens = handle
+    ? handle.split('-').filter((t) => t.length > 2 && !/^\d{4}$/.test(t))
+    : []
+
+  const scored = candidates
+    .filter((c) => !isPlaceholderImage(c.url))
+    .map((c) => {
+      const lower = c.url.toLowerCase()
+      let score = imageSizeScore(c.url)
+      if (c.source === 'og:image') score += 50
+      if (c.source === 'embedded') score += 40
+      if (handle && lower.includes(handle)) score += 80
+      for (const token of handleTokens) {
+        if (lower.includes(token)) score += 15
+      }
+      if (lower.includes('/files/product-') || lower.includes('/ptsgoods/')) score += 30
+      if (lower.endsWith('.png') && !lower.includes('product')) score -= 20
+      return { c, score }
+    })
+    .filter(({ score }) => score >= 10)
+    .sort((a, b) => b.score - a.score)
+
+  const out: ImageCandidate[] = []
+  const seen = new Set<string>()
+  for (const { c } of scored) {
+    if (seen.has(c.url)) continue
+    seen.add(c.url)
+    out.push(c)
+    if (out.length >= MAX_CANDIDATES) break
+  }
+  return out
 }
 
 /** Shopify 小圖 suffix 換成較大尺寸（若適用） */
@@ -262,15 +319,28 @@ export async function resolveCandidatesFromPageUrl(pageUrl: string): Promise<Ima
     }
   }
 
-  if (merged.length === 0) {
+  const filtered = filterProductImageCandidates(merged, finalPageUrl)
+  if (filtered.length === 0) {
     throw new Error('找不到商品圖，請改貼圖片網址或手動上傳')
   }
-  return merged
+  return filtered
 }
 
-/** 下載用：正規化圖片 URL */
+/** 下載用：正規化圖片 URL，Shopify 加 width 避免下載過大原圖 */
 export function normalizeImageDownloadUrl(imageUrl: string): string {
   const normalized = normalizeExternalUrl(imageUrl)
   if (!normalized) throw new Error('圖片網址無效')
-  return upsizeShopifyImageUrl(normalized)
+  let url = upsizeShopifyImageUrl(normalized)
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes('shopify.com') || u.pathname.includes('/cdn/shop/files/')) {
+      if (!u.searchParams.has('width')) {
+        u.searchParams.set('width', '1200')
+      }
+      url = u.href
+    }
+  } catch {
+    // keep url as-is
+  }
+  return url
 }

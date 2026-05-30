@@ -17,6 +17,9 @@
     },
     "api/backup-to-drive.ts": {
       "maxDuration": 60
+    },
+    "api/fetch-product-image.ts": {
+      "maxDuration": 30
     }
   },
   "crons": [

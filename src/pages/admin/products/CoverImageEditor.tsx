@@ -55,9 +55,16 @@ export function CoverImageEditor({
     setCandidates([])
     try {
       const list = await resolveProductImageCandidates(url)
+      if (list.length === 0) {
+        toast.error('找不到商品圖')
+        return
+      }
       setCandidates(list)
-      if (list.length === 1) {
-        await handleImport(list[0].url)
+      await handleImport(list[0].url, { quiet: true })
+      if (list.length > 1) {
+        toast.success(`已匯入第 1 張，下方還有 ${list.length - 1} 張可換`)
+      } else {
+        toast.success('封面圖已匯入')
       }
     } catch (e) {
       console.error('[CoverImageEditor] resolve failed', e)
@@ -67,15 +74,14 @@ export function CoverImageEditor({
     }
   }
 
-  const handleImport = async (imageUrl: string) => {
+  const handleImport = async (imageUrl: string, opts?: { quiet?: boolean }) => {
     setImporting(true)
     try {
       const result = await importProductCoverFromUrl(imageUrl, productId)
       onUpload?.(result.path)
       onChange({ url: result.publicUrl, path: result.path })
-      setCandidates([])
       setUrlInput('')
-      toast.success('封面圖已匯入')
+      if (!opts?.quiet) toast.success('封面圖已匯入')
     } catch (e) {
       console.error('[CoverImageEditor] import failed', e)
       toast.error(e instanceof Error ? e.message : '匯入失敗')
@@ -178,7 +184,7 @@ export function CoverImageEditor({
           {candidates.length > 1 && (
             <div>
               <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
-                找到 {candidates.length} 張候選，點選要用的封面：
+                其他候選（點縮圖可換封面）：
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {candidates.map((c) => (
