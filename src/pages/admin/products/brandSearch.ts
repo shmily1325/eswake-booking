@@ -42,7 +42,7 @@ export function getProductImageSearchLinks(
   if (vc) {
     links.push({
       label: `Google 搜貨號「${vc}」`,
-      url: `https://www.google.com/search?q=${encodeURIComponent(`site:shop.ocean-mango.com ${vc}`)}`,
+      url: `https://www.google.com/search?q=${encodeURIComponent(vc)}`,
     })
   }
 

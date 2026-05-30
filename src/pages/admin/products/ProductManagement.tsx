@@ -56,9 +56,10 @@ export function ProductManagement() {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>({ kind: 'list' })
 
-  // 篩選狀態：缺價 / 沒圖（從頂部儀表板點擊切換）
+  // 篩選狀態：缺價 / 沒實拍 / 沒封面（從頂部儀表板點擊切換）
   const [onlyMissingPrice, setOnlyMissingPrice] = useState(false)
   const [onlyMissingImage, setOnlyMissingImage] = useState(false)
+  const [onlyMissingCover, setOnlyMissingCover] = useState(false)
 
   // 排序模式（記憶於 localStorage）
   const [sortBy, setSortBy] = useState<SortMode>(() => {
@@ -74,9 +75,11 @@ export function ProductManagement() {
   const clearAllFilters = () => {
     setOnlyMissingPrice(false)
     setOnlyMissingImage(false)
+    setOnlyMissingCover(false)
     setSearch('')
   }
-  const hasAnyFilter = onlyMissingPrice || onlyMissingImage || search.trim() !== ''
+  const hasAnyFilter =
+    onlyMissingPrice || onlyMissingImage || onlyMissingCover || search.trim() !== ''
 
   // 列表顯示模式：'gallery' = 圖大張只看縮圖；'table' = 詳細表格
   // 預設 gallery，使用者切換後記憶在 localStorage
@@ -169,6 +172,9 @@ export function ProductManagement() {
     if (onlyMissingImage) {
       items = items.filter((it) => !it.variant.image_url)
     }
+    if (onlyMissingCover) {
+      items = items.filter((it) => !it.variant.cover_image_url)
+    }
 
     // 搜尋：多關鍵字（空白分隔）AND
     const q = search.trim().toLowerCase()
@@ -189,7 +195,7 @@ export function ProductManagement() {
 
     // 排序
     return sortItems(items, sortBy)
-  }, [tabItems, search, onlyMissingPrice, onlyMissingImage, sortBy])
+  }, [tabItems, search, onlyMissingPrice, onlyMissingImage, onlyMissingCover, sortBy])
 
   /** 在「目前 tab + 搜尋」前提下，未進一步狀態篩選的清單，用來算缺價/沒圖數量 */
   const baseForCounts: VariantListItem[] = useMemo(() => {
@@ -288,7 +294,7 @@ export function ProductManagement() {
         {/* BAO 連結僅顯示給超級管理員；只勾 can_products / can_products_view 的編輯/瀏覽者不顯示 */}
         <PageHeader user={user} title="📦 商品管理" showBaoLink={isAdmin(user)} />
 
-        {/* 儀表板：種數 / 件數 / 缺價 / 沒圖（隨搜尋變動，缺價/沒圖點擊即篩） */}
+        {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面（隨搜尋變動，點擊即篩） */}
         <InventoryDashboard
           base={baseForCounts}
           filtered={filteredItems}
@@ -296,8 +302,10 @@ export function ProductManagement() {
           isFiltered={hasAnyFilter}
           onlyMissingPrice={onlyMissingPrice}
           onlyMissingImage={onlyMissingImage}
+          onlyMissingCover={onlyMissingCover}
           onToggleMissingPrice={() => setOnlyMissingPrice((v) => !v)}
           onToggleMissingImage={() => setOnlyMissingImage((v) => !v)}
+          onToggleMissingCover={() => setOnlyMissingCover((v) => !v)}
           onClearAll={clearAllFilters}
           isMobile={isMobile}
         />
@@ -625,7 +633,7 @@ function SortMenu({ value, onChange, isMobile }: SortMenuProps) {
 }
 
 // ============================================================
-//  庫存儀表板（取代狀態 chip）：種數／件數／缺價／沒圖
+//  庫存儀表板：種數／件數／缺價／沒實拍／沒封面
 //  - 沒篩選：顯示 tab 全庫總數
 //  - 有篩選：顯示「目前 X 種 / 全 Y 種」
 //  - 缺價／沒圖：點擊 toggle 篩選
@@ -637,8 +645,10 @@ interface InventoryDashboardProps {
   isFiltered: boolean
   onlyMissingPrice: boolean
   onlyMissingImage: boolean
+  onlyMissingCover: boolean
   onToggleMissingPrice: () => void
   onToggleMissingImage: () => void
+  onToggleMissingCover: () => void
   onClearAll: () => void
   isMobile: boolean
 }
@@ -649,8 +659,10 @@ function InventoryDashboard({
   isFiltered,
   onlyMissingPrice,
   onlyMissingImage,
+  onlyMissingCover,
   onToggleMissingPrice,
   onToggleMissingImage,
+  onToggleMissingCover,
   onClearAll,
   isMobile,
 }: InventoryDashboardProps) {
@@ -658,6 +670,7 @@ function InventoryDashboard({
   const baseStockTotal = base.reduce((s, it) => s + (it.variant.stock || 0), 0)
   const missingPriceCount = base.filter((it) => it.variant.price == null).length
   const missingImageCount = base.filter((it) => !it.variant.image_url).length
+  const missingCoverCount = base.filter((it) => !it.variant.cover_image_url).length
 
   const filteredSkuCount = filtered.length
   const filteredStockTotal = filtered.reduce((s, it) => s + (it.variant.stock || 0), 0)
@@ -708,7 +721,7 @@ function InventoryDashboard({
         }}
       />
 
-      {/* 待補：缺價 / 沒圖（可點擊 toggle） */}
+      {/* 待補：缺價 / 沒實拍 / 沒封面（可點擊 toggle） */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <DashboardStatChip
           label="缺價"
@@ -720,13 +733,22 @@ function InventoryDashboard({
           trackId="product_filter_missing_price"
         />
         <DashboardStatChip
-          label="沒圖"
+          label="沒實拍"
           count={missingImageCount}
           active={onlyMissingImage}
           onClick={onToggleMissingImage}
           color="#1565c0"
           bgActive="#e3f2fd"
           trackId="product_filter_missing_image"
+        />
+        <DashboardStatChip
+          label="沒封面"
+          count={missingCoverCount}
+          active={onlyMissingCover}
+          onClick={onToggleMissingCover}
+          color="#6a1b9a"
+          bgActive="#f3e5f5"
+          trackId="product_filter_missing_cover"
         />
       </div>
 
