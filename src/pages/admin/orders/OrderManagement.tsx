@@ -38,7 +38,7 @@ import type { OrderInboxTab, ShopOrderWithItems } from './types'
 
 const TABS: { id: OrderInboxTab; label: string }[] = [
   { id: 'waiting', label: '等貨' },
-  { id: 'ready', label: '可送報帳' },
+  { id: 'ready', label: '可送結帳' },
   { id: 'all', label: '全部' },
 ]
 
@@ -124,16 +124,16 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       .map((it) => ({ item_id: it.id, qty: qtyBillable(it) }))
       .filter((x) => x.qty > 0)
     if (items.length === 0) {
-      toast.error('沒有可送報帳的現貨')
+      toast.error('沒有可送結帳的現貨')
       return
     }
-    if (!confirm(`送報帳 ${order.order_no}？\n將 reserve 現貨並進入待報帳。`)) return
+    if (!confirm(`送結帳 ${order.order_no}？\n將保留現貨並進入待結帳。`)) return
     try {
       await submitShopOrderBilling(order.id, items, user?.id)
-      toast.success('已送報帳')
+      toast.success('已送結帳')
       await reloadOrders()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '送報帳失敗')
+      toast.error(e instanceof Error ? e.message : '送結帳失敗')
     }
   }
 
@@ -142,10 +142,10 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       .filter((it) => it.qty_pending_bill > 0)
       .map((it) => ({ item_id: it.id, qty: it.qty_pending_bill }))
     if (items.length === 0) return
-    if (!confirm('撤回待報帳並釋放 reserve？')) return
+    if (!confirm('撤回待結帳並釋放保留？')) return
     try {
       await cancelShopOrderBilling(order.id, items, user?.id)
-      toast.success('已撤回送報帳')
+      toast.success('已撤回送結帳')
       await reloadOrders()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '撤回失敗')
@@ -193,7 +193,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         </div>
         <span style={{ color: '#ddd', display: isMobile ? 'none' : 'inline' }}>·</span>
         <OrderStatChip label="等貨" count={tabCounts.waiting} color="#ef6c00" />
-        <OrderStatChip label="可送報帳" count={tabCounts.ready} color="#1565c0" />
+        <OrderStatChip label="可送結帳" count={tabCounts.ready} color="#1565c0" />
       </div>
 
       <div
@@ -243,7 +243,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         <div style={adminContentCardStyle(isMobile)}>
           <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.35 }}>📋</div>
           <div style={{ fontSize: 15, color: '#666', marginBottom: 4 }}>
-            {tab === 'waiting' ? '沒有等貨訂單' : tab === 'ready' ? '沒有可送報帳訂單' : '還沒有訂單'}
+            {tab === 'waiting' ? '沒有等貨訂單' : tab === 'ready' ? '沒有可送結帳訂單' : '還沒有訂單'}
           </div>
           {canEdit && tab === 'all' && (
             <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa' }}>
@@ -305,8 +305,8 @@ function OrderCard({
   if (cancelled) tags.push('已作廢')
   else {
     if (orderHasWaitingStock(order)) tags.push('等貨')
-    if (orderHasReadyToBill(order)) tags.push('可送報帳')
-    if (orderHasPendingBill(order)) tags.push('待報帳')
+    if (orderHasReadyToBill(order)) tags.push('可送結帳')
+    if (orderHasPendingBill(order)) tags.push('待結帳')
   }
 
   return (
@@ -356,7 +356,7 @@ function OrderCard({
           return (
             <li key={it.id}>
               {label} × {it.qty}
-              {it.qty_pending_bill > 0 && ` （待報帳 ${it.qty_pending_bill}）`}
+              {it.qty_pending_bill > 0 && ` （待結帳 ${it.qty_pending_bill}）`}
               {it.qty_paid > 0 && ` （已付 ${it.qty_paid}）`}
               {waiting && ` （等貨 ${qtyOpen(it)}）`}
               {stockNote && ` · ${stockNote}`}
@@ -368,10 +368,10 @@ function OrderCard({
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <ActionBtn isMobile={isMobile} onClick={onEdit}>編輯</ActionBtn>
           {orderHasReadyToBill(order) && (
-            <ActionBtn isMobile={isMobile} primary onClick={onSubmitBilling}>送報帳</ActionBtn>
+            <ActionBtn isMobile={isMobile} primary onClick={onSubmitBilling}>送結帳</ActionBtn>
           )}
           {orderHasPendingBill(order) && (
-            <ActionBtn isMobile={isMobile} onClick={onCancelBilling}>撤回送報帳</ActionBtn>
+            <ActionBtn isMobile={isMobile} onClick={onCancelBilling}>撤回送結帳</ActionBtn>
           )}
           <ActionBtn isMobile={isMobile} danger onClick={onDeleteOrder}>刪除</ActionBtn>
         </div>
@@ -382,8 +382,8 @@ function OrderCard({
 
 const TAG_STYLES: Record<string, { color: string; bg: string }> = {
   等貨: { color: '#ef6c00', bg: '#fff4e0' },
-  可送報帳: { color: '#1565c0', bg: '#e3f2fd' },
-  待報帳: { color: '#6a1b9a', bg: '#f3e5f5' },
+  可送結帳: { color: '#1565c0', bg: '#e3f2fd' },
+  待結帳: { color: '#6a1b9a', bg: '#f3e5f5' },
   已作廢: { color: '#888', bg: '#f5f5f5' },
 }
 

@@ -233,7 +233,7 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
         </h2>
         {locked && (
           <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 8, padding: 10, marginBottom: 12, fontSize: 13 }}>
-            已送報帳或已結帳，品項鎖定；僅可改備註。
+            已送結帳或已結清，品項鎖定；僅可改備註。
           </div>
         )}
 

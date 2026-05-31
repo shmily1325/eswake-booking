@@ -1,11 +1,11 @@
 import type { ShopOrderItemWithVariant, ShopOrderWithItems } from './types'
 
-/** 尚未送報帳的訂購量 */
+/** 尚未送結帳的訂購量 */
 export function qtyOpen(item: ShopOrderItemWithVariant): number {
   return Math.max(0, item.qty - item.qty_pending_bill - item.qty_paid)
 }
 
-/** 到貨有現貨、可送報帳數量 */
+/** 到貨有現貨、可送結帳數量 */
 export function qtyBillable(item: ShopOrderItemWithVariant): number {
   const open = qtyOpen(item)
   if (open <= 0) return 0

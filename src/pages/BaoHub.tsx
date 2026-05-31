@@ -74,7 +74,7 @@ export function BaoHub() {
             link: '/boards'
           },
           {
-            title: '訂單報帳',
+            title: '訂單結帳',
             icon: '🧾',
             link: '/order-settle'
           }

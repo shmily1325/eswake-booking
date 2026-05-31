@@ -33,7 +33,7 @@ export function OrderSettlePage() {
 
   useEffect(() => {
     if (!isAdmin(user)) {
-      toast.error('訂單報帳僅限管理員')
+      toast.error('訂單結帳僅限管理員')
       navigate('/')
       return
     }
@@ -63,14 +63,14 @@ export function OrderSettlePage() {
   return (
     <ProductHubShell>
       <PageHeader
-        title="🧾 訂單報帳"
+        title="🧾 訂單結帳"
         user={user}
         showBaoLink={isAdmin(user)}
         extraLinks={[{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }]}
       />
 
       <p style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
-        待報帳訂單；可調整單價／折扣。付款方式：扣儲值、匯款、現金（會員／非會員皆可，邏輯同回報管理）。
+        待結帳訂單；可調整單價／折扣。付款方式：扣儲值、匯款、現金（會員／非會員皆可，邏輯同回報管理）。
       </p>
 
       {loading ? (
@@ -82,7 +82,7 @@ export function OrderSettlePage() {
       ) : orders.length === 0 ? (
         <div style={adminContentCardStyle(isMobile)}>
           <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.35 }}>🧾</div>
-          目前沒有待報帳訂單
+          目前沒有待結帳訂單
         </div>
       ) : (
         orders.map((order) => (
