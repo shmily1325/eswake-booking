@@ -745,6 +745,202 @@ function VariantBlock({
     if (headerClickable) setCollapsed((c) => !c)
   }
   const stop = (e: React.MouseEvent) => e.stopPropagation()
+  /** 手機入庫：封面進階工具預設收合 */
+  const [coverExpanded, setCoverExpanded] = useState(false)
+
+  const stockField = (
+    <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
+      <label style={labelStyle}>庫存 *</label>
+      <input
+        style={inputStyle}
+        inputMode="numeric"
+        value={draft.stock}
+        onChange={(e) => onChange({ stock: e.target.value.replace(/\D/g, '') })}
+        placeholder="0"
+        disabled={disabled || draft.pendingDelete}
+      />
+    </div>
+  )
+
+  const fieldsGrid = (
+    <div
+      style={{
+        display: 'grid',
+        gap: 8,
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
+      }}
+    >
+      {isMobile ? stockField : null}
+      <div style={{ gridColumn: isMobile ? '1 / -1' : 'auto' }}>
+        <label style={labelStyle}>貨號</label>
+        <input
+          style={inputStyle}
+          value={draft.vendor_code}
+          onChange={(e) => onChange({ vendor_code: e.target.value })}
+          placeholder="例如：F12303-CE"
+          disabled={disabled || draft.pendingDelete}
+        />
+      </div>
+      {schemaFields.map((f) => (
+        <div key={f.key}>
+          <label style={labelStyle}>
+            {f.label}
+            {f.required && <span style={{ color: '#c62828' }}> *</span>}
+          </label>
+          {f.type === 'select' ? (
+            <select
+              style={inputStyle}
+              value={draft.attributes[f.key] ?? ''}
+              onChange={(e) => onAttributeChange(f.key, e.target.value)}
+              disabled={disabled || draft.pendingDelete}
+            >
+              <option value="">--</option>
+              {(f.options ?? []).map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              style={inputStyle}
+              inputMode={f.type === 'number' ? 'numeric' : 'text'}
+              value={draft.attributes[f.key] ?? ''}
+              onChange={(e) => onAttributeChange(f.key, e.target.value)}
+              placeholder={f.placeholder}
+              disabled={disabled || draft.pendingDelete}
+            />
+          )}
+        </div>
+      ))}
+      <div>
+        <label style={labelStyle}>
+          售價
+          <span style={{ color: '#999', fontWeight: 400, marginLeft: 4 }}>(留空＝待補)</span>
+        </label>
+        <input
+          style={inputStyle}
+          inputMode="numeric"
+          value={draft.price}
+          onChange={(e) => onChange({ price: e.target.value.replace(/\D/g, '') })}
+          placeholder="待補"
+          disabled={disabled || draft.pendingDelete}
+        />
+      </div>
+      {!isMobile ? stockField : null}
+    </div>
+  )
+
+  const productPhotoSection = (
+    <div style={{ marginTop: isMobile ? 12 : 12 }}>
+      <label style={{ ...labelStyle, marginBottom: 6 }}>實品照</label>
+      {!isMobile && (
+        <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 8px 0' }}>
+          庫存核對用，不會取代商城封面。
+        </p>
+      )}
+      <ImageUploader
+        value={draft.image_url}
+        path={draft.image_path}
+        entityId={draft.id}
+        storageFolder="variants"
+        disabled={disabled || draft.pendingDelete}
+        onChange={(next) => onChange({ image_url: next.url, image_path: next.path })}
+        onUpload={onImageUpload}
+        size={isMobile ? 80 : 96}
+      />
+    </div>
+  )
+
+  const coverEditor = (
+    <CoverImageEditor
+      compact
+      value={draft.cover_image_url}
+      path={draft.cover_image_path}
+      entityId={draft.id}
+      storageFolder="covers"
+      brand={brand}
+      model={model}
+      vendorCode={draft.vendor_code}
+      disabled={disabled || draft.pendingDelete}
+      onChange={(next) => onChange({ cover_image_url: next.url, cover_image_path: next.path })}
+      onUpload={onImageUpload}
+    />
+  )
+
+  const mobileCoverSection = coverExpanded ? (
+    <div style={{ marginTop: 12 }}>
+      <button
+        type="button"
+        onClick={() => setCoverExpanded(false)}
+        disabled={disabled || draft.pendingDelete}
+        style={{
+          marginBottom: 8,
+          padding: '4px 0',
+          border: 'none',
+          background: 'transparent',
+          color: '#2563eb',
+          fontSize: 12,
+          cursor: disabled || draft.pendingDelete ? 'not-allowed' : 'pointer',
+        }}
+      >
+        收合封面 ▴
+      </button>
+      {coverEditor}
+    </div>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setCoverExpanded(true)}
+      disabled={disabled || draft.pendingDelete}
+      style={{
+        marginTop: 12,
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 12px',
+        border: '1px solid #e5e7eb',
+        borderRadius: 10,
+        background: '#fafafa',
+        cursor: disabled || draft.pendingDelete ? 'not-allowed' : 'pointer',
+        textAlign: 'left',
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          flexShrink: 0,
+          borderRadius: 8,
+          overflow: 'hidden',
+          background: '#eee',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 11,
+          color: '#999',
+        }}
+      >
+        {draft.cover_image_url ? (
+          <img
+            src={draft.cover_image_url}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          '無'
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>
+          {draft.cover_image_url ? '封面 ✓' : '封面 未設'}
+        </div>
+        <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>商城官圖 · 點展開設定</div>
+      </div>
+      <span style={{ fontSize: 12, color: '#2563eb', flexShrink: 0 }}>展開 ▾</span>
+    </button>
+  )
 
   return (
     <div style={blockStyle}>
@@ -828,109 +1024,18 @@ function VariantBlock({
         )}
       </div>
 
-      {effectiveCollapsed ? null : (
-      <>
-        <CoverImageEditor
-          compact
-          value={draft.cover_image_url}
-          path={draft.cover_image_path}
-          entityId={draft.id}
-          storageFolder="covers"
-          brand={brand}
-          model={model}
-          vendorCode={draft.vendor_code}
-          disabled={disabled || draft.pendingDelete}
-          onChange={(next) => onChange({ cover_image_url: next.url, cover_image_path: next.path })}
-          onUpload={onImageUpload}
-        />
-
-        <div style={{ marginTop: 12 }}>
-          <label style={{ ...labelStyle, marginBottom: 6 }}>實品照</label>
-          <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 8px 0' }}>
-            庫存核對用，不會取代商城封面。
-          </p>
-          <ImageUploader
-            value={draft.image_url}
-            path={draft.image_path}
-            entityId={draft.id}
-            storageFolder="variants"
-            disabled={disabled || draft.pendingDelete}
-            onChange={(next) => onChange({ image_url: next.url, image_path: next.path })}
-            onUpload={onImageUpload}
-            size={isMobile ? 80 : 96}
-          />
-        </div>
-
-        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', marginTop: 12 }}>
-          <div style={{ gridColumn: isMobile ? '1 / -1' : 'auto' }}>
-            <label style={labelStyle}>貨號</label>
-            <input
-              style={inputStyle}
-              value={draft.vendor_code}
-              onChange={(e) => onChange({ vendor_code: e.target.value })}
-              placeholder="例如：F12303-CE"
-              disabled={disabled || draft.pendingDelete}
-            />
-          </div>
-          {schemaFields.map((f) => (
-            <div key={f.key}>
-              <label style={labelStyle}>
-                {f.label}
-                {f.required && <span style={{ color: '#c62828' }}> *</span>}
-              </label>
-              {f.type === 'select' ? (
-                <select
-                  style={inputStyle}
-                  value={draft.attributes[f.key] ?? ''}
-                  onChange={(e) => onAttributeChange(f.key, e.target.value)}
-                  disabled={disabled || draft.pendingDelete}
-                >
-                  <option value="">--</option>
-                  {(f.options ?? []).map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  style={inputStyle}
-                  inputMode={f.type === 'number' ? 'numeric' : 'text'}
-                  value={draft.attributes[f.key] ?? ''}
-                  onChange={(e) => onAttributeChange(f.key, e.target.value)}
-                  placeholder={f.placeholder}
-                  disabled={disabled || draft.pendingDelete}
-                />
-              )}
-            </div>
-          ))}
-          <div>
-            <label style={labelStyle}>
-              售價
-              <span style={{ color: '#999', fontWeight: 400, marginLeft: 4 }}>(留空＝待補)</span>
-            </label>
-            <input
-              style={inputStyle}
-              inputMode="numeric"
-              value={draft.price}
-              onChange={(e) => onChange({ price: e.target.value.replace(/\D/g, '') })}
-              placeholder="待補"
-              disabled={disabled || draft.pendingDelete}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>庫存 *</label>
-            <input
-              style={inputStyle}
-              inputMode="numeric"
-              value={draft.stock}
-              onChange={(e) => onChange({ stock: e.target.value.replace(/\D/g, '') })}
-              placeholder="0"
-              disabled={disabled || draft.pendingDelete}
-            />
-          </div>
-        </div>
-      </>
+      {effectiveCollapsed ? null : isMobile ? (
+        <>
+          {fieldsGrid}
+          {productPhotoSection}
+          {mobileCoverSection}
+        </>
+      ) : (
+        <>
+          {coverEditor}
+          {productPhotoSection}
+          <div style={{ marginTop: 12 }}>{fieldsGrid}</div>
+        </>
       )}
     </div>
   )
