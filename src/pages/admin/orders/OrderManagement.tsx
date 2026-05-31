@@ -382,7 +382,7 @@ function OrderCard({
       </ul>
       {orderHasPendingBill(order) && (
         <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6a1b9a' }}>
-          已送結帳，等待管理員在 BAO › 訂單結帳 扣款
+          已送結帳
         </p>
       )}
       {!cancelled && canEdit && (
