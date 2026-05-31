@@ -5,13 +5,15 @@ import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
 import { Footer } from '../../../components/Footer'
 import {
-  AdminTabBar,
-  AdminTabButton,
+  AdminPillButton,
+  AdminPillRow,
+  adminContentCardStyle,
   adminLoadingStyle,
+  adminStatsBarStyle,
 } from '../../../components/AdminPageLayout'
-import { ToastContainer, useToast } from '../../../components/ui'
+import { Button, ToastContainer, useToast } from '../../../components/ui'
 import { useResponsive } from '../../../hooks/useResponsive'
-import { getButtonStyle, getCardStyle } from '../../../styles/designSystem'
+import { getButtonStyle } from '../../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../../utils/auth'
 import { formatAttributes } from '../products/schema'
 import { formatDateTime } from '../../../utils/formatters'
@@ -178,47 +180,73 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         </>
       )}
 
-      <AdminTabBar>
-        {TABS.map((t) => (
-          <AdminTabButton
-            key={t.id}
-            active={tab === t.id}
-            badge={tabCounts[t.id]}
-            data-track={`product_orders_tab_${t.id}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </AdminTabButton>
-        ))}
-      </AdminTabBar>
+      <div style={adminStatsBarStyle(isMobile)}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <span style={{ fontSize: 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>
+            {tabCounts.all}
+          </span>
+          <span style={{ fontSize: 12, color: '#888' }}>筆進行中</span>
+        </div>
+        <span style={{ color: '#ddd', display: isMobile ? 'none' : 'inline' }}>·</span>
+        <OrderStatChip label="等貨" count={tabCounts.waiting} color="#ef6c00" />
+        <OrderStatChip label="可送報帳" count={tabCounts.ready} color="#1565c0" />
+      </div>
 
-      {canEdit && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <button
-            type="button"
+      <div
+        style={{
+          display: 'flex',
+          gap: 10,
+          marginBottom: 14,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+        }}
+      >
+        <AdminPillRow style={{ flex: 1, minWidth: 0, marginBottom: 0 }}>
+          {TABS.map((t) => (
+            <AdminPillButton
+              key={t.id}
+              active={tab === t.id}
+              badge={tabCounts[t.id]}
+              data-track={`product_orders_tab_${t.id}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </AdminPillButton>
+          ))}
+        </AdminPillRow>
+        {canEdit && (
+          <Button
+            variant="primary"
             data-track="product_order_add"
             onClick={() => {
               setEditOrder(null)
               setDialogOpen(true)
             }}
-            style={{
-              ...getButtonStyle('primary', 'medium', isMobile),
-              width: isMobile ? '100%' : undefined,
-            }}
           >
-            + 新增訂單
-          </button>
-        </div>
-      )}
+            + 新增{isMobile ? '' : '訂單'}
+          </Button>
+        )}
+      </div>
 
       {loading ? (
         <div style={adminLoadingStyle()}>載入中…</div>
       ) : loadError ? (
-        <div style={{ ...getCardStyle(isMobile), textAlign: 'center', color: '#c62828' }}>
+        <div style={{ ...adminContentCardStyle(isMobile), color: '#c62828' }}>
           載入失敗：{loadError}
         </div>
       ) : visible.length === 0 ? (
-        <div style={{ ...getCardStyle(isMobile), textAlign: 'center', color: '#666' }}>沒有訂單</div>
+        <div style={adminContentCardStyle(isMobile)}>
+          <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.35 }}>📋</div>
+          <div style={{ fontSize: 15, color: '#666', marginBottom: 4 }}>
+            {tab === 'waiting' ? '沒有等貨訂單' : tab === 'ready' ? '沒有可送報帳訂單' : '還沒有訂單'}
+          </div>
+          {canEdit && tab === 'all' && (
+            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa' }}>
+              點右上角「+ 新增訂單」開始開單
+            </p>
+          )}
+        </div>
       ) : (
         visible.map((order) => (
           <OrderCard
@@ -280,19 +308,22 @@ function OrderCard({
   return (
     <div
       style={{
-        ...getCardStyle(isMobile),
-        marginBottom: 16,
+        background: '#fff',
+        borderRadius: 12,
+        padding: isMobile ? '14px 12px' : '16px 18px',
+        marginBottom: 12,
+        border: '1px solid #ececec',
         opacity: cancelled ? 0.65 : 1,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
         <div>
-          <strong>{order.order_no}</strong>
-          <span style={{ marginLeft: 10, color: '#444' }}>{order.contact_name}</span>
+          <strong style={{ fontSize: 15 }}>{order.order_no}</strong>
+          <span style={{ marginLeft: 10, color: '#555', fontSize: 14 }}>{order.contact_name}</span>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {tags.map((t) => (
-            <span key={t} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 12, background: '#f0f0f0' }}>{t}</span>
+            <OrderTag key={t} label={t} />
           ))}
         </div>
       </div>
@@ -342,6 +373,45 @@ function OrderCard({
         </div>
       )}
     </div>
+  )
+}
+
+const TAG_STYLES: Record<string, { color: string; bg: string }> = {
+  等貨: { color: '#ef6c00', bg: '#fff4e0' },
+  可送報帳: { color: '#1565c0', bg: '#e3f2fd' },
+  待報帳: { color: '#6a1b9a', bg: '#f3e5f5' },
+  已作廢: { color: '#888', bg: '#f5f5f5' },
+}
+
+function OrderTag({ label }: { label: string }) {
+  const s = TAG_STYLES[label] ?? { color: '#666', bg: '#f0f0f0' }
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        padding: '3px 8px',
+        borderRadius: 999,
+        color: s.color,
+        background: s.bg,
+      }}
+    >
+      {label}
+    </span>
+  )
+}
+
+function OrderStatChip({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <span
+      style={{
+        fontSize: 12,
+        color: count > 0 ? color : '#bbb',
+        fontWeight: count > 0 ? 600 : 400,
+      }}
+    >
+      {label} {count}
+    </span>
   )
 }
 

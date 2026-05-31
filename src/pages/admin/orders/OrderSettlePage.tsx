@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
 import { Footer } from '../../../components/Footer'
-import { AdminPageShell, adminLoadingStyle } from '../../../components/AdminPageLayout'
+import { ProductHubShell, adminContentCardStyle, adminLoadingStyle } from '../../../components/AdminPageLayout'
 import { ToastContainer, useToast } from '../../../components/ui'
 import { useResponsive } from '../../../hooks/useResponsive'
-import { getCardStyle } from '../../../styles/designSystem'
 import { isAdmin } from '../../../utils/auth'
 import { fetchPendingBillOrders } from './api'
 import { PendingOrderSettleItem } from './PendingOrderSettleItem'
@@ -62,7 +61,7 @@ export function OrderSettlePage() {
   }, [user.id, navigate, toast])
 
   return (
-    <AdminPageShell maxWidth={1400}>
+    <ProductHubShell>
       <PageHeader
         title="🧾 訂單報帳"
         user={user}
@@ -77,11 +76,12 @@ export function OrderSettlePage() {
       {loading ? (
         <div style={adminLoadingStyle()}>載入中…</div>
       ) : loadError ? (
-        <div style={{ ...getCardStyle(isMobile), textAlign: 'center', color: '#c62828' }}>
+        <div style={{ ...adminContentCardStyle(isMobile), color: '#c62828' }}>
           載入失敗：{loadError}
         </div>
       ) : orders.length === 0 ? (
-        <div style={{ ...getCardStyle(isMobile), textAlign: 'center', color: '#666' }}>
+        <div style={adminContentCardStyle(isMobile)}>
+          <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.35 }}>🧾</div>
           目前沒有待報帳訂單
         </div>
       ) : (
@@ -97,6 +97,6 @@ export function OrderSettlePage() {
 
       <Footer />
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
-    </AdminPageShell>
+    </ProductHubShell>
   )
 }
