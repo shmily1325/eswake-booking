@@ -69,14 +69,14 @@ export function BaoHub() {
             link: '/member-transaction'
           },
           {
-            title: '訂單報帳',
-            icon: '🧾',
-            link: '/order-settle'
-          },
-          {
             title: '置板管理',
             icon: '🏄',
             link: '/boards'
+          },
+          {
+            title: '訂單報帳',
+            icon: '🧾',
+            link: '/order-settle'
           }
         ]
       },
