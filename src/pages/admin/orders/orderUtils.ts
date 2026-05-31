@@ -29,11 +29,12 @@ export function orderHasPendingBill(order: ShopOrderWithItems): boolean {
 
 export function filterOrdersByInbox(
   orders: ShopOrderWithItems[],
-  tab: 'waiting' | 'ready' | 'all',
+  tab: 'waiting' | 'ready' | 'pending' | 'all',
 ): ShopOrderWithItems[] {
   const active = orders.filter((o) => !o.cancelled_at)
   if (tab === 'all') return active
   if (tab === 'waiting') return active.filter(orderHasWaitingStock)
+  if (tab === 'pending') return active.filter(orderHasPendingBill)
   return active.filter(orderHasReadyToBill)
 }
 

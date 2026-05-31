@@ -137,6 +137,8 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
         paymentMethod,
         paymentMethod === 'balance' ? chargeMemberId : null,
         user?.id,
+        null,
+        user?.email ?? null,
       )
       toast.success(`${settleLabel}完成`)
       onComplete()

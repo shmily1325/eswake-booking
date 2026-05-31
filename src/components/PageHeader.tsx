@@ -8,12 +8,22 @@ interface PageHeaderProps {
   title: string
   user: User | null
   showBaoLink?: boolean
+  /** 管理員：header 快速連到商品管理 / 訂單結帳（樣式同 BAO link） */
+  showAdminShopLinks?: boolean
   showHomeLink?: boolean
   breadcrumbs?: Array<{ label: string; link: string }>
-  extraLinks?: Array<{ label: string; link: string }> // 新增：額外的連結按鈕
+  extraLinks?: Array<{ label: string; link: string }>
 }
 
-export function PageHeader({ title, user, showBaoLink = false, showHomeLink = true, breadcrumbs, extraLinks }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  user,
+  showBaoLink = false,
+  showAdminShopLinks = false,
+  showHomeLink = true,
+  breadcrumbs,
+  extraLinks,
+}: PageHeaderProps) {
   const { isMobile } = useResponsive()
 
   // 手機版移除開頭的 emoji，節省空間
@@ -95,6 +105,16 @@ export function PageHeader({ title, user, showBaoLink = false, showHomeLink = tr
               {link.label}
             </Link>
           ))}
+          {showAdminShopLinks && (
+            <>
+              <Link to="/products" style={navButtonStyle} data-track="header_products">
+                {isMobile ? '📦' : '📦 商品'}
+              </Link>
+              <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
+                {isMobile ? '🧾' : '🧾 訂單結帳'}
+              </Link>
+            </>
+          )}
           {showBaoLink && (
             <Link to="/bao" style={navButtonStyle} data-track="header_bao">
               ← BAO

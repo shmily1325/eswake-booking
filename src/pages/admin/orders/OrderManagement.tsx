@@ -12,6 +12,7 @@ import {
   adminStatsBarStyle,
 } from '../../../components/AdminPageLayout'
 import { Button, ToastContainer, useToast } from '../../../components/ui'
+import { toast as globalToast } from '../../../utils/toast'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { getButtonStyle } from '../../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../../utils/auth'
@@ -39,6 +40,7 @@ import type { OrderInboxTab, ShopOrderWithItems } from './types'
 const TABS: { id: OrderInboxTab; label: string }[] = [
   { id: 'waiting', label: '等貨' },
   { id: 'ready', label: '可送結帳' },
+  { id: 'pending', label: '待結帳' },
   { id: 'all', label: '全部' },
 ]
 
@@ -112,6 +114,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     () => ({
       waiting: activeOrders.filter(orderHasWaitingStock).length,
       ready: activeOrders.filter(orderHasReadyToBill).length,
+      pending: activeOrders.filter(orderHasPendingBill).length,
       all: activeOrders.length,
     }),
     [activeOrders],
@@ -129,11 +132,12 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     }
     if (!confirm(`送結帳 ${order.order_no}？\n將保留現貨並進入待結帳。`)) return
     try {
-      await submitShopOrderBilling(order.id, items, user?.id)
-      toast.success('已送結帳')
+      await submitShopOrderBilling(order.id, items, user?.email ?? null)
       await reloadOrders()
+      setTab('pending')
+      globalToast.success('已送結帳，已切換至「待結帳」')
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '送結帳失敗')
+      globalToast.error(e instanceof Error ? e.message : '送結帳失敗')
     }
   }
 
@@ -144,7 +148,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     if (items.length === 0) return
     if (!confirm('撤回待結帳並釋放保留？')) return
     try {
-      await cancelShopOrderBilling(order.id, items, user?.id)
+      await cancelShopOrderBilling(order.id, items, user?.email ?? null)
       toast.success('已撤回送結帳')
       await reloadOrders()
     } catch (e: unknown) {
@@ -194,6 +198,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         <span style={{ color: '#ddd', display: isMobile ? 'none' : 'inline' }}>·</span>
         <OrderStatChip label="等貨" count={tabCounts.waiting} color="#ef6c00" />
         <OrderStatChip label="可送結帳" count={tabCounts.ready} color="#1565c0" />
+        <OrderStatChip label="待結帳" count={tabCounts.pending} color="#6a1b9a" />
       </div>
 
       <div
@@ -243,8 +248,19 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         <div style={adminContentCardStyle(isMobile)}>
           <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.35 }}>📋</div>
           <div style={{ fontSize: 15, color: '#666', marginBottom: 4 }}>
-            {tab === 'waiting' ? '沒有等貨訂單' : tab === 'ready' ? '沒有可送結帳訂單' : '還沒有訂單'}
+            {tab === 'waiting'
+              ? '沒有等貨訂單'
+              : tab === 'ready'
+                ? '沒有可送結帳訂單'
+                : tab === 'pending'
+                  ? '沒有待結帳訂單'
+                  : '還沒有訂單'}
           </div>
+          {tab === 'ready' && tabCounts.pending > 0 && (
+            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#6a1b9a' }}>
+              已有 {tabCounts.pending} 筆待結帳，請切換至「待結帳」查看
+            </p>
+          )}
           {canEdit && tab === 'all' && (
             <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa' }}>
               點右上角「+ 新增訂單」開始開單
@@ -364,6 +380,11 @@ function OrderCard({
           )
         })}
       </ul>
+      {orderHasPendingBill(order) && (
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6a1b9a' }}>
+          已送結帳，等待管理員在 BAO › 訂單結帳 扣款
+        </p>
+      )}
       {!cancelled && canEdit && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <ActionBtn isMobile={isMobile} onClick={onEdit}>編輯</ActionBtn>

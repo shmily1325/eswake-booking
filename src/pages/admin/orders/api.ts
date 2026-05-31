@@ -153,12 +153,12 @@ export async function cancelShopOrder(orderId: string, updatedBy?: string | null
 export async function submitShopOrderBilling(
   orderId: string,
   items: { item_id: string; qty: number }[],
-  operatorId?: string,
+  operatorEmail?: string | null,
 ): Promise<void> {
   const result = await supabase.rpc('submit_shop_order_billing', {
     p_order_id: orderId,
     p_items: items as unknown as Json,
-    p_operator_id: operatorId ?? null,
+    p_operator_email: operatorEmail ?? null,
   })
   await rpcError(result)
 }
@@ -166,12 +166,12 @@ export async function submitShopOrderBilling(
 export async function cancelShopOrderBilling(
   orderId: string,
   items: { item_id: string; qty: number }[],
-  operatorId?: string,
+  operatorEmail?: string | null,
 ): Promise<void> {
   const result = await supabase.rpc('cancel_shop_order_billing', {
     p_order_id: orderId,
     p_items: items as unknown as Json,
-    p_operator_id: operatorId ?? null,
+    p_operator_email: operatorEmail ?? null,
   })
   await rpcError(result)
 }
@@ -190,6 +190,7 @@ export async function settleShopOrder(
   chargeMemberId: string | null,
   operatorId?: string,
   notes?: string | null,
+  operatorEmail?: string | null,
 ): Promise<void> {
   const result = await supabase.rpc('settle_shop_order', {
     p_order_id: orderId,
@@ -198,6 +199,7 @@ export async function settleShopOrder(
     p_payment_method: paymentMethod,
     p_operator_id: operatorId ?? null,
     p_notes: notes ?? null,
+    p_operator_email: operatorEmail ?? null,
   })
   await rpcError(result)
 }

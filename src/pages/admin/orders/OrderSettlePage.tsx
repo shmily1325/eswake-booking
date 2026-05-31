@@ -66,6 +66,7 @@ export function OrderSettlePage() {
         title="🧾 訂單結帳"
         user={user}
         showBaoLink={isAdmin(user)}
+        showAdminShopLinks={isAdmin(user)}
         extraLinks={[{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }]}
       />
 

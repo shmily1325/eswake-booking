@@ -1557,6 +1557,7 @@ export type Database = {
       cancel_shop_order_billing: {
         Args: {
           p_items: Json
+          p_operator_email?: string | null
           p_operator_id?: string | null
           p_order_id: string
         }
@@ -1571,6 +1572,7 @@ export type Database = {
           p_charge_member_id?: string | null
           p_items: Json
           p_notes?: string | null
+          p_operator_email?: string | null
           p_operator_id?: string | null
           p_order_id: string
           p_payment_method: string
@@ -1580,6 +1582,7 @@ export type Database = {
       submit_shop_order_billing: {
         Args: {
           p_items: Json
+          p_operator_email?: string | null
           p_operator_id?: string | null
           p_order_id: string
         }
