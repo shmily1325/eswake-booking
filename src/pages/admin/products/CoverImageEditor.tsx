@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
-import { ImageUploader } from './ImageUploader'
+import { ImageUploader, type ImageUploaderHandle } from './ImageUploader'
 
 import { getProductImageSearchLinks } from './brandSearch'
 
@@ -77,6 +77,7 @@ export function CoverImageEditor({
 }: CoverImageEditorProps) {
 
   const toast = useToast()
+  const uploaderRef = useRef<ImageUploaderHandle>(null)
 
   const [urlInput, setUrlInput] = useState('')
 
@@ -460,7 +461,7 @@ export function CoverImageEditor({
 
         <p style={hintStyle}>
 
-          商城官圖，每個 SKU 一張。可貼 URL 或從剪貼簿貼圖。
+          Shop 封面，每個 SKU 一張。可從相簿上傳，或貼 URL／剪貼簿。
 
         </p>
 
@@ -468,7 +469,7 @@ export function CoverImageEditor({
 
       {compact && (
 
-        <p style={hintStyle}>商城官圖；下方另設實品照。</p>
+        <p style={hintStyle}>可點縮圖從相簿上傳（同實品照），或貼 URL。</p>
 
       )}
 
@@ -494,6 +495,8 @@ export function CoverImageEditor({
 
         <ImageUploader
 
+          ref={uploaderRef}
+
           value={value}
 
           path={path}
@@ -510,11 +513,35 @@ export function CoverImageEditor({
 
           size={thumbSize}
 
+          emptyLabel="相簿／拍照"
+
         />
 
 
 
         <div style={{ flex: 1, minWidth: compact ? undefined : 200, width: compact ? '100%' : undefined, display: 'grid', gap: 8 }}>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+
+            <button
+
+              type="button"
+
+              onClick={() => uploaderRef.current?.openPicker()}
+
+              disabled={disabled || busy}
+
+              style={buttonStyle}
+
+            >
+
+              從相簿上傳
+
+            </button>
+
+          </div>
+
+
 
           {searchLinks.map((link) => (
 

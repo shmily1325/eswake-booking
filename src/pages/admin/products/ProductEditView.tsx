@@ -544,7 +544,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
-                  {isPublic ? '上架到商城' : '不上架（後台可見、商城隱藏）'}
+                  {isPublic ? '上架到 Shop' : '不上架（後台可見、Shop 隱藏）'}
                 </div>
                 <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
                   {isPublic
@@ -745,7 +745,7 @@ function VariantBlock({
     if (headerClickable) setCollapsed((c) => !c)
   }
   const stop = (e: React.MouseEvent) => e.stopPropagation()
-  /** 手機入庫：封面進階工具預設收合 */
+  /** 封面進階工具預設收合（入庫優先） */
   const [coverExpanded, setCoverExpanded] = useState(false)
 
   const stockField = (
@@ -770,7 +770,7 @@ function VariantBlock({
         gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
       }}
     >
-      {isMobile ? stockField : null}
+      {stockField}
       <div style={{ gridColumn: isMobile ? '1 / -1' : 'auto' }}>
         <label style={labelStyle}>貨號</label>
         <input
@@ -827,16 +827,15 @@ function VariantBlock({
           disabled={disabled || draft.pendingDelete}
         />
       </div>
-      {!isMobile ? stockField : null}
     </div>
   )
 
   const productPhotoSection = (
-    <div style={{ marginTop: isMobile ? 12 : 12 }}>
+    <div style={{ marginTop: 12 }}>
       <label style={{ ...labelStyle, marginBottom: 6 }}>實品照</label>
       {!isMobile && (
         <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 8px 0' }}>
-          庫存核對用，不會取代商城封面。
+          庫存核對用，不會取代 Shop 封面。
         </p>
       )}
       <ImageUploader
@@ -848,6 +847,7 @@ function VariantBlock({
         onChange={(next) => onChange({ image_url: next.url, image_path: next.path })}
         onUpload={onImageUpload}
         size={isMobile ? 80 : 96}
+        emptyLabel="相簿／拍照"
       />
     </div>
   )
@@ -868,7 +868,7 @@ function VariantBlock({
     />
   )
 
-  const mobileCoverSection = coverExpanded ? (
+  const collapsibleCoverSection = coverExpanded ? (
     <div style={{ marginTop: 12 }}>
       <button
         type="button"
@@ -936,7 +936,7 @@ function VariantBlock({
         <div style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>
           {draft.cover_image_url ? '封面 ✓' : '封面 未設'}
         </div>
-        <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>商城官圖 · 點展開設定</div>
+        <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>Shop 封面 · 點展開（相簿／URL）</div>
       </div>
       <span style={{ fontSize: 12, color: '#2563eb', flexShrink: 0 }}>展開 ▾</span>
     </button>
@@ -1024,17 +1024,11 @@ function VariantBlock({
         )}
       </div>
 
-      {effectiveCollapsed ? null : isMobile ? (
+      {effectiveCollapsed ? null : (
         <>
           {fieldsGrid}
           {productPhotoSection}
-          {mobileCoverSection}
-        </>
-      ) : (
-        <>
-          {coverEditor}
-          {productPhotoSection}
-          <div style={{ marginTop: 12 }}>{fieldsGrid}</div>
+          {collapsibleCoverSection}
         </>
       )}
     </div>

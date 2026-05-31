@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { uploadProductImage } from '../../../utils/imageUpload'
 import { useToast } from '../../../components/ui'
 
@@ -23,23 +23,40 @@ interface ImageUploaderProps {
   onUpload?: (newPath: string) => void
   /** 顯示尺寸（px），預設 96 */
   size?: number
+  /** 空白時的提示文字 */
+  emptyLabel?: string
   /** 唯讀（不可上傳/刪除） */
   disabled?: boolean
 }
 
-export function ImageUploader({
-  value,
-  variantId,
-  storageFolder = 'variants',
-  entityId,
-  onChange,
-  onUpload,
-  size = 96,
-  disabled,
-}: ImageUploaderProps) {
+export type ImageUploaderHandle = {
+  openPicker: () => void
+}
+
+export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>(function ImageUploader(
+  {
+    value,
+    variantId,
+    storageFolder = 'variants',
+    entityId,
+    onChange,
+    onUpload,
+    size = 96,
+    emptyLabel = '上傳圖片',
+    disabled,
+  },
+  ref,
+) {
   const inputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
   const [uploading, setUploading] = useState(false)
+
+  useImperativeHandle(ref, () => ({
+    openPicker: () => {
+      if (disabled || uploading) return
+      inputRef.current?.click()
+    },
+  }))
 
   const handleSelect = () => {
     if (disabled || uploading) return
@@ -145,7 +162,7 @@ export function ImageUploader({
         <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
           <div style={{ fontSize: size >= 80 ? 24 : 18 }}>📷</div>
           <div style={{ marginTop: 4 }}>
-            {uploading ? '上傳中…' : disabled ? '無圖片' : '上傳圖片'}
+            {uploading ? '上傳中…' : disabled ? '無圖片' : emptyLabel}
           </div>
         </div>
       )}
@@ -178,4 +195,4 @@ export function ImageUploader({
       />
     </div>
   )
-}
+})

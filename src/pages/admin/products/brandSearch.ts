@@ -1,5 +1,5 @@
 /**
- * 依品牌／貨號產生「去官網搜尋」的連結，方便上架人員找官圖。
+ * 依品牌／貨號產生「去官網搜尋」的連結，方便上架人員找封面。
  */
 export interface ProductImageSearchLink {
   label: string
