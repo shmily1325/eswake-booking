@@ -18,9 +18,9 @@ import { hasEditorFeatureAsync, isAdmin } from '../../../utils/auth'
 import { formatAttributes } from '../products/schema'
 import { formatDateTime } from '../../../utils/formatters'
 import {
-  cancelShopOrder,
   cancelShopOrderBilling,
   countOrderTransactions,
+  deleteShopOrder,
   fetchShopOrders,
   submitShopOrderBilling,
 } from './api'
@@ -152,19 +152,23 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     }
   }
 
-  const handleCancelOrder = async (order: ShopOrderWithItems) => {
+  const handleDeleteOrder = async (order: ShopOrderWithItems) => {
     const txCount = await countOrderTransactions(order.id)
-    let msg = `確定作廢訂單 ${order.order_no}？`
+    const hasPaid = order.items.some((it) => it.qty_paid > 0)
+    let msg = `確定刪除訂單 ${order.order_no}？\n此操作無法復原。`
+    if (hasPaid) {
+      msg += '\n\n⚠️ 已有結帳紀錄，相關 settlements 會一併刪除。'
+    }
     if (txCount > 0) {
-      msg += `\n\n⚠️ 已有 ${txCount} 筆交易記錄，作廢後請到會員儲值人工處理。`
+      msg += `\n\n⚠️ 已有 ${txCount} 筆儲值交易，交易保留；請到會員儲值人工處理。`
     }
     if (!confirm(msg)) return
     try {
-      await cancelShopOrder(order.id, user?.email ?? null)
-      toast.success('已作廢')
+      await deleteShopOrder(order.id)
+      toast.success('已刪除訂單')
       await reloadOrders()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '作廢失敗')
+      toast.error(e instanceof Error ? e.message : '刪除失敗')
     }
   }
 
@@ -260,7 +264,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             }}
             onSubmitBilling={() => void handleSubmitBilling(order)}
             onCancelBilling={() => void handleCancelBilling(order)}
-            onCancelOrder={() => void handleCancelOrder(order)}
+            onDeleteOrder={() => void handleDeleteOrder(order)}
           />
         ))
       )}
@@ -286,7 +290,7 @@ function OrderCard({
   onEdit,
   onSubmitBilling,
   onCancelBilling,
-  onCancelOrder,
+  onDeleteOrder,
 }: {
   order: ShopOrderWithItems
   isMobile: boolean
@@ -294,7 +298,7 @@ function OrderCard({
   onEdit: () => void
   onSubmitBilling: () => void
   onCancelBilling: () => void
-  onCancelOrder: () => void
+  onDeleteOrder: () => void
 }) {
   const cancelled = Boolean(order.cancelled_at)
   const tags: string[] = []
@@ -369,7 +373,7 @@ function OrderCard({
           {orderHasPendingBill(order) && (
             <ActionBtn isMobile={isMobile} onClick={onCancelBilling}>撤回送報帳</ActionBtn>
           )}
-          <ActionBtn isMobile={isMobile} danger onClick={onCancelOrder}>作廢</ActionBtn>
+          <ActionBtn isMobile={isMobile} danger onClick={onDeleteOrder}>刪除</ActionBtn>
         </div>
       )}
     </div>

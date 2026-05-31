@@ -14,14 +14,17 @@ const ORDER_SELECT = `
   items:shop_order_items(
     *,
     variant:product_variants(
-      id, product_id, vendor_code, attributes, price, stock, reserved_qty, last_stock_in_at, is_active,
+      id, product_id, vendor_code, attributes, price, stock, reserved_qty, is_active,
       product:products(id, brand, model, category)
     )
   )
 `
 
 async function rpcError(result: { data: unknown; error: unknown }): Promise<void> {
-  if (result.error) throw result.error
+  if (result.error) {
+    const err = result.error as { message?: string }
+    throw new Error(err.message || '操作失敗')
+  }
   const payload = result.data as { success?: boolean; error?: string } | null
   if (payload && payload.success === false) {
     throw new Error(payload.error || '操作失敗')
@@ -56,7 +59,7 @@ export async function fetchPendingBillOrders(): Promise<ShopOrderWithItems[]> {
 
 export async function generateOrderNo(): Promise<string> {
   const { data, error } = await supabase.rpc('generate_shop_order_no')
-  if (error) throw error
+  if (error) throw new Error(error.message)
   return String(data)
 }
 
@@ -76,7 +79,7 @@ export async function createShopOrder(input: CreateOrderInput): Promise<string> 
     })
     .select('id')
     .single()
-  if (error) throw error
+  if (error) throw new Error(error.message)
 
   const orderId = data.id as string
   if (input.lines.length > 0) {
@@ -88,7 +91,7 @@ export async function createShopOrder(input: CreateOrderInput): Promise<string> 
         qty: line.qty,
       })),
     )
-    if (ie) throw ie
+    if (ie) throw new Error(ie.message)
   }
   return orderId
 }
@@ -105,12 +108,12 @@ export async function updateShopOrder(orderId: string, input: UpdateOrderInput):
 
   if (Object.keys(patch).length > 0) {
     const { error } = await supabase.from('shop_orders').update(patch).eq('id', orderId)
-    if (error) throw error
+    if (error) throw new Error(error.message)
   }
 
   if (input.lines) {
     const { error: de } = await supabase.from('shop_order_items').delete().eq('order_id', orderId)
-    if (de) throw de
+    if (de) throw new Error(de.message)
     if (input.lines.length > 0) {
       const { error: ie } = await supabase.from('shop_order_items').insert(
         input.lines.map((line) => ({
@@ -120,12 +123,12 @@ export async function updateShopOrder(orderId: string, input: UpdateOrderInput):
           qty: line.qty,
         })),
       )
-      if (ie) throw ie
+      if (ie) throw new Error(ie.message)
     }
   }
 }
 
-export async function cancelShopOrder(orderId: string, updatedBy?: string | null): Promise<void> {
+export async function deleteShopOrder(orderId: string): Promise<void> {
   const order = await fetchShopOrder(orderId)
   if (!order) throw new Error('找不到訂單')
 
@@ -137,14 +140,14 @@ export async function cancelShopOrder(orderId: string, updatedBy?: string | null
     await cancelShopOrderBilling(orderId, pendingItems)
   }
 
-  const { error } = await supabase
-    .from('shop_orders')
-    .update({
-      cancelled_at: new Date().toISOString(),
-      updated_by: updatedBy ?? null,
-    })
-    .eq('id', orderId)
-  if (error) throw error
+  const { error } = await supabase.from('shop_orders').delete().eq('id', orderId)
+  if (error) throw new Error(error.message)
+}
+
+/** @deprecated 改用 deleteShopOrder（硬刪除） */
+export async function cancelShopOrder(orderId: string, updatedBy?: string | null): Promise<void> {
+  void updatedBy
+  await deleteShopOrder(orderId)
 }
 
 export async function submitShopOrderBilling(

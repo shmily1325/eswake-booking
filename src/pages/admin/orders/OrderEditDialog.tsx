@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
-import { useToast } from '../../../components/ui'
+import { toast } from '../../../utils/toast'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from '../products/api'
 import { formatAttributes } from '../products/schema'
 import type { VariantListItem } from '../products/types'
-import { createShopOrder, updateShopOrder } from './api'
+import { createShopOrder, deleteShopOrder, updateShopOrder } from './api'
 import { OrderMemberPicker, resolveContactName } from './OrderMemberPicker'
 import type { DeliveryMethod, ShopOrderWithItems } from './types'
 
@@ -25,7 +25,6 @@ interface Props {
 }
 
 export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Props) {
-  const toast = useToast()
   const memberSearch = useMemberSearch()
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('pickup_es')
   const [shippingInfo, setShippingInfo] = useState('')
@@ -35,6 +34,7 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
   const [variantSearch, setVariantSearch] = useState('')
   const [variants, setVariants] = useState<VariantListItem[]>([])
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const locked = useMemo(
     () => Boolean(order?.items.some((it) => it.qty_pending_bill > 0 || it.qty_paid > 0)),
@@ -46,10 +46,11 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
     fetchAllProductsWithVariants()
       .then((list) => setVariants(flattenToVariantItems(list)))
       .catch(() => toast.error('載入商品失敗'))
-  }, [open, toast])
+  }, [open])
 
   useEffect(() => {
     if (!open) return
+    setSaveError(null)
     if (order) {
       setDeliveryMethod(order.delivery_method)
       setShippingInfo(order.shipping_info || '')
@@ -127,6 +128,8 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
       return
     }
 
+    setSaveError(null)
+
     setSaving(true)
     try {
       if (order) {
@@ -173,7 +176,28 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
       onSaved()
       onClose()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '儲存失敗')
+      const msg = formatSaveError(e)
+      setSaveError(msg)
+      toast.error(msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!order) return
+    if (!confirm(`確定刪除訂單 ${order.order_no}？\n此操作無法復原。`)) return
+    setSaveError(null)
+    setSaving(true)
+    try {
+      await deleteShopOrder(order.id)
+      toast.success('已刪除訂單')
+      onSaved()
+      onClose()
+    } catch (e: unknown) {
+      const msg = formatSaveError(e)
+      setSaveError(msg)
+      toast.error(msg)
     } finally {
       setSaving(false)
     }
@@ -324,8 +348,30 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
           style={{ width: '100%', marginBottom: 16, padding: 8, borderRadius: 8, border: '1px solid #ccc', boxSizing: 'border-box' }}
         />
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          {saveError && (
+            <p
+              style={{
+                flex: '1 1 100%',
+                margin: 0,
+                fontSize: 13,
+                color: '#c62828',
+              }}
+            >
+              {saveError}
+            </p>
+          )}
           <button type="button" onClick={onClose} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #ccc', background: '#fff' }}>取消</button>
+          {order && (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void handleDelete()}
+              style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #c62828', background: '#fff', color: '#c62828' }}
+            >
+              刪除
+            </button>
+          )}
           <button type="button" disabled={saving} onClick={() => void handleSave()} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#333', color: '#fff' }}>
             {saving ? '儲存中…' : '儲存'}
           </button>
@@ -333,6 +379,14 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
       </div>
     </div>
   )
+}
+
+function formatSaveError(e: unknown): string {
+  if (e instanceof Error) return e.message
+  if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
+    return (e as { message: string }).message
+  }
+  return '儲存失敗'
 }
 
 function lineLabel(
