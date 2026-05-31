@@ -1,8 +1,8 @@
 /**
  * 庫存系統的資料層 helper：商品 + SKU 的 CRUD。
  *
- * 目前不做歷史紀錄表（stock_movements 留到 Phase 2）。
- * 直接調整 stock 欄位即可，未來改成 RPC 寫入歷史也可以無痛切換。
+ * 庫存增加時 DB trigger 會更新 last_stock_in_at；扣庫不動。
+ * stock_movements 異動表留 Phase 2。
  */
 
 import { supabase } from '../../../lib/supabase'

@@ -1115,6 +1115,8 @@ export type Database = {
           price: number | null
           cost: number | null
           stock: number
+          reserved_qty: number
+          last_stock_in_at: string | null
           cover_image_url: string | null
           cover_image_path: string | null
           image_url: string | null
@@ -1131,6 +1133,8 @@ export type Database = {
           price?: number | null
           cost?: number | null
           stock?: number
+          reserved_qty?: number
+          last_stock_in_at?: string | null
           cover_image_url?: string | null
           cover_image_path?: string | null
           image_url?: string | null
@@ -1147,6 +1151,8 @@ export type Database = {
           price?: number | null
           cost?: number | null
           stock?: number
+          reserved_qty?: number
+          last_stock_in_at?: string | null
           cover_image_url?: string | null
           cover_image_path?: string | null
           image_url?: string | null
@@ -1212,6 +1218,7 @@ export type Database = {
           operator_id: string | null
           payment_method: string | null
           related_booking_id: number | null
+          shop_order_id: string | null
           transaction_date: string
           transaction_type: string
           vip_voucher_amount_after: number | null
@@ -1235,6 +1242,7 @@ export type Database = {
           operator_id?: string | null
           payment_method?: string | null
           related_booking_id?: number | null
+          shop_order_id?: string | null
           transaction_date: string
           transaction_type: string
           vip_voucher_amount_after?: number | null
@@ -1258,6 +1266,7 @@ export type Database = {
           operator_id?: string | null
           payment_method?: string | null
           related_booking_id?: number | null
+          shop_order_id?: string | null
           transaction_date?: string
           transaction_type?: string
           vip_voucher_amount_after?: number | null
@@ -1348,6 +1357,163 @@ export type Database = {
           },
         ]
       }
+      shop_order_items: {
+        Row: {
+          id: string
+          order_id: string
+          variant_id: string
+          unit_price: number
+          qty: number
+          qty_pending_bill: number
+          qty_paid: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          variant_id: string
+          unit_price?: number
+          qty?: number
+          qty_pending_bill?: number
+          qty_paid?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          variant_id?: string
+          unit_price?: number
+          qty?: number
+          qty_pending_bill?: number
+          qty_paid?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_order_settlements: {
+        Row: {
+          id: string
+          order_id: string
+          payment_method: string
+          charge_member_id: string | null
+          amount_total: number
+          items_snapshot: Json
+          notes: string | null
+          settled_by: string | null
+          settled_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          payment_method: string
+          charge_member_id?: string | null
+          amount_total: number
+          items_snapshot?: Json
+          notes?: string | null
+          settled_by?: string | null
+          settled_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          payment_method?: string
+          charge_member_id?: string | null
+          amount_total?: number
+          items_snapshot?: Json
+          notes?: string | null
+          settled_by?: string | null
+          settled_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_order_settlements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_orders: {
+        Row: {
+          id: string
+          order_no: string
+          member_id: string | null
+          contact_name: string
+          delivery_method: string
+          shipping_info: string | null
+          customer_note: string | null
+          internal_notes: string | null
+          cancelled_at: string | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          order_no: string
+          member_id?: string | null
+          contact_name: string
+          delivery_method?: string
+          shipping_info?: string | null
+          customer_note?: string | null
+          internal_notes?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          order_no?: string
+          member_id?: string | null
+          contact_name?: string
+          delivery_method?: string
+          shipping_info?: string | null
+          customer_note?: string | null
+          internal_notes?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_orders_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1375,6 +1541,47 @@ export type Database = {
           p_member_id: string
           p_operator_id: string
           p_participant_id: number
+        }
+        Returns: Json
+      }
+      adjust_shop_order_settlement: {
+        Args: {
+          p_amount_total: number
+          p_items_snapshot: Json
+          p_notes?: string | null
+          p_operator_id?: string | null
+          p_settlement_id: string
+        }
+        Returns: Json
+      }
+      cancel_shop_order_billing: {
+        Args: {
+          p_items: Json
+          p_operator_id?: string | null
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      generate_shop_order_no: {
+        Args: Record<string, never>
+        Returns: string
+      }
+      settle_shop_order: {
+        Args: {
+          p_charge_member_id?: string | null
+          p_items: Json
+          p_notes?: string | null
+          p_operator_id?: string | null
+          p_order_id: string
+          p_payment_method: string
+        }
+        Returns: Json
+      }
+      submit_shop_order_billing: {
+        Args: {
+          p_items: Json
+          p_operator_id?: string | null
+          p_order_id: string
         }
         Returns: Json
       }

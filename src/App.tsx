@@ -63,7 +63,8 @@ import { BoardManagement } from './pages/admin/BoardManagement'
 import { BaoHub } from './pages/BaoHub'
 import { StaffManagement } from './pages/admin/StaffManagement'
 import { BoatManagement } from './pages/admin/BoatManagement'
-import { ProductManagement } from './pages/admin/products/ProductManagement'
+import { ProductHub } from './pages/admin/products/ProductHub'
+import { OrderSettlePage } from './pages/admin/orders/OrderSettlePage'
 // import { EditorHub } from './pages/EditorHub' // 已整合到人員管理
 import { QuickTransaction } from './pages/QuickTransaction'
 import { MemberTransaction } from './pages/member/MemberTransaction'
@@ -192,7 +193,8 @@ function AppContent() {
         <Route path="/coach-daily" element={<CoachDailyView />} />
         {/* <Route path="/permissions" element={<PermissionManagement />} /> */}
         <Route path="/boats" element={<BoatManagement />} />
-        <Route path="/products" element={<ProductManagement />} />
+        <Route path="/products/*" element={<ProductHub />} />
+        <Route path="/order-settle" element={<OrderSettlePage />} />
         <Route path="/statistics" element={<Statistics />} />
         <Route path="/boat-usage-hours" element={<BoatUsageHoursPage />} />
         {/* <Route path="/editor" element={<EditorHub />} /> */}

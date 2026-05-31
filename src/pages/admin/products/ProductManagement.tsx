@@ -8,6 +8,7 @@ import { useResponsive } from '../../../hooks/useResponsive'
 import { Button, Badge, useToast, ToastContainer } from '../../../components/ui'
 import { hasEditorFeatureAsync, hasProductsAccessAsync, isAdmin } from '../../../utils/auth'
 import { trackClick, trackClickDedupedWithin } from '../../../utils/trackClick'
+import { formatDateTime } from '../../../utils/formatters'
 import {
   CATEGORY_SCHEMAS,
   SHOP_GROUPS,
@@ -26,7 +27,7 @@ type ViewMode =
   | { kind: 'edit'; productId: string }
   | { kind: 'create'; defaultCategory: string }
 
-export function ProductManagement() {
+export function ProductManagement({ embedded: _embedded }: { embedded?: boolean } = {}) {
   const user = useAuthUser()
   const navigate = useNavigate()
   const toast = useToast()
@@ -823,6 +824,15 @@ function stockBadgeColor(stock: number): { bg: string; color: string; label: str
   return { bg: '#e8f5e9', color: '#2e7d32', label: `庫存 ${stock}` }
 }
 
+function formatStockInAt(at: string | null | undefined): string | null {
+  if (!at) return null
+  try {
+    return formatDateTime(at)
+  } catch {
+    return null
+  }
+}
+
 /** 售價顯示：null = 「缺」（橘標籤），其他 = "$1,234" */
 function PriceDisplay({ price, align = 'left' }: { price: number | null; align?: 'left' | 'right' }) {
   if (price == null) {
@@ -1095,6 +1105,11 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
         <div style={{ marginTop: 4, fontSize: 13 }}>
           <PriceDisplay price={variant.price} />
         </div>
+        {formatStockInAt(variant.last_stock_in_at) && (
+          <div style={{ marginTop: 2, fontSize: 11, color: '#888' }}>
+            入庫 {formatStockInAt(variant.last_stock_in_at)}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1352,6 +1367,11 @@ function MobileListRow({
             {stock.label}
           </span>
         </div>
+        {formatStockInAt(variant.last_stock_in_at) && (
+          <div style={{ marginTop: 4, fontSize: 11, color: '#888' }}>
+            入庫 {formatStockInAt(variant.last_stock_in_at)}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1377,6 +1397,7 @@ function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTablePro
               <th style={thStyle('120px')}>貨號</th>
               <th style={thStyle('90px', 'right')}>售價</th>
               <th style={thStyle('80px', 'center')}>庫存</th>
+              <th style={thStyle('130px')}>入庫</th>
             </tr>
           </thead>
           <tbody>
@@ -1442,6 +1463,9 @@ function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTablePro
                     >
                       {stock.label}
                     </span>
+                  </td>
+                  <td style={{ ...tdStyle(), fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>
+                    {formatStockInAt(it.variant.last_stock_in_at) ?? '—'}
                   </td>
                 </tr>
               )

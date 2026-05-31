@@ -16,6 +16,7 @@ import {
 import type { ProductVariantRow, ProductWithVariants } from './types'
 import { removeProductImage } from '../../../utils/imageUpload'
 import { trackClick } from '../../../utils/trackClick'
+import { formatDateTime } from '../../../utils/formatters'
 
 interface ProductEditViewProps {
   /** 編輯模式：傳入 productId；新增模式：傳 null */
@@ -37,6 +38,7 @@ interface DraftVariant {
   attributes: Record<string, string>
   price: string
   stock: string
+  last_stock_in_at: string | null
   cover_image_url: string | null
   cover_image_path: string | null
   originalCoverImagePath: string | null
@@ -64,6 +66,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     // price 為 null 時保留空字串（UI 顯示「待補」），不要強制變成 "0"
     price: v.price == null ? '' : String(v.price),
     stock: String(v.stock ?? 0),
+    last_stock_in_at: v.last_stock_in_at ?? null,
     cover_image_url: v.cover_image_url ?? null,
     cover_image_path: v.cover_image_path ?? null,
     originalCoverImagePath: v.cover_image_path ?? null,
@@ -80,6 +83,7 @@ function emptyDraft(): DraftVariant {
     attributes: {},
     price: '',
     stock: '0',
+    last_stock_in_at: null,
     cover_image_url: null,
     cover_image_path: null,
     originalCoverImagePath: null,
@@ -211,6 +215,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
         attributes: { ...lastActive.attributes },
         price: lastActive.price,
         stock: '0',
+        last_stock_in_at: null,
         cover_image_url: null,
         cover_image_path: null,
         originalCoverImagePath: null,
@@ -759,6 +764,11 @@ function VariantBlock({
         placeholder="0"
         disabled={disabled || draft.pendingDelete}
       />
+      {draft.last_stock_in_at && (
+        <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>
+          最近入庫：{formatDateTime(draft.last_stock_in_at)}
+        </p>
+      )}
     </div>
   )
 
