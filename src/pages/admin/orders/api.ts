@@ -33,7 +33,7 @@ export async function fetchShopOrders(): Promise<ShopOrderWithItems[]> {
     .from('shop_orders')
     .select(ORDER_SELECT)
     .order('created_at', { ascending: false })
-  if (error) throw error
+  if (error) throw new Error(error.message)
   return (data ?? []) as unknown as ShopOrderWithItems[]
 }
 

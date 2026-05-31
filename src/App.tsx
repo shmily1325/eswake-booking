@@ -160,7 +160,7 @@ function AppContent() {
     <ErrorBoundary>
       {/* 離線狀態提示 */}
       {!isOnline && (
-        <div className="fixed top-0 left-0 right-0 bg-orange-500 text-white py-3 px-5 text-center z-[9999] text-base font-semibold shadow-md">
+        <div className="fixed top-0 left-0 right-0 bg-orange-500 text-white py-3 px-5 text-center z-9999 text-base font-semibold shadow-md">
           ⚠️ 網路連線已中斷，請檢查您的網路設定
         </div>
       )}

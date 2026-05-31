@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { designSystem } from '../../styles/designSystem'
 import { toast as globalToast } from '../../utils/toast'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -184,23 +184,50 @@ export const useToast = () => {
     return unsubscribe
   }, [])
 
-  const showToast = (type: ToastType, message: string, duration?: number) => {
+  const showToast = useCallback((type: ToastType, message: string, duration?: number) => {
     const id = `toast-${Date.now()}-${Math.random()}`
     setMessages((prev) => [...prev, { id, type, message, duration }])
-  }
+  }, [])
 
-  const closeToast = (id: string) => {
+  const closeToast = useCallback((id: string) => {
     setMessages((prev) => prev.filter((msg) => msg.id !== id))
-  }
+  }, [])
 
-  return {
+  const success = useCallback(
+    (message: string, duration?: number) => showToast('success', message, duration),
+    [showToast],
+  )
+  const error = useCallback(
+    (message: string, duration?: number) => showToast('error', message, duration),
+    [showToast],
+  )
+  const warning = useCallback(
+    (message: string, duration?: number) => showToast('warning', message, duration),
+    [showToast],
+  )
+  const info = useCallback(
+    (message: string, duration?: number) => showToast('info', message, duration),
+    [showToast],
+  )
+
+  // 穩定 reference：messages 更新時不換物件，避免 useEffect(..., [toast]) 無限重跑
+  const apiRef = useRef({
     messages,
     showToast,
     closeToast,
-    success: (message: string, duration?: number) => showToast('success', message, duration),
-    error: (message: string, duration?: number) => showToast('error', message, duration),
-    warning: (message: string, duration?: number) => showToast('warning', message, duration),
-    info: (message: string, duration?: number) => showToast('info', message, duration),
-  }
+    success,
+    error,
+    warning,
+    info,
+  })
+  apiRef.current.messages = messages
+  apiRef.current.showToast = showToast
+  apiRef.current.closeToast = closeToast
+  apiRef.current.success = success
+  apiRef.current.error = error
+  apiRef.current.warning = warning
+  apiRef.current.info = info
+
+  return apiRef.current
 }
 

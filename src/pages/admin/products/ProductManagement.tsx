@@ -27,7 +27,7 @@ type ViewMode =
   | { kind: 'edit'; productId: string }
   | { kind: 'create'; defaultCategory: string }
 
-export function ProductManagement({ embedded: _embedded }: { embedded?: boolean } = {}) {
+export function ProductManagement({ embedded = false }: { embedded?: boolean } = {}) {
   const user = useAuthUser()
   const navigate = useNavigate()
   const toast = useToast()
@@ -290,10 +290,15 @@ export function ProductManagement({ embedded: _embedded }: { embedded?: boolean 
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f6f8', padding: isMobile ? '12px' : '20px' }}>
+    <div
+      style={{
+        minHeight: embedded ? 'auto' : '100vh',
+        background: embedded ? 'transparent' : '#f5f6f8',
+        padding: embedded ? 0 : isMobile ? '12px' : '20px',
+      }}
+    >
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        {/* BAO 連結僅顯示給超級管理員；只勾 can_products / can_products_view 的編輯/瀏覽者不顯示 */}
-        <PageHeader user={user} title="📦 商品管理" showBaoLink={isAdmin(user)} />
+        {!embedded && <PageHeader user={user} title="📦 商品管理" showBaoLink={isAdmin(user)} />}
 
         {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面（隨搜尋變動，點擊即篩） */}
         <InventoryDashboard
@@ -515,7 +520,7 @@ export function ProductManagement({ embedded: _embedded }: { embedded?: boolean 
           />
         )}
 
-        <Footer />
+        {!embedded && <Footer />}
       </div>
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>

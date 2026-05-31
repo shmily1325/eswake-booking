@@ -43,7 +43,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
       className="group block bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden transition-all"
     >
       {/* 圖片區（4:5 比例，比 9:16 矮一截，瀏覽時一屏能看到更多） */}
-      <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
+      <div className="relative aspect-4/5 bg-gray-100 overflow-hidden">
         <ImageOrFallback
           src={imageUrl}
           alt={`${product.brand} ${product.model}`}
@@ -65,7 +65,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
             {product.brand}
           </div>
         )}
-        <div className="mt-0.5 text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.25rem] leading-snug">
+        <div className="mt-0.5 text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-9 leading-snug">
           {product.model || '(Unnamed product)'}
         </div>
         <div className="mt-2">

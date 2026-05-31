@@ -229,7 +229,7 @@ function ProductDetailBody({
           手機 / 桌機都限制 max-h 跟 max-w，
           避免桌機左欄拉超長、右欄底下留白；手機則避免吃整個首屏。
         */}
-        <div className="relative aspect-[4/5] max-h-[60vh] md:max-h-[500px] max-w-[320px] sm:max-w-sm md:max-w-none mx-auto bg-gray-100 rounded-lg overflow-hidden">
+        <div className="relative aspect-4/5 max-h-[60vh] md:max-h-[500px] max-w-[320px] sm:max-w-sm md:max-w-none mx-auto bg-gray-100 rounded-lg overflow-hidden">
           <ImageOrFallback
             src={heroImageUrl}
             alt={`${product.brand} ${product.model}`}
@@ -257,7 +257,7 @@ function ProductDetailBody({
                   aria-selected={active}
                   title={opt.label}
                   className={
-                    'flex-shrink-0 w-14 h-18 sm:w-16 sm:h-20 rounded-md overflow-hidden border-2 transition-colors ' +
+                    'shrink-0 w-14 h-18 sm:w-16 sm:h-20 rounded-md overflow-hidden border-2 transition-colors ' +
                     (active
                       ? 'border-black'
                       : 'border-transparent hover:border-gray-300')
@@ -388,7 +388,7 @@ function ProductDetailBody({
 function LoadingState() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 animate-pulse">
-      <div className="aspect-[4/5] max-h-[500px] max-w-[320px] sm:max-w-sm md:max-w-none mx-auto w-full bg-gray-100 rounded-lg" />
+      <div className="aspect-4/5 max-h-[500px] max-w-[320px] sm:max-w-sm md:max-w-none mx-auto w-full bg-gray-100 rounded-lg" />
       <div className="space-y-3">
         <div className="h-3 w-1/4 bg-gray-100 rounded" />
         <div className="h-7 w-2/3 bg-gray-100 rounded" />
