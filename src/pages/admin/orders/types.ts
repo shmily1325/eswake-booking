@@ -3,6 +3,12 @@ import type { ProductRow, ProductVariantRow } from '../products/types'
 export type DeliveryMethod = 'pickup_es' | 'shipping'
 export type OrderPaymentMethod = 'balance' | 'transfer' | 'cash'
 
+export const PAYMENT_METHOD_LABELS: Record<OrderPaymentMethod, string> = {
+  balance: '扣儲值',
+  transfer: '匯款',
+  cash: '現金',
+}
+
 export interface ShopOrderRow {
   id: string
   order_no: string
@@ -52,6 +58,14 @@ export interface ShopOrderSettlementRow {
   notes: string | null
   settled_by: string | null
   settled_at: string
+}
+
+/** 結帳統計用：含訂單與扣款會員顯示欄位 */
+export interface ShopOrderSettlementWithDetails extends ShopOrderSettlementRow {
+  order_no: string
+  contact_name: string
+  order_cancelled_at: string | null
+  charge_member_name: string | null
 }
 
 export interface SettlementSnapshotLine {

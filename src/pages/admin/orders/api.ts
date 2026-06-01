@@ -4,7 +4,9 @@ import type {
   CreateOrderInput,
   OrderLineInput,
   OrderPaymentMethod,
+  SettlementSnapshotLine,
   ShopOrderSettlementRow,
+  ShopOrderSettlementWithDetails,
   ShopOrderWithItems,
   UpdateOrderInput,
 } from './types'
@@ -224,6 +226,11 @@ export async function adjustShopOrderSettlement(
   await rpcError(result)
 }
 
+function parseItemsSnapshot(raw: unknown): SettlementSnapshotLine[] {
+  if (!Array.isArray(raw)) return []
+  return raw as SettlementSnapshotLine[]
+}
+
 export async function fetchOrderSettlements(orderId: string): Promise<ShopOrderSettlementRow[]> {
   const { data, error } = await supabase
     .from('shop_order_settlements')
@@ -231,7 +238,53 @@ export async function fetchOrderSettlements(orderId: string): Promise<ShopOrderS
     .eq('order_id', orderId)
     .order('settled_at', { ascending: false })
   if (error) throw error
-  return (data ?? []) as unknown as ShopOrderSettlementRow[]
+  return ((data ?? []) as unknown as ShopOrderSettlementRow[]).map((row) => ({
+    ...row,
+    items_snapshot: parseItemsSnapshot(row.items_snapshot),
+  }))
+}
+
+/** 依 settled_at 區間查結帳紀錄（已結帳統計／細帳） */
+export async function fetchSettlementsInRange(
+  startDate: string,
+  endDate: string,
+): Promise<ShopOrderSettlementWithDetails[]> {
+  const { data, error } = await supabase
+    .from('shop_order_settlements')
+    .select(
+      `
+      *,
+      order:shop_orders(order_no, contact_name, cancelled_at),
+      charge_member:members!charge_member_id(id, name, nickname)
+    `,
+    )
+    .gte('settled_at', `${startDate}T00:00:00`)
+    .lte('settled_at', `${endDate}T23:59:59`)
+    .order('settled_at', { ascending: false })
+  if (error) throw new Error(error.message)
+
+  return ((data ?? []) as unknown as Array<
+    ShopOrderSettlementRow & {
+      order: { order_no: string; contact_name: string; cancelled_at: string | null } | null
+      charge_member: { name: string; nickname: string | null } | null
+    }
+  >).map((row) => ({
+    id: row.id,
+    order_id: row.order_id,
+    payment_method: row.payment_method as OrderPaymentMethod,
+    charge_member_id: row.charge_member_id,
+    amount_total: Number(row.amount_total),
+    items_snapshot: parseItemsSnapshot(row.items_snapshot),
+    notes: row.notes,
+    settled_by: row.settled_by,
+    settled_at: row.settled_at,
+    order_no: row.order?.order_no ?? '—',
+    contact_name: row.order?.contact_name ?? '—',
+    order_cancelled_at: row.order?.cancelled_at ?? null,
+    charge_member_name: row.charge_member
+      ? row.charge_member.nickname || row.charge_member.name
+      : null,
+  }))
 }
 
 export async function countOrderTransactions(orderId: string): Promise<number> {

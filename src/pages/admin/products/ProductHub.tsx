@@ -68,7 +68,8 @@ export function ProductHub() {
 
       }
 
-      const editable = (await hasEditorFeatureAsync(user, 'can_products')) || isAdmin(user)
+      const editable =
+        (await hasEditorFeatureAsync(user, 'can_products')) || isAdmin(user)
 
       if (cancelled) return
 
@@ -118,6 +119,7 @@ export function ProductHub() {
         showBaoLink={isAdmin(user)}
         productHubSection={onOrders ? 'orders' : 'inventory'}
         showOrderSettleLink={isAdmin(user)}
+        showProductOrdersLink={canEdit}
       />
 
 
@@ -134,7 +136,7 @@ export function ProductHub() {
           </AdminPillRow>
           <p style={{ margin: '0 0 14px', fontSize: 13, color: '#666', lineHeight: 1.5 }}>
             {onOrders
-              ? '開單、送結帳、追蹤狀態。管理員扣款請用上方「訂單結帳」。'
+              ? '開單、送結帳、追蹤狀態；「待結帳」表示已送結帳，等管理員在「訂單結帳」扣款。'
               : '管理 SKU、庫存與上架。客人訂單請切換「訂單開單」。'}
           </p>
         </>

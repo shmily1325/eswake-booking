@@ -16,6 +16,8 @@ interface PageHeaderProps {
   /** Hub 內：庫存 ↔ 訂單開單 + 可選訂單結帳 */
   productHubSection?: ProductHubHeaderSection
   showOrderSettleLink?: boolean
+  /** Hub 內是否顯示「訂單開單」（can_products 或超管） */
+  showProductOrdersLink?: boolean
   showHomeLink?: boolean
   breadcrumbs?: Array<{ label: string; link: string }>
   extraLinks?: Array<{ label: string; link: string }>
@@ -28,6 +30,7 @@ export function PageHeader({
   showAdminShopLinks = false,
   productHubSection,
   showOrderSettleLink = false,
+  showProductOrdersLink = false,
   showHomeLink = true,
   breadcrumbs,
   extraLinks,
@@ -115,9 +118,11 @@ export function PageHeader({
           ))}
           {productHubSection === 'inventory' && (
             <>
-              <Link to="/products/orders" style={navButtonStyle} data-track="header_product_orders">
-                {isMobile ? '📋' : '📋 訂單開單'}
-              </Link>
+              {showProductOrdersLink && (
+                <Link to="/products/orders" style={navButtonStyle} data-track="header_product_orders">
+                  {isMobile ? '📋' : '📋 訂單開單'}
+                </Link>
+              )}
               {showOrderSettleLink && (
                 <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
                   {isMobile ? '🧾' : '🧾 訂單結帳'}

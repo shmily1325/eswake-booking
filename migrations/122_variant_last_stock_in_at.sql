@@ -5,7 +5,7 @@ ALTER TABLE product_variants
   ADD COLUMN IF NOT EXISTS last_stock_in_at TIMESTAMPTZ;
 
 COMMENT ON COLUMN product_variants.last_stock_in_at IS
-  '最近一次庫存增加（入庫）時間；結帳扣庫、送報帳 reserve 不更新';
+  '最近一次庫存增加（入庫）時間；結帳扣庫、送結帳 reserve 不更新';
 
 -- 既有有庫存 SKU：以 updated_at 近似回填（Phase 2 stock_movements 會有更精確紀錄）
 UPDATE product_variants

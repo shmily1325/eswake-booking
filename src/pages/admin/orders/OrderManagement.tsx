@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { Footer } from '../../../components/Footer'
 import {
@@ -81,17 +81,17 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       setLoadError(null)
       try {
         if (!embedded) {
-          const editable = await hasEditorFeatureAsync(user, 'can_products')
+          const allowed =
+            (await hasEditorFeatureAsync(user, 'can_products')) || isAdmin(user)
           if (cancelled) return
-          if (!editable && !isAdmin(user)) {
+          if (!allowed) {
             toast.error('您沒有權限開單')
             navigate('/products')
             return
           }
-          setCanEdit(editable || isAdmin(user))
-        } else {
-          setCanEdit(true)
         }
+        if (cancelled) return
+        setCanEdit(true)
         setHasAccess(true)
         setOrders(await fetchShopOrders())
       } catch (e: unknown) {
@@ -196,34 +196,6 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
 
   return (
     <>
-      {embedded && isAdmin(user) && tabCounts.pending > 0 && (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: '10px 14px',
-            background: '#f3e5f5',
-            border: '1px solid #e1bee7',
-            borderRadius: 10,
-            fontSize: 14,
-            color: '#6a1b9a',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <span>
-            有 <strong>{tabCounts.pending}</strong> 筆已送結帳、待管理員扣款
-          </span>
-          <Link
-            to="/order-settle"
-            style={{ fontWeight: 600, color: '#6a1b9a', textDecoration: 'underline' }}
-          >
-            前往訂單結帳 →
-          </Link>
-        </div>
-      )}
-
       <div style={adminStatsBarStyle(isMobile)}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{ fontSize: 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>
@@ -301,6 +273,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             </AdminPillButton>
           ))}
         </AdminPillRow>
+
         {canEdit && (
           <Button
             variant="primary"

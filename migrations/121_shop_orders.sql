@@ -1,6 +1,6 @@
 -- =============================================
 -- 121_shop_orders.sql
--- 內部商品訂單：開單 → 送報帳(reserve) → 訂單報帳(settle)
+-- 內部商品訂單：開單 → 送結帳(reserve) → 訂單結帳(settle)
 -- 規格：docs/INTERNAL_ORDERS_PLAN.md v1.3
 -- =============================================
 
@@ -96,7 +96,7 @@ ALTER TABLE product_variants
   ADD CONSTRAINT product_variants_stock_reserved_ok
   CHECK (reserved_qty <= stock);
 
-COMMENT ON COLUMN product_variants.reserved_qty IS '已送報帳、待結帳的保留量';
+COMMENT ON COLUMN product_variants.reserved_qty IS '已送結帳、待結帳的保留量';
 
 -- ---------------------------------------------------------------------------
 -- 5. transactions.shop_order_id
@@ -162,7 +162,7 @@ CREATE TRIGGER trg_shop_order_settlements_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_shop_order_updated_at();
 
 -- ---------------------------------------------------------------------------
--- 8. RPC：送報帳（reserve）
+-- 8. RPC：送結帳（reserve）
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION submit_shop_order_billing(
   p_order_id UUID,
@@ -183,7 +183,7 @@ DECLARE
   v_available INTEGER;
 BEGIN
   IF p_items IS NULL OR jsonb_array_length(p_items) = 0 THEN
-    RETURN jsonb_build_object('success', false, 'error', '未指定送報帳品項');
+    RETURN jsonb_build_object('success', false, 'error', '未指定送結帳品項');
   END IF;
 
   SELECT * INTO v_order FROM shop_orders WHERE id = p_order_id FOR UPDATE;
@@ -216,7 +216,7 @@ BEGIN
     IF v_qty_submit > v_qty_open THEN
       RETURN jsonb_build_object(
         'success', false,
-        'error', format('送報帳數量超過未送出的訂量（品項 %s）', v_item_id)
+        'error', format('送結帳數量超過未送出的訂量（品項 %s）', v_item_id)
       );
     END IF;
 
@@ -229,7 +229,7 @@ BEGIN
     IF v_qty_submit > v_available THEN
       RETURN jsonb_build_object(
         'success', false,
-        'error', format('現貨不足，無法送報帳（品項 %s，可售 %s）', v_item_id, v_available)
+        'error', format('現貨不足，無法送結帳（品項 %s，可售 %s）', v_item_id, v_available)
       );
     END IF;
 
@@ -254,7 +254,7 @@ END;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 9. RPC：撤回送報帳（釋放 reserve）
+-- 9. RPC：撤回送結帳（釋放 reserve）
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION cancel_shop_order_billing(
   p_order_id UUID,
@@ -299,7 +299,7 @@ BEGIN
     END IF;
 
     IF v_qty_cancel > v_item.qty_pending_bill THEN
-      RETURN jsonb_build_object('success', false, 'error', '撤回數量超過待報帳數量');
+      RETURN jsonb_build_object('success', false, 'error', '撤回數量超過待結帳數量');
     END IF;
 
     UPDATE shop_order_items
@@ -323,7 +323,7 @@ END;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 10. RPC：訂單報帳（結帳）
+-- 10. RPC：訂單結帳（結帳）
 -- p_items: [{ item_id, qty, unit_price, line_total }, ...]
 -- v1：每列 qty 必須等於該列 qty_pending_bill（整批結清）
 -- ---------------------------------------------------------------------------
@@ -400,7 +400,7 @@ BEGIN
     IF v_qty_settle <> v_item.qty_pending_bill THEN
       RETURN jsonb_build_object(
         'success', false,
-        'error', format('v1 需整批結清待報帳數量（品項 %s：待報帳 %s，傳入 %s）', v_item_id, v_item.qty_pending_bill, v_qty_settle)
+        'error', format('v1 需整批結清待結帳數量（品項 %s：待結帳 %s，傳入 %s）', v_item_id, v_item.qty_pending_bill, v_qty_settle)
       );
     END IF;
 

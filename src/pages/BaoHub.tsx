@@ -27,7 +27,6 @@ export function BaoHub() {
       link: string
       comingSoon?: boolean
       disabled?: boolean
-      adminOnly?: boolean
     }>
   }> = [
       {
@@ -67,7 +66,6 @@ export function BaoHub() {
             title: '會員儲值',
             icon: '💰',
             link: '/member-transaction',
-            adminOnly: true,
           },
           {
             title: '置板管理',
@@ -77,7 +75,7 @@ export function BaoHub() {
           {
             title: '訂單結帳',
             icon: '🧾',
-            link: '/order-settle'
+            link: '/order-settle',
           }
         ]
       },
@@ -118,13 +116,11 @@ export function BaoHub() {
             title: 'LINE 綁定狀態',
             icon: '📱',
             link: '/line-binding',
-            adminOnly: true
           },
           {
             title: 'LINE 提醒設置',
             icon: '📱',
             link: '/line-settings',
-            adminOnly: true,
             disabled: true
           }
         ]
@@ -235,9 +231,7 @@ export function BaoHub() {
               gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
               gap: '15px'
             }}>
-              {section.items
-                .filter(feature => !feature.adminOnly || userIsAdmin)
-                .map((feature) => (
+              {section.items.map((feature) => (
                 feature.comingSoon ? (
                   <div
                     key={feature.title}

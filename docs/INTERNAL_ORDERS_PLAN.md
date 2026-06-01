@@ -1,9 +1,9 @@
 # 內部商品訂單系統規劃
 
-> **定位**：店內用開單／報帳／扣庫存工具。**不**取代公開 `/shop` 型錄（見 `SHOP_PLAN.md`）。
+> **定位**：店內用開單／結帳／扣庫存工具。**不**取代公開 `/shop` 型錄（見 `SHOP_PLAN.md`）。
 >
 > 📅 規劃日期：2026-05-31  
-> 🚧 狀態：規劃完成，待實作
+> ✅ 狀態：Phase 1 已上線；Phase 2 已結帳統計 Tab（CSV 待做）
 
 ---
 
@@ -13,24 +13,24 @@
 |------|-------------|----------|
 | 對象 | 路人、LINE 詢問 | 登入後台店員 |
 | 下單 | ❌ LINE 詢問 | ✅ 後台開單 |
-| 金流 | ❌ | ✅ 報帳扣款 |
+| 金流 | ❌ | ✅ 結帳扣款 |
 | 庫存 | 只顯示有貨／缺貨 | reserve + 結帳扣 stock |
 | LIFF | ❌ | Phase 3 會員查進度 |
 
-**一句話**：型錄讓客人看；訂單讓店員登記與報帳。
+**一句話**：型錄讓客人看；訂單讓店員登記與結帳。
 
 ---
 
-## 1. 核心流程（對齊預約 + 報帳）
+## 1. 核心流程（對齊預約 + 結帳）
 
 分工類比：
 
 | 預約系統 | 商品訂單 |
 |----------|----------|
 | 開預約 | 開單（訂單成立） |
-| 等條件成熟 | 等貨／可送報帳 |
-| 教練回報 | 商品同事 **送報帳** |
-| 待扣款（CoachAdmin） | **待報帳** |
+| 等條件成熟 | 等貨／可送結帳 |
+| 教練回報 | 商品同事 **送結帳** |
+| 待扣款（CoachAdmin） | **待結帳** |
 | 扣儲值／現金／匯款 | 同上，可 **代扣** |
 | 刪除已有交易 → 人工處理帳 | 同上 |
 
@@ -40,25 +40,25 @@
 ① 訂單成立（商品同事）
    訂購人、品項、成交價、面交／寄送、備註
 
-② 等貨 or 可送報帳（系統依 stock 提示，不 reserve）
-   ├─ **到貨、有現貨** → 該列出現在「可送報帳」（可送數量 ≤ 現有 stock − 已 reserve）
-   └─ 還沒現貨 → 「等貨」（預購可拖很久；**不能**送報帳）
+② 等貨 or 可送結帳（系統依 stock 提示，不 reserve）
+   ├─ **到貨、有現貨** → 該列出現在「可送結帳」（可送數量 ≤ 現有 stock − 已 reserve）
+   └─ 還沒現貨 → 「等貨」（預購可拖很久；**不能**送結帳）
 
-③ 送報帳（商品同事）
+③ 送結帳（商品同事）
    確認這批貨可以跟客人收錢了（面交／寄出前後由店內習慣決定）
    → **僅在有現貨時可送**；RPC 檢查 `qty_submit ≤ stock − reserved_qty`
    → 通過後 reserve + 增加 qty_pending_bill
 
-④ 待報帳（**管理員** inbox · 訂單報帳頁）
+④ 待結帳（**管理員** inbox · 訂單結帳頁）
    儲值／匯款／現金；可指定代扣會員
 
 ⑤ 已結帳
    寫 transactions（儲值時）、扣 stock、釋放 reserve、增加 qty_paid
 ```
 
-**Reserve 時點**：只在 **③ 送報帳**，不在開單時。長預購不占用 `reserved_qty`。
+**Reserve 時點**：只在 **③ 送結帳**，不在開單時。長預購不占用 `reserved_qty`。
 
-**付款時點**：**取貨／交貨才收款** → 實務上由商品在適當時機按「送報帳」，結帳同事在「待報帳」扣款。
+**付款時點**：**取貨／交貨才收款** → 實務上由商品在適當時機按「送結帳」，結帳同事在「待結帳」扣款。
 
 ---
 
@@ -73,7 +73,7 @@
 | ❌ LINE push 通知 | Messaging API 未通 |
 | ❌ 物流 API／發票／金流閘道 | 超出範圍 |
 | ❌ 訂單來源統計（型錄轉換） | v2 |
-| ❌ 銷售報表 UI | v2（表結構預留欄位） |
+| ❌ 銷售報表 CSV 匯出 | Phase 2 待做（已結帳統計 Tab 已上線） |
 | ❌ LIFF 訂單查詢 | Phase 3 |
 
 ---
@@ -98,7 +98,7 @@
 
 ### 3.1b `shop_order_settlements`（結帳紀錄 · v1 就要）
 
-每次管理員在「訂單報帳」結清一批，寫一筆（**含匯款／現金**，供 Phase 2 報表；**不**強制寫入 `transactions`）。
+每次管理員在「訂單結帳」結清一批，寫一筆（**含匯款／現金**，供 Phase 2 報表；**不**強制寫入 `transactions`）。
 
 | 欄位 | 說明 |
 |------|------|
@@ -122,12 +122,12 @@
 |------|------|
 | `order_id` | FK |
 | `variant_id` | FK → `product_variants` |
-| `unit_price` | 開單時成交單價快照（商品端可改，**送報帳後鎖**） |
-| `qty` | 訂購總數（**送報帳後鎖**；未送部分商品端仍可改） |
-| `qty_pending_bill` | 已送報帳、待扣款（已 reserve） |
+| `unit_price` | 開單時成交單價快照（商品端可改，**送結帳後鎖**） |
+| `qty` | 訂購總數（**送結帳後鎖**；未送部分商品端仍可改） |
+| `qty_pending_bill` | 已送結帳、待扣款（已 reserve） |
 | `qty_paid` | 已結帳數量 |
 
-**可送報帳數量**（前端計算，須 **到貨有現貨**）：
+**可送結帳數量**（前端計算，須 **到貨有現貨**）：
 
 ```text
 qty_billable = min(
@@ -136,15 +136,15 @@ qty_billable = min(
 )
 ```
 
-`qty_billable = 0` → 該列留在「等貨」。送報帳 RPC 以同一公式檢查，不足則拒絕。
+`qty_billable = 0` → 該列留在「等貨」。送結帳 RPC 以同一公式檢查，不足則拒絕。
 
-**部分報帳範例**：訂 3 → 到 1 → 送報帳 1 → 結帳 1 → 再到 2 → 送報帳 2 → 結帳 2。
+**部分結帳範例**：訂 3 → 到 1 → 送結帳 1 → 結帳 1 → 再到 2 → 送結帳 2 → 結帳 2。
 
 ### 3.3 `product_variants` 新增
 
 | 欄位 | 說明 |
 |------|------|
-| `reserved_qty` | 已送報帳尚未結帳的保留量 |
+| `reserved_qty` | 已送結帳尚未結帳的保留量 |
 
 ```text
 實際可售 ≈ stock - reserved_qty
@@ -164,9 +164,9 @@ qty_billable = min(
 
 | Inbox | 誰 | 篩選邏輯 |
 |-------|-----|----------|
-| **等貨** | 商品 | 有列 `(qty - qty_pending_bill - qty_paid) > 0` 且可報帳量 = 0 |
-| **可送報帳** | 商品 | 有列可報帳量 > 0 |
-| **待報帳** | 管理員（訂單報帳） | 有列 `qty_pending_bill > 0`（或 join 待結批次） |
+| **等貨** | 商品 | 有列 `(qty - qty_pending_bill - qty_paid) > 0` 且可送結帳量 = 0 |
+| **可送結帳** | 商品 | 有列可送結帳量 > 0 |
+| **待結帳** | 管理員（訂單結帳） | 有列 `qty_pending_bill > 0`（或 join 待結批次） |
 
 另：**全部訂單** 列表（搜尋、訂單號、訂購人）。
 
@@ -186,7 +186,7 @@ qty_billable = min(
 - `p_items`: `[{ "item_id", "qty", "unit_price", "line_total" }, ...]` — **帳務端可調**單價／折扣後的金額（品項 `variant_id` 不可改）
 - 只結 `qty_pending_bill` 中指定數量（v1 整批結清該次 pending）
 - `balance`：依 `p_items` 加總後扣款，寫 `shop_order_id`
-- **餘額不足**：**不擋**（與現有預約報帳相同，允許扣成負餘額）
+- **餘額不足**：**不擋**（與回報管理結帳相同，允許扣成負餘額）
 - `cash` / `transfer`：不寫 `transactions`，寫 `shop_order_settlements` + `items_snapshot`
 - 每批結帳：插入 `shop_order_settlements`；品項 `stock -= qty_settle`，`reserved_qty -= qty_settle`，`qty_pending_bill -= qty_settle`，`qty_paid += qty_settle`
 - **Idempotent**：同一批不可重複結帳（pending 歸零檢查）
@@ -200,7 +200,7 @@ qty_billable = min(
 ### 5.3 `cancel_shop_order_billing(p_order_id, p_items jsonb, p_operator_id)`
 
 - **誰能叫**：`can_products`（商品同事；管理員當然可以）
-- 撤回尚未結帳的送報帳：`qty_pending_bill` 減少、`reserved_qty` 釋放
+- 撤回尚未結帳的送結帳：`qty_pending_bill` 減少、`reserved_qty` 釋放
 - 管理員尚未扣款前，商品端可修正誤送
 
 ### 5.4 作廢訂單
@@ -213,25 +213,25 @@ qty_billable = min(
 
 ## 6. 刪除、作廢與鎖定規則
 
-### 6.1 誰能改什麼（**送報帳 = 商品確定**）
+### 6.1 誰能改什麼（**送結帳 = 商品確定**）
 
-| 欄位／動作 | 開單～送報帳前（商品 Tab） | 待報帳（訂單報帳） | 已結帳後 |
+| 欄位／動作 | 開單～送結帳前（商品 Tab） | 待結帳（訂單結帳） | 已結帳後 |
 |------------|---------------------------|-------------------|----------|
 | 品項 SKU、加減列 | ✅ 商品同事 | ❌ | ❌ |
 | 訂購 `qty`（整列） | ✅（未送出的部分） | ❌ 已 pending 部分 | ❌ |
 | `unit_price` | ✅ 商品同事 | ✅ **管理員可調**（折扣／改價） | ✅ **管理員可調帳務紀錄** |
 | 本批結帳金額 | — | ✅ 管理員（比照 `PendingDeductionItem`） | ✅ 管理員改 `settlements` |
-| 送報帳／撤回 | ✅ 商品 | ❌ | ❌ |
+| 送結帳／撤回 | ✅ 商品 | ❌ | ❌ |
 | 扣款／付款方式 | — | ✅ 管理員 | 調帳不重跑自動扣款 |
 
-**一句話**：**商品定品項與數量；帳務定價格與折扣**（待報帳與結帳後皆可調數字，但不動 SKU／庫存）。
+**一句話**：**商品定品項與數量；帳務定價格與折扣**（待結帳與結帳後皆可調數字，但不動 SKU／庫存）。
 
 ### 6.2 作廢
 
 | 狀態 | 行為 |
 |------|------|
-| 僅開單、未送報帳 | 可直接作廢／刪除 |
-| 已送報帳、未結帳 | 先 `cancel_shop_order_billing` 釋放 reserve，再作廢 |
+| 僅開單、未送結帳 | 可直接作廢／刪除 |
+| 已送結帳、未結帳 | 先 `cancel_shop_order_billing` 釋放 reserve，再作廢 |
 | 已有扣款 transactions | ⚠️ 確認框（比照 `CoachReport` 刪回報）→ 作廢訂單 → **交易保留**，人工調帳 |
 
 已結帳後 **不可改品項**；金額調整走 §6.1 帳務端，不作廢整單除非特殊情況。
@@ -261,10 +261,10 @@ qty_billable = min(
 
 | 入口 | 能力 | 誰能進 |
 |------|------|--------|
-| 商品管理 › Tab **訂單** | 開單、改單（未結清前）、送報帳、等貨／可送報帳 | `can_products`（超級管理員當然可以） |
-| **訂單報帳** | 待報帳 inbox、扣款、代扣 | **`isAdmin`  only**（不新增 DB 權限欄） |
+| 商品管理 › Tab **訂單** | 開單、改單（未結清前）、送結帳、等貨／可送結帳 | `can_products`（超級管理員當然可以） |
+| **訂單結帳** | 待結帳 inbox、扣款、代扣 | **`isAdmin`  only**（不新增 DB 權限欄） |
 
-- **不**新增 `can_settle_orders`：報帳一律由管理員處理，跟會員管理／會員儲值同一層。
+- **不**新增 `can_settle_orders`：結帳一律由管理員處理，跟會員管理／會員儲值同一層。
 - `can_products_view`：**不能**開單（唯讀庫存 Tab；訂單 Tab 隱藏或唯讀—實作時以隱藏為準）。
 
 ---
@@ -276,29 +276,30 @@ qty_billable = min(
 ```
 BAO › 營運管理 › 商品管理
   ├─ Tab「庫存」     ← 現有 ProductManagement
-  └─ Tab「訂單」     ← 開單、等貨、可送報帳、全部訂單
+  └─ Tab「訂單」     ← 開單、等貨、可送結帳、全部訂單
 
-BAO › 會員相關 › 訂單報帳     ← 新增 icon
-  └─ 待報帳、扣款、代扣（含非會員匯款／現金）
+BAO › 會員相關 › 訂單結帳     ← 新增 icon
+  └─ 待結帳、扣款、代扣（含非會員匯款／現金）
 ```
 
 | 路由 | 頁面標題 | 權限 |
 |------|----------|------|
 | `/products` | 商品管理 · 庫存（預設） | `can_products` 或 `can_products_view` |
-| `/products/orders` | 商品管理 · **訂單** | `can_products` |
-| `/order-settle` | **訂單報帳** | `isAdmin` |
+| `/products/orders` | 商品管理 · **訂單開單** | `can_products` 或超管（`isAdmin`） |
+| `/order-settle` | **訂單結帳**（待結帳 Tab） | `isAdmin` |
+| `/order-settle` · 已結帳統計 Tab | 總表＋細帳（`shop_order_settlements`） | `isAdmin` |
 
 **導覽修改**：
 
-- `BaoHub.tsx` › 會員相關：新增 `{ title: '訂單報帳', icon: '🧾', link: '/order-settle' }`（與會員儲值並列）
+- `BaoHub.tsx` › 會員相關：`訂單結帳` → `/order-settle`（整頁 BAO 僅超管可進，無卡片級 `adminOnly`）
 - `ProductHub.tsx`（新）：包一層頂 Tab「庫存 \| 訂單」，內嵌既有 `ProductManagement` + `OrderManagement`
 - **不**在首頁另加圖示；管理員從 BAO 進（BAO 本身已 `isAdmin`）
 
-**為什麼訂單 Tab 在商品管理、報帳在會員相關？**
+**為什麼訂單 Tab 在商品管理、結帳在會員相關？**
 
 - 商品同事：SKU 與開單同一上下文
-- 管理員報帳：跟 **會員儲值** 同區，管錢的習慣一致
-- 跟「預約表 vs 回報管理（CoachAdmin）」同型，只是商品報帳放在會員區而非預約區
+- 管理員結帳：跟 **會員儲值** 同區，管錢的習慣一致
+- 跟「預約表 vs 回報管理（CoachAdmin）」同型，只是商品結帳放在會員區而非預約區
 
 ### 10.2 目錄結構
 
@@ -309,10 +310,11 @@ src/pages/admin/products/
   api.ts / schema.ts       # 沿用
 
 src/pages/admin/orders/
-  OrderManagement.tsx      # Tab「訂單」主頁（等貨 | 可送報帳 | 全部）
+  OrderManagement.tsx      # Tab「訂單」主頁（等貨 | 可送結帳 | 全部）
   OrderEditDialog.tsx      # 開單／編輯
-  OrderDetailPanel.tsx     # 送報帳、作廢
-  OrderSettlePage.tsx      # /order-settle · 訂單報帳
+  OrderDetailPanel.tsx     # 送結帳、作廢
+  OrderSettlePage.tsx      # /order-settle · 待結帳 | 已結帳統計
+  ShopSettlementStatisticsTab.tsx  # 結帳統計（對標 CoachAdmin StatisticsTab）
   PendingOrderSettleItem.tsx  # 對標 PendingDeductionItem
   OrderMemberPicker.tsx    # 單一會員 + 手動名
   api.ts
@@ -322,7 +324,7 @@ src/pages/admin/orders/
 **共用**：
 
 - 扣款 UI：`PendingDeductionItem.tsx`、`DEDUCTION_FLOW.md`
-- 版型：`CoachAdmin.tsx`（待報帳列表）
+- 版型：`CoachAdmin.tsx`（待結帳列表）
 
 **不修改**：
 
@@ -332,10 +334,11 @@ src/pages/admin/orders/
 
 ```
 migrations/121_shop_orders.sql
+migrations/122–126（RPC 權限、void、刪除還庫存等）
   - shop_orders, shop_order_items, shop_order_settlements
   - product_variants.reserved_qty
   - transactions.shop_order_id + FK SET NULL
-  - RPC: submit / settle / cancel_billing
+  - RPC: submit / settle / cancel_billing / void_shop_order
   - （不新增 editor_users 欄位）
 ```
 
@@ -351,7 +354,7 @@ src/pages/liff/
 ```
 
 - 查詢：`shop_orders.member_id = 綁定會員` 且未作廢
-- 顯示：`customer_note`、品項、qty／已送報帳／已付、delivery 白話
+- 顯示：`customer_note`、品項、qty／已送結帳／已付、delivery 白話
 - RLS：anon SELECT + 前端只查自己的 `member_id`（比照 transactions）
 
 ---
@@ -360,17 +363,18 @@ src/pages/liff/
 
 ### Phase 1 — MVP（先上線店內流程）
 
-- [x] migration 121（`migrations/121_shop_orders.sql`）
-- [ ] `ProductHub` + `/products/orders` 開單、列表、等貨／可送報帳
-- [ ] 送報帳 RPC + reserve
-- [ ] `/order-settle` 訂單報帳 + 扣款（`isAdmin`；儲值／匯款／現金、代扣）
-- [ ] `BaoHub` 會員相關新增「訂單報帳」入口
-- [ ] 作廢 + 刪除警告（已有交易）
+- [x] migration 121–126
+- [x] `ProductHub` + `/products/orders` 開單、列表、等貨／可送結帳／待結帳／已結清／已作廢
+- [x] 送結帳 RPC + reserve
+- [x] `/order-settle` 待結帳 + 扣款（`isAdmin`；儲值／匯款／現金、代扣）
+- [x] `BaoHub` 會員相關「訂單結帳」入口
+- [x] 作廢（`void_shop_order`）+ 已有交易提示
 
 ### Phase 2 — 營運加強
 
-- [ ] 訂單號每日流水、`Statistics` 或獨立銷售報表（資料來源：`shop_order_settlements` + `transactions`）
+- [x] 已結帳統計（`/order-settle` Tab · `fetchSettlementsInRange` · 對標回報統計報表）
 - [ ] 匯出 CSV
+- [ ] （可選）訂單號每日流水強化、與 Dashboard 整合
 
 ### Phase 3 — 會員 LIFF
 
@@ -389,14 +393,15 @@ src/pages/liff/
 | # | 問題 | 決定 |
 |---|------|------|
 | 1 | 匯款／現金要不要留結帳紀錄？ | **要**：v1 建 `shop_order_settlements`（§3.1b）；不寫 `transactions` |
-| 2 | 誰能撤回送報帳？ | **商品同事**（`can_products`），管理員未扣款前 |
-| 3 | 何時能送報帳？ | **到貨、有現貨才行**；`qty_billable` 見 §3.2；預購未到貨 = 等貨 |
-| 4 | 儲值不足是否擋？ | **不擋**（跟現有報帳一樣） |
-| 5 | 一次送報帳可否只送部分 qty？ | **是** |
+| 2 | 誰能撤回送結帳？ | **商品同事**（`can_products`），管理員未扣款前 |
+| 3 | 何時能送結帳？ | **到貨、有現貨才行**；`qty_billable` 見 §3.2；預購未到貨 = 等貨 |
+| 4 | 儲值不足是否擋？ | **不擋**（跟回報管理結帳一樣） |
+| 5 | 一次送結帳可否只送部分 qty？ | **是** |
 | 6 | 結帳是否整批結清該次 `qty_pending_bill`？ | v1 **是** |
-| 7 | 訂單報帳誰能進？ | **`isAdmin`**，不開新權限 |
+| 7 | 訂單結帳誰能進？ | **`isAdmin`（超管）**；BAO 整頁亦僅超管 |
 | 8 | 非會員 `contact_name` | **必填** |
-| 9 | 報帳後帳務能否改價？ | **能**（管理員）；**商品**（SKU／qty）送報帳後鎖定；已扣儲值差額人工處理 |
+| 9 | 結帳後帳務能否改價？ | **能**（管理員）；**商品**（SKU／qty）送結帳後鎖定；已扣儲值差額人工處理 |
+| 10 | 開單／送結帳誰能做？ | **`can_products`** 或超管（超管在 `auth` 視同全功能） |
 
 ---
 
@@ -410,7 +415,7 @@ src/pages/liff/
 | `src/pages/admin/products/api.ts` | 商品搜尋 |
 | `src/pages/admin/products/schema.ts` | 規格顯示 |
 | `src/components/booking/MemberSelector.tsx` | 參考 UX（改為單人版） |
-| `src/pages/coach/CoachAdmin.tsx` | 待報帳 inbox 版型 |
+| `src/pages/coach/CoachAdmin.tsx` | 待結帳 inbox 版型 |
 | `src/components/PendingDeductionItem.tsx` | 扣款互動 |
 | `migrations/086_fix_transaction_amount_positive.sql` | `process_deduction_transaction` |
 | `docs/DEDUCTION_FLOW.md` | 現金／匯款／儲值慣例 |
@@ -430,13 +435,13 @@ src/pages/liff/
 | 檔案 | 用途 |
 |------|------|
 | `src/App.tsx` | 路由 `/products/*`、`/order-settle` |
-| `src/pages/BaoHub.tsx` | 會員相關 › 訂單報帳 |
+| `src/pages/BaoHub.tsx` | 會員相關 › 訂單結帳 |
 
 ---
 
 ## 14. 設計決策記錄
 
-### 為什麼送報帳才 reserve
+### 為什麼送結帳才 reserve
 
 - 預購可能拖數月；開單即 reserve 會長期鎖死可售量
 - 與「確定要收這批錢」同步，較貼近取貨才付款
@@ -451,20 +456,20 @@ src/pages/liff/
 - 公開 bundle 不含後台；訂單僅 authenticated
 - 避免 demo 購物車與正式內部單混淆
 
-### 為什麼訂單報帳不另開權限旗標
+### 為什麼訂單結帳不另開權限旗標
 
-- 報帳固定由管理員處理；BAO 與 `/order-settle` 用 `isAdmin` 即可
-- 商品開單仍用既有 `can_products`，小編可開單、不可報帳
+- 結帳固定由管理員處理；BAO 與 `/order-settle` 用 `isAdmin` 即可
+- 商品開單仍用既有 `can_products`，小編可開單、不可結帳
 
-### 為什麼報帳入口放在 BAO「會員相關」
+### 為什麼結帳入口放在 BAO「會員相關」
 
 - 與會員儲值同區，語意是「收錢／扣儲值」
-- 名稱用 **訂單報帳**（不用「會員訂單」），因含非會員匯款／現金
+- 名稱用 **訂單結帳**（不用「會員訂單」），因含非會員匯款／現金
 
-### 為什麼報帳後帳務仍可改數字
+### 為什麼結帳後帳務仍可改數字
 
 - 現場常事後折扣、抹零；與 `PendingDeductionItem` 可改扣款金額一致
-- 商品送報帳後不再動 SKU／數量，避免庫存與實物對不上
+- 商品送結帳後不再動 SKU／數量，避免庫存與實物對不上
 - 儲值差額不自動沖帳，維持單一人工金流習慣
 
 ---
@@ -473,12 +478,12 @@ src/pages/liff/
 
 ```mermaid
 flowchart TD
-  A[開單] --> B{有現貨可報?}
+  A[開單] --> B{有現貨可送?}
   B -->|否| C[等貨]
-  B -->|是| D[可送報帳]
+  B -->|是| D[可送結帳]
   C -->|進貨| D
-  D --> E[送報帳: reserve]
-  E --> F[待報帳 inbox]
+  D --> E[送結帳: reserve]
+  E --> F[待結帳 inbox]
   F --> G{payment}
   G -->|balance| H[扣儲值 + transactions]
   G -->|cash/transfer| I[不寫 balance]
@@ -488,4 +493,4 @@ flowchart TD
 
 ---
 
-*文件版本：v1.3 — 2026-05-31：送報帳鎖商品；帳務端可調價／折扣（含結帳後），對齊 PendingDeductionItem。*
+*文件版本：v1.3 — 2026-05-31：送結帳鎖商品；帳務端可調價／折扣（含結帳後），對齊 PendingDeductionItem。*

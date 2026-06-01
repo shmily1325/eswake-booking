@@ -29,14 +29,17 @@ const PAYMENT_OPTIONS: { value: OrderPaymentMethod; label: string; icon: string 
   { value: 'cash', label: '現金', icon: '💵' },
 ]
 
+const MONEY_INPUT_MAX_WIDTH = 280
+
 const moneyInputStyle: CSSProperties = {
   flex: 1,
   minWidth: 0,
+  maxWidth: MONEY_INPUT_MAX_WIDTH,
   width: '100%',
-  padding: '12px 14px',
+  padding: '10px 12px',
   border: '2px solid #667eea',
   borderRadius: 8,
-  fontSize: 18,
+  fontSize: 16,
   fontWeight: 600,
   background: '#f8f9ff',
   boxSizing: 'border-box',
@@ -62,7 +65,15 @@ function MoneyInput({
 }) {
   const focused = focusedField === fieldKey
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, minWidth: 120 }}>
+    <div
+      style={{
+        display: 'flex',
+        gap: 8,
+        alignItems: 'center',
+        maxWidth: MONEY_INPUT_MAX_WIDTH,
+        width: '100%',
+      }}
+    >
       <span style={{ fontSize: 16, color: '#666', fontWeight: 500, flexShrink: 0 }}>$</span>
       <input
         type="text"
@@ -267,7 +278,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
       </button>
 
       {expanded && (
-        <div style={{ padding: isMobile ? 16 : 20, borderTop: '1px solid #e0e0e0' }}>
+        <div style={{ padding: isMobile ? 16 : 20, borderTop: '1px solid #e0e0e0', maxWidth: 720 }}>
           {lines.map((line, idx) => (
             <div
               key={line.item_id}
@@ -284,33 +295,54 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                 <span style={{ marginLeft: 8, color: '#666', fontWeight: 500 }}>× {line.qty}</span>
               </div>
 
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>單價</div>
-                <MoneyInput
-                  value={line.unit_price}
-                  fieldKey={`${line.item_id}-unit`}
-                  focusedField={focusedField}
-                  onFocus={() => setFocusedField(`${line.item_id}-unit`)}
-                  onBlur={() => setFocusedField(null)}
-                  onChange={(unit_price) => updateLine(idx, { unit_price })}
-                />
-              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                  gap: 12,
+                  alignItems: 'start',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>單價</div>
+                  <MoneyInput
+                    value={line.unit_price}
+                    fieldKey={`${line.item_id}-unit`}
+                    focusedField={focusedField}
+                    onFocus={() => setFocusedField(`${line.item_id}-unit`)}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(unit_price) => updateLine(idx, { unit_price })}
+                  />
+                </div>
 
-              <div>
-                <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>小計（可改折扣）</div>
-                <MoneyInput
-                  value={line.line_total}
-                  fieldKey={`${line.item_id}-total`}
-                  focusedField={focusedField}
-                  onFocus={() => setFocusedField(`${line.item_id}-total`)}
-                  onBlur={() => setFocusedField(null)}
-                  onChange={(line_total) => updateLine(idx, { line_total }, { fromLineTotal: true })}
-                />
-                {line.qty * line.unit_price !== line.line_total && (
-                  <div style={{ marginTop: 6, fontSize: 12, color: '#666', background: '#f5f5f5', padding: '6px 10px', borderRadius: 6 }}>
-                    原價 ${(line.qty * line.unit_price).toLocaleString()} → 折後 ${line.line_total.toLocaleString()}
+                <div>
+                  <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>
+                    小計（可改折扣）
                   </div>
-                )}
+                  <MoneyInput
+                    value={line.line_total}
+                    fieldKey={`${line.item_id}-total`}
+                    focusedField={focusedField}
+                    onFocus={() => setFocusedField(`${line.item_id}-total`)}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(line_total) => updateLine(idx, { line_total }, { fromLineTotal: true })}
+                  />
+                  {line.qty * line.unit_price !== line.line_total && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 12,
+                        color: '#666',
+                        background: '#f5f5f5',
+                        padding: '6px 10px',
+                        borderRadius: 6,
+                      }}
+                    >
+                      原價 ${(line.qty * line.unit_price).toLocaleString()} → 折後 $
+                      {line.line_total.toLocaleString()}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -339,12 +371,12 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   }
                 }}
                 style={{
-                  flex: '1 1 100px',
-                  minWidth: 80,
-                  padding: '12px 14px',
+                  width: isMobile ? '100%' : 120,
+                  maxWidth: '100%',
+                  padding: '10px 12px',
                   border: '2px solid #667eea',
                   borderRadius: 8,
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: 600,
                   background: '#fff',
                   boxSizing: 'border-box',
@@ -407,7 +439,9 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
             }}
           >
             <span style={{ fontSize: 15, fontWeight: 600, color: '#4338ca' }}>合計</span>
-            <span style={{ fontSize: 22, fontWeight: 700, color: '#312e81' }}>${total.toLocaleString()}</span>
+            <span style={{ fontSize: isMobile ? 20 : 22, fontWeight: 700, color: '#312e81' }}>
+              ${total.toLocaleString()}
+            </span>
           </div>
 
           <div style={{ marginBottom: 16 }}>
@@ -504,10 +538,11 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   placeholder="搜尋會員或代扣對象"
                   style={{
                     width: '100%',
+                    maxWidth: 360,
                     padding: '10px 12px',
                     border: '2px solid #e0e0e0',
                     borderRadius: 8,
-                    fontSize: 16,
+                    fontSize: 15,
                     boxSizing: 'border-box',
                   }}
                 />
