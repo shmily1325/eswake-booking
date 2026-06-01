@@ -114,31 +114,30 @@ export function ProductHub() {
 
       <PageHeader
         user={user}
-        title="📦 商品管理"
+        title={onOrders ? '📋 訂單開單' : '📦 商品庫存'}
         showBaoLink={isAdmin(user)}
-        showAdminShopLinks={isAdmin(user)}
+        productHubSection={onOrders ? 'orders' : 'inventory'}
+        showOrderSettleLink={isAdmin(user)}
       />
 
 
 
       {canEdit && (
-
-        <AdminPillRow style={{ marginBottom: 14 }}>
-
-          <AdminPillLink to="/products" end active={!onOrders}>
-
-            📦 庫存
-
-          </AdminPillLink>
-
-          <AdminPillLink to="/products/orders" active={onOrders}>
-
-            📋 訂單
-
-          </AdminPillLink>
-
-        </AdminPillRow>
-
+        <>
+          <AdminPillRow style={{ marginBottom: 6 }}>
+            <AdminPillLink to="/products" end active={!onOrders}>
+              📦 庫存
+            </AdminPillLink>
+            <AdminPillLink to="/products/orders" active={onOrders}>
+              📋 訂單開單
+            </AdminPillLink>
+          </AdminPillRow>
+          <p style={{ margin: '0 0 14px', fontSize: 13, color: '#666', lineHeight: 1.5 }}>
+            {onOrders
+              ? '開單、送結帳、追蹤狀態。管理員扣款請用上方「訂單結帳」。'
+              : '管理 SKU、庫存與上架。客人訂單請切換「訂單開單」。'}
+          </p>
+        </>
       )}
 
 

@@ -45,8 +45,11 @@ export function filterOrdersBySearch(orders: ShopOrderWithItems[], query: string
 
 export function filterOrdersByInbox(
   orders: ShopOrderWithItems[],
-  tab: 'waiting' | 'ready' | 'pending' | 'settled' | 'all',
+  tab: 'waiting' | 'ready' | 'pending' | 'settled' | 'cancelled' | 'all',
 ): ShopOrderWithItems[] {
+  if (tab === 'cancelled') {
+    return orders.filter((o) => Boolean(o.cancelled_at))
+  }
   const active = orders.filter((o) => !o.cancelled_at)
   if (tab === 'all') return active
   if (tab === 'waiting') return active.filter(orderHasWaitingStock)

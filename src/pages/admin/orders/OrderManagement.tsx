@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
-import { PageHeader } from '../../../components/PageHeader'
 import { Footer } from '../../../components/Footer'
 import {
   AdminPillButton,
@@ -21,8 +20,8 @@ import { formatDateTime } from '../../../utils/formatters'
 import {
   cancelShopOrderBilling,
   countOrderTransactions,
-  deleteShopOrder,
   fetchShopOrders,
+  voidShopOrder,
   submitShopOrderBilling,
 } from './api'
 import { OrderEditDialog } from './OrderEditDialog'
@@ -40,11 +39,12 @@ import {
 import type { OrderInboxTab, ShopOrderWithItems } from './types'
 
 const TABS: { id: OrderInboxTab; label: string }[] = [
+  { id: 'all', label: '全部' },
   { id: 'waiting', label: '等貨' },
   { id: 'ready', label: '可送結帳' },
   { id: 'pending', label: '待結帳' },
   { id: 'settled', label: '已結清' },
-  { id: 'all', label: '全部' },
+  { id: 'cancelled', label: '已作廢' },
 ]
 
 export function OrderManagement({ embedded = false }: { embedded?: boolean } = {}) {
@@ -120,9 +120,10 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       ready: activeOrders.filter(orderHasReadyToBill).length,
       pending: activeOrders.filter(orderHasPendingBill).length,
       settled: activeOrders.filter(orderIsFullySettled).length,
+      cancelled: orders.filter((o) => o.cancelled_at).length,
       all: activeOrders.length,
     }),
-    [activeOrders],
+    [activeOrders, orders],
   )
 
   const visible = useMemo(() => {
@@ -164,23 +165,28 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     }
   }
 
-  const handleDeleteOrder = async (order: ShopOrderWithItems) => {
+  const handleVoidOrder = async (order: ShopOrderWithItems) => {
     const txCount = await countOrderTransactions(order.id)
     const hasPaid = order.items.some((it) => it.qty_paid > 0)
-    let msg = `確定刪除訂單 ${order.order_no}？\n此操作無法復原。`
+    const hasPending = order.items.some((it) => it.qty_pending_bill > 0)
+    let msg = `確定作廢訂單 ${order.order_no}？\n作廢後可在「已作廢」分頁查閱，無法再編輯或送結帳。`
+    if (hasPending || hasPaid) {
+      msg += '\n\n已送結帳／已結清的數量會加回庫存。'
+    }
     if (hasPaid) {
-      msg += '\n\n⚠️ 已有結帳紀錄，相關 settlements 會一併刪除。'
+      msg += '\n結帳紀錄會保留。'
     }
     if (txCount > 0) {
-      msg += `\n\n⚠️ 已有 ${txCount} 筆儲值交易，交易保留；請到會員儲值人工處理。`
+      msg += `\n\n⚠️ 已有 ${txCount} 筆儲值交易，交易保留；請到會員儲值人工處理退款。`
     }
     if (!confirm(msg)) return
     try {
-      await deleteShopOrder(order.id)
-      toast.success('已刪除訂單')
+      await voidShopOrder(order.id, user?.email ?? null)
+      toast.success('已作廢訂單')
       await reloadOrders()
+      setTab('cancelled')
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '刪除失敗')
+      toast.error(e instanceof Error ? e.message : '作廢失敗')
     }
   }
 
@@ -190,10 +196,32 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
 
   return (
     <>
-      {!embedded && (
-        <>
-          <PageHeader title="📦 商品訂單" user={user} showBaoLink={isAdmin(user)} />
-        </>
+      {embedded && isAdmin(user) && tabCounts.pending > 0 && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: '10px 14px',
+            background: '#f3e5f5',
+            border: '1px solid #e1bee7',
+            borderRadius: 10,
+            fontSize: 14,
+            color: '#6a1b9a',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span>
+            有 <strong>{tabCounts.pending}</strong> 筆已送結帳、待管理員扣款
+          </span>
+          <Link
+            to="/order-settle"
+            style={{ fontWeight: 600, color: '#6a1b9a', textDecoration: 'underline' }}
+          >
+            前往訂單結帳 →
+          </Link>
+        </div>
       )}
 
       <div style={adminStatsBarStyle(isMobile)}>
@@ -208,6 +236,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         <OrderStatChip label="可送結帳" count={tabCounts.ready} color="#1565c0" />
         <OrderStatChip label="待結帳" count={tabCounts.pending} color="#6a1b9a" />
         <OrderStatChip label="已結清" count={tabCounts.settled} color="#2e7d32" />
+        <OrderStatChip label="已作廢" count={tabCounts.cancelled} color="#888" />
       </div>
 
       <div style={{ marginBottom: 12, position: 'relative' }}>
@@ -304,7 +333,9 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
                   ? '沒有待結帳訂單'
                   : tab === 'settled'
                     ? '沒有已結清訂單'
-                    : search.trim()
+                    : tab === 'cancelled'
+                      ? '沒有已作廢訂單'
+                      : search.trim()
                       ? '沒有符合搜尋的訂單'
                       : '還沒有訂單'}
           </div>
@@ -332,7 +363,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             }}
             onSubmitBilling={() => void handleSubmitBilling(order)}
             onCancelBilling={() => void handleCancelBilling(order)}
-            onDeleteOrder={() => void handleDeleteOrder(order)}
+            onVoidOrder={() => void handleVoidOrder(order)}
           />
         ))
       )}
@@ -358,7 +389,7 @@ function OrderCard({
   onEdit,
   onSubmitBilling,
   onCancelBilling,
-  onDeleteOrder,
+  onVoidOrder,
 }: {
   order: ShopOrderWithItems
   isMobile: boolean
@@ -366,7 +397,7 @@ function OrderCard({
   onEdit: () => void
   onSubmitBilling: () => void
   onCancelBilling: () => void
-  onDeleteOrder: () => void
+  onVoidOrder: () => void
 }) {
   const cancelled = Boolean(order.cancelled_at)
   const tags: string[] = []
@@ -404,6 +435,12 @@ function OrderCard({
         {deliveryMethodLabel(order.delivery_method)}
         {' · '}
         {formatDateTime(order.created_at)}
+        {cancelled && order.cancelled_at && (
+          <>
+            {' · '}
+            <span style={{ color: '#888' }}>作廢 {formatDateTime(order.cancelled_at)}</span>
+          </>
+        )}
       </p>
       <ul style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: 14 }}>
         {order.items.map((it) => {
@@ -438,16 +475,22 @@ function OrderCard({
           已送結帳
         </p>
       )}
-      {!cancelled && canEdit && (
+      {canEdit && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <ActionBtn isMobile={isMobile} onClick={onEdit}>編輯</ActionBtn>
-          {orderHasReadyToBill(order) && (
-            <ActionBtn isMobile={isMobile} primary onClick={onSubmitBilling}>送結帳</ActionBtn>
+          <ActionBtn isMobile={isMobile} onClick={onEdit}>
+            {cancelled ? '查看' : '編輯'}
+          </ActionBtn>
+          {!cancelled && (
+            <>
+              {orderHasReadyToBill(order) && (
+                <ActionBtn isMobile={isMobile} primary onClick={onSubmitBilling}>送結帳</ActionBtn>
+              )}
+              {orderHasPendingBill(order) && (
+                <ActionBtn isMobile={isMobile} onClick={onCancelBilling}>撤回送結帳</ActionBtn>
+              )}
+              <ActionBtn isMobile={isMobile} danger onClick={onVoidOrder}>作廢</ActionBtn>
+            </>
           )}
-          {orderHasPendingBill(order) && (
-            <ActionBtn isMobile={isMobile} onClick={onCancelBilling}>撤回送結帳</ActionBtn>
-          )}
-          <ActionBtn isMobile={isMobile} danger onClick={onDeleteOrder}>刪除</ActionBtn>
         </div>
       )}
     </div>

@@ -66,7 +66,8 @@ export function BaoHub() {
           {
             title: '會員儲值',
             icon: '💰',
-            link: '/member-transaction'
+            link: '/member-transaction',
+            adminOnly: true,
           },
           {
             title: '置板管理',

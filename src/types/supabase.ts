@@ -1563,6 +1563,20 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_shop_order: {
+        Args: {
+          p_operator_email?: string | null
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      void_shop_order: {
+        Args: {
+          p_operator_email?: string | null
+          p_order_id: string
+        }
+        Returns: Json
+      }
       generate_shop_order_no: {
         Args: Record<string, never>
         Returns: string

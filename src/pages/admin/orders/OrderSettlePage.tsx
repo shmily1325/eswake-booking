@@ -66,8 +66,15 @@ export function OrderSettlePage() {
         title="🧾 訂單結帳"
         user={user}
         showBaoLink={isAdmin(user)}
-        showAdminShopLinks={isAdmin(user)}
-        extraLinks={[{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }]}
+        breadcrumbs={[
+          { label: '商品庫存', link: '/products' },
+          { label: '訂單開單', link: '/products/orders' },
+        ]}
+        extraLinks={
+          isAdmin(user)
+            ? [{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }]
+            : undefined
+        }
       />
 
       <p style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>

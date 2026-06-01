@@ -4,12 +4,18 @@ import type { User } from '@supabase/supabase-js'
 import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getTextStyle } from '../styles/designSystem'
 
+/** 商品 Hub（/products）內的情境快捷連結，避免「商品」連到同一頁 */
+export type ProductHubHeaderSection = 'inventory' | 'orders'
+
 interface PageHeaderProps {
   title: string
   user: User | null
   showBaoLink?: boolean
-  /** 管理員：header 快速連到商品管理 / 訂單結帳（樣式同 BAO link） */
+  /** 管理員：非 Hub 頁用（如舊版）；Hub 內請改 productHubSection */
   showAdminShopLinks?: boolean
+  /** Hub 內：庫存 ↔ 訂單開單 + 可選訂單結帳 */
+  productHubSection?: ProductHubHeaderSection
+  showOrderSettleLink?: boolean
   showHomeLink?: boolean
   breadcrumbs?: Array<{ label: string; link: string }>
   extraLinks?: Array<{ label: string; link: string }>
@@ -20,6 +26,8 @@ export function PageHeader({
   user,
   showBaoLink = false,
   showAdminShopLinks = false,
+  productHubSection,
+  showOrderSettleLink = false,
   showHomeLink = true,
   breadcrumbs,
   extraLinks,
@@ -105,7 +113,31 @@ export function PageHeader({
               {link.label}
             </Link>
           ))}
-          {showAdminShopLinks && (
+          {productHubSection === 'inventory' && (
+            <>
+              <Link to="/products/orders" style={navButtonStyle} data-track="header_product_orders">
+                {isMobile ? '📋' : '📋 訂單開單'}
+              </Link>
+              {showOrderSettleLink && (
+                <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
+                  {isMobile ? '🧾' : '🧾 訂單結帳'}
+                </Link>
+              )}
+            </>
+          )}
+          {productHubSection === 'orders' && (
+            <>
+              <Link to="/products" style={navButtonStyle} data-track="header_product_inventory">
+                {isMobile ? '📦' : '📦 庫存'}
+              </Link>
+              {showOrderSettleLink && (
+                <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
+                  {isMobile ? '🧾' : '🧾 訂單結帳'}
+                </Link>
+              )}
+            </>
+          )}
+          {!productHubSection && showAdminShopLinks && (
             <>
               <Link to="/products" style={navButtonStyle} data-track="header_products">
                 {isMobile ? '📦' : '📦 商品'}

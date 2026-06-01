@@ -4,7 +4,8 @@ import { toast } from '../../../utils/toast'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from '../products/api'
 import { formatAttributes } from '../products/schema'
 import type { VariantListItem } from '../products/types'
-import { createShopOrder, deleteShopOrder, updateShopOrder } from './api'
+import { createShopOrder, updateShopOrder, voidShopOrder } from './api'
+import { formatDateTime } from '../../../utils/formatters'
 import { OrderMemberPicker, resolveContactName } from './OrderMemberPicker'
 import type { DeliveryMethod, ShopOrderWithItems } from './types'
 
@@ -38,9 +39,13 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  const isVoided = Boolean(order?.cancelled_at)
+
   const locked = useMemo(
-    () => Boolean(order?.items.some((it) => it.qty_pending_bill > 0 || it.qty_paid > 0)),
-    [order],
+    () =>
+      isVoided ||
+      Boolean(order?.items.some((it) => it.qty_pending_bill > 0 || it.qty_paid > 0)),
+    [order, isVoided],
   )
 
   useEffect(() => {
@@ -126,6 +131,7 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
     : null
 
   const handleSave = async () => {
+    if (isVoided) return
     const contactName = resolveContactName(
       memberSearch.selectedMemberId,
       selectedMemberLabel,
@@ -198,14 +204,20 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
     }
   }
 
-  const handleDelete = async () => {
-    if (!order) return
-    if (!confirm(`確定刪除訂單 ${order.order_no}？\n此操作無法復原。`)) return
+  const handleVoid = async () => {
+    if (!order || isVoided) return
+    const hasPaid = order.items.some((it) => it.qty_paid > 0)
+    const hasPending = order.items.some((it) => it.qty_pending_bill > 0)
+    let msg = `確定作廢訂單 ${order.order_no}？\n作廢後可在「已作廢」分頁查閱。`
+    if (hasPending || hasPaid) {
+      msg += '\n\n已送結帳／已結清的數量會加回庫存；結帳紀錄保留。'
+    }
+    if (!confirm(msg)) return
     setSaveError(null)
     setSaving(true)
     try {
-      await deleteShopOrder(order.id)
-      toast.success('已刪除訂單')
+      await voidShopOrder(order.id, userEmail ?? null)
+      toast.success('已作廢訂單')
       onSaved()
       onClose()
     } catch (e: unknown) {
@@ -243,9 +255,18 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
         onClick={(e) => e.stopPropagation()}
       >
         <h2 style={{ margin: '0 0 16px', fontSize: 20 }}>
-          {order ? `編輯訂單 ${order.order_no}` : '新增訂單'}
+          {order
+            ? isVoided
+              ? `查看訂單 ${order.order_no}`
+              : `編輯訂單 ${order.order_no}`
+            : '新增訂單'}
         </h2>
-        {locked && (
+        {isVoided && order && (
+          <div style={{ background: '#f5f5f5', border: '1px solid #ccc', borderRadius: 8, padding: 10, marginBottom: 12, fontSize: 13, color: '#666' }}>
+            此訂單已作廢（{order.cancelled_at ? formatDateTime(order.cancelled_at) : ''}），僅供查閱。
+          </div>
+        )}
+        {!isVoided && locked && (
           <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 8, padding: 10, marginBottom: 12, fontSize: 13 }}>
             已送結帳或已結清，品項鎖定；僅可改備註。
           </div>
@@ -415,20 +436,29 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
               {saveError}
             </p>
           )}
-          <button type="button" onClick={onClose} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #ccc', background: '#fff' }}>取消</button>
-          {order && (
+          <button type="button" onClick={onClose} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #ccc', background: '#fff' }}>
+            {isVoided ? '關閉' : '取消'}
+          </button>
+          {order && !isVoided && (
             <button
               type="button"
               disabled={saving}
-              onClick={() => void handleDelete()}
+              onClick={() => void handleVoid()}
               style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #c62828', background: '#fff', color: '#c62828' }}
             >
-              刪除
+              作廢
             </button>
           )}
-          <button type="button" disabled={saving} onClick={() => void handleSave()} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#333', color: '#fff' }}>
-            {saving ? '儲存中…' : '儲存'}
-          </button>
+          {!isVoided && (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void handleSave()}
+              style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#333', color: '#fff' }}
+            >
+              {saving ? '儲存中…' : '儲存'}
+            </button>
+          )}
         </div>
       </div>
     </div>

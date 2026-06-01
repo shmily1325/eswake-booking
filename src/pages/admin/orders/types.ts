@@ -90,4 +90,4 @@ export interface UpdateOrderInput {
   updated_by?: string | null
 }
 
-export type OrderInboxTab = 'waiting' | 'ready' | 'pending' | 'settled' | 'all'
+export type OrderInboxTab = 'waiting' | 'ready' | 'pending' | 'settled' | 'cancelled' | 'all'

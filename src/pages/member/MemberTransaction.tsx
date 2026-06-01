@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -19,6 +20,8 @@ interface MemberWithLastTransaction extends Member {
 
 export function MemberTransaction() {
   const user = useAuthUser()
+  const navigate = useNavigate()
+  const userIsAdmin = isAdmin(user)
   const { isMobile } = useResponsive()
   const toast = useToast()
   const [members, setMembers] = useState<MemberWithLastTransaction[]>([])
@@ -134,9 +137,21 @@ export function MemberTransaction() {
     }
   }
 
+  /** 會員儲值僅限超級管理員（與會員管理、BAO 一致） */
   useEffect(() => {
-    loadMembers()
-  }, [])
+    if (!user) return
+    if (!userIsAdmin) {
+      setLoading(false)
+      toast.error('會員儲值僅限管理員使用')
+      navigate('/')
+    }
+  }, [user, userIsAdmin, navigate, toast])
+
+  useEffect(() => {
+    if (!userIsAdmin) return
+    void loadMembers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userIsAdmin])
 
   // 使用 useMemo 計算過濾和排序後的會員列表
   const filteredMembers = useMemo(() => {
@@ -513,6 +528,14 @@ export function MemberTransaction() {
     }
   }
   */
+
+  if (!userIsAdmin) {
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+        載入中…
+      </div>
+    )
+  }
 
   return (
     <div style={{

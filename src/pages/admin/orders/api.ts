@@ -128,26 +128,29 @@ export async function updateShopOrder(orderId: string, input: UpdateOrderInput):
   }
 }
 
-export async function deleteShopOrder(orderId: string): Promise<void> {
-  const order = await fetchShopOrder(orderId)
-  if (!order) throw new Error('找不到訂單')
-
-  const pendingItems = order.items
-    .filter((it) => it.qty_pending_bill > 0)
-    .map((it) => ({ item_id: it.id, qty: it.qty_pending_bill }))
-
-  if (pendingItems.length > 0) {
-    await cancelShopOrderBilling(orderId, pendingItems)
-  }
-
-  const { error } = await supabase.from('shop_orders').delete().eq('id', orderId)
-  if (error) throw new Error(error.message)
+/** 作廢訂單（軟刪）：還原庫存、保留訂單與結帳紀錄 */
+export async function voidShopOrder(
+  orderId: string,
+  operatorEmail?: string | null,
+): Promise<void> {
+  const result = await supabase.rpc('void_shop_order', {
+    p_order_id: orderId,
+    p_operator_email: operatorEmail ?? null,
+  })
+  await rpcError(result)
 }
 
-/** @deprecated 改用 deleteShopOrder（硬刪除） */
+/** @deprecated 請用 voidShopOrder */
+export async function deleteShopOrder(
+  orderId: string,
+  operatorEmail?: string | null,
+): Promise<void> {
+  await voidShopOrder(orderId, operatorEmail)
+}
+
+/** @deprecated 請用 voidShopOrder */
 export async function cancelShopOrder(orderId: string, updatedBy?: string | null): Promise<void> {
-  void updatedBy
-  await deleteShopOrder(orderId)
+  await voidShopOrder(orderId, updatedBy)
 }
 
 export async function submitShopOrderBilling(

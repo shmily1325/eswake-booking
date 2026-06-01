@@ -267,8 +267,27 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
   // ====== 編輯/新增 view：直接交給子元件 ======
   if (view.kind !== 'list') {
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f6f8', padding: isMobile ? '12px' : '20px' }}>
-        <div style={{ maxWidth: 920, margin: '0 auto' }}>
+      <div
+        style={{
+          minHeight: '100dvh',
+          background: '#f5f6f8',
+          padding: isMobile ? '12px' : '20px',
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            maxWidth: 920,
+            margin: '0 auto',
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <ProductEditView
             // 以 productId 當 key，從一個商品切到另一個商品時強制 remount，
             // 避免表單欄位（drafts/category/brand/model 等）殘留上一個商品的內容

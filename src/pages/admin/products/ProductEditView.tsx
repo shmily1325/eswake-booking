@@ -424,8 +424,68 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
     background: '#fff',
   }
 
-  return (
-    <div style={{ paddingBottom: isMobile ? 80 : 40 }}>
+  /** 與 AddMemberDialog / NewBookingDialog 相同：手機版底部按鈕欄（flex 底欄，非 fixed） */
+  const mobileFooterBar =
+    isMobile && !readOnly ? (
+      <div
+        style={{
+          padding: '12px 0 0',
+          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+          borderTop: '1px solid #e0e0e0',
+          background: '#f5f6f8',
+          display: 'flex',
+          gap: 8,
+          flexShrink: 0,
+        }}
+      >
+        <button
+          type="button"
+          data-track="product_edit_cancel"
+          onClick={handleCancel}
+          disabled={saving}
+          style={{
+            flex: 1,
+            padding: '14px',
+            borderRadius: 8,
+            border: '1px solid #ccc',
+            backgroundColor: '#fff',
+            color: '#333',
+            fontSize: 16,
+            fontWeight: 500,
+            cursor: saving ? 'not-allowed' : 'pointer',
+            opacity: saving ? 0.5 : 1,
+            touchAction: 'manipulation',
+            minHeight: 48,
+          }}
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          data-track="product_edit_save"
+          onClick={() => void handleSave()}
+          disabled={saving}
+          style={{
+            flex: 2,
+            padding: '14px',
+            borderRadius: 8,
+            border: 'none',
+            background: saving ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
+            color: '#fff',
+            fontSize: 16,
+            fontWeight: 600,
+            cursor: saving ? 'not-allowed' : 'pointer',
+            touchAction: 'manipulation',
+            minHeight: 48,
+          }}
+        >
+          {saving ? '儲存中…' : '儲存'}
+        </button>
+      </div>
+    ) : null
+
+  const mainContent = (
+    <>
       {/* 標題列 */}
       <div
         style={{
@@ -634,32 +694,6 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
         </section>
       )}
 
-      {/* 手機版底部固定儲存按鈕（唯讀模式隱藏） */}
-      {isMobile && !readOnly && (
-        <div
-          style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: '12px 16px',
-            paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-            background: '#fff',
-            borderTop: '1px solid #eee',
-            zIndex: 50,
-            display: 'flex',
-            gap: 10,
-          }}
-        >
-          <Button variant="outline" data-track="product_edit_cancel" onClick={handleCancel} disabled={saving} style={{ flex: 1 }}>
-            取消
-          </Button>
-          <Button variant="primary" data-track="product_edit_save" onClick={handleSave} disabled={saving} style={{ flex: 2 }}>
-            {saving ? '儲存中…' : '儲存'}
-          </Button>
-        </div>
-      )}
-
       {confirmDelete && (
         <ConfirmModal
           isOpen={confirmDelete}
@@ -673,8 +707,37 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
           isLoading={saving}
         />
       )}
-    </div>
+    </>
   )
+
+  if (isMobile) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minHeight: 0,
+          maxHeight: '100dvh',
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflow: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: 8,
+          }}
+        >
+          {mainContent}
+        </div>
+        {mobileFooterBar}
+      </div>
+    )
+  }
+
+  return <div style={{ paddingBottom: 40 }}>{mainContent}</div>
 }
 
 interface VariantBlockProps {

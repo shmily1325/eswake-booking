@@ -651,7 +651,7 @@ export function MemberManagement() {
             title="👥 會員管理" 
             user={user} 
             showBaoLink={isAdmin(user)} 
-            extraLinks={[{ label: '💰', link: '/member-transaction' }]}
+            extraLinks={userIsAdmin ? [{ label: '💰', link: '/member-transaction' }] : undefined}
           />
 
           {/* 搜尋框骨架屏 */}
@@ -739,7 +739,9 @@ export function MemberManagement() {
           title="👥 會員管理" 
           user={user} 
           showBaoLink={isAdmin(user)} 
-          extraLinks={[{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }]}
+          extraLinks={
+            userIsAdmin ? [{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }] : undefined
+          }
         />
         {/* 搜尋欄 + 新增會員按鈕 */}
         <div style={{
