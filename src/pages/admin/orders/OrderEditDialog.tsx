@@ -26,6 +26,8 @@ interface Props {
 
 export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Props) {
   const memberSearch = useMemberSearch()
+  const [confirmedGuestName, setConfirmedGuestName] = useState<string | null>(null)
+  const [guestNameInput, setGuestNameInput] = useState('')
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('pickup_es')
   const [shippingInfo, setShippingInfo] = useState('')
   const [customerNote, setCustomerNote] = useState('')
@@ -65,12 +67,15 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
           label: lineLabel(it.variant?.product, it.variant),
         })),
       )
+      setGuestNameInput('')
       if (order.member_id) {
         const m = memberSearch.members.find((x) => x.id === order.member_id)
         if (m) memberSearch.selectMember(m)
         else memberSearch.handleSearchChange(order.contact_name)
+        setConfirmedGuestName(null)
       } else {
-        memberSearch.handleSearchChange(order.contact_name)
+        memberSearch.reset()
+        setConfirmedGuestName(order.contact_name)
       }
     } else {
       setDeliveryMethod('pickup_es')
@@ -79,6 +84,8 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
       setInternalNotes('')
       setLines([])
       memberSearch.reset()
+      setConfirmedGuestName(null)
+      setGuestNameInput('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, order?.id])
@@ -111,11 +118,18 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
     setVariantSearch('')
   }
 
+  const selectedMemberLabel = memberSearch.selectedMemberId
+    ? (() => {
+        const m = memberSearch.members.find((x) => x.id === memberSearch.selectedMemberId)
+        return m ? m.nickname || m.name : memberSearch.searchTerm
+      })()
+    : null
+
   const handleSave = async () => {
     const contactName = resolveContactName(
       memberSearch.selectedMemberId,
-      memberSearch.searchTerm,
-      memberSearch.manualName,
+      selectedMemberLabel,
+      confirmedGuestName,
       memberSearch.members,
     )
     if (!contactName) {
@@ -238,12 +252,35 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
         )}
 
         <OrderMemberPicker
+          selectedMemberId={memberSearch.selectedMemberId}
+          selectedMemberLabel={selectedMemberLabel}
+          onClearMember={() => {
+            memberSearch.reset()
+          }}
           searchTerm={memberSearch.searchTerm}
           onSearchChange={memberSearch.handleSearchChange}
           showDropdown={memberSearch.showDropdown}
           setShowDropdown={memberSearch.setShowDropdown}
           filteredMembers={memberSearch.filteredMembers}
-          onSelectMember={memberSearch.selectMember}
+          onSelectMember={(m) => {
+            memberSearch.selectMember(m)
+            setConfirmedGuestName(null)
+            setGuestNameInput('')
+          }}
+          guestName={guestNameInput}
+          onGuestNameChange={setGuestNameInput}
+          onConfirmGuest={() => {
+            const name = guestNameInput.trim()
+            if (!name) return
+            setConfirmedGuestName(name)
+            setGuestNameInput('')
+            memberSearch.reset()
+          }}
+          confirmedGuestName={confirmedGuestName}
+          onClearGuest={() => {
+            setConfirmedGuestName(null)
+            setGuestNameInput('')
+          }}
           disabled={locked}
         />
 
@@ -279,22 +316,39 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
             <input
               value={variantSearch}
               onChange={(e) => setVariantSearch(e.target.value)}
-              placeholder="搜尋品牌、型號、規格"
+              placeholder="搜尋品牌、型號、規格、貨號"
               style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #ccc', marginBottom: 8, boxSizing: 'border-box' }}
             />
             {filteredVariants.length > 0 && (
-              <div style={{ border: '1px solid #eee', borderRadius: 8, marginBottom: 12, maxHeight: 160, overflow: 'auto' }}>
-                {filteredVariants.map((v) => (
-                  <button
-                    key={v.variant.id}
-                    type="button"
-                    onClick={() => addVariant(v)}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: 10, border: 'none', borderBottom: '1px solid #f0f0f0', background: '#fff', cursor: 'pointer' }}
-                  >
-                    {v.product.brand} {v.product.model} · {formatAttributes(v.product.category, v.variant.attributes)}
-                    <span style={{ color: '#666', marginLeft: 8 }}>現貨 {v.variant.stock}</span>
-                  </button>
-                ))}
+              <div style={{ border: '1px solid #eee', borderRadius: 8, marginBottom: 12, maxHeight: 200, overflow: 'auto' }}>
+                {filteredVariants.map((v) => {
+                  const meta = variantMetaLine(v.variant)
+                  return (
+                    <button
+                      key={v.variant.id}
+                      type="button"
+                      onClick={() => addVariant(v)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        border: 'none',
+                        borderBottom: '1px solid #f0f0f0',
+                        background: '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.35 }}>
+                        {v.product.brand} {v.product.model} ·{' '}
+                        {formatAttributes(v.product.category, v.variant.attributes)}
+                      </div>
+                      {meta && (
+                        <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>{meta}</div>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </>
@@ -394,5 +448,23 @@ function lineLabel(
   variant: { attributes: Record<string, string | number | null>; vendor_code?: string | null } | undefined,
 ): string {
   if (!product || !variant) return '商品'
-  return `${product.brand} ${product.model} · ${formatAttributes(product.category, variant.attributes)}`
+  const base = `${product.brand} ${product.model} · ${formatAttributes(product.category, variant.attributes)}`
+  const code = variant.vendor_code?.trim()
+  return code ? `${base} · #${code}` : base
+}
+
+/** 選貨下拉第二行：貨號、牌價、現貨（與商品管理列表一致） */
+function variantMetaLine(variant: {
+  vendor_code?: string | null
+  price?: number | null
+  stock?: number
+}): string {
+  const parts: string[] = []
+  const code = variant.vendor_code?.trim()
+  if (code) parts.push(`#${code}`)
+  if (variant.price != null && variant.price > 0) {
+    parts.push(`$${variant.price.toLocaleString()}`)
+  }
+  if (typeof variant.stock === 'number') parts.push(`現貨 ${variant.stock}`)
+  return parts.join(' · ')
 }

@@ -29,9 +29,11 @@ import { OrderEditDialog } from './OrderEditDialog'
 import {
   deliveryMethodLabel,
   filterOrdersByInbox,
+  filterOrdersBySearch,
   orderHasPendingBill,
   orderHasReadyToBill,
   orderHasWaitingStock,
+  orderIsFullySettled,
   qtyBillable,
   qtyOpen,
 } from './orderUtils'
@@ -41,6 +43,7 @@ const TABS: { id: OrderInboxTab; label: string }[] = [
   { id: 'waiting', label: '等貨' },
   { id: 'ready', label: '可送結帳' },
   { id: 'pending', label: '待結帳' },
+  { id: 'settled', label: '已結清' },
   { id: 'all', label: '全部' },
 ]
 
@@ -58,6 +61,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   const [tab, setTab] = useState<OrderInboxTab>('all')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editOrder, setEditOrder] = useState<ShopOrderWithItems | null>(null)
+  const [search, setSearch] = useState('')
 
   const reloadOrders = useCallback(async () => {
     try {
@@ -115,12 +119,16 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       waiting: activeOrders.filter(orderHasWaitingStock).length,
       ready: activeOrders.filter(orderHasReadyToBill).length,
       pending: activeOrders.filter(orderHasPendingBill).length,
+      settled: activeOrders.filter(orderIsFullySettled).length,
       all: activeOrders.length,
     }),
     [activeOrders],
   )
 
-  const visible = useMemo(() => filterOrdersByInbox(orders, tab), [orders, tab])
+  const visible = useMemo(() => {
+    const byTab = filterOrdersByInbox(orders, tab)
+    return filterOrdersBySearch(byTab, search)
+  }, [orders, tab, search])
 
   const handleSubmitBilling = async (order: ShopOrderWithItems) => {
     const items = order.items
@@ -199,6 +207,46 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         <OrderStatChip label="等貨" count={tabCounts.waiting} color="#ef6c00" />
         <OrderStatChip label="可送結帳" count={tabCounts.ready} color="#1565c0" />
         <OrderStatChip label="待結帳" count={tabCounts.pending} color="#6a1b9a" />
+        <OrderStatChip label="已結清" count={tabCounts.settled} color="#2e7d32" />
+      </div>
+
+      <div style={{ marginBottom: 12, position: 'relative' }}>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="搜尋訂單號、訂購人"
+          style={{
+            width: '100%',
+            padding: '10px 14px 10px 36px',
+            fontSize: 14,
+            border: '1px solid #ddd',
+            borderRadius: 10,
+            boxSizing: 'border-box',
+            background: '#fff',
+          }}
+        />
+        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#999' }}>🔍</span>
+        {search && (
+          <button
+            type="button"
+            aria-label="清除搜尋"
+            onClick={() => setSearch('')}
+            style={{
+              position: 'absolute',
+              right: 8,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              border: 'none',
+              background: 'transparent',
+              color: '#999',
+              cursor: 'pointer',
+              fontSize: 16,
+            }}
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       <div
@@ -254,7 +302,11 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
                 ? '沒有可送結帳訂單'
                 : tab === 'pending'
                   ? '沒有待結帳訂單'
-                  : '還沒有訂單'}
+                  : tab === 'settled'
+                    ? '沒有已結清訂單'
+                    : search.trim()
+                      ? '沒有符合搜尋的訂單'
+                      : '還沒有訂單'}
           </div>
           {tab === 'ready' && tabCounts.pending > 0 && (
             <p style={{ margin: '8px 0 0', fontSize: 13, color: '#6a1b9a' }}>
@@ -323,6 +375,7 @@ function OrderCard({
     if (orderHasWaitingStock(order)) tags.push('等貨')
     if (orderHasReadyToBill(order)) tags.push('可送結帳')
     if (orderHasPendingBill(order)) tags.push('待結帳')
+    if (orderIsFullySettled(order)) tags.push('已結清')
   }
 
   return (
@@ -405,6 +458,7 @@ const TAG_STYLES: Record<string, { color: string; bg: string }> = {
   等貨: { color: '#ef6c00', bg: '#fff4e0' },
   可送結帳: { color: '#1565c0', bg: '#e3f2fd' },
   待結帳: { color: '#6a1b9a', bg: '#f3e5f5' },
+  已結清: { color: '#2e7d32', bg: '#e8f5e9' },
   已作廢: { color: '#888', bg: '#f5f5f5' },
 }
 

@@ -6,6 +6,7 @@ import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle } from '../../../styles/designSystem'
 import { formatAttributes } from '../products/schema'
 import { settleShopOrder } from './api'
+import { formatDiscountLabel, parseDiscountFactor } from './orderUtils'
 import type { OrderPaymentMethod, ShopOrderWithItems } from './types'
 
 interface SettleLineState {
@@ -90,6 +91,8 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const [chargeMemberId, setChargeMemberId] = useState<string | null>(order.member_id)
   const [memberBalance, setMemberBalance] = useState<number | null>(null)
   const [focusedField, setFocusedField] = useState<string | null>(null)
+  const [discountInput, setDiscountInput] = useState('')
+  const [appliedFactor, setAppliedFactor] = useState<number | null>(null)
   const proxySearch = useMemberSearch()
 
   const isCashSettlement = paymentMethod === 'cash' || paymentMethod === 'transfer'
@@ -118,6 +121,8 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 
   useEffect(() => {
     setLines(pendingLines)
+    setDiscountInput('')
+    setAppliedFactor(null)
   }, [pendingLines])
 
   useEffect(() => {
@@ -145,8 +150,28 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 
   const total = lines.reduce((s, l) => s + l.line_total, 0)
   const pendingTotal = pendingLines.reduce((s, l) => s + l.line_total, 0)
+  const subtotalAtListPrice = lines.reduce((s, l) => s + l.qty * l.unit_price, 0)
+  const hasLineDiscount = lines.some((l) => l.line_total !== l.qty * l.unit_price)
+
+  const applyDiscountToAll = () => {
+    const factor = parseDiscountFactor(discountInput)
+    if (factor === null) {
+      toast.error('請輸入有效折數，例如 9、85 或 0.9')
+      return
+    }
+    setAppliedFactor(factor)
+    setLines((prev) =>
+      prev.map((l) => ({
+        ...l,
+        line_total: Math.round(l.qty * l.unit_price * factor),
+      })),
+    )
+  }
 
   const updateLine = (idx: number, patch: Partial<SettleLineState>, opts?: { fromLineTotal?: boolean }) => {
+    if ('unit_price' in patch || 'qty' in patch || 'line_total' in patch) {
+      setAppliedFactor(null)
+    }
     setLines((prev) =>
       prev.map((l, i) => {
         if (i !== idx) return l
@@ -289,6 +314,84 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
               </div>
             </div>
           ))}
+
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 14,
+              background: 'linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%)',
+              borderRadius: 10,
+              border: '2px solid #c7d2fe',
+            }}
+          >
+            <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 8, fontWeight: 500 }}>整單折數</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="例：9、85"
+                value={discountInput}
+                onChange={(e) => setDiscountInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    applyDiscountToAll()
+                  }
+                }}
+                style={{
+                  flex: '1 1 100px',
+                  minWidth: 80,
+                  padding: '12px 14px',
+                  border: '2px solid #667eea',
+                  borderRadius: 8,
+                  fontSize: 18,
+                  fontWeight: 600,
+                  background: '#fff',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                }}
+              />
+              <span style={{ fontSize: 15, color: '#666', fontWeight: 500, flexShrink: 0 }}>折</span>
+              <button
+                type="button"
+                onClick={applyDiscountToAll}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #667eea 0%, #5a67d8 100%)',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                套用
+              </button>
+            </div>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
+              9＝九折、85＝八五折；各品項小計依牌價×數量×折數（四捨五入）
+            </div>
+            {(appliedFactor !== null || hasLineDiscount) && subtotalAtListPrice !== total && (
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 13,
+                  color: '#4338ca',
+                  background: '#fff',
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #c7d2fe',
+                }}
+              >
+                {appliedFactor !== null && (
+                  <span style={{ fontWeight: 600, marginRight: 8 }}>{formatDiscountLabel(appliedFactor)}</span>
+                )}
+                原價 ${subtotalAtListPrice.toLocaleString()} → 折後 ${total.toLocaleString()}
+              </div>
+            )}
+          </div>
 
           <div
             style={{
