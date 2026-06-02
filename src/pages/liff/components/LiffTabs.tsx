@@ -1,13 +1,13 @@
-// LIFF 分頁：純文字標籤
+// LIFF 分頁：僅 active 顯示 emoji，避免四格過擠
 
 import { triggerHaptic } from '../../../utils/haptic'
 import type { TabType } from '../types'
 
-const TABS: { tab: TabType; label: string }[] = [
-  { tab: 'bookings', label: '預約' },
-  { tab: 'balance', label: '儲值' },
-  { tab: 'orders', label: '商品' },
-  { tab: 'profile', label: '會員' },
+const TABS: { tab: TabType; label: string; emoji: string }[] = [
+  { tab: 'bookings', label: '預約', emoji: '📅' },
+  { tab: 'balance', label: '儲值', emoji: '💰' },
+  { tab: 'orders', label: '商品', emoji: '📦' },
+  { tab: 'profile', label: '會員', emoji: '👤' },
 ]
 
 interface LiffTabsProps {
@@ -27,7 +27,7 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
         zIndex: 10,
       }}
     >
-      {TABS.map(({ tab, label }) => {
+      {TABS.map(({ tab, label, emoji }) => {
         const active = activeTab === tab
         return (
           <button
@@ -51,7 +51,7 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
               transition: 'color 0.15s, border-color 0.15s',
             }}
           >
-            {label}
+            {active ? `${emoji} ${label}` : label}
           </button>
         )
       })}
