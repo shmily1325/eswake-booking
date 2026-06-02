@@ -40,7 +40,7 @@ export function OrderSettlePage() {
 
   useEffect(() => {
     if (!isAdmin(user)) {
-      toast.error('訂單結帳僅限管理員')
+      toast.error('僅限管理員')
       navigate('/')
     }
   }, [user, navigate, toast])

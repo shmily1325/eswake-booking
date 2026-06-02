@@ -5,7 +5,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getTextStyle } from '../styles/designSystem'
 import { CountBadge } from './CountBadge'
 
-/** 商品／訂單相關頁的 Header 快捷連結（不連到當前頁） */
+/** 商品／訂單相關頁的 Header 快捷連結（不連到當前頁；由呼叫端依權限傳入） */
 export type ProductHubHeaderSection = 'inventory' | 'orders' | 'settle'
 
 interface PageHeaderProps {

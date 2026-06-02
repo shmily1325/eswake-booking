@@ -342,7 +342,7 @@ describe('validateSubmitBillingDraft', () => {
   it('rejects qty over open (duplicate / stale submit)', () => {
     const result = validateSubmitBillingDraft(order, [{ item_id: 'a', qty: 3 }])
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.error).toContain('未送出訂量')
+    if (!result.ok) expect(result.error).toContain('未送訂量')
   })
 
   it('rejects qty over billable stock', () => {
@@ -374,7 +374,7 @@ describe('validateCancelBillingDraft', () => {
   it('rejects cancel over pending', () => {
     const result = validateCancelBillingDraft(order, [{ item_id: 'a', qty: 4 }])
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.error).toContain('待結帳')
+    if (!result.ok) expect(result.error).toContain('待結')
   })
 })
 
@@ -385,10 +385,9 @@ describe('confirm message', () => {
       mockItem({ id: 'b', qty: 1, stock: 1 }),
     ])
     const msg = buildSubmitBillingConfirmMessage(order)
-    expect(msg).toContain('不會重複送')
     expect(msg).toContain('已待結 2 件')
-    expect(msg).toContain('× 1')
-    expect(msg).not.toContain('× 2')
+    expect(msg).toContain('不會重送')
+    expect(msg).toContain('共 1 件')
   })
 })
 

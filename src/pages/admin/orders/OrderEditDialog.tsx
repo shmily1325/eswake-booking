@@ -239,7 +239,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     const confirmResult = confirmVoidOrder(order, txCount)
     if (confirmResult === 'cancelled') return
     if (confirmResult === 'mismatch') {
-      setSaveError('訂單號不符，已取消作廢')
+      setSaveError('訂單號不符')
       return
     }
     setSaveError(null)

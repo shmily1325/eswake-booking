@@ -241,7 +241,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       await reloadOrders()
       setHighlightOrderId(order.id)
       if (tab === 'ready') setTab('pending')
-      globalToast.success('已通知結帳')
+      globalToast.success('已送結帳')
     } catch (e: unknown) {
       toast.error(shopOrderErrorMessage(e, '送結帳失敗'))
     } finally {
@@ -253,7 +253,10 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     if (billingBusyOrderId) return
     const payload = buildCancelBillingPayload(order)
     const validation = validateCancelBillingDraft(order, payload)
-    if (!validation.ok) return
+    if (!validation.ok) {
+      toast.error(validation.error)
+      return
+    }
     if (!confirm(buildCancelBillingConfirmMessage(order))) return
     setBillingBusyOrderId(order.id)
     try {
@@ -272,7 +275,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     const confirmResult = confirmVoidOrder(order, txCount)
     if (confirmResult === 'cancelled') return
     if (confirmResult === 'mismatch') {
-      toast.error('訂單號不符，已取消作廢')
+      toast.error('訂單號不符')
       return
     }
     try {

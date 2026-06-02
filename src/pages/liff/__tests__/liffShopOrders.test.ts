@@ -84,8 +84,19 @@ describe('liffOrderStatus', () => {
     expect(liffOrderProgressSummary(order)).toBe('已到 1 件 · 等貨 2 件')
   })
 
-  it('shows waiting only when all open qty', () => {
+  it('shows waiting only when all open qty and no stock', () => {
     const item = mockItem({ id: 'a', qty: 2, stock: 0 })
+    expect(liffOrderStatus(mockOrder([item]))).toBe('waiting')
+  })
+
+  it('shows processing when stock covers open qty (not 等貨中)', () => {
+    const item = mockItem({ id: 'a', qty: 2, stock: 5, reserved_qty: 0 })
+    expect(liffOrderStatus(mockOrder([item]))).toBe('processing')
+  })
+
+  it('treats missing stock as zero (LIFF must select stock fields)', () => {
+    const item = mockItem({ id: 'a', qty: 2 })
+    item.variant!.stock = undefined as unknown as number
     expect(liffOrderStatus(mockOrder([item]))).toBe('waiting')
   })
 })

@@ -158,8 +158,6 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 
   const total = lines.reduce((s, l) => s + l.line_total, 0)
   const listTotal = lines.reduce((s, l) => s + listSubtotal(l.qty, l.unit_price), 0)
-  const isCashSettlement = paymentMethod === 'cash' || paymentMethod === 'transfer'
-
   const updateLine = (idx: number, patch: Partial<SettleLineState>) => {
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)))
   }
@@ -168,7 +166,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
     const line = lines[idx]
     const factor = tryParseDiscountFactor(line.discountInput)
     if (factor === null) {
-      toast.error('請輸入有效折數，例如 9、85 或 0.9')
+      toast.error('請填 9 或 85')
       return
     }
     updateLine(idx, {
@@ -179,7 +177,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const applyGlobalDiscount = () => {
     const factor = tryParseDiscountFactor(globalDiscountInput)
     if (factor === null) {
-      toast.error('請輸入有效折數，例如 9、85 或 0.9')
+      toast.error('請填 9 或 85')
       return
     }
     setLines((prev) =>
@@ -219,26 +217,20 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 
   const handleSettle = async () => {
     if (paymentMethod === 'balance' && !chargeMemberId) {
-      toast.error('扣儲值需選擇會員')
+      toast.error('請選扣款會員')
       return
     }
     for (const line of lines) {
       if (!line.description.trim()) {
-        toast.error('每個品項請填寫入帳說明')
+        toast.error('請填入帳說明')
         return
       }
     }
 
     if (isProxyCharge && chargeMemberName) {
-      const ok = window.confirm(
-        `⚠️ 代扣確認\n\n訂單：${order.order_no}（${order.contact_name}）\n扣款帳戶：${chargeMemberName}\n總額：${total.toLocaleString()} 元\n\n確定要從 ${chargeMemberName} 的帳戶扣款嗎？`,
-      )
-      if (!ok) return
-    } else {
-      const confirmMsg = isCashSettlement
-        ? `確認${settleLabel} ${order.order_no}？\n總額 ${total.toLocaleString()} 元`
-        : `確認扣款 ${order.order_no}？\n共 ${lines.length} 筆、總額 ${total.toLocaleString()} 元`
-      if (!confirm(confirmMsg)) return
+      if (!confirm(`由 ${chargeMemberName} 代扣 $${total.toLocaleString()}？`)) return
+    } else if (!confirm(`${order.order_no} 結帳 $${total.toLocaleString()}？`)) {
+      return
     }
 
     setLoading(true)
@@ -258,11 +250,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
         null,
         user?.email ?? null,
       )
-      toast.success(
-        isProxyCharge && chargeMemberName
-          ? `${settleLabel}完成（由 ${chargeMemberName} 代扣）`
-          : `${settleLabel}完成`,
-      )
+      toast.success('已結帳')
       onComplete()
     } catch (e: unknown) {
       toast.error(shopOrderErrorMessage(e, '結帳失敗'))
@@ -444,10 +432,9 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                 border: '1px solid #e9ecef',
               }}
             >
-              <span style={{ fontSize: 12, color: '#666' }}>全部品項</span>
+              <span style={{ fontSize: 13, color: '#333', fontWeight: 500 }}>整單</span>
               <DecimalTextInput
                 compact
-                placeholder="例：9"
                 value={globalDiscountInput}
                 onChange={setGlobalDiscountInput}
                 onKeyDown={(e) => {
@@ -473,7 +460,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   cursor: 'pointer',
                 }}
               >
-                套用折數
+                套用
               </button>
             </div>
           )}
@@ -767,7 +754,6 @@ function SettleLineRow({
           >
             <DecimalTextInput
               compact
-              placeholder="例：9"
               value={line.discountInput}
               onChange={(v) => onUpdate({ discountInput: v })}
               onKeyDown={(e) => {
@@ -793,7 +779,7 @@ function SettleLineRow({
                 cursor: 'pointer',
               }}
             >
-              套用折數
+              套用
             </button>
           </div>
         </div>

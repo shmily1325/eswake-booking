@@ -13,7 +13,7 @@ const LIFF_ORDER_SELECT = `
   items:shop_order_items(
     id, qty, qty_pending_bill, qty_paid, unit_price,
     variant:product_variants(
-      id, vendor_code, attributes, last_stock_in_at,
+      id, vendor_code, attributes, last_stock_in_at, stock, reserved_qty,
       product:products(brand, model, category)
     )
   )

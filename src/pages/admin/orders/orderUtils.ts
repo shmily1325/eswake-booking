@@ -326,7 +326,7 @@ export function validateSubmitBillingDraft(
 ): BillingQtyValidation {
   const items = positiveBillingLines(lines)
   if (items.length === 0) {
-    return { ok: false, error: '請至少選一項要送結帳的數量' }
+    return { ok: false, error: '請選送結數量' }
   }
   for (const line of items) {
     const item = order.items.find((it) => it.id === line.item_id)
@@ -335,17 +335,11 @@ export function validateSubmitBillingDraft(
     }
     const open = qtyOpen(item)
     if (line.qty > open) {
-      return {
-        ok: false,
-        error: `${formatOrderItemLabel(item)} 超過未送出訂量（最多 ${open}）`,
-      }
+      return { ok: false, error: `超過未送訂量（最多 ${open}）` }
     }
     const billable = qtyBillable(item)
     if (line.qty > billable) {
-      return {
-        ok: false,
-        error: `${formatOrderItemLabel(item)} 現貨不足（最多可送 ${billable}）`,
-      }
+      return { ok: false, error: `現貨不足（最多 ${billable}）` }
     }
   }
   return { ok: true, items }
@@ -358,7 +352,7 @@ export function validateCancelBillingDraft(
 ): BillingQtyValidation {
   const items = positiveBillingLines(lines)
   if (items.length === 0) {
-    return { ok: false, error: '請至少選一項要撤回的數量' }
+    return { ok: false, error: '請選撤回數量' }
   }
   for (const line of items) {
     const item = order.items.find((it) => it.id === line.item_id)
@@ -366,10 +360,7 @@ export function validateCancelBillingDraft(
       return { ok: false, error: '品項不屬於此訂單' }
     }
     if (line.qty > item.qty_pending_bill) {
-      return {
-        ok: false,
-        error: `${formatOrderItemLabel(item)} 超過待結帳數量（最多 ${item.qty_pending_bill}）`,
-      }
+      return { ok: false, error: `超過待結量（最多 ${item.qty_pending_bill}）` }
     }
   }
   return { ok: true, items }
@@ -380,27 +371,11 @@ export function buildSubmitBillingSummaryMessage(
   items: BillingQtyPayload[],
 ): string {
   const active = positiveBillingLines(items)
-  const itemLines = active.map((line) => {
-    const item = order.items.find((it) => it.id === line.item_id)
-    const label = item ? formatOrderItemLabel(item) : '商品'
-    return `· ${label} × ${line.qty}`
-  })
   const totalQty = active.reduce((sum, x) => sum + x.qty, 0)
   const pendingSkipped = order.items.reduce((sum, it) => sum + it.qty_pending_bill, 0)
-  const paidSkipped = order.items.reduce((sum, it) => sum + it.qty_paid, 0)
-  const lines = [
-    `送結帳 ${order.order_no}（${order.contact_name}）？`,
-    '',
-    ...itemLines,
-    '',
-    `共 ${active.length} 品項、${totalQty} 件；將保留現貨並通知結帳。`,
-    '僅送出上方列出的新數量，已通知結帳／已結清的不會重複送。',
-  ]
-  if (pendingSkipped > 0 || paidSkipped > 0) {
-    const parts: string[] = []
-    if (pendingSkipped > 0) parts.push(`已待結 ${pendingSkipped} 件`)
-    if (paidSkipped > 0) parts.push(`已結清 ${paidSkipped} 件`)
-    lines.push(`（${parts.join('、')}不在此次）`)
+  const lines = [`送結帳 ${order.order_no}？`, `共 ${totalQty} 件`]
+  if (pendingSkipped > 0) {
+    lines.push(`（已待結 ${pendingSkipped} 件不會重送）`)
   }
   return lines.join('\n')
 }
@@ -410,38 +385,16 @@ export function buildCancelBillingSummaryMessage(
   items: BillingQtyPayload[],
 ): string {
   const active = positiveBillingLines(items)
-  const itemLines = active.map((line) => {
-    const item = order.items.find((it) => it.id === line.item_id)
-    const label = item ? formatOrderItemLabel(item) : '商品'
-    return `· ${label} × ${line.qty}`
-  })
   const totalQty = active.reduce((sum, x) => sum + x.qty, 0)
-  return [
-    `撤回送結帳 ${order.order_no}（${order.contact_name}）？`,
-    '',
-    ...itemLines,
-    '',
-    `共 ${active.length} 品項、${totalQty} 件；將釋放保留庫存。`,
-  ].join('\n')
+  return [`撤回 ${order.order_no}？`, `共 ${totalQty} 件`].join('\n')
 }
 
 /** 作廢確認（已有結帳／交易時需再輸入訂單號） */
 export function buildVoidOrderConfirmMessage(order: ShopOrderWithItems, txCount: number): string {
   const hasPaid = order.items.some((it) => it.qty_paid > 0)
-  const hasPending = order.items.some((it) => it.qty_pending_bill > 0)
-  const lines = [
-    `確定作廢訂單 ${order.order_no}（${order.contact_name}）？`,
-    '作廢後可在列表篩選「已作廢」查閱，無法再編輯或送結帳。',
-    '已結帳統計不會計入此單。',
-  ]
-  if (hasPending || hasPaid) {
-    lines.push('', '待結帳保留量會釋放；已結清數量會加回可售庫存。')
-  }
+  const lines = [`作廢 ${order.order_no}？`]
   if (hasPaid || txCount > 0) {
-    lines.push('結帳紀錄與儲值交易保留（與課程相同，不會自動改交易）。')
-  }
-  if (txCount > 0) {
-    lines.push(`若已扣儲值，請到會員儲值人工處理退款（共 ${txCount} 筆）。`)
+    lines.push('已結帳／已扣款不會自動退，請自行處理。')
   }
   return lines.join('\n')
 }
@@ -452,7 +405,7 @@ export function confirmVoidOrder(order: ShopOrderWithItems, txCount: number): Vo
   if (!confirm(buildVoidOrderConfirmMessage(order, txCount))) return 'cancelled'
   const hasPaid = order.items.some((it) => it.qty_paid > 0)
   if (hasPaid || txCount > 0) {
-    const typed = prompt(`請輸入訂單號 ${order.order_no} 以確認作廢：`)
+    const typed = prompt(`輸入訂單號 ${order.order_no} 確認作廢：`)
     if (typed === null) return 'cancelled'
     if (typed.trim() !== order.order_no) return 'mismatch'
   }
