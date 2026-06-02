@@ -8,7 +8,13 @@ import { useNavigate } from 'react-router-dom'
 
 import { PageHeader } from '../../../components/PageHeader'
 
-import { ProductHubShell, adminLoadingStyle } from '../../../components/AdminPageLayout'
+import {
+  AdminPillLink,
+  AdminPillRow,
+  ProductHubShell,
+  adminLoadingStyle,
+} from '../../../components/AdminPageLayout'
+import { useResponsive } from '../../../hooks/useResponsive'
 
 import { Footer } from '../../../components/Footer'
 
@@ -38,6 +44,7 @@ export function ProductHub() {
   const [canEdit, setCanEdit] = useState(false)
   const userIsAdmin = isAdmin(user)
   const { count: pendingSettleCount } = usePendingBillOrderCount(userIsAdmin)
+  const { isMobile } = useResponsive()
 
 
 
@@ -108,13 +115,23 @@ export function ProductHub() {
 
       <PageHeader
         user={user}
-        title={onOrders ? '📋 訂單開單' : '📦 商品庫存'}
+        title="📦 商品訂單"
         showBaoLink={userIsAdmin}
         productHubSection={onOrders ? 'orders' : 'inventory'}
         showOrderSettleLink={userIsAdmin}
         pendingSettleCount={pendingSettleCount}
-        showProductOrdersLink={canEdit}
       />
+
+      {canEdit && (
+        <AdminPillRow style={{ marginBottom: isMobile ? 12 : 16 }}>
+          <AdminPillLink to="/products" end active={!onOrders}>
+            庫存
+          </AdminPillLink>
+          <AdminPillLink to="/products/orders" active={onOrders}>
+            訂單開單
+          </AdminPillLink>
+        </AdminPillRow>
+      )}
 
       <Routes>
 

@@ -327,17 +327,17 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           isMobile={isMobile}
         />
 
-        {/* 工具列：搜尋 + 新增 */}
+        {/* 工具列：手機兩行（搜尋全寬 → 操作鈕），避免鎖定被 flex-wrap 擠到下一行 */}
         <div
           style={{
             display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
             gap: 10,
             marginBottom: 14,
-            alignItems: 'center',
-            flexWrap: 'wrap',
+            alignItems: isMobile ? 'stretch' : 'center',
           }}
         >
-          <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+          <div style={{ flex: 1, minWidth: isMobile ? 0 : 200, position: 'relative' }}>
             <input
               type="text"
               value={search}
@@ -377,33 +377,50 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
               </button>
             )}
           </div>
-          {effectiveCanEdit && (
-            <Button
-              variant="primary"
-              data-track="product_add"
-              onClick={() => {
-                setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
-              }}
-            >
-              + 新增{isMobile ? '' : '商品'}
-            </Button>
-          )}
-          {/* 手機版：列表/鎖定切換放在搜尋列右邊，避免擠到 tab 區 */}
-          {isMobile && (
-            <>
-              <LayoutToggle layout={layout} onChange={setLayoutPersist} />
-              {canEdit && (
-                <LockToggle
-                  locked={userLocked}
-                  onToggle={() => {
-                    const next = !userLocked
-                    setUserLocked(next)
-                    trackClick(next ? 'product_lock_on' : 'product_lock_off', user?.email ?? undefined)
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              alignItems: 'center',
+              flexShrink: 0,
+              flexWrap: 'nowrap',
+            }}
+          >
+            {effectiveCanEdit && (
+              <Button
+                variant="primary"
+                data-track="product_add"
+                onClick={() => {
+                  setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
+                }}
+              >
+                + 新增{isMobile ? '' : '商品'}
+              </Button>
+            )}
+            {isMobile && (
+              <>
+                <SortMenu
+                  value={sortBy}
+                  onChange={(next) => {
+                    setSortByPersist(next)
+                    trackClick(`product_sort_${next}`, user?.email ?? undefined)
                   }}
+                  isMobile={isMobile}
                 />
-              )}
-            </>
-          )}
+                <LayoutToggle layout={layout} onChange={setLayoutPersist} />
+                {canEdit && (
+                  <LockToggle
+                    locked={userLocked}
+                    onToggle={() => {
+                      const next = !userLocked
+                      setUserLocked(next)
+                      trackClick(next ? 'product_lock_on' : 'product_lock_off', user?.email ?? undefined)
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* 類別 Tab + （桌機）排序/顯示模式切換 */}

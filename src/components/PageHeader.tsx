@@ -16,8 +16,6 @@ interface PageHeaderProps {
   showOrderSettleLink?: boolean
   /** 待結帳筆數角標（管理員） */
   pendingSettleCount?: number
-  /** 庫存頁是否顯示「訂單開單」（can_products 或超管） */
-  showProductOrdersLink?: boolean
   showHomeLink?: boolean
   extraLinks?: Array<{ label: string; link: string }>
 }
@@ -29,7 +27,6 @@ export function PageHeader({
   productHubSection,
   showOrderSettleLink = false,
   pendingSettleCount = 0,
-  showProductOrdersLink = false,
   showHomeLink = true,
   extraLinks,
 }: PageHeaderProps) {
@@ -65,21 +62,43 @@ export function PageHeader({
       <div
         style={{
           display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: isMobile ? 'stretch' : 'center',
+          gap: isMobile ? 10 : 0,
         }}
       >
-        <h1
+        <div
           style={{
-            ...getTextStyle('h1', isMobile),
-            fontWeight: 'bold',
-            color: 'white',
-            margin: 0,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 8,
+            minWidth: 0,
           }}
         >
-          {displayTitle}
-        </h1>
-        <div style={{ display: 'flex', gap: designSystem.spacing.sm, alignItems: 'center' }}>
+          <h1
+            style={{
+              ...getTextStyle('h1', isMobile),
+              fontWeight: 'bold',
+              color: 'white',
+              margin: 0,
+              minWidth: 0,
+            }}
+          >
+            {displayTitle}
+          </h1>
+          {isMobile && user && <UserMenu user={user} />}
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 6,
+            alignItems: 'center',
+            justifyContent: isMobile ? 'flex-start' : 'flex-end',
+          }}
+        >
           {extraLinks?.map((link, index) => (
             <Link
               key={index}
@@ -90,38 +109,17 @@ export function PageHeader({
               {link.label}
             </Link>
           ))}
-          {productHubSection === 'inventory' && (
-            <>
-              {showProductOrdersLink && (
-                <Link to="/products/orders" style={navButtonStyle} data-track="header_product_orders">
-                  {isMobile ? '📋' : '📋 訂單開單'}
-                </Link>
-              )}
-              {showOrderSettleLink && (
-                <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
-                  {isMobile ? '🧾' : '🧾 訂單結帳'}
-                  <CountBadge count={pendingSettleCount} />
-                </Link>
-              )}
-            </>
-          )}
-          {productHubSection === 'orders' && (
-            <>
-              <Link to="/products" style={navButtonStyle} data-track="header_product_inventory">
-                {isMobile ? '📦' : '📦 庫存'}
+          {(productHubSection === 'inventory' || productHubSection === 'orders') &&
+            showOrderSettleLink && (
+              <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
+                {isMobile ? '🧾' : '🧾 訂單結帳'}
+                <CountBadge count={pendingSettleCount} />
               </Link>
-              {showOrderSettleLink && (
-                <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
-                  {isMobile ? '🧾' : '🧾 訂單結帳'}
-                  <CountBadge count={pendingSettleCount} />
-                </Link>
-              )}
-            </>
-          )}
+            )}
           {productHubSection === 'settle' && (
             <>
               <Link to="/products" style={navButtonStyle} data-track="header_product_inventory">
-                {isMobile ? '📦' : '📦 庫存'}
+                {isMobile ? '📦' : '📦 商品訂單'}
               </Link>
               <Link to="/products/orders" style={navButtonStyle} data-track="header_product_orders">
                 {isMobile ? '📋' : '📋 訂單開單'}
@@ -130,15 +128,15 @@ export function PageHeader({
           )}
           {showBaoLink && (
             <Link to="/bao" style={navButtonStyle} data-track="header_bao">
-              ← BAO
+              {isMobile ? 'BAO' : '← BAO'}
             </Link>
           )}
           {showHomeLink && (
             <Link to="/" style={navButtonStyle} data-track="header_home">
-              ← HOME
+              {isMobile ? 'HOME' : '← HOME'}
             </Link>
           )}
-          {user && <UserMenu user={user} />}
+          {!isMobile && user && <UserMenu user={user} />}
         </div>
       </div>
     </div>
