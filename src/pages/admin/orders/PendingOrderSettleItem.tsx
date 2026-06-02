@@ -220,7 +220,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
       </button>
 
       {expanded && (
-        <div style={{ padding: isMobile ? 16 : 20, borderTop: '1px solid #e0e0e0', maxWidth: 720 }}>
+        <div style={{ padding: isMobile ? 16 : 20, borderTop: '1px solid #e0e0e0' }}>
           {lines.length > 1 && (
             <div
               style={{
@@ -282,7 +282,6 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
               key={line.item_id}
               index={idx + 1}
               line={line}
-              isMobile={isMobile}
               showBalanceHint={paymentMethod === 'balance'}
               onUpdate={(patch) => updateLine(idx, patch)}
               onApplyDiscount={() => applyDiscountToLine(idx)}
@@ -364,7 +363,6 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   placeholder="扣款帳戶"
                   style={{
                     width: '100%',
-                    maxWidth: 360,
                     padding: '10px 12px',
                     border: '1px solid #ddd',
                     borderRadius: 8,
@@ -421,7 +419,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                 onClick={() => void handleSettle()}
                 style={{
                   ...getButtonStyle('success', 'medium', isMobile),
-                  width: isMobile ? '100%' : undefined,
+                  width: '100%',
                 }}
               >
                 {loading ? '處理中…' : `✅ ${settleLabel}`}
@@ -434,7 +432,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
               onClick={() => void handleSettle()}
               style={{
                 ...getButtonStyle('primary', 'medium', isMobile),
-                width: isMobile ? '100%' : undefined,
+                width: '100%',
               }}
             >
               {loading ? '處理中…' : `✅ ${settleLabel}`}
@@ -449,14 +447,12 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 function SettleLineRow({
   index,
   line,
-  isMobile,
   showBalanceHint,
   onUpdate,
   onApplyDiscount,
 }: {
   index: number
   line: SettleLineState
-  isMobile: boolean
   showBalanceHint: boolean
   onUpdate: (patch: Partial<SettleLineState>) => void
   onApplyDiscount: () => void
@@ -508,8 +504,16 @@ function SettleLineRow({
         </div>
       </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: isMobile ? '100%' : 280 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          alignItems: 'center',
+          marginBottom: showBalanceHint ? 12 : 0,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: '1 1 160px', minWidth: 0 }}>
           <span style={{ fontSize: 16, color: '#666', fontWeight: 500 }}>$</span>
           <input
             type="text"
@@ -530,6 +534,7 @@ function SettleLineRow({
             onBlur={() => setIsAmountFocused(false)}
             style={{
               flex: 1,
+              minWidth: 0,
               padding: '12px 14px',
               border: '2px solid #667eea',
               borderRadius: 8,
@@ -540,52 +545,51 @@ function SettleLineRow({
             }}
           />
         </div>
-        {hasDiscount && (
-          <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
-            牌價 ${subtotal.toLocaleString()} → ${line.line_total.toLocaleString()}
-          </div>
-        )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="9"
+            value={line.discountInput}
+            onChange={(e) => onUpdate({ discountInput: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                onApplyDiscount()
+              }
+            }}
+            style={{
+              width: 52,
+              padding: '8px 10px',
+              border: '1px solid #ddd',
+              borderRadius: 8,
+              fontSize: 15,
+              textAlign: 'center',
+            }}
+          />
+          <span style={{ fontSize: 13, color: '#888' }}>折</span>
+          <button
+            type="button"
+            onClick={onApplyDiscount}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 6,
+              border: '1px solid #ccc',
+              background: '#fff',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            套用
+          </button>
+        </div>
       </div>
-
-      <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <input
-          type="text"
-          inputMode="decimal"
-          placeholder="9"
-          value={line.discountInput}
-          onChange={(e) => onUpdate({ discountInput: e.target.value })}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              onApplyDiscount()
-            }
-          }}
-          style={{
-            width: 52,
-            padding: '8px 10px',
-            border: '1px solid #ddd',
-            borderRadius: 8,
-            fontSize: 15,
-            textAlign: 'center',
-          }}
-        />
-        <span style={{ fontSize: 13, color: '#888' }}>折</span>
-        <button
-          type="button"
-          onClick={onApplyDiscount}
-          style={{
-            padding: '6px 12px',
-            borderRadius: 6,
-            border: '1px solid #ccc',
-            background: '#fff',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          套用
-        </button>
-      </div>
+      {hasDiscount && (
+        <div style={{ marginBottom: 12, fontSize: 12, color: '#888' }}>
+          牌價 ${subtotal.toLocaleString()} → ${line.line_total.toLocaleString()}
+        </div>
+      )}
 
       {showBalanceHint && (
         <textarea
