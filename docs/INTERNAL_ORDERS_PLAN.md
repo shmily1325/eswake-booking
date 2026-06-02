@@ -3,7 +3,7 @@
 > **定位**：店內用開單／結帳／扣庫存工具。**不**取代公開 `/shop` 型錄（見 `SHOP_PLAN.md`）。
 >
 > 📅 規劃日期：2026-05-31  
-> ✅ 狀態：Phase 1 已上線；Phase 2 統計 Tab 已上線；UX 強化批次已上線（見 §11.1）；CSV 待做
+> ✅ 狀態：Phase 1–2 核心已上線；Phase 3 LIFF 商品訂單已上線；CSV 報表待做
 
 ---
 
@@ -73,8 +73,8 @@
 | ❌ LINE push 通知 | Messaging API 未通 |
 | ❌ 物流 API／發票／金流閘道 | 超出範圍 |
 | ❌ 訂單來源統計（型錄轉換） | v2 |
-| ❌ 銷售報表 CSV 匯出 | Phase 2 待做（已結帳統計 Tab 已上線） |
-| ❌ LIFF 訂單查詢 | Phase 3 |
+| ❌ 銷售報表 CSV 匯出 | Phase 2 待做（已結帳統計 Tab 已上線；不急） |
+| ~~❌ LIFF 訂單查詢~~ | ~~Phase 3~~ → **已上線**（見 §11.4） |
 
 ---
 
@@ -398,13 +398,13 @@ src/pages/liff/
 ### Phase 2 — 營運加強
 
 - [x] 已結帳統計（`/order-settle` Tab · `fetchSettlementsInRange` · 對標回報統計報表）
-- [ ] 匯出 CSV
+- [ ] 匯出 CSV（不急）
 - [ ] （可選）訂單號每日流水強化、與 Dashboard 整合
 
 ### Phase 3 — 會員 LIFF
 
-- [ ] Tab 商品訂單
-- [ ] `customer_note` 編輯捷徑（商品同事）
+- [x] Tab「商品」：查 `member_id` 訂單、品項進度、`customer_note`、面交／寄送（`128_liff_shop_orders_read.sql` + `ShopOrdersList`）
+- [ ] `customer_note` 編輯捷徑（商品同事後台）
 
 ### Phase 4 — 可選
 
@@ -415,12 +415,23 @@ src/pages/liff/
 
 | 優先 | 項目 | 說明 | 現況 |
 |------|------|------|------|
-| P1 | ~~部分送結帳 UI~~ | ~~手動選 qty~~ | 不需要；有貨一次全送，靠 `qtyBillable` 排除已送 |
-| P1 | 入庫 → 可送提示 | 訂單卡品項顯示「剛入庫」等 | 僅 chip 狀態，無入庫時間強調 |
-| P2 | 匯出 CSV | Phase 2 | 統計 Tab 已有，缺匯出 |
-| ~~P2~~ | ~~Gallery 開單~~ | ~~圖庫模式 SKU 也加「開單」~~ | ✅ 與列表／表格相同 |
-| P3 | LIFF 商品訂單 | Phase 3 | — |
+| ~~P1~~ | ~~部分送結帳 UI~~ | ~~手動選 qty~~ | 不需要；有貨一次全送 |
+| ~~P1~~ | ~~入庫 → 可送提示~~ | 訂單卡「今日入庫 · 可送結帳」 | ✅ `itemStockInBillableHint` |
+| P2 | 匯出 CSV | Phase 2 | 統計 Tab 已有，不急 |
+| ~~P2~~ | ~~Gallery 開單~~ | | ✅ |
+| ~~P3~~ | ~~LIFF 商品訂單~~ | Phase 3 | ✅ |
 | P3 | 訂單號流水／Dashboard | Phase 2 可選 | — |
+
+### 11.4 結帳與列表（2026-06 批次 · 已上線）
+
+- [x] **127** 扣儲值：每品項一筆 `transactions` + 可編輯 `description`
+- [x] 結帳 UI 對齊 `PendingDeductionItem`（代扣橘框、切換會員彈窗、確認扣款）
+- [x] 代扣：`billing_relations` 依 `contact_name` 自動帶入 +「✓ 自動帶入」
+- [x] 訂單列表減雜（`itemQtyChipsForCard`、無左色條）
+- [x] 貨號搜尋：`#ABC` 與 `ABC` 皆可（`productSearchHaystack`）
+- [x] LIFF「商品」Tab（`liffShopOrders.ts`、`ShopOrdersList`）
+
+**Git 參考**：`8c4a818` 結帳流程 · `ca6e15d` 課程 UI · `bcc8a25` 折數 UX · （本批）LIFF + 入庫提示 + 代扣自動帶入
 
 ### 11.3 流程是否順暢？
 

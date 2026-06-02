@@ -1,5 +1,6 @@
 import type { ShopOrderItemWithVariant, ShopOrderWithItems } from './types'
 import { formatAttributes } from '../products/schema'
+import { getLocalDateString } from '../../../utils/date'
 
 /** 尚未送結帳的訂購量 */
 export function qtyOpen(item: ShopOrderItemWithVariant): number {
@@ -14,6 +15,24 @@ export function qtyBillable(item: ShopOrderItemWithVariant): number {
   const reserved = item.variant?.reserved_qty ?? 0
   const available = Math.max(0, stock - reserved)
   return Math.min(open, available)
+}
+
+const STOCK_IN_HINT_DAYS = 7
+
+/** 剛入庫且可送結帳時，訂單列表提示商品同事 */
+export function itemStockInBillableHint(item: ShopOrderItemWithVariant): string | null {
+  if (qtyBillable(item) <= 0) return null
+  const at = item.variant?.last_stock_in_at
+  if (!at) return null
+  const inDate = at.split('T')[0]
+  const today = getLocalDateString()
+  const inMs = new Date(`${inDate}T12:00:00`).getTime()
+  const todayMs = new Date(`${today}T12:00:00`).getTime()
+  const days = Math.round((todayMs - inMs) / 86400000)
+  if (days < 0 || days > STOCK_IN_HINT_DAYS) return null
+  if (days === 0) return '📦 今日入庫 · 可送結帳'
+  if (days === 1) return '📦 昨日入庫 · 可送結帳'
+  return `📦 ${days} 天前入庫 · 可送結帳`
 }
 
 export function orderHasWaitingStock(order: ShopOrderWithItems): boolean {

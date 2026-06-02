@@ -5,6 +5,7 @@ import {
   buildSubmitBillingConfirmMessage,
   buildSubmitBillingPayload,
   itemQtyChipsForCard,
+  itemStockInBillableHint,
   orderCanSubmitBilling,
   orderHasPendingBill,
   orderHasReadyToBill,
@@ -394,6 +395,20 @@ describe('cross-order reserve corner case', () => {
     expect(qtyBillable(item)).toBe(1)
     const payload = buildSubmitBillingPayload(mockOrder([item]))
     expect(payload).toEqual([{ item_id: 'a', qty: 1 }])
+  })
+})
+
+describe('itemStockInBillableHint', () => {
+  it('shows hint when recently stocked and billable', () => {
+    const today = new Date().toISOString()
+    const item = mockItem({ id: 'a', qty: 2, stock: 5 })
+    item.variant!.last_stock_in_at = today
+    expect(itemStockInBillableHint(item)).toContain('今日入庫')
+  })
+
+  it('returns null when waiting for stock', () => {
+    const item = mockItem({ id: 'a', qty: 2, stock: 0 })
+    expect(itemStockInBillableHint(item)).toBeNull()
   })
 })
 

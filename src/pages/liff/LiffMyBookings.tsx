@@ -12,6 +12,7 @@ import {
   LiffHeader,
   LiffTabs,
   BookingsList,
+  ShopOrdersList,
   BalanceView,
   MemberProfileView,
   TransactionModal,
@@ -20,6 +21,7 @@ import {
 } from './components'
 import { buildLiffExpiryBannerLines } from './liffExpiryAlerts'
 import { liffTrack, liffTrackFlushQueueNow } from './track'
+import { fetchLiffShopOrders, type LiffShopOrder } from './liffShopOrders'
 
 const LIFF_MEMBER_SELECT =
   'id, name, nickname, phone, birthday, membership_type, membership_partner_id, membership_end_date, board_slot_number, board_expiry_date, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours'
@@ -146,6 +148,8 @@ export function LiffMyBookings() {
   const [error, setError] = useState<string | null>(null)
   const [member, setMember] = useState<Member | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [shopOrders, setShopOrders] = useState<LiffShopOrder[]>([])
+  const [loadingShopOrders, setLoadingShopOrders] = useState(false)
   const [lineUserId, setLineUserId] = useState<string | null>(null)
   const [lineDisplayName, setLineDisplayName] = useState<string | null>(null)
   const [showBindingForm, setShowBindingForm] = useState(false)
@@ -244,7 +248,8 @@ export function LiffMyBookings() {
         // 並行：enrichMember (board_storage) + loadBookings — 原先 4 RTT，現 2 RTT
         const [enrichedMember] = await Promise.all([
           enrichMemberForLiff(memberData),
-          loadBookings(memberId, true)
+          loadBookings(memberId, true),
+          loadShopOrders(memberId, true),
         ])
         setMember(enrichedMember)
         // 開啟頁面事件（已綁定）
@@ -269,6 +274,19 @@ export function LiffMyBookings() {
       console.error('查詢綁定失敗:', err)
       setShowBindingForm(true)
       setLoading(false)
+    }
+  }
+
+  const loadShopOrders = async (memberId: string, silent = false) => {
+    if (!silent) setLoadingShopOrders(true)
+    try {
+      setShopOrders(await fetchLiffShopOrders(memberId))
+    } catch (err: unknown) {
+      console.error('載入商品訂單失敗:', err)
+      if (!silent) toast.error('載入商品訂單失敗')
+      setShopOrders([])
+    } finally {
+      if (!silent) setLoadingShopOrders(false)
     }
   }
 
@@ -365,7 +383,8 @@ export function LiffMyBookings() {
         const memberId = memberData.id as string
         const [enrichedMember] = await Promise.all([
           enrichMemberForLiff(memberData),
-          loadBookings(memberId, true)
+          loadBookings(memberId, true),
+          loadShopOrders(memberId, true),
         ])
         setMember(enrichedMember)
         toast.success('資料已更新')
@@ -633,6 +652,10 @@ export function LiffMyBookings() {
             getStartTime={getStartTime}
             getEndTime={getEndTime}
           />
+        )}
+
+        {activeTab === 'orders' && (
+          <ShopOrdersList orders={shopOrders} loading={loadingShopOrders} />
         )}
 
         {activeTab === 'balance' && member && (

@@ -51,7 +51,7 @@ export interface Transaction {
   notes: string | null
 }
 
-export type TabType = 'bookings' | 'balance' | 'profile' | 'cancel'
+export type TabType = 'bookings' | 'orders' | 'balance' | 'profile' | 'cancel'
 
 export function getMembershipTypeLabel(type: string | null | undefined): string {
   switch (type) {

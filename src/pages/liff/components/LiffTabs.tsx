@@ -5,8 +5,9 @@ import type { TabType } from '../types'
 
 const TABS: { tab: TabType; icon: string; label: string }[] = [
   { tab: 'bookings', icon: '📅', label: '預約' },
+  { tab: 'orders', icon: '🛍️', label: '商品' },
   { tab: 'balance', icon: '💰', label: '儲值' },
-  { tab: 'profile', icon: '👤', label: '會員' }
+  { tab: 'profile', icon: '👤', label: '會員' },
 ]
 
 interface LiffTabsProps {
@@ -47,7 +48,7 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
               background: 'transparent',
               color: active ? '#333' : '#9e9e9e',
               fontWeight: active ? 600 : 400,
-              fontSize: '13px',
+              fontSize: '12px',
               letterSpacing: '0.02em',
               cursor: 'pointer',
               borderBottom: active ? '2px solid #333' : '2px solid transparent',

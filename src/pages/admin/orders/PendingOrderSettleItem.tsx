@@ -72,6 +72,8 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const [memberBalance, setMemberBalance] = useState<number | null>(null)
   const [globalDiscountInput, setGlobalDiscountInput] = useState('')
   const [showMemberSearch, setShowMemberSearch] = useState(false)
+  const [hasCheckedBillingRelation, setHasCheckedBillingRelation] = useState(false)
+  const [isAutoProxy, setIsAutoProxy] = useState(false)
   const proxySearch = useMemberSearch()
 
   const pendingLines = useMemo(() => buildLineStates(order), [order])
@@ -110,6 +112,50 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
       .single()
       .then(({ data }) => setMemberBalance(data?.balance ?? 0))
   }, [chargeMemberId, paymentMethod])
+
+  useEffect(() => {
+    if (!expanded || paymentMethod !== 'balance') {
+      if (!expanded) setHasCheckedBillingRelation(false)
+      return
+    }
+    if (hasCheckedBillingRelation) return
+
+    const name = order.contact_name?.trim()
+    if (!name) {
+      setHasCheckedBillingRelation(true)
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      setHasCheckedBillingRelation(true)
+      try {
+        const { data, error } = await supabase
+          .from('billing_relations')
+          .select('billing_member_id, members:billing_member_id(id, name, nickname)')
+          .eq('participant_name', name)
+          .maybeSingle()
+
+        if (cancelled || error || !data?.billing_member_id) return
+        if (order.member_id && data.billing_member_id === order.member_id) return
+
+        const member = data.members as { id: string; name: string; nickname: string | null } | null
+        if (!member) return
+
+        setChargeMemberId(data.billing_member_id)
+        setChargeMemberName(memberLabel(member))
+        setIsAutoProxy(true)
+        proxySearch.selectMember({ id: member.id, name: member.name, nickname: member.nickname, phone: null })
+      } catch {
+        /* 無代扣設定時略過 */
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- proxySearch 物件不穩定
+  }, [expanded, paymentMethod, hasCheckedBillingRelation, order.contact_name, order.member_id])
 
   const total = lines.reduce((s, l) => s + l.line_total, 0)
   const listTotal = lines.reduce((s, l) => s + listSubtotal(l.qty, l.unit_price), 0)
@@ -157,6 +203,8 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
     }
     setChargeMemberId(order.member_id)
     setChargeMemberName(order.contact_name)
+    setIsAutoProxy(false)
+    setHasCheckedBillingRelation(true)
     proxySearch.reset()
   }
 
@@ -164,6 +212,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
     proxySearch.selectMember(m)
     setChargeMemberId(m.id)
     setChargeMemberName(memberLabel(m))
+    setIsAutoProxy(false)
     setShowMemberSearch(false)
     proxySearch.reset()
   }
@@ -336,6 +385,21 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                           <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px', fontWeight: 400 }}>
                             (代扣 {order.contact_name} 的費用)
                           </span>
+                          {isAutoProxy && (
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                color: '#fff',
+                                background: '#4CAF50',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                marginLeft: '8px',
+                                fontWeight: 600,
+                              }}
+                            >
+                              ✓ 自動帶入
+                            </span>
+                          )}
                         </span>
                         {memberBalance !== null && (
                           <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', fontWeight: 400 }}>

@@ -33,6 +33,7 @@ import {
   filterOrdersBySearch,
   formatOrderItemParts,
   itemQtyChipsForCard,
+  itemStockInBillableHint,
   orderHasPendingBill,
   orderCanSubmitBilling,
   orderHasReadyToBill,
@@ -648,6 +649,7 @@ function OrderItemRow({
   const waiting = qtyOpen(item) > 0 && qtyBillable(item) === 0
   const stock = item.variant?.stock ?? 0
   const showWaitingHint = waiting && stock <= 0 && chips.some((c) => c.label.startsWith('等貨 '))
+  const stockInHint = itemStockInBillableHint(item)
 
   return (
     <div
@@ -675,6 +677,9 @@ function OrderItemRow({
         )}
         {showWaitingHint && (
           <div style={{ fontSize: 11, color: '#ef6c00', marginTop: 2 }}>未到貨</div>
+        )}
+        {stockInHint && (
+          <div style={{ fontSize: 11, color: '#1565c0', marginTop: 2, fontWeight: 500 }}>{stockInHint}</div>
         )}
       </div>
       {!isMobile && (
