@@ -3,6 +3,7 @@ import { UserMenu } from './UserMenu'
 import type { User } from '@supabase/supabase-js'
 import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getTextStyle } from '../styles/designSystem'
+import { CountBadge } from './CountBadge'
 
 /** 商品 Hub（/products）內的情境快捷連結，避免「商品」連到同一頁 */
 export type ProductHubHeaderSection = 'inventory' | 'orders'
@@ -16,6 +17,8 @@ interface PageHeaderProps {
   /** Hub 內：庫存 ↔ 訂單開單 + 可選訂單結帳 */
   productHubSection?: ProductHubHeaderSection
   showOrderSettleLink?: boolean
+  /** 待結帳筆數角標（管理員） */
+  pendingSettleCount?: number
   /** Hub 內是否顯示「訂單開單」（can_products 或超管） */
   showProductOrdersLink?: boolean
   showHomeLink?: boolean
@@ -30,6 +33,7 @@ export function PageHeader({
   showAdminShopLinks = false,
   productHubSection,
   showOrderSettleLink = false,
+  pendingSettleCount = 0,
   showProductOrdersLink = false,
   showHomeLink = true,
   breadcrumbs,
@@ -126,6 +130,7 @@ export function PageHeader({
               {showOrderSettleLink && (
                 <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
                   {isMobile ? '🧾' : '🧾 訂單結帳'}
+                  <CountBadge count={pendingSettleCount} />
                 </Link>
               )}
             </>
@@ -138,6 +143,7 @@ export function PageHeader({
               {showOrderSettleLink && (
                 <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
                   {isMobile ? '🧾' : '🧾 訂單結帳'}
+                  <CountBadge count={pendingSettleCount} />
                 </Link>
               )}
             </>
@@ -149,6 +155,7 @@ export function PageHeader({
               </Link>
               <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
                 {isMobile ? '🧾' : '🧾 訂單結帳'}
+                <CountBadge count={pendingSettleCount} />
               </Link>
             </>
           )}

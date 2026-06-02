@@ -1,13 +1,13 @@
-// LIFF 分頁：emoji + 短標題，三欄仍緊湊
+// LIFF 分頁：純文字標籤
 
 import { triggerHaptic } from '../../../utils/haptic'
 import type { TabType } from '../types'
 
-const TABS: { tab: TabType; icon: string; label: string }[] = [
-  { tab: 'bookings', icon: '📅', label: '預約' },
-  { tab: 'orders', icon: '🛍️', label: '商品' },
-  { tab: 'balance', icon: '💰', label: '儲值' },
-  { tab: 'profile', icon: '👤', label: '會員' },
+const TABS: { tab: TabType; label: string }[] = [
+  { tab: 'bookings', label: '預約' },
+  { tab: 'balance', label: '儲值' },
+  { tab: 'orders', label: '商品' },
+  { tab: 'profile', label: '會員' },
 ]
 
 interface LiffTabsProps {
@@ -24,10 +24,10 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
         borderBottom: '1px solid #e8e8e8',
         position: 'sticky',
         top: 'var(--safe-area-inset-top, 0px)',
-        zIndex: 10
+        zIndex: 10,
       }}
     >
-      {TABS.map(({ tab, icon, label }) => {
+      {TABS.map(({ tab, label }) => {
         const active = activeTab === tab
         return (
           <button
@@ -39,30 +39,22 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
             }}
             style={{
               flex: 1,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-              padding: '11px 4px',
+              padding: '12px 4px',
               border: 'none',
               background: 'transparent',
               color: active ? '#333' : '#9e9e9e',
               fontWeight: active ? 600 : 400,
-              fontSize: '12px',
+              fontSize: '13px',
               letterSpacing: '0.02em',
               cursor: 'pointer',
               borderBottom: active ? '2px solid #333' : '2px solid transparent',
-              transition: 'color 0.15s, border-color 0.15s'
+              transition: 'color 0.15s, border-color 0.15s',
             }}
           >
-            <span aria-hidden style={{ fontSize: '15px', lineHeight: 1 }}>
-              {icon}
-            </span>
-            <span>{label}</span>
+            {label}
           </button>
         )
       })}
-      {/* 暫時隱藏：取消預約 tab 可加入 TABS */}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { useToast } from '../../../components/ui'
 import { formatCurrency, formatDateTime, extractDate, extractTime } from '../../../utils/formatters'
 import { supabase } from '../../../lib/supabase'
 import { fetchSettlementsInRange } from './api'
+import { formatSettlementLineDisplay, type SettlementLineDisplay } from './settleUtils'
 import type { OrderPaymentMethod, ShopOrderSettlementWithDetails } from './types'
 import { PAYMENT_METHOD_LABELS } from './types'
 
@@ -36,7 +37,7 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [paymentFilter, setPaymentFilter] = useState<OrderPaymentMethod | 'all'>('all')
-  const [variantLabels, setVariantLabels] = useState<Record<string, string>>({})
+  const [variantDisplay, setVariantDisplay] = useState<Record<string, SettlementLineDisplay>>({})
 
   useEffect(() => {
     setSettlements([])
@@ -54,17 +55,29 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
         ...new Set(rows.flatMap((r) => r.items_snapshot.map((l) => l.variant_id))),
       ]
       if (variantIds.length > 0) {
-        const { data: variants } = await supabase
+        const { data: variants, error: variantErr } = await supabase
           .from('product_variants')
-          .select('id, vendor_code')
+          .select(
+            'id, vendor_code, attributes, product:products(brand, model, category)',
+          )
           .in('id', variantIds)
-        const labels: Record<string, string> = {}
+        if (variantErr) throw variantErr
+        const labels: Record<string, SettlementLineDisplay> = {}
         variants?.forEach((v) => {
-          labels[v.id] = v.vendor_code || v.id.slice(0, 8)
+          const row = v as {
+            id: string
+            vendor_code: string | null
+            attributes: Record<string, unknown> | null
+            product: { brand: string; model: string; category: string } | null
+          }
+          labels[row.id] = formatSettlementLineDisplay(
+            { item_id: '', variant_id: row.id, qty: 0, unit_price: 0, line_total: 0 },
+            row,
+          )
         })
-        setVariantLabels(labels)
+        setVariantDisplay(labels)
       } else {
-        setVariantLabels({})
+        setVariantDisplay({})
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '載入失敗'
@@ -286,19 +299,6 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                         >
                           {PAYMENT_METHOD_LABELS[row.payment_method]}
                         </span>
-                        {row.order_cancelled_at && (
-                          <span
-                            style={{
-                              fontSize: 12,
-                              padding: '2px 8px',
-                              borderRadius: 6,
-                              background: '#f5f5f5',
-                              color: '#888',
-                            }}
-                          >
-                            訂單已作廢
-                          </span>
-                        )}
                       </div>
                       <div style={{ fontSize: 14, color: '#555', marginBottom: 4 }}>
                         {row.contact_name}
@@ -368,10 +368,21 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                           </tr>
                         </thead>
                         <tbody>
-                          {row.items_snapshot.map((line, idx) => (
+                          {row.items_snapshot.map((line, idx) => {
+                            const display =
+                              variantDisplay[line.variant_id] ??
+                              formatSettlementLineDisplay(line, null)
+                            return (
                             <tr key={`${line.item_id}-${idx}`} style={{ borderBottom: '1px solid #f0f0f0' }}>
                               <td style={tdStyle()}>
-                                {variantLabels[line.variant_id] || line.variant_id.slice(0, 8)}
+                                <div style={{ fontWeight: 600, color: '#222', lineHeight: 1.35 }}>
+                                  {display.title}
+                                </div>
+                                {display.subtitle && (
+                                  <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                                    {display.subtitle}
+                                  </div>
+                                )}
                               </td>
                               <td style={tdStyle('center')}>{line.qty}</td>
                               <td style={tdStyle('right')}>
@@ -381,7 +392,8 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                                 <strong>{formatCurrency(line.line_total, false)}</strong>
                               </td>
                             </tr>
-                          ))}
+                            )
+                          })}
                         </tbody>
                         <tfoot>
                           <tr>

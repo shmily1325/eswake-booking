@@ -109,6 +109,51 @@ export function filterOrdersByInbox(
   return active.filter(orderHasReadyToBill)
 }
 
+/** 可送結帳品項中，最近入庫時間（用於排序） */
+export function orderLatestStockInMs(order: ShopOrderWithItems): number {
+  let max = 0
+  for (const it of order.items) {
+    if (qtyBillable(it) <= 0) continue
+    const at = it.variant?.last_stock_in_at
+    if (!at) continue
+    const ms = new Date(at).getTime()
+    if (Number.isFinite(ms) && ms > max) max = ms
+  }
+  return max
+}
+
+/** 訂單列表預設排序：可送結帳優先，剛入庫者靠前 */
+export function sortOrdersForInbox(
+  orders: ShopOrderWithItems[],
+  tab: 'waiting' | 'ready' | 'pending' | 'settled' | 'cancelled' | 'all',
+): ShopOrderWithItems[] {
+  const sorted = [...orders]
+  if (tab === 'cancelled') {
+    return sorted.sort((a, b) => (b.cancelled_at ?? '').localeCompare(a.cancelled_at ?? ''))
+  }
+  if (tab === 'pending') {
+    return sorted.sort((a, b) => a.updated_at.localeCompare(b.updated_at))
+  }
+  if (tab === 'ready') {
+    return sorted.sort((a, b) => orderLatestStockInMs(b) - orderLatestStockInMs(a))
+  }
+  return sorted.sort((a, b) => {
+    const readyA = orderHasReadyToBill(a) ? 0 : 1
+    const readyB = orderHasReadyToBill(b) ? 0 : 1
+    if (readyA !== readyB) return readyA - readyB
+    if (readyA === 0) {
+      const stockDiff = orderLatestStockInMs(b) - orderLatestStockInMs(a)
+      if (stockDiff !== 0) return stockDiff
+    }
+    return b.updated_at.localeCompare(a.updated_at)
+  })
+}
+
+/** 待結帳 inbox：先送結帳的單優先處理 */
+export function sortPendingBillOrders(orders: ShopOrderWithItems[]): ShopOrderWithItems[] {
+  return [...orders].sort((a, b) => a.updated_at.localeCompare(b.updated_at))
+}
+
 export function deliveryMethodLabel(method: string): string {
   if (method === 'shipping') return '寄送'
   return 'ES 面交'
@@ -155,6 +200,25 @@ const ORDER_STATUS_META: Record<
 }
 
 /** 卡片主狀態（單一 badge，依可執行動作優先） */
+/** 部分待結／混雜狀態：卡片一行摘要（可送／待結／等貨件數） */
+export function orderPartialStatusSummary(order: ShopOrderWithItems): string | null {
+  if (orderPrimaryStatus(order) !== 'partial') return null
+  const parts: string[] = []
+  let billable = 0
+  let pending = 0
+  let waiting = 0
+  for (const it of order.items) {
+    billable += qtyBillable(it)
+    pending += it.qty_pending_bill
+    const open = qtyOpen(it)
+    if (open > 0 && qtyBillable(it) === 0) waiting += open
+  }
+  if (billable > 0) parts.push(`可送 ${billable}`)
+  if (pending > 0) parts.push(`待結 ${pending}`)
+  if (waiting > 0) parts.push(`等貨 ${waiting}`)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
 export function orderPrimaryStatus(order: ShopOrderWithItems): OrderStatusKey {
   if (order.cancelled_at) return 'cancelled'
   if (orderIsFullySettled(order)) return 'settled'
@@ -368,18 +432,16 @@ export function buildVoidOrderConfirmMessage(order: ShopOrderWithItems, txCount:
   const lines = [
     `確定作廢訂單 ${order.order_no}（${order.contact_name}）？`,
     '作廢後可在列表篩選「已作廢」查閱，無法再編輯或送結帳。',
+    '已結帳統計不會計入此單。',
   ]
   if (hasPending || hasPaid) {
-    lines.push('', '已通知結帳／已結清的數量會加回庫存。')
-  }
-  if (hasPaid) {
-    lines.push('結帳紀錄會保留。')
-  }
-  if (txCount > 0) {
-    lines.push('', `⚠️ 已有 ${txCount} 筆儲值交易，交易保留；請到會員儲值人工處理退款。`)
+    lines.push('', '待結帳保留量會釋放；已結清數量會加回可售庫存。')
   }
   if (hasPaid || txCount > 0) {
-    lines.push('', '⚠️ 此訂單已有結帳紀錄，作廢後請自行對帳。')
+    lines.push('結帳紀錄與儲值交易保留（與課程相同，不會自動改交易）。')
+  }
+  if (txCount > 0) {
+    lines.push(`若已扣儲值，請到會員儲值人工處理退款（共 ${txCount} 筆）。`)
   }
   return lines.join('\n')
 }

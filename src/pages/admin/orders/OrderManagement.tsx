@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { Footer } from '../../../components/Footer'
 import {
@@ -13,11 +13,16 @@ import { toast as globalToast } from '../../../utils/toast'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { getButtonStyle } from '../../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../../utils/auth'
+import { usePendingBillOrderCount } from '../../../hooks/usePendingBillOrderCount'
+import {
+  fetchShopOrders,
+  SHOP_ORDERS_LIST_MONTHS,
+  shopOrdersListCreatedAfterIso,
+} from './api'
 import { formatDate, formatDateTime, formatTime } from '../../../utils/formatters'
 import {
   cancelShopOrderBilling,
   countOrderTransactions,
-  fetchShopOrders,
   voidShopOrder,
   submitShopOrderBilling,
 } from './api'
@@ -31,6 +36,7 @@ import {
   deliveryMethodLabel,
   filterOrdersByInbox,
   filterOrdersBySearch,
+  sortOrdersForInbox,
   formatOrderItemParts,
   itemQtyChipsForCard,
   itemStockInBillableHint,
@@ -39,6 +45,7 @@ import {
   orderHasReadyToBill,
   orderHasWaitingStock,
   orderIsFullySettled,
+  orderPartialStatusSummary,
   orderPrimaryStatus,
   orderStatusMeta,
   qtyBillable,
@@ -87,17 +94,48 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   const [prefillVariantId, setPrefillVariantId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [billingBusyOrderId, setBillingBusyOrderId] = useState<string | null>(null)
+  const [highlightOrderId, setHighlightOrderId] = useState<string | null>(null)
+  const [includeOlderOrders, setIncludeOlderOrders] = useState(false)
+  const userIsAdmin = isAdmin(user)
+  const { count: pendingSettleCount, refresh: refreshPendingCount } =
+    usePendingBillOrderCount(userIsAdmin)
 
-  const reloadOrders = useCallback(async () => {
+  const reloadOrders = useCallback(
+    async (opts?: { includeOlder?: boolean }) => {
+      const loadAll = opts?.includeOlder ?? includeOlderOrders
+      try {
+        setLoadError(null)
+        setOrders(
+          await fetchShopOrders(
+            loadAll ? undefined : { createdAfter: shopOrdersListCreatedAfterIso() },
+          ),
+        )
+        if (opts?.includeOlder) setIncludeOlderOrders(true)
+        void refreshPendingCount()
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : '載入失敗'
+        setLoadError(msg)
+        toast.error(msg)
+      }
+    },
+    [includeOlderOrders, toast, refreshPendingCount],
+  )
+
+  const loadOlderOrders = useCallback(async () => {
+    setLoading(true)
     try {
       setLoadError(null)
       setOrders(await fetchShopOrders())
+      setIncludeOlderOrders(true)
+      void refreshPendingCount()
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '載入失敗'
       setLoadError(msg)
       toast.error(msg)
+    } finally {
+      setLoading(false)
     }
-  }, [toast])
+  }, [toast, refreshPendingCount])
 
   useEffect(() => {
     let cancelled = false
@@ -118,7 +156,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         if (cancelled) return
         setCanEdit(true)
         setHasAccess(true)
-        setOrders(await fetchShopOrders())
+        setOrders(await fetchShopOrders({ createdAfter: shopOrdersListCreatedAfterIso() }))
       } catch (e: unknown) {
         if (!cancelled) {
           const msg = e instanceof Error ? e.message : '載入失敗'
@@ -178,8 +216,15 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
 
   const visible = useMemo(() => {
     const byTab = filterOrdersByInbox(orders, tab)
-    return filterOrdersBySearch(byTab, search)
+    const filtered = filterOrdersBySearch(byTab, search)
+    return sortOrdersForInbox(filtered, tab)
   }, [orders, tab, search])
+
+  useEffect(() => {
+    if (!highlightOrderId) return
+    const t = window.setTimeout(() => setHighlightOrderId(null), 2800)
+    return () => window.clearTimeout(t)
+  }, [highlightOrderId])
 
   const showAllOrders = useCallback(() => setTab('all'), [])
 
@@ -204,7 +249,9 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     setBillingBusyOrderId(order.id)
     try {
       await submitShopOrderBilling(order.id, validation.items, user?.email ?? null)
-      await afterOrderMutation()
+      await reloadOrders()
+      setHighlightOrderId(order.id)
+      if (tab === 'ready') setTab('pending')
       globalToast.success('已通知結帳')
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '送結帳失敗')
@@ -300,6 +347,70 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
           />
         ))}
       </div>
+
+      {pendingSettleCount > 0 && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: '10px 14px',
+            borderRadius: 10,
+            background: '#f3e5f5',
+            border: '1px solid #e1bee7',
+            fontSize: 13,
+            color: '#4a148c',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          <span>
+            目前有 <strong>{pendingSettleCount}</strong> 筆待管理員結帳
+          </span>
+          {userIsAdmin && (
+            <Link
+              to="/order-settle"
+              style={{ color: '#6a1b9a', fontWeight: 600, textDecoration: 'none' }}
+            >
+              前往結帳 →
+            </Link>
+          )}
+        </div>
+      )}
+
+      {!includeOlderOrders && (
+        <div
+          style={{
+            marginBottom: 12,
+            fontSize: 13,
+            color: '#666',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <span>預設顯示近 {SHOP_ORDERS_LIST_MONTHS} 個月訂單</span>
+          <button
+            type="button"
+            onClick={() => void loadOlderOrders()}
+            disabled={loading}
+            style={{
+              border: '1px solid #ddd',
+              background: '#fff',
+              borderRadius: 8,
+              padding: '6px 12px',
+              fontSize: 13,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              color: '#1565c0',
+              fontWeight: 600,
+            }}
+          >
+            載入更早訂單
+          </button>
+        </div>
+      )}
 
       <div
         style={{
@@ -439,6 +550,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             order={order}
             isMobile={isMobile}
             canEdit={canEdit}
+            highlighted={highlightOrderId === order.id}
             onEdit={() => {
               setEditOrder(order)
               setDialogOpen(true)
@@ -474,6 +586,7 @@ function OrderCard({
   isMobile,
   canEdit,
   billingBusy,
+  highlighted,
   onEdit,
   onSubmitBilling,
   onCancelBilling,
@@ -483,6 +596,7 @@ function OrderCard({
   isMobile: boolean
   canEdit: boolean
   billingBusy: boolean
+  highlighted?: boolean
   onEdit: () => void
   onSubmitBilling: () => void
   onCancelBilling: () => void
@@ -493,16 +607,20 @@ function OrderCard({
   const status = orderStatusMeta(statusKey)
   const showSubmit = orderCanSubmitBilling(order)
   const showCancelBill = !cancelled && orderHasPendingBill(order)
+  const readyAccent = !cancelled && statusKey === 'ready'
+  const partialSummary = orderPartialStatusSummary(order)
 
   return (
     <div
       style={{
-        background: '#fff',
+        background: highlighted ? '#e8f4fd' : '#fff',
         borderRadius: 12,
         marginBottom: 12,
-        border: '1px solid #ececec',
+        border: highlighted ? '1px solid #90caf9' : '1px solid #ececec',
+        borderLeft: readyAccent ? `3px solid ${status.border}` : undefined,
         opacity: cancelled ? 0.72 : statusKey === 'settled' ? 0.88 : 1,
         overflow: 'hidden',
+        transition: 'background 0.5s ease, border-color 0.5s ease',
       }}
     >
       <div style={{ padding: isMobile ? '14px 12px 10px' : '16px 18px 12px' }}>
@@ -557,6 +675,19 @@ function OrderCard({
                 </>
               )}
             </div>
+            {partialSummary && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#6a1b9a',
+                  fontWeight: 600,
+                  marginTop: 6,
+                  lineHeight: 1.4,
+                }}
+              >
+                {partialSummary}
+              </div>
+            )}
           </div>
           <OrderTag label={status.label} color={status.color} bg={status.bg} isMobile={isMobile} />
         </div>

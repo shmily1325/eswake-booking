@@ -1,4 +1,15 @@
 import { supabase } from '../../../lib/supabase'
+import { getLocalDateString } from '../../../utils/date'
+import { sortPendingBillOrders } from './orderUtils'
+
+/** 訂單開單列表預設只載入近 N 個月（待結帳 inbox 不受限） */
+export const SHOP_ORDERS_LIST_MONTHS = 6
+
+export function shopOrdersListCreatedAfterIso(): string {
+  const d = new Date()
+  d.setMonth(d.getMonth() - SHOP_ORDERS_LIST_MONTHS)
+  return `${getLocalDateString(d)}T00:00:00`
+}
 import type { Json } from '../../../types/supabase'
 import type {
   CreateOrderInput,
@@ -33,13 +44,35 @@ async function rpcError(result: { data: unknown; error: unknown }): Promise<void
   }
 }
 
-export async function fetchShopOrders(): Promise<ShopOrderWithItems[]> {
-  const { data, error } = await supabase
-    .from('shop_orders')
-    .select(ORDER_SELECT)
-    .order('created_at', { ascending: false })
+export type FetchShopOrdersOptions = {
+  /** 若設定，只載入 created_at >= 此 ISO 時間的訂單 */
+  createdAfter?: string
+}
+
+export async function fetchShopOrders(
+  options?: FetchShopOrdersOptions,
+): Promise<ShopOrderWithItems[]> {
+  let query = supabase.from('shop_orders').select(ORDER_SELECT)
+  if (options?.createdAfter) {
+    query = query.gte('created_at', options.createdAfter)
+  }
+  const { data, error } = await query.order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return (data ?? []) as unknown as ShopOrderWithItems[]
+}
+
+/** 待結帳訂單數（供 BAO／Header badge） */
+export async function fetchPendingBillOrderCount(): Promise<number> {
+  const { data, error } = await supabase
+    .from('shop_order_items')
+    .select('order_id, shop_orders!inner(cancelled_at)')
+    .gt('qty_pending_bill', 0)
+    .is('shop_orders.cancelled_at', null)
+  if (error) throw new Error(error.message)
+  const ids = new Set(
+    (data ?? []).map((row) => (row as { order_id: string }).order_id),
+  )
+  return ids.size
 }
 
 export async function fetchShopOrder(orderId: string): Promise<ShopOrderWithItems | null> {
@@ -53,9 +86,26 @@ export async function fetchShopOrder(orderId: string): Promise<ShopOrderWithItem
 }
 
 export async function fetchPendingBillOrders(): Promise<ShopOrderWithItems[]> {
-  const all = await fetchShopOrders()
-  return all.filter(
-    (o) => !o.cancelled_at && o.items.some((it) => it.qty_pending_bill > 0),
+  const { data: itemRows, error: itemErr } = await supabase
+    .from('shop_order_items')
+    .select('order_id')
+    .gt('qty_pending_bill', 0)
+  if (itemErr) throw new Error(itemErr.message)
+
+  const orderIds = [...new Set((itemRows ?? []).map((r) => r.order_id as string))]
+  if (orderIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('shop_orders')
+    .select(ORDER_SELECT)
+    .in('id', orderIds)
+    .is('cancelled_at', null)
+    .order('updated_at', { ascending: true })
+  if (error) throw new Error(error.message)
+
+  const orders = (data ?? []) as unknown as ShopOrderWithItems[]
+  return sortPendingBillOrders(
+    orders.filter((o) => o.items.some((it) => it.qty_pending_bill > 0)),
   )
 }
 
@@ -245,10 +295,11 @@ export async function fetchOrderSettlements(orderId: string): Promise<ShopOrderS
   }))
 }
 
-/** 依 settled_at 區間查結帳紀錄（已結帳統計／細帳） */
+/** 依 settled_at 區間查結帳紀錄（已結帳統計／細帳）；預設不含已作廢訂單 */
 export async function fetchSettlementsInRange(
   startDate: string,
   endDate: string,
+  options?: { includeVoided?: boolean },
 ): Promise<ShopOrderSettlementWithDetails[]> {
   const { data, error } = await supabase
     .from('shop_order_settlements')
@@ -285,7 +336,7 @@ export async function fetchSettlementsInRange(
     charge_member_name: row.charge_member
       ? row.charge_member.nickname || row.charge_member.name
       : null,
-  }))
+  })).filter((row) => options?.includeVoided || !row.order_cancelled_at)
 }
 
 export async function countOrderTransactions(orderId: string): Promise<number> {

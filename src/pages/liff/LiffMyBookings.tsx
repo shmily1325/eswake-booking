@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import liff from '@line/liff'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
@@ -289,6 +289,13 @@ export function LiffMyBookings() {
       if (!silent) setLoadingShopOrders(false)
     }
   }
+
+  const refreshShopOrders = useCallback(async () => {
+    if (!member?.id) return
+    triggerHaptic('light')
+    await loadShopOrders(member.id, true)
+    toast.success('訂單已更新')
+  }, [member?.id, toast])
 
   const loadBookings = async (memberId: string, silent = false) => {
     try {
@@ -631,7 +638,7 @@ export function LiffMyBookings() {
         }}
       />
 
-      {/* Content（順序與 LiffTabs：預約 → 儲值 → 會員） */}
+      {/* Content（順序：預約 → 儲值 → 商品 → 會員） */}
       <div style={{ padding: '16px' }}>
         {member && expiryBannerLines.length > 0 && (
           <LiffExpiryBanner
@@ -655,7 +662,11 @@ export function LiffMyBookings() {
         )}
 
         {activeTab === 'orders' && (
-          <ShopOrdersList orders={shopOrders} loading={loadingShopOrders} />
+          <ShopOrdersList
+            orders={shopOrders}
+            loading={loadingShopOrders}
+            onRefresh={member ? refreshShopOrders : undefined}
+          />
         )}
 
         {activeTab === 'balance' && member && (

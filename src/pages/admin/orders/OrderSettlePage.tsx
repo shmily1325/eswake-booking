@@ -8,6 +8,7 @@ import { ToastContainer, useToast } from '../../../components/ui'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { isAdmin } from '../../../utils/auth'
 import { fetchPendingBillOrders } from './api'
+import { usePendingBillOrderCount } from '../../../hooks/usePendingBillOrderCount'
 import { PendingOrderSettleItem } from './PendingOrderSettleItem'
 import { ShopSettlementStatisticsTab } from './ShopSettlementStatisticsTab'
 import type { ShopOrderWithItems } from './types'
@@ -23,17 +24,20 @@ export function OrderSettlePage() {
   const [orders, setOrders] = useState<ShopOrderWithItems[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const { count: pendingSettleCount, refresh: refreshPendingCount } =
+    usePendingBillOrderCount(true)
 
   const reloadOrders = useCallback(async () => {
     try {
       setLoadError(null)
       setOrders(await fetchPendingBillOrders())
+      void refreshPendingCount()
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '載入失敗'
       setLoadError(msg)
       toast.error(msg)
     }
-  }, [toast])
+  }, [toast, refreshPendingCount])
 
   useEffect(() => {
     if (!isAdmin(user)) {
@@ -76,6 +80,8 @@ export function OrderSettlePage() {
         title="🧾 訂單結帳"
         user={user}
         showBaoLink={isAdmin(user)}
+        showAdminShopLinks
+        pendingSettleCount={pendingSettleCount}
         breadcrumbs={[
           { label: '商品庫存', link: '/products' },
           { label: '訂單開單', link: '/products/orders' },

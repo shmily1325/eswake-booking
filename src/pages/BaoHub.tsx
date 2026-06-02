@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { CountBadge } from '../components/CountBadge'
+import { usePendingBillOrderCount } from '../hooks/usePendingBillOrderCount'
 import { useAuthUser } from '../contexts/AuthContext'
 import { UserMenu } from '../components/UserMenu'
 import { Footer } from '../components/Footer'
@@ -11,6 +13,7 @@ export function BaoHub() {
   const navigate = useNavigate()
   const { isMobile } = useResponsive()
   const userIsAdmin = isAdmin(user)
+  const { count: pendingSettleCount } = usePendingBillOrderCount(userIsAdmin)
   
   // 權限檢查：只有管理員可以進入
   useEffect(() => {
@@ -362,14 +365,24 @@ export function BaoHub() {
                     }}>
                       {feature.icon}
                     </div>
-                    <h2 style={{
-                      margin: 0,
-                      fontSize: isMobile ? '15px' : '17px',
-                      fontWeight: '600',
-                      color: '#000',
-                      letterSpacing: '0.5px'
-                    }}>
+                    <h2
+                      style={{
+                        margin: 0,
+                        fontSize: isMobile ? '15px' : '17px',
+                        fontWeight: '600',
+                        color: '#000',
+                        letterSpacing: '0.5px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexWrap: 'wrap',
+                        gap: 4,
+                      }}
+                    >
                       {feature.title}
+                      {feature.link === '/order-settle' && (
+                        <CountBadge count={pendingSettleCount} />
+                      )}
                     </h2>
                   </Link>
                 )

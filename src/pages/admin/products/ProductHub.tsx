@@ -23,6 +23,7 @@ import {
 import { Footer } from '../../../components/Footer'
 
 import { hasEditorFeatureAsync, hasProductsAccessAsync, isAdmin } from '../../../utils/auth'
+import { usePendingBillOrderCount } from '../../../hooks/usePendingBillOrderCount'
 
 import { useToast } from '../../../components/ui'
 
@@ -45,6 +46,8 @@ export function ProductHub() {
   const [ready, setReady] = useState(false)
 
   const [canEdit, setCanEdit] = useState(false)
+  const userIsAdmin = isAdmin(user)
+  const { count: pendingSettleCount } = usePendingBillOrderCount(userIsAdmin)
 
 
 
@@ -116,9 +119,10 @@ export function ProductHub() {
       <PageHeader
         user={user}
         title={onOrders ? '📋 訂單開單' : '📦 商品庫存'}
-        showBaoLink={isAdmin(user)}
+        showBaoLink={userIsAdmin}
         productHubSection={onOrders ? 'orders' : 'inventory'}
-        showOrderSettleLink={isAdmin(user)}
+        showOrderSettleLink={userIsAdmin}
+        pendingSettleCount={pendingSettleCount}
         showProductOrdersLink={canEdit}
       />
 

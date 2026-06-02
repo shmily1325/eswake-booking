@@ -10,9 +10,12 @@ import {
   orderHasPendingBill,
   orderHasReadyToBill,
   orderHasWaitingStock,
+  orderPartialStatusSummary,
   orderPrimaryStatus,
   qtyBillable,
   qtyOpen,
+  sortOrdersForInbox,
+  sortPendingBillOrders,
   validateCancelBillingDraft,
   validateSubmitBillingDraft,
 } from '../orderUtils'
@@ -451,5 +454,46 @@ describe('itemQtyChipsForCard', () => {
     expect(orderPrimaryStatus(order)).toBe('partial')
     const labels = itemQtyChipsForCard(pending, order).map((c) => c.label)
     expect(labels).toContain('待結 1')
+  })
+
+  it('orderPartialStatusSummary aggregates qty for partial orders', () => {
+    const waiting = mockItem({ id: 'a', qty: 2, stock: 0 })
+    const pending = mockItem({ id: 'c', qty: 1, qty_pending_bill: 1, stock: 1, reserved_qty: 1 })
+    const order = mockOrder([waiting, pending])
+    expect(orderPrimaryStatus(order)).toBe('partial')
+    expect(orderPartialStatusSummary(order)).toBe('待結 1 · 等貨 2')
+  })
+})
+
+describe('order inbox sort', () => {
+  it('sortOrdersForInbox puts ready orders first on all tab', () => {
+    const waiting = mockOrder([mockItem({ id: 'w', qty: 2, stock: 0 })])
+    waiting.id = 'wait'
+    const ready = mockOrder([mockItem({ id: 'r', qty: 2, stock: 5 })])
+    ready.id = 'ready'
+    const sorted = sortOrdersForInbox([waiting, ready], 'all')
+    expect(sorted[0].id).toBe('ready')
+  })
+
+  it('sortOrdersForInbox on ready tab prefers recent stock-in', () => {
+    const older = mockOrder([mockItem({ id: 'o', qty: 1, stock: 5 })])
+    older.id = 'older'
+    older.items[0].variant!.last_stock_in_at = '2026-05-01T00:00:00Z'
+    const newer = mockOrder([mockItem({ id: 'n', qty: 1, stock: 5 })])
+    newer.id = 'newer'
+    newer.items[0].variant!.last_stock_in_at = '2026-05-10T00:00:00Z'
+    const sorted = sortOrdersForInbox([older, newer], 'ready')
+    expect(sorted.map((o) => o.id)).toEqual(['newer', 'older'])
+  })
+
+  it('sortPendingBillOrders sorts by updated_at ascending', () => {
+    const later = mockOrder([])
+    later.updated_at = '2026-05-02T00:00:00Z'
+    const earlier = mockOrder([])
+    earlier.updated_at = '2026-05-01T00:00:00Z'
+    expect(sortPendingBillOrders([later, earlier]).map((o) => o.updated_at)).toEqual([
+      '2026-05-01T00:00:00Z',
+      '2026-05-02T00:00:00Z',
+    ])
   })
 })
