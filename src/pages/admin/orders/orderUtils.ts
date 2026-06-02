@@ -189,6 +189,42 @@ export function buildSubmitBillingConfirmMessage(order: ShopOrderWithItems): str
   ].join('\n')
 }
 
+/** 作廢確認（已有結帳／交易時需再輸入訂單號） */
+export function buildVoidOrderConfirmMessage(order: ShopOrderWithItems, txCount: number): string {
+  const hasPaid = order.items.some((it) => it.qty_paid > 0)
+  const hasPending = order.items.some((it) => it.qty_pending_bill > 0)
+  const lines = [
+    `確定作廢訂單 ${order.order_no}（${order.contact_name}）？`,
+    '作廢後可在列表篩選「已作廢」查閱，無法再編輯或送結帳。',
+  ]
+  if (hasPending || hasPaid) {
+    lines.push('', '已通知結帳／已結清的數量會加回庫存。')
+  }
+  if (hasPaid) {
+    lines.push('結帳紀錄會保留。')
+  }
+  if (txCount > 0) {
+    lines.push('', `⚠️ 已有 ${txCount} 筆儲值交易，交易保留；請到會員儲值人工處理退款。`)
+  }
+  if (hasPaid || txCount > 0) {
+    lines.push('', '⚠️ 此訂單已有結帳紀錄，作廢後請自行對帳。')
+  }
+  return lines.join('\n')
+}
+
+export type VoidConfirmResult = 'ok' | 'cancelled' | 'mismatch'
+
+export function confirmVoidOrder(order: ShopOrderWithItems, txCount: number): VoidConfirmResult {
+  if (!confirm(buildVoidOrderConfirmMessage(order, txCount))) return 'cancelled'
+  const hasPaid = order.items.some((it) => it.qty_paid > 0)
+  if (hasPaid || txCount > 0) {
+    const typed = prompt(`請輸入訂單號 ${order.order_no} 以確認作廢：`)
+    if (typed === null) return 'cancelled'
+    if (typed.trim() !== order.order_no) return 'mismatch'
+  }
+  return 'ok'
+}
+
 /** 台灣「折」：9 → 0.9、85 → 0.85；也接受 0.9 */
 export function parseDiscountFactor(input: string): number | null {
   const raw = input.trim()

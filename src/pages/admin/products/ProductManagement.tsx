@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
@@ -254,6 +254,10 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
    * 只要當前清單跨越多個 category 就顯示（不然欄位每列都一樣，浪費空間）。
    */
   const showCategoryColumn = activeSubCat === 'all'
+
+  const startOrderWithVariant = (variantId: string) => {
+    navigate(`/products/orders?newVariant=${encodeURIComponent(variantId)}`)
+  }
 
   // ====== 權限尚未確認/拒絕：先顯示 loading ======
   if (!accessChecked || !hasAccess) {
@@ -530,12 +534,14 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           <MobileListView
             items={filteredItems}
             onRowClick={(productId) => setView({ kind: 'edit', productId })}
+            onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
         ) : (
           <DesktopTable
             items={filteredItems}
             showCategoryColumn={showCategoryColumn}
             onRowClick={(productId) => setView({ kind: 'edit', productId })}
+            onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
         )}
 
@@ -1201,8 +1207,9 @@ function ImagePlaceholder({ icon }: { icon: string }) {
 interface MobileListViewProps {
   items: VariantListItem[]
   onRowClick: (productId: string) => void
+  onStartOrder?: (variantId: string) => void
 }
-function MobileListView({ items, onRowClick }: MobileListViewProps) {
+function MobileListView({ items, onRowClick, onStartOrder }: MobileListViewProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {items.map((it) => (
@@ -1210,6 +1217,7 @@ function MobileListView({ items, onRowClick }: MobileListViewProps) {
           key={it.variant.id}
           item={it}
           onClick={() => onRowClick(it.product.id)}
+          onStartOrder={onStartOrder}
         />
       ))}
     </div>
@@ -1219,9 +1227,11 @@ function MobileListView({ items, onRowClick }: MobileListViewProps) {
 function MobileListRow({
   item,
   onClick,
+  onStartOrder,
 }: {
   item: VariantListItem
   onClick: () => void
+  onStartOrder?: (variantId: string) => void
 }) {
   const { variant, product } = item
   const cat = getCategory(product.category)
@@ -1374,22 +1384,33 @@ function MobileListRow({
             justifyContent: 'space-between',
             alignItems: 'center',
             marginTop: 6,
+            gap: 8,
           }}
         >
           <PriceDisplay price={variant.price} />
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              padding: '2px 8px',
-              borderRadius: 999,
-              background: stock.bg,
-              color: stock.color,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {stock.label}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {onStartOrder && (
+              <StartOrderButton
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onStartOrder(variant.id)
+                }}
+              />
+            )}
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: 999,
+                background: stock.bg,
+                color: stock.color,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {stock.label}
+            </span>
+          </div>
         </div>
         {formatStockInAt(variant.last_stock_in_at) && (
           <div style={{ marginTop: 4, fontSize: 11, color: '#888' }}>
@@ -1405,8 +1426,9 @@ interface DesktopTableProps {
   items: VariantListItem[]
   showCategoryColumn: boolean
   onRowClick: (productId: string) => void
+  onStartOrder?: (variantId: string) => void
 }
-function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTableProps) {
+function DesktopTable({ items, showCategoryColumn, onRowClick, onStartOrder }: DesktopTableProps) {
   return (
     <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', border: '1px solid #ececec' }}>
       <div style={{ overflowX: 'auto' }}>
@@ -1422,6 +1444,7 @@ function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTablePro
               <th style={thStyle('90px', 'right')}>售價</th>
               <th style={thStyle('80px', 'center')}>庫存</th>
               <th style={thStyle('130px')}>入庫</th>
+              {onStartOrder && <th style={thStyle('72px', 'center')}>開單</th>}
             </tr>
           </thead>
           <tbody>
@@ -1491,6 +1514,16 @@ function DesktopTable({ items, showCategoryColumn, onRowClick }: DesktopTablePro
                   <td style={{ ...tdStyle(), fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>
                     {formatStockInAt(it.variant.last_stock_in_at) ?? '—'}
                   </td>
+                  {onStartOrder && (
+                    <td style={tdStyle('center')} onClick={(e) => e.stopPropagation()}>
+                      <StartOrderButton
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onStartOrder(it.variant.id)
+                        }}
+                      />
+                    </td>
+                  )}
                 </tr>
               )
             })}
@@ -1515,6 +1548,30 @@ function thStyle(width: string, align: 'left' | 'center' | 'right' = 'left'): Re
 }
 function tdStyle(align: 'left' | 'center' | 'right' = 'left'): React.CSSProperties {
   return { padding: '10px 14px', textAlign: align, color: '#333', verticalAlign: 'middle' }
+}
+
+function StartOrderButton({ onClick }: { onClick: (e: MouseEvent<HTMLButtonElement>) => void }) {
+  return (
+    <button
+      type="button"
+      data-track="product_start_order"
+      onClick={onClick}
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        padding: '6px 10px',
+        minHeight: 32,
+        borderRadius: 8,
+        border: '1px solid #1565c0',
+        background: '#e3f2fd',
+        color: '#1565c0',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      開單
+    </button>
+  )
 }
 
 interface EmptyStateProps {

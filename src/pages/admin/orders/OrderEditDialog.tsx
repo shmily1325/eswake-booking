@@ -5,8 +5,9 @@ import { toast } from '../../../utils/toast'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from '../products/api'
 import { formatAttributes } from '../products/schema'
 import type { VariantListItem } from '../products/types'
-import { createShopOrder, updateShopOrder, voidShopOrder } from './api'
+import { createShopOrder, updateShopOrder, voidShopOrder, countOrderTransactions } from './api'
 import { formatDateTime } from '../../../utils/formatters'
+import { confirmVoidOrder } from './orderUtils'
 import { OrderMemberPicker, resolveContactName } from './OrderMemberPicker'
 import type { DeliveryMethod, ShopOrderWithItems } from './types'
 
@@ -21,12 +22,13 @@ interface DraftLine {
 interface Props {
   open: boolean
   order: ShopOrderWithItems | null
+  prefillVariantId?: string | null
   userEmail?: string
   onClose: () => void
   onSaved: () => void
 }
 
-export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Props) {
+export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onClose, onSaved }: Props) {
   const { isMobile } = useResponsive()
   const memberSearch = useMemberSearch()
   const [confirmedGuestName, setConfirmedGuestName] = useState<string | null>(null)
@@ -96,6 +98,28 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, order?.id])
+
+  useEffect(() => {
+    if (!open || order || !prefillVariantId || variants.length === 0) return
+    const item = variants.find((v) => v.variant.id === prefillVariantId)
+    if (!item) {
+      toast.error('找不到此 SKU')
+      return
+    }
+    setLines((prev) => {
+      if (prev.some((l) => l.variant_id === prefillVariantId)) return prev
+      return [
+        ...prev,
+        {
+          key: `new-${item.variant.id}-${Date.now()}`,
+          variant_id: item.variant.id,
+          unit_price: item.variant.price ?? 0,
+          qty: 1,
+          label: lineLabel(item.product, item.variant),
+        },
+      ]
+    })
+  }, [open, order, prefillVariantId, variants])
 
   const filteredVariants = useMemo(() => {
     const q = variantSearch.trim().toLowerCase()
@@ -208,13 +232,13 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
 
   const handleVoid = async () => {
     if (!order || isVoided) return
-    const hasPaid = order.items.some((it) => it.qty_paid > 0)
-    const hasPending = order.items.some((it) => it.qty_pending_bill > 0)
-    let msg = `確定作廢訂單 ${order.order_no}？\n作廢後可在「已作廢」分頁查閱。`
-    if (hasPending || hasPaid) {
-      msg += '\n\n已送結帳／已結清的數量會加回庫存；結帳紀錄保留。'
+    const txCount = await countOrderTransactions(order.id)
+    const confirmResult = confirmVoidOrder(order, txCount)
+    if (confirmResult === 'cancelled') return
+    if (confirmResult === 'mismatch') {
+      toast.error('訂單號不符，已取消作廢')
+      return
     }
-    if (!confirm(msg)) return
     setSaveError(null)
     setSaving(true)
     try {

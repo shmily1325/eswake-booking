@@ -24,6 +24,7 @@ import {
 import { OrderEditDialog } from './OrderEditDialog'
 import {
   buildSubmitBillingConfirmMessage,
+  confirmVoidOrder,
   deliveryMethodLabel,
   filterOrdersByInbox,
   filterOrdersBySearch,
@@ -60,7 +61,7 @@ const STAT_FILTERS: { id: OrderInboxTab; label: string; mobileLabel: string; col
 export function OrderManagement({ embedded = false }: { embedded?: boolean } = {}) {
   const user = useAuthUser()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const toast = useToast()
   const { isMobile } = useResponsive()
   const [accessChecked, setAccessChecked] = useState(false)
@@ -72,6 +73,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   const [tab, setTab] = useState<OrderInboxTab>('all')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editOrder, setEditOrder] = useState<ShopOrderWithItems | null>(null)
+  const [prefillVariantId, setPrefillVariantId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
   const reloadOrders = useCallback(async () => {
@@ -130,6 +132,23 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       setTab('all')
     }
   }, [searchParams])
+
+  useEffect(() => {
+    const newVariant = searchParams.get('newVariant')
+    if (!newVariant || !canEdit) return
+    setPrefillVariantId(newVariant)
+    setEditOrder(null)
+    setDialogOpen(true)
+    setTab('all')
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('newVariant')
+        return next
+      },
+      { replace: true },
+    )
+  }, [searchParams, canEdit, setSearchParams])
 
   const activeOrders = useMemo(() => orders.filter((o) => !o.cancelled_at), [orders])
 
@@ -196,19 +215,12 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
 
   const handleVoidOrder = async (order: ShopOrderWithItems) => {
     const txCount = await countOrderTransactions(order.id)
-    const hasPaid = order.items.some((it) => it.qty_paid > 0)
-    const hasPending = order.items.some((it) => it.qty_pending_bill > 0)
-    let msg = `確定作廢訂單 ${order.order_no}？\n作廢後可在列表篩選「已作廢」查閱，無法再編輯或送結帳。`
-    if (hasPending || hasPaid) {
-      msg += '\n\n已送結帳／已結清的數量會加回庫存。'
+    const confirmResult = confirmVoidOrder(order, txCount)
+    if (confirmResult === 'cancelled') return
+    if (confirmResult === 'mismatch') {
+      toast.error('訂單號不符，已取消作廢')
+      return
     }
-    if (hasPaid) {
-      msg += '\n結帳紀錄會保留。'
-    }
-    if (txCount > 0) {
-      msg += `\n\n⚠️ 已有 ${txCount} 筆儲值交易，交易保留；請到會員儲值人工處理退款。`
-    }
-    if (!confirm(msg)) return
     try {
       await voidShopOrder(order.id, user?.email ?? null)
       toast.success('已作廢訂單')
@@ -440,8 +452,12 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       <OrderEditDialog
         open={dialogOpen}
         order={editOrder}
+        prefillVariantId={prefillVariantId}
         userEmail={user?.email}
-        onClose={() => setDialogOpen(false)}
+        onClose={() => {
+          setDialogOpen(false)
+          setPrefillVariantId(null)
+        }}
         onSaved={() => void afterOrderMutation()}
       />
     </>
