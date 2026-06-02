@@ -1,6 +1,7 @@
 import { supabase } from '../../../lib/supabase'
 import { getLocalDateString } from '../../../utils/date'
 import { sortPendingBillOrders } from './orderUtils'
+import { formatShopOrderRpcError } from './shopOrderRpcErrors'
 
 /** 訂單開單列表預設只載入近 N 個月（待結帳 inbox 不受限） */
 export const SHOP_ORDERS_LIST_MONTHS = 6
@@ -36,12 +37,18 @@ const ORDER_SELECT = `
 async function rpcError(result: { data: unknown; error: unknown }): Promise<void> {
   if (result.error) {
     const err = result.error as { message?: string }
-    throw new Error(err.message || '操作失敗')
+    throw new Error(formatShopOrderRpcError(err.message, '連線失敗'))
   }
   const payload = result.data as { success?: boolean; error?: string } | null
   if (payload && payload.success === false) {
-    throw new Error(payload.error || '操作失敗')
+    throw new Error(formatShopOrderRpcError(payload.error))
   }
+}
+
+/** 供 UI catch 區塊使用（含 RPC 與 Supabase 錯誤） */
+export function shopOrderErrorMessage(e: unknown, fallback = '操作失敗'): string {
+  if (e instanceof Error) return formatShopOrderRpcError(e.message, fallback)
+  return fallback
 }
 
 export type FetchShopOrdersOptions = {

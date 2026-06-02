@@ -4,7 +4,7 @@ import { useToast } from '../../../components/ui'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { formatAttributes } from '../products/schema'
-import { settleShopOrder } from './api'
+import { settleShopOrder, shopOrderErrorMessage } from './api'
 import {
   applyDiscountToSubtotal,
   buildDefaultSettleDescription,
@@ -268,7 +268,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
       )
       onComplete()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '結帳失敗')
+      toast.error(shopOrderErrorMessage(e, '結帳失敗'))
     } finally {
       setLoading(false)
     }
@@ -288,6 +288,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
       <div
         role="button"
         tabIndex={0}
+        data-track="product_order_settle_toggle"
         onClick={() => setExpanded((v) => !v)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -338,6 +339,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                 <button
                   key={opt.value}
                   type="button"
+                  data-track={`product_order_settle_payment_${opt.value}`}
                   onClick={() => setPaymentMethod(opt.value)}
                   style={{
                     padding: '6px 12px',
@@ -423,6 +425,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   {isProxyCharge ? (
                     <button
                       type="button"
+                      data-track="product_order_settle_reset_charge"
                       onClick={resetChargeToOrderMember}
                       style={{
                         padding: '6px 12px',
@@ -439,6 +442,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   ) : (
                     <button
                       type="button"
+                      data-track="product_order_settle_switch_charge"
                       onClick={() => setShowMemberSearch(true)}
                       style={{
                         padding: '6px 12px',
@@ -498,6 +502,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
               <span style={{ fontSize: 12, color: '#888' }}>折</span>
               <button
                 type="button"
+                data-track="product_order_settle_apply_discount"
                 onClick={applyGlobalDiscount}
                 style={{
                   padding: '6px 10px',
@@ -564,6 +569,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
             <button
               type="button"
               disabled={loading || (paymentMethod === 'balance' && !chargeMemberId)}
+              data-track="product_order_settle_confirm"
               onClick={() => void handleSettle()}
               style={{
                 width: '100%',
@@ -676,6 +682,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   <button
                     key={m.id}
                     type="button"
+                    data-track="product_order_settle_pick_member"
                     onClick={() => selectChargeMember(m)}
                     style={{
                       display: 'block',
@@ -855,6 +862,7 @@ function SettleLineRow({
             <span style={{ fontSize: 12, color: '#888' }}>折</span>
             <button
               type="button"
+              data-track="product_order_settle_line_discount"
               onClick={onApplyDiscount}
               style={{
                 padding: '6px 10px',
@@ -890,6 +898,7 @@ function SettleLineRow({
             <span>說明：</span>
             <button
               type="button"
+              data-track="product_order_settle_edit_description"
               onClick={() => setIsEditingDescription((v) => !v)}
               style={{
                 padding: '4px 10px',

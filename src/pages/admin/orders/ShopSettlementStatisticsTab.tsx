@@ -277,6 +277,7 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                       >
                         <Link
                           to={`/products/orders?q=${encodeURIComponent(row.order_no)}`}
+                          data-track="product_order_settle_stat_order_link"
                           title="在訂單開單搜尋此訂單"
                           style={{
                             fontWeight: 700,
@@ -316,6 +317,7 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                       type="button"
                       aria-expanded={expanded}
                       aria-label={expanded ? '收合明細' : '展開明細'}
+                      data-track="product_order_settle_stat_expand"
                       onClick={() => setExpandedId(expanded ? null : row.id)}
                       style={{
                         textAlign: 'right',

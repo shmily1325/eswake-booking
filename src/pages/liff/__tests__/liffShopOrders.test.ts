@@ -1,0 +1,102 @@
+import { describe, expect, it } from 'vitest'
+import type { ShopOrderItemWithVariant, ShopOrderWithItems } from '../../admin/orders/types'
+import {
+  liffHiddenItemsProgressHint,
+  liffOrderIsMixed,
+  liffOrderProgressSummary,
+  liffOrderStatus,
+} from '../liffShopOrders'
+
+function mockItem(
+  overrides: Partial<ShopOrderItemWithVariant> & {
+    id: string
+    qty: number
+    stock?: number
+    reserved_qty?: number
+  },
+): ShopOrderItemWithVariant {
+  const {
+    qty_pending_bill = 0,
+    qty_paid = 0,
+    stock = 10,
+    reserved_qty = 0,
+    ...rest
+  } = overrides
+  return {
+    order_id: 'o1',
+    variant_id: `v-${rest.id}`,
+    unit_price: 1000,
+    qty_pending_bill,
+    qty_paid,
+    created_at: '',
+    updated_at: '',
+    variant: {
+      id: `v-${rest.id}`,
+      product_id: 'p1',
+      vendor_code: null,
+      attributes: {},
+      price: 1000,
+      stock,
+      reserved_qty,
+      image_url: null,
+      last_stock_in_at: null,
+      created_at: '',
+      updated_at: '',
+      product: { id: 'p1', brand: 'B', model: 'M', category: 'wakeboard' },
+    },
+    ...rest,
+  }
+}
+
+function mockOrder(items: ShopOrderItemWithVariant[]): ShopOrderWithItems {
+  return {
+    id: 'o1',
+    order_no: 'SO-001',
+    member_id: 'm1',
+    contact_name: 'Test',
+    delivery_method: 'pickup_es',
+    shipping_info: null,
+    customer_note: null,
+    internal_notes: null,
+    cancelled_at: null,
+    created_at: '',
+    updated_at: '',
+    created_by: null,
+    updated_by: null,
+    items,
+  }
+}
+
+describe('liffOrderStatus', () => {
+  it('shows partial when some items waiting and some pending', () => {
+    const waiting = mockItem({ id: 'a', qty: 2, stock: 0 })
+    const pending = mockItem({ id: 'b', qty: 1, qty_pending_bill: 1, stock: 1, reserved_qty: 1 })
+    const order = mockOrder([waiting, pending])
+    expect(liffOrderStatus(order)).toBe('partial')
+    expect(liffOrderProgressSummary(order)).toBe('待收款 1 件 · 等貨 2 件')
+  })
+
+  it('shows partial for single line with paid and waiting qty', () => {
+    const item = mockItem({ id: 'a', qty: 3, qty_paid: 1, stock: 0 })
+    const order = mockOrder([item])
+    expect(liffOrderIsMixed(order)).toBe(true)
+    expect(liffOrderStatus(order)).toBe('partial')
+    expect(liffOrderProgressSummary(order)).toBe('已到 1 件 · 等貨 2 件')
+  })
+
+  it('shows waiting only when all open qty', () => {
+    const item = mockItem({ id: 'a', qty: 2, stock: 0 })
+    expect(liffOrderStatus(mockOrder([item]))).toBe('waiting')
+  })
+})
+
+describe('liffHiddenItemsProgressHint', () => {
+  it('summarizes hidden items', () => {
+    const items = [
+      mockItem({ id: 'a', qty: 1, qty_pending_bill: 1, stock: 1, reserved_qty: 1 }),
+      mockItem({ id: 'b', qty: 2, stock: 0 }),
+    ]
+    expect(liffHiddenItemsProgressHint(items)).toContain('另有 2 項')
+    expect(liffHiddenItemsProgressHint(items)).toContain('等貨')
+  })
+})

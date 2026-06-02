@@ -104,6 +104,7 @@ export function OrderSettlePage() {
       >
         <TabButton
           active={activeTab === 'pending'}
+          trackId="product_order_settle_tab_pending"
           onClick={() => setActiveTab('pending')}
           isMobile={isMobile}
           badge={orders.length > 0 ? orders.length : undefined}
@@ -112,6 +113,7 @@ export function OrderSettlePage() {
         </TabButton>
         <TabButton
           active={activeTab === 'statistics'}
+          trackId="product_order_settle_tab_statistics"
           onClick={() => setActiveTab('statistics')}
           isMobile={isMobile}
         >
@@ -161,16 +163,19 @@ function TabButton({
   isMobile,
   children,
   badge,
+  trackId,
 }: {
   active: boolean
   onClick: () => void
   isMobile: boolean
   children: ReactNode
   badge?: number
+  trackId?: string
 }) {
   return (
     <button
       type="button"
+      data-track={trackId}
       onClick={onClick}
       style={{
         padding: '12px 24px',

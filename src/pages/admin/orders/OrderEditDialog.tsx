@@ -6,7 +6,13 @@ import { fetchAllProductsWithVariants, flattenToVariantItems } from '../products
 import { formatAttributes } from '../products/schema'
 import { buildVariantSearchHaystack } from '../products/productSearchHaystack'
 import type { VariantListItem } from '../products/types'
-import { createShopOrder, updateShopOrder, voidShopOrder, countOrderTransactions } from './api'
+import {
+  countOrderTransactions,
+  createShopOrder,
+  shopOrderErrorMessage,
+  updateShopOrder,
+  voidShopOrder,
+} from './api'
 import { formatDateTime } from '../../../utils/formatters'
 import { confirmVoidOrder } from './orderUtils'
 import { OrderMemberPicker, resolveContactName } from './OrderMemberPicker'
@@ -375,6 +381,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                     <button
                       key={v.variant.id}
                       type="button"
+                      data-track="product_order_line_add"
                       onClick={() => addVariant(v)}
                       style={{
                         display: 'block',
@@ -461,6 +468,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                 {!locked && (
                   <button
                     type="button"
+                    data-track="product_order_line_remove"
                     onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
                     style={{
                       border: 'none',
@@ -523,6 +531,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           )}
           <button
             type="button"
+            data-track="product_order_edit_cancel"
             onClick={onClose}
             style={{
               padding: isMobile ? '12px 16px' : '10px 16px',
@@ -538,6 +547,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             <button
               type="button"
               disabled={saving}
+              data-track="product_order_void"
               onClick={() => void handleVoid()}
               style={{
                 padding: isMobile ? '12px 16px' : '10px 16px',
@@ -555,6 +565,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             <button
               type="button"
               disabled={saving}
+              data-track={order ? 'product_order_save' : 'product_order_create'}
               onClick={() => void handleSave()}
               style={{
                 padding: isMobile ? '12px 20px' : '10px 20px',
@@ -576,11 +587,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
 }
 
 function formatSaveError(e: unknown): string {
-  if (e instanceof Error) return e.message
-  if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
-    return (e as { message: string }).message
-  }
-  return '儲存失敗'
+  return shopOrderErrorMessage(e, '儲存失敗')
 }
 
 function lineLabel(

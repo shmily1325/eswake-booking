@@ -5,6 +5,8 @@ import {
   LIFF_ORDER_STATUS,
   formatLiffOrderItemLine,
   liffDeliveryLabel,
+  liffHiddenItemsProgressHint,
+  liffOrderProgressSummary,
   liffOrderStatus,
 } from '../liffShopOrders'
 import { LiffPageHint } from './LiffPageHint'
@@ -28,10 +30,12 @@ function formatOrderDate(createdAt: string): string {
 function ShopOrderCard({ order }: { order: LiffShopOrder }) {
   const statusKey = liffOrderStatus(order)
   const status = LIFF_ORDER_STATUS[statusKey]
+  const progressSummary = liffOrderProgressSummary(order)
   const collapsible = order.items.length > 1
   const [expanded, setExpanded] = useState(false)
   const visibleItems = collapsible && !expanded ? order.items.slice(0, 1) : order.items
-  const hiddenCount = order.items.length - 1
+  const hiddenItems = collapsible && !expanded ? order.items.slice(1) : []
+  const hiddenHint = hiddenItems.length > 0 ? liffHiddenItemsProgressHint(hiddenItems) : null
 
   return (
     <div
@@ -85,16 +89,30 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
           </span>
         </div>
 
-        <div style={{ fontSize: '13px', color: '#555', marginBottom: collapsible ? 6 : 10 }}>
+        <div style={{ fontSize: '13px', color: '#555', marginBottom: progressSummary ? 6 : collapsible ? 6 : 10 }}>
           {liffDeliveryLabel(order.delivery_method)}
           {order.shipping_info ? (
             <span style={{ color: '#888' }}> · {order.shipping_info}</span>
           ) : null}
         </div>
 
+        {progressSummary && (
+          <div
+            style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#6a1b9a',
+              marginBottom: collapsible ? 6 : 10,
+              lineHeight: 1.45,
+            }}
+          >
+            {progressSummary}
+          </div>
+        )}
+
         {collapsible && (
           <div style={{ fontSize: '12px', color: '#1565c0', marginBottom: 10, fontWeight: 500 }}>
-            {expanded ? '收合明細' : `還有 ${hiddenCount} 項 · 點擊展開`}
+            {expanded ? '收合明細' : hiddenHint ?? `還有 ${hiddenItems.length} 項 · 點擊展開`}
           </div>
         )}
       </button>
@@ -118,7 +136,7 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {visibleItems.map((item) => {
-          const { title, subtitle, progress } = formatLiffOrderItemLine(item)
+          const { title, subtitle, chips } = formatLiffOrderItemLine(item)
           return (
             <div
               key={item.id}
@@ -133,7 +151,30 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
               {subtitle && (
                 <div style={{ fontSize: '12px', color: '#888', marginTop: 2 }}>{subtitle}</div>
               )}
-              <div style={{ fontSize: '12px', color: '#666', marginTop: 6 }}>{progress}</div>
+              {chips.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {chips.map((chip) => (
+                    <span
+                      key={chip.label}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        color: chip.color,
+                        background: chip.bg,
+                      }}
+                    >
+                      {chip.label}
+                    </span>
+                  ))}
+                  <span style={{ fontSize: 11, color: '#aaa', alignSelf: 'center' }}>
+                    共訂 {item.qty} 件
+                  </span>
+                </div>
+              ) : (
+                <div style={{ fontSize: '12px', color: '#666', marginTop: 6 }}>共訂 {item.qty} 件</div>
+              )}
             </div>
           )
         })}

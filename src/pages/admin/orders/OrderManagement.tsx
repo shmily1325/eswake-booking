@@ -23,8 +23,9 @@ import { formatDate, formatDateTime, formatTime } from '../../../utils/formatter
 import {
   cancelShopOrderBilling,
   countOrderTransactions,
-  voidShopOrder,
+  shopOrderErrorMessage,
   submitShopOrderBilling,
+  voidShopOrder,
 } from './api'
 import { OrderEditDialog } from './OrderEditDialog'
 import {
@@ -254,7 +255,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       if (tab === 'ready') setTab('pending')
       globalToast.success('已通知結帳')
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '送結帳失敗')
+      toast.error(shopOrderErrorMessage(e, '送結帳失敗'))
     } finally {
       setBillingBusyOrderId(null)
     }
@@ -272,7 +273,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       toast.success('已撤回送結帳')
       await afterOrderMutation()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '撤回失敗')
+      toast.error(shopOrderErrorMessage(e, '撤回失敗'))
     } finally {
       setBillingBusyOrderId(null)
     }
@@ -291,7 +292,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       toast.success('已作廢訂單')
       await afterOrderMutation()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '作廢失敗')
+      toast.error(shopOrderErrorMessage(e, '作廢失敗'))
     }
   }
 
@@ -312,6 +313,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       >
         <button
           type="button"
+          data-track="product_order_filter_all"
           onClick={() => setStatusFilter('all')}
           title="顯示全部進行中訂單"
           style={{
@@ -338,6 +340,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         {STAT_FILTERS.map((f) => (
           <OrderStatChip
             key={f.id}
+            trackId={`product_order_filter_${f.id}`}
             label={isMobile ? f.mobileLabel : f.label}
             count={tabCounts[f.id]}
             color={f.color}
@@ -371,6 +374,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
           {userIsAdmin && (
             <Link
               to="/order-settle"
+              data-track="product_order_goto_settle"
               style={{ color: '#6a1b9a', fontWeight: 600, textDecoration: 'none' }}
             >
               前往結帳 →
@@ -394,6 +398,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
           <span>預設顯示近 {SHOP_ORDERS_LIST_MONTHS} 個月訂單</span>
           <button
             type="button"
+            data-track="product_order_load_older"
             onClick={() => void loadOlderOrders()}
             disabled={loading}
             style={{
@@ -452,6 +457,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             <button
               type="button"
               aria-label="清除搜尋"
+              data-track="product_order_search_clear"
               onClick={() => setSearch('')}
               style={{
                 position: 'absolute',
@@ -488,6 +494,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         <div style={{ marginBottom: 12, textAlign: 'right' }}>
           <button
             type="button"
+            data-track="product_order_filter_show_all"
             onClick={showAllOrders}
             style={{
               border: 'none',
@@ -730,12 +737,18 @@ function OrderCard({
                 primary
                 flex={isMobile}
                 disabled={billingBusy}
+                trackId="product_order_submit_billing"
                 onClick={onSubmitBilling}
               >
                 {billingBusy ? '處理中…' : '送結帳'}
               </ActionBtn>
             )}
-            <ActionBtn isMobile={isMobile} flex={isMobile && showSubmit} onClick={onEdit}>
+            <ActionBtn
+              isMobile={isMobile}
+              flex={isMobile && showSubmit}
+              trackId="product_order_edit_open"
+              onClick={onEdit}
+            >
               {cancelled ? '查看' : '編輯'}
             </ActionBtn>
           </div>
@@ -749,11 +762,15 @@ function OrderCard({
               }}
             >
               {showCancelBill && (
-                <TextAction isMobile={isMobile} onClick={onCancelBilling}>
+                <TextAction
+                  isMobile={isMobile}
+                  trackId="product_order_cancel_billing"
+                  onClick={onCancelBilling}
+                >
                   撤回送結帳
                 </TextAction>
               )}
-              <TextAction isMobile={isMobile} danger onClick={onVoidOrder}>
+              <TextAction isMobile={isMobile} danger trackId="product_order_void" onClick={onVoidOrder}>
                 作廢
               </TextAction>
             </div>
@@ -914,15 +931,18 @@ function TextAction({
   onClick,
   danger,
   isMobile,
+  trackId,
 }: {
   children: ReactNode
   onClick: () => void
   danger?: boolean
   isMobile?: boolean
+  trackId?: string
 }) {
   return (
     <button
       type="button"
+      data-track={trackId}
       onClick={onClick}
       style={{
         border: 'none',
@@ -949,6 +969,7 @@ function OrderStatChip({
   active,
   onClick,
   isMobile,
+  trackId,
 }: {
   label: string
   count: number
@@ -956,11 +977,13 @@ function OrderStatChip({
   active?: boolean
   onClick?: () => void
   isMobile?: boolean
+  trackId?: string
 }) {
   const muted = count <= 0
   return (
     <button
       type="button"
+      data-track={trackId}
       onClick={onClick}
       disabled={!onClick}
       style={{
@@ -990,6 +1013,7 @@ function ActionBtn({
   isMobile,
   flex,
   disabled,
+  trackId,
 }: {
   children: ReactNode
   onClick: () => void
@@ -998,11 +1022,13 @@ function ActionBtn({
   isMobile: boolean
   flex?: boolean
   disabled?: boolean
+  trackId?: string
 }) {
   const variant = primary ? 'primary' : danger ? 'danger' : 'secondary'
   return (
     <button
       type="button"
+      data-track={trackId}
       onClick={onClick}
       disabled={disabled}
       style={{
