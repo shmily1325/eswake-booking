@@ -433,7 +433,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                 }}
               >
                 <span style={{ flex: 1, fontSize: 14, lineHeight: 1.4, minWidth: 0 }}>{line.label}</span>
-                {!locked && (
+                {!locked && isMobile && (
                   <button
                     type="button"
                     data-track="product_order_line_remove"

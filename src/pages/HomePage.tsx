@@ -1,10 +1,8 @@
 import { Link } from 'react-router-dom'
-import { CountBadge } from '../components/CountBadge'
 import { useAuthUser } from '../contexts/AuthContext'
 import { UserMenu } from '../components/UserMenu'
 import { DailyAnnouncement } from '../components/DailyAnnouncement'
 import { useResponsive } from '../hooks/useResponsive'
-import { useCoachUnreportedCount } from '../hooks/useCoachUnreportedCount'
 import { getLocalDateString } from '../utils/date'
 import {
   isAdmin,
@@ -69,11 +67,6 @@ export function HomePage() {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
   const isV2Environment = supabaseUrl.includes('v2') || supabaseUrl.includes('staging')
   const userIsAdmin = isAdmin(user)
-  const badgesReady = !permissionsLoading && !!user
-  const { count: coachUnreportedCount } = useCoachUnreportedCount(
-    badgesReady && isCoach,
-    user?.email,
-  )
   
   // 合併所有權限檢查，一次性載入
   useEffect(() => {
@@ -136,11 +129,6 @@ export function HomePage() {
     phoneEditorOnly?: boolean
     /** 超級管理員不顯示此格（從 BAO 進入即可，如排班、船隻管理） */
     hideFromHomeForSuperAdmin?: boolean
-  }
-
-  const homeMenuBadge = (item: HomeMenuItem): number => {
-    if (item.link === '/my-report') return coachUnreportedCount
-    return 0
   }
 
   const menuItemsMain: HomeMenuItem[] = [
@@ -392,17 +380,8 @@ export function HomePage() {
                     fontWeight: '600',
                     color: '#000',
                     letterSpacing: '0.5px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexWrap: 'wrap',
-                    gap: 4,
                   }}>
                     {item.title}
-                    {(() => {
-                      const n = homeMenuBadge(item)
-                      return n > 0 ? <CountBadge count={n} /> : null
-                    })()}
                   </h2>
 
                   {item.subtitle && (
