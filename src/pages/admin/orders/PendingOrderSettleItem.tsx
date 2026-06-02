@@ -20,6 +20,7 @@ interface SettleLineState {
   unit_price: number
   line_total: number
   label: string
+  thumb_src: string | null
   description: string
   discountInput: string
 }
@@ -52,6 +53,7 @@ function buildLineStates(order: ShopOrderWithItems): SettleLineState[] {
         unit_price,
         line_total: listSubtotal(qty, unit_price),
         label,
+        thumb_src: it.variant.image_url || it.variant.cover_image_url || null,
         description: buildDefaultSettleDescription(label, order.order_no),
         discountInput: '',
       }
@@ -74,6 +76,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const [globalDiscountInput, setGlobalDiscountInput] = useState('')
   const [showMemberSearch, setShowMemberSearch] = useState(false)
   const [hasCheckedBillingRelation, setHasCheckedBillingRelation] = useState(false)
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const proxySearch = useMemberSearch()
 
   const pendingLines = useMemo(() => buildLineStates(order), [order])
@@ -155,6 +158,19 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- proxySearch 物件不穩定
   }, [expanded, paymentMethod, hasCheckedBillingRelation, order.contact_name, order.member_id])
+
+  useEffect(() => {
+    if (!previewSrc) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewSrc(null)
+    }
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [previewSrc])
 
   const total = lines.reduce((s, l) => s + l.line_total, 0)
   const listTotal = lines.reduce((s, l) => s + listSubtotal(l.qty, l.unit_price), 0)
@@ -472,9 +488,11 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
               key={line.item_id}
               index={idx + 1}
               line={line}
+              isMobile={isMobile}
               showDescription={paymentMethod === 'balance'}
               onUpdate={(patch) => updateLine(idx, patch)}
               onApplyDiscount={() => applyDiscountToLine(idx)}
+              onOpenPreview={(src) => setPreviewSrc(src)}
             />
           ))}
 
@@ -541,6 +559,31 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   : `✅ ${settleLabel}`}
             </button>
           </div>
+        </div>
+      )}
+
+      {previewSrc && (
+        <div
+          role="presentation"
+          onClick={() => setPreviewSrc(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1100,
+            background: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            boxSizing: 'border-box',
+            cursor: 'pointer',
+          }}
+        >
+          <img
+            src={previewSrc}
+            alt=""
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+          />
         </div>
       )}
 
@@ -657,15 +700,19 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 function SettleLineRow({
   index,
   line,
+  isMobile,
   showDescription,
   onUpdate,
   onApplyDiscount,
+  onOpenPreview,
 }: {
   index: number
   line: SettleLineState
+  isMobile: boolean
   showDescription: boolean
   onUpdate: (patch: Partial<SettleLineState>) => void
   onApplyDiscount: () => void
+  onOpenPreview: (src: string) => void
 }) {
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const subtotal = listSubtotal(line.qty, line.unit_price)
@@ -713,6 +760,31 @@ function SettleLineRow({
           <div style={{ fontSize: '14px', fontWeight: 600, lineHeight: 1.4, color: '#222' }}>{line.label}</div>
           <div style={{ fontSize: '13px', color: '#666', marginTop: 2 }}>× {line.qty}</div>
         </div>
+        {!isMobile && line.thumb_src && (
+          <button
+            type="button"
+            data-track="product_order_settle_image_preview"
+            onClick={() => onOpenPreview(line.thumb_src!)}
+            style={{
+              width: 34,
+              height: 46,
+              border: '1px solid #ddd',
+              borderRadius: 6,
+              background: '#f6f6f7',
+              overflow: 'hidden',
+              padding: 0,
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <img
+              src={line.thumb_src}
+              alt=""
+              loading="lazy"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          </button>
+        )}
       </div>
 
       <div style={{ marginBottom: showDescription ? '12px' : 0 }}>
