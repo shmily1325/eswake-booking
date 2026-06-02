@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { Footer } from '../../../components/Footer'
 import {
@@ -15,7 +15,6 @@ import { toast as globalToast } from '../../../utils/toast'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { getButtonStyle } from '../../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../../utils/auth'
-import { formatAttributes } from '../products/schema'
 import { formatDateTime } from '../../../utils/formatters'
 import {
   cancelShopOrderBilling,
@@ -26,30 +25,51 @@ import {
 } from './api'
 import { OrderEditDialog } from './OrderEditDialog'
 import {
+  buildSubmitBillingConfirmMessage,
   deliveryMethodLabel,
   filterOrdersByInbox,
   filterOrdersBySearch,
+  formatOrderItemLabel,
   orderHasPendingBill,
   orderHasReadyToBill,
   orderHasWaitingStock,
   orderIsFullySettled,
+  orderNextStepHint,
   qtyBillable,
   qtyOpen,
 } from './orderUtils'
 import type { OrderInboxTab, ShopOrderWithItems } from './types'
 
+const TAB_LABELS: Record<OrderInboxTab, string> = {
+  all: '全部',
+  waiting: '等貨',
+  ready: '可送結帳',
+  pending: '待結帳',
+  settled: '已結清',
+  cancelled: '已作廢',
+}
+
 const TABS: { id: OrderInboxTab; label: string }[] = [
-  { id: 'all', label: '全部' },
-  { id: 'waiting', label: '等貨' },
-  { id: 'ready', label: '可送結帳' },
-  { id: 'pending', label: '待結帳' },
-  { id: 'settled', label: '已結清' },
-  { id: 'cancelled', label: '已作廢' },
+  { id: 'all', label: TAB_LABELS.all },
+  { id: 'waiting', label: TAB_LABELS.waiting },
+  { id: 'ready', label: TAB_LABELS.ready },
+  { id: 'pending', label: TAB_LABELS.pending },
+  { id: 'settled', label: TAB_LABELS.settled },
+  { id: 'cancelled', label: TAB_LABELS.cancelled },
+]
+
+const STAT_FILTERS: { id: OrderInboxTab; label: string; color: string }[] = [
+  { id: 'waiting', label: '等貨', color: '#ef6c00' },
+  { id: 'ready', label: '可送結帳', color: '#1565c0' },
+  { id: 'pending', label: '待結帳', color: '#6a1b9a' },
+  { id: 'settled', label: '已結清', color: '#2e7d32' },
+  { id: 'cancelled', label: '已作廢', color: '#888' },
 ]
 
 export function OrderManagement({ embedded = false }: { embedded?: boolean } = {}) {
   const user = useAuthUser()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const toast = useToast()
   const { isMobile } = useResponsive()
   const [accessChecked, setAccessChecked] = useState(false)
@@ -112,6 +132,14 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     }
   }, [user.id, embedded, navigate, toast])
 
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q) {
+      setSearch(q)
+      setTab('all')
+    }
+  }, [searchParams])
+
   const activeOrders = useMemo(() => orders.filter((o) => !o.cancelled_at), [orders])
 
   const tabCounts = useMemo(
@@ -131,6 +159,17 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     return filterOrdersBySearch(byTab, search)
   }, [orders, tab, search])
 
+  const showAllOrders = useCallback(() => setTab('all'), [])
+
+  const setStatusFilter = useCallback((next: OrderInboxTab) => {
+    setTab((current) => (current === next && next !== 'all' ? 'all' : next))
+  }, [])
+
+  const afterOrderMutation = useCallback(async () => {
+    await reloadOrders()
+    setTab('all')
+  }, [reloadOrders])
+
   const handleSubmitBilling = async (order: ShopOrderWithItems) => {
     const items = order.items
       .map((it) => ({ item_id: it.id, qty: qtyBillable(it) }))
@@ -139,12 +178,11 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       toast.error('沒有可送結帳的現貨')
       return
     }
-    if (!confirm(`送結帳 ${order.order_no}？\n將保留現貨並進入待結帳。`)) return
+    if (!confirm(buildSubmitBillingConfirmMessage(order))) return
     try {
       await submitShopOrderBilling(order.id, items, user?.email ?? null)
-      await reloadOrders()
-      setTab('pending')
-      globalToast.success('已送結帳，已切換至「待結帳」')
+      await afterOrderMutation()
+      globalToast.success('已送結帳')
     } catch (e: unknown) {
       globalToast.error(e instanceof Error ? e.message : '送結帳失敗')
     }
@@ -159,7 +197,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     try {
       await cancelShopOrderBilling(order.id, items, user?.email ?? null)
       toast.success('已撤回送結帳')
-      await reloadOrders()
+      await afterOrderMutation()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '撤回失敗')
     }
@@ -169,7 +207,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     const txCount = await countOrderTransactions(order.id)
     const hasPaid = order.items.some((it) => it.qty_paid > 0)
     const hasPending = order.items.some((it) => it.qty_pending_bill > 0)
-    let msg = `確定作廢訂單 ${order.order_no}？\n作廢後可在「已作廢」分頁查閱，無法再編輯或送結帳。`
+    let msg = `確定作廢訂單 ${order.order_no}？\n作廢後可在列表篩選「已作廢」查閱，無法再編輯或送結帳。`
     if (hasPending || hasPaid) {
       msg += '\n\n已送結帳／已結清的數量會加回庫存。'
     }
@@ -183,8 +221,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     try {
       await voidShopOrder(order.id, user?.email ?? null)
       toast.success('已作廢訂單')
-      await reloadOrders()
-      setTab('cancelled')
+      await afterOrderMutation()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '作廢失敗')
     }
@@ -197,18 +234,37 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   return (
     <>
       <div style={adminStatsBarStyle(isMobile)}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('all')}
+          title="顯示全部進行中訂單"
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 8,
+            border: 'none',
+            background: tab === 'all' ? '#e3f2fd' : 'transparent',
+            borderRadius: 8,
+            padding: tab === 'all' ? '4px 8px' : '4px 0',
+            cursor: 'pointer',
+          }}
+        >
           <span style={{ fontSize: 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>
             {tabCounts.all}
           </span>
-          <span style={{ fontSize: 12, color: '#888' }}>筆進行中</span>
-        </div>
+          <span style={{ fontSize: 12, color: tab === 'all' ? '#1565c0' : '#888' }}>筆進行中</span>
+        </button>
         <span style={{ color: '#ddd', display: isMobile ? 'none' : 'inline' }}>·</span>
-        <OrderStatChip label="等貨" count={tabCounts.waiting} color="#ef6c00" />
-        <OrderStatChip label="可送結帳" count={tabCounts.ready} color="#1565c0" />
-        <OrderStatChip label="待結帳" count={tabCounts.pending} color="#6a1b9a" />
-        <OrderStatChip label="已結清" count={tabCounts.settled} color="#2e7d32" />
-        <OrderStatChip label="已作廢" count={tabCounts.cancelled} color="#888" />
+        {STAT_FILTERS.map((f) => (
+          <OrderStatChip
+            key={f.id}
+            label={f.label}
+            count={tabCounts[f.id]}
+            color={f.color}
+            active={tab === f.id}
+            onClick={() => setStatusFilter(f.id)}
+          />
+        ))}
       </div>
 
       <div style={{ marginBottom: 12, position: 'relative' }}>
@@ -216,7 +272,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="搜尋訂單號、訂購人"
+          placeholder="搜尋訂單號、訂購人、品牌、品名、貨號、規格…"
           style={{
             width: '100%',
             padding: '10px 14px 10px 36px',
@@ -254,25 +310,30 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         style={{
           display: 'flex',
           gap: 10,
-          marginBottom: 14,
+          marginBottom: tab === 'all' ? 14 : 8,
           alignItems: 'center',
           flexWrap: 'wrap',
           justifyContent: 'space-between',
         }}
       >
-        <AdminPillRow style={{ flex: 1, minWidth: 0, marginBottom: 0 }}>
-          {TABS.map((t) => (
-            <AdminPillButton
-              key={t.id}
-              active={tab === t.id}
-              badge={tabCounts[t.id]}
-              data-track={`product_orders_tab_${t.id}`}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </AdminPillButton>
-          ))}
-        </AdminPillRow>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
+            狀態篩選（上方數字亦可點選 · 預設顯示全部）
+          </div>
+          <AdminPillRow style={{ marginBottom: 0 }}>
+            {TABS.map((t) => (
+              <AdminPillButton
+                key={t.id}
+                active={tab === t.id}
+                badge={t.id === 'all' ? undefined : tabCounts[t.id]}
+                data-track={`product_orders_tab_${t.id}`}
+                onClick={() => setStatusFilter(t.id)}
+              >
+                {t.label}
+              </AdminPillButton>
+            ))}
+          </AdminPillRow>
+        </div>
 
         {canEdit && (
           <Button
@@ -288,6 +349,43 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         )}
       </div>
 
+      {tab !== 'all' && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            marginBottom: 14,
+            padding: '8px 12px',
+            background: '#f5f5f5',
+            borderRadius: 8,
+            fontSize: 13,
+            color: '#555',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span>
+            篩選：<strong>{TAB_LABELS[tab]}</strong>
+            {visible.length > 0 && ` · ${visible.length} 筆`}
+          </span>
+          <button
+            type="button"
+            onClick={showAllOrders}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: '#1565c0',
+              fontWeight: 600,
+              cursor: 'pointer',
+              padding: 0,
+              fontSize: 13,
+            }}
+          >
+            顯示全部
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div style={adminLoadingStyle()}>載入中…</div>
       ) : loadError ? (
@@ -298,26 +396,30 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         <div style={adminContentCardStyle(isMobile)}>
           <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.35 }}>📋</div>
           <div style={{ fontSize: 15, color: '#666', marginBottom: 4 }}>
-            {tab === 'waiting'
-              ? '沒有等貨訂單'
-              : tab === 'ready'
-                ? '沒有可送結帳訂單'
-                : tab === 'pending'
-                  ? '沒有待結帳訂單'
-                  : tab === 'settled'
-                    ? '沒有已結清訂單'
-                    : tab === 'cancelled'
-                      ? '沒有已作廢訂單'
-                      : search.trim()
-                      ? '沒有符合搜尋的訂單'
-                      : '還沒有訂單'}
+            {search.trim()
+              ? '沒有符合搜尋的訂單'
+              : tab !== 'all'
+                ? `沒有「${TAB_LABELS[tab]}」的訂單`
+                : '還沒有訂單'}
           </div>
-          {tab === 'ready' && tabCounts.pending > 0 && (
-            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#6a1b9a' }}>
-              已有 {tabCounts.pending} 筆待結帳，請切換至「待結帳」查看
-            </p>
+          {tab !== 'all' && (
+            <button
+              type="button"
+              onClick={showAllOrders}
+              style={{
+                marginTop: 8,
+                padding: '8px 14px',
+                borderRadius: 8,
+                border: '1px solid #ddd',
+                background: '#fff',
+                cursor: 'pointer',
+                fontSize: 13,
+              }}
+            >
+              顯示全部訂單
+            </button>
           )}
-          {canEdit && tab === 'all' && (
+          {canEdit && tab === 'all' && !search.trim() && (
             <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa' }}>
               點右上角「+ 新增訂單」開始開單
             </p>
@@ -349,7 +451,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         order={editOrder}
         userEmail={user?.email}
         onClose={() => setDialogOpen(false)}
-        onSaved={() => void reloadOrders()}
+        onSaved={() => void afterOrderMutation()}
       />
     </>
   )
@@ -373,6 +475,7 @@ function OrderCard({
   onVoidOrder: () => void
 }) {
   const cancelled = Boolean(order.cancelled_at)
+  const nextHint = orderNextStepHint(order)
   const tags: string[] = []
   if (cancelled) tags.push('已作廢')
   else {
@@ -417,10 +520,7 @@ function OrderCard({
       </p>
       <ul style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: 14 }}>
         {order.items.map((it) => {
-          const p = it.variant?.product
-          const label = p
-            ? `${p.brand} ${p.model} · ${formatAttributes(p.category, it.variant.attributes)}`
-            : '商品'
+          const label = formatOrderItemLabel(it)
           const waiting = qtyOpen(it) > 0 && qtyBillable(it) === 0
           const stockInAt = it.variant?.last_stock_in_at
           const stockNote = waiting
@@ -443,9 +543,29 @@ function OrderCard({
           )
         })}
       </ul>
-      {orderHasPendingBill(order) && (
-        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6a1b9a' }}>
-          已送結帳
+      {nextHint && (
+        <p
+          style={{
+            margin: '0 0 10px',
+            fontSize: 12,
+            color: cancelled ? '#888' : '#555',
+            padding: '8px 10px',
+            background: cancelled ? '#f5f5f5' : '#fafafa',
+            borderRadius: 8,
+            borderLeft: `3px solid ${
+              cancelled
+                ? '#bbb'
+                : orderIsFullySettled(order)
+                  ? '#2e7d32'
+                  : orderHasReadyToBill(order)
+                    ? '#1565c0'
+                    : orderHasPendingBill(order)
+                      ? '#6a1b9a'
+                      : '#ef6c00'
+            }`,
+          }}
+        >
+          下一步：{nextHint}
         </p>
       )}
       {canEdit && (
@@ -496,17 +616,38 @@ function OrderTag({ label }: { label: string }) {
   )
 }
 
-function OrderStatChip({ label, count, color }: { label: string; count: number; color: string }) {
+function OrderStatChip({
+  label,
+  count,
+  color,
+  active,
+  onClick,
+}: {
+  label: string
+  count: number
+  color: string
+  active?: boolean
+  onClick?: () => void
+}) {
+  const muted = count <= 0
   return (
-    <span
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
       style={{
         fontSize: 12,
-        color: count > 0 ? color : '#bbb',
-        fontWeight: count > 0 ? 600 : 400,
+        color: active ? color : muted ? '#bbb' : color,
+        fontWeight: active || count > 0 ? 600 : 400,
+        border: active ? `1px solid ${color}` : 'none',
+        background: active ? `${color}14` : 'transparent',
+        borderRadius: 999,
+        padding: active ? '3px 8px' : '3px 0',
+        cursor: onClick ? 'pointer' : 'default',
       }}
     >
       {label} {count}
-    </span>
+    </button>
   )
 }
 

@@ -136,7 +136,7 @@ export function ProductHub() {
           </AdminPillRow>
           <p style={{ margin: '0 0 14px', fontSize: 13, color: '#666', lineHeight: 1.5 }}>
             {onOrders
-              ? '開單、送結帳、追蹤狀態；「待結帳」表示已送結帳，等管理員在「訂單結帳」扣款。'
+              ? '預設顯示全部訂單；可用下方篩選看等貨、待結帳等。送結帳後等管理員在「訂單結帳」扣款。'
               : '管理 SKU、庫存與上架。客人訂單請切換「訂單開單」。'}
           </p>
         </>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { DateRangePicker } from '../../../components/DateRangePicker'
 import { useToast } from '../../../components/ui'
 import { formatCurrency, formatDateTime, extractDate, extractTime } from '../../../utils/formatters'
@@ -242,20 +243,13 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                     border: expanded ? '2px solid #90caf9' : 'none',
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setExpandedId(expanded ? null : row.id)}
+                  <div
                     style={{
                       width: '100%',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'flex-start',
                       gap: 12,
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      cursor: 'pointer',
-                      textAlign: 'left',
                     }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -268,9 +262,18 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                           marginBottom: 6,
                         }}
                       >
-                        <span style={{ fontWeight: 700, fontSize: 16, color: '#222' }}>
+                        <Link
+                          to={`/products/orders?q=${encodeURIComponent(row.order_no)}`}
+                          title="在訂單開單搜尋此訂單"
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 16,
+                            color: '#1565c0',
+                            textDecoration: 'none',
+                          }}
+                        >
                           {row.order_no}
-                        </span>
+                        </Link>
                         <span
                           style={{
                             fontSize: 12,
@@ -309,7 +312,20 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                         {extractDate(row.settled_at)} {extractTime(row.settled_at)}
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      aria-expanded={expanded}
+                      aria-label={expanded ? '收合明細' : '展開明細'}
+                      onClick={() => setExpandedId(expanded ? null : row.id)}
+                      style={{
+                        textAlign: 'right',
+                        flexShrink: 0,
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                      }}
+                    >
                       <div style={{ fontSize: 18, fontWeight: 700, color: '#2e7d32' }}>
                         {formatCurrency(row.amount_total)}
                       </div>
@@ -324,8 +340,8 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                       >
                         ▶
                       </div>
-                    </div>
-                  </button>
+                    </button>
+                  </div>
 
                   {expanded && (
                     <div
